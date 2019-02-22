@@ -1185,6 +1185,61 @@ impl<T> MaybeUninit<T> {
         ManuallyDrop::into_inner(self.value)
     }
 
+    /// Reads the value from the `MaybeUninit` container. The resulting `T` is subject
+    /// to the usual drop handling.
+    ///
+    /// # Unsafety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
+    /// state. Calling this when the content is not yet fully initialized causes undefined
+    /// behavior.
+    ///
+    /// Moreover, this leaves a copy of the same data behind in the `MaybeUninit`. When using
+    /// multiple copies of the data (by calling `read_initialized` multiple times, or first
+    /// calling `read_initialized` and then [`into_initialized`]), it is your responsibility
+    /// to ensure that that data may indeed be duplicated.
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<u32>::uninitialized();
+    /// x.set(13);
+    /// let x1 = unsafe { x.read_initialized() };
+    /// // `u32` is `Copy`, so we may read multiple times.
+    /// let x2 = unsafe { x.read_initialized() };
+    ///
+    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninitialized();
+    /// x.set(None);
+    /// let x1 = unsafe { x.read_initialized() };
+    /// // Duplicating a `None` value is okay, so we may read multiple times.
+    /// let x2 = unsafe { x.read_initialized() };
+    /// ```
+    ///
+    /// *Incorrect* usafe of this method:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninitialized();
+    /// x.set(Some(vec![0,1,2]));
+    /// let x1 = unsafe { x.read_initialized() };
+    /// let x2 = unsafe { x.read_initialized() };
+    /// // We now created two copies of the same vector, leading to a double-free when
+    /// // they both get dropped!
+    /// ```
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    pub unsafe fn read_initialized(&self) -> T {
+        intrinsics::panic_if_uninhabited::<T>();
+        self.as_ptr().read()
+    }
+
     /// Gets a reference to the contained value.
     ///
     /// # Unsafety
