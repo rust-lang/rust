@@ -22,20 +22,20 @@ Language
       let state = Creature::Crab("Ferris");
 
       if let Creature::Crab(name) | Creature::Person(name) = state {
-        println!("This creature's name is: {}", name);
+          println!("This creature's name is: {}", name);
       }
   }
   ```
 - [You can now have irrefutable `if let` and `while let` patterns.][57535] Using
   this feature will by default produce a warning as this behaviour can be
   unintuitive. E.g. `if let _ = 5 {}`
-- [You can now use `let` bindings, assignments, expression statements, and pattern destructuring in
-  const functions.][57175]
+- [You can now use `let` bindings, assignments, expression statements,
+  and irrefutable pattern destructuring in const functions.][57175]
 - [You can now call unsafe const functions.][57067] E.g.
   ```rust
   const unsafe fn foo() -> i32 { 5 }
   const fn bar() -> i32 {
-    unsafe { foo() }
+      unsafe { foo() }
   }
   ```
 - [You can now specify multiple attributes in a `cfg_attr` attribute.][57332]
