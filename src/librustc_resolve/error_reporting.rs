@@ -259,6 +259,10 @@ impl<'a> Resolver<'a> {
                     format!("{}!", path_str),
                     Applicability::MaybeIncorrect,
                 );
+                if path_str == "try" && span.rust_2015() {
+                    err.note("if you want the `try` keyword, \
+                        you need to be in the 2018 edition");
+                }
             }
             (Def::TyAlias(..), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
