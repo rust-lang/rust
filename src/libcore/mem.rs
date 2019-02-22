@@ -1106,10 +1106,20 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 // FIXME before stabilizing, explain how to initialize a struct field-by-field.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
+#[derive(Copy)]
 // NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::uninitialized`
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
+}
+
+#[unstable(feature = "maybe_uninit", issue = "53491")]
+impl<T: Copy> Clone for MaybeUninit<T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        // Not calling T::clone(), we cannot know if we are initialized enough for that.
+        *self
+    }
 }
 
 impl<T> MaybeUninit<T> {
