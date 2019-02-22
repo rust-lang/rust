@@ -161,10 +161,10 @@ it can be found [here][rctd].
 
 Currently building Rust will also build the following external projects:
 
-* [clippy](https://github.com/rust-lang-nursery/rust-clippy)
-* [miri](https://github.com/solson/miri)
-* [rustfmt](https://github.com/rust-lang-nursery/rustfmt)
-* [rls](https://github.com/rust-lang-nursery/rls/)
+* [clippy](https://github.com/rust-lang/rust-clippy)
+* [miri](https://github.com/rust-lang/miri)
+* [rustfmt](https://github.com/rust-lang/rustfmt)
+* [rls](https://github.com/rust-lang/rls/)
 
 We allow breakage of these tools in the nightly channel. Maintainers of these
 projects will be notified of the breakages and should fix them as soon as
@@ -191,9 +191,9 @@ before the PR is merged.
 
 Rust's build system builds a number of tools that make use of the
 internals of the compiler. This includes 
-[Clippy](https://github.com/rust-lang-nursery/rust-clippy),
-[RLS](https://github.com/rust-lang-nursery/rls) and
-[rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
+[Clippy](https://github.com/rust-lang/rust-clippy),
+[RLS](https://github.com/rust-lang/rls) and
+[rustfmt](https://github.com/rust-lang/rustfmt). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
 problem. These tools rely on the latest compiler to be built so you can't update
 them to reflect your changes to the compiler until those changes are merged into
@@ -253,10 +253,10 @@ to complete a few more steps which are outlined with their rationale below.
 
 *(This error may change in the future to include more information.)*
 ```
-error: failed to resolve patches for `https://github.com/rust-lang-nursery/rustfmt`
+error: failed to resolve patches for `https://github.com/rust-lang/rustfmt`
 
 Caused by:
-  patch for `rustfmt-nightly` in `https://github.com/rust-lang-nursery/rustfmt` did not resolve to any crates
+  patch for `rustfmt-nightly` in `https://github.com/rust-lang/rustfmt` did not resolve to any crates
 failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
 ```
 

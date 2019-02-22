@@ -458,26 +458,18 @@ fn resolution_failure(
     link_range: Option<Range<usize>>,
 ) {
     let sp = span_of_attrs(attrs);
-    let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
-    let mut diag = if let Some(link_range) = link_range {
+    let mut diag = cx.tcx.struct_span_lint_node(
+        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        NodeId::from_u32(0),
+        sp,
+        &format!("`[{}]` cannot be resolved, ignoring it...", path_str),
+    );
+    if let Some(link_range) = link_range {
         if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
-            let mut diag = cx.tcx.struct_span_lint_node(
-                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                NodeId::from_u32(0),
-                sp,
-                &msg,
-            );
+            diag.set_span(sp);
             diag.span_label(sp, "cannot be resolved, ignoring");
-            diag
         } else {
-            let mut diag = cx.tcx.struct_span_lint_node(
-                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                NodeId::from_u32(0),
-                sp,
-                &msg,
-            );
-
             // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
             //                       ^     ~~~~
             //                       |     link_range
@@ -494,13 +486,7 @@ fn resolution_failure(
                 before=link_range.start - last_new_line_offset,
                 found=link_range.len(),
             ));
-            diag
         }
-    } else {
-        cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                     NodeId::from_u32(0),
-                                     sp,
-                                     &msg)
     };
     diag.help("to escape `[` and `]` characters, just add '\\' before them like \
                `\\[` or `\\]`");

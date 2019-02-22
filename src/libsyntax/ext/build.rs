@@ -9,12 +9,6 @@ use crate::ThinVec;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span, DUMMY_SP};
 
-// Transitional re-exports so qquote can find the paths it is looking for
-mod syntax {
-    pub use crate::ext;
-    pub use crate::parse;
-}
-
 pub trait AstBuilder {
     // paths
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;

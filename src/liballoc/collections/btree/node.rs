@@ -645,6 +645,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
+        // Same as for `into_key_slice` above, we try to avoid a run-time check
+        // (the alignment comparison will usually be performed at compile-time).
         if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
             &mut []
         } else {
@@ -667,9 +669,26 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         }
     }
 
-    fn into_slices_mut(self) -> (&'a mut [K], &'a mut [V]) {
-        let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice_mut(), self.into_val_slice_mut())
+    fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
+        debug_assert!(!self.is_shared_root());
+        // We cannot use the getters here, because calling the second one
+        // invalidates the reference returned by the first.
+        // More precisely, it is the call to `len` that is the culprit,
+        // because that creates a shared reference to the header, which *can*
+        // overlap with the keys (and even the values, for ZST keys).
+        unsafe {
+            let len = self.len();
+            let leaf = self.as_leaf_mut();
+            let keys = slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*leaf).keys),
+                len
+            );
+            let vals = slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*leaf).vals),
+                len
+            );
+            (keys, vals)
+        }
     }
 }
 

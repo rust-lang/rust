@@ -36,10 +36,8 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
-            // repetition was removed from 2015 edition in #51587 because of ambiguities.
-            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)*
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)*
+            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
+            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)?
             fn $make_ast:ident;
         })*
     ) => {

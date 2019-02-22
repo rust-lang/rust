@@ -45,3 +45,10 @@ fn bench_mut_iter_1000(b: &mut Bencher) {
         black_box(sum);
     })
 }
+
+#[bench]
+fn bench_try_fold(b: &mut Bencher) {
+    let ring: VecDeque<_> = (0..1000).collect();
+
+    b.iter(|| black_box(ring.iter().try_fold(0, |a, b| Some(a + b))))
+}
