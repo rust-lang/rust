@@ -543,7 +543,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let place = Place::Local(local_id);
+        let place = Place::Base(PlaceBase::Local(local_id));
         let var_ty = self.local_decls[local_id].ty;
         let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
@@ -559,7 +559,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.schedule_drop(
             span,
             region_scope,
-            &Place::Local(local_id),
+            &Place::Base(PlaceBase::Local(local_id)),
             var_ty,
             DropKind::Value {
                 cached_block: CachedBlock::default(),
@@ -1452,7 +1452,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     scrutinee_source_info,
-                    &Place::Local(temp),
+                    &Place::Base(PlaceBase::Local(temp)),
                     borrow,
                 );
             }
@@ -1478,7 +1478,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     source_info: guard_end,
                     kind: StatementKind::FakeRead(
                         FakeReadCause::ForMatchGuard,
-                        Place::Local(temp),
+                        Place::Base(PlaceBase::Local(temp)),
                     ),
                 });
             }
@@ -1529,7 +1529,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // place they refer to can't be modified by the guard.
                 for binding in by_value_bindings.clone() {
                     let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                    let place = Place::Local(local_id);
+                    let place = Place::Base(PlaceBase::Local(local_id));
                     self.cfg.push(
                         block,
                         Statement {

@@ -101,7 +101,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                     let temp = self.patch.new_temp(item_ty, self.mir.source_info(location).span);
                     self.patch.add_statement(location, StatementKind::StorageLive(temp));
                     self.patch.add_assign(location,
-                                          Place::Local(temp),
+                                          Place::Base(PlaceBase::Local(temp)),
                                           Rvalue::Use(
                                               Operand::Move(
                                                   Place::Projection(box PlaceProjection{
@@ -113,12 +113,16 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                                   }))));
                     temp
                 }).collect();
-                self.patch.add_assign(location,
-                                      dst_place.clone(),
-                                      Rvalue::Aggregate(box AggregateKind::Array(item_ty),
-                                      temps.iter().map(
-                                          |x| Operand::Move(Place::Local(*x))).collect()
-                                      ));
+                self.patch.add_assign(
+                    location,
+                    dst_place.clone(),
+                    Rvalue::Aggregate(
+                        box AggregateKind::Array(item_ty),
+                        temps.iter().map(
+                            |x| Operand::Move(Place::Base(PlaceBase::Local(*x)))
+                        ).collect()
+                    )
+                );
                 for temp in temps {
                     self.patch.add_statement(location, StatementKind::StorageDead(temp));
                 }
@@ -176,7 +180,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                 if let StatementKind::Assign(ref dst_place, ref rval) = statement.kind {
                     if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = **rval {
                         let items : Vec<_> = items.iter().map(|item| {
-                            if let Operand::Move(Place::Local(local)) = item {
+                            if let Operand::Move(Place::Base(PlaceBase::Local(local))) = item {
                                 let local_use = &visitor.locals_use[*local];
                                 let opt_index_and_place = Self::try_get_item_source(local_use, mir);
                                 // each local should be used twice:
@@ -257,7 +261,7 @@ impl RestoreSubsliceArrayMoveOut {
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    Place::Local(_),
+                    Place::Base(PlaceBase::Local(_)),
                     box Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
                         ref base, elem: ProjectionElem::ConstantIndex{
                             offset, min_length: _, from_end: false}})))) = statement.kind {

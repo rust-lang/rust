@@ -515,9 +515,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
+        use rustc::mir::PlaceBase;
         let op = match *mir_place {
-            Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
-            Local(local) => self.access_local(self.frame(), local, layout)?,
+            Base(PlaceBase::Local(mir::RETURN_PLACE)) => return err!(ReadFromReturnPointer),
+            Base(PlaceBase::Local(local)) => self.access_local(self.frame(), local, layout)?,
 
             Projection(ref proj) => {
                 let op = self.eval_place_to_op(&proj.base, None)?;

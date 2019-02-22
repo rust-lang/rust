@@ -98,19 +98,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     &lt,
                     Rvalue::BinaryOp(
                         BinOp::Lt,
-                        Operand::Copy(Place::Local(idx)),
+                        Operand::Copy(Place::Base(PlaceBase::Local(idx))),
                         Operand::Copy(len.clone()),
                     ),
                 );
 
                 let msg = BoundsCheck {
                     len: Operand::Move(len),
-                    index: Operand::Copy(Place::Local(idx)),
+                    index: Operand::Copy(Place::Base(PlaceBase::Local(idx))),
                 };
                 let success = this.assert(block, Operand::Move(lt), true, msg, expr_span);
                 success.and(slice.index(idx))
             }
-            ExprKind::SelfRef => block.and(Place::Local(Local::new(1))),
+            ExprKind::SelfRef => block.and(Place::Base(PlaceBase::Local(Local::new(1)))),
             ExprKind::VarRef { id } => {
                 let place = if this.is_bound_var_in_guard(id) && this
                     .hir
@@ -118,17 +118,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     .all_pat_vars_are_implicit_refs_within_guards()
                 {
                     let index = this.var_local_id(id, RefWithinGuard);
-                    Place::Local(index).deref()
+                    Place::Base(PlaceBase::Local(index)).deref()
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
-                    Place::Local(index)
+                    Place::Base(PlaceBase::Local(index))
                 };
                 block.and(place)
             }
-            ExprKind::StaticRef { id } => block.and(Place::Static(Box::new(Static {
+            ExprKind::StaticRef { id } => block.and(Place::Base(PlaceBase::Static(Box::new(Static {
                 def_id: id,
                 ty: expr.ty,
-            }))),
+            })))),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));
@@ -172,14 +172,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                Place::Local(temp.clone()),
+                                Place::Base(PlaceBase::Local(temp.clone())),
                                 Variance::Invariant,
                                 box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );
                 }
-                block.and(Place::Local(temp))
+                block.and(Place::Base(PlaceBase::Local(temp)))
             }
 
             ExprKind::Array { .. }
@@ -219,7 +219,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
                 let temp =
                     unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
-                block.and(Place::Local(temp))
+                block.and(Place::Base(PlaceBase::Local(temp)))
             }
         }
     }
