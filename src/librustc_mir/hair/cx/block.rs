@@ -30,7 +30,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
                 hir::BlockCheckMode::DefaultBlock =>
                     BlockSafety::Safe,
                 hir::BlockCheckMode::UnsafeBlock(..) =>
-                    BlockSafety::ExplicitUnsafe(self.id),
+                    BlockSafety::ExplicitUnsafe(self.hir_id),
                 hir::BlockCheckMode::PushUnsafeBlock(..) =>
                     BlockSafety::PushUnsafe,
                 hir::BlockCheckMode::PopUnsafeBlock(..) =>

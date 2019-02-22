@@ -822,7 +822,6 @@ pub struct Block {
     /// An expression at the end of the block
     /// without a semicolon, if any.
     pub expr: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,

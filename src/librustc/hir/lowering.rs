@@ -2804,10 +2804,9 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(b.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(b.id);
 
         P(hir::Block {
-            id: node_id,
             hir_id,
             stmts: stmts.into(),
             expr,
@@ -3887,11 +3886,10 @@ impl<'a> LoweringContext<'a> {
                             // Wrap the `if let` expr in a block.
                             let span = els.span;
                             let els = P(self.lower_expr(els));
-                            let LoweredNodeId { node_id, hir_id } = self.next_id();
+                            let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                             let blk = P(hir::Block {
                                 stmts: hir_vec![],
                                 expr: Some(els),
-                                id: node_id,
                                 hir_id,
                                 rules: hir::DefaultBlock,
                                 span,
@@ -4965,12 +4963,11 @@ impl<'a> LoweringContext<'a> {
         stmts: hir::HirVec<hir::Stmt>,
         expr: Option<P<hir::Expr>>,
     ) -> hir::Block {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         hir::Block {
             stmts,
             expr,
-            id: node_id,
             hir_id,
             rules: hir::DefaultBlock,
             span,

@@ -10,6 +10,7 @@
 
 use super::elaborate_predicates;
 
+use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
@@ -129,7 +130,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                     // It's also hard to get a use site span, so we use the method definition span.
                     self.lint_node_note(
                         lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY,
-                        ast::CRATE_NODE_ID,
+                        hir::CRATE_HIR_ID,
                         *span,
                         &format!("the trait `{}` cannot be made into an object",
                                  self.item_path_str(trait_def_id)),
