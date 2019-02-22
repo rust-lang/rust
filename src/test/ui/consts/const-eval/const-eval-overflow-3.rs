@@ -3,11 +3,11 @@
 //
 // This test is checking the count in an array expression.
 
-// FIXME (#23926): the error output is not consistent between a
-// self-hosted and a cross-compiled setup; therefore resorting to
-// error-pattern for now.
 
-// error-pattern: attempt to add with overflow
+
+
+
+
 
 #![allow(unused_imports)]
 
@@ -18,6 +18,7 @@ use std::{u8, u16, u32, u64, usize};
 const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1) as usize];
+//~^ ERROR evaluation of constant value failed
 
 fn main() {
     foo(&A_I8_I[..]);
