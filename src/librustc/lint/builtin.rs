@@ -392,6 +392,12 @@ declare_lint! {
     "nested occurrence of `impl Trait` type"
 }
 
+declare_lint! {
+    pub REDUNDANT_IMPORT,
+    Warn,
+    "redundant import"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]

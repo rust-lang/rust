@@ -7,6 +7,7 @@ use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyErro
 use crate::{Resolver, Segment};
 use crate::{names_to_string, module_to_string};
 use crate::{resolve_error, ResolutionError, Suggestion};
+use crate::ModuleKind;
 use crate::macros::ParentScope;
 
 use errors::Applicability;
@@ -14,7 +15,11 @@ use errors::Applicability;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
-use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
+use rustc::lint::builtin::{
+    DUPLICATE_MACRO_EXPORTS,
+    PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+    REDUNDANT_IMPORT,
+};
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
@@ -1227,8 +1232,94 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             import[ns] = Some(PathResolution::new(def));
         });
 
+        self.check_for_redundant_imports(
+            ident,
+            directive,
+            source_bindings,
+            target_bindings,
+            target,
+        );
+
         debug!("(resolving single import) successfully resolved import");
         None
+    }
+
+    fn check_for_redundant_imports(
+        &mut self,
+        ident: Ident,
+        directive: &'b ImportDirective<'b>,
+        source_bindings: &PerNS<Cell<Result<&'b NameBinding<'b>, Determinacy>>>,
+        target_bindings: &PerNS<Cell<Option<&'b NameBinding<'b>>>>,
+        target: Ident,
+    ) {
+        // Check if we are at the root of a macro expansion and skip if we are.
+        if directive.parent_scope.expansion != Mark::root() {
+            return;
+        }
+
+        if let ModuleKind::Def(_, _) = directive.parent_scope.module.kind {
+            return;
+        }
+
+        let mut is_redundant = PerNS {
+            value_ns: None,
+            type_ns: None,
+            macro_ns: None,
+        };
+
+        let mut redundant_span = PerNS {
+            value_ns: None,
+            type_ns: None,
+            macro_ns: None,
+        };
+
+        self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
+            if binding.def() == Def::Err {
+                return;
+            }
+
+            let orig_blacklisted_binding = mem::replace(
+                &mut this.blacklisted_binding,
+                target_bindings[ns].get()
+            );
+
+            match this.early_resolve_ident_in_lexical_scope(
+                target,
+                ScopeSet::Import(ns),
+                &directive.parent_scope,
+                false,
+                false,
+                directive.span,
+            ) {
+                Ok(other_binding) => {
+                    is_redundant[ns] = Some(binding.def() == other_binding.def());
+                    redundant_span[ns] = Some(other_binding.span);
+                }
+                Err(_) => is_redundant[ns] = Some(false)
+            }
+
+            this.blacklisted_binding = orig_blacklisted_binding;
+        });
+
+        if !is_redundant.is_empty() &&
+            is_redundant.present_items().all(|is_redundant| is_redundant)
+        {
+            self.session.buffer_lint(
+                REDUNDANT_IMPORT,
+                directive.id,
+                directive.span,
+                &format!("the item `{}` is imported redundantly", ident),
+            );
+
+            for span in redundant_span.present_items() {
+                self.session.buffer_lint(
+                    REDUNDANT_IMPORT,
+                    directive.id,
+                    span,
+                    "another import"
+                );
+            }
+        }
     }
 
     fn resolve_glob_import(&mut self, directive: &'b ImportDirective<'b>) {
