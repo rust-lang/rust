@@ -114,10 +114,10 @@ pub fn write_signed_leb128(out: &mut Vec<u8>, value: i128) {
 }
 
 #[inline]
-pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
+pub fn read_signed_leb128(data: &[u8]) -> (i128, usize) {
     let mut result = 0;
     let mut shift = 0;
-    let mut position = start_position;
+    let mut position = 0;
     let mut byte;
 
     loop {
@@ -136,7 +136,7 @@ pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
         result |= -(1 << shift);
     }
 
-    (result, position - start_position)
+    (result, position)
 }
 
 macro_rules! impl_test_unsigned_leb128 {
@@ -176,7 +176,7 @@ fn test_signed_leb128() {
     }
     let mut pos = 0;
     for &x in &values {
-        let (value, bytes_read) = read_signed_leb128(&mut stream, pos);
+        let (value, bytes_read) = read_signed_leb128(&mut stream[pos..]);
         pos += bytes_read;
         assert_eq!(x, value);
     }

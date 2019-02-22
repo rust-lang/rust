@@ -200,7 +200,7 @@ pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess
     }
 
     match load_data(sess.opts.debugging_opts.incremental_info, &query_cache_path(sess)) {
-        LoadResult::Ok{ data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
+        LoadResult::Ok{ data: (bytes, _) } => OnDiskCache::new(sess, bytes),
         _ => OnDiskCache::new_empty(sess.source_map())
     }
 }

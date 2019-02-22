@@ -105,22 +105,21 @@ impl AbsoluteBytePos {
 
 impl<'sess> OnDiskCache<'sess> {
     /// Creates a new OnDiskCache instance from the serialized data in `data`.
-    pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> OnDiskCache<'sess> {
+    pub fn new(sess: &'sess Session, data: Vec<u8>) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrapping in a scope so we can borrow `data`
         let footer: Footer = {
-            let mut decoder = opaque::Decoder::new(&data[..], start_pos);
-
             // Decode the *position* of the footer which can be found in the
             // last 8 bytes of the file.
-            decoder.set_position(data.len() - IntEncodedWithFixedSize::ENCODED_SIZE);
+            let mut decoder = opaque::Decoder::new(
+                &data, data.len() - IntEncodedWithFixedSize::ENCODED_SIZE);
             let query_result_index_pos = IntEncodedWithFixedSize::decode(&mut decoder)
                 .expect("Error while trying to decode query result index position.")
                 .0 as usize;
 
             // Decoder the file footer which contains all the lookup tables, etc.
-            decoder.set_position(query_result_index_pos);
+            decoder = opaque::Decoder::new(&data, query_result_index_pos);
             decode_tagged(&mut decoder, TAG_FILE_FOOTER)
                 .expect("Error while trying to decode query result index position.")
         };
@@ -540,7 +539,7 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
 
     #[inline]
     fn peek_byte(&self) -> u8 {
-        self.opaque.data[self.opaque.position()]
+        self.opaque.data()[0]
     }
 
     fn cached_ty_for_shorthand<F>(&mut self,
@@ -569,9 +568,9 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
         where F: FnOnce(&mut Self) -> R
     {
-        debug_assert!(pos < self.opaque.data.len());
+        debug_assert!(pos < self.opaque.original_data.len());
 
-        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let new_opaque = opaque::Decoder::new(&self.opaque.original_data, pos);
         let old_opaque = mem::replace(&mut self.opaque, new_opaque);
         let r = f(self);
         self.opaque = old_opaque;

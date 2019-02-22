@@ -157,42 +157,38 @@ impl Encoder {
 // -----------------------------------------------------------------------------
 
 pub struct Decoder<'a> {
-    pub data: &'a [u8],
-    position: usize,
+    pub original_data: &'a [u8],
+    data: &'a [u8],
 }
 
 impl<'a> Decoder<'a> {
     #[inline]
-    pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
+    pub fn new(data: &'a [u8], pos: usize) -> Decoder<'a> {
         Decoder {
-            data,
-            position,
+            original_data: data,
+            data: &data[pos..],
         }
     }
 
     #[inline]
-    pub fn position(&self) -> usize {
-        self.position
+    pub fn data(&self) -> &[u8] {
+        self.data
     }
 
     #[inline]
-    pub fn set_position(&mut self, pos: usize) {
-        self.position = pos
+    pub fn position(&self) -> usize {
+        self.data.as_ptr().wrapping_offset_from(self.original_data.as_ptr()) as usize
     }
 
     #[inline]
     pub fn advance(&mut self, bytes: usize) {
-        self.position += bytes;
+        self.data = &self.data[bytes..];
     }
 
     #[inline]
     pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
-        let start = self.position;
-        let end = start + s.len();
-
-        s.copy_from_slice(&self.data[start..end]);
-
-        self.position = end;
+        s.copy_from_slice(&self.data[..s.len()]);
+        self.advance(s.len());
 
         Ok(())
     }
@@ -200,16 +196,16 @@ impl<'a> Decoder<'a> {
 
 macro_rules! read_uleb128 {
     ($dec:expr, $t:ty, $fun:ident) => ({
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position ..]);
-        $dec.position += bytes_read;
+        let (value, bytes_read) = leb128::$fun(&$dec.data);
+        $dec.advance(bytes_read);
         Ok(value)
     })
 }
 
 macro_rules! read_sleb128 {
     ($dec:expr, $t:ty) => ({
-        let (value, bytes_read) = read_signed_leb128($dec.data, $dec.position);
-        $dec.position += bytes_read;
+        let (value, bytes_read) = read_signed_leb128($dec.data);
+        $dec.advance(bytes_read);
         Ok(value as $t)
     })
 }
@@ -245,8 +241,8 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u8(&mut self) -> Result<u8, Self::Error> {
-        let value = self.data[self.position];
-        self.position += 1;
+        let value = self.data[0];
+        self.advance(1);
         Ok(value)
     }
 
@@ -277,8 +273,8 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_i8(&mut self) -> Result<i8, Self::Error> {
-        let as_u8 = self.data[self.position];
-        self.position += 1;
+        let as_u8 = self.data[0];
+        self.advance(1);
         unsafe { Ok(::std::mem::transmute(as_u8)) }
     }
 
@@ -314,8 +310,8 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
         let len = self.read_usize()?;
-        let s = ::std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
-        self.position += len;
+        let s = ::std::str::from_utf8(&self.data[..len]).unwrap();
+        self.advance(len);
         Ok(Cow::Borrowed(s))
     }
 
