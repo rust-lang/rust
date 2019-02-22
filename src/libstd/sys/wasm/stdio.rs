@@ -6,9 +6,7 @@ pub struct Stdout;
 pub struct Stderr;
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin)
-    }
+    pub fn new() -> Stdin { Stdin }
 }
 
 impl io::Read for Stdin {
@@ -18,9 +16,7 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        Ok(Stdout)
-    }
+    pub fn new() -> Stdout { Stdout }
 }
 
 impl io::Write for Stdout {
@@ -35,9 +31,7 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        Ok(Stderr)
-    }
+    pub fn new() -> Stderr { Stderr }
 }
 
 impl io::Write for Stderr {
@@ -59,7 +53,7 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     if cfg!(feature = "wasm_syscall") {
-        Stderr::new().ok()
+        Some(Stderr::new())
     } else {
         None
     }

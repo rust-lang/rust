@@ -3,9 +3,9 @@ use fortanix_sgx_abi as abi;
 use crate::io;
 use crate::sys::fd::FileDesc;
 
-pub struct Stdin(());
-pub struct Stdout(());
-pub struct Stderr(());
+pub struct Stdin;
+pub struct Stdout;
+pub struct Stderr;
 
 fn with_std_fd<F: FnOnce(&FileDesc) -> R, R>(fd: abi::Fd, f: F) -> R {
     let fd = FileDesc::new(fd);
@@ -15,7 +15,7 @@ fn with_std_fd<F: FnOnce(&FileDesc) -> R, R>(fd: abi::Fd, f: F) -> R {
 }
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
+    pub fn new() -> Stdin { Stdin }
 }
 
 impl io::Read for Stdin {
@@ -25,7 +25,7 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+    pub fn new() -> Stdout { Stdout }
 }
 
 impl io::Write for Stdout {
@@ -39,7 +39,7 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
+    pub fn new() -> Stderr { Stderr }
 }
 
 impl io::Write for Stderr {

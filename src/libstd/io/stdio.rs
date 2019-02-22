@@ -41,7 +41,7 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+fn stdin_raw() -> StdinRaw { StdinRaw(stdio::Stdin::new()) }
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -52,7 +52,7 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+fn stdout_raw() -> StdoutRaw { StdoutRaw(stdio::Stdout::new()) }
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -61,7 +61,7 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+fn stderr_raw() -> StderrRaw { StderrRaw(stdio::Stderr::new()) }
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
@@ -71,42 +71,32 @@ impl Read for StdinRaw {
         Initializer::nop()
     }
 }
+
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
+
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
-enum Maybe<T> {
-    Real(T),
-    Fake,
-}
+struct Maybe<T> (T);
 
 impl<W: io::Write> io::Write for Maybe<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
-            Maybe::Fake => Ok(buf.len())
-        }
+        handle_ebadf(self.0.write(buf), buf.len())
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
-            Maybe::Fake => Ok(())
-        }
+        handle_ebadf(self.0.flush(), ())
     }
 }
 
 impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match *self {
-            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
-        }
+        handle_ebadf(self.0.read(buf), 0)
     }
 }
 
@@ -204,11 +194,7 @@ pub struct StdinLock<'a> {
 pub fn stdin() -> Stdin {
     static STDIN: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     fn stdin_init() -> Mutex<BufReader<Maybe<StdinRaw>>> {
-        let stdin = match stdin_raw() {
-            Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake
-        };
-        Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin))
+        Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, Maybe(stdin_raw())))
     }
 
     Stdin {
@@ -418,11 +404,7 @@ pub struct StdoutLock<'a> {
 pub fn stdout() -> Stdout {
     static STDOUT: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     fn stdout_init() -> ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>> {
-        let stdout = match stdout_raw() {
-            Ok(stdout) => Maybe::Real(stdout),
-            _ => Maybe::Fake,
-        };
-        ReentrantMutex::new(RefCell::new(LineWriter::new(stdout)))
+        ReentrantMutex::new(RefCell::new(LineWriter::new(Maybe(stdout_raw()))))
     }
 
     Stdout {
@@ -570,11 +552,7 @@ pub struct StderrLock<'a> {
 pub fn stderr() -> Stderr {
     static STDERR: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
     fn stderr_init() -> ReentrantMutex<RefCell<Maybe<StderrRaw>>> {
-        let stderr = match stderr_raw() {
-            Ok(stderr) => Maybe::Real(stderr),
-            _ => Maybe::Fake,
-        };
-        ReentrantMutex::new(RefCell::new(stderr))
+        ReentrantMutex::new(RefCell::new(Maybe(stderr_raw())))
     }
 
     Stderr {
