@@ -5,7 +5,7 @@ LL |     for &x in &vector {
    |               -------
    |               |
    |               immutable borrow occurs here
-   |               immutable borrow used here, in later iteration of loop
+   |               immutable borrow later used here
 LL |         let cap = vector.capacity();
 LL |         vector.extend(repeat(0));      //~ ERROR cannot borrow
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
@@ -17,7 +17,7 @@ LL |     for &x in &vector {
    |               -------
    |               |
    |               immutable borrow occurs here
-   |               immutable borrow used here, in later iteration of loop
+   |               immutable borrow later used here
 ...
 LL |         vector[1] = 5;   //~ ERROR cannot borrow
    |         ^^^^^^ mutable borrow occurs here
