@@ -370,7 +370,7 @@ impl Ty {
         }
 
         // Resolve the path (in type namespace)
-        let resolution = resolver.resolve_path(db, path).into_per_ns().take_types();
+        let resolution = resolver.resolve_path(db, path).take_types();
 
         let def = match resolution {
             Some(Resolution::Def(def)) => def,
@@ -1172,7 +1172,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
-        let resolved = resolver.resolve_path(self.db, &path);
+        let resolved = resolver.resolve_path_segments(self.db, &path);
 
         let (def, remaining_index) = resolved.into_inner();
 
@@ -1244,24 +1244,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let typable: Option<TypableDef> =
-            match resolver.resolve_path(self.db, &path).into_per_ns().take_types() {
-                Some(Resolution::Def(def)) => def.into(),
-                Some(Resolution::LocalBinding(..)) => {
-                    // this cannot happen
-                    log::error!("path resolved to local binding in type ns");
-                    return (Ty::Unknown, None);
-                }
-                Some(Resolution::GenericParam(..)) => {
-                    // generic params can't be used in struct literals
-                    return (Ty::Unknown, None);
-                }
-                Some(Resolution::SelfType(..)) => {
-                    // TODO this is allowed in an impl for a struct, handle this
-                    return (Ty::Unknown, None);
-                }
-                None => return (Ty::Unknown, None),
-            };
+        let typable: Option<TypableDef> = match resolver.resolve_path(self.db, &path).take_types() {
+            Some(Resolution::Def(def)) => def.into(),
+            Some(Resolution::LocalBinding(..)) => {
+                // this cannot happen
+                log::error!("path resolved to local binding in type ns");
+                return (Ty::Unknown, None);
+            }
+            Some(Resolution::GenericParam(..)) => {
+                // generic params can't be used in struct literals
+                return (Ty::Unknown, None);
+            }
+            Some(Resolution::SelfType(..)) => {
+                // TODO this is allowed in an impl for a struct, handle this
+                return (Ty::Unknown, None);
+            }
+            None => return (Ty::Unknown, None),
+        };
         let def = match typable {
             None => return (Ty::Unknown, None),
             Some(it) => it,

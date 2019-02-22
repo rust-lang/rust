@@ -33,7 +33,7 @@ pub(crate) struct ExprScope {
 }
 
 #[derive(Debug, Clone)]
-pub struct PathResult {
+pub(crate) struct PathResult {
     /// The actual path resolution
     resolution: PerNs<Resolution>,
     /// The first index in the path that we
@@ -45,7 +45,7 @@ pub struct PathResult {
 impl PathResult {
     /// Returns the remaining index in the result
     /// returns None if the path was fully resolved
-    pub fn remaining_index(&self) -> Option<usize> {
+    pub(crate) fn remaining_index(&self) -> Option<usize> {
         if self.remaining_index > 0 {
             Some(self.remaining_index)
         } else {
@@ -55,8 +55,8 @@ impl PathResult {
 
     /// Consumes `PathResult` and returns the contained `PerNs<Resolution>`
     /// if the path was fully resolved, meaning we have no remaining items
-    pub fn into_per_ns(self) -> PerNs<Resolution> {
-        if self.remaining_index().is_none() {
+    pub(crate) fn into_fully_resolved(self) -> PerNs<Resolution> {
+        if self.is_fully_resolved() {
             self.resolution
         } else {
             PerNs::none()
@@ -65,21 +65,15 @@ impl PathResult {
 
     /// Consumes `PathResult` and returns the resolution and the
     /// remaining_index as a tuple.
-    pub fn into_inner(self) -> (PerNs<Resolution>, Option<usize>) {
+    pub(crate) fn into_inner(self) -> (PerNs<Resolution>, Option<usize>) {
         let index = self.remaining_index();
         (self.resolution, index)
     }
 
     /// Path is fully resolved when `remaining_index` is none
     /// and the resolution contains anything
-    pub fn is_fully_resolved(&self) -> bool {
+    pub(crate) fn is_fully_resolved(&self) -> bool {
         !self.resolution.is_none() && self.remaining_index().is_none()
-    }
-
-    /// Empty path result is where the resolution is `none`
-    /// and the remaining index is 0
-    pub fn is_empty(&self) -> bool {
-        self.resolution.is_none() && self.remaining_index().is_none()
     }
 
     fn empty() -> PathResult {
@@ -134,7 +128,9 @@ impl Resolver {
         resolution
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PathResult {
+    /// Returns the resolved path segments
+    /// Which may be fully resolved, empty or partially resolved.
+    pub(crate) fn resolve_path_segments(&self, db: &impl HirDatabase, path: &Path) -> PathResult {
         if let Some(name) = path.as_ident() {
             PathResult::from_resolution(self.resolve_name(db, name))
         } else if path.is_self() {
@@ -154,6 +150,13 @@ impl Resolver {
                 PathResult::from_resolution(def)
             }
         }
+    }
+
+    /// Returns the fully resolved path if we were able to resolve it.
+    /// otherwise returns `PerNs::none`
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
+        // into_fully_resolved() returns the fully resolved path or PerNs::none() otherwise
+        self.resolve_path_segments(db, path).into_fully_resolved()
     }
 
     pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<Resolution>> {

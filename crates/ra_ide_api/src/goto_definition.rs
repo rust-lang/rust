@@ -79,7 +79,7 @@ pub(crate) fn reference_definition(
     if let Some(path) =
         name_ref.syntax().ancestors().find_map(ast::Path::cast).and_then(hir::Path::from_ast)
     {
-        let resolved = resolver.resolve_path(db, &path).into_per_ns();
+        let resolved = resolver.resolve_path(db, &path);
         match resolved.clone().take_types().or_else(|| resolved.take_values()) {
             Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
             Some(Resolution::LocalBinding(pat)) => {
