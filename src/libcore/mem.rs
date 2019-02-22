@@ -1056,12 +1056,22 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// This is exploited by the compiler for various optimizations, such as eliding
 /// run-time checks and optimizing `enum` layout.
 ///
-/// Not initializing memory at all (instead of zero-initializing it) causes the same
-/// issue: after all, the initial value of the variable might just happen to be
-/// one that violates the invariant. Moreover, uninitialized memory is special
-/// in that the compiler knows that it does not have a fixed value. This makes
-/// it undefined behavior to have uninitialized data in a variable even if that
-/// variable has otherwise no restrictions about which values are valid:
+/// Similarly, entirely uninitialized memory may have any content, while a `bool` must
+/// always be `true` or `false`. Hence, creating an uninitialized `bool` is undefined behavior:
+///
+/// ```rust,no_run
+/// #![feature(maybe_uninit)]
+/// use std::mem::{self, MaybeUninit};
+///
+/// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
+/// // equivalent code with `MaybeUninit`
+/// let b: bool = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
+/// ```
+///
+/// Moreover, uninitialized memory is special in that the compiler knows that
+/// it does not have a fixed value. This makes it undefined behavior to have
+/// uninitialized data in a variable even if that variable has integer type,
+/// which otherwise can hold any bit pattern:
 ///
 /// ```rust,no_run
 /// #![feature(maybe_uninit)]
@@ -1074,8 +1084,8 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
 ///
-/// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data:
-/// it is a signal to the compiler indicating that the data here might *not*
+/// `MaybeUninit` serves to enable unsafe code to deal with uninitialized data.
+/// It is a signal to the compiler indicating that the data here might *not*
 /// be initialized:
 ///
 /// ```rust
@@ -1092,11 +1102,11 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// let x = unsafe { x.into_initialized() };
 /// ```
 ///
-/// The compiler then knows to not optimize this code.
+/// The compiler then knows to not make any incorrect assumptions or optimizations on this code.
 // FIXME before stabilizing, explain how to initialize a struct field-by-field.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
-// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
+// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::uninitialized`
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -1154,7 +1164,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
-    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
+    /// into a reference is undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
@@ -1162,7 +1172,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Gets a mutable pointer to the contained value. Reading from this pointer or turning it
-    /// into a reference will be undefined behavior unless the `MaybeUninit` is initialized.
+    /// into a reference is undefined behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
