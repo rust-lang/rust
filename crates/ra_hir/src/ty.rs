@@ -37,7 +37,7 @@ use crate::{
     FnSignature, ModuleDef, AdtDef,
     HirDatabase,
     type_ref::{TypeRef, Mutability},
-    name::KnownName,
+    name::{KnownName},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
     path::{ GenericArgs, GenericArg},
@@ -1166,15 +1166,55 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
-        let resolved = resolver.resolve_path(self.db, &path).take_values()?;
+        let resolved = resolver.resolve_path_segments(self.db, &path);
+
+        let (def, remaining_index) = resolved.into_inner();
+
+        // if the remaining_index is None, we expect the path
+        // to be fully resolved, in this case we continue with
+        // the default by attempting to `take_values´ from the resolution.
+        // Otherwise the path was partially resolved, which means
+        // we might have resolved into a type for which
+        // we may find some associated item starting at the
+        // path.segment pointed to by `remaining_index´
+        let resolved =
+            if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
+
         match resolved {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
-                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
-                let ty = self.insert_type_vars(ty);
-                Some(ty)
+
+                if let Some(remaining_index) = remaining_index {
+                    let ty = self.db.type_for_def(typable, Namespace::Types);
+                    // TODO: Keep resolving the segments
+                    // if we have more segments to process
+                    let segment = &path.segments[remaining_index];
+
+                    // Attempt to find an impl_item for the type which has a name matching
+                    // the current segment
+                    let ty = ty.iterate_impl_items(self.db, |item| match item {
+                        crate::ImplItem::Method(func) => {
+                            let sig = func.signature(self.db);
+                            if segment.name == *sig.name() {
+                                return Some(type_for_fn(self.db, func));
+                            }
+                            None
+                        }
+
+                        // TODO: Resolve associated const
+                        crate::ImplItem::Const(_) => None,
+
+                        // TODO: Resolve associated types
+                        crate::ImplItem::Type(_) => None,
+                    });
+                    ty
+                } else {
+                    let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+                    let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
+                    let ty = self.insert_type_vars(ty);
+                    Some(ty)
+                }
             }
             Resolution::LocalBinding(pat) => {
                 let ty = self.type_of_pat.get(pat)?;

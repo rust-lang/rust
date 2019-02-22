@@ -608,6 +608,140 @@ fn test() -> i128 {
 }
 
 #[test]
+fn infer_associated_const() {
+    check_inference(
+        "infer_associated_const",
+        r#"
+struct Struct;
+
+impl Struct {
+    const FOO: u32 = 1;
+}
+
+enum Enum;
+
+impl Enum {
+    const BAR: u32 = 2;
+}
+
+trait Trait {
+    const ID: u32;
+}
+
+struct TraitTest;
+
+impl Trait for TraitTest {
+    const ID: u32 = 5;
+}
+
+fn test() {
+    let x = Struct::FOO;
+    let y = Enum::BAR;
+    let z = TraitTest::ID;
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_associated_method_struct() {
+    check_inference(
+        "infer_associated_method_struct",
+        r#"
+struct A { x: u32 };
+
+impl A {
+    fn new() -> A {
+        A { x: 0 }
+    }
+}
+fn test() {
+    let a = A::new();
+    a.x;
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_associated_method_enum() {
+    check_inference(
+        "infer_associated_method_enum",
+        r#"
+enum A { B, C };
+
+impl A {
+    pub fn b() -> A {
+        A::B
+    }
+    pub fn c() -> A {
+        A::C
+    }
+}
+fn test() {
+    let a = A::b();
+    a;
+    let c = A::c();
+    c;
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_associated_method_with_modules() {
+    check_inference(
+        "infer_associated_method_with_modules",
+        r#"
+mod a {
+    struct A;
+    impl A { pub fn thing() -> A { A {} }}
+}
+
+mod b {
+    struct B;
+    impl B { pub fn thing() -> u32 { 99 }}
+
+    mod c {
+        struct C;
+        impl C { pub fn thing() -> C { C {} }}
+    }
+}
+use b::c;
+
+fn test() {
+    let x = a::A::thing();
+    let y = b::B::thing();
+    let z = c::C::thing();
+}
+"#,
+    );
+}
+
+#[test]
+#[ignore] // FIXME: After https://github.com/rust-analyzer/rust-analyzer/pull/866 is merged
+fn infer_associated_method_generics() {
+    check_inference(
+        "infer_associated_method_generics",
+        r#"
+struct Gen<T> {
+    val: T
+}
+
+impl<T> Gen<T> {
+    pub fn make(val: T) -> Gen<T> {
+        Gen { val }
+    }
+}
+
+fn test() {
+    let a = Gen::make(0u32);
+}
+"#,
+    );
+}
+
+#[test]
 fn no_panic_on_field_of_enum() {
     check_inference(
         "no_panic_on_field_of_enum",
