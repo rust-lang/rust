@@ -22,8 +22,8 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::ops::Mul;
 use std::iter::FromIterator;
+use std::ops::Mul;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
 
@@ -32,22 +32,51 @@ use option_helpers::IteratorFalsePositives;
 pub struct T;
 
 impl T {
-    pub fn add(self, other: T) -> T { self }
+    pub fn add(self, other: T) -> T {
+        self
+    }
 
-    pub(crate) fn drop(&mut self) { } // no error, not public interfact
-    fn neg(self) -> Self { self } // no error, private function
-    fn eq(&self, other: T) -> bool { true } // no error, private function
+    // no error, not public interface
+    pub(crate) fn drop(&mut self) {}
 
-    fn sub(&self, other: T) -> &T { self } // no error, self is a ref
-    fn div(self) -> T { self } // no error, different #arguments
-    fn rem(self, other: T) { } // no error, wrong return type
+    // no error, private function
+    fn neg(self) -> Self {
+        self
+    }
 
-    fn into_u32(self) -> u32 { 0 } // fine
-    fn into_u16(&self) -> u16 { 0 }
+    // no error, private function
+    fn eq(&self, other: T) -> bool {
+        true
+    }
 
-    fn to_something(self) -> u32 { 0 }
+    // no error, self is a ref
+    fn sub(&self, other: T) -> &T {
+        self
+    }
 
-    fn new(self) -> Self { unimplemented!(); }
+    // no error, different #arguments
+    fn div(self) -> T {
+        self
+    }
+
+    fn rem(self, other: T) {} // no error, wrong return type
+
+    // fine
+    fn into_u32(self) -> u32 {
+        0
+    }
+
+    fn into_u16(&self) -> u16 {
+        0
+    }
+
+    fn to_something(self) -> u32 {
+        0
+    }
+
+    fn new(self) -> Self {
+        unimplemented!();
+    }
 }
 
 struct Lt<'a> {
@@ -57,7 +86,9 @@ struct Lt<'a> {
 impl<'a> Lt<'a> {
     // The lifetime is different, but that’s irrelevant, see #734
     #[allow(clippy::needless_lifetimes)]
-    pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
+    pub fn new<'b>(s: &'b str) -> Lt<'b> {
+        unimplemented!()
+    }
 }
 
 struct Lt2<'a> {
@@ -66,7 +97,9 @@ struct Lt2<'a> {
 
 impl<'a> Lt2<'a> {
     // The lifetime is different, but that’s irrelevant, see #734
-    pub fn new(s: &str) -> Lt2 { unimplemented!() }
+    pub fn new(s: &str) -> Lt2 {
+        unimplemented!()
+    }
 }
 
 struct Lt3<'a> {
@@ -75,34 +108,47 @@ struct Lt3<'a> {
 
 impl<'a> Lt3<'a> {
     // The lifetime is different, but that’s irrelevant, see #734
-    pub fn new() -> Lt3<'static> { unimplemented!() }
+    pub fn new() -> Lt3<'static> {
+        unimplemented!()
+    }
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 struct U;
 
 impl U {
-    fn new() -> Self { U }
-    fn to_something(self) -> u32 { 0 } // ok because U is Copy
+    fn new() -> Self {
+        U
+    }
+    // ok because U is Copy
+    fn to_something(self) -> u32 {
+        0
+    }
 }
 
 struct V<T> {
-    _dummy: T
+    _dummy: T,
 }
 
 impl<T> V<T> {
-    fn new() -> Option<V<T>> { None }
+    fn new() -> Option<V<T>> {
+        None
+    }
 }
 
 impl Mul<T> for T {
     type Output = T;
-    fn mul(self, other: T) -> T { self } // no error, obviously
+    // no error, obviously
+    fn mul(self, other: T) -> T {
+        self
+    }
 }
 
 /// Checks implementation of the following lints:
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
 /// * `OPTION_MAP_OR_NONE`
+#[rustfmt::skip]
 fn option_methods() {
     let opt = Some(1);
 
@@ -175,6 +221,7 @@ impl HasIter {
 }
 
 /// Checks implementation of `FILTER_NEXT` lint
+#[rustfmt::skip]
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
@@ -193,6 +240,7 @@ fn filter_next() {
 }
 
 /// Checks implementation of `SEARCH_IS_SOME` lint
+#[rustfmt::skip]
 fn search_is_some() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
@@ -235,16 +283,18 @@ fn or_fun_call() {
     struct Foo;
 
     impl Foo {
-        fn new() -> Foo { Foo }
+        fn new() -> Foo {
+            Foo
+        }
     }
 
     enum Enum {
         A(i32),
     }
 
-
-
-    fn make<T>() -> T { unimplemented!(); }
+    fn make<T>() -> T {
+        unimplemented!();
+    }
 
     let with_enum = Some(Enum::A(1));
     with_enum.unwrap_or(Enum::A(5));
@@ -261,10 +311,10 @@ fn or_fun_call() {
     let with_const_args = Some(vec![1]);
     with_const_args.unwrap_or(Vec::with_capacity(12));
 
-    let with_err : Result<_, ()> = Ok(vec![1]);
+    let with_err: Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or(make());
 
-    let with_err_args : Result<_, ()> = Ok(vec![1]);
+    let with_err_args: Result<_, ()> = Ok(vec![1]);
     with_err_args.unwrap_or(Vec::with_capacity(12));
 
     let with_default_trait = Some(1);
