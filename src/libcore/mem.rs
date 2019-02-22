@@ -1178,6 +1178,31 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<bool>::uninitialized();
+    /// x.set(true);
+    /// let x_init = unsafe { x.into_initialized() };
+    /// assert_eq!(x_init, true);
+    /// ```
+    ///
+    /// *Incorrect* usage of this method:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let x_init = unsafe { x.into_initialized() };
+    /// // `x` had not been initialized yet, so this last line causes undefined behavior.
+    /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn into_initialized(self) -> T {
@@ -1212,15 +1237,17 @@ impl<T> MaybeUninit<T> {
     /// let x1 = unsafe { x.read_initialized() };
     /// // `u32` is `Copy`, so we may read multiple times.
     /// let x2 = unsafe { x.read_initialized() };
+    /// assert_eq!(x1, x2);
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninitialized();
     /// x.set(None);
     /// let x1 = unsafe { x.read_initialized() };
     /// // Duplicating a `None` value is okay, so we may read multiple times.
     /// let x2 = unsafe { x.read_initialized() };
+    /// assert_eq!(x1, x2);
     /// ```
     ///
-    /// *Incorrect* usafe of this method:
+    /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
     /// #![feature(maybe_uninit)]
