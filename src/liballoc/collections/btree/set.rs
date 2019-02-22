@@ -1105,8 +1105,8 @@ impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
 impl<'a, T> Clone for IntersectionOther<'a, T> {
     fn clone(&self) -> IntersectionOther<'a, T> {
-        match self {
-            IntersectionOther::Stitch(ref iter) => IntersectionOther::Stitch(iter.clone()),
+        match &self {
+            IntersectionOther::Stitch(iter) => IntersectionOther::Stitch(iter.clone()),
             IntersectionOther::Search(set) => IntersectionOther::Search(set),
         }
     }
@@ -1125,8 +1125,8 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        match self.b {
-            IntersectionOther::Stitch(ref mut self_b) => loop {
+        match &mut self.b {
+            IntersectionOther::Stitch(self_b) => loop {
                 match Ord::cmp(self.a.peek()?, self_b.peek()?) {
                     Less => {
                         self.a.next();
