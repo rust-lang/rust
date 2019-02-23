@@ -5,7 +5,7 @@ LL |         Some(right) => consume(right),
    |              ----- value moved here
 ...
 LL |     consume(node) + r //~ ERROR use of partially moved value: `node`
-   |             ^^^^ value used here after move
+   |             ^^^^ value used here after partial move
    |
    = note: move occurs because value has type `std::boxed::Box<List>`, which does not implement the `Copy` trait
 
