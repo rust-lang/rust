@@ -2541,8 +2541,13 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
            cx.codes))
 }
 
-fn document_short(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item, link: AssocItemLink<'_>,
-                  prefix: &str, is_hidden: bool) -> fmt::Result {
+fn document_short(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    item: &clean::Item,
+    link: AssocItemLink<'_>,
+    prefix: &str, is_hidden: bool
+) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",

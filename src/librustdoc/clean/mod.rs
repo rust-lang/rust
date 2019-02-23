@@ -3523,23 +3523,37 @@ pub struct Impl {
     pub blanket_impl: Option<Type>,
 }
 
-pub fn get_auto_traits_with_node_id(cx: &DocContext<'_, '_, '_>, id: ast::NodeId, name: String) -> Vec<Item> {
+pub fn get_auto_traits_with_node_id(
+    cx: &DocContext<'_, '_, '_>,
+    id: ast::NodeId,
+    name: String
+) -> Vec<Item> {
     let finder = AutoTraitFinder::new(cx);
     finder.get_with_node_id(id, name)
 }
 
-pub fn get_auto_traits_with_def_id(cx: &DocContext<'_, '_, '_>, id: DefId) -> Vec<Item> {
+pub fn get_auto_traits_with_def_id(
+    cx: &DocContext<'_, '_, '_>,
+    id: DefId
+) -> Vec<Item> {
     let finder = AutoTraitFinder::new(cx);
 
     finder.get_with_def_id(id)
 }
 
-pub fn get_blanket_impls_with_node_id(cx: &DocContext<'_, '_, '_>, id: ast::NodeId, name: String) -> Vec<Item> {
+pub fn get_blanket_impls_with_node_id(
+    cx: &DocContext<'_, '_, '_>,
+    id: ast::NodeId,
+    name: String
+) -> Vec<Item> {
     let finder = BlanketImplFinder::new(cx);
     finder.get_with_node_id(id, name)
 }
 
-pub fn get_blanket_impls_with_def_id(cx: &DocContext<'_, '_, '_>, id: DefId) -> Vec<Item> {
+pub fn get_blanket_impls_with_def_id(
+    cx: &DocContext<'_, '_, '_>,
+    id: DefId
+) -> Vec<Item> {
     let finder = BlanketImplFinder::new(cx);
 
     finder.get_with_def_id(id)
@@ -4095,7 +4109,11 @@ impl Clean<TypeBinding> for hir::TypeBinding {
     }
 }
 
-pub fn def_id_to_path(cx: &DocContext<'_, '_, '_>, did: DefId, name: Option<String>) -> Vec<String> {
+pub fn def_id_to_path(
+    cx: &DocContext<'_, '_, '_>,
+    did: DefId,
+    name: Option<String>
+) -> Vec<String> {
     let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name

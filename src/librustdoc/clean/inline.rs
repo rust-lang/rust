@@ -35,7 +35,12 @@ use super::Clean;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
-pub fn try_inline(cx: &DocContext<'_, '_, '_>, def: Def, name: ast::Name, visited: &mut FxHashSet<DefId>)
+pub fn try_inline(
+    cx: &DocContext<'_, '_, '_>,
+    def: Def,
+    name: ast::Name,
+    visited: &mut FxHashSet<DefId>
+)
                   -> Option<Vec<clean::Item>> {
     let did = if let Some(did) = def.opt_def_id() {
         did
@@ -387,7 +392,11 @@ pub fn build_impl(cx: &DocContext<'_, '_, '_>, did: DefId, ret: &mut Vec<clean::
     });
 }
 
-fn build_module(cx: &DocContext<'_, '_, '_>, did: DefId, visited: &mut FxHashSet<DefId>) -> clean::Module {
+fn build_module(
+    cx: &DocContext<'_, '_, '_>,
+    did: DefId,
+    visited: &mut FxHashSet<DefId>
+) -> clean::Module {
     let mut items = Vec::new();
     fill_in(cx, did, &mut items, visited);
     return clean::Module {

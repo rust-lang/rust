@@ -220,7 +220,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    fn get_lifetime(&self, region: Region<'_>, names_map: &FxHashMap<String, Lifetime>) -> Lifetime {
+    fn get_lifetime(
+        &self, region: Region<'_>,
+        names_map: &FxHashMap<String, Lifetime>
+    ) -> Lifetime {
         self.region_name(region)
             .map(|name| {
                 names_map.get(&name).unwrap_or_else(|| {
