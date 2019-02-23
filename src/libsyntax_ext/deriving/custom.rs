@@ -2,6 +2,7 @@ use crate::proc_macro_impl::EXEC_STRATEGY;
 use crate::proc_macro_server;
 
 use errors::FatalError;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::source_map::Span;
@@ -65,7 +66,7 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let token = Token::interpolated(token::NtItem(item));
+        let token = Token::Interpolated(Lrc::new(token::NtItem(item)));
         let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
 
         let server = proc_macro_server::Rustc::new(ecx);
