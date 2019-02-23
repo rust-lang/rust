@@ -1,5 +1,6 @@
+use ra_parser::TokenSource;
 use ra_syntax::{
-    AstNode, SyntaxNode, TextRange,
+    AstNode, SyntaxNode, TextRange, SyntaxKind,
     ast, SyntaxKind::*, TextUnit
 };
 
@@ -88,4 +89,24 @@ fn convert_tt(
 
     let res = tt::Subtree { delimiter, token_trees };
     Some(res)
+}
+
+struct TtTokenSource;
+
+impl TtTokenSource {
+    fn new(tt: &tt::Subtree) -> TtTokenSource {
+        unimplemented!()
+    }
+}
+
+impl TokenSource for TtTokenSource {
+    fn token_kind(&self, pos: usize) -> SyntaxKind {
+        unimplemented!()
+    }
+    fn is_token_joint_to_next(&self, pos: usize) -> bool {
+        unimplemented!()
+    }
+    fn is_keyword(&self, pos: usize, kw: &str) -> bool {
+        unimplemented!()
+    }
 }
