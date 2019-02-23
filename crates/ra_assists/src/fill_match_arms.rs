@@ -28,6 +28,10 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let match_expr_ty = infer_result[node_expr].clone();
     let enum_def = match match_expr_ty {
         Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,
+        Ty::Ref(adt, _) => match *adt {
+            Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,
+            _ => return None,
+        },
         _ => return None,
     };
     let enum_name = enum_def.name(ctx.db)?;
@@ -119,6 +123,81 @@ mod tests {
             "#,
         );
     }
+
+    #[test]
+    fn test_fill_match_arm_refs() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                As,
+            }
+
+            fn foo(a: &A) {
+                match a<|> {
+                }
+            }
+            "#,
+            r#"
+            enum A {
+                As,
+            }
+
+            fn foo(a: &A) {
+                match <|>a {
+                    A::As => (),
+                }
+            }
+            "#,
+        );
+
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                Es{x: usize, y: usize}
+            }
+
+            fn foo(a: &mut A) {
+                match a<|> {
+                }
+            }
+            "#,
+            r#"
+            enum A {
+                Es{x: usize, y: usize}
+            }
+
+            fn foo(a: &mut A) {
+                match <|>a {
+                    A::Es{x, y} => (),
+                }
+            }
+            "#,
+        );
+
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum E { X, Y}
+
+            fn main() {
+                match &E::X<|>
+            }
+            "#,
+            r#"
+            enum E { X, Y}
+
+            fn main() {
+                match <|>&E::X {
+                    E::X => (),
+                    E::Y => (),
+                }
+            }
+            "#,
+        );
+    }
+
     #[test]
     fn fill_match_arms_no_body() {
         check_assist(
