@@ -334,12 +334,14 @@ pub struct RangeInclusive<Idx> {
 trait RangeInclusiveEquality: Sized {
     fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool;
 }
+
 impl<T> RangeInclusiveEquality for T {
     #[inline]
     default fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
         range.is_empty.unwrap_or_default()
     }
 }
+
 impl<T: PartialOrd> RangeInclusiveEquality for T {
     #[inline]
     fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
