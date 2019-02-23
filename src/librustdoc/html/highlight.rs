@@ -5,7 +5,7 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
-use html::escape::Escape;
+use crate::html::escape::Escape;
 
 use std::fmt::Display;
 use std::io;

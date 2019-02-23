@@ -2,9 +2,8 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
-use externalfiles::ExternalHtml;
-
-use html::render::SlashChecker;
+use crate::externalfiles::ExternalHtml;
+use crate::html::render::SlashChecker;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -29,7 +28,7 @@ pub struct Page<'a> {
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut dyn io::Write,
     layout: &Layout,
-    page: &Page,
+    page: &Page<'_>,
     sidebar: &S,
     t: &T,
     css_file_extension: bool,

@@ -119,7 +119,7 @@ enum BlockMode {
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            match nt.0 {
+            match *nt {
                 token::NtExpr(ref e) | token::NtLiteral(ref e) => {
                     $p.bump();
                     return Ok((*e).clone());
@@ -146,7 +146,7 @@ macro_rules! maybe_whole_expr {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            if let token::$constructor($x) = nt.0.clone() {
+            if let token::$constructor($x) = (*nt).clone() {
                 $p.bump();
                 return Ok($e);
             }
@@ -1184,8 +1184,10 @@ impl<'a> Parser<'a> {
         match ate {
             Some(_) => {
                 // See doc comment for `unmatched_angle_bracket_count`.
-                self.unmatched_angle_bracket_count -= 1;
-                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                if self.unmatched_angle_bracket_count > 0 {
+                    self.unmatched_angle_bracket_count -= 1;
+                    debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                }
 
                 Ok(())
             },
@@ -1570,7 +1572,7 @@ impl<'a> Parser<'a> {
                     Some(body)
                 }
                 token::Interpolated(ref nt) => {
-                    match &nt.0 {
+                    match **nt {
                         token::NtBlock(..) => {
                             *at_end = true;
                             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1913,7 +1915,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_argument(&mut self) -> bool {
         let offset = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             }
@@ -2099,7 +2101,7 @@ impl<'a> Parser<'a> {
     /// Matches `token_lit = LIT_INTEGER | ...`.
     fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => { lit.node.clone() }
                     _ => { return self.unexpected_last(&self.token); }
@@ -2248,8 +2250,10 @@ impl<'a> Parser<'a> {
 
         // See doc comment for `unmatched_angle_bracket_count`.
         self.expect(&token::Gt)?;
-        self.unmatched_angle_bracket_count -= 1;
-        debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        if self.unmatched_angle_bracket_count > 0 {
+            self.unmatched_angle_bracket_count -= 1;
+            debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        }
 
         self.expect(&token::ModSep)?;
 
@@ -2299,7 +2303,7 @@ impl<'a> Parser<'a> {
     /// attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref meta) => match meta.node {
                     ast::MetaItemKind::Word => Some(meta.ident.clone()),
                     _ => None,
@@ -3271,7 +3275,7 @@ impl<'a> Parser<'a> {
                 self.meta_var_span = Some(self.span);
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
-                match nt.0 {
+                match **nt {
                     token::NtIdent(ident, is_raw) => (token::Ident(ident, is_raw), ident.span),
                     token::NtLifetime(ident) => (token::Lifetime(ident), ident.span),
                     _ => return,
@@ -3403,7 +3407,7 @@ impl<'a> Parser<'a> {
                     // can't continue an expression after an ident
                     token::Ident(ident, is_raw) => token::ident_can_begin_expr(ident, is_raw),
                     token::Literal(..) | token::Pound => true,
-                    token::Interpolated(ref nt) => match nt.0 {
+                    token::Interpolated(ref nt) => match **nt {
                         token::NtIdent(..) | token::NtExpr(..) |
                         token::NtBlock(..) | token::NtPath(..) => true,
                         _ => false,

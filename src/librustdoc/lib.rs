@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
@@ -17,7 +19,6 @@
 
 #![recursion_limit="256"]
 
-extern crate arena;
 extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
@@ -35,10 +36,6 @@ extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
-extern crate pulldown_cmark;
-extern crate tempfile;
-extern crate minifier;
-extern crate parking_lot;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

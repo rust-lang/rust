@@ -14,9 +14,10 @@ use syntax_pos::{self, Span};
 
 use std::mem;
 
-use core;
-use clean::{self, AttributesExt, NestedAttributesExt, def_id_to_path};
-use doctree::*;
+use crate::core;
+use crate::clean::{self, AttributesExt, NestedAttributesExt, def_id_to_path};
+use crate::doctree::*;
+
 
 // Looks to me like the first two of these are actually
 // output parameters, maybe only mutated once; perhaps
@@ -268,7 +269,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                           om: &mut Module,
                           please_inline: bool) -> bool {
 
-        fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
+        fn inherits_doc_hidden(cx: &core::DocContext<'_, '_, '_>, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
                 if cx.tcx.hir().attrs(node).lists("doc").has_word("hidden") {
@@ -315,7 +316,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         .insert(did, AccessLevel::Public);
                 },
                 Def::Mod(did) => if !self_is_hidden {
-                    ::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
+                    crate::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
                 },
                 _ => {},
             }

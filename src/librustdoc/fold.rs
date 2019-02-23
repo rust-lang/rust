@@ -1,4 +1,4 @@
-use clean::*;
+use crate::clean::*;
 
 pub struct StripItem(pub Item);
 

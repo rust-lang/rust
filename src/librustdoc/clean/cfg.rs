@@ -14,7 +14,7 @@ use syntax::feature_gate::Features;
 
 use syntax_pos::Span;
 
-use html::escape::Escape;
+use crate::html::escape::Escape;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
@@ -261,7 +261,7 @@ impl ops::BitOr for Cfg {
 struct Html<'a>(&'a Cfg, bool);
 
 fn write_with_opt_paren<T: fmt::Display>(
-    fmt: &mut fmt::Formatter,
+    fmt: &mut fmt::Formatter<'_>,
     has_paren: bool,
     obj: T,
 ) -> fmt::Result {
@@ -277,7 +277,7 @@ fn write_with_opt_paren<T: fmt::Display>(
 
 
 impl<'a> fmt::Display for Html<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Cfg::Not(ref child) => match **child {
                 Cfg::Any(ref sub_cfgs) => {

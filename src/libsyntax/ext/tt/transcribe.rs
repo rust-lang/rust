@@ -149,7 +149,7 @@ pub fn transcribe(cx: &ExtCtxt<'_>,
                             result.push(tt.clone().into());
                         } else {
                             sp = sp.apply_mark(cx.current_expansion.mark);
-                            let token = TokenTree::Token(sp, Token::interpolated((**nt).clone()));
+                            let token = TokenTree::Token(sp, Token::Interpolated(nt.clone()));
                             result.push(token.into());
                         }
                     } else {

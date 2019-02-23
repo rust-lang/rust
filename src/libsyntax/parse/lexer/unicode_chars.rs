@@ -1,7 +1,7 @@
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/10.0.0/confusables.txt
 
-use syntax_pos::{Span, NO_EXPANSION};
+use syntax_pos::{Span, Pos, NO_EXPANSION};
 use errors::{Applicability, DiagnosticBuilder};
 use super::StringReader;
 
@@ -333,14 +333,27 @@ crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
         let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
-                let msg =
-                    format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
-                            ch, u_name, ascii_char, ascii_name);
-                err.span_suggestion(
-                    span,
-                    &msg,
-                    ascii_char.to_string(),
-                    Applicability::MaybeIncorrect);
+                // special help suggestion for "directed" double quotes
+                if let Some(s) = reader.peek_delimited('“', '”') {
+                    let msg = format!("Unicode characters '“' (Left Double Quotation Mark) and \
+                        '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
+                                ascii_char, ascii_name);
+                    err.span_suggestion(
+                        Span::new(reader.pos, reader.next_pos + Pos::from_usize(s.len()) +
+                            Pos::from_usize('”'.len_utf8()), NO_EXPANSION),
+                        &msg,
+                        format!("\"{}\"", s),
+                        Applicability::MaybeIncorrect);
+                } else {
+                    let msg =
+                        format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
+                                ch, u_name, ascii_char, ascii_name);
+                    err.span_suggestion(
+                        span,
+                        &msg,
+                        ascii_char.to_string(),
+                        Applicability::MaybeIncorrect);
+                }
                 true
             },
             None => {

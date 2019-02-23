@@ -1,9 +1,9 @@
 use rustc::util::nodemap::DefIdSet;
 
-use clean;
-use core::DocContext;
-use fold::DocFolder;
-use passes::{ImplStripper, ImportStripper, Stripper, Pass};
+use crate::clean;
+use crate::fold::{DocFolder};
+use crate::core::DocContext;
+use crate::passes::{ImplStripper, ImportStripper, Stripper, Pass};
 
 pub const STRIP_PRIVATE: Pass =
     Pass::early("strip-private", strip_private,
@@ -12,7 +12,7 @@ pub const STRIP_PRIVATE: Pass =
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
+pub fn strip_private(mut krate: clean::Crate, cx: &DocContext<'_, '_, '_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet::default();
     let access_levels = cx.renderinfo.borrow().access_levels.clone();
