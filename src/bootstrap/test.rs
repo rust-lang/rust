@@ -574,22 +574,22 @@ impl Step for RustdocTheme {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocJS {
+pub struct RustdocJSStd {
     pub host: Interned<String>,
     pub target: Interned<String>,
 }
 
-impl Step for RustdocJS {
+impl Step for RustdocJSStd {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/test/rustdoc-js")
+        run.path("src/test/rustdoc-js-std")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJS {
+        run.builder.ensure(RustdocJSStd {
             host: run.host,
             target: run.target,
         });
@@ -598,7 +598,7 @@ impl Step for RustdocJS {
     fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
+            command.args(&["src/tools/rustdoc-js-std/tester.js", &*self.host]);
             builder.ensure(crate::doc::Std {
                 target: self.target,
                 stage: builder.top_stage,
@@ -606,7 +606,7 @@ impl Step for RustdocJS {
             builder.run(&mut command);
         } else {
             builder.info(
-                "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
+                "No nodejs found, skipping \"src/test/rustdoc-js-std\" tests"
             );
         }
     }
@@ -625,7 +625,7 @@ impl Step for RustdocJSNotStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/test/rustdoc-js-not-std")
+        run.path("src/test/rustdoc-js")
     }
 
     fn make_run(run: RunConfig) {
@@ -640,7 +640,7 @@ impl Step for RustdocJSNotStd {
     fn run(self, builder: &Builder) {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js-not-std/tester.js",
+            command.args(&["src/tools/rustdoc-js/tester.js",
                            &*self.host,
                            builder.top_stage.to_string().as_str()]);
             builder.ensure(crate::doc::Std {
@@ -650,7 +650,7 @@ impl Step for RustdocJSNotStd {
             builder.run(&mut command);
         } else {
             builder.info(
-                "No nodejs found, skipping \"src/test/rustdoc-js-not-std\" tests"
+                "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
             );
         }
     }
