@@ -17,12 +17,12 @@ use std::collections::BTreeMap;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 
-use clean::GenericArgs as PP;
-use clean::WherePredicate as WP;
-use clean;
-use core::DocContext;
+use crate::clean::GenericArgs as PP;
+use crate::clean::WherePredicate as WP;
+use crate::clean;
+use crate::core::DocContext;
 
-pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
+pub fn where_clauses(cx: &DocContext<'_, '_, '_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
@@ -141,7 +141,7 @@ fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
     bounds
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
+fn trait_is_same_or_supertrait(cx: &DocContext<'_, '_, '_>, child: DefId,
                                trait_: DefId) -> bool {
     if child == trait_ {
         return true

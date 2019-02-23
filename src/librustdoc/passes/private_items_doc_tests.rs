@@ -1,9 +1,8 @@
-use clean::*;
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::fold::DocFolder;
+use crate::passes::{look_for_tests, Pass};
 
-use core::DocContext;
-use fold::DocFolder;
-
-use passes::{look_for_tests, Pass};
 
 pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass =
     Pass::early("check-private-items-doc-tests", check_private_items_doc_tests,
@@ -21,7 +20,7 @@ impl<'a, 'tcx, 'rcx> PrivateItemDocTestLinter<'a, 'tcx, 'rcx> {
     }
 }
 
-pub fn check_private_items_doc_tests(krate: Crate, cx: &DocContext) -> Crate {
+pub fn check_private_items_doc_tests(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     let mut coll = PrivateItemDocTestLinter::new(cx);
 
     coll.fold_crate(krate)

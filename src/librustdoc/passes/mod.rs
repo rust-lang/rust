@@ -11,12 +11,10 @@ use syntax::ast::NodeId;
 use syntax_pos::{DUMMY_SP, Span};
 use std::ops::Range;
 
-use clean::{self, GetDefId, Item};
-use core::{DocContext, DocAccessLevels};
-use fold;
-use fold::StripItem;
-
-use html::markdown::{find_testable_code, ErrorCodes, LangString};
+use crate::clean::{self, GetDefId, Item};
+use crate::core::{DocContext, DocAccessLevels};
+use crate::fold::{DocFolder, StripItem};
+use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
@@ -55,7 +53,7 @@ pub enum Pass {
     /// traits and the like.
     EarlyPass {
         name: &'static str,
-        pass: fn(clean::Crate, &DocContext) -> clean::Crate,
+        pass: fn(clean::Crate, &DocContext<'_, '_, '_>) -> clean::Crate,
         description: &'static str,
     },
     /// A "late pass" is run between crate cleaning and page generation.
@@ -67,7 +65,7 @@ pub enum Pass {
 }
 
 impl fmt::Debug for Pass {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = match *self {
             Pass::EarlyPass { .. } => f.debug_struct("EarlyPass"),
             Pass::LatePass { .. } => f.debug_struct("LatePass"),
@@ -83,7 +81,7 @@ impl fmt::Debug for Pass {
 impl Pass {
     /// Constructs a new early pass.
     pub const fn early(name: &'static str,
-                       pass: fn(clean::Crate, &DocContext) -> clean::Crate,
+                       pass: fn(clean::Crate, &DocContext<'_, '_, '_>) -> clean::Crate,
                        description: &'static str) -> Pass {
         Pass::EarlyPass { name, pass, description }
     }
@@ -112,7 +110,7 @@ impl Pass {
     }
 
     /// If this pass is an early pass, returns the pointer to its function.
-    pub fn early_fn(self) -> Option<fn(clean::Crate, &DocContext) -> clean::Crate> {
+    pub fn early_fn(self) -> Option<fn(clean::Crate, &DocContext<'_, '_, '_>) -> clean::Crate> {
         match self {
             Pass::EarlyPass { pass, .. } => Some(pass),
             _ => None,
@@ -196,7 +194,7 @@ struct Stripper<'a> {
     update_retained: bool,
 }
 
-impl<'a> fold::DocFolder for Stripper<'a> {
+impl<'a> DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::StrippedItem(..) => {
@@ -308,7 +306,7 @@ struct ImplStripper<'a> {
     retained: &'a DefIdSet,
 }
 
-impl<'a> fold::DocFolder for ImplStripper<'a> {
+impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
             // emptied none trait impls can be stripped
@@ -345,7 +343,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
 
 // This stripper discards all private import statements (`use`, `extern crate`)
 struct ImportStripper;
-impl fold::DocFolder for ImportStripper {
+impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::ExternCrateItem(..) | clean::ImportItem(..)
@@ -373,7 +371,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
         found_tests: usize,
     }
 
-    impl ::test::Tester for Tests {
+    impl crate::test::Tester for Tests {
         fn add_test(&mut self, _: String, _: LangString, _: usize) {
             self.found_tests += 1;
         }
@@ -420,7 +418,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
 /// attributes are not all sugared doc comments. It's difficult to calculate the correct span in
 /// that case due to escaping and other source features.
 crate fn source_span_for_markdown_range(
-    cx: &DocContext,
+    cx: &DocContext<'_, '_, '_>,
     markdown: &str,
     md_range: &Range<usize>,
     attrs: &clean::Attributes,

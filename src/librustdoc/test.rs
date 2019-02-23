@@ -28,9 +28,9 @@ use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
 
-use clean::Attributes;
-use config::Options;
-use html::markdown::{self, ErrorCodes, LangString};
+use crate::clean::Attributes;
+use crate::config::Options;
+use crate::html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {

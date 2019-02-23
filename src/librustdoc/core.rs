@@ -33,12 +33,13 @@ use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use visit_ast::RustdocVisitor;
-use config::{Options as RustdocOptions, RenderOptions};
-use clean;
-use clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
-use html::render::RenderInfo;
-use passes;
+use crate::visit_ast::RustdocVisitor;
+use crate::config::{Options as RustdocOptions, RenderOptions};
+use crate::clean;
+use crate::clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
+use crate::html::render::RenderInfo;
+
+use crate::passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
 pub use rustc::session::search_paths::SearchPath;

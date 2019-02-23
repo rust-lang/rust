@@ -2,8 +2,9 @@ use std::fs;
 use std::path::Path;
 use std::str;
 use errors;
-use syntax::feature_gate::UnstableFeatures;
-use html::markdown::{IdMap, ErrorCodes, Markdown};
+use crate::syntax::feature_gate::UnstableFeatures;
+use crate::html::markdown::{IdMap, ErrorCodes, Markdown};
+
 use std::cell::RefCell;
 
 #[derive(Clone, Debug)]
