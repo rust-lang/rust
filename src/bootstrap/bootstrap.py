@@ -829,8 +829,10 @@ def main():
     start_time = time()
 
     # x.py help <cmd> ...
-    if len(sys.argv) > 1 and sys.argv[1] == 'help':
+    if len(sys.argv) > 2 and sys.argv[1] == 'help':
         sys.argv = sys.argv[:1] + [sys.argv[2], '-h'] + sys.argv[3:]
+    elif len(sys.argv) == 2 and sys.argv[1] == 'help':
+        sys.argv[1] = '--help'
 
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
