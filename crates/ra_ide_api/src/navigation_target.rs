@@ -193,7 +193,7 @@ impl NavigationTarget {
             buf.push_str(&format!(" {:?}", focus_range))
         }
         if let Some(container_name) = self.container_name() {
-            buf.push_str(&format!(" {:?}", container_name))
+            buf.push_str(&format!(" {}", container_name))
         }
         buf
     }
