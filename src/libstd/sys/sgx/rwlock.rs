@@ -204,6 +204,7 @@ pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
 }
 
 #[no_mangle]
+// NB. used by both libunwind and libpanic_abort
 pub unsafe extern "C" fn __rust_abort() {
     ::sys::abort_internal();
 }
