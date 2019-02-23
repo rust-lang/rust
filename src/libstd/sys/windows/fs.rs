@@ -191,7 +191,11 @@ impl OpenOptions {
     pub fn access_mode(&mut self, access_mode: u32) { self.access_mode = Some(access_mode); }
     pub fn share_mode(&mut self, share_mode: u32) { self.share_mode = share_mode; }
     pub fn attributes(&mut self, attrs: u32) { self.attributes = attrs; }
-    pub fn security_qos_flags(&mut self, flags: u32) { self.security_qos_flags = flags; }
+    pub fn security_qos_flags(&mut self, flags: u32) {
+        // We have to set `SECURITY_SQOS_PRESENT` here, because one of the valid flags we can
+        // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
+        self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
+    }
     pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
         self.security_attributes = attrs as usize;
     }
@@ -239,7 +243,6 @@ impl OpenOptions {
         self.custom_flags |
         self.attributes |
         self.security_qos_flags |
-        if self.security_qos_flags != 0 { c::SECURITY_SQOS_PRESENT } else { 0 } |
         if self.create_new { c::FILE_FLAG_OPEN_REPARSE_POINT } else { 0 }
     }
 }
