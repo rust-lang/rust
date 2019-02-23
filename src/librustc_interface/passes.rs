@@ -218,24 +218,25 @@ fn analysis<'tcx>(
     // passes are timed inside typeck
     typeck::check_crate(tcx)?;
 
-    time(sess, "misc checking", || {
+    time(sess, "misc checking 2", || {
         parallel!({
-            time(sess, "rvalue promotion", || {
-                rvalue_promotion::check_crate(tcx)
+            time(sess, "rvalue promotion + match checking", || {
+                tcx.par_body_owners(|def_id| {
+                    tcx.ensure().const_is_rvalue_promotable_to_static(def_id);
+                    tcx.ensure().check_match(def_id);
+                });
             });
         }, {
-            time(sess, "intrinsic checking", || {
-                middle::intrinsicck::check_crate(tcx)
-            });
-        }, {
-            time(sess, "match checking", || mir::matchck_crate(tcx));
-        }, {
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            time(sess, "liveness checking", || {
-                middle::liveness::check_crate(tcx)
+            time(sess, "liveness checking + intrinsic checking", || {
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    // this must run before MIR dump, because
+                    // "not all control paths return a value" is reported here.
+                    //
+                    // maybe move the check to a MIR pass?
+                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
+
+                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id(module));
+                });
             });
         });
     });
@@ -276,7 +277,7 @@ fn analysis<'tcx>(
         return Err(ErrorReported);
     }
 
-    time(sess, "misc checking", || {
+    time(sess, "misc checking 3", || {
         parallel!({
             time(sess, "privacy access levels", || {
                 tcx.ensure().privacy_access_levels(LOCAL_CRATE);

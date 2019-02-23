@@ -3,7 +3,6 @@
 mod _match;
 mod check_match;
 
-pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
 use crate::const_eval::{const_field, const_variant_index};

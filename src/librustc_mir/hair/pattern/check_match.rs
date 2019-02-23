@@ -27,13 +27,6 @@ use std::slice;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for def_id in tcx.body_owners() {
-        tcx.ensure().check_match(def_id);
-    }
-    tcx.sess.abort_if_errors();
-}
-
 pub(crate) fn check_match<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,

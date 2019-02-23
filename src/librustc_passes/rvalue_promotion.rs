@@ -39,13 +39,6 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &body_id in &tcx.hir().krate().body_ids {
-        let def_id = tcx.hir().body_owner_def_id(body_id);
-        tcx.const_is_rvalue_promotable_to_static(def_id);
-    }
-}
-
 fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   def_id: DefId)
                                                   -> bool
