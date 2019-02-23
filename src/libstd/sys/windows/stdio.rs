@@ -279,5 +279,5 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
-    io::stderr_raw().ok()
+    Stderr::new().ok()
 }

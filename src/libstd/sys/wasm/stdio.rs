@@ -59,7 +59,7 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     if cfg!(feature = "wasm_syscall") {
-        io::stderr_raw().ok()
+        Stderr::new().ok()
     } else {
         None
     }

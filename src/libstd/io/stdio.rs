@@ -32,9 +32,7 @@ struct StdoutRaw(stdio::Stdout);
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stderr_raw` function.
-///
-/// Not exposed, but used inside the standard library for panic output.
-pub(crate) struct StderrRaw(stdio::Stderr);
+struct StderrRaw(stdio::Stderr);
 
 /// Constructs a new raw handle to the standard input of this process.
 ///
@@ -63,9 +61,7 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-///
-/// Not exposed, but used inside the standard library for panic output.
-pub(crate) fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
