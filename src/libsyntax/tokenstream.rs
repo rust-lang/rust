@@ -72,7 +72,7 @@ impl TokenTree {
         }
     }
 
-    // See comments in `interpolated_to_tokenstream` for why we care about
+    // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     //
     // This is otherwise the same as `eq_unspanned`, only recursing with a
@@ -310,7 +310,7 @@ impl TokenStream {
         t1.next().is_none() && t2.next().is_none()
     }
 
-    // See comments in `interpolated_to_tokenstream` for why we care about
+    // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     //
     // This is otherwise the same as `eq_unspanned`, only recursing with a
