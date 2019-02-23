@@ -168,6 +168,7 @@ pub use intrinsics::write_bytes;
 /// }
 ///
 /// let mut p = Packed { _padding: 0, unaligned: vec![42] };
+/// #[allow(safe_packed_borrows)]
 /// unsafe {
 ///     drop_after_copy(&mut p.unaligned as *mut _);
 ///     mem::forget(p);
@@ -617,6 +618,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: 0x01020304,
 /// };
 ///
+/// #[allow(safe_packed_borrows)]
 /// let v = unsafe {
 ///     // Take the address of a 32-bit integer which is not aligned.
 ///     // This must be done as a raw pointer; unaligned references are invalid.
@@ -780,6 +782,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// let v = 0x01020304;
 /// let mut x: Packed = unsafe { mem::zeroed() };
 ///
+/// #[allow(safe_packed_borrows)]
 /// unsafe {
 ///     // Take a reference to a 32-bit integer which is not aligned.
 ///     let unaligned = &mut x.unaligned as *mut u32;
