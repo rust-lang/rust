@@ -1035,7 +1035,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     }
 }
 
-/// A newtype to construct uninitialized instances of `T`.
+/// A wrapper to construct uninitialized instances of `T`.
 ///
 /// The compiler, in general, assumes that variables are properly initialized
 /// at their respective type. For example, a variable of reference type must
@@ -1049,7 +1049,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
-/// // equivalent code with `MaybeUninit`
+/// // equivalent code with `MaybeUninit<&i32>`
 /// let x: &i32 = unsafe { MaybeUninit::zeroed().into_initialized() }; // undefined behavior!
 /// ```
 ///
@@ -1064,7 +1064,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
-/// // The equivalent code with `MaybeUninit`:
+/// // The equivalent code with `MaybeUninit<bool>`:
 /// let b: bool = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
 /// ```
 ///
@@ -1078,7 +1078,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
-/// // equivalent code with `MaybeUninit`
+/// // equivalent code with `MaybeUninit<i32>`
 /// let x: i32 = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
@@ -1093,7 +1093,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::MaybeUninit;
 ///
 /// // Create an explicitly uninitialized reference. The compiler knows that data inside
-/// // a `MaybeUninit` may be invalid, and hence this is not UB:
+/// // a `MaybeUninit<T>` may be invalid, and hence this is not UB:
 /// let mut x = MaybeUninit::<&i32>::uninitialized();
 /// // Set it to a valid value.
 /// x.set(&0);
@@ -1125,7 +1125,7 @@ impl<T: Copy> Clone for MaybeUninit<T> {
 impl<T> MaybeUninit<T> {
     /// Create a new `MaybeUninit<T>` initialized with the given value.
     ///
-    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
@@ -1133,9 +1133,9 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
     }
 
-    /// Creates a new `MaybeUninit` in an uninitialized state.
+    /// Creates a new `MaybeUninit<T>` in an uninitialized state.
     ///
-    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
@@ -1143,7 +1143,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Creates a new `MaybeUninit` in an uninitialized state, with the memory being
+    /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
     /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
@@ -1190,9 +1190,9 @@ impl<T> MaybeUninit<T> {
         u
     }
 
-    /// Sets the value of the `MaybeUninit`. This overwrites any previous value without dropping it.
-    /// For your convenience, this also returns a mutable reference to the (now safely initialized)
-    /// contents of `self`.
+    /// Sets the value of the `MaybeUninit<T>`. This overwrites any previous value
+    /// without dropping it. For your convenience, this also returns a mutable
+    /// reference to the (now safely initialized) contents of `self`.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn set(&mut self, val: T) -> &mut T {
@@ -1215,7 +1215,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
     /// x.set(vec![0,1,2]);
-    /// // Create a reference into the `MaybeUninit`. This is okay because we initialized it.
+    /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// assert_eq!(x_vec.len(), 3);
     /// ```
@@ -1272,13 +1272,13 @@ impl<T> MaybeUninit<T> {
         unsafe { &mut *self.value as *mut T }
     }
 
-    /// Extracts the value from the `MaybeUninit` container. This is a great way
+    /// Extracts the value from the `MaybeUninit<T>` container. This is a great way
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
     ///
@@ -1374,7 +1374,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
     #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
@@ -1387,7 +1387,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
