@@ -1,4 +1,4 @@
-# Miri [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/solson/miri?svg=true)](https://ci.appveyor.com/project/solson63299/miri)
+# Miri [![Build Status](https://travis-ci.com/rust-lang/miri.svg?branch=master)](https://travis-ci.com/rust-lang/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/rust-lang/miri?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/miri)
 
 
 An experimental interpreter for [Rust][rust]'s
@@ -28,11 +28,11 @@ Miri has already discovered some [real-world bugs](#bugs-found-by-miri).
 Install Miri as a cargo subcommand:
 
 ```sh
-cargo +nightly install --force --git https://github.com/solson/miri miri
+cargo +nightly install --force --git https://github.com/rust-lang/miri miri
 ```
 
 If this does not work, try using the nightly version given in
-[this file](https://raw.githubusercontent.com/solson/miri/master/rust-version). CI
+[this file](https://raw.githubusercontent.com/rust-lang/miri/master/rust-version). CI
 should ensure that this nightly always works.
 
 You have to use a consistent Rust version for building miri and your project, so
