@@ -1,6 +1,6 @@
-use ra_parser::TokenSource;
+use ra_parser::{TokenSource, TreeSink, ParseError};
 use ra_syntax::{
-    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr,
+    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc,
     ast, SyntaxKind::*, TextUnit
 };
 
@@ -21,8 +21,12 @@ pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of items
-pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> ast::SourceFile {
-    unimplemented!()
+pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> TreeArc<ast::SourceFile> {
+    let token_source = TtTokenSource::new(tt);
+    let mut tree_sink = TtTreeSink::new(&token_source.tokens);
+    ra_parser::parse(&token_source, &mut tree_sink);
+    let syntax = tree_sink.inner.finish();
+    ast::SourceFile::cast(&syntax).unwrap().to_owned()
 }
 
 impl TokenMap {
@@ -164,5 +168,51 @@ impl TokenSource for TtTokenSource {
     }
     fn is_keyword(&self, pos: usize, kw: &str) -> bool {
         self.tokens[pos].text == *kw
+    }
+}
+
+#[derive(Default)]
+struct TtTreeSink<'a> {
+    buf: String,
+    tokens: &'a [Tok],
+    text_pos: TextUnit,
+    token_pos: usize,
+    inner: SyntaxTreeBuilder,
+}
+
+impl<'a> TtTreeSink<'a> {
+    fn new(tokens: &'a [Tok]) -> TtTreeSink {
+        TtTreeSink {
+            buf: String::new(),
+            tokens,
+            text_pos: 0.into(),
+            token_pos: 0,
+            inner: SyntaxTreeBuilder::default(),
+        }
+    }
+}
+
+impl<'a> TreeSink for TtTreeSink<'a> {
+    fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
+        for _ in 0..n_tokens {
+            self.buf += self.tokens[self.token_pos].text.as_str();
+            self.token_pos += 1;
+        }
+        self.text_pos += TextUnit::of_str(&self.buf);
+        let text = SmolStr::new(self.buf.as_str());
+        self.buf.clear();
+        self.inner.leaf(kind, text)
+    }
+
+    fn start_branch(&mut self, kind: SyntaxKind) {
+        self.inner.start_branch(kind);
+    }
+
+    fn finish_branch(&mut self) {
+        self.inner.finish_branch();
+    }
+
+    fn error(&mut self, error: ParseError) {
+        self.inner.error(error, self.text_pos)
     }
 }
