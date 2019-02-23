@@ -1,6 +1,6 @@
 // run-pass
 #![allow(dead_code)]
-// ignore-emscripten weird assertion?
+// ignore-test
 
 #[repr(packed)]
 struct Foo1 {

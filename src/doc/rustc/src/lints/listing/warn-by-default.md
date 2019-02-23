@@ -492,7 +492,7 @@ To fix this, either remove the lint or use the new name.
 This lint detects borrowing a field in the interior of a packed structure
 with alignment other than 1. Some example code that triggers this lint:
 
-```rust
+```rust,ignore
 #[repr(packed)]
 pub struct Unaligned<T>(pub T);
 
