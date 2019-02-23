@@ -19,8 +19,10 @@ fn main() {
     };
 
     unsafe {
-        let _ = &good.data; // ok
-        let _ = &good.data2[0]; // ok
+        let _ = &good.data; //~ ERROR borrow of packed field is unsafe
+                            //~| hard error
+        let _ = &good.data2[0]; //~ ERROR borrow of packed field is unsafe
+                                //~| hard error
     }
 
     let _ = &good.data; //~ ERROR borrow of packed field is unsafe

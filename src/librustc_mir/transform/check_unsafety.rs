@@ -374,7 +374,16 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 false
             }
             // `unsafe` function bodies allow unsafe without additional unsafe blocks
-            Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
+            Safety::BuiltinUnsafe | Safety::FnUnsafe => {
+                for violation in violations {
+                    if let UnsafetyViolationKind::BorrowPacked(_) = violation.kind {
+                        if !self.violations.contains(violation) {
+                            self.violations.push(*violation)
+                        }
+                    }
+                }
+                true
+            }
             Safety::ExplicitUnsafe(node_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {
@@ -399,6 +408,14 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     self.violations.push(violation)
                                 }
                             },
+                        }
+                    }
+                } else {
+                    for violation in violations {
+                        if let UnsafetyViolationKind::BorrowPacked(_) = violation.kind {
+                            if !self.violations.contains(violation) {
+                                self.violations.push(*violation)
+                            }
                         }
                     }
                 }
