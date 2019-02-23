@@ -80,6 +80,12 @@
   :ignore-messages nil
   :server-id 'rust-analyzer))
 
+(with-eval-after-load 'company-lsp
+  ;; company-lsp provides a snippet handler for rust by default that adds () after function calls, which RA does better
+  (setq company-lsp--snippet-functions (assq-delete-all "rust" company-lsp--snippet-functions)))
+
+;; join lines
+
 (defun rust-analyzer--join-lines-params ()
   "Join lines params."
   (list :textDocument (lsp--text-document-identifier)
@@ -93,10 +99,6 @@
    (lsp-send-request (lsp-make-request "rust-analyzer/joinLines"
                                        (rust-analyzer--join-lines-params)))
    (rust-analyzer--apply-source-change)))
-
-(with-eval-after-load 'company-lsp
-  ;; company-lsp provides a snippet handler for rust by default that adds () after function calls, which RA does better
-  (setq company-lsp--snippet-functions (assq-delete-all "rust" company-lsp--snippet-functions)))
 
 ;; extend selection
 
@@ -134,6 +136,40 @@
 
 (with-eval-after-load 'expand-region
   (add-hook 'rust-mode-hook 'rust-analyzer--add-er-expansion))
+
+;; runnables
+(defvar rust-analyzer--last-runnable)
+
+(defun rust-analyzer--runnables-params ()
+  (list :textDocument (lsp--text-document-identifier)
+        :position (lsp--cur-position)))
+
+(defun rust-analyzer--runnables ()
+  (lsp-send-request (lsp-make-request "rust-analyzer/runnables"
+                                      (rust-analyzer--runnables-params))))
+
+(defun rust-analyzer--select-runnable ()
+  (lsp--completing-read
+   "Select runnable:"
+   (if rust-analyzer--last-runnable
+       (cons rust-analyzer--last-runnable (rust-analyzer--runnables))
+       (rust-analyzer--runnables))
+   (-lambda ((&hash "label")) label)))
+
+(defun rust-analyzer-run (runnable)
+  (interactive (list (rust-analyzer--select-runnable)))
+  (-let (((&hash "env" "bin" "args" "label") runnable))
+    (compilation-start
+     (string-join (cons bin args) " ")
+     ;; cargo-process-mode is nice, but try to work without it...
+     (if (functionp 'cargo-process-mode) 'cargo-process-mode nil)
+     (lambda (_) (concat "*" label "*")))
+    (setq rust-analyzer--last-runnable runnable)))
+
+(defun rust-analyzer-rerun (&optional runnable)
+  (interactive (list (or rust-analyzer--last-runnable
+                         (rust-analyzer--select-runnable))))
+  (rust-analyzer-run (or runnable rust-analyzer--last-runnable)))
 
 (provide 'ra-emacs-lsp)
 ;;; ra-emacs-lsp.el ends here
