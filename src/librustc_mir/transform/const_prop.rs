@@ -253,7 +253,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.lazy_const_to_op(*c.literal, c.ty) {
+        match self.ecx.eval_lazy_const_to_op(*c.literal, None) {
             Ok(op) => {
                 Some((op, c.span))
             },

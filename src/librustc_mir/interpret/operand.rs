@@ -13,7 +13,7 @@ use rustc::mir::interpret::{
     sign_extend, truncate,
 };
 use super::{
-    EvalContext, Machine, AllocMap, Allocation, AllocationExtra,
+    EvalContext, Machine,
     MemPlace, MPlaceTy, PlaceTy, Place, MemoryKind,
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -270,7 +270,7 @@ pub(super) fn from_known_layout<'tcx>(
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for ScalarPair.
     /// Returns `None` if the layout does not permit loading this as a value.
-    pub(super) fn try_read_immediate_from_mplace(
+    fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Option<Immediate<M::PointerTag>>> {
@@ -324,7 +324,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in a `Immediate`, not on which data is stored there currently.
-    pub(crate) fn try_read_immediate(
+    pub(super) fn try_read_immediate(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Result<Immediate<M::PointerTag>, MemPlace<M::PointerTag>>> {
@@ -509,7 +509,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
-    fn eval_place_to_op(
+    pub(super) fn eval_place_to_op(
         &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
@@ -546,14 +546,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => {
-                let layout = from_known_layout(layout, || {
-                    let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx))?;
-                    self.layout_of(ty)
-                })?;
-                let op = self.const_value_to_op(*constant.literal)?;
-                OpTy { op, layout }
-            }
+            Constant(ref constant) => self.eval_lazy_const_to_op(*constant.literal, layout)?,
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -569,38 +562,56 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when Miri runs into a constant, and (indirectly through lazy_const_to_op) by CTFE.
-    fn const_value_to_op(
+    // Used when Miri runs into a constant, and by const propagation.
+    crate fn eval_lazy_const_to_op(
         &self,
         val: ty::LazyConst<'tcx>,
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        trace!("const_value_to_op: {:?}", val);
-        let val = match val {
+        layout: Option<TyLayout<'tcx>>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        trace!("const_to_op: {:?}", val);
+        match val {
             ty::LazyConst::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                return Ok(*OpTy::from(self.const_eval_raw(GlobalId {
+                return Ok(OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
                 })?));
             },
-            ty::LazyConst::Evaluated(c) => c,
-        };
-        match val.val {
-            ConstValue::ByRef(id, alloc, offset) => {
+            ty::LazyConst::Evaluated(c) => self.const_to_op(c, layout),
+        }
+    }
+
+    // Used when the miri-engine runs into a constant and for extracting information from constants
+    // in patterns via the `const_eval` module
+    crate fn const_to_op(
+        &self,
+        val: ty::Const<'tcx>,
+        layout: Option<TyLayout<'tcx>>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        let layout = from_known_layout(layout, || {
+            let ty = self.monomorphize(val.ty)?;
+            self.layout_of(ty)
+        })?;
+        let op = match val.val {
+            ConstValue::ByRef(ptr, alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
-                Ok(Operand::Indirect(
-                    MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
-                ).with_default_tag())
+                Operand::Indirect(
+                    MemPlace::from_ptr(ptr, alloc.align)
+                ).with_default_tag()
             },
             ConstValue::Slice(a, b) =>
-                Ok(Operand::Immediate(Immediate::ScalarPair(
+                Operand::Immediate(Immediate::ScalarPair(
                     a.into(),
                     Scalar::from_uint(b, self.tcx.data_layout.pointer_size).into(),
-                )).with_default_tag()),
+                )).with_default_tag(),
             ConstValue::Scalar(x) =>
-                Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
-        }
+                Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag(),
+        };
+        Ok(OpTy {
+            op,
+            layout,
+        })
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
@@ -696,24 +707,5 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
             }
         })
-    }
-
-}
-
-impl<'a, 'mir, 'tcx, M> EvalContext<'a, 'mir, 'tcx, M>
-where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<(), M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<(), M::MemoryExtra>,
-{
-    // FIXME: CTFE should use allocations, then we can remove this.
-    pub(crate) fn lazy_const_to_op(
-        &self,
-        cnst: ty::LazyConst<'tcx>,
-        ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx>> {
-        let op = self.const_value_to_op(cnst)?;
-        Ok(OpTy { op, layout: self.layout_of(ty)? })
     }
 }

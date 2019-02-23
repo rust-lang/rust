@@ -31,9 +31,9 @@ pub enum ConstValue<'tcx> {
     /// it.
     Slice(Scalar, u64),
 
-    /// An allocation together with an offset into the allocation.
-    /// Invariant: the `AllocId` matches the allocation.
-    ByRef(AllocId, &'tcx Allocation, Size),
+    /// An allocation together with a pointer into the allocation.
+    /// Invariant: the pointer's `AllocId` resolves to the allocation.
+    ByRef(Pointer, &'tcx Allocation),
 }
 
 #[cfg(target_arch = "x86_64")]
