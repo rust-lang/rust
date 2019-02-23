@@ -46,7 +46,7 @@ use crate::value::Value;
 
 pub fn write_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    llvm_module: &ModuleLlvm
+    llvm_module: &mut ModuleLlvm
 ) -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
