@@ -7,6 +7,7 @@ use std::hash::Hash;
 
 use rustc::hir;
 use rustc::mir;
+use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
 use rustc::ty::TypeFoldable;
@@ -965,8 +966,7 @@ where
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
                 let size = tag.value.size(self);
-                let shift = 128 - size.bits();
-                let discr_val = (discr_val << shift) >> shift;
+                let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, 0)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
