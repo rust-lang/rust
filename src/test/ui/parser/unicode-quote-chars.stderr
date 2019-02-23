@@ -1,0 +1,12 @@
+error: unknown start of token: /u{201c}
+  --> $DIR/unicode-quote-chars.rs:4:14
+   |
+LL |     println!(“hello world”);
+   |              ^
+help: Unicode characters '“' (Left Double Quotation Mark) and '”' (Right Double Quotation Mark) look like '"' (Quotation Mark), but are not
+   |
+LL |     println!("hello world");
+   |              ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
