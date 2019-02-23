@@ -1,7 +1,7 @@
 // Test that impl trait does not allow creating recursive types that are
 // otherwise forbidden.
 
-#![feature(await_macro, async_await, futures_api, generators)]
+#![feature(futures_api, generators)]
 
 fn option(i: i32) -> impl Sized { //~ ERROR
     if i < 0 {
@@ -60,10 +60,6 @@ fn generator_hold() -> impl Sized { //~ ERROR
         yield;
         x;
     }
-}
-
-async fn recursive_async_function() -> () { //~ ERROR
-    await!(recursive_async_function());
 }
 
 fn use_fn_ptr() -> impl Sized { // OK, error already reported

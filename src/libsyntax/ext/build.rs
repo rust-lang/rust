@@ -1017,7 +1017,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   ast::ItemKind::Fn(self.fn_decl(inputs, ast::FunctionRetTy::Ty(output)),
                               ast::FnHeader {
                                   unsafety: ast::Unsafety::Normal,
-                                  asyncness: ast::IsAsync::NotAsync,
+                                  asyncness: dummy_spanned(ast::IsAsync::NotAsync),
                                   constness: dummy_spanned(ast::Constness::NotConst),
                                   abi: Abi::Rust,
                               },
