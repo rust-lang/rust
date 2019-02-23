@@ -191,27 +191,25 @@ fn analysis<'tcx>(
 
     let sess = tcx.sess;
 
-    parallel!({
-        time(sess, "looking for entry point", || {
-            middle::entry::find_entry_point(tcx)
-        });
+    time(sess, "misc checking 1", || {
+        parallel!({
+            time(sess, "looking for entry point", || {
+                middle::entry::find_entry_point(tcx)
+            });
 
-        time(sess, "looking for plugin registrar", || {
-            plugin::build::find_plugin_registrar(tcx)
-        });
+            time(sess, "looking for plugin registrar", || {
+                plugin::build::find_plugin_registrar(tcx)
+            });
 
-        time(sess, "looking for derive registrar", || {
-            proc_macro_decls::find(tcx)
-        });
-    }, {
-        time(sess, "loop checking", || loops::check_crate(tcx));
-    }, {
-        time(sess, "attribute checking", || {
-            hir::check_attr::check_crate(tcx)
-        });
-    }, {
-        time(sess, "stability checking", || {
-            stability::check_unstable_api_usage(tcx)
+            time(sess, "looking for derive registrar", || {
+                proc_macro_decls::find(tcx)
+            });
+        }, {
+            par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                tcx.ensure().check_mod_loops(tcx.hir().local_def_id(module));
+                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
+                tcx.ensure().check_mod_unstable_api_usage(tcx.hir().local_def_id(module));
+            });
         });
     });
 
