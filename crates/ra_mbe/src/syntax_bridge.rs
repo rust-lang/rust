@@ -19,6 +19,11 @@ pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)
     Some((tt, token_map))
 }
 
+/// Parses the token tree (result of macro expansion) as a sequence of items
+pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> ast::SourceFile {
+    unimplemented!()
+}
+
 impl TokenMap {
     pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
         let idx = tt.0 as usize;
