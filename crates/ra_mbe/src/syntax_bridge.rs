@@ -98,7 +98,7 @@ struct TtTokenSource {
 struct Tok {
     kind: SyntaxKind,
     is_joint_to_next: bool,
-    text: Option<SmolStr>,
+    text: SmolStr,
 }
 
 impl TtTokenSource {
@@ -123,27 +123,34 @@ impl TtTokenSource {
             tt::Leaf::Literal(l) => Tok {
                 kind: SyntaxKind::INT_NUMBER, // FIXME
                 is_joint_to_next: false,
-                text: Some(l.text.clone()),
+                text: l.text.clone(),
             },
             tt::Leaf::Punct(p) => Tok {
                 kind: SyntaxKind::from_char(p.char).unwrap(),
                 is_joint_to_next: p.spacing == tt::Spacing::Joint,
-                text: None,
+                text: {
+                    let mut buf = [0u8; 4];
+                    let s: &str = p.char.encode_utf8(&mut buf);
+                    SmolStr::new(s)
+                },
             },
             tt::Leaf::Ident(ident) => {
-                Tok { kind: IDENT, is_joint_to_next: false, text: Some(ident.text.clone()) }
+                Tok { kind: IDENT, is_joint_to_next: false, text: ident.text.clone() }
             }
         };
         self.tokens.push(tok)
     }
     fn push_delim(&mut self, d: tt::Delimiter, closing: bool) {
-        let kinds = match d {
-            tt::Delimiter::Parenthesis => [L_PAREN, R_PAREN],
-            tt::Delimiter::Brace => [L_CURLY, R_CURLY],
-            tt::Delimiter::Bracket => [L_BRACK, R_BRACK],
+        let (kinds, texts) = match d {
+            tt::Delimiter::Parenthesis => ([L_PAREN, R_PAREN], "()"),
+            tt::Delimiter::Brace => ([L_CURLY, R_CURLY], "{}"),
+            tt::Delimiter::Bracket => ([L_BRACK, R_BRACK], "[]"),
             tt::Delimiter::None => return,
         };
-        let tok = Tok { kind: kinds[closing as usize], is_joint_to_next: false, text: None };
+        let idx = closing as usize;
+        let kind = kinds[idx];
+        let text = &texts[idx..texts.len() - (1 - idx)];
+        let tok = Tok { kind, is_joint_to_next: false, text: SmolStr::new(text) };
         self.tokens.push(tok)
     }
 }
@@ -156,6 +163,6 @@ impl TokenSource for TtTokenSource {
         self.tokens[pos].is_joint_to_next
     }
     fn is_keyword(&self, pos: usize, kw: &str) -> bool {
-        self.tokens[pos].text.as_ref().map(|it| it.as_str()) == Some(kw)
+        self.tokens[pos].text == *kw
     }
 }
