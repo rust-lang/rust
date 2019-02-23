@@ -67,7 +67,7 @@ impl NavigationTarget {
             name: symbol.name.clone(),
             kind: symbol.ptr.kind(),
             full_range: symbol.ptr.range(),
-            focus_range: None,
+            focus_range: symbol.name_range,
             container_name: symbol.container_name.clone(),
         }
     }
