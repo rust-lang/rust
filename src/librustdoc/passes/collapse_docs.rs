@@ -6,9 +6,11 @@ use crate::passes::Pass;
 
 use std::mem::replace;
 
-pub const COLLAPSE_DOCS: Pass =
-    Pass::early("collapse-docs", collapse_docs,
-        "concatenates all document attributes into one document attribute");
+pub const COLLAPSE_DOCS: Pass = Pass {
+    name: "collapse-docs",
+    pass: collapse_docs,
+    description: "concatenates all document attributes into one document attribute",
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum DocFragmentKind {
