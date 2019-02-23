@@ -21,7 +21,7 @@ use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -278,17 +278,28 @@ fn analysis<'tcx>(
 
     time(sess, "misc checking", || {
         parallel!({
-            time(sess, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
+            time(sess, "privacy access levels", || {
+                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+            });
+            parallel!({
+                time(sess, "privacy checking", || {
+                    tcx.ensure().check_privacy(LOCAL_CRATE);
+                });
+            }, {
+                time(sess, "death checking", || middle::dead::check_crate(tcx));
+            },  {
+                time(sess, "unused lib feature checking", || {
+                    stability::check_unused_or_stable_features(tcx)
+                });
+            }, {
+                time(sess, "lint checking", || lint::check_crate(tcx));
             });
         }, {
-            time(sess, "death checking", || middle::dead::check_crate(tcx));
-        },  {
-            time(sess, "unused lib feature checking", || {
-                stability::check_unused_or_stable_features(tcx)
+            time(sess, "privacy checking modules", || {
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
+                });
             });
-        }, {
-            time(sess, "lint checking", || lint::check_crate(tcx));
         });
     });
 

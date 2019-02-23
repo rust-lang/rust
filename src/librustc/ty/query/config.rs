@@ -369,6 +369,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::check_privacy<'tcx> {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "privacy checking".into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::typeck_item_bodies<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "type-checking all item bodies".into()
