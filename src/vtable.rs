@@ -113,7 +113,7 @@ fn build_vtable<'a, 'tcx: 'a>(
             Some(import_function(
                 tcx,
                 fx.module,
-                Instance::resolve(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
+                Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             ))
         })
     });
