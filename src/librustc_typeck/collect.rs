@@ -2396,7 +2396,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
-                    E0723,
+                    E0724,
                     "`#[ffi_returns_twice]` may only be used on foreign functions"
                 ).emit();
             }
