@@ -357,8 +357,10 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         match err.kind {
                             EvalErrorKind::InvalidNullPointerUsage =>
                                 return validation_failure!("NULL reference", self.path),
-                            EvalErrorKind::AlignmentCheckFailed { .. } =>
-                                return validation_failure!("unaligned reference", self.path),
+                            EvalErrorKind::AlignmentCheckFailed { required, has } =>
+                                return validation_failure!(format!("unaligned reference \
+                                    (required {} byte alignment but found {})",
+                                    required.bytes(), has.bytes()), self.path),
                             _ =>
                                 return validation_failure!(
                                     "dangling (out-of-bounds) reference (might be NULL at \
