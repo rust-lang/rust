@@ -602,7 +602,7 @@ fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
     }
 }
 
-fn primitive_impl(cx: &DocContext, path_str: &str) -> Option<DefId> {
+fn primitive_impl(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<DefId> {
     let tcx = cx.tcx;
     match path_str {
         "u8" => tcx.lang_items().u8_impl(),
