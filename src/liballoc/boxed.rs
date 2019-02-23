@@ -316,7 +316,7 @@ impl<T: Clone> Clone for Box<T> {
     /// let x = Box::new(5);
     /// let y = x.clone();
     /// ```
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Box<T> {
         box { (**self).clone() }
