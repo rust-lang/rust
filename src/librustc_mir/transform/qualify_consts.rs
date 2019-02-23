@@ -1091,6 +1091,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
             Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
             Rvalue::Cast(CastKind::Unsize, ..) |
+            Rvalue::Cast(CastKind::MutToConstPointer, ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
             Rvalue::Ref(..) |

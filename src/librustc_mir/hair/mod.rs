@@ -190,6 +190,9 @@ pub enum ExprKind<'tcx> {
     UnsafeFnPointer {
         source: ExprRef<'tcx>,
     },
+    MutToConstPointer {
+        source: ExprRef<'tcx>,
+    },
     Unsize {
         source: ExprRef<'tcx>,
     },

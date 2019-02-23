@@ -1984,7 +1984,118 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     }
 
-                    CastKind::Misc => {}
+                    CastKind::MutToConstPointer => {
+                        let ty_from = match op.ty(mir, tcx).sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_from,
+                                mutbl: hir::MutMutable,
+                            }) => ty_from,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected base type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        let ty_to = match ty.sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl: hir::MutImmutable,
+                            }) => ty_to,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected target type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        if let Err(terr) = self.sub_types(
+                            ty_from,
+                            ty_to,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "relating {:?} with {:?} yields {:?}",
+                                ty_from,
+                                ty_to,
+                                terr
+                            )
+                        }
+                    }
+
+                    CastKind::Misc => {
+                        if let ty::Ref(_, mut ty_from, _) = op.ty(mir, tcx).sty {
+                            let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl,
+                            }) = ty.sty {
+                                (ty_to, mutbl)
+                            } else {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "invalid cast types {:?} -> {:?}",
+                                    op.ty(mir, tcx),
+                                    ty,
+                                );
+                                return;
+                            };
+
+                            // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
+                            // any array we find.
+                            while let ty::Array(ty_elem_from, _) = ty_from.sty {
+                                ty_from = ty_elem_from;
+                                if let ty::Array(ty_elem_to, _) = ty_to.sty {
+                                    ty_to = ty_elem_to;
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if let hir::MutMutable = mutability {
+                                if let Err(terr) = self.eq_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "equating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            } else {
+                                if let Err(terr) = self.sub_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "relating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
