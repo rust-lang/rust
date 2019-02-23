@@ -11,7 +11,7 @@ trait Bazoom<T> {
     fn method<U>(&self, arg: T, arg2: U) { }
 }
 
-impl<T, U> Bazoom<U> for T {
+impl<S, T> Bazoom<T> for S {
 }
 
 fn foo<'a, T>(_: T) { }
@@ -22,9 +22,13 @@ fn main() {
     let x = foo;
     x(22);
 
-    // Here: `u32` is given.
-    let x = foo::<u32>; //~ ERROR [u32]
+    // Here: `u32` is given, which doesn't contain any lifetimes, so we don't
+    // have any annotation.
+    let x = foo::<u32>;
     x(22);
+
+    let x = foo::<&'static u32>; //~ ERROR [&ReStatic u32]
+    x(&22);
 
     // Here: we only want the `T` to be given, the rest should be variables.
     //
@@ -32,9 +36,14 @@ fn main() {
     let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [^0, u32, ^1]
     x(&22, 44, 66);
 
-    // Here: all are given
-    let x = <u8 as Bazoom<u16>>::method::<u32>; //~ ERROR [u8, u16, u32]
+    // Here: all are given and definitely contain no lifetimes, so we
+    // don't have any annotation.
+    let x = <u8 as Bazoom<u16>>::method::<u32>;
     x(&22, 44, 66);
+
+    // Here: all are given and we have a lifetime.
+    let x = <u8 as Bazoom<&'static u16>>::method::<u32>; //~ ERROR [u8, &ReStatic u16, u32]
+    x(&22, &44, 66);
 
     // Here: we want in particular that *only* the method `U`
     // annotation is given, the rest are variables.
