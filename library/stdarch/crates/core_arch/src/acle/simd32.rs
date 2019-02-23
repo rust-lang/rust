@@ -16,13 +16,13 @@
 //! - [x] __sadd8
 //! - [x] __shadd8
 //! - [x] __shsub8
-//! - [ ] __ssub8
+//! - [x] __ssub8
 //! - [ ] __uadd8
 //! - [ ] __uhadd8
 //! - [ ] __uhsub8
 //! - [ ] __uqadd8
 //! - [ ] __uqsub8
-//! - [ ] __usub8
+//! - [x] __usub8
 //! - [x] __usad8
 //! - [x] __usada8
 //! - [x] __qadd16
@@ -129,6 +129,12 @@ extern "C" {
 
     #[link_name = "llvm.arm.shsub8"]
     fn arm_shsub8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.ssub8"]
+    fn arm_ssub8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.usub8"]
+    fn arm_usub8(a: i32, b: i32) -> i32;
 
     #[link_name = "llvm.arm.shsub16"]
     fn arm_shsub16(a: i32, b: i32) -> i32;
@@ -337,6 +343,39 @@ pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_shsub8, a, b)
 }
 
+/// Inserts a `USUB8` instruction.
+///
+/// Returns the 8-bit unsigned equivalent of
+///
+/// res\[0\] = a\[0\] - a\[0\]
+/// res\[1\] = a\[1\] - a\[1\]
+/// res\[2\] = a\[2\] - a\[2\]
+/// res\[3\] = a\[3\] - a\[3\]
+///
+/// where [0] is the lower 8 bits and [3] is the upper 8 bits.
+#[inline]
+#[cfg_attr(test, assert_instr(usub8))]
+pub unsafe fn __usub8(a: uint8x4_t, b: uint8x4_t) -> uint8x4_t {
+    dsp_call!(arm_usub8, a, b)
+}
+
+/// Inserts a `SSUB8` instruction.
+///
+/// Returns the 8-bit signed equivalent of
+///
+/// res\[0\] = a\[0\] - a\[0\]
+/// res\[1\] = a\[1\] - a\[1\]
+/// res\[2\] = a\[2\] - a\[2\]
+/// res\[3\] = a\[3\] - a\[3\]
+///
+/// where [0] is the lower 8 bits and [3] is the upper 8 bits.
+/// The GE bits of the APSR are set.
+#[inline]
+#[cfg_attr(test, assert_instr(ssub8))]
+pub unsafe fn __ssub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+    dsp_call!(arm_ssub8, a, b)
+}
+
 /// Signed halving parallel halfword-wise subtraction.
 ///
 /// Returns the 16-bit signed equivalent of
@@ -427,7 +466,7 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::simd::{i16x2, i8x4};
+    use crate::core_arch::simd::{i16x2, i8x4, u8x4};
     use std::mem::transmute;
     use stdsimd_test::simd_test;
 
@@ -592,6 +631,28 @@ mod tests {
             let b = i8x4::new(5, 4, 3, 2);
             let c = i8x4::new(-2, -1, 0, 1);
             let r: i8x4 = dsp_call!(super::__shsub8, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn ssub8() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, 4);
+            let b = i8x4::new(5, 4, 3, 2);
+            let c = i8x4::new(-4, -2, 0, 2);
+            let r: i8x4 = dsp_call!(super::__ssub8, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn usub8() {
+        unsafe {
+            let a = u8x4::new(1, 2, 3, 4);
+            let b = u8x4::new(5, 4, 3, 2);
+            let c = u8x4::new(252, 254, 0, 2);
+            let r: u8x4 = dsp_call!(super::__usub8, a, b);
             assert_eq!(r, c);
         }
     }

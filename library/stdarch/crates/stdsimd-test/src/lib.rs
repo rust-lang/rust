@@ -153,7 +153,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
                 // core_arch/src/acle/simd32
                 "usad8" => 27,
-                "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" => 29,
+                "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
 
                 // Original limit was 20 instructions, but ARM DSP Intrinsics
                 // are exactly 20 instructions long. So, bump the limit to 22
