@@ -4,7 +4,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, Token};
+use crate::parse::token::{self, BinOpToken, Nonterminal, Token};
 use crate::parse::lexer::comments;
 use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
@@ -257,29 +257,33 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match nt.0 {
-            token::NtExpr(ref e)        => expr_to_string(e),
-            token::NtMeta(ref e)        => meta_item_to_string(e),
-            token::NtTy(ref e)          => ty_to_string(e),
-            token::NtPath(ref e)        => path_to_string(e),
-            token::NtItem(ref e)        => item_to_string(e),
-            token::NtBlock(ref e)       => block_to_string(e),
-            token::NtStmt(ref e)        => stmt_to_string(e),
-            token::NtPat(ref e)         => pat_to_string(e),
-            token::NtIdent(e, false)    => ident_to_string(e),
-            token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
-            token::NtLifetime(e)        => ident_to_string(e),
-            token::NtLiteral(ref e)     => expr_to_string(e),
-            token::NtTT(ref tree)       => tt_to_string(tree.clone()),
-            token::NtArm(ref e)         => arm_to_string(e),
-            token::NtImplItem(ref e)    => impl_item_to_string(e),
-            token::NtTraitItem(ref e)   => trait_item_to_string(e),
-            token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
-            token::NtWhereClause(ref e) => where_clause_to_string(e),
-            token::NtArg(ref e)         => arg_to_string(e),
-            token::NtVis(ref e)         => vis_to_string(e),
-            token::NtForeignItem(ref e) => foreign_item_to_string(e),
-        }
+        token::Interpolated(ref nt) => nonterminal_to_string(nt),
+    }
+}
+
+pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
+    match *nt {
+        token::NtExpr(ref e)        => expr_to_string(e),
+        token::NtMeta(ref e)        => meta_item_to_string(e),
+        token::NtTy(ref e)          => ty_to_string(e),
+        token::NtPath(ref e)        => path_to_string(e),
+        token::NtItem(ref e)        => item_to_string(e),
+        token::NtBlock(ref e)       => block_to_string(e),
+        token::NtStmt(ref e)        => stmt_to_string(e),
+        token::NtPat(ref e)         => pat_to_string(e),
+        token::NtIdent(e, false)    => ident_to_string(e),
+        token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
+        token::NtLifetime(e)        => ident_to_string(e),
+        token::NtLiteral(ref e)     => expr_to_string(e),
+        token::NtTT(ref tree)       => tt_to_string(tree.clone()),
+        token::NtArm(ref e)         => arm_to_string(e),
+        token::NtImplItem(ref e)    => impl_item_to_string(e),
+        token::NtTraitItem(ref e)   => trait_item_to_string(e),
+        token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
+        token::NtWhereClause(ref e) => where_clause_to_string(e),
+        token::NtArg(ref e)         => arg_to_string(e),
+        token::NtVis(ref e)         => vis_to_string(e),
+        token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
 }
 

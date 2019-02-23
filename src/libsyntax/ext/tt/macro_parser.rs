@@ -88,6 +88,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -179,7 +180,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
     /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
     /// wants the shared `matches`, one should use `up.matches`.
-    matches: Box<[Rc<NamedMatchVec>]>,
+    matches: Box<[Lrc<NamedMatchVec>]>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
     /// to `matches[match_lo]`.
@@ -218,7 +219,7 @@ struct MatcherPos<'root, 'tt: 'root> {
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
     /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
-        let matches = Rc::make_mut(&mut self.matches[idx]);
+        let matches = Lrc::make_mut(&mut self.matches[idx]);
         matches.push(m);
     }
 }
@@ -295,11 +296,11 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
 }
 
 /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
-fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
+fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
     if len == 0 {
         vec![]
     } else {
-        let empty_matches = Rc::new(SmallVec::new());
+        let empty_matches = Lrc::new(SmallVec::new());
         vec![empty_matches; len]
     }.into_boxed_slice()
 }
@@ -353,8 +354,8 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherP
 /// token tree it was derived from.
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
-    MatchedSeq(Rc<NamedMatchVec>, DelimSpan),
-    MatchedNonterminal(Rc<Nonterminal>),
+    MatchedSeq(Lrc<NamedMatchVec>, DelimSpan),
+    MatchedNonterminal(Lrc<Nonterminal>),
 }
 
 /// Takes a sequence of token trees `ms` representing a matcher which successfully matched input
@@ -561,7 +562,7 @@ fn inner_parse_loop<'root, 'tt>(
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
                         for idx in item.match_cur..item.match_cur + seq.num_captures {
-                            new_item.push_match(idx, MatchedSeq(Rc::new(smallvec![]), sp));
+                            new_item.push_match(idx, MatchedSeq(Lrc::new(smallvec![]), sp));
                         }
                         cur_items.push(new_item);
                     }
@@ -707,7 +708,7 @@ pub fn parse(
                 let matches = eof_items[0]
                     .matches
                     .iter_mut()
-                    .map(|dv| Rc::make_mut(dv).pop().unwrap());
+                    .map(|dv| Lrc::make_mut(dv).pop().unwrap());
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
@@ -780,7 +781,7 @@ pub fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.as_str()))),
+                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, &ident.as_str()))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
@@ -829,7 +830,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "block" => match *token {
             Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -843,9 +844,9 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "path" | "meta" => match *token {
             Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
-                _ => may_be_ident(&nt.0),
+                _ => may_be_ident(&nt),
             },
             _ => false,
         },
@@ -862,12 +863,12 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::ModSep |                     // path
             Token::Lt |                         // path (UFCS constant)
             Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(&nt.0),
+            Token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
         "lifetime" => match *token {
             Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },
