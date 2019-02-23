@@ -17,6 +17,8 @@ use ty::{Region, RegionVid};
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};
 
+mod leak_check;
+
 #[derive(Default)]
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
@@ -814,7 +816,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         new_r
     }
 
-    fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+    pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
             ty::ReScope(..)
             | ty::ReStatic

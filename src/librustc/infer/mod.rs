@@ -935,32 +935,41 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let (
-            ty::SubtypePredicate {
-                a_is_expected,
-                a,
-                b,
-            },
-            _,
-        ) = self.replace_bound_vars_with_placeholders(predicate);
+        Some(self.commit_if_ok(|snapshot| {
+            let (
+                ty::SubtypePredicate {
+                    a_is_expected,
+                    a,
+                    b,
+                },
+                placeholder_map,
+            ) = self.replace_bound_vars_with_placeholders(predicate);
 
-        Some(
-            self.at(cause, param_env)
-                .sub_exp(a_is_expected, a, b)
-                .map(|ok| ok.unit()),
-        )
+            let ok = self.at(cause, param_env)
+                .sub_exp(a_is_expected, a, b)?;
+
+            self.leak_check(false, &placeholder_map, snapshot)?;
+
+            Ok(ok.unit())
+        }))
     }
 
     pub fn region_outlives_predicate(
         &self,
         cause: &traits::ObligationCause<'tcx>,
         predicate: &ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) {
-        let (ty::OutlivesPredicate(r_a, r_b), _) =
-            self.replace_bound_vars_with_placeholders(predicate);
-        let origin =
-            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
-        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+    ) -> UnitResult<'tcx> {
+        self.commit_if_ok(|snapshot| {
+            let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
+                self.replace_bound_vars_with_placeholders(predicate);
+            let origin = SubregionOrigin::from_obligation_cause(
+                cause,
+                || RelateRegionParamBound(cause.span),
+            );
+            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+            self.leak_check(false, &placeholder_map, snapshot)?;
+            Ok(())
+        })
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
@@ -1014,6 +1023,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let region_var = self.borrow_region_constraints()
             .new_region_var(universe, origin);
         self.tcx.mk_region(ty::ReVar(region_var))
+    }
+
+    /// Return the universe that the region `r` was created in.  For
+    /// most regions (e.g., `'static`, named regions from the user,
+    /// etc) this is the root universe U0. For inference variables or
+    /// placeholders, however, it will return the universe which which
+    /// they are associated.
+    fn universe_of_region(
+        &self,
+        r: ty::Region<'tcx>,
+    ) -> ty::UniverseIndex {
+        self.borrow_region_constraints().universe(r)
     }
 
     /// Number of region variables created so far.

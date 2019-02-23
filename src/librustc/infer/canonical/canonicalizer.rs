@@ -191,7 +191,16 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
                 // response should be executing in a fully
                 // canonicalized environment, so there shouldn't be
                 // any other region names it can come up.
-                bug!("unexpected region in query response: `{:?}`", r)
+                //
+                // rust-lang/rust#57464: `impl Trait` can leak local
+                // scopes (in manner violating typeck). Therefore, use
+                // `delay_span_bug` to allow type error over an ICE.
+                ty::tls::with_context(|c| {
+                    c.tcx.sess.delay_span_bug(
+                        syntax_pos::DUMMY_SP,
+                        &format!("unexpected region in query response: `{:?}`", r));
+                });
+                r
             }
         }
     }

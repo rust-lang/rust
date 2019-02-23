@@ -1,9 +1,7 @@
-// Test a `exists<'a> { forall<'b> { 'a = 'b } }` pattern -- which should not compile!
+// Test a case where variance and higher-ranked types interact in surprising ways.
 //
 // In particular, we test this pattern in trait solving, where it is not connected
 // to any part of the source code.
-//
-// compile-pass
 
 trait Trait<T> {}
 
@@ -32,6 +30,9 @@ fn main() {
     //         - `?b: ?a` -- solveable if `?b` is inferred to `'static`
     // - So the subtyping check succeeds, somewhat surprisingly.
     //   This is because we can use `'static`.
+    //
+    // NB. *However*, the reinstated leak-check gives an error here.
 
     foo::<()>();
+    //~^ ERROR not satisfied
 }

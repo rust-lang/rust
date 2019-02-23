@@ -434,6 +434,12 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
             }
+            RegionsInsufficientlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b))
+            }
+            RegionsOverlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
+            }
             RegionsPlaceholderMismatch => RegionsPlaceholderMismatch,
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
@@ -1021,6 +1027,8 @@ EnumTypeFoldableImpl! {
         (ty::error::TypeError::FixedArraySize)(x),
         (ty::error::TypeError::ArgCount),
         (ty::error::TypeError::RegionsDoesNotOutlive)(a, b),
+        (ty::error::TypeError::RegionsInsufficientlyPolymorphic)(a, b),
+        (ty::error::TypeError::RegionsOverlyPolymorphic)(a, b),
         (ty::error::TypeError::RegionsPlaceholderMismatch),
         (ty::error::TypeError::IntMismatch)(x),
         (ty::error::TypeError::FloatMismatch)(x),
