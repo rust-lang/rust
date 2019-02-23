@@ -1610,6 +1610,7 @@ impl_is_zero!(u64, |x| x == 0);
 impl_is_zero!(u128, |x| x == 0);
 impl_is_zero!(usize, |x| x == 0);
 
+impl_is_zero!(bool, |x| x == false);
 impl_is_zero!(char, |x| x == '\0');
 
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
