@@ -322,8 +322,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.track_errors(|| {
-        time(tcx.sess, "type collecting", ||
-             collect::collect_item_types(tcx));
+        time(tcx.sess, "type collecting", || {
+            for &module in tcx.hir().krate().modules.keys() {
+                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
+            }
+        });
     })?;
 
     if tcx.features().rustc_attrs {
@@ -352,9 +355,15 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
 
-    time(tcx.sess, "item-types checking", || check::check_item_types(tcx))?;
+    time(tcx.sess, "item-types checking", || {
+        tcx.sess.track_errors(|| {
+            for &module in tcx.hir().krate().modules.keys() {
+                tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            }
+        })
+    })?;
 
-    time(tcx.sess, "item-bodies checking", || check::check_item_bodies(tcx))?;
+    time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE))?;
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
