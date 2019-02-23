@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::fmt::Write;
 
-use ra_db::{SourceDatabase, salsa::Database};
-use ra_syntax::ast::{self, AstNode};
+use ra_db::{SourceDatabase, salsa::Database, FilePosition};
+use ra_syntax::{algo, ast::{self, AstNode}};
 use test_utils::covers;
 
 use crate::{
@@ -944,6 +944,43 @@ fn test<R>(query_response: Canonical<QueryResponse<R>>) {
 }
 "#,
     );
+}
+
+#[test]
+fn cross_crate_associated_method_call() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+fn test() {
+    let x = other_crate::foo::S::thing();
+    x<|>;
+}
+
+//- /lib.rs
+mod foo {
+    struct S;
+    impl S {
+        fn thing() -> i128 {}
+    }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["other_crate"]),
+        "other_crate": ("/lib.rs", []),
+    });
+    assert_eq!("i128", type_at_pos(&db, pos));
+}
+
+fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
+    let func = source_binder::function_from_position(db, pos).unwrap();
+    let body_syntax_mapping = func.body_syntax_mapping(db);
+    let inference_result = func.infer(db);
+    let (_, syntax) = func.source(db);
+    let node = algo::find_node_at_offset::<ast::Expr>(syntax.syntax(), pos.offset).unwrap();
+    let expr = body_syntax_mapping.node_expr(node).unwrap();
+    let ty = &inference_result[expr];
+    ty.to_string()
 }
 
 fn infer(content: &str) -> String {

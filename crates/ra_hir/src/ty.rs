@@ -1170,6 +1170,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let (def, remaining_index) = resolved.into_inner();
 
+        log::debug!(
+            "path {:?} resolved to {:?} with remaining index {:?}",
+            path,
+            def,
+            remaining_index
+        );
+
         // if the remaining_index is None, we expect the path
         // to be fully resolved, in this case we continue with
         // the default by attempting to `take_values´ from the resolution.
@@ -1190,6 +1197,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // TODO: Keep resolving the segments
                     // if we have more segments to process
                     let segment = &path.segments[remaining_index];
+
+                    log::debug!("looking for path segment: {:?}", segment);
 
                     // Attempt to find an impl_item for the type which has a name matching
                     // the current segment
