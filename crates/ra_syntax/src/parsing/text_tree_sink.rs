@@ -1,13 +1,12 @@
 use std::mem;
 
 use ra_parser::{TreeSink, ParseError};
-use rowan::GreenNodeBuilder;
 
 use crate::{
-    SmolStr, SyntaxError, SyntaxErrorKind, TextUnit, TextRange,
+    SmolStr, SyntaxError, TextUnit, TextRange, SyntaxTreeBuilder,
     SyntaxKind::{self, *},
     parsing::Token,
-    syntax_node::{GreenNode, RaTypes},
+    syntax_node::GreenNode,
 };
 
 /// Bridges the parser with our specific syntax tree representation.
@@ -19,8 +18,7 @@ pub(crate) struct TextTreeSink<'a> {
     text_pos: TextUnit,
     token_pos: usize,
     state: State,
-    errors: Vec<SyntaxError>,
-    inner: GreenNodeBuilder<RaTypes>,
+    inner: SyntaxTreeBuilder,
 }
 
 enum State {
@@ -33,7 +31,7 @@ impl<'a> TreeSink for TextTreeSink<'a> {
     fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_internal(),
+            State::PendingFinish => self.inner.finish_branch(),
             State::Normal => (),
         }
         self.eat_trivias();
@@ -48,12 +46,12 @@ impl<'a> TreeSink for TextTreeSink<'a> {
     fn start_branch(&mut self, kind: SyntaxKind) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => {
-                self.inner.start_internal(kind);
+                self.inner.start_branch(kind);
                 // No need to attach trivias to previous node: there is no
                 // previous node.
                 return;
             }
-            State::PendingFinish => self.inner.finish_internal(),
+            State::PendingFinish => self.inner.finish_branch(),
             State::Normal => (),
         }
 
@@ -73,21 +71,20 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             n_attached_trivias(kind, leading_trivias)
         };
         self.eat_n_trivias(n_trivias - n_attached_trivias);
-        self.inner.start_internal(kind);
+        self.inner.start_branch(kind);
         self.eat_n_trivias(n_attached_trivias);
     }
 
     fn finish_branch(&mut self) {
         match mem::replace(&mut self.state, State::PendingFinish) {
             State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_internal(),
+            State::PendingFinish => self.inner.finish_branch(),
             State::Normal => (),
         }
     }
 
     fn error(&mut self, error: ParseError) {
-        let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), self.text_pos);
-        self.errors.push(error)
+        self.inner.error(error, self.text_pos)
     }
 }
 
@@ -99,8 +96,7 @@ impl<'a> TextTreeSink<'a> {
             text_pos: 0.into(),
             token_pos: 0,
             state: State::PendingStart,
-            errors: Vec::new(),
-            inner: GreenNodeBuilder::new(),
+            inner: SyntaxTreeBuilder::default(),
         }
     }
 
@@ -108,12 +104,12 @@ impl<'a> TextTreeSink<'a> {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingFinish => {
                 self.eat_trivias();
-                self.inner.finish_internal()
+                self.inner.finish_branch()
             }
             State::PendingStart | State::Normal => unreachable!(),
         }
 
-        (self.inner.finish(), self.errors)
+        self.inner.finish_raw()
     }
 
     fn eat_trivias(&mut self) {

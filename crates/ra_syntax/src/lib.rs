@@ -36,7 +36,7 @@ pub use crate::{
     ast::AstNode,
     syntax_error::{SyntaxError, SyntaxErrorKind, Location},
     syntax_text::SyntaxText,
-    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc},
+    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc, SyntaxTreeBuilder},
     ptr::{SyntaxNodePtr, AstPtr},
     parsing::{tokenize, Token},
 };
