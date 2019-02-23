@@ -198,7 +198,8 @@ impl NavigationTarget {
         buf
     }
 
-    fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
+    /// Allows `NavigationTarget` to be created from a `NameOwner`
+    pub(crate) fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range = node.name().map(|it| it.syntax().range());
         NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax())
