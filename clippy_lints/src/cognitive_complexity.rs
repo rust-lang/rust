@@ -1,4 +1,4 @@
-//! calculate cyclomatic complexity and warn about overly complex functions
+//! calculate cognitive complexity and warn about overly complex functions
 
 use rustc::cfg::CFG;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -12,25 +12,25 @@ use syntax::source_map::Span;
 use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for methods with high cyclomatic complexity.
+    /// **What it does:** Checks for methods with high cognitive complexity.
     ///
-    /// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly
-    /// readable. Also LLVM will usually optimize small methods better.
+    /// **Why is this bad?** Methods of high cognitive complexity tend to be hard to
+    /// both read and maintain. Also LLVM will tend to optimize small methods better.
     ///
     /// **Known problems:** Sometimes it's hard to find a way to reduce the
     /// complexity.
     ///
     /// **Example:** No. You'll see it when you get the warning.
-    pub CYCLOMATIC_COMPLEXITY,
+    pub COGNITIVE_COMPLEXITY,
     complexity,
     "functions that should be split up into multiple functions"
 }
 
-pub struct CyclomaticComplexity {
+pub struct CognitiveComplexity {
     limit: LimitStack,
 }
 
-impl CyclomaticComplexity {
+impl CognitiveComplexity {
     pub fn new(limit: u64) -> Self {
         Self {
             limit: LimitStack::new(limit),
@@ -38,17 +38,17 @@ impl CyclomaticComplexity {
     }
 }
 
-impl LintPass for CyclomaticComplexity {
+impl LintPass for CognitiveComplexity {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CYCLOMATIC_COMPLEXITY)
+        lint_array!(COGNITIVE_COMPLEXITY)
     }
 
     fn name(&self) -> &'static str {
-        "CyclomaticComplexity"
+        "CognitiveComplexity"
     }
 }
 
-impl CyclomaticComplexity {
+impl CognitiveComplexity {
     fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
         if in_macro(span) {
             return;
@@ -105,9 +105,9 @@ impl CyclomaticComplexity {
             if rust_cc > self.limit.limit() {
                 span_help_and_lint(
                     cx,
-                    CYCLOMATIC_COMPLEXITY,
+                    COGNITIVE_COMPLEXITY,
                     span,
-                    &format!("the function has a cyclomatic complexity of {}", rust_cc),
+                    &format!("the function has a cognitive complexity of {}", rust_cc),
                     "you could split it up into multiple smaller functions",
                 );
             }
@@ -115,7 +115,7 @@ impl CyclomaticComplexity {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
@@ -132,10 +132,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     }
 
     fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.push_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
     fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
 }
 
@@ -201,7 +201,7 @@ fn report_cc_bug(
 ) {
     span_bug!(
         span,
-        "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
+        "Clippy encountered a bug calculating cognitive complexity: cc = {}, arms = {}, \
          div = {}, shorts = {}, returns = {}. Please file a bug report.",
         cc,
         narms,
@@ -222,12 +222,12 @@ fn report_cc_bug(
     span: Span,
     id: HirId,
 ) {
-    if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
+    if !is_allowed(cx, COGNITIVE_COMPLEXITY, id) {
         cx.sess().span_note_without_error(
             span,
             &format!(
-                "Clippy encountered a bug calculating cyclomatic complexity \
-                 (hide this message with `#[allow(cyclomatic_complexity)]`): \
+                "Clippy encountered a bug calculating cognitive complexity \
+                 (hide this message with `#[allow(cognitive_complexity)]`): \
                  cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
                  Please file a bug report.",
                 cc, narms, div, shorts, returns
