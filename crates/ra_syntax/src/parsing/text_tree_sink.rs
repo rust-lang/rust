@@ -12,8 +12,8 @@ use crate::{
 
 /// Bridges the parser with our specific syntax tree representation.
 ///
-/// `TreeBuilder` also handles attachment of trivia (whitespace) to nodes.
-pub(crate) struct TreeBuilder<'a> {
+/// `TextTreeSink` also handles attachment of trivia (whitespace) to nodes.
+pub(crate) struct TextTreeSink<'a> {
     text: &'a str,
     tokens: &'a [Token],
     text_pos: TextUnit,
@@ -29,7 +29,7 @@ enum State {
     PendingFinish,
 }
 
-impl<'a> TreeSink for TreeBuilder<'a> {
+impl<'a> TreeSink for TextTreeSink<'a> {
     fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => unreachable!(),
@@ -91,9 +91,9 @@ impl<'a> TreeSink for TreeBuilder<'a> {
     }
 }
 
-impl<'a> TreeBuilder<'a> {
-    pub(super) fn new(text: &'a str, tokens: &'a [Token]) -> TreeBuilder<'a> {
-        TreeBuilder {
+impl<'a> TextTreeSink<'a> {
+    pub(super) fn new(text: &'a str, tokens: &'a [Token]) -> TextTreeSink<'a> {
+        TextTreeSink {
             text,
             tokens,
             text_pos: 0.into(),
