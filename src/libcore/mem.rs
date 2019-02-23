@@ -1327,6 +1327,8 @@ impl<T> MaybeUninit<T> {
     /// calling `read_initialized` and then [`into_initialized`]), it is your responsibility
     /// to ensure that that data may indeed be duplicated.
     ///
+    /// [`into_initialized`]: #method.into_initialized
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
