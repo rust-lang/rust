@@ -1,6 +1,6 @@
 use ra_parser::TokenSource;
 use ra_syntax::{
-    AstNode, SyntaxNode, TextRange, SyntaxKind,
+    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr,
     ast, SyntaxKind::*, TextUnit
 };
 
@@ -91,22 +91,71 @@ fn convert_tt(
     Some(res)
 }
 
-struct TtTokenSource;
+struct TtTokenSource {
+    tokens: Vec<Tok>,
+}
+
+struct Tok {
+    kind: SyntaxKind,
+    is_joint_to_next: bool,
+    text: Option<SmolStr>,
+}
 
 impl TtTokenSource {
     fn new(tt: &tt::Subtree) -> TtTokenSource {
-        unimplemented!()
+        let mut res = TtTokenSource { tokens: Vec::new() };
+        res.convert_subtree(tt);
+        res
+    }
+    fn convert_subtree(&mut self, sub: &tt::Subtree) {
+        self.push_delim(sub.delimiter, false);
+        sub.token_trees.iter().for_each(|tt| self.convert_tt(tt));
+        self.push_delim(sub.delimiter, true)
+    }
+    fn convert_tt(&mut self, tt: &tt::TokenTree) {
+        match tt {
+            tt::TokenTree::Leaf(leaf) => self.convert_leaf(leaf),
+            tt::TokenTree::Subtree(sub) => self.convert_subtree(sub),
+        }
+    }
+    fn convert_leaf(&mut self, leaf: &tt::Leaf) {
+        let tok = match leaf {
+            tt::Leaf::Literal(l) => Tok {
+                kind: SyntaxKind::INT_NUMBER, // FIXME
+                is_joint_to_next: false,
+                text: Some(l.text.clone()),
+            },
+            tt::Leaf::Punct(p) => Tok {
+                kind: SyntaxKind::from_char(p.char).unwrap(),
+                is_joint_to_next: p.spacing == tt::Spacing::Joint,
+                text: None,
+            },
+            tt::Leaf::Ident(ident) => {
+                Tok { kind: IDENT, is_joint_to_next: false, text: Some(ident.text.clone()) }
+            }
+        };
+        self.tokens.push(tok)
+    }
+    fn push_delim(&mut self, d: tt::Delimiter, closing: bool) {
+        let kinds = match d {
+            tt::Delimiter::Parenthesis => [L_PAREN, R_PAREN],
+            tt::Delimiter::Brace => [L_CURLY, R_CURLY],
+            tt::Delimiter::Bracket => [L_BRACK, R_BRACK],
+            tt::Delimiter::None => return,
+        };
+        let tok = Tok { kind: kinds[closing as usize], is_joint_to_next: false, text: None };
+        self.tokens.push(tok)
     }
 }
 
 impl TokenSource for TtTokenSource {
     fn token_kind(&self, pos: usize) -> SyntaxKind {
-        unimplemented!()
+        self.tokens[pos].kind
     }
     fn is_token_joint_to_next(&self, pos: usize) -> bool {
-        unimplemented!()
+        self.tokens[pos].is_joint_to_next
     }
     fn is_keyword(&self, pos: usize, kw: &str) -> bool {
-        unimplemented!()
+        self.tokens[pos].text.as_ref().map(|it| it.as_str()) == Some(kw)
     }
 }
