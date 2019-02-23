@@ -129,17 +129,26 @@ impl TtTokenSource {
                 is_joint_to_next: false,
                 text: l.text.clone(),
             },
-            tt::Leaf::Punct(p) => Tok {
-                kind: SyntaxKind::from_char(p.char).unwrap(),
-                is_joint_to_next: p.spacing == tt::Spacing::Joint,
-                text: {
+            tt::Leaf::Punct(p) => {
+                let kind = match p.char {
+                    // lexer may produce combpund tokens for these ones
+                    '.' => DOT,
+                    ':' => COLON,
+                    '=' => EQ,
+                    '!' => EXCL,
+                    '-' => MINUS,
+                    c => SyntaxKind::from_char(c).unwrap(),
+                };
+                let text = {
                     let mut buf = [0u8; 4];
                     let s: &str = p.char.encode_utf8(&mut buf);
                     SmolStr::new(s)
-                },
-            },
+                };
+                Tok { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
+            }
             tt::Leaf::Ident(ident) => {
-                Tok { kind: IDENT, is_joint_to_next: false, text: ident.text.clone() }
+                let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
+                Tok { kind, is_joint_to_next: false, text: ident.text.clone() }
             }
         };
         self.tokens.push(tok)
@@ -161,7 +170,11 @@ impl TtTokenSource {
 
 impl TokenSource for TtTokenSource {
     fn token_kind(&self, pos: usize) -> SyntaxKind {
-        self.tokens[pos].kind
+        if let Some(tok) = self.tokens.get(pos) {
+            tok.kind
+        } else {
+            SyntaxKind::EOF
+        }
     }
     fn is_token_joint_to_next(&self, pos: usize) -> bool {
         self.tokens[pos].is_joint_to_next
