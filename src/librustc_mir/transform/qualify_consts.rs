@@ -238,7 +238,7 @@ trait Qualif {
                 Self::in_operand(cx, lhs) || Self::in_operand(cx, rhs)
             }
 
-            // TODO: special-case raw reborrows?
+            // special-case raw reborrows?
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
                 if let Place::Projection(ref proj) = *place {
@@ -900,8 +900,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index)))
-                        | StatementKind::Assign(_, box Rvalue::AddressOf(_, Place::Local(index))) => {
+                        StatementKind::Assign(_, box Rvalue::AddressOf(_, Place::Local(index)))
+                        | StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index))) => {
                             promoted_temps.insert(index);
                         }
                         _ => {}
@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Check nested operands and places.
-        // TODO AddressOf?
+        // AddressOf?
         if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut is_reborrow = false;
