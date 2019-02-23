@@ -131,10 +131,6 @@ mod tests {
             r#"
             enum A {
                 As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
-                Es{x: usize, y: usize}
             }
 
             fn foo(a: &A) {
@@ -145,19 +141,11 @@ mod tests {
             r#"
             enum A {
                 As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
-                Es{x: usize, y: usize}
             }
 
             fn foo(a: &A) {
                 match <|>a {
                     A::As => (),
-                    A::Bs => (),
-                    A::Cs(_) => (),
-                    A::Ds(_, _) => (),
-                    A::Es{x, y} => (),
                 }
             }
             "#,
@@ -167,10 +155,6 @@ mod tests {
             fill_match_arms,
             r#"
             enum A {
-                As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
                 Es{x: usize, y: usize}
             }
 
@@ -181,19 +165,11 @@ mod tests {
             "#,
             r#"
             enum A {
-                As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
                 Es{x: usize, y: usize}
             }
 
             fn foo(a: &mut A) {
                 match <|>a {
-                    A::As => (),
-                    A::Bs => (),
-                    A::Cs(_) => (),
-                    A::Ds(_, _) => (),
                     A::Es{x, y} => (),
                 }
             }
