@@ -483,6 +483,10 @@ impl Function {
         db.body_hir(*self)
     }
 
+    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def((*self).into(), Namespace::Values)
+    }
+
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
         let syntax_mapping = db.body_syntax_mapping(*self);
