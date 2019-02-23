@@ -5,7 +5,7 @@ use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
 use syntax_pos::DUMMY_SP;
 
-use core::DocAccessLevels;
+use crate::core::DocAccessLevels;
 
 use super::*;
 

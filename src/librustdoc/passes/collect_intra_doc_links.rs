@@ -10,19 +10,19 @@ use syntax_pos::DUMMY_SP;
 
 use std::ops::Range;
 
-use core::DocContext;
-use fold::DocFolder;
-use html::markdown::markdown_links;
+use crate::core::DocContext;
+use crate::fold::DocFolder;
+use crate::html::markdown::markdown_links;
+use crate::clean::*;
+use crate::passes::{look_for_tests, Pass};
 
-use clean::*;
-use passes::{look_for_tests, Pass};
 use super::span_of_attrs;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
     Pass::early("collect-intra-doc-links", collect_intra_doc_links,
                 "reads a crate's documentation to resolve intra-doc-links");
 
-pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext) -> Crate {
+pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
         krate
     } else {
@@ -423,7 +423,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
 }
 
 /// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
+fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
@@ -451,7 +451,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
 /// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
 /// line containing the failure as a note as well.
 fn resolution_failure(
-    cx: &DocContext,
+    cx: &DocContext<'_, '_, '_>,
     attrs: &Attributes,
     path_str: &str,
     dox: &str,
@@ -493,7 +493,7 @@ fn resolution_failure(
     diag.emit();
 }
 
-fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
+fn ambiguity_error(cx: &DocContext<'_, '_, '_>, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
@@ -549,7 +549,7 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()> {
+fn handle_variant(cx: &DocContext<'_, '_, '_>, def: Def) -> Result<(Def, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
     let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {

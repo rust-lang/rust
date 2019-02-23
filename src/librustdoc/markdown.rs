@@ -1,4 +1,3 @@
-use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -9,13 +8,12 @@ use testing;
 use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
 
-use externalfiles::{LoadStringError, load_string};
-
-use config::{Options, RenderOptions};
-use html::escape::Escape;
-use html::markdown;
-use html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
-use test::{TestOptions, Collector};
+use crate::externalfiles::{LoadStringError, load_string};
+use crate::config::{Options, RenderOptions};
+use crate::html::escape::Escape;
+use crate::html::markdown;
+use crate::html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
+use crate::test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {

@@ -1,7 +1,8 @@
-use clean::{self, DocFragment, Item};
-use fold;
-use fold::DocFolder;
-use passes::Pass;
+use crate::clean::{self, DocFragment, Item};
+use crate::fold;
+use crate::fold::{DocFolder};
+use crate::passes::Pass;
+
 use std::mem::replace;
 
 pub const COLLAPSE_DOCS: Pass =

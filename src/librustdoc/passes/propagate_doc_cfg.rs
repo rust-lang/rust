@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use clean::{Crate, Item};
-use clean::cfg::Cfg;
-use fold::DocFolder;
-use passes::Pass;
+use crate::clean::{Crate, Item};
+use crate::clean::cfg::Cfg;
+use crate::fold::DocFolder;
+use crate::passes::Pass;
 
 pub const PROPAGATE_DOC_CFG: Pass =
     Pass::late("propagate-doc-cfg", propagate_doc_cfg,
