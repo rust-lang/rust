@@ -1,6 +1,6 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    AstNode, ast::{self, NameOwner},
+    AstNode, ast,
     algo::{find_node_at_offset, visit::{visitor, Visitor}},
     SyntaxNode,
 };
@@ -136,22 +136,18 @@ fn name_definition(
 }
 
 fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
-    fn to_nav_target<N: NameOwner>(node: &N, file_id: FileId) -> Option<NavigationTarget> {
-        Some(NavigationTarget::from_named(file_id, node))
-    }
-
     visitor()
-        .visit(|n: &ast::StructDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::EnumDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::EnumVariant| to_nav_target(n, file_id))
-        .visit(|n: &ast::FnDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::TypeDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::ConstDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::StaticDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::TraitDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::NamedFieldDef| to_nav_target(n, file_id))
-        .visit(|n: &ast::Module| to_nav_target(n, file_id))
-        .accept(node)?
+        .visit(|node: &ast::StructDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::EnumDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::EnumVariant| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::FnDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::TypeDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::ConstDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::StaticDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::TraitDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::NamedFieldDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::Module| NavigationTarget::from_named(file_id, node))
+        .accept(node)
 }
 
 #[cfg(test)]
