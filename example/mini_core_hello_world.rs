@@ -137,6 +137,8 @@ fn main() {
         puts(*world as *const str as *const u8);
         world as Box<SomeTrait>;
 
+        assert_eq!(intrinsics::bitreverse(0b10101000u8), 0b00010101u8);
+
         assert_eq!(intrinsics::size_of_val(hello) as u8, 6);
 
         let chars = &['C', 'h', 'a', 'r', 's'];

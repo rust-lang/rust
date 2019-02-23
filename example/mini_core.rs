@@ -348,6 +348,7 @@ pub mod intrinsics {
         pub fn uninit<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
+        pub fn bitreverse<T>(x: T) -> T;
     }
 }
 
