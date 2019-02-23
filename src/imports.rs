@@ -249,7 +249,23 @@ impl UseTree {
             let lo = attrs.last().as_ref()?.span().hi();
             let hi = self.span.lo();
             let span = mk_sp(lo, hi);
-            combine_strs_with_missing_comments(context, &attr_str, &use_str, span, shape, false)
+
+            let allow_extend = if attrs.len() == 1 {
+                let line_len = attr_str.len() + 1 + use_str.len();
+                !attrs.first().unwrap().is_sugared_doc
+                    && context.config.inline_attribute_width() >= line_len
+            } else {
+                false
+            };
+
+            combine_strs_with_missing_comments(
+                context,
+                &attr_str,
+                &use_str,
+                span,
+                shape,
+                allow_extend,
+            )
         } else {
             Some(use_str)
         }

@@ -83,7 +83,22 @@ fn rewrite_reorderable_item(
         _ => return None,
     };
 
-    combine_strs_with_missing_comments(context, &attrs_str, &item_str, missed_span, shape, false)
+    let allow_extend = if attrs.len() == 1 {
+        let line_len = attrs_str.len() + 1 + item_str.len();
+        !attrs.first().unwrap().is_sugared_doc
+            && context.config.inline_attribute_width() >= line_len
+    } else {
+        false
+    };
+
+    combine_strs_with_missing_comments(
+        context,
+        &attrs_str,
+        &item_str,
+        missed_span,
+        shape,
+        allow_extend,
+    )
 }
 
 /// Rewrite a list of items with reordering. Every item in `items` must have
