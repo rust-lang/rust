@@ -841,47 +841,6 @@ index 2c9bf24..af2ab6f 100644
  
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
-diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
-index 8c5dde7..8122120 100644
---- a/src/libcore/sync/atomic.rs
-+++ b/src/libcore/sync/atomic.rs
-@@ -2003,36 +2003,6 @@ atomic_int! {
-     "AtomicU64::new(0)",
-     u64 AtomicU64 ATOMIC_U64_INIT
- }
--#[cfg(target_has_atomic = "128")]
--atomic_int! {
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    "i128", "../../../std/primitive.i128.html",
--    "#![feature(integer_atomics)]\n\n",
--    atomic_min, atomic_max,
--    16,
--    "AtomicI128::new(0)",
--    i128 AtomicI128 ATOMIC_I128_INIT
--}
--#[cfg(target_has_atomic = "128")]
--atomic_int! {
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    unstable(feature = "integer_atomics", issue = "32976"),
--    "u128", "../../../std/primitive.u128.html",
--    "#![feature(integer_atomics)]\n\n",
--    atomic_umin, atomic_umax,
--    16,
--    "AtomicU128::new(0)",
--    u128 AtomicU128 ATOMIC_U128_INIT
--}
- #[cfg(target_pointer_width = "16")]
- macro_rules! ptr_width {
-     () => { 2 }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
 index ac7e117..0dfd856 100644
 --- a/src/libcore/time.rs
