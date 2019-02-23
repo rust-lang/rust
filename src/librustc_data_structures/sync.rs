@@ -280,21 +280,22 @@ cfg_if! {
 
         #[macro_export]
         macro_rules! parallel {
-            (impl [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
-                parallel!(impl [$block, $($c,)*] [$($rest),*])
+            (impl $fblock:tt [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
+                parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
-            (impl [$($blocks:tt,)*] []) => {
+            (impl $fblock:tt [$($blocks:tt,)*] []) => {
                 ::rustc_data_structures::sync::scope(|s| {
                     $(
                         s.spawn(|_| $blocks);
                     )*
+                    $fblock;
                 })
             };
-            ($($blocks:tt),*) => {
+            ($fblock:tt, $($blocks:tt),*) => {
                 // Reverse the order of the blocks since Rayon executes them in reverse order
                 // when using a single thread. This ensures the execution order matches that
                 // of a single threaded rustc
-                parallel!(impl [] [$($blocks),*]);
+                parallel!(impl $fblock [] [$($blocks),*]);
             };
         }
 
