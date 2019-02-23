@@ -2234,7 +2234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir_id, def_id, substs, user_self_ty, self.tag(),
         );
 
-        if !substs.is_noop() {
+        if Self::can_contain_user_lifetime_bounds((substs, user_self_ty)) {
             let canonicalized = self.infcx.canonicalize_user_type_annotation(
                 &UserType::TypeOf(def_id, UserSubsts {
                     substs,
@@ -2429,21 +2429,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
-        // If the type given by the user has free regions, save it for
-        // later, since NLL would like to enforce those. Also pass in
-        // types that involve projections, since those can resolve to
-        // `'static` bounds (modulo #54940, which hopefully will be
-        // fixed by the time you see this comment, dear reader,
-        // although I have my doubts). Also pass in types with inference
-        // types, because they may be repeated. Other sorts of things
-        // are already sufficiently enforced with erased regions. =)
-        if ty.has_free_regions() || ty.has_projections() || ty.has_infer_types() {
+        if Self::can_contain_user_lifetime_bounds(ty) {
             let c_ty = self.infcx.canonicalize_response(&UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.tables.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
         ty
+    }
+
+    // If the type given by the user has free regions, save it for later, since
+    // NLL would like to enforce those. Also pass in types that involve
+    // projections, since those can resolve to `'static` bounds (modulo #54940,
+    // which hopefully will be fixed by the time you see this comment, dear
+    // reader, although I have my doubts). Also pass in types with inference
+    // types, because they may be repeated. Other sorts of things are already
+    // sufficiently enforced with erased regions. =)
+    fn can_contain_user_lifetime_bounds<T>(t: T) -> bool
+    where
+        T: TypeFoldable<'tcx>
+    {
+        t.has_free_regions() || t.has_projections() || t.has_infer_types()
     }
 
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
