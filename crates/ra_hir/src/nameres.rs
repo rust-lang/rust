@@ -642,7 +642,11 @@ impl ItemMap {
                         log::debug!("resolving {:?} in other crate", path);
                         let item_map = db.item_map(module.krate);
                         let (def, s) = item_map.resolve_path(db, *module, &path);
-                        return ResolvePathResult::with(def, ReachedFixedPoint::Yes, s);
+                        return ResolvePathResult::with(
+                            def,
+                            ReachedFixedPoint::Yes,
+                            s.map(|s| s + i),
+                        );
                     }
 
                     match self[module.module_id].items.get(&segment.name) {
