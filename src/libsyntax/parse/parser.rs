@@ -1184,8 +1184,10 @@ impl<'a> Parser<'a> {
         match ate {
             Some(_) => {
                 // See doc comment for `unmatched_angle_bracket_count`.
-                self.unmatched_angle_bracket_count -= 1;
-                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                if self.unmatched_angle_bracket_count > 0 {
+                    self.unmatched_angle_bracket_count -= 1;
+                    debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                }
 
                 Ok(())
             },
@@ -2248,8 +2250,10 @@ impl<'a> Parser<'a> {
 
         // See doc comment for `unmatched_angle_bracket_count`.
         self.expect(&token::Gt)?;
-        self.unmatched_angle_bracket_count -= 1;
-        debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        if self.unmatched_angle_bracket_count > 0 {
+            self.unmatched_angle_bracket_count -= 1;
+            debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        }
 
         self.expect(&token::ModSep)?;
 
