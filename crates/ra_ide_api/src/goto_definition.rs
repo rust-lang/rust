@@ -1,7 +1,8 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     AstNode, ast,
-    algo::find_node_at_offset,
+    algo::{find_node_at_offset, visit::{visitor, Visitor}},
+    SyntaxNode,
 };
 use test_utils::tested_by;
 use hir::Resolution;
@@ -114,7 +115,9 @@ fn name_definition(
     file_id: FileId,
     name: &ast::Name,
 ) -> Option<Vec<NavigationTarget>> {
-    if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
+    let parent = name.syntax().parent()?;
+
+    if let Some(module) = ast::Module::cast(&parent) {
         if module.has_semi() {
             if let Some(child_module) =
                 hir::source_binder::module_from_declaration(db, file_id, module)
@@ -124,7 +127,27 @@ fn name_definition(
             }
         }
     }
+
+    if let Some(nav) = named_target(file_id, &parent) {
+        return Some(vec![nav]);
+    }
+
     None
+}
+
+fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
+    visitor()
+        .visit(|node: &ast::StructDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::EnumDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::EnumVariant| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::FnDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::TypeDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::ConstDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::StaticDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::TraitDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::NamedFieldDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::Module| NavigationTarget::from_named(file_id, node))
+        .accept(node)
 }
 
 #[cfg(test)]
@@ -229,6 +252,100 @@ mod tests {
             }
             ",
             "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_when_used_on_definition_name_itself() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo<|> { value: u32 }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 25) [7; 10)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            struct Foo {
+                field<|>: string,
+            }
+            "#,
+            "field NAMED_FIELD_DEF FileId(1) [17; 30) [17; 22)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            fn foo_test<|>() {
+            }
+            ",
+            "foo_test FN_DEF FileId(1) [0; 17) [3; 11)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo<|> {
+                Variant,
+            }
+            ",
+            "Foo ENUM_DEF FileId(1) [0; 25) [5; 8)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Variant1,
+                Variant2<|>,
+                Variant3,
+            }
+            ",
+            "Variant2 ENUM_VARIANT FileId(1) [29; 37) [29; 37)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            static inner<|>: &str = "";
+            "#,
+            "inner STATIC_DEF FileId(1) [0; 24) [7; 12)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            const inner<|>: &str = "";
+            "#,
+            "inner CONST_DEF FileId(1) [0; 23) [6; 11)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            type Thing<|> = Option<()>;
+            "#,
+            "Thing TYPE_DEF FileId(1) [0; 24) [5; 10)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            trait Foo<|> {
+            }
+            "#,
+            "Foo TRAIT_DEF FileId(1) [0; 13) [6; 9)",
+        );
+
+        check_goto(
+            r#"
+            //- /lib.rs
+            mod bar<|> {
+            }
+            "#,
+            "bar MODULE FileId(1) [0; 11) [4; 7)",
         );
     }
 }

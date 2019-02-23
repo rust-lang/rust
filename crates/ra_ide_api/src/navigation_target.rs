@@ -67,7 +67,7 @@ impl NavigationTarget {
             name: symbol.name.clone(),
             kind: symbol.ptr.kind(),
             full_range: symbol.ptr.range(),
-            focus_range: None,
+            focus_range: symbol.name_range,
             container_name: symbol.container_name.clone(),
         }
     }
@@ -193,12 +193,13 @@ impl NavigationTarget {
             buf.push_str(&format!(" {:?}", focus_range))
         }
         if let Some(container_name) = self.container_name() {
-            buf.push_str(&format!(" {:?}", container_name))
+            buf.push_str(&format!(" {}", container_name))
         }
         buf
     }
 
-    fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
+    /// Allows `NavigationTarget` to be created from a `NameOwner`
+    pub(crate) fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range = node.name().map(|it| it.syntax().range());
         NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax())

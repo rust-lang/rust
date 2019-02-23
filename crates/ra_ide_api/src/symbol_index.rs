@@ -33,6 +33,7 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
     WalkEvent,
+    TextRange,
 };
 use ra_db::{
     SourceRootId, SourceDatabase,
@@ -70,7 +71,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
         let node = find_covering_node(source_file.syntax(), text_range);
         let ptr = SyntaxNodePtr::new(node);
         // TODO: Should we get container name for macro symbols?
-        symbols.push(FileSymbol { file_id, name, ptr, container_name: None })
+        symbols.push(FileSymbol { file_id, name, ptr, name_range: None, container_name: None })
     }
 
     Arc::new(SymbolIndex::new(symbols))
@@ -207,6 +208,7 @@ pub(crate) struct FileSymbol {
     pub(crate) file_id: FileId,
     pub(crate) name: SmolStr,
     pub(crate) ptr: SyntaxNodePtr,
+    pub(crate) name_range: Option<TextRange>,
     pub(crate) container_name: Option<SmolStr>,
 }
 
@@ -236,12 +238,14 @@ fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec
     symbols
 }
 
-fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr)> {
-    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, SyntaxNodePtr)> {
-        let name = node.name()?.text().clone();
+fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
+    fn decl<N: NameOwner>(node: &N) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
+        let name = node.name()?;
+        let name_range = name.syntax().range();
+        let name = name.text().clone();
         let ptr = SyntaxNodePtr::new(node.syntax());
 
-        Some((name, ptr))
+        Some((name, ptr, name_range))
     }
     visitor()
         .visit(decl::<ast::FnDef>)
@@ -256,5 +260,11 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr)> {
 }
 
 fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
-    to_symbol(node).map(move |(name, ptr)| FileSymbol { name, ptr, file_id, container_name: None })
+    to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
+        name,
+        ptr,
+        file_id,
+        name_range: Some(name_range),
+        container_name: None,
+    })
 }
