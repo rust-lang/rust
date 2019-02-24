@@ -1,6 +1,6 @@
 //! Clippy wrappers around rustc's diagnostic functions.
 
-use crate::reexport::*;
+use rustc::hir::HirId;
 use rustc::lint::{LateContext, Lint, LintContext};
 use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
 use std::env;
@@ -134,19 +134,21 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     db.docs_link(lint);
 }
 
-pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: NodeId, sp: Span, msg: &str) {
-    DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg)).docs_link(lint);
+pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: HirId, sp: Span, msg: &str) {
+    let node_id = cx.tcx.hir().hir_to_node_id(node);
+    DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node_id, sp, msg)).docs_link(lint);
 }
 
 pub fn span_lint_node_and_then(
     cx: &LateContext<'_, '_>,
     lint: &'static Lint,
-    node: NodeId,
+    node: HirId,
     sp: Span,
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
-    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg));
+    let node_id = cx.tcx.hir().hir_to_node_id(node);
+    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node_id, sp, msg));
     f(&mut db.0);
     db.docs_link(lint);
 }

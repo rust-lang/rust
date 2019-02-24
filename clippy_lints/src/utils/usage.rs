@@ -63,19 +63,19 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
 
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt.cat)
         }
     }
 
-    fn mutate(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         self.update(&cmt.cat)
     }
 

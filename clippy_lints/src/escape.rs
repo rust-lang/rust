@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if let Move(DirectRefMove) = mode {
                 // moved out or in. clearly can't be localized
@@ -150,7 +150,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn borrow(
         &mut self,
-        _: NodeId,
+        _: HirId,
         _: Span,
         cmt: &cmt_<'tcx>,
         _: ty::Region<'_>,
@@ -178,7 +178,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
-    fn mutate(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: MutateMode) {}
+    fn mutate(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: MutateMode) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

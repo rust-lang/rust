@@ -126,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
 }
 
 fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_node(expr.id);
-    let parent_node = cx.tcx.hir().get(parent_id);
+    let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+    let parent_node = cx.tcx.hir().get_by_hir_id(parent_id);
 
     if let rustc::hir::Node::Expr(e) = parent_node {
         if let ExprKind::If(_, _, _) = e.node {

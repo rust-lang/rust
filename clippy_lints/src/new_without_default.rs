@@ -110,7 +110,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                         let name = impl_item.ident.name;
-                        let id = impl_item.id;
+                        let id = impl_item.hir_id;
+                        let node_id = cx.tcx.hir().hir_to_node_id(id);
                         if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
@@ -128,11 +129,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             // impl of `Default`
                             return;
                         }
-                        if sig.decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
-                            let self_did = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent(id));
+                        if sig.decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(node_id) {
+                            let self_did = cx.tcx.hir().local_def_id_from_hir_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_did);
                             if_chain! {
-                                if same_tys(cx, self_ty, return_ty(cx, id));
+                                if same_tys(cx, self_ty, return_ty(cx, node_id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
                                 then {
                                     if self.impling_types.is_none() {

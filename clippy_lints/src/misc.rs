@@ -460,7 +460,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn check_nan(cx: &LateContext<'_, '_>, path: &Path, expr: &Expr) {
-    if !in_constant(cx, expr.id) {
+    if !in_constant(cx, expr.hir_id) {
         if let Some(seg) = path.segments.last() {
             if seg.ident.name == "NAN" {
                 span_lint(
@@ -615,7 +615,7 @@ fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr, ty: &Ty) {
         if let ExprKind::Lit(ref lit) = e.node;
         if let LitKind::Int(value, ..) = lit.node;
         if value == 0;
-        if !in_constant(cx, e.id);
+        if !in_constant(cx, e.hir_id);
         then {
             let msg = match mutbl {
                 Mutability::MutMutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",

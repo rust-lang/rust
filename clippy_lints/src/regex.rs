@@ -7,7 +7,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashSet;
 use std::convert::TryFrom;
-use syntax::ast::{LitKind, NodeId, StrStyle};
+use syntax::ast::{LitKind, StrStyle};
 use syntax::source_map::{BytePos, Span};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
@@ -69,7 +69,7 @@ declare_clippy_lint! {
 #[derive(Clone, Default)]
 pub struct Pass {
     spans: FxHashSet<Span>,
-    last: Option<NodeId>,
+    last: Option<HirId>,
 }
 
 impl LintPass for Pass {
@@ -102,13 +102,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                               Please use `Regex::new(_)`, which is faster for now.");
                     self.spans.insert(span);
                 }
-                self.last = Some(block.id);
+                self.last = Some(block.hir_id);
             }
         }
     }
 
     fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
-        if self.last.map_or(false, |id| block.id == id) {
+        if self.last.map_or(false, |id| block.hir_id == id) {
             self.last = None;
         }
     }

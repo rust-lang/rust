@@ -186,13 +186,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
     let map = &vis.cx.tcx.hir();
-    let mut cur_id = vis.write_expr.id;
+    let mut cur_id = vis.write_expr.hir_id;
     loop {
-        let parent_id = map.get_parent_node(cur_id);
+        let parent_id = map.get_parent_node_by_hir_id(cur_id);
         if parent_id == cur_id {
             break;
         }
-        let parent_node = match map.find(parent_id) {
+        let parent_node = match map.find_by_hir_id(parent_id) {
             Some(parent) => parent,
             None => break,
         };
@@ -224,7 +224,7 @@ enum StopEarly {
 }
 
 fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
-    if expr.id == vis.last_expr.id {
+    if expr.hir_id == vis.last_expr.hir_id {
         return StopEarly::KeepGoing;
     }
 
@@ -298,7 +298,7 @@ struct ReadVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if expr.id == self.last_expr.id {
+        if expr.hir_id == self.last_expr.hir_id {
             return;
         }
 
@@ -355,7 +355,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, _) = parent.node {
-            return lhs.id == expr.id;
+            return lhs.hir_id == expr.hir_id;
         }
     }
     false

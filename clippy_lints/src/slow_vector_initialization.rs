@@ -6,7 +6,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast::{LitKind, NodeId};
+use syntax::ast::LitKind;
 use syntax_pos::symbol::Symbol;
 
 /// **What it does:** Checks slow zero-filled vector initialization
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Self::search_initialization(cx, vi, expr.id);
+                Self::search_initialization(cx, vi, expr.hir_id);
             }
         }
     }
@@ -107,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Self::search_initialization(cx, vi, stmt.id);
+                Self::search_initialization(cx, vi, stmt.hir_id);
             }
         }
     }
@@ -132,7 +132,7 @@ impl Pass {
     }
 
     /// Search initialization for the given vector
-    fn search_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: NodeId) {
+    fn search_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: HirId) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
 
         if enclosing_body.is_none() {
@@ -317,7 +317,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         // Skip all the expressions previous to the vector initialization
-        if self.vec_alloc.allocation_expr.id == expr.id {
+        if self.vec_alloc.allocation_expr.hir_id == expr.hir_id {
             self.initialization_found = true;
         }
 

@@ -6,7 +6,6 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast;
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -140,12 +139,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             return; // useless if the trait doesn't exist
                                         };
                                         // check that we are not inside an `impl AssignOp` of this exact operation
-                                        let parent_fn = cx.tcx.hir().get_parent(e.id);
-                                        let parent_impl = cx.tcx.hir().get_parent(parent_fn);
+                                        let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
+                                        let parent_impl = cx.tcx.hir().get_parent_item(parent_fn);
                                         // the crate node is the only one that is not in the map
                                         if_chain! {
-                                            if parent_impl != ast::CRATE_NODE_ID;
-                                            if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
+                                            if parent_impl != hir::CRATE_HIR_ID;
+                                            if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
                                             if let hir::ItemKind::Impl(_, _, _, _, Some(trait_ref), _, _) =
                                                 &item.node;
                                             if trait_ref.path.def.def_id() == trait_id;

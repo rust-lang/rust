@@ -266,7 +266,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             return;
         };
         let ty = cx.tables.expr_ty(ex);
-        if ty.sty != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.id) {
+        if ty.sty != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
