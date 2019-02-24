@@ -1,0 +1,14 @@
+// run-rustfix
+
+trait Tr {} //~ ERROR negative trait bounds are not supported
+trait Tr2: SuperA {} //~ ERROR negative trait bounds are not supported
+trait Tr3: SuperB {} //~ ERROR negative trait bounds are not supported
+trait Tr4: SuperB + SuperD {}
+trait Tr5 {}
+
+trait SuperA {}
+trait SuperB {}
+trait SuperC {}
+trait SuperD {}
+
+fn main() {}
