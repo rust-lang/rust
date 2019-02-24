@@ -834,6 +834,142 @@ pub enum ExprKind<'a> {
     BinExpr(&'a BinExpr),
     Literal(&'a Literal),
 }
+impl<'a> From<&'a TupleExpr> for &'a Expr {
+    fn from(n: &'a TupleExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ArrayExpr> for &'a Expr {
+    fn from(n: &'a ArrayExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ParenExpr> for &'a Expr {
+    fn from(n: &'a ParenExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PathExpr> for &'a Expr {
+    fn from(n: &'a PathExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a LambdaExpr> for &'a Expr {
+    fn from(n: &'a LambdaExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a IfExpr> for &'a Expr {
+    fn from(n: &'a IfExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a LoopExpr> for &'a Expr {
+    fn from(n: &'a LoopExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ForExpr> for &'a Expr {
+    fn from(n: &'a ForExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a WhileExpr> for &'a Expr {
+    fn from(n: &'a WhileExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ContinueExpr> for &'a Expr {
+    fn from(n: &'a ContinueExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a BreakExpr> for &'a Expr {
+    fn from(n: &'a BreakExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a Label> for &'a Expr {
+    fn from(n: &'a Label) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a BlockExpr> for &'a Expr {
+    fn from(n: &'a BlockExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ReturnExpr> for &'a Expr {
+    fn from(n: &'a ReturnExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a MatchExpr> for &'a Expr {
+    fn from(n: &'a MatchExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a StructLit> for &'a Expr {
+    fn from(n: &'a StructLit) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a CallExpr> for &'a Expr {
+    fn from(n: &'a CallExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a IndexExpr> for &'a Expr {
+    fn from(n: &'a IndexExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a MethodCallExpr> for &'a Expr {
+    fn from(n: &'a MethodCallExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a FieldExpr> for &'a Expr {
+    fn from(n: &'a FieldExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TryExpr> for &'a Expr {
+    fn from(n: &'a TryExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a CastExpr> for &'a Expr {
+    fn from(n: &'a CastExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a RefExpr> for &'a Expr {
+    fn from(n: &'a RefExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PrefixExpr> for &'a Expr {
+    fn from(n: &'a PrefixExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a RangeExpr> for &'a Expr {
+    fn from(n: &'a RangeExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a BinExpr> for &'a Expr {
+    fn from(n: &'a BinExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a Literal> for &'a Expr {
+    fn from(n: &'a Literal) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for Expr {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -1375,6 +1511,22 @@ pub enum ImplItemKind<'a> {
     TypeDef(&'a TypeDef),
     ConstDef(&'a ConstDef),
 }
+impl<'a> From<&'a FnDef> for &'a ImplItem {
+    fn from(n: &'a FnDef) -> &'a ImplItem {
+        ImplItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TypeDef> for &'a ImplItem {
+    fn from(n: &'a TypeDef) -> &'a ImplItem {
+        ImplItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ConstDef> for &'a ImplItem {
+    fn from(n: &'a ConstDef) -> &'a ImplItem {
+        ImplItem::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for ImplItem {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -1778,6 +1930,57 @@ pub enum LiteralExprKind<'a> {
     TrueKw(&'a TrueKw),
     FalseKw(&'a FalseKw),
 }
+impl<'a> From<&'a String> for &'a LiteralExpr {
+    fn from(n: &'a String) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ByteString> for &'a LiteralExpr {
+    fn from(n: &'a ByteString) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a RawString> for &'a LiteralExpr {
+    fn from(n: &'a RawString) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a RawByteString> for &'a LiteralExpr {
+    fn from(n: &'a RawByteString) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a Char> for &'a LiteralExpr {
+    fn from(n: &'a Char) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a Byte> for &'a LiteralExpr {
+    fn from(n: &'a Byte) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a IntNumber> for &'a LiteralExpr {
+    fn from(n: &'a IntNumber) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a FloatNumber> for &'a LiteralExpr {
+    fn from(n: &'a FloatNumber) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TrueKw> for &'a LiteralExpr {
+    fn from(n: &'a TrueKw) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a FalseKw> for &'a LiteralExpr {
+    fn from(n: &'a FalseKw) -> &'a LiteralExpr {
+        LiteralExpr::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for LiteralExpr {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -2164,6 +2367,62 @@ pub enum ModuleItemKind<'a> {
     StaticDef(&'a StaticDef),
     Module(&'a Module),
 }
+impl<'a> From<&'a StructDef> for &'a ModuleItem {
+    fn from(n: &'a StructDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a EnumDef> for &'a ModuleItem {
+    fn from(n: &'a EnumDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a FnDef> for &'a ModuleItem {
+    fn from(n: &'a FnDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TraitDef> for &'a ModuleItem {
+    fn from(n: &'a TraitDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TypeDef> for &'a ModuleItem {
+    fn from(n: &'a TypeDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ImplBlock> for &'a ModuleItem {
+    fn from(n: &'a ImplBlock) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a UseItem> for &'a ModuleItem {
+    fn from(n: &'a UseItem) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ExternCrateItem> for &'a ModuleItem {
+    fn from(n: &'a ExternCrateItem) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ConstDef> for &'a ModuleItem {
+    fn from(n: &'a ConstDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a StaticDef> for &'a ModuleItem {
+    fn from(n: &'a StaticDef) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a Module> for &'a ModuleItem {
+    fn from(n: &'a Module) -> &'a ModuleItem {
+        ModuleItem::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for ModuleItem {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -2446,6 +2705,17 @@ pub enum NominalDefKind<'a> {
     StructDef(&'a StructDef),
     EnumDef(&'a EnumDef),
 }
+impl<'a> From<&'a StructDef> for &'a NominalDef {
+    fn from(n: &'a StructDef) -> &'a NominalDef {
+        NominalDef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a EnumDef> for &'a NominalDef {
+    fn from(n: &'a EnumDef) -> &'a NominalDef {
+        NominalDef::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for NominalDef {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -2637,6 +2907,57 @@ pub enum PatKind<'a> {
     RangePat(&'a RangePat),
     LiteralPat(&'a LiteralPat),
 }
+impl<'a> From<&'a RefPat> for &'a Pat {
+    fn from(n: &'a RefPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a BindPat> for &'a Pat {
+    fn from(n: &'a BindPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PlaceholderPat> for &'a Pat {
+    fn from(n: &'a PlaceholderPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PathPat> for &'a Pat {
+    fn from(n: &'a PathPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a StructPat> for &'a Pat {
+    fn from(n: &'a StructPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TupleStructPat> for &'a Pat {
+    fn from(n: &'a TupleStructPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TuplePat> for &'a Pat {
+    fn from(n: &'a TuplePat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a SlicePat> for &'a Pat {
+    fn from(n: &'a SlicePat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a RangePat> for &'a Pat {
+    fn from(n: &'a RangePat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a LiteralPat> for &'a Pat {
+    fn from(n: &'a LiteralPat) -> &'a Pat {
+        Pat::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for Pat {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -3520,6 +3841,17 @@ pub enum StmtKind<'a> {
     ExprStmt(&'a ExprStmt),
     LetStmt(&'a LetStmt),
 }
+impl<'a> From<&'a ExprStmt> for &'a Stmt {
+    fn from(n: &'a ExprStmt) -> &'a Stmt {
+        Stmt::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a LetStmt> for &'a Stmt {
+    fn from(n: &'a LetStmt) -> &'a Stmt {
+        Stmt::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for Stmt {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
@@ -4142,6 +4474,72 @@ pub enum TypeRefKind<'a> {
     ImplTraitType(&'a ImplTraitType),
     DynTraitType(&'a DynTraitType),
 }
+impl<'a> From<&'a ParenType> for &'a TypeRef {
+    fn from(n: &'a ParenType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a TupleType> for &'a TypeRef {
+    fn from(n: &'a TupleType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a NeverType> for &'a TypeRef {
+    fn from(n: &'a NeverType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PathType> for &'a TypeRef {
+    fn from(n: &'a PathType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PointerType> for &'a TypeRef {
+    fn from(n: &'a PointerType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ArrayType> for &'a TypeRef {
+    fn from(n: &'a ArrayType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a SliceType> for &'a TypeRef {
+    fn from(n: &'a SliceType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ReferenceType> for &'a TypeRef {
+    fn from(n: &'a ReferenceType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a PlaceholderType> for &'a TypeRef {
+    fn from(n: &'a PlaceholderType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a FnPointerType> for &'a TypeRef {
+    fn from(n: &'a FnPointerType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ForType> for &'a TypeRef {
+    fn from(n: &'a ForType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a ImplTraitType> for &'a TypeRef {
+    fn from(n: &'a ImplTraitType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+impl<'a> From<&'a DynTraitType> for &'a TypeRef {
+    fn from(n: &'a DynTraitType) -> &'a TypeRef {
+        TypeRef::cast(&n.syntax).unwrap()
+    }
+}
+
 
 impl AstNode for TypeRef {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {

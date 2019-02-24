@@ -38,6 +38,15 @@ pub enum {{ node }}Kind<'a> {
 {%- endfor %}
 }
 
+{%- for kind in methods.enum %}
+impl<'a> From<&'a {{ kind }}> for &'a {{ node }} {
+    fn from(n: &'a {{ kind }}) -> &'a {{ node }} {
+        {{ node }}::cast(&n.syntax).unwrap()
+    }
+}
+{%- endfor %}
+
+
 impl AstNode for {{ node }} {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
