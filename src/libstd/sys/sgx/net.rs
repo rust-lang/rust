@@ -1,5 +1,5 @@
 use fmt;
-use io;
+use io::{self, IoVec, IoVecMut};
 use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use time::Duration;
 use sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
@@ -104,7 +104,7 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, buf: &mut [IoVecMut<'_>]) -> io::Result<usize> {
-        let buf = match buf.get(0) {
+        let buf = match buf.get_mut(0) {
             Some(buf) => buf,
             None => return Ok(0),
         };
@@ -120,7 +120,7 @@ impl TcpStream {
             Some(buf) => buf,
             None => return Ok(0),
         };
-        self.read(buf)
+        self.write(buf)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
