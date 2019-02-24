@@ -1,4 +1,5 @@
 #![crate_type="lib"]
+#![feature(c_variadic)]
 
 pub unsafe extern "C" fn use_vararg_lifetime(
     x: usize,
