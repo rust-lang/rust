@@ -16,9 +16,7 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::convert::TryFrom;
-use syntax::{
-    source_map::{BytePos, Span},
-};
+use syntax::source_map::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
