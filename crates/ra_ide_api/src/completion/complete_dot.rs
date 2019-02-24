@@ -1,6 +1,6 @@
 use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind, CompletionKind};
+use crate::completion::{CompletionContext, Completions, CompletionKind};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -50,14 +50,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
     receiver.iterate_methods(ctx.db, |_ty, func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
-            CompletionItem::new(
-                CompletionKind::Reference,
-                ctx.source_range(),
-                sig.name().to_string(),
-            )
-            .from_function(ctx, func)
-            .kind(CompletionItemKind::Method)
-            .add_to(acc);
+            acc.add_function(CompletionKind::Reference, ctx, func);
         }
         None::<()>
     });

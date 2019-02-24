@@ -64,14 +64,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ImplItem::Method(func) => {
                     let sig = func.signature(ctx.db);
                     if !sig.has_self_param() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            sig.name().to_string(),
-                        )
-                        .from_function(ctx, func)
-                        .kind(CompletionItemKind::Method)
-                        .add_to(acc);
+                        acc.add_function(CompletionKind::Reference, ctx, func);
                     }
                     None::<()>
                 }
