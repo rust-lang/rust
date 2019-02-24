@@ -5,11 +5,12 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -82,14 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 }
                             };
 
-                            span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion(
-                                    expr.span,
-                                    message,
-                                    sugg,
-                                    Applicability::MachineApplicable,
-                                );
-                            });
+                            span_useless_format(cx, span, message, sugg);
                         }
                     }
                 },
@@ -98,14 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let ExprKind::Tup(ref tup) = matchee.node {
                         if tup.is_empty() {
                             let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
-                            span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion(
-                                    span,
-                                    "consider using .to_string()",
-                                    sugg,
-                                    Applicability::MachineApplicable, // snippet
-                                );
-                            });
+                            span_useless_format(cx, span, "consider using .to_string()", sugg);
                         }
                     }
                 },
@@ -113,6 +100,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
     }
+}
+
+fn span_useless_format<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, span: Span, help: &str, mut sugg: String) {
+    let to_replace = span.source_callsite();
+
+    // The callsite span contains the statement semicolon for some reason.
+    let snippet = snippet(cx, to_replace, "..");
+    if snippet.ends_with(';') {
+        sugg.push(';');
+    }
+
+    span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
+        db.span_suggestion(
+            to_replace,
+            help,
+            sugg,
+            Applicability::MachineApplicable, // snippet
+        );
+    });
 }
 
 /// Checks if the expressions matches `&[""]`
