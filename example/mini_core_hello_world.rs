@@ -1,6 +1,6 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
-#![feature(no_core, unboxed_closures, start, lang_items, box_syntax)]
+#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -184,4 +184,10 @@ fn main() {
     }
 
     [NoisyDropInner, NoisyDropInner];
+
+    let x = &[0u32, 42u32] as &[u32];
+    match x {
+        [] => assert_eq!(0u32, 1),
+        [_, ref y..] => assert_eq!(&x[1] as *const u32 as usize, &y[0] as *const u32 as usize),
+    }
 }
