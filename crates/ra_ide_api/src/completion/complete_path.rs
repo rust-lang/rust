@@ -1,9 +1,8 @@
-use join_to_string::join;
-use hir::{Docs, Resolution};
+use hir::{Resolution};
 use ra_syntax::{AstNode, ast::NameOwner};
 use test_utils::tested_by;
 
-use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
+use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -39,24 +38,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             }
         }
         hir::ModuleDef::Enum(e) => {
-            e.variants(ctx.db).into_iter().for_each(|variant| {
-                if let Some(name) = variant.name(ctx.db) {
-                    let detail_types =
-                        variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
-                    let detail =
-                        join(detail_types).separator(", ").surround_with("(", ")").to_string();
-
-                    CompletionItem::new(
-                        CompletionKind::Reference,
-                        ctx.source_range(),
-                        name.to_string(),
-                    )
-                    .kind(CompletionItemKind::EnumVariant)
-                    .set_documentation(variant.docs(ctx.db))
-                    .set_detail(Some(detail))
-                    .add_to(acc)
-                }
-            });
+            for variant in e.variants(ctx.db) {
+                acc.add_enum_variant(ctx, variant);
+            }
         }
         hir::ModuleDef::Struct(s) => {
             let ty = s.ty(ctx.db);

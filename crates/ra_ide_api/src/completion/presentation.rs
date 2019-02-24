@@ -1,4 +1,5 @@
 //! This modules takes care of rendering various defenitions as completion items.
+use join_to_string::join;
 use test_utils::tested_by;
 use hir::Docs;
 
@@ -59,6 +60,21 @@ impl Completions {
             builder = builder.insert_snippet(snippet);
         }
         self.add(builder)
+    }
+
+    pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
+        let name = match variant.name(ctx.db) {
+            Some(it) => it,
+            None => return,
+        };
+        let detail_types = variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
+        let detail = join(detail_types).separator(", ").surround_with("(", ")").to_string();
+
+        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
+            .kind(CompletionItemKind::EnumVariant)
+            .set_documentation(variant.docs(ctx.db))
+            .detail(detail)
+            .add_to(self);
     }
 }
 
