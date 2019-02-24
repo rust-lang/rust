@@ -1,5 +1,3 @@
-extern crate cc;
-
 use std::env;
 use std::process::{self, Command};
 

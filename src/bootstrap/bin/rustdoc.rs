@@ -4,8 +4,6 @@
 
 #![deny(warnings)]
 
-extern crate bootstrap;
-
 use std::env;
 use std::process::Command;
 use std::path::PathBuf;

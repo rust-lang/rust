@@ -17,8 +17,6 @@
 
 #![deny(warnings)]
 
-extern crate bootstrap;
-
 use std::env;
 use std::ffi::OsString;
 use std::io;
