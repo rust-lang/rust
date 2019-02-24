@@ -1,13 +1,11 @@
 use std::fmt;
 
-use hir::{Docs, Documentation, PerNs, Resolution};
+use hir::{Docs, Documentation};
 use ra_syntax::TextRange;
 use ra_text_edit::{ TextEditBuilder, TextEdit};
-use test_utils::tested_by;
 
 use crate::completion::{
     completion_context::CompletionContext,
-    function_label,
     const_label,
     type_label
 };
@@ -255,70 +253,6 @@ impl Builder {
         self.documentation = docs.map(Into::into);
         self
     }
-    pub(super) fn from_resolution(
-        mut self,
-        ctx: &CompletionContext,
-        resolution: &PerNs<Resolution>,
-    ) -> Builder {
-        use hir::ModuleDef::*;
-
-        let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
-        let def = match def {
-            None => return self,
-            Some(it) => it,
-        };
-        let (kind, docs) = match def {
-            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
-            Resolution::Def(Function(func)) => return self.from_function(ctx, *func),
-            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
-            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
-            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
-            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
-            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
-            Resolution::SelfType(..) => (
-                CompletionItemKind::TypeParam, // (does this need its own kind?)
-                None,
-            ),
-        };
-        self.kind = Some(kind);
-        self.documentation = docs;
-
-        self
-    }
-
-    pub(super) fn from_function(
-        mut self,
-        ctx: &CompletionContext,
-        function: hir::Function,
-    ) -> Builder {
-        // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none() && !ctx.is_call {
-            tested_by!(inserts_parens_for_function_calls);
-            let sig = function.signature(ctx.db);
-            if sig.params().is_empty() || sig.has_self_param() && sig.params().len() == 1 {
-                self.insert_text = Some(format!("{}()$0", self.label));
-            } else {
-                self.insert_text = Some(format!("{}($0)", self.label));
-            }
-            self.insert_text_format = InsertTextFormat::Snippet;
-        }
-
-        if let Some(docs) = function.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        if let Some(label) = function_item_label(ctx, function) {
-            self.detail = Some(label);
-        }
-
-        self.kind = Some(CompletionItemKind::Function);
-        self
-    }
-
     pub(super) fn from_const(mut self, ctx: &CompletionContext, ct: hir::Const) -> Builder {
         if let Some(docs) = ct.docs(ctx.db) {
             self.documentation = Some(docs);
@@ -371,11 +305,6 @@ impl Into<Vec<CompletionItem>> for Completions {
     fn into(self) -> Vec<CompletionItem> {
         self.buf
     }
-}
-
-fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
-    let node = function.source(ctx.db).1;
-    function_label(&node)
 }
 
 fn const_item_label(ctx: &CompletionContext, ct: hir::Const) -> String {

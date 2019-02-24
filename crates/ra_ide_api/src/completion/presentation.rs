@@ -38,28 +38,68 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         local_name: String,
-        res: &PerNs<Resolution>,
+        resolution: &PerNs<Resolution>,
     ) {
+        use hir::ModuleDef::*;
+
+        let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
+        let def = match def {
+            None => {
+                self.add(CompletionItem::new(
+                    CompletionKind::Reference,
+                    ctx.source_range(),
+                    local_name,
+                ));
+                return;
+            }
+            Some(it) => it,
+        };
+        let (kind, docs) = match def {
+            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
+            Resolution::Def(Function(func)) => {
+                return self.add_function_with_name(ctx, Some(local_name), *func);
+            }
+            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
+            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
+            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
+            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
+            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
+            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
+            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
+            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
+            Resolution::SelfType(..) => (
+                CompletionItemKind::TypeParam, // (does this need its own kind?)
+                None,
+            ),
+        };
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
-            .from_resolution(ctx, res)
-            .add_to(self);
+            .kind(kind)
+            .set_documentation(docs)
+            .add_to(self)
     }
 
     pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
-        let sig = func.signature(ctx.db);
+        self.add_function_with_name(ctx, None, func)
+    }
 
-        let mut builder = CompletionItem::new(
-            CompletionKind::Reference,
-            ctx.source_range(),
-            sig.name().to_string(),
-        )
-        .kind(if sig.has_self_param() {
-            CompletionItemKind::Method
-        } else {
-            CompletionItemKind::Function
-        })
-        .set_documentation(func.docs(ctx.db))
-        .set_detail(function_item_label(ctx, func));
+    fn add_function_with_name(
+        &mut self,
+        ctx: &CompletionContext,
+        name: Option<String>,
+        func: hir::Function,
+    ) {
+        let sig = func.signature(ctx.db);
+        let name = name.unwrap_or_else(|| sig.name().to_string());
+
+        let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)
+            .kind(if sig.has_self_param() {
+                CompletionItemKind::Method
+            } else {
+                CompletionItemKind::Function
+            })
+            .set_documentation(func.docs(ctx.db))
+            .set_detail(function_item_label(ctx, func));
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
