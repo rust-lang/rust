@@ -16,10 +16,16 @@ use hir::db::HirDatabase;
 
 pub(crate) use crate::assist_ctx::{AssistCtx, Assist};
 
+/// Unique identifier of the assist, should not be shown to the user
+/// directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AssistId(pub &'static str);
+
 #[derive(Debug, Clone)]
 pub struct AssistLabel {
     /// Short description of the assist, as shown in the UI.
     pub label: String,
+    pub id: AssistId,
 }
 
 #[derive(Debug, Clone)]

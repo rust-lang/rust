@@ -6,7 +6,7 @@ use ra_syntax::{
     }, SyntaxNode, TextUnit,
 };
 
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let node = ctx.covering_node();
@@ -19,7 +19,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
     if indent.kind() != WHITESPACE {
         return None;
     }
-    ctx.add_action("introduce variable", move |edit| {
+    ctx.add_action(AssistId("introduce_variable"), "introduce variable", move |edit| {
         let mut buf = String::new();
 
         let cursor_offset = if wrap_in_block {

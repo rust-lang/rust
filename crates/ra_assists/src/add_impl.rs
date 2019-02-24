@@ -5,12 +5,12 @@ use ra_syntax::{
     TextUnit,
 };
 
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
-    ctx.add_action("add impl", |edit| {
+    ctx.add_action(AssistId("add_impl"), "add impl", |edit| {
         edit.target(nominal.syntax().range());
         let type_params = nominal.type_param_list();
         let start_offset = nominal.syntax().range().end();

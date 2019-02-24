@@ -57,6 +57,7 @@ pub use crate::{
     runnables::{Runnable, RunnableKind},
     navigation_target::NavigationTarget,
     references::ReferenceSearchResult,
+    assists::{Assist, AssistId},
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
@@ -368,7 +369,7 @@ impl Analysis {
 
     /// Computes assists (aks code actons aka intentions) for the given
     /// position.
-    pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
+    pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
         self.with_db(|db| assists::assists(db, frange))
     }
 

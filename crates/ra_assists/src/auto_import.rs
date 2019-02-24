@@ -4,7 +4,10 @@ use ra_syntax::{
     ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange,
     SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
 };
-use crate::assist_ctx::{AssistCtx, Assist, AssistBuilder};
+use crate::{
+    AssistId,
+    assist_ctx::{AssistCtx, Assist, AssistBuilder},
+};
 
 fn collect_path_segments(path: &ast::Path) -> Option<Vec<&ast::PathSegment>> {
     let mut v = Vec::new();
@@ -526,6 +529,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
     if let Some(module) = path.syntax().ancestors().find_map(ast::Module::cast) {
         if let (Some(item_list), Some(name)) = (module.item_list(), module.name()) {
             ctx.add_action(
+                AssistId("auto_import"),
                 format!("import {} in mod {}", fmt_segments(&segments), name.text()),
                 |edit| {
                     apply_auto_import(item_list.syntax(), path, &segments, edit);
@@ -534,9 +538,13 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
         }
     } else {
         let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
-        ctx.add_action(format!("import {} in the current file", fmt_segments(&segments)), |edit| {
-            apply_auto_import(current_file.syntax(), path, &segments, edit);
-        });
+        ctx.add_action(
+            AssistId("auto_import"),
+            format!("import {} in the current file", fmt_segments(&segments)),
+            |edit| {
+                apply_auto_import(current_file.syntax(), path, &segments, edit);
+            },
+        );
     }
 
     ctx.build()

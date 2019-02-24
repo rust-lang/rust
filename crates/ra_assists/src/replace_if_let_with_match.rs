@@ -2,7 +2,7 @@ use ra_syntax::{AstNode, ast};
 use ra_fmt::extract_trivial_expression;
 use hir::db::HirDatabase;
 
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: &ast::IfExpr = ctx.node_at_offset()?;
@@ -15,7 +15,7 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
         ast::ElseBranchFlavor::IfExpr(_) => return None,
     };
 
-    ctx.add_action("replace with match", |edit| {
+    ctx.add_action(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
         edit.target(if_expr.syntax().range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);

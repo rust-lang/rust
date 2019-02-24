@@ -5,12 +5,12 @@ use ra_syntax::{
     TextUnit,
 };
 
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(nominal)?;
-    ctx.add_action("add `#[derive]`", |edit| {
+    ctx.add_action(AssistId("add_derive"), "add `#[derive]`", |edit| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_call())

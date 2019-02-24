@@ -7,7 +7,7 @@ use ra_syntax::{
 };
 use ra_fmt::{leading_indent, reindent};
 
-use crate::{AssistLabel, AssistAction};
+use crate::{AssistLabel, AssistAction, AssistId};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Assist {
@@ -81,10 +81,11 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
 
     pub(crate) fn add_action(
         &mut self,
+        id: AssistId,
         label: impl Into<String>,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> &mut Self {
-        let label = AssistLabel { label: label.into() };
+        let label = AssistLabel { label: label.into(), id };
         match &mut self.assist {
             Assist::Unresolved(labels) => labels.push(label),
             Assist::Resolved(labels_actions) => {
