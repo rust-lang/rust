@@ -1,7 +1,6 @@
-use hir::{Ty, AdtDef, Docs};
+use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
-use crate::completion::completion_item::CompletionKind;
+use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
@@ -23,15 +22,7 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
     match adt {
         AdtDef::Struct(s) => {
             for field in s.fields(ctx.db) {
-                CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    field.name(ctx.db).to_string(),
-                )
-                .kind(CompletionItemKind::Field)
-                .detail(field.ty(ctx.db).subst(substs).to_string())
-                .set_documentation(field.docs(ctx.db))
-                .add_to(acc);
+                acc.add_field(ctx, field, substs);
             }
         }
 
@@ -43,10 +34,10 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot_matches;
-    use crate::completion::{CompletionItem, CompletionKind};
+    use crate::completion::{CompletionItem, CompletionKind, do_completion};
 
     fn complete(code: &str) -> Vec<CompletionItem> {
-        crate::completion::completion_item::do_completion(code, CompletionKind::Reference)
+        do_completion(code, CompletionKind::Reference)
     }
 
     #[test]

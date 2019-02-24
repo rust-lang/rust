@@ -1,9 +1,8 @@
-use join_to_string::join;
-use hir::{Docs, Resolution};
-use ra_syntax::{AstNode, ast::NameOwner};
+use hir::Resolution;
+use ra_syntax::AstNode;
 use test_utils::tested_by;
 
-use crate::completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext};
+use crate::completion::{Completions, CompletionContext};
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -28,79 +27,28 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                         }
                     }
                 }
-
-                CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    name.to_string(),
-                )
-                .from_resolution(ctx, &res.def.map(hir::Resolution::Def))
-                .add_to(acc);
+                acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
             }
         }
         hir::ModuleDef::Enum(e) => {
-            e.variants(ctx.db).into_iter().for_each(|variant| {
-                if let Some(name) = variant.name(ctx.db) {
-                    let detail_types =
-                        variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
-                    let detail =
-                        join(detail_types).separator(", ").surround_with("(", ")").to_string();
-
-                    CompletionItem::new(
-                        CompletionKind::Reference,
-                        ctx.source_range(),
-                        name.to_string(),
-                    )
-                    .kind(CompletionItemKind::EnumVariant)
-                    .set_documentation(variant.docs(ctx.db))
-                    .set_detail(Some(detail))
-                    .add_to(acc)
-                }
-            });
+            for variant in e.variants(ctx.db) {
+                acc.add_enum_variant(ctx, variant);
+            }
         }
         hir::ModuleDef::Struct(s) => {
             let ty = s.ty(ctx.db);
-            ty.iterate_impl_items(ctx.db, |item| match item {
-                hir::ImplItem::Method(func) => {
-                    let sig = func.signature(ctx.db);
-                    if !sig.has_self_param() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            sig.name().to_string(),
-                        )
-                        .from_function(ctx, func)
-                        .kind(CompletionItemKind::Method)
-                        .add_to(acc);
+            ty.iterate_impl_items(ctx.db, |item| {
+                match item {
+                    hir::ImplItem::Method(func) => {
+                        let sig = func.signature(ctx.db);
+                        if !sig.has_self_param() {
+                            acc.add_function(ctx, func);
+                        }
                     }
-                    None::<()>
+                    hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
+                    hir::ImplItem::Type(ty) => acc.add_type(ctx, ty),
                 }
-                hir::ImplItem::Const(ct) => {
-                    let source = ct.source(ctx.db);
-                    if let Some(name) = source.1.name() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            name.text().to_string(),
-                        )
-                        .from_const(ctx, ct)
-                        .add_to(acc);
-                    }
-                    None::<()>
-                }
-                hir::ImplItem::Type(ty) => {
-                    let source = ty.source(ctx.db);
-                    if let Some(name) = source.1.name() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            name.text().to_string(),
-                        )
-                        .from_type(ctx, ty)
-                        .add_to(acc);
-                    }
-                    None::<()>
-                }
+                None::<()>
             });
         }
         _ => return,
@@ -109,12 +57,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{
-        CompletionKind,
-        completion_item::{check_completion, do_completion},
-};
-
     use test_utils::covers;
+
+    use crate::completion::{CompletionKind, check_completion, do_completion};
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);

@@ -1,7 +1,6 @@
-use hir::{Ty, AdtDef, Docs};
+use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
-use crate::completion::completion_item::CompletionKind;
+use crate::completion::{CompletionContext, Completions};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -29,15 +28,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                 match def_id {
                     AdtDef::Struct(s) => {
                         for field in s.fields(ctx.db) {
-                            CompletionItem::new(
-                                CompletionKind::Reference,
-                                ctx.source_range(),
-                                field.name(ctx.db).to_string(),
-                            )
-                            .kind(CompletionItemKind::Field)
-                            .detail(field.ty(ctx.db).subst(substs).to_string())
-                            .set_documentation(field.docs(ctx.db))
-                            .add_to(acc);
+                            acc.add_field(ctx, field, substs);
                         }
                     }
 
@@ -47,14 +38,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             }
             Ty::Tuple(fields) => {
                 for (i, ty) in fields.iter().enumerate() {
-                    CompletionItem::new(
-                        CompletionKind::Reference,
-                        ctx.source_range(),
-                        i.to_string(),
-                    )
-                    .kind(CompletionItemKind::Field)
-                    .detail(ty.to_string())
-                    .add_to(acc);
+                    acc.add_pos_field(ctx, i, ty);
                 }
             }
             _ => {}
@@ -66,14 +50,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
     receiver.iterate_methods(ctx.db, |_ty, func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
-            CompletionItem::new(
-                CompletionKind::Reference,
-                ctx.source_range(),
-                sig.name().to_string(),
-            )
-            .from_function(ctx, func)
-            .kind(CompletionItemKind::Method)
-            .add_to(acc);
+            acc.add_function(ctx, func);
         }
         None::<()>
     });
@@ -81,8 +58,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::*;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_ref_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Reference);

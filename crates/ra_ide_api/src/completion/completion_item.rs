@@ -1,16 +1,8 @@
 use std::fmt;
 
-use hir::{Docs, Documentation, PerNs, Resolution};
+use hir::Documentation;
 use ra_syntax::TextRange;
-use ra_text_edit::{ TextEditBuilder, TextEdit};
-use test_utils::tested_by;
-
-use crate::completion::{
-    completion_context::CompletionContext,
-    function_label,
-    const_label,
-    type_label
-};
+use ra_text_edit::{TextEditBuilder, TextEdit};
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -255,91 +247,6 @@ impl Builder {
         self.documentation = docs.map(Into::into);
         self
     }
-    pub(super) fn from_resolution(
-        mut self,
-        ctx: &CompletionContext,
-        resolution: &PerNs<Resolution>,
-    ) -> Builder {
-        use hir::ModuleDef::*;
-
-        let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
-        let def = match def {
-            None => return self,
-            Some(it) => it,
-        };
-        let (kind, docs) = match def {
-            Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
-            Resolution::Def(Function(func)) => return self.from_function(ctx, *func),
-            Resolution::Def(Struct(it)) => (CompletionItemKind::Struct, it.docs(ctx.db)),
-            Resolution::Def(Enum(it)) => (CompletionItemKind::Enum, it.docs(ctx.db)),
-            Resolution::Def(EnumVariant(it)) => (CompletionItemKind::EnumVariant, it.docs(ctx.db)),
-            Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
-            Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
-            Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
-            Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
-            Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
-            Resolution::SelfType(..) => (
-                CompletionItemKind::TypeParam, // (does this need its own kind?)
-                None,
-            ),
-        };
-        self.kind = Some(kind);
-        self.documentation = docs;
-
-        self
-    }
-
-    pub(super) fn from_function(
-        mut self,
-        ctx: &CompletionContext,
-        function: hir::Function,
-    ) -> Builder {
-        // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none() && !ctx.is_call {
-            tested_by!(inserts_parens_for_function_calls);
-            let sig = function.signature(ctx.db);
-            if sig.params().is_empty() || sig.has_self_param() && sig.params().len() == 1 {
-                self.insert_text = Some(format!("{}()$0", self.label));
-            } else {
-                self.insert_text = Some(format!("{}($0)", self.label));
-            }
-            self.insert_text_format = InsertTextFormat::Snippet;
-        }
-
-        if let Some(docs) = function.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        if let Some(label) = function_item_label(ctx, function) {
-            self.detail = Some(label);
-        }
-
-        self.kind = Some(CompletionItemKind::Function);
-        self
-    }
-
-    pub(super) fn from_const(mut self, ctx: &CompletionContext, ct: hir::Const) -> Builder {
-        if let Some(docs) = ct.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        self.detail = Some(const_item_label(ctx, ct));
-        self.kind = Some(CompletionItemKind::Const);
-
-        self
-    }
-
-    pub(super) fn from_type(mut self, ctx: &CompletionContext, ty: hir::Type) -> Builder {
-        if let Some(docs) = ty.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        self.detail = Some(type_item_label(ctx, ty));
-        self.kind = Some(CompletionItemKind::TypeAlias);
-
-        self
-    }
 }
 
 impl<'a> Into<CompletionItem> for Builder {
@@ -373,21 +280,6 @@ impl Into<Vec<CompletionItem>> for Completions {
     }
 }
 
-fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
-    let node = function.source(ctx.db).1;
-    function_label(&node)
-}
-
-fn const_item_label(ctx: &CompletionContext, ct: hir::Const) -> String {
-    let node = ct.source(ctx.db).1;
-    const_label(&node)
-}
-
-fn type_item_label(ctx: &CompletionContext, ty: hir::Type) -> String {
-    let node = ty.source(ctx.db).1;
-    type_label(&node)
-}
-
 #[cfg(test)]
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
     use crate::mock_analysis::{single_file_with_position, analysis_and_position};
@@ -410,84 +302,4 @@ pub(crate) fn check_completion(test_name: &str, code: &str, kind: CompletionKind
     use insta::assert_debug_snapshot_matches;
     let kind_completions = do_completion(code, kind);
     assert_debug_snapshot_matches!(test_name, kind_completions);
-}
-
-#[cfg(test)]
-mod tests {
-    use test_utils::covers;
-
-    use super::*;
-
-    fn check_reference_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Reference);
-    }
-
-    #[test]
-    fn inserts_parens_for_function_calls() {
-        covers!(inserts_parens_for_function_calls);
-        check_reference_completion(
-            "inserts_parens_for_function_calls1",
-            r"
-            fn no_args() {}
-            fn main() { no_<|> }
-            ",
-        );
-        check_reference_completion(
-            "inserts_parens_for_function_calls2",
-            r"
-            fn with_args(x: i32, y: String) {}
-            fn main() { with_<|> }
-            ",
-        );
-        check_reference_completion(
-            "inserts_parens_for_function_calls3",
-            r"
-            struct S {}
-            impl S {
-                fn foo(&self) {}
-            }
-            fn bar(s: &S) {
-                s.f<|>
-            }
-            ",
-        )
-    }
-
-    #[test]
-    fn dont_render_function_parens_in_use_item() {
-        check_reference_completion(
-            "dont_render_function_parens_in_use_item",
-            "
-            //- /lib.rs
-            mod m { pub fn foo() {} }
-            use crate::m::f<|>;
-            ",
-        )
-    }
-
-    #[test]
-    fn dont_render_function_parens_if_already_call() {
-        check_reference_completion(
-            "dont_render_function_parens_if_already_call",
-            "
-            //- /lib.rs
-            fn frobnicate() {}
-            fn main() {
-                frob<|>();
-            }
-            ",
-        );
-        check_reference_completion(
-            "dont_render_function_parens_if_already_call_assoc_fn",
-            "
-            //- /lib.rs
-            struct Foo {}
-            impl Foo { fn new() -> Foo {} }
-            fn main() {
-                Foo::ne<|>();
-            }
-            ",
-        )
-    }
-
 }

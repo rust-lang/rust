@@ -36,8 +36,7 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::CompletionKind;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{CompletionKind, check_completion};
 
     fn check_snippet_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Snippet);
