@@ -312,7 +312,7 @@ impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
         Scalar(val),
         Slice(a, b),
-        ByRef(id, alloc, offset),
+        ByRef(ptr, alloc),
     }
 );
 impl_stable_hash_for!(struct crate::mir::interpret::RawConst<'tcx> {
