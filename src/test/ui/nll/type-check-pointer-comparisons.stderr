@@ -1,0 +1,62 @@
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:6:5
+   |
+LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     x == y;
+   |     ^ requires that `'a` must outlive `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:6:10
+   |
+LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     x == y;
+   |          ^ requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:12:5
+   |
+LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
+   |                --  -- lifetime `'b` defined here
+   |                |
+   |                lifetime `'a` defined here
+LL |     x == y;
+   |     ^ requires that `'a` must outlive `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:12:10
+   |
+LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
+   |                --  -- lifetime `'b` defined here
+   |                |
+   |                lifetime `'a` defined here
+LL |     x == y;
+   |          ^ requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:18:5
+   |
+LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     f == g;
+   |     ^ requires that `'a` must outlive `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:18:10
+   |
+LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     f == g;
+   |          ^ requires that `'b` must outlive `'a`
+
+error: aborting due to 6 previous errors
+

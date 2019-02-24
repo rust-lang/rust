@@ -27,6 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
@@ -2103,7 +2104,44 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.add_reborrow_constraint(location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
+            Rvalue::BinaryOp(BinOp::Eq, left, right)
+            | Rvalue::BinaryOp(BinOp::Ne, left, right)
+            | Rvalue::BinaryOp(BinOp::Lt, left, right)
+            | Rvalue::BinaryOp(BinOp::Le, left, right)
+            | Rvalue::BinaryOp(BinOp::Gt, left, right)
+            | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
+                let ty_left = left.ty(mir, tcx);
+                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.sty {
+                    let ty_right = right.ty(mir, tcx);
+                    let common_ty = self.infcx.next_ty_var(
+                        TypeVariableOrigin::MiscVariable(mir.source_info(location).span),
+                    );
+                    self.sub_types(
+                        common_ty,
+                        ty_left,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ).unwrap_or_else(|err| {
+                        bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
+                    });
+                    if let Err(terr) = self.sub_types(
+                        common_ty,
+                        ty_right,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "unexpected comparison types {:?} and {:?} yields {:?}",
+                            ty_left,
+                            ty_right,
+                            terr
+                        )
+                    }
+                }
+            }
+
             Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
