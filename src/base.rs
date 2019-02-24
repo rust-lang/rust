@@ -586,8 +586,24 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
                     }
                 }
-                Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => {
-                    unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty)
+                Rvalue::Cast(CastKind::ClosureFnPointer, operand, _ty) => {
+                    let operand = trans_operand(fx, operand);
+                    match operand.layout().ty.sty {
+                        ty::Closure(def_id, substs) => {
+                            let instance = rustc_mir::monomorphize::resolve_closure(
+                                fx.tcx,
+                                def_id,
+                                substs,
+                                ty::ClosureKind::FnOnce,
+                            );
+                            let func_ref = fx.get_function_ref(instance);
+                            let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
+                            lval.write_cvalue(fx, CValue::ByVal(func_addr, lval.layout()));
+                        }
+                        _ => {
+                            bug!("{} cannot be cast to a fn ptr", operand.layout().ty)
+                        }
+                    }
                 }
                 Rvalue::Cast(CastKind::Unsize, operand, _ty) => {
                     let operand = trans_operand(fx, operand);

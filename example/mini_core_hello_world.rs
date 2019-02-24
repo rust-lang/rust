@@ -190,4 +190,6 @@ fn main() {
         [] => assert_eq!(0u32, 1),
         [_, ref y..] => assert_eq!(&x[1] as *const u32 as usize, &y[0] as *const u32 as usize),
     }
+
+    assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 }
