@@ -16,7 +16,7 @@ scopeguard = { version = "0.3", default-features = false }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
-serde = { version = "1.0", default-features = false, optional = true }
+serde = { version = "1.0.25", default-features = false, optional = true }
 
 [dev-dependencies]
 lazy_static = "~1.2"
