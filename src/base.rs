@@ -739,7 +739,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     let layout = place.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
-        trap_unreachable(&mut fx.bcx);
+        return trap_unreachable_ret_value(fx, dest_layout);
     }
     match layout.variants {
         layout::Variants::Single { index } => {
