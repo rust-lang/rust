@@ -3,7 +3,7 @@ use hir::{Ty, AdtDef, Docs};
 use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
 use crate::completion::completion_item::CompletionKind;
 
-/// Complete dot accesses, i.e. fields or methods (currently only fields).
+/// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
     let (function, struct_lit) = match (&ctx.function, ctx.struct_lit_syntax) {
         (Some(function), Some(struct_lit)) => (function, struct_lit),
@@ -42,17 +42,16 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::*;
-    use crate::completion::completion_item::check_completion;
+    use insta::assert_debug_snapshot_matches;
+    use crate::completion::{CompletionItem, CompletionKind};
 
-    fn check_ref_completion(name: &str, code: &str) {
-        check_completion(name, code, CompletionKind::Reference);
+    fn complete(code: &str) -> Vec<CompletionItem> {
+        crate::completion::completion_item::do_completion(code, CompletionKind::Reference)
     }
 
     #[test]
     fn test_struct_literal_field() {
-        check_ref_completion(
-            "test_struct_literal_field",
+        let completions = complete(
             r"
             struct A { the_field: u32 }
             fn foo() {
@@ -60,5 +59,15 @@ mod tests {
             }
             ",
         );
+        assert_debug_snapshot_matches!(completions, @r###"[
+    CompletionItem {
+        label: "the_field",
+        source_range: [83; 86),
+        delete: [83; 86),
+        insert: "the_field",
+        kind: Field,
+        detail: "u32"
+    }
+]"###);
     }
 }
