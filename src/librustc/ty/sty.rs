@@ -3,7 +3,7 @@
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ConstValue;
+use crate::mir::interpret::{ConstValue, truncate};
 use crate::middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
@@ -2118,8 +2118,7 @@ impl<'tcx> Const<'tcx> {
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
         }).size;
-        let shift = 128 - size.bits();
-        let truncated = (bits << shift) >> shift;
+        let truncated = truncate(bits, size);
         assert_eq!(truncated, bits, "from_bits called with untruncated value");
         Self::from_scalar(Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
     }
