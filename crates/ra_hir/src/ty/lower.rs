@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path, Name,
-    ModuleDef, Type,
+    ModuleDef, TypeAlias,
     HirDatabase,
     type_ref::TypeRef,
     name::KnownName,
@@ -124,7 +124,7 @@ impl Ty {
             TypableDef::Struct(s) => s.generic_params(db),
             TypableDef::Enum(e) => e.generic_params(db),
             TypableDef::EnumVariant(var) => var.parent_enum(db).generic_params(db),
-            TypableDef::Type(t) => t.generic_params(db),
+            TypableDef::TypeAlias(t) => t.generic_params(db),
         };
         let parent_param_count = def_generics.count_parent_params();
         substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
@@ -163,7 +163,7 @@ impl Ty {
             TypableDef::Function(_)
             | TypableDef::Struct(_)
             | TypableDef::Enum(_)
-            | TypableDef::Type(_) => last,
+            | TypableDef::TypeAlias(_) => last,
             TypableDef::EnumVariant(_) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
@@ -196,13 +196,13 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
         (TypableDef::Enum(e), Namespace::Types) => type_for_enum(db, e),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
-        (TypableDef::Type(t), Namespace::Types) => type_for_type_alias(db, t),
+        (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::Type(_), Namespace::Values) => Ty::Unknown,
+        (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
     }
 }
 
@@ -302,7 +302,7 @@ fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     }
 }
 
-fn type_for_type_alias(db: &impl HirDatabase, t: Type) -> Ty {
+fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
     let generics = t.generic_params(db);
     let resolver = t.resolver(db);
     let type_ref = t.type_ref(db);
@@ -317,9 +317,9 @@ pub enum TypableDef {
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
-    Type(Type),
+    TypeAlias(TypeAlias),
 }
-impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, Type);
+impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, TypeAlias);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
@@ -328,7 +328,7 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::Struct(s) => s.into(),
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
-            ModuleDef::Type(t) => t.into(),
+            ModuleDef::TypeAlias(t) => t.into(),
             ModuleDef::Const(_)
             | ModuleDef::Static(_)
             | ModuleDef::Module(_)

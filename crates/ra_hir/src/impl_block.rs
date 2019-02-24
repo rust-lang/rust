@@ -7,7 +7,7 @@ use ra_syntax::{
 ast::{self, AstNode}};
 
 use crate::{
-    Const, Type, Function, HirFileId,
+    Const, TypeAlias, Function, HirFileId,
     HirDatabase, PersistentHirDatabase,
     ModuleDef, Trait, Resolution,
     type_ref::TypeRef,
@@ -135,13 +135,9 @@ impl ImplData {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node.kind() {
-                    ast::ImplItemKind::FnDef(it) => {
-                        ImplItem::Method(Function { id: ctx.to_def(it) })
-                    }
-                    ast::ImplItemKind::ConstDef(it) => {
-                        ImplItem::Const(Const { id: ctx.to_def(it) })
-                    }
-                    ast::ImplItemKind::TypeDef(it) => ImplItem::Type(Type { id: ctx.to_def(it) }),
+                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::TypeDef(it) => TypeAlias { id: ctx.to_def(it) }.into(),
                 })
                 .collect()
         } else {
@@ -168,10 +164,10 @@ impl ImplData {
 pub enum ImplItem {
     Method(Function),
     Const(Const),
-    Type(Type),
+    TypeAlias(TypeAlias),
     // Existential
 }
-impl_froms!(ImplItem: Const, Type);
+impl_froms!(ImplItem: Const, TypeAlias);
 
 impl From<Function> for ImplItem {
     fn from(func: Function) -> ImplItem {

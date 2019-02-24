@@ -6,7 +6,7 @@ use ra_db::{SourceDatabase, salsa};
 use crate::{
     MacroCallId, HirFileId,
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
-    Function, FnSignature, ExprScopes,
+    Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     macros::MacroExpansion,
     module_tree::ModuleTree,
@@ -15,7 +15,9 @@ use crate::{
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
-    ids::SourceFileItemId, nameres::Namespace, type_ref::TypeRef, code_model_api::Type
+    ids::SourceFileItemId,
+    nameres::Namespace,
+    type_ref::TypeRef,
 };
 
 #[salsa::query_group(PersistentHirDatabaseStorage)]
@@ -79,7 +81,7 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
 
     #[salsa::invoke(crate::type_alias::type_alias_ref_query)]
-    fn type_alias_ref(&self, typ: Type) -> Arc<TypeRef>;
+    fn type_alias_ref(&self, typ: TypeAlias) -> Arc<TypeRef>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

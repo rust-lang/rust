@@ -85,9 +85,19 @@ pub enum ModuleDef {
     Const(Const),
     Static(Static),
     Trait(Trait),
-    Type(Type),
+    TypeAlias(TypeAlias),
 }
-impl_froms!(ModuleDef: Module, Function, Struct, Enum, EnumVariant, Const, Static, Trait, Type);
+impl_froms!(
+    ModuleDef: Module,
+    Function,
+    Struct,
+    Enum,
+    EnumVariant,
+    Const,
+    Static,
+    Trait,
+    TypeAlias
+);
 
 pub enum ModuleSource {
     SourceFile(TreeArc<ast::SourceFile>),
@@ -604,11 +614,11 @@ impl Docs for Trait {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Type {
+pub struct TypeAlias {
     pub(crate) id: TypeId,
 }
 
-impl Type {
+impl TypeAlias {
     pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
         self.id.source(db)
     }
@@ -645,7 +655,7 @@ impl Type {
     }
 }
 
-impl Docs for Type {
+impl Docs for TypeAlias {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
         docs_from_ast(&*self.source(db).1)
     }

@@ -7,7 +7,10 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
-use crate::{db::PersistentHirDatabase, Name, AsName, Function, Struct, Enum, Trait, Type, ImplBlock};
+use crate::{
+    db::PersistentHirDatabase,
+    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock
+};
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -30,10 +33,10 @@ pub enum GenericDef {
     Struct(Struct),
     Enum(Enum),
     Trait(Trait),
-    Type(Type),
+    TypeAlias(TypeAlias),
     ImplBlock(ImplBlock),
 }
-impl_froms!(GenericDef: Function, Struct, Enum, Trait, Type, ImplBlock);
+impl_froms!(GenericDef: Function, Struct, Enum, Trait, TypeAlias, ImplBlock);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -43,7 +46,7 @@ impl GenericParams {
         let mut generics = GenericParams::default();
         let parent = match def {
             GenericDef::Function(it) => it.impl_block(db),
-            GenericDef::Type(it) => it.impl_block(db),
+            GenericDef::TypeAlias(it) => it.impl_block(db),
             GenericDef::Struct(_) | GenericDef::Enum(_) | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
@@ -54,7 +57,7 @@ impl GenericParams {
             GenericDef::Struct(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Trait(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Type(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
         }
 

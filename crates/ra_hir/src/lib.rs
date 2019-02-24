@@ -72,5 +72,5 @@ pub use self::code_model_api::{
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const,
-    Trait, Type,
+    Trait, TypeAlias,
 };
