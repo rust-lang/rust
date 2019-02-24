@@ -220,18 +220,6 @@ function lookForEntry(entry, data) {
     return null;
 }
 
-function build_docs(out_dir, rustdoc_path, file_to_document) {
-    var c = spawnSync(rustdoc_path, [file_to_document, '-o', out_dir]);
-    var s = '';
-    if (c.error || c.stderr.length > 0) {
-        if (c.stderr.length > 0) {
-            s += '==> STDERR: ' + c.stderr + '\n';
-        }
-        s += '==> ERROR: ' + c.error;
-    }
-    return s;
-}
-
 function load_files(out_folder, crate) {
     var mainJs = readFile(out_folder + "/main.js");
     var ALIASES = readFile(out_folder + "/aliases.js");
@@ -266,44 +254,32 @@ function load_files(out_folder, crate) {
 }
 
 function main(argv) {
-    if (argv.length !== 4) {
-        console.error("USAGE: node tester.js [TOOLCHAIN] [STAGE]");
+    if (argv.length < 4) {
+        console.error("USAGE: node tester.js OUT_FOLDER [TESTS]");
         return 1;
     }
-    const toolchain = argv[2];
-    const stage = argv[3];
-    const rustdoc_path = './build/' + toolchain + '/stage' + stage + '/bin/rustdoc';
+    if (argv[2].substr(-1) !== "/") {
+        argv[2] += "/";
+    }
+    const out_folder = argv[2];
 
     var errors = 0;
 
-    fs.readdirSync(TEST_FOLDER).forEach(function(file) {
-        if (!file.endsWith('.js')) {
-            return;
-        }
-        var test_name = file.substring(0, file.length - 3);
+    for (var j = 3; j < argv.length; ++j) {
+        const test_name = argv[j];
+
         process.stdout.write('Checking "' + test_name + '" ... ');
-        var rust_file = TEST_FOLDER + test_name + '.rs';
-
-        if (!fs.existsSync(rust_file)) {
-            console.error("FAILED");
-            console.error("==> Missing '" + test_name + ".rs' file...");
+        if (!fs.existsSync(TEST_FOLDER + test_name + ".js")) {
             errors += 1;
-            return;
+            console.error("FAILED");
+            console.error("==> Missing '" + test_name + ".js' file...");
+            continue;
         }
 
-        var out_folder = "build/" + toolchain + "/stage" + stage + "/tests/rustdoc-js/" +
-                         test_name;
+        const test_out_folder = out_folder + test_name;
 
-        var ret = build_docs(out_folder, rustdoc_path, rust_file);
-        if (ret.length > 0) {
-            console.error("FAILED");
-            console.error(ret);
-            errors += 1;
-            return;
-        }
-
-        var [loaded, index] = load_files(out_folder, test_name);
-        var loadedFile = loadContent(readFile(TEST_FOLDER + file) +
+        var [loaded, index] = load_files(test_out_folder, test_name);
+        var loadedFile = loadContent(readFile(TEST_FOLDER + test_name + ".js") +
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
@@ -351,7 +327,7 @@ function main(argv) {
         } else {
             console.log("OK");
         }
-    });
+    }
     return errors;
 }
 
