@@ -43,14 +43,6 @@ fn two_phase_overlapping2() {
 }
 */
 
-fn match_two_phase() {
-    let mut x = 3;
-    match x {
-        ref mut y if { let _val = x; let _val = *y; true } => {},
-        _ => (),
-    }
-}
-
 fn with_interior_mutability() {
     use std::cell::Cell;
 
@@ -76,7 +68,6 @@ fn main() {
     two_phase2();
     two_phase3(false);
     two_phase3(true);
-    match_two_phase();
     with_interior_mutability();
     //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
     //two_phase_overlapping1();
