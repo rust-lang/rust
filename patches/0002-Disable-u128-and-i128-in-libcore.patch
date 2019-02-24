@@ -1,6 +1,6 @@
-From 8080d322c8396b7b234cc92eb675f697c55f7298 Mon Sep 17 00:00:00 2001
+From 61a7d6cc7809c89a8d2d046946dd0cb7cb1cd1b5 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 16 Feb 2019 12:09:42 +0100
+Date: Sun, 24 Feb 2019 11:27:11 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -18,13 +18,13 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/num/wrapping.rs      |  14 ++--
  src/libcore/ops/arith.rs         |  22 +++---
  src/libcore/ops/bit.rs           |  30 +++-----
- src/libcore/sync/atomic.rs       |  30 --------
+ src/libcore/sync/atomic.rs       |  32 --------
  src/libcore/time.rs              | 123 -------------------------------
  src/libstd/lib.rs                |   4 -
- src/libstd/net/ip.rs             |  20 -----
+ src/libstd/net/ip.rs             |  42 -----------
  src/libstd/num.rs                |   2 +-
  src/libstd/panic.rs              |   6 --
- 22 files changed, 63 insertions(+), 372 deletions(-)
+ 20 files changed, 63 insertions(+), 363 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index ed90b7d..1739f91 100644
@@ -190,7 +190,7 @@ index d5d29c9..f98f382 100644
  
      #[stable(feature = "rust1", since = "1.0.0")]
 diff --git a/src/libcore/iter/range.rs b/src/libcore/iter/range.rs
-index a3e9cfa..31b6ca4 100644
+index e7efd97..78e0da7 100644
 --- a/src/libcore/iter/range.rs
 +++ b/src/libcore/iter/range.rs
 @@ -173,7 +173,6 @@ step_impl_signed!([i64: u64]);
@@ -215,10 +215,10 @@ index dfe1d2a..06cc578 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index cd88d3e..532d680 100644
+index cdb42c1..75743ee 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -148,14 +148,12 @@ mod uint_macros;
+@@ -149,14 +149,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -234,10 +234,10 @@ index cd88d3e..532d680 100644
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index c4b41f1..0ade53b 100644
+index 29606cb..160cca1 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
-@@ -664,8 +664,8 @@ mod copy_impls {
+@@ -673,8 +673,8 @@ mod copy_impls {
      }
  
      impl_copy! {
@@ -249,7 +249,7 @@ index c4b41f1..0ade53b 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 3f7455a..7a0c44a 100644
+index 43afc9a..fc5366b 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -164,12 +164,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
@@ -266,7 +266,7 @@ index 3f7455a..7a0c44a 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 6fb67ea..6440490 100644
+index 5b7d5f4..0cfb96c 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
 @@ -102,13 +102,11 @@ nonzero_integers! {
@@ -283,7 +283,7 @@ index 6fb67ea..6440490 100644
      #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
  }
  
-@@ -2124,18 +2122,6 @@ impl i64 {
+@@ -2120,18 +2118,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -302,7 +302,7 @@ index 6fb67ea..6440490 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4411,17 +4397,6 @@ impl u64 {
+@@ -4407,17 +4393,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -320,7 +320,7 @@ index 6fb67ea..6440490 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4505,7 +4480,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4501,7 +4476,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -329,7 +329,7 @@ index 6fb67ea..6440490 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4621,30 +4596,25 @@ macro_rules! rev {
+@@ -4617,30 +4592,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -364,7 +364,7 @@ index 6fb67ea..6440490 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4656,21 +4626,21 @@ mod ptr_try_from_impls {
+@@ -4652,21 +4622,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -394,7 +394,7 @@ index 6fb67ea..6440490 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4679,24 +4649,24 @@ mod ptr_try_from_impls {
+@@ -4675,24 +4645,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -427,7 +427,7 @@ index 6fb67ea..6440490 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4705,24 +4675,20 @@ mod ptr_try_from_impls {
+@@ -4701,24 +4671,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -456,7 +456,7 @@ index 6fb67ea..6440490 100644
  }
  
  #[doc(hidden)]
-@@ -4757,7 +4723,7 @@ macro_rules! doit {
+@@ -4753,7 +4719,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -465,7 +465,7 @@ index 6fb67ea..6440490 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4948,52 +4914,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4944,52 +4910,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -841,8 +841,51 @@ index 2c9bf24..af2ab6f 100644
  
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
+index d0ee5fa..d02c454 100644
+--- a/src/libcore/sync/atomic.rs
++++ b/src/libcore/sync/atomic.rs
+@@ -2012,38 +2012,6 @@ atomic_int! {
+     "AtomicU64::new(0)",
+     u64 AtomicU64 ATOMIC_U64_INIT
+ }
+-#[cfg(target_has_atomic = "128")]
+-atomic_int! {
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "i128", "../../../std/primitive.i128.html",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_min, atomic_max,
+-    16,
+-    "AtomicI128::new(0)",
+-    i128 AtomicI128 ATOMIC_I128_INIT
+-}
+-#[cfg(target_has_atomic = "128")]
+-atomic_int! {
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "u128", "../../../std/primitive.u128.html",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_umin, atomic_umax,
+-    16,
+-    "AtomicU128::new(0)",
+-    u128 AtomicU128 ATOMIC_U128_INIT
+-}
+ #[cfg(target_pointer_width = "16")]
+ macro_rules! ptr_width {
+     () => { 2 }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
-index ac7e117..0dfd856 100644
+index 91161ca..759497f 100644
 --- a/src/libcore/time.rs
 +++ b/src/libcore/time.rs
 @@ -21,7 +21,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -851,9 +894,9 @@ index ac7e117..0dfd856 100644
  const MICROS_PER_SEC: u64 = 1_000_000;
 -const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
  
- /// The duration of one second.
- #[unstable(feature = "duration_constants", issue = "57391")]
-@@ -276,54 +275,6 @@ impl Duration {
+ /// A `Duration` type to represent a span of time, typically used for system
+ /// timeouts.
+@@ -312,54 +311,6 @@ impl Duration {
      #[inline]
      pub const fn subsec_nanos(&self) -> u32 { self.nanos }
  
@@ -908,7 +951,7 @@ index ac7e117..0dfd856 100644
      /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
      /// if overflow occurred.
      ///
-@@ -482,80 +433,6 @@ impl Duration {
+@@ -518,80 +469,6 @@ impl Duration {
          (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
      }
  
@@ -990,10 +1033,10 @@ index ac7e117..0dfd856 100644
      ///
      /// # Examples
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 9a4232d..592fea0 100644
+index c7401e2..3dff42a 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -392,8 +392,6 @@ pub use core::i16;
+@@ -396,8 +396,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -1002,7 +1045,7 @@ index 9a4232d..592fea0 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -426,8 +424,6 @@ pub use alloc_crate::string;
+@@ -430,8 +428,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
@@ -1078,7 +1121,7 @@ index c80b9a5..e32a6b3 100644
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
-index 862fdf0..171ebeb 100644
+index daeac71..717ee82 100644
 --- a/src/libstd/panic.rs
 +++ b/src/libstd/panic.rs
 @@ -254,9 +254,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}

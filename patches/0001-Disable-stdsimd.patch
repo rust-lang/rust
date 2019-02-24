@@ -1,6 +1,6 @@
-From 096dee5742ccd90df2e0edfe8b6bda87a63d99cf Mon Sep 17 00:00:00 2001
+From 95157a64120faffebc2cc67baf65f45f992e167e Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Wed, 30 Jan 2019 18:55:58 +0100
+Date: Sun, 24 Feb 2019 11:27:11 +0100
 Subject: [PATCH] Disable stdsimd
 
 ---
@@ -9,10 +9,10 @@ Subject: [PATCH] Disable stdsimd
  2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 6f364eb..69f0914 100644
+index f2165c6..cdb42c1 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -221,6 +221,7 @@ pub mod alloc;
+@@ -222,6 +222,7 @@ pub mod alloc;
  mod tuple;
  mod unit;
  
@@ -20,24 +20,24 @@ index 6f364eb..69f0914 100644
  // Pull in the `core_arch` crate directly into libcore. The contents of
  // `core_arch` are in a different repository: rust-lang-nursery/stdsimd.
  //
-@@ -248,3 +249,4 @@ mod core_arch;
+@@ -235,3 +236,4 @@ mod core_arch;
  
  #[stable(feature = "simd_arch", since = "1.27.0")]
  pub use core_arch::arch;
 +*/
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 244caf2..f269fda 100644
+index 6dd3a6c..c7401e2 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -271,7 +271,6 @@
- #![feature(rustc_attrs)]
- #![feature(rustc_const_unstable)]
+@@ -291,7 +291,6 @@
+ #![feature(slice_patterns)]
+ #![feature(staged_api)]
  #![feature(std_internals)]
 -#![feature(stdsimd)]
- #![feature(shrink_to)]
- #![feature(slice_concat_ext)]
- #![feature(slice_internals)]
-@@ -358,9 +357,6 @@ pub mod prelude;
+ #![feature(stmt_expr_attributes)]
+ #![feature(str_internals)]
+ #![feature(thread_local)]
+@@ -357,9 +356,6 @@ pub mod prelude;
  // Public module declarations and re-exports
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::any;
@@ -47,7 +47,7 @@ index 244caf2..f269fda 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::cell;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -492,6 +488,7 @@ mod memchr;
+@@ -489,6 +485,7 @@ mod memchr;
  // compiler
  pub mod rt;
  
@@ -55,7 +55,7 @@ index 244caf2..f269fda 100644
  // Pull in the `std_detect` crate directly into libstd. The contents of
  // `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
  //
-@@ -508,6 +505,7 @@ mod std_detect;
+@@ -505,6 +502,7 @@ mod std_detect;
  #[unstable(feature = "stdsimd", issue = "48556")]
  #[cfg(not(test))]
  pub use std_detect::detect;
@@ -64,5 +64,4 @@ index 244caf2..f269fda 100644
  // Include a number of private modules that exist solely to provide
  // the rustdoc documentation for primitive types. Using `include!`
 -- 
-2.11.0
-
+2.17.2 (Apple Git-113)

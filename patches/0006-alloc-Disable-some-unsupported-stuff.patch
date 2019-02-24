@@ -1,18 +1,18 @@
-From a65665bae4e5ad6ef76a365b7cdff8bdfbd3db67 Mon Sep 17 00:00:00 2001
+From 610096e32cc7cfba58358219a1cf25ff72123208 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 6 Oct 2018 11:03:00 +0200
+Date: Sun, 24 Feb 2019 11:27:11 +0100
 Subject: [PATCH] [alloc] Disable some unsupported stuff
 
 ---
  src/liballoc/boxed.rs | 6 ------
  src/liballoc/vec.rs   | 2 --
- 3 files changed, 4 insertions(+), 8 deletions(-)
+ 2 files changed, 8 deletions(-)
 
 diff --git a/src/liballoc/boxed.rs b/src/liballoc/boxed.rs
-index f989e70..597dd15 100644
+index 0cd2373..696535a 100644
 --- a/src/liballoc/boxed.rs
 +++ b/src/liballoc/boxed.rs
-@@ -410,9 +410,6 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
+@@ -423,9 +423,6 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
      fn write_u64(&mut self, i: u64) {
          (**self).write_u64(i)
      }
@@ -22,7 +22,7 @@ index f989e70..597dd15 100644
      fn write_usize(&mut self, i: usize) {
          (**self).write_usize(i)
      }
-@@ -428,9 +425,6 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
+@@ -441,9 +438,6 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
      fn write_i64(&mut self, i: i64) {
          (**self).write_i64(i)
      }
@@ -33,22 +33,22 @@ index f989e70..597dd15 100644
          (**self).write_isize(i)
      }
 diff --git a/src/liballoc/vec.rs b/src/liballoc/vec.rs
-index 2bc037e..2fe8894 100644
+index 229dafc..944856e 100644
 --- a/src/liballoc/vec.rs
 +++ b/src/liballoc/vec.rs
-@@ -1569,13 +1569,11 @@ impl_is_zero!(i8, |x| x == 0);
+@@ -1601,13 +1601,11 @@ impl_is_zero!(i8, |x| x == 0);
  impl_is_zero!(i16, |x| x == 0);
  impl_is_zero!(i32, |x| x == 0);
  impl_is_zero!(i64, |x| x == 0);
 -impl_is_zero!(i128, |x| x == 0);
  impl_is_zero!(isize, |x| x == 0);
-
+ 
  impl_is_zero!(u16, |x| x == 0);
  impl_is_zero!(u32, |x| x == 0);
  impl_is_zero!(u64, |x| x == 0);
 -impl_is_zero!(u128, |x| x == 0);
  impl_is_zero!(usize, |x| x == 0);
-
- impl_is_zero!(char, |x| x == '\0');
---
-2.17.1 (Apple Git-112)
+ 
+ impl_is_zero!(bool, |x| x == false);
+-- 
+2.17.2 (Apple Git-113)
