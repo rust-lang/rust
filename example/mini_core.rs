@@ -371,6 +371,7 @@ pub mod intrinsics {
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
         pub fn uninit<T>() -> T;
+        pub fn init<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;

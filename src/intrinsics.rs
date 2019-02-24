@@ -337,16 +337,36 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let dst_layout = fx.layout_of(dst_ty);
             ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
         };
-        init, <T> () {
-            let layout = fx.layout_of(T);
-            let inited_place = CPlace::new_stack_slot(fx, T);
-            let addr = inited_place.to_addr(fx);
-            let zero_val = fx.bcx.ins().iconst(types::I8, 0);
-            let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
-            fx.bcx.call_memset(fx.module.target_config(), addr, zero_val, len_val);
+        init, () {
+            if ret.layout().abi == Abi::Uninhabited {
+                crate::trap::trap_panic(&mut fx.bcx);
+                return;
+            }
 
-            let inited_val = inited_place.to_cvalue(fx);
-            ret.write_cvalue(fx, inited_val);
+            match ret {
+                CPlace::NoPlace(_layout) => {}
+                CPlace::Var(var, layout) => {
+                    let clif_ty = fx.clif_type(layout.ty).unwrap();
+                    let val = match clif_ty {
+                        types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 0),
+                        types::F32 => {
+                            let zero = fx.bcx.ins().iconst(types::I32, 0);
+                            fx.bcx.ins().bitcast(types::F32, zero)
+                        }
+                        types::F64 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0);
+                            fx.bcx.ins().bitcast(types::F64, zero)
+                        }
+                        _ => panic!("clif_type returned {}", clif_ty),
+                    };
+                    fx.bcx.def_var(mir_var(var), val);
+                }
+                _ => {
+                    let addr = ret.to_addr(fx);
+                    let layout = ret.layout();
+                    fx.bcx.emit_small_memset(fx.module.target_config(), addr, 0, layout.size.bytes(), 1);
+                }
+            }
         };
         write_bytes, (c dst, v val, v count) {
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
@@ -356,6 +376,11 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         uninit, <T> () {
+            if ret.layout().abi == Abi::Uninhabited {
+                crate::trap::trap_panic(&mut fx.bcx);
+                return;
+            }
+
             let uninit_place = CPlace::new_stack_slot(fx, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);

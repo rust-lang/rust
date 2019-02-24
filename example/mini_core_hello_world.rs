@@ -165,6 +165,29 @@ fn main() {
         struct MyDst<T: ?Sized>(T);
 
         intrinsics::size_of_val(&MyDst([0u8; 4]) as &MyDst<[u8]>);
+
+        struct Foo {
+            x: u8,
+            y: !,
+        }
+
+        unsafe fn zeroed<T>() -> T {
+            intrinsics::init::<T>()
+        }
+
+        unsafe fn uninitialized<T>() -> T {
+            intrinsics::uninit::<T>()
+        }
+
+        #[allow(unreachable_code)]
+        {
+            if false {
+                zeroed::<!>();
+                zeroed::<Foo>();
+                zeroed::<(u8, u8)>();
+                uninitialized::<Foo>();
+            }
+        }
     }
 
     let _ = box NoisyDrop {
