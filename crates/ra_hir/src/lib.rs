@@ -59,7 +59,7 @@ pub use self::{
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
-    expr::{ExprScopes, ScopesWithSyntaxMapping},
+    expr::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax},
     resolve::{Resolver, Resolution},
 };
 
@@ -68,7 +68,7 @@ pub use self::code_model_api::{
     Def,
     Module, ModuleDef, ModuleSource, Problem,
     Struct, Enum, EnumVariant,
-    Function, FnSignature, ScopeEntryWithSyntax,
+    Function, FnSignature,
     StructField, FieldSource,
     Static, Const,
     Trait, Type,
