@@ -14,8 +14,8 @@ use crate::{
     algo,
     syntax_node::{GreenNode, SyntaxNode},
     parsing::{
-        input::ParserInput,
-        builder::TreeBuilder,
+        text_token_source::TextTokenSource,
+        text_tree_sink::TextTreeSink,
         lexer::{tokenize, Token},
     }
 };
@@ -68,8 +68,8 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let token_source = ParserInput::new(&text, &tokens);
-    let mut tree_sink = TreeBuilder::new(&text, &tokens);
+    let token_source = TextTokenSource::new(&text, &tokens);
+    let mut tree_sink = TextTreeSink::new(&text, &tokens);
     reparser.parse(&token_source, &mut tree_sink);
     let (green, new_errors) = tree_sink.finish();
     Some((node, green, new_errors))

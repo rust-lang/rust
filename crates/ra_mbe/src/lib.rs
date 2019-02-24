@@ -24,7 +24,7 @@ use ra_syntax::SmolStr;
 
 pub use tt::{Delimiter, Punct};
 
-pub use crate::syntax_bridge::ast_to_token_tree;
+pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -164,14 +164,18 @@ impl_froms!(TokenTree: Leaf, Subtree);
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
-    fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
+    fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
         let source_file = ast::SourceFile::parse(invocation);
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
         let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
 
-        let expanded = rules.expand(&invocation_tt).unwrap();
+        rules.expand(&invocation_tt).unwrap()
+    }
+
+    fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
+        let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
     }
 
@@ -266,6 +270,59 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
         assert_expansion(&rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
         assert_expansion(&rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    }
+
+    #[test]
+    fn expand_to_item_list() {
+        let rules = create_rules(
+            "
+            macro_rules! structs {
+                ($($i:ident),*) => {
+                    $(struct $i { field: u32 } )*
+                }
+            }
+            ",
+        );
+        let expansion = expand(&rules, "structs!(Foo, Bar)");
+        let tree = token_tree_to_ast_item_list(&expansion);
+        assert_eq!(
+            tree.syntax().debug_dump().trim(),
+            r#"
+SOURCE_FILE@[0; 40)
+  STRUCT_DEF@[0; 20)
+    STRUCT_KW@[0; 6)
+    NAME@[6; 9)
+      IDENT@[6; 9) "Foo"
+    NAMED_FIELD_DEF_LIST@[9; 20)
+      L_CURLY@[9; 10)
+      NAMED_FIELD_DEF@[10; 19)
+        NAME@[10; 15)
+          IDENT@[10; 15) "field"
+        COLON@[15; 16)
+        PATH_TYPE@[16; 19)
+          PATH@[16; 19)
+            PATH_SEGMENT@[16; 19)
+              NAME_REF@[16; 19)
+                IDENT@[16; 19) "u32"
+      R_CURLY@[19; 20)
+  STRUCT_DEF@[20; 40)
+    STRUCT_KW@[20; 26)
+    NAME@[26; 29)
+      IDENT@[26; 29) "Bar"
+    NAMED_FIELD_DEF_LIST@[29; 40)
+      L_CURLY@[29; 30)
+      NAMED_FIELD_DEF@[30; 39)
+        NAME@[30; 35)
+          IDENT@[30; 35) "field"
+        COLON@[35; 36)
+        PATH_TYPE@[36; 39)
+          PATH@[36; 39)
+            PATH_SEGMENT@[36; 39)
+              NAME_REF@[36; 39)
+                IDENT@[36; 39) "u32"
+      R_CURLY@[39; 40)"#
+                .trim()
+        );
     }
 
 }

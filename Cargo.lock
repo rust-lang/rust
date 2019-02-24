@@ -1066,6 +1066,7 @@ dependencies = [
 name = "ra_mbe"
 version = "0.1.0"
 dependencies = [
+ "ra_parser 0.1.0",
  "ra_syntax 0.1.0",
  "ra_tt 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",

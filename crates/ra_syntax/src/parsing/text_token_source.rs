@@ -5,7 +5,7 @@ use crate::{
     parsing::lexer::Token,
 };
 
-pub(crate) struct ParserInput<'t> {
+pub(crate) struct TextTokenSource<'t> {
     text: &'t str,
     /// start position of each token(expect whitespace and comment)
     /// ```non-rust
@@ -25,7 +25,7 @@ pub(crate) struct ParserInput<'t> {
     tokens: Vec<Token>,
 }
 
-impl<'t> TokenSource for ParserInput<'t> {
+impl<'t> TokenSource for TextTokenSource<'t> {
     fn token_kind(&self, pos: usize) -> SyntaxKind {
         if !(pos < self.tokens.len()) {
             return EOF;
@@ -48,9 +48,9 @@ impl<'t> TokenSource for ParserInput<'t> {
     }
 }
 
-impl<'t> ParserInput<'t> {
+impl<'t> TextTokenSource<'t> {
     /// Generate input from tokens(expect comment and whitespace).
-    pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> ParserInput<'t> {
+    pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> TextTokenSource<'t> {
         let mut tokens = Vec::new();
         let mut start_offsets = Vec::new();
         let mut len = 0.into();
@@ -62,6 +62,6 @@ impl<'t> ParserInput<'t> {
             len += token.len;
         }
 
-        ParserInput { text, start_offsets, tokens }
+        TextTokenSource { text, start_offsets, tokens }
     }
 }

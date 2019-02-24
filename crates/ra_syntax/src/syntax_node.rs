@@ -11,11 +11,12 @@ use std::{
     borrow::Borrow,
 };
 
-use rowan::{Types, TransparentNewType};
+use ra_parser::ParseError;
+use rowan::{Types, TransparentNewType, GreenNodeBuilder};
 
 use crate::{
-    SmolStr, SyntaxKind, TextRange, SyntaxText, SourceFile, AstNode,
-    syntax_error::SyntaxError,
+    SmolStr, SyntaxKind, TextUnit, TextRange, SyntaxText, SourceFile, AstNode,
+    syntax_error::{SyntaxError, SyntaxErrorKind},
 };
 
 pub use rowan::WalkEvent;
@@ -274,5 +275,49 @@ fn has_short_text(kind: SyntaxKind) -> bool {
     match kind {
         IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
         _ => false,
+    }
+}
+
+pub struct SyntaxTreeBuilder {
+    errors: Vec<SyntaxError>,
+    inner: GreenNodeBuilder<RaTypes>,
+}
+
+impl Default for SyntaxTreeBuilder {
+    fn default() -> SyntaxTreeBuilder {
+        SyntaxTreeBuilder { errors: Vec::new(), inner: GreenNodeBuilder::new() }
+    }
+}
+
+impl SyntaxTreeBuilder {
+    pub(crate) fn finish_raw(self) -> (GreenNode, Vec<SyntaxError>) {
+        let green = self.inner.finish();
+        (green, self.errors)
+    }
+
+    pub fn finish(self) -> TreeArc<SyntaxNode> {
+        let (green, errors) = self.finish_raw();
+        let node = SyntaxNode::new(green, errors);
+        if cfg!(debug_assertions) {
+            crate::validation::validate_block_structure(&node);
+        }
+        node
+    }
+
+    pub fn leaf(&mut self, kind: SyntaxKind, text: SmolStr) {
+        self.inner.leaf(kind, text)
+    }
+
+    pub fn start_branch(&mut self, kind: SyntaxKind) {
+        self.inner.start_internal(kind)
+    }
+
+    pub fn finish_branch(&mut self) {
+        self.inner.finish_internal()
+    }
+
+    pub fn error(&mut self, error: ParseError, text_pos: TextUnit) {
+        let error = SyntaxError::new(SyntaxErrorKind::ParseError(error), text_pos);
+        self.errors.push(error)
     }
 }
