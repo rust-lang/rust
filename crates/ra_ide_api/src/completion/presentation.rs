@@ -1,7 +1,8 @@
 //! This modules takes care of rendering various defenitions as completion items.
 use join_to_string::join;
 use test_utils::tested_by;
-use hir::Docs;
+use hir::{Docs, PerNs, Resolution};
+use ra_syntax::ast::NameOwner;
 
 use crate::completion::{
     Completions, CompletionKind, CompletionItemKind, CompletionContext, CompletionItem,
@@ -33,6 +34,17 @@ impl Completions {
             .add_to(self);
     }
 
+    pub(crate) fn add_resolution(
+        &mut self,
+        ctx: &CompletionContext,
+        local_name: String,
+        res: &PerNs<Resolution>,
+    ) {
+        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
+            .from_resolution(ctx, res)
+            .add_to(self);
+    }
+
     pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
         let sig = func.signature(ctx.db);
 
@@ -60,6 +72,28 @@ impl Completions {
             builder = builder.insert_snippet(snippet);
         }
         self.add(builder)
+    }
+
+    pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
+        let (_file_id, cosnt_def) = constant.source(ctx.db);
+        let name = match cosnt_def.name() {
+            Some(name) => name,
+            _ => return,
+        };
+        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
+            .from_const(ctx, constant)
+            .add_to(self);
+    }
+
+    pub(crate) fn add_type(&mut self, ctx: &CompletionContext, type_alias: hir::Type) {
+        let (_file_id, type_def) = type_alias.source(ctx.db);
+        let name = match type_def.name() {
+            Some(name) => name,
+            _ => return,
+        };
+        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
+            .from_type(ctx, type_alias)
+            .add_to(self);
     }
 
     pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {

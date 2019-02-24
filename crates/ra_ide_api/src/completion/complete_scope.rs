@@ -1,4 +1,4 @@
-use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
+use crate::completion::{Completions, CompletionContext};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
@@ -6,11 +6,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
     let names = ctx.resolver.all_names(ctx.db);
 
-    names.into_iter().for_each(|(name, res)| {
-        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
-            .from_resolution(ctx, &res)
-            .add_to(acc)
-    });
+    names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
 }
 
 #[cfg(test)]

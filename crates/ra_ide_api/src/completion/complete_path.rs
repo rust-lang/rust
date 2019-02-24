@@ -1,8 +1,8 @@
 use hir::Resolution;
-use ra_syntax::{AstNode, ast::NameOwner};
+use ra_syntax::AstNode;
 use test_utils::tested_by;
 
-use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
+use crate::completion::{Completions, CompletionContext};
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
@@ -27,14 +27,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                         }
                     }
                 }
-
-                CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    name.to_string(),
-                )
-                .from_resolution(ctx, &res.def.map(hir::Resolution::Def))
-                .add_to(acc);
+                acc.add_resolution(ctx, name.to_string(), &res.def.map(hir::Resolution::Def));
             }
         }
         hir::ModuleDef::Enum(e) => {
@@ -52,30 +45,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                             acc.add_function(ctx, func);
                         }
                     }
-                    hir::ImplItem::Const(ct) => {
-                        let source = ct.source(ctx.db);
-                        if let Some(name) = source.1.name() {
-                            CompletionItem::new(
-                                CompletionKind::Reference,
-                                ctx.source_range(),
-                                name.text().to_string(),
-                            )
-                            .from_const(ctx, ct)
-                            .add_to(acc);
-                        }
-                    }
-                    hir::ImplItem::Type(ty) => {
-                        let source = ty.source(ctx.db);
-                        if let Some(name) = source.1.name() {
-                            CompletionItem::new(
-                                CompletionKind::Reference,
-                                ctx.source_range(),
-                                name.text().to_string(),
-                            )
-                            .from_type(ctx, ty)
-                            .add_to(acc);
-                        }
-                    }
+                    hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
+                    hir::ImplItem::Type(ty) => acc.add_type(ctx, ty),
                 }
                 None::<()>
             });
