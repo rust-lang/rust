@@ -70,3 +70,83 @@ fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Opti
     let node = function.source(ctx.db).1;
     function_label(&node)
 }
+
+#[cfg(test)]
+mod tests {
+    use test_utils::covers;
+
+    use crate::completion::{CompletionKind, completion_item::check_completion};
+
+    fn check_reference_completion(code: &str, expected_completions: &str) {
+        check_completion(code, expected_completions, CompletionKind::Reference);
+    }
+
+    #[test]
+    fn inserts_parens_for_function_calls() {
+        covers!(inserts_parens_for_function_calls);
+        check_reference_completion(
+            "inserts_parens_for_function_calls1",
+            r"
+            fn no_args() {}
+            fn main() { no_<|> }
+            ",
+        );
+        check_reference_completion(
+            "inserts_parens_for_function_calls2",
+            r"
+            fn with_args(x: i32, y: String) {}
+            fn main() { with_<|> }
+            ",
+        );
+        check_reference_completion(
+            "inserts_parens_for_function_calls3",
+            r"
+            struct S {}
+            impl S {
+                fn foo(&self) {}
+            }
+            fn bar(s: &S) {
+                s.f<|>
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn dont_render_function_parens_in_use_item() {
+        check_reference_completion(
+            "dont_render_function_parens_in_use_item",
+            "
+            //- /lib.rs
+            mod m { pub fn foo() {} }
+            use crate::m::f<|>;
+            ",
+        )
+    }
+
+    #[test]
+    fn dont_render_function_parens_if_already_call() {
+        check_reference_completion(
+            "dont_render_function_parens_if_already_call",
+            "
+            //- /lib.rs
+            fn frobnicate() {}
+            fn main() {
+                frob<|>();
+            }
+            ",
+        );
+        check_reference_completion(
+            "dont_render_function_parens_if_already_call_assoc_fn",
+            "
+            //- /lib.rs
+            struct Foo {}
+            impl Foo { fn new() -> Foo {} }
+            fn main() {
+                Foo::ne<|>();
+            }
+            ",
+        )
+    }
+
+}
