@@ -53,16 +53,22 @@ pub fn codegen_static_ref<'a, 'tcx: 'a>(
 pub fn trans_promoted<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     promoted: Promoted,
+    dest_ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
-    let const_ = fx
+    match fx
         .tcx
         .const_eval(ParamEnv::reveal_all().and(GlobalId {
             instance: fx.instance,
             promoted: Some(promoted),
         }))
-        .unwrap();
-
-    trans_const_place(fx, const_)
+    {
+        Ok(const_) => {
+            let cplace = trans_const_place(fx, const_);
+            debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
+            cplace
+        }
+        Err(_) => crate::trap::trap_unreachable_ret_place(fx, fx.layout_of(dest_ty)),
+    }
 }
 
 pub fn trans_constant<'a, 'tcx: 'a>(

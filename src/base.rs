@@ -1134,7 +1134,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
     match place {
         Place::Base(base) => match base {
             PlaceBase::Local(local) => fx.get_local_place(*local),
-            PlaceBase::Promoted(promoted) => crate::constant::trans_promoted(fx, promoted.0),
+            PlaceBase::Promoted(data) => crate::constant::trans_promoted(fx, data.0, data.1),
             PlaceBase::Static(static_) => crate::constant::codegen_static_ref(fx, static_),
         }
         Place::Projection(projection) => {
