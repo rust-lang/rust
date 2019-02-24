@@ -65,6 +65,7 @@ cfg_if! {
         }
 
         use std::ops::Add;
+        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         #[derive(Debug)]
         pub struct Atomic<T: Copy>(Cell<T>);
@@ -130,7 +131,19 @@ cfg_if! {
         #[macro_export]
         macro_rules! parallel {
             ($($blocks:tt),*) => {
-                $($blocks)*;
+                let mut panic = None;
+                $(
+                    if let Err(p) = ::std::panic::catch_unwind(
+                        ::std::panic::AssertUnwindSafe(|| $blocks)
+                    ) {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                    }
+                )*
+                if let Some(panic) = panic {
+                    ::std::panic::resume_unwind(panic);
+                }
             }
         }
 
@@ -138,6 +151,24 @@ cfg_if! {
 
         pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
             t.into_iter()
+        }
+
+        pub fn par_for_each_in<T: IntoIterator>(
+            t: T,
+            for_each:
+                impl Fn(<<T as IntoIterator>::IntoIter as Iterator>::Item) + Sync + Send
+        ) {
+            let mut panic = None;
+            t.into_iter().for_each(|i| {
+                if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
+                    if panic.is_none() {
+                        panic = Some(p);
+                    }
+                }
+            });
+            if let Some(panic) = panic {
+                resume_unwind(panic);
+            }
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
@@ -306,6 +337,15 @@ cfg_if! {
 
         pub fn par_iter<T: IntoParallelIterator>(t: T) -> T::Iter {
             t.into_par_iter()
+        }
+
+        pub fn par_for_each_in<T: IntoParallelIterator>(
+            t: T,
+            for_each: impl Fn(
+                <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
+            ) + Sync + Send
+        ) {
+            t.into_par_iter().for_each(for_each)
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
