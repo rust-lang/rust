@@ -144,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprKind::Closure(..) = expr.node {
-            let def_id = self.tcx.hir().local_def_id(expr.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
             self.tcx.generics_of(def_id);
             self.tcx.type_of(def_id);
         }

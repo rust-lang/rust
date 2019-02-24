@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
             let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
             self.fcx
-                .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc);
+                .analyze_closure(expr.hir_id, expr.span, body, cc);
         }
 
         intravisit::walk_expr(self, expr);
@@ -77,7 +77,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn analyze_closure(
         &self,
-        closure_node_id: ast::NodeId,
         closure_hir_id: hir::HirId,
         span: Span,
         body: &hir::Body,
@@ -89,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!(
             "analyze_closure(id={:?}, body.id={:?})",
-            closure_node_id,
+            closure_hir_id,
             body.id()
         );
 
@@ -105,7 +104,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 span_bug!(
                     span,
                     "type of closure expr {:?} is not a closure {:?}",
-                    closure_node_id,
+                    closure_hir_id,
                     t
                 );
             }
@@ -120,6 +119,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             None
         };
+
+        let closure_node_id = self.tcx.hir().hir_to_node_id(closure_hir_id);
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
             let mut freevar_list: Vec<ty::UpvarId> = Vec::with_capacity(freevars.len());
@@ -582,7 +583,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     fn consume(
         &mut self,
-        _consume_id: ast::NodeId,
+        _consume_id: hir::HirId,
         _consume_span: Span,
         cmt: &mc::cmt_<'tcx>,
         mode: euv::ConsumeMode,
@@ -611,7 +612,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
 
     fn borrow(
         &mut self,
-        borrow_id: ast::NodeId,
+        borrow_id: hir::HirId,
         _borrow_span: Span,
         cmt: &mc::cmt_<'tcx>,
         _loan_region: ty::Region<'tcx>,
@@ -638,7 +639,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
 
     fn mutate(
         &mut self,
-        _assignment_id: ast::NodeId,
+        _assignment_id: hir::HirId,
         _assignment_span: Span,
         assignee_cmt: &mc::cmt_<'tcx>,
         _mode: euv::MutateMode,

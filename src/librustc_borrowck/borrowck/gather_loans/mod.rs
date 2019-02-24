@@ -68,7 +68,7 @@ struct GatherLoanCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
-               consume_id: ast::NodeId,
+               consume_id: hir::HirId,
                _consume_span: Span,
                cmt: &mc::cmt_<'tcx>,
                mode: euv::ConsumeMode) {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    self.bccx.tcx.hir().node_to_hir_id(consume_id).local_id, cmt, move_reason);
+                    consume_id.local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -115,7 +115,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn borrow(&mut self,
-              borrow_id: ast::NodeId,
+              borrow_id: hir::HirId,
               borrow_span: Span,
               cmt: &mc::cmt_<'tcx>,
               loan_region: ty::Region<'tcx>,
@@ -126,8 +126,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-        let hir_id = self.bccx.tcx.hir().node_to_hir_id(borrow_id);
-        self.guarantee_valid(hir_id.local_id,
+
+        self.guarantee_valid(borrow_id.local_id,
                              borrow_span,
                              cmt,
                              bk,
@@ -136,12 +136,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn mutate(&mut self,
-              assignment_id: ast::NodeId,
+              assignment_id: hir::HirId,
               assignment_span: Span,
               assignee_cmt: &mc::cmt_<'tcx>,
               _: euv::MutateMode)
     {
-        self.guarantee_assignment_valid(assignment_id,
+        let node_id = self.bccx.tcx.hir().hir_to_node_id(assignment_id);
+        self.guarantee_assignment_valid(node_id,
                                         assignment_span,
                                         assignee_cmt);
     }

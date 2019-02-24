@@ -271,7 +271,8 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                     return (ctor_vis, span, descr);
                 }
                 Node::Expr(expr) => {
-                    return (ty::Visibility::Restricted(tcx.hir().get_module_parent(expr.id)),
+                    return (ty::Visibility::Restricted(
+                        tcx.hir().get_module_parent_by_hir_id(expr.hir_id)),
                             expr.span, "private")
                 }
                 node => bug!("unexpected node kind: {:?}", node)
@@ -872,7 +873,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                     // unmentioned fields, just check them all.
                     for (vf_index, variant_field) in variant.fields.iter().enumerate() {
                         let field = fields.iter().find(|f| {
-                            self.tcx.field_index(f.id, self.tables) == vf_index
+                            self.tcx.field_index(f.hir_id, self.tables) == vf_index
                         });
                         let (use_ctxt, span) = match field {
                             Some(field) => (field.ident.span, field.span),
@@ -883,7 +884,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 } else {
                     for field in fields {
                         let use_ctxt = field.ident.span;
-                        let index = self.tcx.field_index(field.id, self.tables);
+                        let index = self.tcx.field_index(field.hir_id, self.tables);
                         self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                     }
                 }
@@ -902,7 +903,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     let use_ctxt = field.node.ident.span;
-                    let index = self.tcx.field_index(field.node.id, self.tables);
+                    let index = self.tcx.field_index(field.node.hir_id, self.tables);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                 }
             }

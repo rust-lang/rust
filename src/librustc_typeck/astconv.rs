@@ -885,7 +885,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let msg = format!("associated type `{}` is private", binding.item_name);
             tcx.sess.span_err(binding.span, &msg);
         }
-        tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
+        tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span);
 
         if !speculative {
             dup_bindings.entry(assoc_ty.def_id)
@@ -1276,7 +1276,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     ) -> (Ty<'tcx>, Def) {
         let tcx = self.tcx();
         let assoc_ident = assoc_segment.ident;
-        let ref_id = tcx.hir().hir_to_node_id(hir_ref_id);
 
         debug!("associated_path_to_ty: {:?}::{}", qself_ty, assoc_ident);
 
@@ -1293,7 +1292,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let def = Def::Variant(variant_def.did);
                     if permit_variants {
                         check_type_alias_enum_variants_enabled(tcx, span);
-                        tcx.check_stability(variant_def.did, Some(ref_id), span);
+                        tcx.check_stability(variant_def.did, Some(hir_ref_id), span);
                         return (qself_ty, def);
                     } else {
                         variant_resolution = Some(def);
@@ -1385,7 +1384,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let msg = format!("{} `{}` is private", def.kind_name(), assoc_ident);
             tcx.sess.span_err(span, &msg);
         }
-        tcx.check_stability(item.def_id, Some(ref_id), span);
+        tcx.check_stability(item.def_id, Some(hir_ref_id), span);
 
         if let Some(variant_def) = variant_resolution {
             let mut err = tcx.struct_span_lint_hir(

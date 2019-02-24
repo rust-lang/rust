@@ -963,7 +963,6 @@ impl<'a> LoweringContext<'a> {
         let closure_hir_id = self.lower_node_id(closure_node_id).hir_id;
         let decl = self.lower_fn_decl(&decl, None, /* impl trait allowed */ false, None);
         let generator = hir::Expr {
-            id: closure_node_id,
             hir_id: closure_hir_id,
             node: hir::ExprKind::Closure(capture_clause, decl, body_id, span,
                 Some(hir::GeneratorMovability::Static)),
@@ -3932,10 +3931,9 @@ impl<'a> LoweringContext<'a> {
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
                         || {
-                            let LoweredNodeId { node_id, hir_id } = this.next_id();
+                            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
                             let span = this.sess.source_map().end_point(unstable_span);
                             hir::Expr {
-                                id: node_id,
                                 span,
                                 node: hir::ExprKind::Tup(hir_vec![]),
                                 attrs: ThinVec::new(),
@@ -4120,10 +4118,9 @@ impl<'a> LoweringContext<'a> {
                 let struct_path = self.std_path(e.span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
 
                 return hir::Expr {
-                    id: node_id,
                     hir_id,
                     node: if is_unit {
                         hir::ExprKind::Path(struct_path)
@@ -4473,9 +4470,8 @@ impl<'a> LoweringContext<'a> {
                     self.lower_label(opt_label),
                     hir::LoopSource::ForLoop,
                 );
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
                 let loop_expr = P(hir::Expr {
-                    id: node_id,
                     hir_id,
                     node: loop_expr,
                     span: e.span,
@@ -4620,10 +4616,9 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
 
         hir::Expr {
-            id: node_id,
             hir_id,
             node: kind,
             span: e.span,
@@ -4895,9 +4890,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr(&mut self, span: Span, node: hir::ExprKind, attrs: ThinVec<Attribute>) -> hir::Expr {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         hir::Expr {
-            id: node_id,
             hir_id,
             node,
             span,

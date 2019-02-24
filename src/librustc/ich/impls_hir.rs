@@ -559,7 +559,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
                                           hasher: &mut StableHasher<W>) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr {
-                id: _,
                 hir_id: _,
                 ref span,
                 ref node,

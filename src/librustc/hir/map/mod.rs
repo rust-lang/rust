@@ -799,7 +799,7 @@ impl<'hir> Map<'hir> {
     ///     false
     /// }
     /// ```
-    pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
+    pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
         let match_fn = |node: &Node<'_>| {
             match *node {
                 Node::Item(_) |
@@ -822,7 +822,10 @@ impl<'hir> Map<'hir> {
             }
         };
 
-        self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
+        let node_id = self.hir_to_node_id(id);
+        self.walk_parent_nodes(node_id, match_fn, match_non_returning_block)
+            .ok()
+            .map(|return_node_id| self.node_to_hir_id(return_node_id))
     }
 
     /// Retrieves the `NodeId` for `id`'s parent item, or `id` itself if no
