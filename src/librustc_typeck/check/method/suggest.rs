@@ -501,7 +501,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               mut msg: String,
                               candidates: Vec<DefId>) {
         let module_did = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
-        let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
+        let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -787,7 +787,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 }
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
-    target_module: ast::NodeId,
+    target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
     tcx: TyCtxt<'a, 'gcx, 'tcx>
@@ -797,7 +797,7 @@ impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
     fn check(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         krate: &'tcx hir::Crate,
-        target_module: ast::NodeId,
+        target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder {
             target_module,
@@ -815,13 +815,13 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
         &mut self,
         module: &'tcx hir::Mod,
         _: Span,
-        node_id: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
         if self.span.is_some() {
             return;
         }
-        if node_id != self.target_module {
-            hir::intravisit::walk_mod(self, module, node_id);
+        if hir_id != self.target_module {
+            hir::intravisit::walk_mod(self, module, hir_id);
             return;
         }
         // Find a `use` statement.

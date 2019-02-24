@@ -182,8 +182,8 @@ macro_rules! late_lint_methods {
             fn check_name(a: Span, b: ast::Name);
             fn check_crate(a: &$hir hir::Crate);
             fn check_crate_post(a: &$hir hir::Crate);
-            fn check_mod(a: &$hir hir::Mod, b: Span, c: ast::NodeId);
-            fn check_mod_post(a: &$hir hir::Mod, b: Span, c: ast::NodeId);
+            fn check_mod(a: &$hir hir::Mod, b: Span, c: hir::HirId);
+            fn check_mod_post(a: &$hir hir::Mod, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem);
             fn check_foreign_item_post(a: &$hir hir::ForeignItem);
             fn check_item(a: &$hir hir::Item);
@@ -206,13 +206,13 @@ macro_rules! late_lint_methods {
                 b: &$hir hir::FnDecl,
                 c: &$hir hir::Body,
                 d: Span,
-                e: ast::NodeId);
+                e: hir::HirId);
             fn check_fn_post(
                 a: hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl,
                 c: &$hir hir::Body,
                 d: Span,
-                e: ast::NodeId
+                e: hir::HirId
             );
             fn check_trait_item(a: &$hir hir::TraitItem);
             fn check_trait_item_post(a: &$hir hir::TraitItem);
@@ -222,13 +222,13 @@ macro_rules! late_lint_methods {
                 a: &$hir hir::VariantData,
                 b: ast::Name,
                 c: &$hir hir::Generics,
-                d: ast::NodeId
+                d: hir::HirId
             );
             fn check_struct_def_post(
                 a: &$hir hir::VariantData,
                 b: ast::Name,
                 c: &$hir hir::Generics,
-                d: ast::NodeId
+                d: hir::HirId
             );
             fn check_struct_field(a: &$hir hir::StructField);
             fn check_variant(a: &$hir hir::Variant, b: &$hir hir::Generics);
@@ -781,7 +781,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
     fn visit_variant(&mut self,
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     item_id: ast::NodeId) {
+                     item_id: hir::HirId) {
         self.with_lint_attrs(v.node.data.id(), &v.node.attrs, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })

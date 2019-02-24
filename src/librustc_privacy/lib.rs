@@ -454,8 +454,8 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         if let Some([module, segment]) = segments.rchunks_exact(2).next() {
             if let Some(item) = module.def
                 .and_then(|def| def.mod_def_id())
-                .and_then(|def_id| self.tcx.hir().as_local_node_id(def_id))
-                .map(|module_node_id| self.tcx.hir().expect_item(module_node_id))
+                .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
+                .map(|module_hir_id| self.tcx.hir().expect_item_by_hir_id(module_hir_id))
              {
                 if let hir::ItemKind::Mod(m) = &item.node {
                     for item_id in m.item_ids.as_ref() {
@@ -673,11 +673,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         self.prev_level = orig_level;
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod, _sp: Span, id: ast::NodeId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod, _sp: Span, id: hir::HirId) {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            let def_id = self.tcx.hir().local_def_id(id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if export.vis == ty::Visibility::Public {
@@ -823,7 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }
@@ -963,7 +963,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: ast::NodeId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }
@@ -1461,7 +1461,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_variant(&mut self,
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     item_id: ast::NodeId) {
+                     item_id: hir::HirId) {
         if self.access_levels.is_reachable(v.node.data.id()) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
@@ -1769,7 +1769,8 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
         empty_tables: &empty_tables,
     };
     let (module, span, node_id) = tcx.hir().get_module(module_def_id);
-    intravisit::walk_mod(&mut visitor, module, node_id);
+    let hir_id = tcx.hir().node_to_hir_id(node_id);
+    intravisit::walk_mod(&mut visitor, module, hir_id);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
@@ -1781,7 +1782,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
         span,
         empty_tables: &empty_tables,
     };
-    intravisit::walk_mod(&mut visitor, module, node_id);
+    intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
 fn privacy_access_levels<'tcx>(

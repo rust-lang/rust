@@ -2564,9 +2564,9 @@ impl Clean<Type> for hir::Ty {
                 let mut alias = None;
                 if let Def::TyAlias(def_id) = path.def {
                     // Substitute private type aliases
-                    if let Some(node_id) = cx.tcx.hir().as_local_node_id(def_id) {
+                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
-                            alias = Some(&cx.tcx.hir().expect_item(node_id).node);
+                            alias = Some(&cx.tcx.hir().expect_item_by_hir_id(hir_id).node);
                         }
                     }
                 };

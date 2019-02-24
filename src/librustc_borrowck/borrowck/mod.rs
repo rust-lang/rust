@@ -703,20 +703,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         // Get type of value and span where it was previously
         // moved.
-        let node_id = self.tcx.hir().hir_to_node_id(hir::HirId {
+        let hir_id = hir::HirId {
             owner: self.body.value.hir_id.owner,
             local_id: the_move.id
-        });
+        };
         let (move_span, move_note) = match the_move.kind {
             move_data::Declared => {
                 unreachable!();
             }
 
             move_data::MoveExpr |
-            move_data::MovePat => (self.tcx.hir().span(node_id), ""),
+            move_data::MovePat => (self.tcx.hir().span_by_hir_id(hir_id), ""),
 
             move_data::Captured =>
-                (match self.tcx.hir().expect_expr(node_id).node {
+                (match self.tcx.hir().expect_expr_by_hir_id(hir_id).node {
                     hir::ExprKind::Closure(.., fn_decl_span, _) => fn_decl_span,
                     ref r => bug!("Captured({:?}) maps to non-closure: {:?}",
                                   the_move.id, r),
@@ -828,8 +828,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     MutabilityViolation => {
                         let mut db = self.cannot_assign(error_span, &descr, Origin::Ast);
                         if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
-                            let node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
-                            let sp = self.tcx.hir().span(node_id);
+                            let hir_id = upvar_id.var_path.hir_id;
+                            let sp = self.tcx.hir().span_by_hir_id(hir_id);
                             let fn_closure_msg = "`Fn` closures cannot capture their enclosing \
                                                   environment for modifications";
                             match (self.tcx.sess.source_map().span_to_snippet(sp), &err.cmt.cat) {
@@ -1120,8 +1120,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else {
                     "consider changing this closure to take self by mutable reference"
                 };
-                let node_id = self.tcx.hir().local_def_id_to_node_id(id);
-                let help_span = self.tcx.hir().span(node_id);
+                let hir_id = self.tcx.hir().local_def_id_to_hir_id(id);
+                let help_span = self.tcx.hir().span_by_hir_id(hir_id);
                 self.cannot_act_on_capture_in_sharable_fn(span,
                                                           prefix,
                                                           (help_span, help_msg),
@@ -1362,9 +1362,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     _ => bug!()
                 };
                 if *kind == ty::ClosureKind::Fn {
-                    let closure_node_id =
-                        self.tcx.hir().local_def_id_to_node_id(upvar_id.closure_expr_id);
-                    db.span_help(self.tcx.hir().span(closure_node_id),
+                    let closure_hir_id =
+                        self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
+                    db.span_help(self.tcx.hir().span_by_hir_id(closure_hir_id),
                                  "consider changing this closure to take \
                                   self by mutable reference");
                 }
@@ -1397,8 +1397,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                       loan_path: &LoanPath<'tcx>,
                                       out: &mut String) {
         match loan_path.kind {
-            LpUpvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id: id}, closure_expr_id: _ }) => {
-                out.push_str(&self.tcx.hir().name(self.tcx.hir().hir_to_node_id(id)).as_str());
+            LpUpvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id: id }, closure_expr_id: _ }) => {
+                out.push_str(&self.tcx.hir().name_by_hir_id(id).as_str());
             }
             LpVar(id) => {
                 out.push_str(&self.tcx.hir().name(id).as_str());

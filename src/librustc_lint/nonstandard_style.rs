@@ -18,8 +18,8 @@ pub enum MethodLateContext {
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext<'_, '_>, id: ast::NodeId) -> MethodLateContext {
-    let def_id = cx.tcx.hir().local_def_id(id);
+pub fn method_context(cx: &LateContext<'_, '_>, id: hir::HirId) -> MethodLateContext {
+    let def_id = cx.tcx.hir().local_def_id_from_hir_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
@@ -317,7 +317,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         _: &hir::FnDecl,
         _: &hir::Body,
         _: Span,
-        id: ast::NodeId,
+        id: hir::HirId,
     ) {
         match &fk {
             FnKind::Method(ident, ..) => {
@@ -369,7 +369,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         s: &hir::VariantData,
         _: ast::Name,
         _: &hir::Generics,
-        _: ast::NodeId,
+        _: hir::HirId,
     ) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident);
