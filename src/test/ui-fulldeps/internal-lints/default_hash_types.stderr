@@ -1,5 +1,5 @@
 warning: Prefer FxHashMap over HashMap, it has better performance
-  --> $DIR/default_hash_types.rs:18:24
+  --> $DIR/default_hash_types.rs:8:24
    |
 LL | use std::collections::{HashMap, HashSet};
    |                        ^^^^^^^ help: use: `FxHashMap`
@@ -8,7 +8,7 @@ LL | use std::collections::{HashMap, HashSet};
    = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 
 warning: Prefer FxHashSet over HashSet, it has better performance
-  --> $DIR/default_hash_types.rs:18:33
+  --> $DIR/default_hash_types.rs:8:33
    |
 LL | use std::collections::{HashMap, HashSet};
    |                                 ^^^^^^^ help: use: `FxHashSet`
@@ -16,20 +16,20 @@ LL | use std::collections::{HashMap, HashSet};
    = note: a `use rustc_data_structures::fx::FxHashSet` may be necessary
 
 error: Prefer FxHashMap over HashMap, it has better performance
-  --> $DIR/default_hash_types.rs:24:15
+  --> $DIR/default_hash_types.rs:14:15
    |
 LL |     let _map: HashMap<String, String> = HashMap::default();
    |               ^^^^^^^ help: use: `FxHashMap`
    |
 note: lint level defined here
-  --> $DIR/default_hash_types.rs:22:8
+  --> $DIR/default_hash_types.rs:12:8
    |
 LL | #[deny(default_hash_types)]
    |        ^^^^^^^^^^^^^^^^^^
    = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 
 error: Prefer FxHashMap over HashMap, it has better performance
-  --> $DIR/default_hash_types.rs:24:41
+  --> $DIR/default_hash_types.rs:14:41
    |
 LL |     let _map: HashMap<String, String> = HashMap::default();
    |                                         ^^^^^^^ help: use: `FxHashMap`
@@ -37,7 +37,7 @@ LL |     let _map: HashMap<String, String> = HashMap::default();
    = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 
 error: Prefer FxHashSet over HashSet, it has better performance
-  --> $DIR/default_hash_types.rs:27:15
+  --> $DIR/default_hash_types.rs:17:15
    |
 LL |     let _set: HashSet<String> = HashSet::default();
    |               ^^^^^^^ help: use: `FxHashSet`
@@ -45,7 +45,7 @@ LL |     let _set: HashSet<String> = HashSet::default();
    = note: a `use rustc_data_structures::fx::FxHashSet` may be necessary
 
 error: Prefer FxHashSet over HashSet, it has better performance
-  --> $DIR/default_hash_types.rs:27:33
+  --> $DIR/default_hash_types.rs:17:33
    |
 LL |     let _set: HashSet<String> = HashSet::default();
    |                                 ^^^^^^^ help: use: `FxHashSet`
