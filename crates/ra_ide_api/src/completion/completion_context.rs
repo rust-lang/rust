@@ -23,6 +23,9 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
     pub(super) struct_lit_syntax: Option<&'a ast::StructLit>,
     pub(super) is_param: bool,
+    /// If a name-binding or reference to a const in a pattern.
+    /// Irrefutable patterns (like let) are excluded.
+    pub(super) is_pat_binding: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial, path, the prefix (qualifier).
@@ -58,6 +61,7 @@ impl<'a> CompletionContext<'a> {
             use_item_syntax: None,
             struct_lit_syntax: None,
             is_param: false,
+            is_pat_binding: false,
             is_trivial_path: false,
             path_prefix: None,
             after_if: false,
@@ -102,12 +106,22 @@ impl<'a> CompletionContext<'a> {
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
+            if is_node::<ast::BindPat>(name.syntax()) {
+                let bind_pat = name.syntax().ancestors().find_map(ast::BindPat::cast).unwrap();
+                let parent = bind_pat.syntax().parent();
+                if parent.and_then(ast::MatchArm::cast).is_some()
+                    || parent.and_then(ast::Condition::cast).is_some()
+                {
+                    self.is_pat_binding = true;
+                }
+            }
             if is_node::<ast::Param>(name.syntax()) {
                 self.is_param = true;
                 return;
             }
         }
     }
+
     fn classify_name_ref(&mut self, original_file: &'a SourceFile, name_ref: &ast::NameRef) {
         let name_range = name_ref.syntax().range();
         if name_ref.syntax().parent().and_then(ast::NamedField::cast).is_some() {
