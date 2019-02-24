@@ -326,7 +326,7 @@ pub enum Kind {
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
-            ($($rule:ty),+ $(,)*) => {{
+            ($($rule:ty),+ $(,)?) => {{
                 vec![$(StepDescription::from::<$rule>()),+]
             }};
         }

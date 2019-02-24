@@ -39,14 +39,14 @@ macro_rules! associated_item {
 
 macro_rules! declare_server_traits {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         pub trait Types {
             $(associated_item!(type $name);)*
         }
 
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)*);)*
+            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
@@ -59,14 +59,14 @@ pub(super) struct MarkedTypes<S: Types>(S);
 
 macro_rules! define_mark_types_impls {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
-            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)* {
+            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
                 <_>::mark($name::$method(&mut self.0, $($arg.unmark()),*))
             })*
         })*
@@ -81,8 +81,8 @@ struct Dispatcher<S: Types> {
 
 macro_rules! define_dispatcher_impl {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.

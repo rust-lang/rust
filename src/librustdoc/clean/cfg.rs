@@ -431,7 +431,7 @@ mod test {
     }
 
     macro_rules! dummy_meta_item_list {
-        ($name:ident, [$($list:ident),* $(,)*]) => {
+        ($name:ident, [$($list:ident),* $(,)?]) => {
             MetaItem {
                 ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
@@ -445,7 +445,7 @@ mod test {
             }
         };
 
-        ($name:ident, [$($list:expr),* $(,)*]) => {
+        ($name:ident, [$($list:expr),* $(,)?]) => {
             MetaItem {
                 ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
