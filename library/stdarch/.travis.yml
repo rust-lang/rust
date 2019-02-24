@@ -37,12 +37,12 @@ matrix:
       env: TARGET=aarch64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
     - name: "powerpc-unknown-linux-gnu - no assert_instr"
       env: TARGET=powerpc-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
-    - name: "powerpc64-unknown-linux-gnu - no assert_instr, no simd_test"
-      env: TARGET=powerpc64-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1 STDSIMD_TEST_NORUN=1
-    - name: "powerpc64le-unknown-linux-gnu - no assert_instr, no simd_test"
-      env: TARGET=powerpc64le-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1 STDSIMD_TEST_NORUN=1
-    - name: "s390x-unknown-linux-gnu - build-only"
-      env: TARGET=s390x-unknown-linux-gnu NORUN=1
+    - name: "powerpc64-unknown-linux-gnu - no assert_instr"
+      env: TARGET=powerpc64-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "powerpc64le-unknown-linux-gnu - no assert_instr"
+      env: TARGET=powerpc64le-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "s390x-unknown-linux-gnu"
+      env: TARGET=s390x-unknown-linux-gnu
     - name: "i686-apple-darwin"
       env: TARGET=i686-apple-darwin NO_DOCKER=1
       os: osx
