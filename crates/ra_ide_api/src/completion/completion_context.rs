@@ -21,6 +21,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
+    pub(super) struct_lit_syntax: Option<&'a ast::StructLit>,
     pub(super) is_param: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
@@ -55,6 +56,7 @@ impl<'a> CompletionContext<'a> {
             function: None,
             function_syntax: None,
             use_item_syntax: None,
+            struct_lit_syntax: None,
             is_param: false,
             is_trivial_path: false,
             path_prefix: None,
@@ -108,6 +110,10 @@ impl<'a> CompletionContext<'a> {
     }
     fn classify_name_ref(&mut self, original_file: &'a SourceFile, name_ref: &ast::NameRef) {
         let name_range = name_ref.syntax().range();
+        if name_ref.syntax().parent().and_then(ast::NamedField::cast).is_some() {
+            self.struct_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
+        }
+
         let top_node =
             name_ref.syntax().ancestors().take_while(|it| it.range() == name_range).last().unwrap();
 

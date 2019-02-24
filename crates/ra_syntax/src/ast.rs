@@ -724,6 +724,12 @@ impl LiteralExpr {
     }
 }
 
+impl NamedField {
+    pub fn parent_struct_lit(&self) -> &StructLit {
+        self.syntax().ancestors().find_map(StructLit::cast).unwrap()
+    }
+}
+
 impl BindPat {
     pub fn is_mutable(&self) -> bool {
         self.syntax().children().any(|n| n.kind() == MUT_KW)
