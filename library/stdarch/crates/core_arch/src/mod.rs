@@ -3,7 +3,7 @@
 #[macro_use]
 mod macros;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
 mod acle;
 
 mod simd;
