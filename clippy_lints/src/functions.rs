@@ -112,9 +112,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
         span: Span,
-        nodeid: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
-        let is_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(nodeid)) {
+        let is_impl = if let Some(hir::Node::Item(item)) = cx
+            .tcx
+            .hir()
+            .find_by_hir_id(cx.tcx.hir().get_parent_node_by_hir_id(hir_id))
+        {
             matches!(item.node, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
         } else {
             false
@@ -146,6 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
+        let nodeid = cx.tcx.hir().hir_to_node_id(hir_id);
         self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
         self.check_line_number(cx, span);
     }

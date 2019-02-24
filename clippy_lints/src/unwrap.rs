@@ -5,7 +5,6 @@ use rustc::{declare_tool_lint, lint_array};
 use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
-use syntax::ast::NodeId;
 use syntax::source_map::Span;
 
 /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
@@ -198,7 +197,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         decl: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
-        fn_id: NodeId,
+        fn_id: HirId,
     ) {
         if in_macro(span) {
             return;

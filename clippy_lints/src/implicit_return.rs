@@ -1,9 +1,9 @@
 use crate::utils::{in_macro, is_expn_of, snippet_opt, span_lint_and_then};
-use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, MatchSource};
+use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::{ast::NodeId, source_map::Span};
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for missing return statements at the end of a block.
 ///
@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);

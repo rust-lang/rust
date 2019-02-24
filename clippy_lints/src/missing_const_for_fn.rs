@@ -1,11 +1,10 @@
 use crate::utils::{is_entrypoint_fn, span_lint};
 use rustc::hir;
 use rustc::hir::intravisit::FnKind;
-use rustc::hir::{Body, Constness, FnDecl};
+use rustc::hir::{Body, Constness, FnDecl, HirId};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
-use syntax::ast::NodeId;
 use syntax_pos::Span;
 
 /// **What it does:**
@@ -79,9 +78,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         _: &FnDecl,
         _: &Body,
         span: Span,
-        node_id: NodeId,
+        hir_id: HirId,
     ) {
-        let def_id = cx.tcx.hir().local_def_id(node_id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
 
         if is_entrypoint_fn(cx, def_id) {
             return;

@@ -13,7 +13,6 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::NodeId;
 use syntax_pos::Span;
 
 /// **What it does:** Checks for functions taking arguments by reference, where
@@ -165,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         decl: &'tcx FnDecl,
         _body: &'tcx Body,
         span: Span,
-        node_id: NodeId,
+        hir_id: HirId,
     ) {
         if in_macro(span) {
             return;
@@ -187,7 +186,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(node_id)) {
+        if let Some(Node::Item(item)) = cx
+            .tcx
+            .hir()
+            .find_by_hir_id(cx.tcx.hir().get_parent_node_by_hir_id(hir_id))
+        {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
             {
@@ -195,7 +198,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
         }
 
-        let fn_def_id = cx.tcx.hir().local_def_id(node_id);
+        let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);

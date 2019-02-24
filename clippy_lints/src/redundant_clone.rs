@@ -5,7 +5,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir::intravisit::FnKind;
-use rustc::hir::{def_id, Body, FnDecl};
+use rustc::hir::{def_id, Body, FnDecl, HirId};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::mir::{
     self, traversal,
@@ -16,10 +16,7 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::convert::TryFrom;
-use syntax::{
-    ast::NodeId,
-    source_map::{BytePos, Span},
-};
+use syntax::source_map::{BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -88,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
