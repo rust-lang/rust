@@ -20,7 +20,8 @@ use crate::expr::{
     ExprType, RhsTactics,
 };
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    definitive_tactic, extract_pre_comment, itemize_list, write_list, ListFormatting, ListItem,
+    Separator,
 };
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
@@ -2291,9 +2292,15 @@ fn rewrite_args(
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
+    let mut comment_str = "";
     let min_args = explicit_self
         .and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
         .map_or(1, |self_str| {
+            let comment_span = mk_sp(span.lo(), args[0].pat.span.lo());
+            comment_str = context
+                .snippet_provider
+                .span_to_snippet(comment_span)
+                .unwrap();
             arg_item_strs[0] = self_str;
             2
         });
@@ -2368,7 +2375,12 @@ fn rewrite_args(
         && (arg_items.is_empty()
             || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
 
-    for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
+    for (index, (item, arg)) in arg_items.iter_mut().zip(arg_item_strs).enumerate() {
+        if index == 0 && explicit_self.is_some() {
+            let (pre_comment, pre_comment_style) = extract_pre_comment(comment_str);
+            item.pre_comment = pre_comment;
+            item.pre_comment_style = pre_comment_style;
+        }
         item.item = Some(arg);
     }
 
