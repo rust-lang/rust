@@ -1321,6 +1321,9 @@ impl<T> MaybeUninit<T> {
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
+    /// Whenever possible, it is preferrable to use [`into_initialized`] instead, which
+    /// prevents duplicating the content of the `MaybeUninit<T>`.
+    ///
     /// # Safety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
