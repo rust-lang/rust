@@ -1,5 +1,6 @@
 mod completion_item;
 mod completion_context;
+mod presentation;
 
 mod complete_dot;
 mod complete_struct_literal;

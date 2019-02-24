@@ -1,7 +1,6 @@
-use hir::{Ty, AdtDef, Docs};
+use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind};
-use crate::completion::completion_item::CompletionKind;
+use crate::completion::{CompletionContext, Completions, CompletionItem, CompletionItemKind, CompletionKind};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -29,15 +28,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                 match def_id {
                     AdtDef::Struct(s) => {
                         for field in s.fields(ctx.db) {
-                            CompletionItem::new(
-                                CompletionKind::Reference,
-                                ctx.source_range(),
-                                field.name(ctx.db).to_string(),
-                            )
-                            .kind(CompletionItemKind::Field)
-                            .detail(field.ty(ctx.db).subst(substs).to_string())
-                            .set_documentation(field.docs(ctx.db))
-                            .add_to(acc);
+                            acc.add_field(CompletionKind::Reference, ctx, field, substs);
                         }
                     }
 
@@ -47,14 +38,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             }
             Ty::Tuple(fields) => {
                 for (i, ty) in fields.iter().enumerate() {
-                    CompletionItem::new(
-                        CompletionKind::Reference,
-                        ctx.source_range(),
-                        i.to_string(),
-                    )
-                    .kind(CompletionItemKind::Field)
-                    .detail(ty.to_string())
-                    .add_to(acc);
+                    acc.add_pos_field(CompletionKind::Reference, ctx, i, ty);
                 }
             }
             _ => {}
