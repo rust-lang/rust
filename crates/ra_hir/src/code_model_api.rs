@@ -626,6 +626,23 @@ impl Type {
         let module_impls = db.impls_in_module(self.module(db));
         ImplBlock::containing(module_impls, (*self).into())
     }
+
+    pub fn type_ref(self, db: &impl PersistentHirDatabase) -> Arc<TypeRef> {
+        db.type_alias_ref(self)
+    }
+
+    /// Builds a resolver for the type references in this type alias.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self
+            .impl_block(db)
+            .map(|ib| ib.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db));
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
+        r
+    }
 }
 
 impl Docs for Type {

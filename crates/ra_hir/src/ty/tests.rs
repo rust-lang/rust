@@ -741,6 +741,41 @@ fn test() {
 }
 
 #[test]
+fn infer_type_alias() {
+    check_inference(
+        "infer_type_alias",
+        r#"
+struct A<X, Y> { x: X, y: Y };
+type Foo = A<u32, i128>;
+type Bar<T> = A<T, u128>;
+type Baz<U, V> = A<V, U>;
+fn test(x: Foo, y: Bar<&str>, z: Baz<i8, u8>) {
+    x.x;
+    x.y;
+    y.x;
+    y.y;
+    z.x;
+    z.y;
+}
+"#,
+    )
+}
+
+#[test]
+#[should_panic] // we currently can't handle this
+fn recursive_type_alias() {
+    check_inference(
+        "recursive_type_alias",
+        r#"
+struct A<X> {};
+type Foo = Foo;
+type Bar = A<Bar>;
+fn test(x: Foo) {}
+"#,
+    )
+}
+
+#[test]
 fn no_panic_on_field_of_enum() {
     check_inference(
         "no_panic_on_field_of_enum",

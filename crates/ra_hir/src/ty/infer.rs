@@ -477,7 +477,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Function(_) | TypableDef::Enum(_) => (Ty::Unknown, None),
+            TypableDef::Type(_) | TypableDef::Function(_) | TypableDef::Enum(_) => {
+                (Ty::Unknown, None)
+            }
         }
     }
 

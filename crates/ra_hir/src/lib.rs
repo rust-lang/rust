@@ -29,6 +29,7 @@ mod name;
 mod module_tree;
 mod nameres;
 mod adt;
+mod type_alias;
 mod type_ref;
 mod ty;
 mod impl_block;
