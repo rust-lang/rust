@@ -154,7 +154,7 @@ impl NavigationTarget {
                 let (file_id, node) = e.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
-            hir::ModuleDef::Type(e) => {
+            hir::ModuleDef::TypeAlias(e) => {
                 let (file_id, node) = e.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }

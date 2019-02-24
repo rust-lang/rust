@@ -65,7 +65,7 @@ impl Completions {
             Resolution::Def(Const(it)) => (CompletionItemKind::Const, it.docs(ctx.db)),
             Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
             Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
-            Resolution::Def(Type(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::Def(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
             Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
             Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
             Resolution::SelfType(..) => (
@@ -132,7 +132,7 @@ impl Completions {
             .add_to(self);
     }
 
-    pub(crate) fn add_type(&mut self, ctx: &CompletionContext, type_alias: hir::Type) {
+    pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
         let (_file_id, type_def) = type_alias.source(ctx.db);
         let name = match type_def.name() {
             Some(name) => name,

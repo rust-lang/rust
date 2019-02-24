@@ -46,7 +46,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                         }
                     }
                     hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
-                    hir::ImplItem::Type(ty) => acc.add_type(ctx, ty),
+                    hir::ImplItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                 }
                 None::<()>
             });

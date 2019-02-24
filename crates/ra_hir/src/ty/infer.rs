@@ -406,7 +406,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 crate::ImplItem::Const(_) => None,
 
                 // TODO: Resolve associated types
-                crate::ImplItem::Type(_) => None,
+                crate::ImplItem::TypeAlias(_) => None,
             })?;
             resolved = Resolution::Def(item.into());
         }
@@ -477,7 +477,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::Type(_) | TypableDef::Function(_) | TypableDef::Enum(_) => {
+            TypableDef::TypeAlias(_) | TypableDef::Function(_) | TypableDef::Enum(_) => {
                 (Ty::Unknown, None)
             }
         }
