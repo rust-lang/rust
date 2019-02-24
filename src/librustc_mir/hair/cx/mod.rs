@@ -197,8 +197,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    fn lint_level_of(&self, node_id: ast::NodeId) -> LintLevel {
-        let hir_id = self.tcx.hir().definitions().node_to_hir_id(node_id);
+    fn lint_level_of(&self, hir_id: hir::HirId) -> LintLevel {
         let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
             self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
         });

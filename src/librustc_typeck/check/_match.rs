@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             PatKind::Path(ref qpath) => {
-                let (def, _, _) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
+                let (def, _, _) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
                 match def {
                     Def::Const(..) | Def::AssociatedConst(..) => false,
                     _ => true,
@@ -630,7 +630,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         if self.diverges.get().always() {
             for arm in arms {
-                self.warn_if_unreachable(arm.body.id, arm.body.span, "arm");
+                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, "arm");
             }
         }
 
@@ -725,7 +725,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 let cause = if i == 0 {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.
-                    self.cause(arm_span, ObligationCauseCode::BlockTailExpression(arm.body.id))
+                    self.cause(arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id))
                 } else {
                     self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
                         arm_span,
@@ -761,7 +761,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     ) -> Ty<'tcx>
     {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.id) {
+        let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.hir_id)
+        {
             variant_ty
         } else {
             for field in fields {
@@ -779,7 +780,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         self.demand_eqtype_pat(pat.span, expected, pat_ty, match_discrim_span);
 
         // Type-check subpatterns.
-        if self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm) {
+        if self.check_struct_pat_fields(pat_ty, pat.hir_id, pat.span, variant, fields, etc, def_bm)
+        {
             pat_ty
         } else {
             self.tcx.types.err
@@ -795,7 +797,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let tcx = self.tcx;
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
         match def {
             Def::Err => {
                 self.set_tainted_by_errors();
@@ -818,7 +820,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
 
         // Type-check the path.
-        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id).0;
+        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.hir_id).0;
         self.demand_suptype(pat.span, expected, pat_ty);
         pat_ty
     }
@@ -849,7 +851,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
+        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
         if def == Def::Err {
             self.set_tainted_by_errors();
             on_error();
@@ -857,7 +859,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
 
         // Type-check the path.
-        let (pat_ty, def) = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+        let (pat_ty, def) = self.instantiate_value_path(segments, opt_ty, def, pat.span,
+            pat.hir_id);
         if !pat_ty.is_fn() {
             report_unexpected_def(def);
             return self.tcx.types.err;
@@ -897,7 +900,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat_walk(&subpat, field_ty, def_bm, match_arm_pat_span);
 
-                self.tcx.check_stability(variant.fields[i].did, Some(pat.id), subpat.span);
+                self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
             }
         } else {
             let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
@@ -917,7 +920,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn check_struct_pat_fields(&self,
                                adt_ty: Ty<'tcx>,
-                               pat_id: ast::NodeId,
+                               pat_id: hir::HirId,
                                span: Span,
                                variant: &'tcx ty::VariantDef,
                                fields: &'gcx [Spanned<hir::FieldPat>],
@@ -963,7 +966,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                     vacant.insert(span);
                     field_map.get(&ident)
                         .map(|(i, f)| {
-                            self.write_field_index(field.id, *i);
+                            self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(pat_id), span);
                             self.field_ty(span, f, substs)
                         })

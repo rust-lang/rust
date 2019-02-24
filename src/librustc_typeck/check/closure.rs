@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id(expr.id);
+        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,
@@ -131,8 +131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
-            "check_closure: expr.id={:?} closure_type={:?}",
-            expr.id, closure_type
+            "check_closure: expr.hir_id={:?} closure_type={:?}",
+            expr.hir_id, closure_type
         );
 
         // Tuple up the arguments and insert the resulting function type into

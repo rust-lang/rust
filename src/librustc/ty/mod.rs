@@ -2775,8 +2775,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn field_index(self, node_id: NodeId, tables: &TypeckTables<'_>) -> usize {
-        let hir_id = self.hir().node_to_hir_id(node_id);
+    pub fn field_index(self, hir_id: hir::HirId, tables: &TypeckTables<'_>) -> usize {
         tables.field_indices().get(hir_id).cloned().expect("no index for a field")
     }
 

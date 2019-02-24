@@ -1517,7 +1517,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         return;
                     }
                 };
-                let def = self.save_ctxt.get_path_def(hir_expr.id);
+                let node_id = self.save_ctxt.tcx.hir().hir_to_node_id(hir_expr.hir_id);
+                let def = self.save_ctxt.get_path_def(node_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
             ast::ExprKind::MethodCall(ref seg, ref args) => self.process_method_call(ex, seg, args),

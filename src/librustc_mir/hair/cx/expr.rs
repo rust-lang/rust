@@ -24,7 +24,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             data: region::ScopeData::Node
         };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
+        debug!("Expr::make_mirror(): id={}, span={:?}", self.hir_id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
 
@@ -44,7 +44,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
-                lint_level: cx.lint_level_of(self.id),
+                lint_level: cx.lint_level_of(self.hir_id),
             },
         };
 
@@ -529,7 +529,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.with_freevars(expr.id, |freevars| {
+            let expr_node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
+            let upvars = cx.tcx.with_freevars(expr_node_id, |freevars| {
                 freevars.iter()
                     .zip(substs.upvar_tys(def_id, cx.tcx))
                     .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
@@ -637,7 +638,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Field(ref source, ..) => {
             ExprKind::Field {
                 lhs: source.to_ref(),
-                name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(expr.hir_id, cx.tables)),
             }
         }
         hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -1184,7 +1185,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_hir_id = cx.tcx.hir().node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
@@ -1223,7 +1224,7 @@ fn field_refs<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     fields.iter()
         .map(|field| {
             FieldExprRef {
-                name: Field::new(cx.tcx.field_index(field.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(field.hir_id, cx.tables)),
                 expr: field.expr.to_ref(),
             }
         })

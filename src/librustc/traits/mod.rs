@@ -257,10 +257,10 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnNoExpression,
 
     /// `return` with an expression
-    ReturnType(ast::NodeId),
+    ReturnType(hir::HirId),
 
     /// Block implicit return
-    BlockTailExpression(ast::NodeId),
+    BlockTailExpression(hir::HirId),
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,

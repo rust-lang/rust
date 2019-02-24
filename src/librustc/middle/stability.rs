@@ -14,7 +14,7 @@ use crate::session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
-use syntax::ast::{NodeId, Attribute};
+use syntax::ast::Attribute;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
@@ -557,9 +557,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
-    pub fn eval_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) -> EvalResult {
+    pub fn eval_stability(self, def_id: DefId, id: Option<HirId>, span: Span) -> EvalResult {
         let lint_deprecated = |def_id: DefId,
-                               id: NodeId,
+                               id: HirId,
                                note: Option<Symbol>,
                                suggestion: Option<Symbol>,
                                message: &str,
@@ -570,9 +570,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 format!("{}", message)
             };
 
-            let mut diag = self.struct_span_lint_node(lint, id, span, &msg);
+            let mut diag = self.struct_span_lint_hir(lint, id, span, &msg);
             if let Some(suggestion) = suggestion {
-                if let hir::Node::Expr(_) = self.hir().get(id) {
+                if let hir::Node::Expr(_) = self.hir().get_by_hir_id(id) {
                     diag.span_suggestion(
                         span,
                         &msg,
@@ -582,15 +582,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             diag.emit();
-            if id == ast::DUMMY_NODE_ID {
-                span_bug!(span, "emitted a {} lint with dummy node id: {:?}", lint.name, def_id);
+            if id == hir::DUMMY_HIR_ID {
+                span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
             }
         };
 
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
-                let parent_def_id = self.hir().local_def_id(self.hir().get_parent(id));
+                let parent_def_id = self.hir().local_def_id_from_hir_id(
+                    self.hir().get_parent_item(id));
                 let skip = self.lookup_deprecation_entry(parent_def_id)
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
@@ -703,7 +704,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
-    pub fn check_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) {
+    pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue } => {
@@ -763,7 +764,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, Some(item.id), item.span);
+                self.tcx.check_stability(def_id, Some(item.hir_id), item.span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -811,7 +812,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx hir::Path, id: hir::HirId) {
-        let id = self.tcx.hir().hir_to_node_id(id);
         if let Some(def_id) = path.def.opt_def_id() {
             self.tcx.check_stability(def_id, Some(id), path.span)
         }

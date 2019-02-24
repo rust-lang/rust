@@ -171,7 +171,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir().get_module_parent(scrut.id);
+        let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -203,7 +203,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent(scrut.id);
+            let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
@@ -561,10 +561,10 @@ struct MutationChecker<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: euv::MatchMode) {}
-    fn consume(&mut self, _: ast::NodeId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
+    fn consume(&mut self, _: hir::HirId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: ConsumeMode) {}
     fn borrow(&mut self,
-              _: ast::NodeId,
+              _: hir::HirId,
               span: Span,
               _: &cmt_<'_>,
               _: ty::Region<'tcx>,
@@ -587,7 +587,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
         }
     }
     fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
-    fn mutate(&mut self, _: ast::NodeId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
+    fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {
                 struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")

@@ -1333,7 +1333,6 @@ pub struct AnonConst {
 /// An expression
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
-    pub id: NodeId,
     pub span: Span,
     pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
@@ -1436,7 +1435,7 @@ impl Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id,
+        write!(f, "expr({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_expr(self)))
     }
 }

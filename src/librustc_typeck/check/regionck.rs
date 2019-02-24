@@ -694,8 +694,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             hir::ExprKind::Ret(Some(ref ret_expr)) => {
                 let call_site_scope = self.call_site_scope;
                 debug!(
-                    "visit_expr ExprKind::Ret ret_expr.id {} call_site_scope: {:?}",
-                    ret_expr.id, call_site_scope
+                    "visit_expr ExprKind::Ret ret_expr.hir_id {} call_site_scope: {:?}",
+                    ret_expr.hir_id, call_site_scope
                 );
                 let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope.unwrap()));
                 self.type_of_node_must_outlive(
