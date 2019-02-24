@@ -6,7 +6,7 @@ use ra_syntax::ast::NameOwner;
 
 use crate::completion::{
     Completions, CompletionKind, CompletionItemKind, CompletionContext, CompletionItem,
-    function_label,
+    function_label, const_label, type_label,
 };
 
 impl Completions {
@@ -91,6 +91,8 @@ impl Completions {
     ) {
         let sig = func.signature(ctx.db);
         let name = name.unwrap_or_else(|| sig.name().to_string());
+        let (_, ast_node) = func.source(ctx.db);
+        let detail = function_label(&ast_node);
 
         let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)
             .kind(if sig.has_self_param() {
@@ -99,7 +101,7 @@ impl Completions {
                 CompletionItemKind::Function
             })
             .set_documentation(func.docs(ctx.db))
-            .set_detail(function_item_label(ctx, func));
+            .set_detail(detail);
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
@@ -115,13 +117,18 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        let (_file_id, cosnt_def) = constant.source(ctx.db);
-        let name = match cosnt_def.name() {
+        let (_file_id, ast_node) = constant.source(ctx.db);
+        let name = match ast_node.name() {
             Some(name) => name,
             _ => return,
         };
+        let (_, ast_node) = constant.source(ctx.db);
+        let detail = const_label(&ast_node);
+
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
-            .from_const(ctx, constant)
+            .kind(CompletionItemKind::Const)
+            .set_documentation(constant.docs(ctx.db))
+            .detail(detail)
             .add_to(self);
     }
 
@@ -131,8 +138,13 @@ impl Completions {
             Some(name) => name,
             _ => return,
         };
+        let (_, ast_node) = type_alias.source(ctx.db);
+        let detail = type_label(&ast_node);
+
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
-            .from_type(ctx, type_alias)
+            .kind(CompletionItemKind::TypeAlias)
+            .set_documentation(type_alias.docs(ctx.db))
+            .detail(detail)
             .add_to(self);
     }
 
@@ -150,11 +162,6 @@ impl Completions {
             .detail(detail)
             .add_to(self);
     }
-}
-
-fn function_item_label(ctx: &CompletionContext, function: hir::Function) -> Option<String> {
-    let node = function.source(ctx.db).1;
-    function_label(&node)
 }
 
 #[cfg(test)]

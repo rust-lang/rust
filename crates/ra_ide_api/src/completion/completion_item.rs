@@ -1,14 +1,8 @@
 use std::fmt;
 
-use hir::{Docs, Documentation};
+use hir::Documentation;
 use ra_syntax::TextRange;
-use ra_text_edit::{ TextEditBuilder, TextEdit};
-
-use crate::completion::{
-    completion_context::CompletionContext,
-    const_label,
-    type_label
-};
+use ra_text_edit::{TextEditBuilder, TextEdit};
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -253,27 +247,6 @@ impl Builder {
         self.documentation = docs.map(Into::into);
         self
     }
-    pub(super) fn from_const(mut self, ctx: &CompletionContext, ct: hir::Const) -> Builder {
-        if let Some(docs) = ct.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        self.detail = Some(const_item_label(ctx, ct));
-        self.kind = Some(CompletionItemKind::Const);
-
-        self
-    }
-
-    pub(super) fn from_type(mut self, ctx: &CompletionContext, ty: hir::Type) -> Builder {
-        if let Some(docs) = ty.docs(ctx.db) {
-            self.documentation = Some(docs);
-        }
-
-        self.detail = Some(type_item_label(ctx, ty));
-        self.kind = Some(CompletionItemKind::TypeAlias);
-
-        self
-    }
 }
 
 impl<'a> Into<CompletionItem> for Builder {
@@ -305,16 +278,6 @@ impl Into<Vec<CompletionItem>> for Completions {
     fn into(self) -> Vec<CompletionItem> {
         self.buf
     }
-}
-
-fn const_item_label(ctx: &CompletionContext, ct: hir::Const) -> String {
-    let node = ct.source(ctx.db).1;
-    const_label(&node)
-}
-
-fn type_item_label(ctx: &CompletionContext, ty: hir::Type) -> String {
-    let node = ty.source(ctx.db).1;
-    type_label(&node)
 }
 
 #[cfg(test)]
