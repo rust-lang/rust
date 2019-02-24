@@ -634,10 +634,45 @@ impl<'a> DiagnosticWrapper<'a> {
     }
 }
 
+/// Emit a basic lint message with a `msg` and a `span`.
+///
+/// This is the most primitive of our lint emission methods and can
+/// be a good way to get a new lint started.
+///
+/// Usually it's nicer to provide more context for lint messages.
+/// Be sure the output is understandable when you use this method.
+///
+/// # Example
+///
+/// ```ignore
+/// error: usage of mem::forget on Drop type
+///   --> $DIR/mem_forget.rs:17:5
+///    |
+/// 17 |     std::mem::forget(seven);
+///    |     ^^^^^^^^^^^^^^^^^^^^^^^
+/// ```
 pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).docs_link(lint);
 }
 
+/// Same as `span_lint` but with an extra `help` message.
+///
+/// Use this if you want to provide some general help but
+/// can't provide a specific machine applicable suggestion.
+///
+/// The `help` message is not attached to any `Span`.
+///
+/// # Example
+///
+/// ```ignore
+/// error: constant division of 0.0 with 0.0 will always result in NaN
+///   --> $DIR/zero_div_zero.rs:6:25
+///    |
+/// 6  |     let other_f64_nan = 0.0f64 / 0.0;
+///    |                         ^^^^^^^^^^^^
+///    |
+///    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
+/// ```
 pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     cx: &'a T,
     lint: &'static Lint,
@@ -650,6 +685,27 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     db.docs_link(lint);
 }
 
+/// Like `span_lint` but with a `note` section instead of a `help` message.
+///
+/// The `note` message is presented separately from the main lint message
+/// and is attached to a specific span:
+///
+/// # Example
+///
+/// ```ignore
+/// error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+///   --> $DIR/drop_forget_ref.rs:10:5
+///    |
+/// 10 |     forget(&SomeStruct);
+///    |     ^^^^^^^^^^^^^^^^^^^
+///    |
+///    = note: `-D clippy::forget-ref` implied by `-D warnings`
+/// note: argument has type &SomeStruct
+///   --> $DIR/drop_forget_ref.rs:10:12
+///    |
+/// 10 |     forget(&SomeStruct);
+///    |            ^^^^^^^^^^^
+/// ```
 pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     cx: &'a T,
     lint: &'static Lint,
