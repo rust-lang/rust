@@ -96,10 +96,10 @@ fn convert_tt(
 }
 
 struct TtTokenSource {
-    tokens: Vec<Tok>,
+    tokens: Vec<TtToken>,
 }
 
-struct Tok {
+struct TtToken {
     kind: SyntaxKind,
     is_joint_to_next: bool,
     text: SmolStr,
@@ -124,7 +124,7 @@ impl TtTokenSource {
     }
     fn convert_leaf(&mut self, leaf: &tt::Leaf) {
         let tok = match leaf {
-            tt::Leaf::Literal(l) => Tok {
+            tt::Leaf::Literal(l) => TtToken {
                 kind: SyntaxKind::INT_NUMBER, // FIXME
                 is_joint_to_next: false,
                 text: l.text.clone(),
@@ -144,11 +144,11 @@ impl TtTokenSource {
                     let s: &str = p.char.encode_utf8(&mut buf);
                     SmolStr::new(s)
                 };
-                Tok { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
+                TtToken { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
             }
             tt::Leaf::Ident(ident) => {
                 let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
-                Tok { kind, is_joint_to_next: false, text: ident.text.clone() }
+                TtToken { kind, is_joint_to_next: false, text: ident.text.clone() }
             }
         };
         self.tokens.push(tok)
@@ -163,7 +163,7 @@ impl TtTokenSource {
         let idx = closing as usize;
         let kind = kinds[idx];
         let text = &texts[idx..texts.len() - (1 - idx)];
-        let tok = Tok { kind, is_joint_to_next: false, text: SmolStr::new(text) };
+        let tok = TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text) };
         self.tokens.push(tok)
     }
 }
@@ -187,14 +187,14 @@ impl TokenSource for TtTokenSource {
 #[derive(Default)]
 struct TtTreeSink<'a> {
     buf: String,
-    tokens: &'a [Tok],
+    tokens: &'a [TtToken],
     text_pos: TextUnit,
     token_pos: usize,
     inner: SyntaxTreeBuilder,
 }
 
 impl<'a> TtTreeSink<'a> {
-    fn new(tokens: &'a [Tok]) -> TtTreeSink {
+    fn new(tokens: &'a [TtToken]) -> TtTreeSink {
         TtTreeSink {
             buf: String::new(),
             tokens,
