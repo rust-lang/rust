@@ -1,4 +1,4 @@
-use hir::{Resolution};
+use hir::Resolution;
 use ra_syntax::{AstNode, ast::NameOwner};
 use test_utils::tested_by;
 
@@ -44,40 +44,40 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         }
         hir::ModuleDef::Struct(s) => {
             let ty = s.ty(ctx.db);
-            ty.iterate_impl_items(ctx.db, |item| match item {
-                hir::ImplItem::Method(func) => {
-                    let sig = func.signature(ctx.db);
-                    if !sig.has_self_param() {
-                        acc.add_function(ctx, func);
+            ty.iterate_impl_items(ctx.db, |item| {
+                match item {
+                    hir::ImplItem::Method(func) => {
+                        let sig = func.signature(ctx.db);
+                        if !sig.has_self_param() {
+                            acc.add_function(ctx, func);
+                        }
                     }
-                    None::<()>
-                }
-                hir::ImplItem::Const(ct) => {
-                    let source = ct.source(ctx.db);
-                    if let Some(name) = source.1.name() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            name.text().to_string(),
-                        )
-                        .from_const(ctx, ct)
-                        .add_to(acc);
+                    hir::ImplItem::Const(ct) => {
+                        let source = ct.source(ctx.db);
+                        if let Some(name) = source.1.name() {
+                            CompletionItem::new(
+                                CompletionKind::Reference,
+                                ctx.source_range(),
+                                name.text().to_string(),
+                            )
+                            .from_const(ctx, ct)
+                            .add_to(acc);
+                        }
                     }
-                    None::<()>
-                }
-                hir::ImplItem::Type(ty) => {
-                    let source = ty.source(ctx.db);
-                    if let Some(name) = source.1.name() {
-                        CompletionItem::new(
-                            CompletionKind::Reference,
-                            ctx.source_range(),
-                            name.text().to_string(),
-                        )
-                        .from_type(ctx, ty)
-                        .add_to(acc);
+                    hir::ImplItem::Type(ty) => {
+                        let source = ty.source(ctx.db);
+                        if let Some(name) = source.1.name() {
+                            CompletionItem::new(
+                                CompletionKind::Reference,
+                                ctx.source_range(),
+                                name.text().to_string(),
+                            )
+                            .from_type(ctx, ty)
+                            .add_to(acc);
+                        }
                     }
-                    None::<()>
                 }
+                None::<()>
             });
         }
         _ => return,
