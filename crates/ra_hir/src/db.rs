@@ -15,7 +15,7 @@ use crate::{
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
-    ids::SourceFileItemId, nameres::Namespace
+    ids::SourceFileItemId, nameres::Namespace, type_ref::TypeRef, code_model_api::Type
 };
 
 #[salsa::query_group(PersistentHirDatabaseStorage)]
@@ -77,6 +77,9 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
 
     #[salsa::invoke(crate::FnSignature::fn_signature_query)]
     fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
+
+    #[salsa::invoke(crate::type_alias::type_alias_ref_query)]
+    fn type_alias_ref(&self, typ: Type) -> Arc<TypeRef>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path, Name,
-    ModuleDef,
+    ModuleDef, Type,
     HirDatabase,
     type_ref::TypeRef,
     name::KnownName,
@@ -109,7 +109,7 @@ impl Ty {
         };
         let ty = db.type_for_def(typable, Namespace::Types);
         let substs = Ty::substs_from_path(db, resolver, path, typable);
-        ty.apply_substs(substs)
+        ty.subst(&substs)
     }
 
     pub(super) fn substs_from_path_segment(
@@ -124,6 +124,7 @@ impl Ty {
             TypableDef::Struct(s) => s.generic_params(db),
             TypableDef::Enum(e) => e.generic_params(db),
             TypableDef::EnumVariant(var) => var.parent_enum(db).generic_params(db),
+            TypableDef::Type(t) => t.generic_params(db),
         };
         let parent_param_count = def_generics.count_parent_params();
         substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
@@ -159,9 +160,10 @@ impl Ty {
     ) -> Substs {
         let last = path.segments.last().expect("path should have at least one segment");
         let segment = match resolved {
-            TypableDef::Function(_) => last,
-            TypableDef::Struct(_) => last,
-            TypableDef::Enum(_) => last,
+            TypableDef::Function(_)
+            | TypableDef::Struct(_)
+            | TypableDef::Enum(_)
+            | TypableDef::Type(_) => last,
             TypableDef::EnumVariant(_) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
@@ -194,11 +196,13 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
         (TypableDef::Enum(e), Namespace::Types) => type_for_enum(db, e),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
+        (TypableDef::Type(t), Namespace::Types) => type_for_type_alias(db, t),
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
+        (TypableDef::Type(_), Namespace::Values) => Ty::Unknown,
     }
 }
 
@@ -264,7 +268,7 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
     let substs = make_substs(&generics);
-    let output = type_for_enum(db, def.parent_enum(db)).apply_substs(substs.clone());
+    let output = type_for_enum(db, def.parent_enum(db)).subst(&substs);
     let sig = Arc::new(FnSig { input, output });
     Ty::FnDef { def: def.into(), sig, name, substs }
 }
@@ -298,14 +302,24 @@ fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     }
 }
 
+fn type_for_type_alias(db: &impl HirDatabase, t: Type) -> Ty {
+    let generics = t.generic_params(db);
+    let resolver = t.resolver(db);
+    let type_ref = t.type_ref(db);
+    let substs = make_substs(&generics);
+    let inner = Ty::from_hir(db, &resolver, &type_ref);
+    inner.subst(&substs)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TypableDef {
     Function(Function),
     Struct(Struct),
     Enum(Enum),
     EnumVariant(EnumVariant),
+    Type(Type),
 }
-impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant);
+impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, Type);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
@@ -314,11 +328,11 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::Struct(s) => s.into(),
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
+            ModuleDef::Type(t) => t.into(),
             ModuleDef::Const(_)
             | ModuleDef::Static(_)
             | ModuleDef::Module(_)
-            | ModuleDef::Trait(_)
-            | ModuleDef::Type(_) => return None,
+            | ModuleDef::Trait(_) => return None,
         };
         Some(res)
     }
