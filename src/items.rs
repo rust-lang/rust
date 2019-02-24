@@ -20,8 +20,8 @@ use crate::expr::{
     ExprType, RhsTactics,
 };
 use crate::lists::{
-    definitive_tactic, extract_pre_comment, itemize_list, write_list, ListFormatting, ListItem,
-    Separator,
+    definitive_tactic, extract_post_comment, extract_pre_comment, get_comment_end,
+    has_extra_newline, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
@@ -2281,6 +2281,10 @@ fn rewrite_args(
     variadic: bool,
     generics_str_contains_newline: bool,
 ) -> Option<String> {
+    let terminator = ")";
+    let separator = ",";
+    let next_span_start = span.hi();
+
     let mut arg_item_strs = args
         .iter()
         .map(|arg| {
@@ -2290,17 +2294,20 @@ fn rewrite_args(
         .collect::<Vec<_>>();
 
     // Account for sugary self.
-    // FIXME: the comment for the self argument is dropped. This is blocked
-    // on rust issue #27522.
-    let mut comment_str = "";
+    let mut pre_comment_str = "";
+    let mut post_comment_str = "";
     let min_args = explicit_self
         .and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
         .map_or(1, |self_str| {
-            let comment_span = mk_sp(span.lo(), args[0].pat.span.lo());
-            comment_str = context
-                .snippet_provider
-                .span_to_snippet(comment_span)
-                .unwrap();
+            pre_comment_str = context.snippet(mk_sp(span.lo(), args[0].pat.span.lo()));
+
+            let next_start = if args.len() > 1 {
+                args[1].pat.span().lo()
+            } else {
+                span.hi()
+            };
+            post_comment_str = context.snippet(mk_sp(args[0].ty.span.hi(), next_start));
+
             arg_item_strs[0] = self_str;
             2
         });
@@ -2317,14 +2324,18 @@ fn rewrite_args(
     // it is explicit.
     if args.len() >= min_args || variadic {
         let comment_span_start = if min_args == 2 {
-            let second_arg_start = if arg_has_pattern(&args[1]) {
-                args[1].pat.span.lo()
+            let remove_comma_byte_pos = context
+                .snippet_provider
+                .span_after(mk_sp(args[0].ty.span.hi(), args[1].pat.span.lo()), ",");
+            let first_post_and_second_pre_span =
+                mk_sp(remove_comma_byte_pos, args[1].pat.span.lo());
+            if count_newlines(context.snippet(first_post_and_second_pre_span)) > 0 {
+                context
+                    .snippet_provider
+                    .span_after(first_post_and_second_pre_span, "\n")
             } else {
-                args[1].ty.span.lo()
-            };
-            let reduced_span = mk_sp(span.lo(), second_arg_start);
-
-            context.snippet_provider.span_after_last(reduced_span, ",")
+                remove_comma_byte_pos
+            }
         } else {
             span.lo()
         };
@@ -2349,8 +2360,8 @@ fn rewrite_args(
                 .iter()
                 .map(ArgumentKind::Regular)
                 .chain(variadic_arg),
-            ")",
-            ",",
+            terminator,
+            separator,
             |arg| match *arg {
                 ArgumentKind::Regular(arg) => span_lo_for_arg(arg),
                 ArgumentKind::Variadic(start) => start,
@@ -2364,22 +2375,30 @@ fn rewrite_args(
                 ArgumentKind::Variadic(..) => Some("...".to_owned()),
             },
             comment_span_start,
-            span.hi(),
+            next_span_start,
             false,
         );
 
         arg_items.extend(more_items);
     }
 
+    let arg_items_len = arg_items.len();
     let fits_in_one_line = !generics_str_contains_newline
         && (arg_items.is_empty()
-            || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
+            || arg_items_len == 1 && arg_item_strs[0].len() <= one_line_budget);
 
     for (index, (item, arg)) in arg_items.iter_mut().zip(arg_item_strs).enumerate() {
+        // add pre comment and post comment for first arg(self)
         if index == 0 && explicit_self.is_some() {
-            let (pre_comment, pre_comment_style) = extract_pre_comment(comment_str);
+            let (pre_comment, pre_comment_style) = extract_pre_comment(pre_comment_str);
             item.pre_comment = pre_comment;
             item.pre_comment_style = pre_comment_style;
+
+            let comment_end =
+                get_comment_end(post_comment_str, separator, terminator, arg_items_len == 1);
+
+            item.new_lines = has_extra_newline(post_comment_str, comment_end);
+            item.post_comment = extract_post_comment(post_comment_str, comment_end, separator);
         }
         item.item = Some(arg);
     }
@@ -2428,14 +2447,6 @@ fn rewrite_args(
         .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
         .preserve_newline(true);
     write_list(&arg_items, &fmt)
-}
-
-fn arg_has_pattern(arg: &ast::Arg) -> bool {
-    if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident != symbol::keywords::Invalid.ident()
-    } else {
-        true
-    }
 }
 
 fn compute_budgets_for_args(
