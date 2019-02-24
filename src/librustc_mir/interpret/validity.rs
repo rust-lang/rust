@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, Machine, EvalContext, ValueVisitor,
+    OpTy, Machine, EvalContext, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! validation_failure {
@@ -74,13 +74,13 @@ pub enum PathElem {
 }
 
 /// State for tracking recursive validation of references
-pub struct RefTracking<'tcx, Tag> {
-    pub seen: FxHashSet<(OpTy<'tcx, Tag>)>,
-    pub todo: Vec<(OpTy<'tcx, Tag>, Vec<PathElem>)>,
+pub struct RefTracking<T> {
+    pub seen: FxHashSet<T>,
+    pub todo: Vec<(T, Vec<PathElem>)>,
 }
 
-impl<'tcx, Tag: Copy+Eq+Hash> RefTracking<'tcx, Tag> {
-    pub fn new(op: OpTy<'tcx, Tag>) -> Self {
+impl<'tcx, T: Copy + Eq + Hash> RefTracking<T> {
+    pub fn new(op: T) -> Self {
         let mut ref_tracking = RefTracking {
             seen: FxHashSet::default(),
             todo: vec![(op, Vec::new())],
@@ -151,7 +151,7 @@ struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
     /// this stack discipline.
     path: Vec<PathElem>,
-    ref_tracking: Option<&'rt mut RefTracking<'tcx, M::PointerTag>>,
+    ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
     const_mode: bool,
     ecx: &'rt EvalContext<'a, 'mir, 'tcx, M>,
 }
@@ -401,16 +401,15 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     // before.  Proceed recursively even for integer pointers, no
                     // reason to skip them! They are (recursively) valid for some ZST,
                     // but not for others (e.g., `!` is a ZST).
-                    let op = place.into();
-                    if ref_tracking.seen.insert(op) {
-                        trace!("Recursing below ptr {:#?}", *op);
+                    if ref_tracking.seen.insert(place) {
+                        trace!("Recursing below ptr {:#?}", *place);
                         // We need to clone the path anyway, make sure it gets created
                         // with enough space for the additional `Deref`.
                         let mut new_path = Vec::with_capacity(self.path.len()+1);
                         new_path.clone_from(&self.path);
                         new_path.push(PathElem::Deref);
                         // Remember to come back to this later.
-                        ref_tracking.todo.push((op, new_path));
+                        ref_tracking.todo.push((place, new_path));
                     }
                 }
             }
@@ -600,7 +599,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
-        ref_tracking: Option<&mut RefTracking<'tcx, M::PointerTag>>,
+        ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
         const_mode: bool,
     ) -> EvalResult<'tcx> {
         trace!("validate_operand: {:?}, {:?}", *op, op.layout.ty);

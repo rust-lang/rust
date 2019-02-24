@@ -16,46 +16,39 @@ fn with_std_fd<F: FnOnce(&FileDesc) -> R, R>(fd: abi::Fd, f: F) -> R {
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
+}
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        with_std_fd(abi::FD_STDIN, |fd| fd.read(data))
+impl io::Read for Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDIN, |fd| fd.read(buf))
     }
 }
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        with_std_fd(abi::FD_STDOUT, |fd| fd.write(data))
+impl io::Write for Stdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDOUT, |fd| fd.write(buf))
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         with_std_fd(abi::FD_STDOUT, |fd| fd.flush())
     }
 }
 
 impl Stderr {
     pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        with_std_fd(abi::FD_STDERR, |fd| fd.write(data))
-    }
-
-    pub fn flush(&self) -> io::Result<()> {
-        with_std_fd(abi::FD_STDERR, |fd| fd.flush())
-    }
 }
 
-// FIXME: right now this raw stderr handle is used in a few places because
-//        std::io::stderr_raw isn't exposed, but once that's exposed this impl
-//        should go away
 impl io::Write for Stderr {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Stderr::write(self, data)
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDERR, |fd| fd.write(buf))
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Stderr::flush(self)
+        with_std_fd(abi::FD_STDERR, |fd| fd.flush())
     }
 }
 

@@ -252,9 +252,9 @@ impl Stdio {
             // should still be unavailable so propagate the
             // INVALID_HANDLE_VALUE.
             Stdio::Inherit => {
-                match stdio::get(stdio_id) {
+                match stdio::get_handle(stdio_id) {
                     Ok(io) => {
-                        let io = Handle::new(io.handle());
+                        let io = Handle::new(io);
                         let ret = io.duplicate(0, true,
                                                c::DUPLICATE_SAME_ACCESS);
                         io.into_raw();

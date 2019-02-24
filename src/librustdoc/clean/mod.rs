@@ -976,11 +976,13 @@ impl Attributes {
                                 "https://doc.rust-lang.org/nightly",
                         };
                         // This is a primitive so the url is done "by hand".
+                        let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
                         Some((s.clone(),
-                              format!("{}{}std/primitive.{}.html",
+                              format!("{}{}std/primitive.{}.html{}",
                                       url,
                                       if !url.ends_with('/') { "/" } else { "" },
-                                      fragment)))
+                                      &fragment[..tail],
+                                      &fragment[tail..])))
                     } else {
                         panic!("This isn't a primitive?!");
                     }

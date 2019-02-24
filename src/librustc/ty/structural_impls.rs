@@ -505,8 +505,8 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
         match *self {
             ConstValue::Scalar(x) => Some(ConstValue::Scalar(x)),
             ConstValue::Slice(x, y) => Some(ConstValue::Slice(x, y)),
-            ConstValue::ByRef(x, alloc, z) => Some(ConstValue::ByRef(
-                x, alloc.lift_to_tcx(tcx)?, z,
+            ConstValue::ByRef(ptr, alloc) => Some(ConstValue::ByRef(
+                ptr, alloc.lift_to_tcx(tcx)?,
             )),
         }
     }

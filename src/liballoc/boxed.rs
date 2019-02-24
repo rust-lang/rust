@@ -4,6 +4,16 @@
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
 //! drop their contents when they go out of scope.
 //!
+//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
+//! its allocation. It is valid to convert both ways between a [`Box`] and a
+//! raw pointer allocated with the [`Global`] allocator, given that the
+//! [`Layout`] used with the allocator is correct for the type. More precisely,
+//! a `value: *mut T` that has been allocated with the [`Global`] allocator
+//! with `Layout::for_value(&*value)` may be converted into a box using
+//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
+//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
+//! [`Global`] allocator with `Layout::for_value(&*value)`.
+//!
 //! # Examples
 //!
 //! Move a value from the stack to the heap by creating a [`Box`]:
