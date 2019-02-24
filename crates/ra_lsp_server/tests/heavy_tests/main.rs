@@ -225,10 +225,12 @@ fn main() {}
             context: empty_context(),
         },
         json!([
-            {
+          {
+            "command": {
               "arguments": [
                 {
                   "cursorPosition": null,
+                  "label": "create module",
                   "workspaceEdit": {
                     "documentChanges": [
                       {
@@ -236,13 +238,14 @@ fn main() {}
                         "uri": "file:///[..]/src/bar.rs"
                       }
                     ]
-                  },
-                  "label": "create module"
+                  }
                 }
               ],
               "command": "rust-analyzer.applySourceChange",
               "title": "create module"
-            }
+            },
+            "title": "create module"
+          }
         ]),
     );
 

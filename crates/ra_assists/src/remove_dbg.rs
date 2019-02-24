@@ -6,7 +6,7 @@ use ra_syntax::{
         L_PAREN, R_PAREN, L_CURLY, R_CURLY, L_BRACK, R_BRACK, EXCL
     },
 };
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;
@@ -46,7 +46,7 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         macro_args.text().slice(start..end).to_string()
     };
 
-    ctx.add_action("remove dbg!()", |edit| {
+    ctx.add_action(AssistId("remove_dbg"), "remove dbg!()", |edit| {
         edit.target(macro_call.syntax().range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);

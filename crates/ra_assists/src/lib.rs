@@ -6,6 +6,7 @@
 //! becomes available.
 
 mod assist_ctx;
+mod marks;
 
 use itertools::Itertools;
 
@@ -16,10 +17,16 @@ use hir::db::HirDatabase;
 
 pub(crate) use crate::assist_ctx::{AssistCtx, Assist};
 
+/// Unique identifier of the assist, should not be shown to the user
+/// directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AssistId(pub &'static str);
+
 #[derive(Debug, Clone)]
 pub struct AssistLabel {
     /// Short description of the assist, as shown in the UI.
     pub label: String,
+    pub id: AssistId,
 }
 
 #[derive(Debug, Clone)]
@@ -253,6 +260,17 @@ mod helpers {
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
     }
+
+    pub(crate) fn check_assist_range_not_applicable(
+        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        before: &str,
+    ) {
+        let (range, before) = extract_range(before);
+        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let frange = FileRange { file_id, range };
+        let assist = AssistCtx::with_ctx(&db, frange, true, assist);
+        assert!(assist.is_none());
+    }
 }
 
 #[cfg(test)]
@@ -260,7 +278,7 @@ mod tests {
     use hir::mock::MockDatabase;
     use ra_syntax::TextRange;
     use ra_db::FileRange;
-    use test_utils::{extract_offset};
+    use test_utils::{extract_offset, extract_range};
 
     #[test]
     fn assist_order_field_struct() {
@@ -280,16 +298,15 @@ mod tests {
     fn assist_order_if_expr() {
         let before = "
         pub fn test_some_range(a: int) -> bool {
-            if let 2..6 = 5<|> {
+            if let 2..6 = <|>5<|> {
                 true
             } else {
                 false
             }
         }";
-        let (before_cursor_pos, before) = extract_offset(before);
+        let (range, before) = extract_range(before);
         let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
+        let frange = FileRange { file_id, range };
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();
 

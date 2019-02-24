@@ -5,7 +5,7 @@ use ra_syntax::{
     SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT, WHITESPACE, COMMENT, ATTR},
 };
 
-use crate::{AssistCtx, Assist};
+use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if let Some(vis) = ctx.node_at_offset::<ast::Visibility>() {
@@ -41,7 +41,7 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         (vis_offset(field.syntax()), ident.range())
     };
 
-    ctx.add_action("make pub(crate)", |edit| {
+    ctx.add_action(AssistId("change_visibility"), "make pub(crate)", |edit| {
         edit.target(target);
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
@@ -63,7 +63,7 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
 
 fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
-        ctx.add_action("change to pub(crate)", |edit| {
+        ctx.add_action(AssistId("change_visibility"), "change to pub(crate)", |edit| {
             edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub(crate)");
             edit.set_cursor(vis.syntax().range().start())
@@ -72,7 +72,7 @@ fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Op
         return ctx.build();
     }
     if vis.syntax().text() == "pub(crate)" {
-        ctx.add_action("change to pub", |edit| {
+        ctx.add_action(AssistId("change_visibility"), "change to pub", |edit| {
             edit.target(vis.syntax().range());
             edit.replace(vis.syntax().range(), "pub");
             edit.set_cursor(vis.syntax().range().start());

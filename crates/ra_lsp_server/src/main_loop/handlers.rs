@@ -1,6 +1,6 @@
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
-    CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity,
+    CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity, CodeAction,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
     MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
@@ -9,6 +9,7 @@ use lsp_types::{
 };
 use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
+    AssistId,
 };
 use ra_syntax::{AstNode, SyntaxKind, TextUnit};
 use rustc_hash::FxHashMap;
@@ -576,28 +577,57 @@ pub fn handle_code_action(
     let range = params.range.conv_with(&line_index);
 
     let assists = world.analysis().assists(FileRange { file_id, range })?.into_iter();
-    let fixes = world
-        .analysis()
-        .diagnostics(file_id)?
+    let diagnostics = world.analysis().diagnostics(file_id)?;
+    let mut res: Vec<CodeAction> = Vec::new();
+
+    let fixes_from_diagnostics = diagnostics
         .into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
         .filter(|(diag_range, _fix)| diag_range.intersection(&range).is_some())
         .map(|(_range, fix)| fix);
 
-    let mut res = Vec::new();
-    for source_edit in assists.chain(fixes) {
+    for source_edit in fixes_from_diagnostics {
         let title = source_edit.label.clone();
         let edit = source_edit.try_conv_with(&world)?;
 
-        let cmd = Command {
+        let command = Command {
             title,
             command: "rust-analyzer.applySourceChange".to_string(),
             arguments: Some(vec![to_value(edit).unwrap()]),
         };
-        res.push(cmd);
+        let action = CodeAction {
+            title: command.title.clone(),
+            kind: None,
+            diagnostics: None,
+            edit: None,
+            command: Some(command),
+        };
+        res.push(action);
     }
 
-    Ok(Some(CodeActionResponse::Commands(res)))
+    for assist in assists {
+        let title = assist.change.label.clone();
+        let edit = assist.change.try_conv_with(&world)?;
+
+        let command = Command {
+            title,
+            command: "rust-analyzer.applySourceChange".to_string(),
+            arguments: Some(vec![to_value(edit).unwrap()]),
+        };
+        let action = CodeAction {
+            title: command.title.clone(),
+            kind: match assist.id {
+                AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
+                _ => None,
+            },
+            diagnostics: None,
+            edit: None,
+            command: Some(command),
+        };
+        res.push(action);
+    }
+
+    Ok(Some(CodeActionResponse::Actions(res)))
 }
 
 pub fn handle_code_lens(
