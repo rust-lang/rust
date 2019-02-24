@@ -54,8 +54,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::*;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_magic_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Magic);

@@ -56,8 +56,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::completion_item::CompletionKind;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{CompletionKind, check_completion};
 
     fn check_snippet_completion(test_name: &str, code: &str) {
         check_completion(test_name, code, CompletionKind::Postfix);

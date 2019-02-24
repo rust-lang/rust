@@ -34,10 +34,10 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot_matches;
-    use crate::completion::{CompletionItem, CompletionKind};
+    use crate::completion::{CompletionItem, CompletionKind, do_completion};
 
     fn complete(code: &str) -> Vec<CompletionItem> {
-        crate::completion::completion_item::do_completion(code, CompletionKind::Reference)
+        do_completion(code, CompletionKind::Reference)
     }
 
     #[test]

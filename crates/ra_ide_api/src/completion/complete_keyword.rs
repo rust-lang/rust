@@ -109,8 +109,7 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::CompletionKind;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_keyword_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Keyword);

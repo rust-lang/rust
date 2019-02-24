@@ -58,8 +58,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::*;
-    use crate::completion::completion_item::check_completion;
+    use crate::completion::{check_completion, CompletionKind};
 
     fn check_ref_completion(name: &str, code: &str) {
         check_completion(name, code, CompletionKind::Reference);

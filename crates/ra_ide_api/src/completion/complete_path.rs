@@ -57,12 +57,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{
-        CompletionKind,
-        completion_item::{check_completion, do_completion},
-};
-
     use test_utils::covers;
+
+    use crate::completion::{CompletionKind, check_completion, do_completion};
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);

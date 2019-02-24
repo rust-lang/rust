@@ -168,7 +168,7 @@ impl Completions {
 mod tests {
     use test_utils::covers;
 
-    use crate::completion::{CompletionKind, completion_item::check_completion};
+    use crate::completion::{CompletionKind, check_completion};
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);

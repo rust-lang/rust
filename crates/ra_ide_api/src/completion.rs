@@ -21,7 +21,10 @@ use crate::{
         completion_item::{Completions, CompletionKind},
         completion_context::CompletionContext,
     },
+
 };
+#[cfg(test)]
+use crate::completion::completion_item::{do_completion, check_completion};
 
 pub use crate::completion::completion_item::{CompletionItem, CompletionItemKind, InsertTextFormat};
 
