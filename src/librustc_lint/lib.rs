@@ -408,7 +408,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
-    store.register_early_pass(sess, false, box DefaultHashTypes::new());
+    store.register_early_pass(sess, false, false, box DefaultHashTypes::new());
     store.register_late_pass(sess, false, box TyKindUsage);
     store.register_group(
         sess,

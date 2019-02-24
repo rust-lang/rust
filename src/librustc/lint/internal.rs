@@ -1,21 +1,11 @@
-// Copyright 2012-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use errors::Applicability;
-use hir::{Expr, ExprKind, PatKind, Path, QPath, Ty, TyKind};
-use lint::{
+use crate::hir::{Expr, ExprKind, PatKind, Path, QPath, Ty, TyKind};
+use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
+use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::Ident;
 
@@ -42,6 +32,10 @@ impl LintPass for DefaultHashTypes {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEFAULT_HASH_TYPES)
     }
+
+    fn name(&self) -> &'static str {
+        "DefaultHashTypes"
+    }
 }
 
 impl EarlyLintPass for DefaultHashTypes {
@@ -53,7 +47,7 @@ impl EarlyLintPass for DefaultHashTypes {
                 replace, ident_string
             );
             let mut db = cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, &msg);
-            db.span_suggestion_with_applicability(
+            db.span_suggestion(
                 ident.span,
                 "use",
                 replace.to_string(),
@@ -79,6 +73,10 @@ pub struct TyKindUsage;
 impl LintPass for TyKindUsage {
     fn get_lints(&self) -> LintArray {
         lint_array!(USAGE_OF_TY_TYKIND)
+    }
+
+    fn name(&self) -> &'static str {
+        "TyKindUsage"
     }
 }
 
@@ -124,12 +122,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
                                     path.span,
                                     "usage of `ty::TyKind::<kind>`",
                                 )
-                                .span_suggestion_with_applicability(
+                                .span_suggestion(
                                     path.span,
                                     "try using ty::<kind> directly",
                                     "ty".to_string(),
                                     Applicability::MaybeIncorrect, // ty maybe needs an import
-                                ).emit();
+                                )
+                                .emit();
                             }
                         }
                     }
