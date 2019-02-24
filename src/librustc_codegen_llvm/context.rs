@@ -515,14 +515,24 @@ impl CodegenCx<'b, 'tcx> {
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
 
-        let t_v2f32 = self.type_vector(t_f32, 2);
-        let t_v4f32 = self.type_vector(t_f32, 4);
-        let t_v8f32 = self.type_vector(t_f32, 8);
-        let t_v16f32 = self.type_vector(t_f32, 16);
+        macro_rules! vector_types {
+            ($id_out:ident: $elem_ty:ident, $len:expr) => {
+                let $id_out = self.type_vector($elem_ty, $len);
+            };
+            ($($id_out:ident: $elem_ty:ident, $len:expr;)*) => {
+                $(vector_types!($id_out: $elem_ty, $len);)*
+            }
+        }
+        vector_types! {
+            t_v2f32: t_f32, 2;
+            t_v4f32: t_f32, 4;
+            t_v8f32: t_f32, 8;
+            t_v16f32: t_f32, 16;
 
-        let t_v2f64 = self.type_vector(t_f64, 2);
-        let t_v4f64 = self.type_vector(t_f64, 4);
-        let t_v8f64 = self.type_vector(t_f64, 8);
+            t_v2f64: t_f64, 2;
+            t_v4f64: t_f64, 4;
+            t_v8f64: t_f64, 8;
+        }
 
         ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
         ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);

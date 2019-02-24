@@ -1848,7 +1848,52 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_xor: Uint, Int => xor;
         simd_fmax: Float => maxnum;
         simd_fmin: Float => minnum;
+
     }
+
+    if name == "simd_saturating_add" || name == "simd_saturating_sub" {
+        let lhs = args[0].immediate();
+        let rhs = args[1].immediate();
+        let is_add = name == "simd_saturating_add";
+        let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
+        let (signed, elem_width, elem_ty) = match in_elem.sty {
+            ty::Int(i) =>
+                (
+                    true,
+                    i.bit_width().unwrap_or(ptr_bits),
+                    bx.cx.type_int_from_ty(i)
+                ),
+            ty::Uint(i) =>
+                (
+                    false,
+                    i.bit_width().unwrap_or(ptr_bits),
+                    bx.cx.type_uint_from_ty(i)
+                ),
+            _ => {
+                return_error!(
+                    "expected element type `{}` of vector type `{}` \
+                     to be a signed or unsigned integer type",
+                    arg_tys[0].simd_type(tcx).sty, arg_tys[0]
+                );
+            }
+        };
+        let llvm_intrinsic = &format!(
+            "llvm.{}{}.sat.v{}i{}",
+            if signed { 's' } else { 'u' },
+            if is_add { "add" } else { "sub" },
+            in_len, elem_width
+        );
+        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
+
+        let f = bx.declare_cfn(
+            &llvm_intrinsic,
+            bx.type_func(&[vec_ty, vec_ty], vec_ty)
+        );
+        llvm::SetUnnamedAddr(f, false);
+        let v = bx.call(f, &[lhs, rhs], None);
+        return Ok(v);
+    }
+
     span_bug!(span, "unknown SIMD intrinsic");
 }
 
