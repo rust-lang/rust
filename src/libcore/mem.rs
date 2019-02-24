@@ -1191,7 +1191,8 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Sets the value of the `MaybeUninit<T>`. This overwrites any previous value
-    /// without dropping it. For your convenience, this also returns a mutable
+    /// without dropping it, so be careful not to use this twice unless you want to
+    /// skip running the destructor. For your convenience, this also returns a mutable
     /// reference to the (now safely initialized) contents of `self`.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
@@ -1214,7 +1215,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
-    /// x.set(vec![0,1,2]);
+    /// unsafe { x.as_mut_ptr().write(vec![0,1,2]); }
     /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// assert_eq!(x_vec.len(), 3);
@@ -1250,7 +1251,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
-    /// x.set(vec![0,1,2]);
+    /// unsafe { x.as_mut_ptr().write(vec![0,1,2]); }
     /// // Create a reference into the `MaybeUninit<Vec<u32>>`.
     /// // This is okay because we initialized it.
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
@@ -1295,7 +1296,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<bool>::uninitialized();
-    /// x.set(true);
+    /// unsafe { x.as_mut_ptr().write(true); }
     /// let x_init = unsafe { x.into_initialized() };
     /// assert_eq!(x_init, true);
     /// ```
