@@ -4,7 +4,7 @@
 //! our CI.
 
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
 use std::iter;
@@ -639,14 +639,50 @@ impl Step for RustdocJSNotStd {
 
     fn run(self, builder: &Builder) {
         if let Some(ref nodejs) = builder.config.nodejs {
-            let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js/tester.js",
-                           &*self.host,
-                           builder.top_stage.to_string().as_str()]);
             builder.ensure(crate::doc::Std {
                 target: self.target,
                 stage: builder.top_stage,
             });
+
+            let mut tests_to_run = Vec::new();
+            let out = Path::new("build").join(&*self.host)
+                                        .join(&format!("stage{}",
+                                                       builder.top_stage.to_string().as_str()))
+                                        .join("tests")
+                                        .join("rustdoc-js");
+
+            if let Ok(it) = fs::read_dir("src/test/rustdoc-js/") {
+                for entry in it {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.extension() != Some(&OsStr::new("rs")) || !path.is_file() {
+                            continue
+                        }
+                        let path_clone = path.clone();
+                        let file_stem = path_clone.file_stem().expect("cannot get file stem");
+                        let out = out.join(file_stem);
+                        let mut cmd = builder.rustdoc_cmd(self.host);
+                        cmd.arg("-o");
+                        cmd.arg(out);
+                        cmd.arg(path);
+                        if if builder.config.verbose_tests {
+                            try_run(builder, &mut cmd)
+                        } else {
+                            try_run_quiet(builder, &mut cmd)
+                        } {
+                            tests_to_run.push(file_stem.to_os_string());
+                        }
+                    }
+                }
+            }
+            assert!(!tests_to_run.is_empty(), "no rustdoc-js test generated...");
+
+            tests_to_run.insert(0, "src/tools/rustdoc-js/tester.js".into());
+            tests_to_run.insert(1, out.into());
+
+            let mut command = Command::new(nodejs);
+            command.args(&tests_to_run);
+
             builder.run(&mut command);
         } else {
             builder.info(
