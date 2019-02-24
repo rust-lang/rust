@@ -6,9 +6,9 @@ use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
     Name, ScopesWithSyntaxMapping, Ty, HirFileId,
-    type_ref::TypeRef,
-    nameres::{ModuleScope, lower::ImportId},
     HirDatabase, PersistentHirDatabase,
+    type_ref::TypeRef,
+    nameres::{ModuleScope, Namespace, lower::ImportId},
     expr::{Body, BodySyntaxMapping},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
@@ -428,8 +428,6 @@ impl Docs for EnumVariant {
 pub struct Function {
     pub(crate) id: FunctionId,
 }
-
-pub use crate::{ nameres::Namespace, expr::ScopeEntryWithSyntax};
 
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
