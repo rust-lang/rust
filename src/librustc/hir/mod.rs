@@ -2518,6 +2518,9 @@ bitflags! {
         /// `#[used]`: indicates that LLVM can't eliminate this function (but the
         /// linker can!).
         const USED                      = 1 << 9;
+        /// #[ffi_returns_twice], indicates that an extern function can return
+        /// multiple times
+        const FFI_RETURNS_TWICE = 1 << 10;
     }
 }
 

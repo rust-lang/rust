@@ -2388,6 +2388,18 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.check_name("unwind") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
+        } else if attr.check_name("ffi_returns_twice") {
+            if tcx.is_foreign_item(id) {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
+            } else {
+                // `#[ffi_returns_twice]` is only allowed `extern fn`s
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    E0724,
+                    "`#[ffi_returns_twice]` may only be used on foreign functions"
+                ).emit();
+            }
         } else if attr.check_name("rustc_allocator_nounwind") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
         } else if attr.check_name("naked") {

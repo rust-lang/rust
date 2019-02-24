@@ -4738,4 +4738,5 @@ register_diagnostics! {
     E0698, // type inside generator must be known in this context
     E0719, // duplicate values for associated type binding
     E0722, // Malformed #[optimize] attribute
+    E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
 }

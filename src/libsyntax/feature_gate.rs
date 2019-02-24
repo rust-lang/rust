@@ -290,6 +290,9 @@ declare_features! (
     // The `repr(i128)` annotation for enums.
     (active, repr128, "1.16.0", Some(35118), None),
 
+    // Allows the use of `#[ffi_returns_twice]` on foreign functions.
+    (active, ffi_returns_twice, "1.34.0", Some(58314), None),
+
     // The `unadjusted` ABI; perma-unstable.
     //
     // rustc internal
@@ -1128,6 +1131,11 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                  "the `#[naked]` attribute \
                                   is an experimental feature",
                                  cfg_fn!(naked_functions))),
+    ("ffi_returns_twice", Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                 "ffi_returns_twice",
+                                 "the `#[ffi_returns_twice]` attribute \
+                                  is an experimental feature",
+                                 cfg_fn!(ffi_returns_twice))),
     ("target_feature", Whitelisted, template!(List: r#"enable = "name""#), Ungated),
     ("export_name", Whitelisted, template!(NameValueStr: "name"), Ungated),
     ("inline", Whitelisted, template!(Word, List: "always|never"), Ungated),
