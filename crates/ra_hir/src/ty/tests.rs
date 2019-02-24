@@ -719,7 +719,6 @@ fn test() {
 }
 
 #[test]
-#[ignore] // FIXME: After https://github.com/rust-analyzer/rust-analyzer/pull/866 is merged
 fn infer_associated_method_generics() {
     check_inference(
         "infer_associated_method_generics",

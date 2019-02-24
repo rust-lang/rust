@@ -16,7 +16,7 @@ use crate::{
     name::KnownName,
     nameres::Namespace,
     resolve::{Resolver, Resolution},
-    path::GenericArg,
+    path::{ PathSegment, GenericArg},
     generics::GenericParams,
     adt::VariantDef,
 };
@@ -112,36 +112,18 @@ impl Ty {
         ty.apply_substs(substs)
     }
 
-    /// Collect generic arguments from a path into a `Substs`. See also
-    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
-    pub(super) fn substs_from_path(
+    pub(super) fn substs_from_path_segment(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        path: &Path,
+        segment: &PathSegment,
         resolved: TypableDef,
     ) -> Substs {
         let mut substs = Vec::new();
-        let last = path.segments.last().expect("path should have at least one segment");
-        let (def_generics, segment) = match resolved {
-            TypableDef::Function(func) => (func.generic_params(db), last),
-            TypableDef::Struct(s) => (s.generic_params(db), last),
-            TypableDef::Enum(e) => (e.generic_params(db), last),
-            TypableDef::EnumVariant(var) => {
-                // the generic args for an enum variant may be either specified
-                // on the segment referring to the enum, or on the segment
-                // referring to the variant. So `Option::<T>::None` and
-                // `Option::None::<T>` are both allowed (though the former is
-                // preferred). See also `def_ids_for_path_segments` in rustc.
-                let len = path.segments.len();
-                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
-                    // Option::<T>::None
-                    &path.segments[len - 2]
-                } else {
-                    // Option::None::<T>
-                    last
-                };
-                (var.parent_enum(db).generic_params(db), segment)
-            }
+        let def_generics = match resolved {
+            TypableDef::Function(func) => func.generic_params(db),
+            TypableDef::Struct(s) => s.generic_params(db),
+            TypableDef::Enum(e) => e.generic_params(db),
+            TypableDef::EnumVariant(var) => var.parent_enum(db).generic_params(db),
         };
         let parent_param_count = def_generics.count_parent_params();
         substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
@@ -165,6 +147,39 @@ impl Ty {
         }
         assert_eq!(substs.len(), def_generics.count_params_including_parent());
         Substs(substs.into())
+    }
+
+    /// Collect generic arguments from a path into a `Substs`. See also
+    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
+    pub(super) fn substs_from_path(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        path: &Path,
+        resolved: TypableDef,
+    ) -> Substs {
+        let last = path.segments.last().expect("path should have at least one segment");
+        let segment = match resolved {
+            TypableDef::Function(_) => last,
+            TypableDef::Struct(_) => last,
+            TypableDef::Enum(_) => last,
+            TypableDef::EnumVariant(_) => {
+                // the generic args for an enum variant may be either specified
+                // on the segment referring to the enum, or on the segment
+                // referring to the variant. So `Option::<T>::None` and
+                // `Option::None::<T>` are both allowed (though the former is
+                // preferred). See also `def_ids_for_path_segments` in rustc.
+                let len = path.segments.len();
+                let segment = if len >= 2 && path.segments[len - 2].args_and_bindings.is_some() {
+                    // Option::<T>::None
+                    &path.segments[len - 2]
+                } else {
+                    // Option::None::<T>
+                    last
+                };
+                segment
+            }
+        };
+        Ty::substs_from_path_segment(db, resolver, segment, resolved)
     }
 }
 

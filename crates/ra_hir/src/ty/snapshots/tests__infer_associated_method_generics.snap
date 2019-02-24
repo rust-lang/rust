@@ -1,5 +1,5 @@
 ---
-created: "2019-02-21T10:25:18.568887300Z"
+created: "2019-02-23T21:58:35.844769207Z"
 creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
@@ -9,8 +9,8 @@ expression: "&result"
 [92; 103) 'Gen { val }': Gen<T>
 [98; 101) 'val': T
 [123; 155) '{     ...32); }': ()
-[133; 134) 'a': Gen<[unknown]>
-[137; 146) 'Gen::make': fn make<[unknown]>(T) -> Gen<T>
-[137; 152) 'Gen::make(0u32)': Gen<[unknown]>
+[133; 134) 'a': Gen<u32>
+[137; 146) 'Gen::make': fn make<u32>(T) -> Gen<T>
+[137; 152) 'Gen::make(0u32)': Gen<u32>
 [147; 151) '0u32': u32
 
