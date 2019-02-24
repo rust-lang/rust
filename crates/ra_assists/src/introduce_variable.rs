@@ -1,3 +1,4 @@
+use test_utils::tested_by;
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -13,10 +14,11 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
         return None;
     }
     let node = ctx.covering_node();
-    if !valid_covering_node(node) {
+    if node.kind() == COMMENT {
+        tested_by!(introduce_var_in_comment_is_not_applicable);
         return None;
     }
-    let expr = node.ancestors().filter_map(valid_target_expr).next()?;
+    let expr = node.ancestors().find_map(valid_target_expr)?;
     let (anchor_stmt, wrap_in_block) = anchor_stmt(expr)?;
     let indent = anchor_stmt.prev_sibling()?;
     if indent.kind() != WHITESPACE {
@@ -41,6 +43,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             false
         };
         if is_full_stmt {
+            tested_by!(test_introduce_var_expr_stmt);
             if !full_stmt.unwrap().has_semi() {
                 buf.push_str(";");
             }
@@ -76,9 +79,6 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
     ctx.build()
 }
 
-fn valid_covering_node(node: &SyntaxNode) -> bool {
-    node.kind() != COMMENT
-}
 /// Check whether the node is a valid expression which can be extracted to a variable.
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: &SyntaxNode) -> Option<&ast::Expr> {
@@ -104,6 +104,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 
         if let Some(expr) = node.parent().and_then(ast::Block::cast).and_then(|it| it.expr()) {
             if expr.syntax() == node {
+                tested_by!(test_introduce_var_last_expr);
                 return Some((node, false));
             }
         }
@@ -120,8 +121,11 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use test_utils::covers;
+
     use crate::helpers::{check_assist_range_not_applicable, check_assist_range, check_assist_range_target};
+
+    use super::*;
 
     #[test]
     fn test_introduce_var_simple() {
@@ -140,7 +144,17 @@ fn foo() {
     }
 
     #[test]
+    fn introduce_var_in_comment_is_not_applicable() {
+        covers!(introduce_var_in_comment_is_not_applicable);
+        check_assist_range_not_applicable(
+            introduce_variable,
+            "fn main() { 1 + /* <|>comment<|> */ 1; }",
+        );
+    }
+
+    #[test]
     fn test_introduce_var_expr_stmt() {
+        covers!(test_introduce_var_expr_stmt);
         check_assist_range(
             introduce_variable,
             "
@@ -150,6 +164,19 @@ fn foo() {
             "
 fn foo() {
     let <|>var_name = 1 + 1;
+}",
+        );
+        check_assist_range(
+            introduce_variable,
+            "
+fn foo() {
+    <|>{ let x = 0; x }<|>
+    something_else();
+}",
+            "
+fn foo() {
+    let <|>var_name = { let x = 0; x };
+    something_else();
 }",
         );
     }
@@ -172,6 +199,7 @@ fn foo() {
 
     #[test]
     fn test_introduce_var_last_expr() {
+        covers!(test_introduce_var_last_expr);
         check_assist_range(
             introduce_variable,
             "
@@ -184,10 +212,6 @@ fn foo() {
     bar(var_name)
 }",
         );
-    }
-
-    #[test]
-    fn test_introduce_var_last_full_expr() {
         check_assist_range(
             introduce_variable,
             "
@@ -199,24 +223,7 @@ fn foo() {
     let <|>var_name = bar(1 + 1);
     var_name
 }",
-        );
-    }
-
-    #[test]
-    fn test_introduce_var_block_expr_second_to_last() {
-        check_assist_range(
-            introduce_variable,
-            "
-fn foo() {
-    <|>{ let x = 0; x }<|>
-    something_else();
-}",
-            "
-fn foo() {
-    let <|>var_name = { let x = 0; x };
-    something_else();
-}",
-        );
+        )
     }
 
     #[test]
@@ -478,23 +485,6 @@ fn main() {
         check_assist_range_not_applicable(
             introduce_variable,
             "fn main() { loop { <|>break<|>; }; }",
-        );
-    }
-
-    #[test]
-    fn test_introduce_var_in_comment_not_applicable() {
-        check_assist_range_not_applicable(
-            introduce_variable,
-            "
-fn main() {
-    let x = true;
-    let tuple = match x {
-        // <|>comment<|>
-        true => (2 + 2, true)
-        _ => (0, false)
-    };
-}
-",
         );
     }
 

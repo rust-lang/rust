@@ -13,6 +13,4 @@ ra_text_edit = { path = "../ra_text_edit" }
 ra_fmt = { path = "../ra_fmt" }
 ra_db = { path = "../ra_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }
-
-[dev-dependencies]
 test_utils = { path = "../test_utils" }

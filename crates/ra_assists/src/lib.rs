@@ -6,6 +6,7 @@
 //! becomes available.
 
 mod assist_ctx;
+mod marks;
 
 use itertools::Itertools;
 
