@@ -466,124 +466,92 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
-                    match (&from_ty.sty, &to_ty.sty) {
-                        (ty::Ref(..), ty::Ref(..))
-                        | (ty::Ref(..), ty::RawPtr(..))
-                        | (ty::RawPtr(..), ty::Ref(..))
-                        | (ty::RawPtr(..), ty::RawPtr(..))
-                        | (ty::FnPtr(..), ty::RawPtr(..)) => {
+
+                    fn is_fat_ptr<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, ty: Ty<'tcx>) -> bool {
+                        ty
+                            .builtin_deref(true)
+                            .map(|ty::TypeAndMut {ty: pointee_ty, mutbl: _ }| fx.layout_of(pointee_ty).is_unsized())
+                            .unwrap_or(false)
+                    }
+
+                    if is_fat_ptr(fx, from_ty) {
+                        if is_fat_ptr(fx, to_ty) {
+                            // fat-ptr -> fat-ptr
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                        } else {
+                            // fat-ptr -> thin-ptr
+                            let (ptr, _extra) = operand.load_value_pair(fx);
+                            lval.write_cvalue(fx, CValue::ByVal(ptr, dest_layout))
                         }
-                        (ty::RawPtr(..), ty::Uint(_))
-                        | (ty::RawPtr(..), ty::Int(_))
-                        | (ty::FnPtr(..), ty::Uint(_))
-                            if to_ty.sty == fx.tcx.types.usize.sty
-                                || to_ty.sty == fx.tcx.types.isize.sty
-                                || fx.clif_type(to_ty).unwrap() == pointer_ty(fx.tcx) =>
-                        {
-                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                    } else if let ty::Adt(adt_def, _substs) = from_ty.sty {
+                        // enum -> discriminant value
+                        assert!(adt_def.is_enum());
+                        match to_ty.sty {
+                            ty::Uint(_) | ty::Int(_) => {},
+                            _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
-                        (ty::Uint(_), ty::RawPtr(..)) if from_ty.sty == fx.tcx.types.usize.sty => {
-                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
-                        }
-                        (ty::Int(_), ty::RawPtr(..)) if from_ty.sty == fx.tcx.types.isize.sty => {
-                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
-                        }
-                        (ty::Char, ty::Uint(_))
-                        | (ty::Uint(_), ty::Char)
-                        | (ty::Uint(_), ty::Int(_))
-                        | (ty::Uint(_), ty::Uint(_)) => {
-                            let from = operand.load_scalar(fx);
-                            let res = crate::common::clif_intcast(
+
+                        // FIXME avoid forcing to stack
+                        let place =
+                            CPlace::Addr(operand.force_stack(fx), None, operand.layout());
+                        let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
+                        lval.write_cvalue(fx, discr);
+                    } else {
+                        let from_clif_ty = fx.clif_type(from_ty).unwrap();
+                        let to_clif_ty = fx.clif_type(to_ty).unwrap();
+                        let from = operand.load_scalar(fx);
+
+                        let signed = match from_ty.sty {
+                            ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Char | ty::Uint(..) | ty::Bool => false,
+                            ty::Int(..) => true,
+                            ty::Float(..) => false, // `signed` is unused for floats
+                            _ => panic!("{}", from_ty),
+                        };
+
+                        let res = if from_clif_ty.is_int() && to_clif_ty.is_int() {
+                            // int-like -> int-like
+                            crate::common::clif_intcast(
                                 fx,
                                 from,
-                                fx.clif_type(to_ty).unwrap(),
-                                false,
-                            );
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Int(_), ty::Int(_)) | (ty::Int(_), ty::Uint(_)) => {
-                            let from = operand.load_scalar(fx);
-                            let res = crate::common::clif_intcast(
-                                fx,
-                                from,
-                                fx.clif_type(to_ty).unwrap(),
-                                true,
-                            );
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Float(from_flt), ty::Float(to_flt)) => {
-                            let from = operand.load_scalar(fx);
-                            let res = match (from_flt, to_flt) {
-                                (FloatTy::F32, FloatTy::F64) => {
-                                    fx.bcx.ins().fpromote(types::F64, from)
-                                }
-                                (FloatTy::F64, FloatTy::F32) => {
-                                    fx.bcx.ins().fdemote(types::F32, from)
-                                }
-                                _ => from,
-                            };
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Float(_), ty::Int(_)) => {
-                            let from = operand.load_scalar(fx);
-                            let i_type = fx.clif_type(to_ty).unwrap();
-                            let res = fx.bcx.ins().fcvt_to_sint_sat(i_type, from);
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Float(_), ty::Uint(_)) => {
-                            let from = operand.load_scalar(fx);
-                            let i_type = fx.clif_type(to_ty).unwrap();
-                            let res = fx.bcx.ins().fcvt_to_uint_sat(i_type, from);
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Int(_), ty::Float(_)) => {
-                            let from_ty = fx.clif_type(from_ty).unwrap();
-                            let from = operand.load_scalar(fx);
+                                to_clif_ty,
+                                signed,
+                            )
+                        } else if from_clif_ty.is_int() && to_clif_ty.is_float() {
+                            // int-like -> float
                             // FIXME missing encoding for fcvt_from_sint.f32.i8
-                            let from = if from_ty == types::I8 || from_ty == types::I16 {
-                                fx.bcx.ins().sextend(types::I32, from)
-                            } else {
-                                from
-                            };
-                            let f_type = fx.clif_type(to_ty).unwrap();
-                            let res = fx.bcx.ins().fcvt_from_sint(f_type, from);
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Uint(_), ty::Float(_)) => {
-                            let from_ty = fx.clif_type(from_ty).unwrap();
-                            let from = operand.load_scalar(fx);
-                            // FIXME missing encoding for fcvt_from_uint.f32.i8
-                            let from = if from_ty == types::I8 || from_ty == types::I16 {
+                            let from = if from_clif_ty == types::I8 || from_clif_ty == types::I16 {
                                 fx.bcx.ins().uextend(types::I32, from)
                             } else {
                                 from
                             };
-                            let f_type = fx.clif_type(to_ty).unwrap();
-                            let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Bool, ty::Uint(_)) | (ty::Bool, ty::Int(_)) => {
-                            let to_ty = fx.clif_type(to_ty).unwrap();
-                            let from = operand.load_scalar(fx);
-                            let res = if to_ty != types::I8 {
-                                fx.bcx.ins().uextend(to_ty, from)
+                            if signed {
+                                fx.bcx.ins().fcvt_from_sint(to_clif_ty, from)
                             } else {
-                                from
-                            };
-                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
-                        }
-                        (ty::Adt(adt_def, _substs), ty::Uint(_))
-                        | (ty::Adt(adt_def, _substs), ty::Int(_))
-                            if adt_def.is_enum() =>
-                        {
-                            // FIXME avoid forcing to stack
-                            let place =
-                                CPlace::Addr(operand.force_stack(fx), None, operand.layout());
-                            let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
-                            lval.write_cvalue(fx, discr);
-                        }
-                        _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
+                                fx.bcx.ins().fcvt_from_uint(to_clif_ty, from)
+                            }
+                        } else if from_clif_ty.is_float() && to_clif_ty.is_int() {
+                            // float -> int-like
+                            let from = operand.load_scalar(fx);
+                            if signed {
+                                fx.bcx.ins().fcvt_to_sint_sat(to_clif_ty, from)
+                            } else {
+                                fx.bcx.ins().fcvt_to_uint_sat(to_clif_ty, from)
+                            }
+                        } else if from_clif_ty.is_float() && to_clif_ty.is_float() {
+                            // float -> float
+                            match (from_clif_ty, to_clif_ty) {
+                                (types::F32, types::F64) => {
+                                    fx.bcx.ins().fpromote(types::F64, from)
+                                }
+                                (types::F64, types::F32) => {
+                                    fx.bcx.ins().fdemote(types::F32, from)
+                                }
+                                _ => from,
+                            }
+                        } else {
+                            unimpl!("rval misc {:?} {:?}", from_ty, to_ty)
+                        };
+                        lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                     }
                 }
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, _ty) => {
