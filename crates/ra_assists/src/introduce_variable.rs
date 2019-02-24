@@ -9,6 +9,9 @@ use ra_syntax::{
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    if ctx.frange.range.is_empty() {
+        return None;
+    }
     let node = ctx.covering_node();
     if !valid_covering_node(node) {
         return None;
@@ -118,7 +121,7 @@ fn anchor_stmt(expr: &ast::Expr) -> Option<(&SyntaxNode, bool)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_range, check_assist_target, check_assist_range_target};
+    use crate::helpers::{check_assist_range_not_applicable, check_assist_range, check_assist_range_target};
 
     #[test]
     fn test_introduce_var_simple() {
@@ -309,11 +312,11 @@ fn main() {
 
     #[test]
     fn test_introduce_var_path_simple() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn main() {
-    let o = S<|>ome(true);
+    let o = <|>Some(true)<|>;
 }
 ",
             "
@@ -327,11 +330,11 @@ fn main() {
 
     #[test]
     fn test_introduce_var_path_method() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn main() {
-    let v = b<|>ar.foo();
+    let v = <|>bar.foo()<|>;
 }
 ",
             "
@@ -345,11 +348,11 @@ fn main() {
 
     #[test]
     fn test_introduce_var_return() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn foo() -> u32 {
-    r<|>eturn 2 + 2;
+    <|>return 2 + 2<|>;
 }
 ",
             "
@@ -363,13 +366,13 @@ fn foo() -> u32 {
 
     #[test]
     fn test_introduce_var_does_not_add_extra_whitespace() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn foo() -> u32 {
 
 
-    r<|>eturn 2 + 2;
+    <|>return 2 + 2<|>;
 }
 ",
             "
@@ -382,12 +385,12 @@ fn foo() -> u32 {
 ",
         );
 
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn foo() -> u32 {
 
-        r<|>eturn 2 + 2;
+        <|>return 2 + 2<|>;
 }
 ",
             "
@@ -399,7 +402,7 @@ fn foo() -> u32 {
 ",
         );
 
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn foo() -> u32 {
@@ -408,7 +411,7 @@ fn foo() -> u32 {
     // bar
 
 
-    r<|>eturn 2 + 2;
+    <|>return 2 + 2<|>;
 }
 ",
             "
@@ -427,12 +430,12 @@ fn foo() -> u32 {
 
     #[test]
     fn test_introduce_var_break() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn main() {
     let result = loop {
-        b<|>reak 2 + 2;
+        <|>break 2 + 2<|>;
     };
 }
 ",
@@ -449,11 +452,11 @@ fn main() {
 
     #[test]
     fn test_introduce_var_for_cast() {
-        check_assist(
+        check_assist_range(
             introduce_variable,
             "
 fn main() {
-    let v = 0f32 a<|>s u32;
+    let v = <|>0f32 as u32<|>;
 }
 ",
             "
@@ -467,39 +470,26 @@ fn main() {
 
     #[test]
     fn test_introduce_var_for_return_not_applicable() {
-        check_assist_not_applicable(
-            introduce_variable,
-            "
-fn foo() {
-    r<|>eturn;
-}
-",
-        );
+        check_assist_range_not_applicable(introduce_variable, "fn foo() { <|>return<|>; } ");
     }
 
     #[test]
     fn test_introduce_var_for_break_not_applicable() {
-        check_assist_not_applicable(
+        check_assist_range_not_applicable(
             introduce_variable,
-            "
-fn main() {
-    loop {
-        b<|>reak;
-    };
-}
-",
+            "fn main() { loop { <|>break<|>; }; }",
         );
     }
 
     #[test]
     fn test_introduce_var_in_comment_not_applicable() {
-        check_assist_not_applicable(
+        check_assist_range_not_applicable(
             introduce_variable,
             "
 fn main() {
     let x = true;
     let tuple = match x {
-        // c<|>omment
+        // <|>comment<|>
         true => (2 + 2, true)
         _ => (0, false)
     };
@@ -511,13 +501,9 @@ fn main() {
     // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
     #[test]
     fn introduce_var_target() {
-        check_assist_target(
+        check_assist_range_target(
             introduce_variable,
-            "
-fn foo() -> u32 {
-    r<|>eturn 2 + 2;
-}
-",
+            "fn foo() -> u32 { <|>return 2 + 2<|>; }",
             "2 + 2",
         );
 
