@@ -1,6 +1,6 @@
 use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionKind};
+use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
@@ -22,7 +22,7 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
     match adt {
         AdtDef::Struct(s) => {
             for field in s.fields(ctx.db) {
-                acc.add_field(CompletionKind::Reference, ctx, field, substs);
+                acc.add_field(ctx, field, substs);
             }
         }
 

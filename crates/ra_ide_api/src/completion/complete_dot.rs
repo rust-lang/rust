@@ -1,6 +1,6 @@
 use hir::{Ty, AdtDef};
 
-use crate::completion::{CompletionContext, Completions, CompletionKind};
+use crate::completion::{CompletionContext, Completions};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -28,7 +28,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                 match def_id {
                     AdtDef::Struct(s) => {
                         for field in s.fields(ctx.db) {
-                            acc.add_field(CompletionKind::Reference, ctx, field, substs);
+                            acc.add_field(ctx, field, substs);
                         }
                     }
 
@@ -38,7 +38,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
             }
             Ty::Tuple(fields) => {
                 for (i, ty) in fields.iter().enumerate() {
-                    acc.add_pos_field(CompletionKind::Reference, ctx, i, ty);
+                    acc.add_pos_field(ctx, i, ty);
                 }
             }
             _ => {}
@@ -50,7 +50,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
     receiver.iterate_methods(ctx.db, |_ty, func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
-            acc.add_function(CompletionKind::Reference, ctx, func);
+            acc.add_function(ctx, func);
         }
         None::<()>
     });

@@ -10,47 +10,43 @@ use crate::completion::{
 impl Completions {
     pub(crate) fn add_field(
         &mut self,
-        kind: CompletionKind,
         ctx: &CompletionContext,
         field: hir::StructField,
         substs: &hir::Substs,
     ) {
-        CompletionItem::new(kind, ctx.source_range(), field.name(ctx.db).to_string())
-            .kind(CompletionItemKind::Field)
-            .detail(field.ty(ctx.db).subst(substs).to_string())
-            .set_documentation(field.docs(ctx.db))
-            .add_to(self);
+        CompletionItem::new(
+            CompletionKind::Reference,
+            ctx.source_range(),
+            field.name(ctx.db).to_string(),
+        )
+        .kind(CompletionItemKind::Field)
+        .detail(field.ty(ctx.db).subst(substs).to_string())
+        .set_documentation(field.docs(ctx.db))
+        .add_to(self);
     }
 
-    pub(crate) fn add_pos_field(
-        &mut self,
-        kind: CompletionKind,
-        ctx: &CompletionContext,
-        field: usize,
-        ty: &hir::Ty,
-    ) {
-        CompletionItem::new(kind, ctx.source_range(), field.to_string())
+    pub(crate) fn add_pos_field(&mut self, ctx: &CompletionContext, field: usize, ty: &hir::Ty) {
+        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), field.to_string())
             .kind(CompletionItemKind::Field)
             .detail(ty.to_string())
             .add_to(self);
     }
 
-    pub(crate) fn add_function(
-        &mut self,
-        kind: CompletionKind,
-        ctx: &CompletionContext,
-        func: hir::Function,
-    ) {
+    pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
         let sig = func.signature(ctx.db);
 
-        let mut builder = CompletionItem::new(kind, ctx.source_range(), sig.name().to_string())
-            .kind(if sig.has_self_param() {
-                CompletionItemKind::Method
-            } else {
-                CompletionItemKind::Function
-            })
-            .set_documentation(func.docs(ctx.db))
-            .set_detail(function_item_label(ctx, func));
+        let mut builder = CompletionItem::new(
+            CompletionKind::Reference,
+            ctx.source_range(),
+            sig.name().to_string(),
+        )
+        .kind(if sig.has_self_param() {
+            CompletionItemKind::Method
+        } else {
+            CompletionItemKind::Function
+        })
+        .set_documentation(func.docs(ctx.db))
+        .set_detail(function_item_label(ctx, func));
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
