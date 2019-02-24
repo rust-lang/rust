@@ -408,7 +408,7 @@ fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
     opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
         .optflag("", "ignored", "Run only ignored tests")
-        .optflag("", "exclude-should-panic", "Sets #[should_panic] tests to imply #[ignore]")
+        .optflag("", "exclude-should-panic", "Excludes tests marked as should_panic")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
@@ -1376,12 +1376,9 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Skip tests that match any of the skip filters
     filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
 
-    // Set #[should_panic] tests to ignore
+    // Excludes #[should_panic] tests
     if opts.exclude_should_panic {
-        filtered
-            .iter_mut()
-            .filter(|test| test.desc.should_panic != ShouldPanic::No)
-            .for_each(|test| test.desc.ignore = true);
+        filtered.retain(|test| test.desc.should_panic == ShouldPanic::No);
     }
 
     // maybe unignore tests
@@ -2009,12 +2006,11 @@ mod tests {
         opts.exclude_should_panic = true;
 
         let mut tests = one_ignored_one_unignored_test();
-
         tests.push(TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("3"),
                 ignore: false,
-                should_panic: ShouldPanic::YesWithMessage("should panic with message"),
+                should_panic: ShouldPanic::Yes,
                 allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move || {})),
@@ -2022,10 +2018,8 @@ mod tests {
 
         let filtered = filter_tests(&opts, tests);
 
-        assert_eq!(filtered.len(), 3);
-        assert!(filtered[0].desc.ignore);
-        assert!(!filtered[1].desc.ignore);
-        assert!(filtered[2].desc.ignore);
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(|test| test.desc.should_panic == ShouldPanic::No));
     }
 
     #[test]
