@@ -241,15 +241,11 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
     let mut mir = tcx.mir_validated(def_id).steal();
     run_passes(tcx, &mut mir, InstanceDef::Item(def_id), MirPhase::Optimized, &[
-        // Remove all things not needed by analysis
+        // Remove all things only needed by analysis
         &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        // Remove all `AscribeUserType` statements.
-        &cleanup_post_borrowck::CleanAscribeUserType,
-        // Remove all `FakeRead` statements and the borrows that are only
-        // used for checking matches
-        &cleanup_post_borrowck::CleanFakeReadsAndBorrows,
+        &cleanup_post_borrowck::CleanupNonCodegenStatements,
 
         &simplify::SimplifyCfg::new("early-opt"),
 

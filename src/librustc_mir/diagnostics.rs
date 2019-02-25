@@ -1985,8 +1985,8 @@ could cause the match to be non-exhaustive:
 let mut x = Some(0);
 match x {
     None => (),
-    Some(v) if { x = None; false } => (),
-    Some(_) => (), // No longer matches
+    Some(_) if { x = None; false } => (),
+    Some(v) => (), // No longer matches
 }
 ```
 

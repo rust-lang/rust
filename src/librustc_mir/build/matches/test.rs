@@ -69,8 +69,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Slice { ref prefix, ref slice, ref suffix }
-                    if !match_pair.slice_len_checked => {
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() {
                     BinOp::Ge
@@ -85,7 +84,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             PatternKind::AscribeUserType { .. } |
             PatternKind::Array { .. } |
-            PatternKind::Slice { .. } |
             PatternKind::Wild |
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
@@ -433,59 +431,49 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         target_block
     }
 
-    /// Given that we are performing `test` against `test_place`,
-    /// this job sorts out what the status of `candidate` will be
-    /// after the test. The `resulting_candidates` vector stores, for
-    /// each possible outcome of `test`, a vector of the candidates
-    /// that will result. This fn should add a (possibly modified)
-    /// clone of candidate into `resulting_candidates` wherever
-    /// appropriate.
+    /// Given that we are performing `test` against `test_place`, this job
+    /// sorts out what the status of `candidate` will be after the test. See
+    /// `test_candidates` for the usage of this function. The returned index is
+    /// the index that this candiate should be placed in the
+    /// `target_candidates` vec. The candidate may be modified to update its
+    /// `match_pairs`.
     ///
-    /// So, for example, if this candidate is `x @ Some(P0)` and the
-    /// Tests is a variant test, then we would add `(x as Option).0 @
-    /// P0` to the `resulting_candidates` entry corresponding to the
-    /// variant `Some`.
+    /// So, for example, if this candidate is `x @ Some(P0)` and the `Test` is
+    /// a variant test, then we would modify the candidate to be `(x as
+    /// Option).0 @ P0` and return the index corresponding to the variant
+    /// `Some`.
     ///
-    /// However, in some cases, the test may just not be relevant to
-    /// candidate. For example, suppose we are testing whether `foo.x == 22`,
-    /// but in one match arm we have `Foo { x: _, ... }`... in that case,
-    /// the test for what value `x` has has no particular relevance
-    /// to this candidate. In such cases, this function just returns false
-    /// without doing anything. This is used by the overall `match_candidates`
-    /// algorithm to structure the match as a whole. See `match_candidates` for
-    /// more details.
+    /// However, in some cases, the test may just not be relevant to candidate.
+    /// For example, suppose we are testing whether `foo.x == 22`, but in one
+    /// match arm we have `Foo { x: _, ... }`... in that case, the test for
+    /// what value `x` has has no particular relevance to this candidate. In
+    /// such cases, this function just returns None without doing anything.
+    /// This is used by the overall `match_candidates` algorithm to structure
+    /// the match as a whole. See `match_candidates` for more details.
     ///
-    /// FIXME(#29623). In some cases, we have some tricky choices to
-    /// make.  for example, if we are testing that `x == 22`, but the
-    /// candidate is `x @ 13..55`, what should we do? In the event
-    /// that the test is true, we know that the candidate applies, but
-    /// in the event of false, we don't know that it *doesn't*
-    /// apply. For now, we return false, indicate that the test does
-    /// not apply to this candidate, but it might be we can get
+    /// FIXME(#29623). In some cases, we have some tricky choices to make.  for
+    /// example, if we are testing that `x == 22`, but the candidate is `x @
+    /// 13..55`, what should we do? In the event that the test is true, we know
+    /// that the candidate applies, but in the event of false, we don't know
+    /// that it *doesn't* apply. For now, we return false, indicate that the
+    /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub fn sort_candidate<'pat>(&mut self,
-                                test_place: &Place<'tcx>,
-                                test: &Test<'tcx>,
-                                candidate: &Candidate<'pat, 'tcx>,
-                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
-                                -> bool {
+    pub fn sort_candidate<'pat, 'cand>(
+        &mut self,
+        test_place: &Place<'tcx>,
+        test: &Test<'tcx>,
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) -> Option<usize> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let tested_match_pair = candidate.match_pairs.iter()
-                                                     .enumerate()
-                                                     .find(|&(_, mp)| mp.place == *test_place);
-        let (match_pair_index, match_pair) = match tested_match_pair {
-            Some(pair) => pair,
-            None => {
-                // We are not testing this place. Therefore, this
-                // candidate applies to ALL outcomes.
-                return false;
-            }
-        };
+        let (match_pair_index, match_pair) = candidate.match_pairs
+            .iter()
+            .enumerate()
+            .find(|&(_, mp)| mp.place == *test_place)?;
 
         match (&test.kind, &*match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
@@ -493,17 +481,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             (&TestKind::Switch { adt_def: tested_adt_def, .. },
              &PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. }) => {
                 assert_eq!(adt_def, tested_adt_def);
-                let new_candidate =
-                    self.candidate_after_variant_switch(match_pair_index,
-                                                        adt_def,
-                                                        variant_index,
-                                                        subpatterns,
-                                                        candidate);
-                resulting_candidates[variant_index.as_usize()].push(new_candidate);
-                true
+                self.candidate_after_variant_switch(match_pair_index,
+                                                    adt_def,
+                                                    variant_index,
+                                                    subpatterns,
+                                                    candidate);
+                Some(variant_index.as_usize())
             }
 
-            (&TestKind::Switch { .. }, _) => false,
+            (&TestKind::Switch { .. }, _) => None,
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
@@ -514,10 +500,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
              &PatternKind::Constant { ref value })
             if is_switch_ty(match_pair.pattern.ty) => {
                 let index = indices[value];
-                let new_candidate = self.candidate_without_match_pair(match_pair_index,
-                                                                      candidate);
-                resulting_candidates[index].push(new_candidate);
-                true
+                self.candidate_without_match_pair(match_pair_index, candidate);
+                Some(index)
             }
 
             (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
@@ -530,14 +514,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // No switch values are contained in the pattern range,
                     // so the pattern can be matched only if this test fails.
                     let otherwise = options.len();
-                    resulting_candidates[otherwise].push(candidate.clone());
-                    true
+                    Some(otherwise)
                 } else {
-                    false
+                    None
                 }
             }
 
-            (&TestKind::SwitchInt { .. }, _) => false,
+            (&TestKind::SwitchInt { .. }, _) => None,
 
             (&TestKind::Len { len: test_len, op: BinOp::Eq },
              &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {
@@ -546,32 +529,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     (Ordering::Equal, &None) => {
                         // on true, min_len = len = $actual_length,
                         // on false, len != $actual_length
-                        resulting_candidates[0].push(
-                            self.candidate_after_slice_test(match_pair_index,
-                                                            candidate,
-                                                            prefix,
-                                                            slice.as_ref(),
-                                                            suffix)
-                        );
-                        true
+                        self.candidate_after_slice_test(match_pair_index,
+                                                        candidate,
+                                                        prefix,
+                                                        slice.as_ref(),
+                                                        suffix);
+                        Some(0)
                     }
                     (Ordering::Less, _) => {
                         // test_len < pat_len. If $actual_len = test_len,
                         // then $actual_len < pat_len and we don't have
                         // enough elements.
-                        resulting_candidates[1].push(candidate.clone());
-                        true
+                        Some(1)
                     }
                     (Ordering::Equal, &Some(_)) | (Ordering::Greater, &Some(_)) => {
                         // This can match both if $actual_len = test_len >= pat_len,
                         // and if $actual_len > test_len. We can't advance.
-                        false
+                        None
                     }
                     (Ordering::Greater, &None) => {
                         // test_len != pat_len, so if $actual_len = test_len, then
                         // $actual_len != pat_len.
-                        resulting_candidates[1].push(candidate.clone());
-                        true
+                        Some(1)
                     }
                 }
             }
@@ -584,32 +563,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     (Ordering::Equal, &Some(_))  => {
                         // $actual_len >= test_len = pat_len,
                         // so we can match.
-                        resulting_candidates[0].push(
-                            self.candidate_after_slice_test(match_pair_index,
-                                                            candidate,
-                                                            prefix,
-                                                            slice.as_ref(),
-                                                            suffix)
-                        );
-                        true
+                        self.candidate_after_slice_test(match_pair_index,
+                                                        candidate,
+                                                        prefix,
+                                                        slice.as_ref(),
+                                                        suffix);
+                        Some(0)
                     }
                     (Ordering::Less, _) | (Ordering::Equal, &None) => {
                         // test_len <= pat_len. If $actual_len < test_len,
                         // then it is also < pat_len, so the test passing is
                         // necessary (but insufficient).
-                        resulting_candidates[0].push(candidate.clone());
-                        true
+                        Some(0)
                     }
                     (Ordering::Greater, &None) => {
                         // test_len > pat_len. If $actual_len >= test_len > pat_len,
                         // then we know we won't have a match.
-                        resulting_candidates[1].push(candidate.clone());
-                        true
+                        Some(1)
                     }
                     (Ordering::Greater, &Some(_)) => {
                         // test_len < pat_len, and is therefore less
                         // strict. This can still go both ways.
-                        false
+                        None
                     }
                 }
             }
@@ -617,12 +592,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             (&TestKind::Range(test),
              &PatternKind::Range(pat)) => {
                 if test == pat {
-                    resulting_candidates[0]
-                        .push(self.candidate_without_match_pair(
-                            match_pair_index,
-                            candidate,
-                        ));
-                    return true;
+                    self.candidate_without_match_pair(
+                        match_pair_index,
+                        candidate,
+                    );
+                    return Some(0);
                 }
 
                 let no_overlap = (|| {
@@ -649,10 +623,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if no_overlap == Some(true) {
                     // Testing range does not overlap with pattern range,
                     // so the pattern can be matched only if this test fails.
-                    resulting_candidates[1].push(candidate.clone());
-                    true
+                    Some(1)
                 } else {
-                    false
+                    None
                 }
             }
 
@@ -660,15 +633,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
-                    resulting_candidates[1].push(candidate.clone());
-                    true
+                    Some(1)
                 } else {
-                    false
+                    None
                 }
             }
 
-            (&TestKind::Range { .. }, _) => false,
-
+            (&TestKind::Range { .. }, _) => None,
 
             (&TestKind::Eq { .. }, _) |
             (&TestKind::Len { .. }, _) => {
@@ -677,73 +648,53 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // FIXME(#29623) we can be more clever here
                 let pattern_test = self.test(&match_pair);
                 if pattern_test.kind == test.kind {
-                    let new_candidate = self.candidate_without_match_pair(match_pair_index,
-                                                                          candidate);
-                    resulting_candidates[0].push(new_candidate);
-                    true
+                    self.candidate_without_match_pair(match_pair_index, candidate);
+                    Some(0)
                 } else {
-                    false
+                    None
                 }
             }
         }
     }
 
-    fn candidate_without_match_pair<'pat>(&mut self,
-                                          match_pair_index: usize,
-                                          candidate: &Candidate<'pat, 'tcx>)
-                                          -> Candidate<'pat, 'tcx> {
-        let other_match_pairs =
-            candidate.match_pairs.iter()
-                                 .enumerate()
-                                 .filter(|&(index, _)| index != match_pair_index)
-                                 .map(|(_, mp)| mp.clone())
-                                 .collect();
-        Candidate {
-            span: candidate.span,
-            match_pairs: other_match_pairs,
-            bindings: candidate.bindings.clone(),
-            ascriptions: candidate.ascriptions.clone(),
-            guard: candidate.guard.clone(),
-            arm_index: candidate.arm_index,
-            pat_index: candidate.pat_index,
-            pre_binding_block: candidate.pre_binding_block,
-            next_candidate_pre_binding_block: candidate.next_candidate_pre_binding_block,
-        }
+    fn candidate_without_match_pair(
+        &mut self,
+        match_pair_index: usize,
+        candidate: &mut Candidate<'_, 'tcx>,
+    ) {
+        candidate.match_pairs.remove(match_pair_index);
     }
 
     fn candidate_after_slice_test<'pat>(&mut self,
                                         match_pair_index: usize,
-                                        candidate: &Candidate<'pat, 'tcx>,
+                                        candidate: &mut Candidate<'pat, 'tcx>,
                                         prefix: &'pat [Pattern<'tcx>],
                                         opt_slice: Option<&'pat Pattern<'tcx>>,
-                                        suffix: &'pat [Pattern<'tcx>])
-                                        -> Candidate<'pat, 'tcx> {
-        let mut new_candidate =
-            self.candidate_without_match_pair(match_pair_index, candidate);
+                                        suffix: &'pat [Pattern<'tcx>]) {
+        let removed_place = candidate.match_pairs.remove(match_pair_index).place;
         self.prefix_slice_suffix(
-            &mut new_candidate.match_pairs,
-            &candidate.match_pairs[match_pair_index].place,
+            &mut candidate.match_pairs,
+            &removed_place,
             prefix,
             opt_slice,
             suffix);
-
-        new_candidate
     }
 
-    fn candidate_after_variant_switch<'pat>(&mut self,
-                                            match_pair_index: usize,
-                                            adt_def: &'tcx ty::AdtDef,
-                                            variant_index: VariantIdx,
-                                            subpatterns: &'pat [FieldPattern<'tcx>],
-                                            candidate: &Candidate<'pat, 'tcx>)
-                                            -> Candidate<'pat, 'tcx> {
-        let match_pair = &candidate.match_pairs[match_pair_index];
+    fn candidate_after_variant_switch<'pat>(
+        &mut self,
+        match_pair_index: usize,
+        adt_def: &'tcx ty::AdtDef,
+        variant_index: VariantIdx,
+        subpatterns: &'pat [FieldPattern<'tcx>],
+        candidate: &mut Candidate<'pat, 'tcx>,
+    ) {
+        let match_pair = candidate.match_pairs.remove(match_pair_index);
 
         // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(adt_def, variant_index);
-        let downcast_place = match_pair.place.clone().elem(elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.elem(elem); // `(x as Variant)`
         let consequent_match_pairs =
             subpatterns.iter()
                        .map(|subpattern| {
@@ -754,26 +705,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            MatchPair::new(place, &subpattern.pattern)
                        });
 
-        // In addition, we need all the other match pairs from the old candidate.
-        let other_match_pairs =
-            candidate.match_pairs.iter()
-                                 .enumerate()
-                                 .filter(|&(index, _)| index != match_pair_index)
-                                 .map(|(_, mp)| mp.clone());
-
-        let all_match_pairs = consequent_match_pairs.chain(other_match_pairs).collect();
-
-        Candidate {
-            span: candidate.span,
-            match_pairs: all_match_pairs,
-            bindings: candidate.bindings.clone(),
-            ascriptions: candidate.ascriptions.clone(),
-            guard: candidate.guard.clone(),
-            arm_index: candidate.arm_index,
-            pat_index: candidate.pat_index,
-            pre_binding_block: candidate.pre_binding_block,
-            next_candidate_pre_binding_block: candidate.next_candidate_pre_binding_block,
-        }
+        candidate.match_pairs.extend(consequent_match_pairs);
     }
 
     fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {

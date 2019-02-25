@@ -6,8 +6,6 @@ use rustc::mir::*;
 use rustc::hir;
 use syntax_pos::Span;
 
-use std::slice;
-
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Place<'tcx>,
@@ -125,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None,
                             remainder_span,
                             lint_level,
-                            slice::from_ref(&pattern),
+                            &pattern,
                             ArmHasGuard(false),
                             Some((None, initializer_span)),
                         );
@@ -138,7 +136,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             }));
                     } else {
                         scope = this.declare_bindings(
-                            None, remainder_span, lint_level, slice::from_ref(&pattern),
+                            None, remainder_span, lint_level, &pattern,
                             ArmHasGuard(false), None);
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);

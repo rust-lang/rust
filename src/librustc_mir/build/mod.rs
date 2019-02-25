@@ -459,8 +459,7 @@ enum LocalsForNode {
 
     /// The exceptional case is identifiers in a match arm's pattern
     /// that are referenced in a guard of that match arm. For these,
-    /// we can have `2 + k` Locals, where `k` is the number of candidate
-    /// patterns (separated by `|`) in the arm.
+    /// we have `2` Locals.
     ///
     /// * `for_arm_body` is the Local used in the arm body (which is
     ///   just like the `One` case above),
@@ -468,16 +467,7 @@ enum LocalsForNode {
     /// * `ref_for_guard` is the Local used in the arm's guard (which
     ///   is a reference to a temp that is an alias of
     ///   `for_arm_body`).
-    ///
-    /// * `vals_for_guard` is the `k` Locals; at most one of them will
-    ///   get initialized by the arm's execution, and after it is
-    ///   initialized, `ref_for_guard` will be assigned a reference to
-    ///   it.
-    ///
-    /// There reason we have `k` Locals rather than just 1 is to
-    /// accommodate some restrictions imposed by two-phase borrows,
-    /// which apply when we have a `ref mut` pattern.
-    ForGuard { vals_for_guard: Vec<Local>, ref_for_guard: Local, for_arm_body: Local },
+    ForGuard { ref_for_guard: Local, for_arm_body: Local },
 }
 
 #[derive(Debug)]
@@ -510,16 +500,11 @@ struct GuardFrame {
 }
 
 /// `ForGuard` indicates whether we are talking about:
-///   1. the temp for a local binding used solely within guard expressions,
-///   2. the temp that holds reference to (1.), which is actually what the
-///      guard expressions see, or
-///   3. the temp for use outside of guard expressions.
+///   1. The variable for use outside of guard expressions, or
+///   2. The temp that holds reference to (1.), which is actually what the
+///      guard expressions see.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ForGuard {
-    /// The `usize` identifies for which candidate pattern we want the
-    /// local binding. We keep a temp per-candidate to accommodate
-    /// two-phase borrows (see `LocalsForNode` documentation).
-    ValWithinGuard(usize),
     RefWithinGuard,
     OutsideGuard,
 }
@@ -532,11 +517,6 @@ impl LocalsForNode {
             (&LocalsForNode::ForGuard { for_arm_body: local_id, .. }, ForGuard::OutsideGuard) =>
                 local_id,
 
-            (&LocalsForNode::ForGuard { ref vals_for_guard, .. },
-             ForGuard::ValWithinGuard(pat_idx)) =>
-                vals_for_guard[pat_idx],
-
-            (&LocalsForNode::One(_), ForGuard::ValWithinGuard(_)) |
             (&LocalsForNode::One(_), ForGuard::RefWithinGuard) =>
                 bug!("anything with one local should never be within a guard."),
         }
@@ -941,7 +921,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     _ => {
                         scope = self.declare_bindings(scope, ast_body.span,
-                                                      LintLevel::Inherited, &[pattern.clone()],
+                                                      LintLevel::Inherited, &pattern,
                                                       matches::ArmHasGuard(false),
                                                       Some((Some(&place), span)));
                         unpack!(block = self.place_into_pattern(block, pattern, &place, false));
