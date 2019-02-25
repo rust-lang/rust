@@ -1173,7 +1173,7 @@ impl<T> MaybeUninit<T> {
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
@@ -1187,7 +1187,7 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a reference to the contained value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
@@ -1200,7 +1200,7 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a mutable reference to the contained value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
