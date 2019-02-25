@@ -35,14 +35,14 @@ impl Step for Llvm {
 
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project")
             .path("src/llvm-project/llvm")
             .path("src/llvm")
             .path("src/llvm-emscripten")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let emscripten = run.path.ends_with("llvm-emscripten");
         run.builder.ensure(Llvm {
             target: run.target,
@@ -51,7 +51,7 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target = self.target;
         let emscripten = self.emscripten;
 
@@ -261,7 +261,7 @@ impl Step for Llvm {
     }
 }
 
-fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
+fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     if !builder.config.llvm_version_check {
         return
     }
@@ -282,7 +282,7 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=6.0\n\n", version)
 }
 
-fn configure_cmake(builder: &Builder,
+fn configure_cmake(builder: &Builder<'_>,
                    target: Interned<String>,
                    cfg: &mut cmake::Config) {
     if builder.config.ninja {
@@ -417,16 +417,16 @@ impl Step for Lld {
     type Output = PathBuf;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project/lld").path("src/tools/lld")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Lld { target: run.target });
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run {
             return PathBuf::from("lld-out-dir-test-gen");
         }
@@ -489,17 +489,17 @@ pub struct TestHelpers {
 impl Step for TestHelpers {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/test/auxiliary/rust_test_helpers.c")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(TestHelpers { target: run.target })
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` test suites for ABI testing.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;
         }

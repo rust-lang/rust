@@ -25,7 +25,7 @@ use crate::tool::{self, Tool};
 use crate::cache::{INTERNER, Interned};
 use time::{self, Timespec};
 
-pub fn pkgname(builder: &Builder, component: &str) -> String {
+pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, builder.cargo_package_vers())
     } else if component == "rls" {
@@ -46,15 +46,15 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
     }
 }
 
-fn distdir(builder: &Builder) -> PathBuf {
+fn distdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("dist")
 }
 
-pub fn tmpdir(builder: &Builder) -> PathBuf {
+pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("tmp/dist")
 }
 
-fn rust_installer(builder: &Builder) -> Command {
+fn rust_installer(builder: &Builder<'_>) -> Command {
     builder.tool_cmd(Tool::RustInstaller)
 }
 
@@ -76,11 +76,11 @@ impl Step for Docs {
     type Output = PathBuf;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/doc")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Docs {
             stage: run.builder.top_stage,
             host: run.target,
@@ -88,7 +88,7 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let host = self.host;
 
         let name = pkgname(builder, "rust-docs");
@@ -138,11 +138,11 @@ impl Step for RustcDocs {
     type Output = PathBuf;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/librustc")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustcDocs {
             stage: run.builder.top_stage,
             host: run.target,
@@ -150,7 +150,7 @@ impl Step for RustcDocs {
     }
 
     /// Builds the `rustc-docs` installer component.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let host = self.host;
 
         let name = pkgname(builder, "rustc-docs");
@@ -210,7 +210,7 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 fn make_win_dist(
-    rust_root: &Path, plat_root: &Path, target_triple: Interned<String>, builder: &Builder
+    rust_root: &Path, plat_root: &Path, target_triple: Interned<String>, builder: &Builder<'_>
 ) {
     //Ask gcc where it keeps its stuff
     let mut cmd = Command::new(builder.cc(target_triple));
@@ -334,11 +334,11 @@ impl Step for Mingw {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Mingw { host: run.target });
     }
 
@@ -346,7 +346,7 @@ impl Step for Mingw {
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let host = self.host;
 
         if !host.contains("pc-windows-gnu") {
@@ -392,18 +392,18 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/librustc")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.target),
         });
     }
 
     /// Creates the `rustc` installer component.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
@@ -470,7 +470,7 @@ impl Step for Rustc {
 
         return distdir(builder).join(format!("{}-{}.tar.gz", name, host));
 
-        fn prepare_image(builder: &Builder, compiler: Compiler, image: &Path) {
+        fn prepare_image(builder: &Builder<'_>, compiler: Compiler, image: &Path) {
             let host = compiler.host;
             let src = builder.sysroot(compiler);
             let libdir = libdir(&host);
@@ -580,11 +580,11 @@ pub struct DebuggerScripts {
 impl Step for DebuggerScripts {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/lldb_batchmode.py")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(DebuggerScripts {
             sysroot: run.builder.sysroot(run.builder.compiler(run.builder.top_stage, run.host)),
             host: run.target,
@@ -592,7 +592,7 @@ impl Step for DebuggerScripts {
     }
 
     /// Copies debugger scripts for `target` into the `sysroot` specified.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let host = self.host;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
@@ -639,18 +639,18 @@ impl Step for Std {
     type Output = PathBuf;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/libstd")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -728,12 +728,12 @@ impl Step for Analysis {
     type Output = PathBuf;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run.path("analysis").default_condition(builder.config.extended)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Analysis {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
@@ -741,7 +741,7 @@ impl Step for Analysis {
     }
 
     /// Creates a tarball of save-analysis metadata, if available.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -791,7 +791,7 @@ impl Step for Analysis {
     }
 }
 
-fn copy_src_dirs(builder: &Builder, src_dirs: &[&str], exclude_dirs: &[&str], dst_dir: &Path) {
+fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str], dst_dir: &Path) {
     fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
         let spath = match path.to_str() {
             Some(path) => path,
@@ -861,16 +861,16 @@ impl Step for Src {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Src);
     }
 
     /// Creates the `rust-src` installer component
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.info("Dist src");
 
         let name = pkgname(builder, "rust-src");
@@ -941,17 +941,17 @@ impl Step for PlainSourceTarball {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run.path("src").default_condition(builder.config.rust_dist_src)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(PlainSourceTarball);
     }
 
     /// Creates the plain source tarball
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.info("Create plain source tarball");
 
         // Make sure that the root folder of tarball has the correct name
@@ -1069,18 +1069,18 @@ impl Step for Cargo {
     type Output = PathBuf;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("cargo")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let stage = self.stage;
         let target = self.target;
 
@@ -1155,18 +1155,18 @@ impl Step for Rls {
     type Output = Option<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("rls")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rls {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let stage = self.stage;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1234,18 +1234,18 @@ impl Step for Clippy {
     type Output = Option<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("clippy")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let stage = self.stage;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1318,18 +1318,18 @@ impl Step for Miri {
     type Output = Option<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("miri")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let stage = self.stage;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1402,18 +1402,18 @@ impl Step for Rustfmt {
     type Output = Option<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("rustfmt")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let stage = self.stage;
         let target = self.target;
 
@@ -1485,12 +1485,12 @@ impl Step for Extended {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run.path("extended").default_condition(builder.config.extended)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
             host: run.builder.config.build,
@@ -1499,7 +1499,7 @@ impl Step for Extended {
     }
 
     /// Creates a combined installer for the specified target in the provided stage.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
 
@@ -1949,7 +1949,7 @@ impl Step for Extended {
     }
 }
 
-fn add_env(builder: &Builder, cmd: &mut Command, target: Interned<String>) {
+fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: Interned<String>) {
     let mut parts = channel::CFG_RELEASE_NUM.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
@@ -1985,15 +1985,15 @@ impl Step for HashSign {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("hash-and-sign")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(HashSign);
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
         if builder.config.dry_run {
             return;
@@ -2037,7 +2037,7 @@ impl Step for HashSign {
 // LLVM tools are linked dynamically.
 // Note: This function does no yet support Windows but we also don't support
 //       linking LLVM tools dynamically on Windows yet.
-pub fn maybe_install_llvm_dylib(builder: &Builder,
+pub fn maybe_install_llvm_dylib(builder: &Builder<'_>,
                                 target: Interned<String>,
                                 sysroot: &Path) {
     let src_libdir = builder
@@ -2079,18 +2079,18 @@ impl Step for LlvmTools {
     type Output = Option<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("llvm-tools")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmTools {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let stage = self.stage;
         let target = self.target;
         assert!(builder.config.extended);
@@ -2163,17 +2163,17 @@ impl Step for Lldb {
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project/lldb").path("src/tools/lldb")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Lldb {
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let target = self.target;
 
         if builder.config.dry_run {

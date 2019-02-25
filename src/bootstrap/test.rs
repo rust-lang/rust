@@ -57,7 +57,7 @@ impl TestKind {
 }
 
 impl fmt::Display for TestKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
             TestKind::Test => "Testing",
             TestKind::Bench => "Benchmarking",
@@ -65,7 +65,7 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run(builder: &Builder, cmd: &mut Command) -> bool {
+fn try_run(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
@@ -78,7 +78,7 @@ fn try_run(builder: &Builder, cmd: &mut Command) -> bool {
     true
 }
 
-fn try_run_quiet(builder: &Builder, cmd: &mut Command) -> bool {
+fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
     if !builder.fail_fast {
         if !builder.try_run_quiet(cmd) {
             let mut failures = builder.delayed_failures.borrow_mut();
@@ -105,7 +105,7 @@ impl Step for Linkcheck {
     ///
     /// This tool in `src/tools` will verify the validity of all our links in the
     /// documentation to ensure we don't have a bunch of dead ones.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let host = self.host;
 
         builder.info(&format!("Linkcheck ({})", host));
@@ -121,13 +121,13 @@ impl Step for Linkcheck {
         );
     }
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run.path("src/tools/linkchecker")
             .default_condition(builder.config.docs)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Linkcheck { host: run.target });
     }
 }
@@ -142,11 +142,11 @@ impl Step for Cargotest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/cargotest")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargotest {
             stage: run.builder.top_stage,
             host: run.target,
@@ -157,7 +157,7 @@ impl Step for Cargotest {
     ///
     /// This tool in `src/tools` will check out a few Rust projects and run `cargo
     /// test` to ensure that we don't regress the test suites there.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
         builder.ensure(compile::Rustc {
             compiler,
@@ -192,11 +192,11 @@ impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/cargo")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
             stage: run.builder.top_stage,
             host: run.target,
@@ -204,7 +204,7 @@ impl Step for Cargo {
     }
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
 
         builder.ensure(tool::Cargo {
@@ -247,11 +247,11 @@ impl Step for Rls {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rls")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rls {
             stage: run.builder.top_stage,
             host: run.target,
@@ -259,7 +259,7 @@ impl Step for Rls {
     }
 
     /// Runs `cargo test` for the rls.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
@@ -303,11 +303,11 @@ impl Step for Rustfmt {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustfmt")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
             stage: run.builder.top_stage,
             host: run.target,
@@ -315,7 +315,7 @@ impl Step for Rustfmt {
     }
 
     /// Runs `cargo test` for rustfmt.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
@@ -362,12 +362,12 @@ impl Step for Miri {
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let test_miri = run.builder.config.test_miri;
         run.path("src/tools/miri").default_condition(test_miri)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
             stage: run.builder.top_stage,
             host: run.target,
@@ -375,7 +375,7 @@ impl Step for Miri {
     }
 
     /// Runs `cargo test` for miri.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
@@ -421,11 +421,11 @@ pub struct CompiletestTest {
 impl Step for CompiletestTest {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/compiletest")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(CompiletestTest {
             stage: run.builder.top_stage,
             host: run.target,
@@ -433,7 +433,7 @@ impl Step for CompiletestTest {
     }
 
     /// Runs `cargo test` for compiletest.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
@@ -462,11 +462,11 @@ impl Step for Clippy {
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/clippy")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
             stage: run.builder.top_stage,
             host: run.target,
@@ -474,7 +474,7 @@ impl Step for Clippy {
     }
 
     /// Runs `cargo test` for clippy.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
@@ -516,7 +516,7 @@ impl Step for Clippy {
     }
 }
 
-fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
+fn path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
     // and not RUSTC because the Cargo test suite has tests that will
     // fail if rustc is not spelled `rustc`.
@@ -535,17 +535,17 @@ impl Step for RustdocTheme {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc-themes")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.host);
 
         run.builder.ensure(RustdocTheme { compiler });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let rustdoc = builder.out.join("bootstrap/debug/rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
@@ -584,18 +584,18 @@ impl Step for RustdocJS {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/test/rustdoc-js")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustdocJS {
             host: run.host,
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
             command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
@@ -624,11 +624,11 @@ impl Step for RustdocUi {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/test/rustdoc-ui")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.host);
         run.builder.ensure(RustdocUi {
             host: run.host,
@@ -637,7 +637,7 @@ impl Step for RustdocUi {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         builder.ensure(Compiletest {
             compiler: self.compiler,
             target: self.target,
@@ -662,7 +662,7 @@ impl Step for Tidy {
     /// This tool in `src/tools` checks up on various bits and pieces of style and
     /// otherwise just implements a few lint-like checks that are specific to the
     /// compiler itself.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(builder.src.join("src"));
         cmd.arg(&builder.initial_cargo);
@@ -678,16 +678,16 @@ impl Step for Tidy {
         try_run(builder, &mut cmd);
     }
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/tidy")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
     }
 }
 
-fn testdir(builder: &Builder, host: Interned<String>) -> PathBuf {
+fn testdir(builder: &Builder<'_>, host: Interned<String>) -> PathBuf {
     builder.out.join(host).join("test")
 }
 
@@ -747,11 +747,11 @@ macro_rules! test_definitions {
             const DEFAULT: bool = $default;
             const ONLY_HOSTS: bool = $host;
 
-            fn should_run(run: ShouldRun) -> ShouldRun {
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.suite_path($path)
             }
 
-            fn make_run(run: RunConfig) {
+            fn make_run(run: RunConfig<'_>) {
                 let compiler = run.builder.compiler(run.builder.top_stage, run.host);
 
                 run.builder.ensure($name {
@@ -760,7 +760,7 @@ macro_rules! test_definitions {
                 });
             }
 
-            fn run(self, builder: &Builder) {
+            fn run(self, builder: &Builder<'_>) {
                 builder.ensure(Compiletest {
                     compiler: self.compiler,
                     target: self.target,
@@ -908,7 +908,7 @@ struct Compiletest {
 impl Step for Compiletest {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
@@ -917,7 +917,7 @@ impl Step for Compiletest {
     /// Compiles all tests with `compiler` for `target` with the specified
     /// compiletest `mode` and `suite` arguments. For example `mode` can be
     /// "run-pass" or `suite` can be something like `debuginfo`.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
@@ -1284,7 +1284,7 @@ impl Step for DocTest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
@@ -1293,7 +1293,7 @@ impl Step for DocTest {
     /// This will run all tests in our markdown documentation (e.g., the book)
     /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
     /// `compiler`.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
         builder.ensure(compile::Test {
@@ -1354,17 +1354,17 @@ macro_rules! test_book {
                 const DEFAULT: bool = $default;
                 const ONLY_HOSTS: bool = true;
 
-                fn should_run(run: ShouldRun) -> ShouldRun {
+                fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                     run.path($path)
                 }
 
-                fn make_run(run: RunConfig) {
+                fn make_run(run: RunConfig<'_>) {
                     run.builder.ensure($name {
                         compiler: run.builder.compiler(run.builder.top_stage, run.host),
                     });
                 }
 
-                fn run(self, builder: &Builder) {
+                fn run(self, builder: &Builder<'_>) {
                     builder.ensure(DocTest {
                         compiler: self.compiler,
                         path: $path,
@@ -1398,11 +1398,11 @@ impl Step for ErrorIndex {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/error_index_generator")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(ErrorIndex {
             compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
@@ -1414,7 +1414,7 @@ impl Step for ErrorIndex {
     /// The `error_index_generator` tool lives in `src/tools` and is used to
     /// generate a markdown file from the error indexes of the code base which is
     /// then passed to `rustdoc --test`.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
         builder.ensure(compile::Std {
@@ -1440,7 +1440,7 @@ impl Step for ErrorIndex {
     }
 }
 
-fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool {
+fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
     match fs::read_to_string(markdown) {
         Ok(contents) => {
             if !contents.contains("```") {
@@ -1480,11 +1480,11 @@ impl Step for CrateLibrustc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.krate("rustc-main")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
@@ -1502,7 +1502,7 @@ impl Step for CrateLibrustc {
         }
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
@@ -1524,14 +1524,14 @@ pub struct CrateNotDefault {
 impl Step for CrateNotDefault {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/librustc_asan")
             .path("src/librustc_lsan")
             .path("src/librustc_msan")
             .path("src/librustc_tsan")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
@@ -1551,7 +1551,7 @@ impl Step for CrateNotDefault {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
@@ -1575,7 +1575,7 @@ impl Step for Crate {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(mut run: ShouldRun) -> ShouldRun {
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run = run.krate("test");
         for krate in run.builder.in_tree_crates("std") {
@@ -1586,7 +1586,7 @@ impl Step for Crate {
         run
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
@@ -1622,7 +1622,7 @@ impl Step for Crate {
     ///
     /// Currently this runs all tests for a DAG by passing a bunch of `-p foo`
     /// arguments, and those arguments are discovered from `cargo metadata`.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
@@ -1763,11 +1763,11 @@ impl Step for CrateRustdoc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["src/librustdoc", "src/tools/rustdoc"])
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
         let test_kind = builder.kind.into();
@@ -1778,7 +1778,7 @@ impl Step for CrateRustdoc {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let test_kind = self.test_kind;
 
         let compiler = builder.compiler(builder.top_stage, self.host);
@@ -1846,11 +1846,11 @@ pub struct RemoteCopyLibs {
 impl Step for RemoteCopyLibs {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
         if !builder.remote_tested(target) {
@@ -1896,16 +1896,16 @@ pub struct Distcheck;
 impl Step for Distcheck {
     type Output = ();
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("distcheck")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Distcheck);
     }
 
     /// Runs "distcheck", a 'make check' from a tarball
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.out.join("tmp").join("distcheck");
         let _ = fs::remove_dir_all(&dir);
@@ -1966,7 +1966,7 @@ impl Step for Bootstrap {
     const ONLY_HOSTS: bool = true;
 
     /// Tests the build system itself.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
             .current_dir(builder.src.join("src/bootstrap"))
@@ -1990,11 +1990,11 @@ impl Step for Bootstrap {
         try_run(builder, &mut cmd);
     }
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/bootstrap")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Bootstrap);
     }
 }

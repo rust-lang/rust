@@ -27,7 +27,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::output;
-use cc;
 
 use crate::{Build, GitRepo};
 use crate::config::Target;
@@ -157,7 +156,7 @@ fn set_compiler(cfg: &mut cc::Build,
                 None => return,
             };
             match output[i + 3..].chars().next().unwrap() {
-                '0' ... '6' => {}
+                '0' ..= '6' => {}
                 _ => return,
             }
             let alternative = format!("e{}", gnu_compiler);
