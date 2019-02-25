@@ -196,7 +196,7 @@ impl Query {
 
 fn is_type(kind: SyntaxKind) -> bool {
     match kind {
-        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
+        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => true,
         _ => false,
     }
 }
@@ -253,7 +253,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
         .visit(decl::<ast::EnumDef>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
-        .visit(decl::<ast::TypeDef>)
+        .visit(decl::<ast::TypeAliasDef>)
         .visit(decl::<ast::ConstDef>)
         .visit(decl::<ast::StaticDef>)
         .accept(node)?

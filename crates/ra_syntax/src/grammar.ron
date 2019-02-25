@@ -132,7 +132,7 @@ Grammar(
         "CONST_DEF",
         "TRAIT_DEF",
         "IMPL_BLOCK",
-        "TYPE_DEF",
+        "TYPE_ALIAS_DEF",
         "MACRO_CALL",
         "TOKEN_TREE",
 
@@ -312,7 +312,7 @@ Grammar(
             ],
             options: ["TypeRef"]
         ),
-        "TypeDef": (
+        "TypeAliasDef": (
             traits: [
                 "VisibilityOwner",
                 "NameOwner",
@@ -363,11 +363,11 @@ Grammar(
             ],
         ),
         "ModuleItem": (
-            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeDef", "ImplBlock",
+            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeAliasDef", "ImplBlock",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
         ),
         "ImplItem": (
-            enum: ["FnDef", "TypeDef", "ConstDef"]
+            enum: ["FnDef", "TypeAliasDef", "ConstDef"]
         ),
 
         "TupleExpr": (

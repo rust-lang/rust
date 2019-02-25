@@ -619,7 +619,10 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::TypeDef>) {
+    pub fn source(
+        &self,
+        db: &impl PersistentHirDatabase,
+    ) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
         self.id.source(db)
     }
 

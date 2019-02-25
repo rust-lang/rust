@@ -112,7 +112,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         .visit(decl::<ast::EnumVariant>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
-        .visit(|td: &ast::TypeDef| decl_with_type_ref(td, td.type_ref()))
+        .visit(|td: &ast::TypeAliasDef| decl_with_type_ref(td, td.type_ref()))
         .visit(|cd: &ast::ConstDef| decl_with_type_ref(cd, cd.type_ref()))
         .visit(|sd: &ast::StaticDef| decl_with_type_ref(sd, sd.type_ref()))
         .visit(|im: &ast::ImplBlock| {

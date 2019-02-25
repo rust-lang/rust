@@ -167,7 +167,7 @@ impl LoweredModule {
                     self.declarations.insert(name.as_name(), PerNs::types(t.into()));
                 }
             }
-            ast::ModuleItemKind::TypeDef(it) => {
+            ast::ModuleItemKind::TypeAliasDef(it) => {
                 if let Some(name) = it.name() {
                     let t = TypeAlias { id: ctx.to_def(it) };
                     self.declarations.insert(name.as_name(), PerNs::types(t.into()));

@@ -102,7 +102,7 @@ pub fn const_label(node: &ast::ConstDef) -> String {
     label.trim().to_owned()
 }
 
-pub fn type_label(node: &ast::TypeDef) -> String {
+pub fn type_label(node: &ast::TypeAliasDef) -> String {
     let label: String = node
         .syntax()
         .children()
