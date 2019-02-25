@@ -42,7 +42,7 @@ enum Addition {
     },
 }
 
-fn is_relevant_child(c: &Child) -> bool {
+fn is_relevant_child(c: &Child<'_>) -> bool {
     match c.name() {
         Some(name) => !name.contains("SYMDEF"),
         None => false,

@@ -20,7 +20,7 @@ use syntax_pos::BytePos;
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_>,
-    mir: &Mir,
+    mir: &Mir<'_>,
     debug_context: &FunctionDebugContext<&'ll DISubprogram>,
 ) -> IndexVec<SourceScope, MirDebugScope<&'ll DIScope>> {
     let null_scope = MirDebugScope {
@@ -55,7 +55,7 @@ pub fn create_mir_scopes(
 }
 
 fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
-                  mir: &Mir,
+                  mir: &Mir<'_>,
                   has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<&'ll DISubprogram>,
                   scope: SourceScope,
