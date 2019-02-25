@@ -1,0 +1,8 @@
+error: couldn't allocate input reg for constraint 'a'
+  --> $DIR/invalid-inline-asm.rs:7:14
+   |
+LL |     unsafe { asm!("out %al, %dx" :: "a" (byte), "d" (port) :: "volatile"); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
