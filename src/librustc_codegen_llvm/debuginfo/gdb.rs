@@ -13,7 +13,7 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder) {
+pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
     if needs_gdb_debug_scripts_section(bx) {
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
         // Load just the first byte as that's all that's necessary to force
@@ -64,7 +64,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>)
     })
 }
 
-pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {
+pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
         attr::contains_name(&cx.tcx.hir().krate_attrs(),
                             "omit_gdb_pretty_printer_section");

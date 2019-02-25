@@ -36,7 +36,7 @@ impl ArchiveRO {
         };
     }
 
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter<'_> {
         unsafe {
             Iter {
                 raw: super::LLVMRustArchiveIteratorNew(self.raw),
