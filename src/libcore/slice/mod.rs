@@ -2158,7 +2158,7 @@ impl<T> [T] {
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This method is essentially a `transmute` with respect to the elements in the returned
     /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
@@ -2211,7 +2211,7 @@ impl<T> [T] {
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This method is essentially a `transmute` with respect to the elements in the returned
     /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
