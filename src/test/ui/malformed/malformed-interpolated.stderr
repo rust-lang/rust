@@ -17,8 +17,6 @@ LL |         #[my_attr = $expr] //~ ERROR suffixed literals are not allowed in a
 ...
 LL | check!(-0); // ERROR, see above
    | ----------- in this macro invocation
-   |
-   = help: try enabling `#![feature(unrestricted_attribute_tokens)]`
 
 error: unexpected token: `0 + 0`
   --> $DIR/malformed-interpolated.rs:5:19
@@ -28,8 +26,6 @@ LL |         #[my_attr = $expr] //~ ERROR suffixed literals are not allowed in a
 ...
 LL | check!(0 + 0); // ERROR, see above
    | -------------- in this macro invocation
-   |
-   = help: try enabling `#![feature(unrestricted_attribute_tokens)]`
 
 error: aborting due to 3 previous errors
 

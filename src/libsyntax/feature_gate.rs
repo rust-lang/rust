@@ -21,8 +21,9 @@ use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::parse::ParseSess;
+use crate::parse::{token, ParseSess};
 use crate::symbol::Symbol;
+use crate::tokenstream::TokenTree;
 
 use errors::{DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
@@ -431,9 +432,6 @@ declare_features! (
     // Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
 
-    // support for arbitrary delimited token streams in non-macro attributes
-    (active, unrestricted_attribute_tokens, "1.30.0", Some(55208), None),
-
     // Allows unsized rvalues at arguments and parameters.
     (active, unsized_locals, "1.30.0", Some(48055), None),
 
@@ -700,6 +698,8 @@ declare_features! (
     (accepted, cfg_target_vendor, "1.33.0", Some(29718), None),
     // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
+    // support for arbitrary delimited token streams in non-macro attributes
+    (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1660,13 +1660,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
         match BUILTIN_ATTRIBUTES.iter().find(|(name, ..)| attr.path == name) {
             Some(&(name, _, template, _)) => self.check_builtin_attribute(attr, name, template),
-            None => if !self.context.features.unrestricted_attribute_tokens {
-                // Unfortunately, `parse_meta` cannot be called speculatively
-                // because it can report errors by itself, so we have to call it
-                // only if the feature is disabled.
-                if let Err(mut err) = attr.parse_meta(self.context.parse_sess) {
-                    err.help("try enabling `#![feature(unrestricted_attribute_tokens)]`").emit()
-                }
+            None => if let Some(TokenTree::Token(_, token::Eq)) = attr.tokens.trees().next() {
+                // All key-value attributes are restricted to meta-item syntax.
+                attr.parse_meta(self.context.parse_sess).map_err(|mut err| err.emit()).ok();
             }
         }
     }
