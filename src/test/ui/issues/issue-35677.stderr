@@ -1,12 +1,12 @@
-error[E0599]: no method named `drain` found for type `&mut std::collections::HashMap<K, V>` in the current scope
-  --> $DIR/issue-35677.rs:3:10
+error[E0599]: no method named `is_subset` found for type `&std::collections::HashSet<T>` in the current scope
+  --> $DIR/issue-35677.rs:4:10
    |
-LL |     this.drain()
-   |          ^^^^^
+LL |     this.is_subset(other)
+   |          ^^^^^^^^^
    |
-   = note: the method `drain` exists but the following trait bounds were not satisfied:
-           `K : std::cmp::Eq`
-           `K : std::hash::Hash`
+   = note: the method `is_subset` exists but the following trait bounds were not satisfied:
+           `T : std::cmp::Eq`
+           `T : std::hash::Hash`
 
 error: aborting due to previous error
 
