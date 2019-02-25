@@ -1,5 +1,6 @@
 #![feature(repr_simd)]
 #![feature(test)]
+#![feature(benches_btree_set)]
 
 extern crate rand;
 extern crate rand_xorshift;

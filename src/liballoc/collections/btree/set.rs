@@ -158,17 +158,19 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 /// Whether the sizes of two sets are roughly the same order of magnitude.
 ///
 /// If they are, or if either set is empty, then their intersection
-/// is efficiently calculated by iterating both sets jointly.
+/// is efficiently calculated by iterating the common range of both sets jointly.
 /// If they aren't, then it is more scalable to iterate over the small set
-/// and find matches in the large set (except if the largest element in
-/// the small set hardly surpasses the smallest element in the large set).
-fn are_proportionate_for_intersection(len1: usize, len2: usize) -> bool {
-    let (small, large) = if len1 <= len2 {
-        (len1, len2)
-    } else {
-        (len2, len1)
-    };
-    (large >> 7) <= small
+/// and find matches in the large set.
+const fn are_proportionate_for_intersection(small: usize, large: usize) -> bool {
+    (large >> 4) < small
+}
+struct _AssertProportionateForIntersection {
+    a: [(); are_proportionate_for_intersection(1, 15) as usize - 1],
+    b: [(); !are_proportionate_for_intersection(1, 16) as usize - 1],
+    c: [(); are_proportionate_for_intersection(2, 31) as usize - 1],
+    d: [(); !are_proportionate_for_intersection(2, 32) as usize - 1],
+    e: [(); are_proportionate_for_intersection(3, 47) as usize - 1],
+    f: [(); !are_proportionate_for_intersection(3, 48) as usize - 1],
 }
 
 /// A lazy iterator producing elements in the intersection of `BTreeSet`s.
@@ -359,35 +361,44 @@ impl<T: Ord> BTreeSet<T> {
             Intersection {
                 a: a_set.range(..),
                 b: IntersectionOther::Search(b_set),
-                max_size: a_set.len(),
+                max_size: 0,
             }
+        } else if are_proportionate_for_intersection(a_set.len(), b_set.len()) {
+            Self::intersection_stitch(a_set, b_set)
         } else {
-            let a_min = a_set.iter().next().unwrap();
-            let b_min = b_set.iter().next().unwrap();
-            let ord = Ord::cmp(a_min, b_min);
-            let a_range = if ord == Less {
-                a_set.range(b_min..)
-            } else {
-                a_set.range(..)
-            };
-            if are_proportionate_for_intersection(self.len(), other.len()) {
-                let b_range = if ord == Greater {
-                    b_set.range(a_min..)
-                } else {
-                    b_set.range(..)
-                };
-                Intersection {
-                    a: a_range,
-                    b: IntersectionOther::Stitch(b_range),
-                    max_size: a_set.len(),
-                }
-            } else {
-                Intersection {
-                    a: a_range,
-                    b: IntersectionOther::Search(b_set),
-                    max_size: a_set.len(),
-                }
-            }
+            Self::intersection_search(a_set, b_set)
+        }
+    }
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "allow benchmarking for pull #58577", issue = "0")]
+    pub fn intersection_stitch<'a>(a_set: &'a BTreeSet<T>, b_set: &'a BTreeSet<T>) -> Intersection<'a, T> {
+        let a_min = a_set.iter().next().unwrap();
+        let b_min = b_set.iter().next().unwrap();
+        let (a_range, b_range) = match Ord::cmp(a_min, b_min) {
+            Less => (a_set.range(b_min..), b_set.range(..)),
+            Equal => (a_set.range(..), b_set.range(..)),
+            Greater => (a_set.range(..), b_set.range(a_min..)),
+        };
+        Intersection {
+            a: a_range,
+            b: IntersectionOther::Stitch(b_range),
+            max_size: a_set.len(),
+        }
+    }
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "allow benchmarking for pull #58577", issue = "0")]
+    pub fn intersection_search<'a>(a_set: &'a BTreeSet<T>, b_set: &'a BTreeSet<T>) -> Intersection<'a, T> {
+        let a_min = a_set.iter().next().unwrap();
+        let b_min = b_set.iter().next().unwrap();
+        let a_range = match Ord::cmp(a_min, b_min) {
+            Less => a_set.range(b_min..),
+            Equal => a_set.range(..),
+            Greater => a_set.range(..),
+        };
+        Intersection {
+            a: a_range,
+            b: IntersectionOther::Search(b_set),
+            max_size: a_set.len(),
         }
     }
 
@@ -1213,21 +1224,3 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for Union<'_, T> {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_are_proportionate_for_intersection() {
-        assert!(are_proportionate_for_intersection(0, 0));
-        assert!(are_proportionate_for_intersection(0, 127));
-        assert!(!are_proportionate_for_intersection(0, 128));
-        assert!(are_proportionate_for_intersection(1, 255));
-        assert!(!are_proportionate_for_intersection(1, 256));
-        assert!(are_proportionate_for_intersection(127, 0));
-        assert!(!are_proportionate_for_intersection(128, 0));
-        assert!(are_proportionate_for_intersection(255, 1));
-        assert!(!are_proportionate_for_intersection(256, 1));
-    }
-}
