@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
+use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut, DowngradedRef};
 use marker::PhantomData;
 use mem;
 use num::flt2dec;
@@ -2157,6 +2157,13 @@ impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
 impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Debug::fmt(&*(self.deref()), f)
+    }
+}
+
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+impl<T: ?Sized + Debug> Debug for DowngradedRef<'_, T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        Debug::fmt(&**self, f)
     }
 }
 

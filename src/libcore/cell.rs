@@ -1217,9 +1217,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
 }
 
 #[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
-impl<'b, T: ?Sized> From<RefMut<'b, T>> for Ref<'b, T> {
+impl<'b, T: ?Sized> From<RefMut<'b, T>> for DowngradedRef<'b, T> {
     #[inline]
-    fn from(orig: RefMut<'b, T>) -> Ref<'b, T> {
+    fn from(orig: RefMut<'b, T>) -> DowngradedRef<'b, T> {
         RefMut::downgrade(orig)
     }
 }
@@ -1299,7 +1299,11 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         (RefMut { value: a, borrow }, RefMut { value: b, borrow: orig.borrow })
     }
 
-    /// Downgrade a `RefMut` to a `Ref`.
+    /// Downgrade a `RefMut` to a `DowngradedRef`, which is clonable and immutable.
+    ///
+    /// The `RefCell` remains in the mutably borrowed state until the `DowngradedRef`
+    /// is dropped, meaning calls to `RefCell::borrow()`, `RefCell::borrow_mut()`, etc.
+    /// will fail.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
@@ -1313,21 +1317,21 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// use std::cell::{RefCell, RefMut};
     ///
     /// let cell = RefCell::new(vec![1, 2]);
+    ///
     /// let mut borrow_mut = cell.borrow_mut();
     /// borrow_mut.push(3);
+    ///
     /// let borrow1 = RefMut::downgrade(borrow_mut);
-    /// let borrow2 = cell.borrow();
+    /// let borrow2 = borrow1.clone();
+    ///
     /// assert_eq!(*borrow1, *borrow2);
     /// ```
     #[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
     #[inline]
-    pub fn downgrade(orig: RefMut<'b, T>) -> Ref<'b, T> {
-        let borrow = orig.borrow.borrow;
-        mem::drop(orig.borrow);
-
-        Ref {
+    pub fn downgrade(orig: RefMut<'b, T>) -> DowngradedRef<'b, T> {
+        DowngradedRef {
             value: orig.value,
-            borrow: BorrowRef::new(borrow).expect("inconsistent RefCell state"),
+            borrow: orig.borrow,
         }
     }
 }
@@ -1363,8 +1367,10 @@ impl<'b> BorrowRefMut<'b> {
 
     // Clone a `BorrowRefMut`.
     //
-    // This is only valid if each `BorrowRefMut` is used to track a mutable
-    // reference to a distinct, nonoverlapping range of the original object.
+    // This is invalid if the resulting `BorrowRefMut`s are allowed to break
+    // aliasing rules, e.g. by having multiple overlapping mutable references
+    // or overlapping mutable and immutable references.
+    //
     // This isn't in a Clone impl so that code doesn't call this implicitly.
     #[inline]
     fn clone(&self) -> BorrowRefMut<'b> {
@@ -1409,6 +1415,84 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+/// A wrapper type for a mutably borrowed value from a `RefCell<T>` that has
+/// been downgraded via `RefCell::downgrade()`.
+///
+/// See the [module-level documentation](index.html) for more.
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+pub struct DowngradedRef<'b, T: ?Sized + 'b> {
+    value: &'b T,
+    borrow: BorrowRefMut<'b>,
+}
+
+impl <'b, T: ?Sized> DowngradedRef<'b, T> {
+    /// Make a new `DowngradedRef` for a component of the borrowed data.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `DowngradedRef::map(...)`.
+    /// A method would interfere with methods of the same name on the contents
+    /// of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::{RefCell, Ref, RefMut};
+    ///
+    /// let mut hash: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
+    ///
+    /// let r1 = RefMut::downgrade(RefMut::map(
+    ///     hash.borrow_mut(),
+    ///     |h| h.entry(12).get_or_insert(1)).into());
+    ///
+    /// let r2 = Ref::map(hash.borrow(), |h| h.get(12).unwrap());
+    ///
+    /// assert_eq!(*r1, *r2);
+    /// ```
+    #[stable(feature = "cell_map", since = "1.8.0")]
+    #[inline]
+    pub fn map<U: ?Sized, F>(orig: DowngradedRef<'b, T>, f: F) -> DowngradedRef<'b, U>
+    where F: FnOnce(&T) -> &U
+    {
+        DowngradedRef {
+            value: f(orig.value),
+            borrow: orig.borrow,
+        }
+    }
+}
+
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+impl<T: ?Sized> Deref for DowngradedRef<'_, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        self.value
+    }
+}
+
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+impl <'b, T: ?Sized> Clone for DowngradedRef<'b, T> {
+    #[inline]
+    fn clone(&self) -> DowngradedRef<'b, T> {
+        DowngradedRef {
+            value: self.value,
+            borrow: self.borrow.clone(),
+        }
+    }
+}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+impl<'b, T: ?Sized + Unsize<U>, U: ?Sized>
+    CoerceUnsized<DowngradedRef<'b, U>> for DowngradedRef<'b, T> {}
+
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
+impl<T: ?Sized + fmt::Display> fmt::Display for DowngradedRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
     }
