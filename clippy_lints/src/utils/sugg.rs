@@ -1,7 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{higher, in_macro, snippet, snippet_opt};
+use crate::utils::{higher, in_macro, snippet, snippet_opt, snippet_with_macro_callsite};
 use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
@@ -46,38 +46,7 @@ impl<'a> Sugg<'a> {
     pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
-            match expr.node {
-                hir::ExprKind::AddrOf(..)
-                | hir::ExprKind::Box(..)
-                | hir::ExprKind::Closure(.., _)
-                | hir::ExprKind::If(..)
-                | hir::ExprKind::Unary(..)
-                | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
-                hir::ExprKind::Continue(..)
-                | hir::ExprKind::Yield(..)
-                | hir::ExprKind::Array(..)
-                | hir::ExprKind::Block(..)
-                | hir::ExprKind::Break(..)
-                | hir::ExprKind::Call(..)
-                | hir::ExprKind::Field(..)
-                | hir::ExprKind::Index(..)
-                | hir::ExprKind::InlineAsm(..)
-                | hir::ExprKind::Lit(..)
-                | hir::ExprKind::Loop(..)
-                | hir::ExprKind::MethodCall(..)
-                | hir::ExprKind::Path(..)
-                | hir::ExprKind::Repeat(..)
-                | hir::ExprKind::Ret(..)
-                | hir::ExprKind::Struct(..)
-                | hir::ExprKind::Tup(..)
-                | hir::ExprKind::While(..)
-                | hir::ExprKind::Err => Sugg::NonParen(snippet),
-                hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-                hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-                hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
-                hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
-                hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
-            }
+            Self::hir_from_snippet(expr, snippet)
         })
     }
 
@@ -109,6 +78,50 @@ impl<'a> Sugg<'a> {
             }
             Sugg::NonParen(Cow::Borrowed(default))
         })
+    }
+
+    /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
+    pub fn hir_with_macro_callsite(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
+        let snippet = snippet_with_macro_callsite(cx, expr.span, default);
+
+        Self::hir_from_snippet(expr, snippet)
+    }
+
+    /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
+    /// function variants of `Sugg`, since these use different snippet functions.
+    fn hir_from_snippet(expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
+        match expr.node {
+            hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::Box(..)
+            | hir::ExprKind::Closure(.., _)
+            | hir::ExprKind::If(..)
+            | hir::ExprKind::Unary(..)
+            | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            hir::ExprKind::Continue(..)
+            | hir::ExprKind::Yield(..)
+            | hir::ExprKind::Array(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Break(..)
+            | hir::ExprKind::Call(..)
+            | hir::ExprKind::Field(..)
+            | hir::ExprKind::Index(..)
+            | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::Lit(..)
+            | hir::ExprKind::Loop(..)
+            | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Path(..)
+            | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Struct(..)
+            | hir::ExprKind::Tup(..)
+            | hir::ExprKind::While(..)
+            | hir::ExprKind::Err => Sugg::NonParen(snippet),
+            hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
+            hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
+            hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+            hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
+            hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+        }
     }
 
     /// Prepare a suggestion from an expression.
