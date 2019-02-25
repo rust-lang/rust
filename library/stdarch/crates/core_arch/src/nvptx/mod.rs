@@ -11,7 +11,7 @@
 //! [llvm_docs]:
 //! https://llvm.org/docs/NVPTXUsage.html
 
-use core::ffi::c_void;
+use crate::ffi::c_void;
 
 #[allow(improper_ctypes)]
 extern "C" {
