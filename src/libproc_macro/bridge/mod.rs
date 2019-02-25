@@ -225,8 +225,8 @@ mod api_tags {
 
     macro_rules! declare_tags {
         ($($name:ident {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-        }),* $(,)*) => {
+            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        }),* $(,)?) => {
             $(
                 pub(super) enum $name {
                     $($method),*
@@ -307,7 +307,7 @@ impl<T: Unmark> Unmark for Option<T> {
 }
 
 macro_rules! mark_noop {
-    ($($ty:ty),* $(,)*) => {
+    ($($ty:ty),* $(,)?) => {
         $(
             impl Mark for $ty {
                 type Unmarked = Self;
