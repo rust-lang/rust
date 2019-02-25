@@ -10,9 +10,11 @@ use crate::fold::DocFolder;
 use crate::html::markdown::{self, RustCodeBlock};
 use crate::passes::Pass;
 
-pub const CHECK_CODE_BLOCK_SYNTAX: Pass =
-    Pass::early("check-code-block-syntax", check_code_block_syntax,
-                "validates syntax inside Rust code blocks");
+pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
+    name: "check-code-block-syntax",
+    pass: check_code_block_syntax,
+    description: "validates syntax inside Rust code blocks",
+};
 
 pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_, '_, '_>) -> clean::Crate {
     SyntaxChecker { cx }.fold_crate(krate)
