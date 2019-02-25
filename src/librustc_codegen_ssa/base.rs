@@ -370,7 +370,7 @@ pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
-    layout: layout::TyLayout,
+    layout: layout::TyLayout<'_>,
 ) -> Bx::Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
@@ -802,7 +802,7 @@ fn assert_and_save_dep_graph<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>) {
 }
 
 impl CrateInfo {
-    pub fn new(tcx: TyCtxt) -> CrateInfo {
+    pub fn new(tcx: TyCtxt<'_, '_, '_>) -> CrateInfo {
         let mut info = CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,
@@ -880,7 +880,7 @@ impl CrateInfo {
         return info
     }
 
-    fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
+    fn load_wasm_imports(&mut self, tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) {
         self.wasm_imports.extend(tcx.wasm_import_module_map(cnum).iter().map(|(&id, module)| {
             let instance = Instance::mono(tcx, id);
             let import_name = tcx.symbol_name(instance);
@@ -890,13 +890,13 @@ impl CrateInfo {
     }
 }
 
-fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
+fn is_codegened_item(tcx: TyCtxt<'_, '_, '_>, id: DefId) -> bool {
     let (all_mono_items, _) =
         tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     all_mono_items.contains(&id)
 }
 
-pub fn provide_both(providers: &mut Providers) {
+pub fn provide_both(providers: &mut Providers<'_>) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.
