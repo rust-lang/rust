@@ -808,7 +808,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
     }
 
     impl<'a> fmt::Display for Escape<'a> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             if self.is_like_msvc {
                 // This is "documented" at
                 // https://msdn.microsoft.com/en-us/library/4xdcbak7.aspx

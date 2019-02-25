@@ -178,7 +178,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
     }
 
-    fn push_item_name(cx: &CodegenCx,
+    fn push_item_name(cx: &CodegenCx<'_, '_>,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {

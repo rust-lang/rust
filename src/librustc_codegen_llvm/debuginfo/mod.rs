@@ -103,7 +103,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
 }
 
 /// Creates any deferred debug metadata nodes
-pub fn finalize(cx: &CodegenCx) {
+pub fn finalize(cx: &CodegenCx<'_, '_>) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -233,7 +233,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
         llfn: &'ll Value,
-        mir: &mir::Mir,
+        mir: &mir::Mir<'_>,
     ) -> FunctionDebugContext<&'ll DISubprogram> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return FunctionDebugContext::DebugInfoDisabled;
@@ -455,7 +455,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return create_DIArray(DIB(cx), &template_params[..]);
         }
 
-        fn get_parameter_names(cx: &CodegenCx,
+        fn get_parameter_names(cx: &CodegenCx<'_, '_>,
                                generics: &ty::Generics)
                                -> Vec<InternedString> {
             let mut names = generics.parent.map_or(vec![], |def_id| {
@@ -518,7 +518,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn create_mir_scopes(
         &self,
-        mir: &mir::Mir,
+        mir: &mir::Mir<'_>,
         debug_context: &FunctionDebugContext<&'ll DISubprogram>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<&'ll DIScope>> {
         create_scope_map::create_mir_scopes(self, mir, debug_context)

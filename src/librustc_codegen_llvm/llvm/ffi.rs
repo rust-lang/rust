@@ -1283,7 +1283,7 @@ extern "C" {
                               SingleThreaded: Bool)
                               -> &'a Value;
 
-    pub fn LLVMRustBuildAtomicFence(B: &Builder,
+    pub fn LLVMRustBuildAtomicFence(B: &Builder<'_>,
                                     Order: AtomicOrdering,
                                     Scope: SynchronizationScope);
 
@@ -1311,17 +1311,17 @@ extern "C" {
     pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB: &PassManagerBuilder,
                                                          threshold: c_uint);
     pub fn LLVMPassManagerBuilderPopulateModulePassManager(PMB: &PassManagerBuilder,
-                                                           PM: &PassManager);
+                                                           PM: &PassManager<'_>);
 
     pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB: &PassManagerBuilder,
-                                                             PM: &PassManager);
+                                                             PM: &PassManager<'_>);
     pub fn LLVMPassManagerBuilderPopulateLTOPassManager(PMB: &PassManagerBuilder,
-                                                        PM: &PassManager,
+                                                        PM: &PassManager<'_>,
                                                         Internalize: Bool,
                                                         RunInliner: Bool);
     pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
         PMB: &PassManagerBuilder,
-        PM: &PassManager);
+        PM: &PassManager<'_>);
 
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
@@ -1340,11 +1340,11 @@ extern "C" {
     /// list:
     pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &'a ObjectFile, SI: &SectionIterator<'a>) -> Bool;
     /// Moves the section iterator to point to the next section.
-    pub fn LLVMMoveToNextSection(SI: &SectionIterator);
+    pub fn LLVMMoveToNextSection(SI: &SectionIterator<'_>);
     /// Returns the current section size.
-    pub fn LLVMGetSectionSize(SI: &SectionIterator) -> c_ulonglong;
+    pub fn LLVMGetSectionSize(SI: &SectionIterator<'_>) -> c_ulonglong;
     /// Returns the current section contents as a string buffer.
-    pub fn LLVMGetSectionContents(SI: &SectionIterator) -> *const c_char;
+    pub fn LLVMGetSectionContents(SI: &SectionIterator<'_>) -> *const c_char;
 
     /// Reads the given file and returns it as a memory buffer. Use
     /// LLVMDisposeMemoryBuffer() to get rid of it.
@@ -1392,7 +1392,7 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderDispose(Builder: &'a mut DIBuilder<'a>);
 
-    pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder);
+    pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder<'_>);
 
     pub fn LLVMRustDIBuilderCreateCompileUnit(Builder: &DIBuilder<'a>,
                                               Lang: c_uint,
@@ -1635,7 +1635,7 @@ extern "C" {
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
-    pub fn LLVMRustAddPass(PM: &PassManager, Pass: &'static mut Pass);
+    pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
@@ -1700,13 +1700,13 @@ extern "C" {
     pub fn LLVMRustArchiveIteratorNext(
         AIR: &ArchiveIterator<'a>,
     ) -> Option<&'a mut ArchiveChild<'a>>;
-    pub fn LLVMRustArchiveChildName(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildData(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildName(ACR: &ArchiveChild<'_>, size: &mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildData(ACR: &ArchiveChild<'_>, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildFree(ACR: &'a mut ArchiveChild<'a>);
     pub fn LLVMRustArchiveIteratorFree(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    pub fn LLVMRustGetSectionName(SI: &SectionIterator, data: &mut *const c_char) -> size_t;
+    pub fn LLVMRustGetSectionName(SI: &SectionIterator<'_>, data: &mut *const c_char) -> size_t;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
@@ -1742,7 +1742,7 @@ extern "C" {
 
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
-                                Members: *const &RustArchiveMember,
+                                Members: *const &RustArchiveMember<'_>,
                                 WriteSymbtab: bool,
                                 Kind: ArchiveKind)
                                 -> LLVMRustResult;
@@ -1815,7 +1815,7 @@ extern "C" {
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
     pub fn LLVMRustLinkerNew(M: &'a Module) -> &'a mut Linker<'a>;
-    pub fn LLVMRustLinkerAdd(linker: &Linker,
+    pub fn LLVMRustLinkerAdd(linker: &Linker<'_>,
                              bytecode: *const c_char,
                              bytecode_len: usize) -> bool;
     pub fn LLVMRustLinkerFree(linker: &'a mut Linker<'a>);
