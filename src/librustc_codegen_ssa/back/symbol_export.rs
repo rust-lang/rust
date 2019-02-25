@@ -22,7 +22,7 @@ pub type ExportedSymbols = FxHashMap<
     Arc<Vec<(String, SymbolExportLevel)>>,
 >;
 
-pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
+pub fn threshold(tcx: TyCtxt<'_, '_, '_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
 }
 
@@ -342,7 +342,7 @@ fn upstream_monomorphizations_for_provider<'a, 'tcx>(
        .cloned()
 }
 
-fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool {
+fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
     } else {
@@ -351,7 +351,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool 
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
@@ -359,12 +359,12 @@ pub fn provide(providers: &mut Providers) {
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
 }
 
-pub fn provide_extern(providers: &mut Providers) {
+pub fn provide_extern(providers: &mut Providers<'_>) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }
 
-fn symbol_export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
+fn symbol_export_level(tcx: TyCtxt<'_, '_, '_>, sym_def_id: DefId) -> SymbolExportLevel {
     // We export anything that's not mangled at the "C" layer as it probably has
     // to do with ABI concerns. We do not, however, apply such treatment to
     // special symbols in the standard library for various plumbing between

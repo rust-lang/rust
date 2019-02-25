@@ -48,7 +48,7 @@ pub struct OperandRef<'tcx, V> {
 }
 
 impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
 }
