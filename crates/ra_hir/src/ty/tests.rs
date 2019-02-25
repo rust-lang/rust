@@ -1006,6 +1006,43 @@ mod foo {
     assert_eq!("i128", type_at_pos(&db, pos));
 }
 
+#[test]
+fn infer_const() {
+    check_inference(
+        "infer_const",
+        r#"
+struct Foo;
+impl Foo { const ASSOC_CONST: u32 = 0; }
+const GLOBAL_CONST: u32 = 101;
+fn test() {
+    const LOCAL_CONST: u32 = 99;
+    let x = LOCAL_CONST;
+    let z = GLOBAL_CONST;
+    let id = Foo::ASSOC_CONST;
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_static() {
+    check_inference(
+        "infer_static",
+        r#"
+static GLOBAL_STATIC: u32 = 101;
+static mut GLOBAL_STATIC_MUT: u32 = 101;
+fn test() {
+    static LOCAL_STATIC: u32 = 99;
+    static mut LOCAL_STATIC_MUT: u32 = 99;
+    let x = LOCAL_STATIC;
+    let y = LOCAL_STATIC_MUT;
+    let z = GLOBAL_STATIC;
+    let w = GLOBAL_STATIC_MUT;
+}
+"#,
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let func = source_binder::function_from_position(db, pos).unwrap();
     let body_syntax_mapping = func.body_syntax_mapping(db);

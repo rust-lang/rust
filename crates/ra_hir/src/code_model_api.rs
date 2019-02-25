@@ -554,16 +554,48 @@ impl Const {
         self.id.module(db)
     }
 
+    pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
+        db.const_signature(*self)
+    }
+
     /// The containing impl block, if this is a method.
     pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
         ImplBlock::containing(module_impls, (*self).into())
+    }
+
+    // TODO: move to a more general type for 'body-having' items
+    /// Builds a resolver for code inside this item.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self
+            .impl_block(db)
+            .map(|ib| ib.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db));
+        r
     }
 }
 
 impl Docs for Const {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
         docs_from_ast(&*self.source(db).1)
+    }
+}
+
+/// The declared signature of a const.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConstSignature {
+    pub(crate) name: Name,
+    pub(crate) type_ref: TypeRef,
+}
+
+impl ConstSignature {
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
+    pub fn type_ref(&self) -> &TypeRef {
+        &self.type_ref
     }
 }
 
@@ -579,6 +611,16 @@ impl Static {
 
     pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
         self.id.module(db)
+    }
+
+    pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
+        db.static_signature(*self)
+    }
+
+    /// Builds a resolver for code inside this item.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        self.module(db).resolver(db)
     }
 }
 

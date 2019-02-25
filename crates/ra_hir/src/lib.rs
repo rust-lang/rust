@@ -71,6 +71,6 @@ pub use self::code_model_api::{
     Struct, Enum, EnumVariant,
     Function, FnSignature,
     StructField, FieldSource,
-    Static, Const,
+    Static, Const, ConstSignature,
     Trait, TypeAlias,
 };

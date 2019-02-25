@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path, Name,
     ModuleDef, TypeAlias,
+    Const, Static,
     HirDatabase,
     type_ref::TypeRef,
     name::KnownName,
@@ -125,6 +126,7 @@ impl Ty {
             TypableDef::Enum(e) => e.generic_params(db),
             TypableDef::EnumVariant(var) => var.parent_enum(db).generic_params(db),
             TypableDef::TypeAlias(t) => t.generic_params(db),
+            TypableDef::Const(_) | TypableDef::Static(_) => GenericParams::default().into(),
         };
         let parent_param_count = def_generics.count_parent_params();
         substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
@@ -163,6 +165,8 @@ impl Ty {
             TypableDef::Function(_)
             | TypableDef::Struct(_)
             | TypableDef::Enum(_)
+            | TypableDef::Const(_)
+            | TypableDef::Static(_)
             | TypableDef::TypeAlias(_) => last,
             TypableDef::EnumVariant(_) => {
                 // the generic args for an enum variant may be either specified
@@ -197,12 +201,16 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::Enum(e), Namespace::Types) => type_for_enum(db, e),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
         (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
+        (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
+        (TypableDef::Static(c), Namespace::Values) => type_for_static(db, c),
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
+        (TypableDef::Const(_), Namespace::Types) => Ty::Unknown,
+        (TypableDef::Static(_), Namespace::Types) => Ty::Unknown,
     }
 }
 
@@ -231,6 +239,22 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
     Ty::FnDef { def: def.into(), sig, name, substs }
+}
+
+/// Build the declared type of a const.
+fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
+    let signature = def.signature(db);
+    let resolver = def.resolver(db);
+
+    Ty::from_hir(db, &resolver, signature.type_ref())
+}
+
+/// Build the declared type of a static.
+fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
+    let signature = def.signature(db);
+    let resolver = def.resolver(db);
+
+    Ty::from_hir(db, &resolver, signature.type_ref())
 }
 
 /// Build the type of a tuple struct constructor.
@@ -318,8 +342,10 @@ pub enum TypableDef {
     Enum(Enum),
     EnumVariant(EnumVariant),
     TypeAlias(TypeAlias),
+    Const(Const),
+    Static(Static),
 }
-impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, TypeAlias);
+impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, TypeAlias, Const, Static);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
@@ -329,10 +355,9 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
             ModuleDef::TypeAlias(t) => t.into(),
-            ModuleDef::Const(_)
-            | ModuleDef::Static(_)
-            | ModuleDef::Module(_)
-            | ModuleDef::Trait(_) => return None,
+            ModuleDef::Const(v) => v.into(),
+            ModuleDef::Static(v) => v.into(),
+            ModuleDef::Module(_) | ModuleDef::Trait(_) => return None,
         };
         Some(res)
     }

@@ -8,6 +8,7 @@ use crate::{
     SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
+    Const, ConstSignature, Static,
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
@@ -82,6 +83,12 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
 
     #[salsa::invoke(crate::type_alias::type_alias_ref_query)]
     fn type_alias_ref(&self, typ: TypeAlias) -> Arc<TypeRef>;
+
+    #[salsa::invoke(crate::ConstSignature::const_signature_query)]
+    fn const_signature(&self, konst: Const) -> Arc<ConstSignature>;
+
+    #[salsa::invoke(crate::ConstSignature::static_signature_query)]
+    fn static_signature(&self, konst: Static) -> Arc<ConstSignature>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

@@ -393,17 +393,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
-            let item = ty.iterate_impl_items(self.db, |item| match item {
+            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| match item {
                 crate::ImplItem::Method(func) => {
                     let sig = func.signature(self.db);
                     if segment.name == *sig.name() {
-                        return Some(func);
+                        return Some(func.into());
                     }
                     None
                 }
 
-                // TODO: Resolve associated const
-                crate::ImplItem::Const(_) => None,
+                crate::ImplItem::Const(konst) => {
+                    let sig = konst.signature(self.db);
+                    if segment.name == *sig.name() {
+                        return Some(konst.into());
+                    }
+                    None
+                }
 
                 // TODO: Resolve associated types
                 crate::ImplItem::TypeAlias(_) => None,
@@ -477,9 +482,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::TypeAlias(_) | TypableDef::Function(_) | TypableDef::Enum(_) => {
-                (Ty::Unknown, None)
-            }
+            TypableDef::TypeAlias(_)
+            | TypableDef::Function(_)
+            | TypableDef::Enum(_)
+            | TypableDef::Const(_)
+            | TypableDef::Static(_) => (Ty::Unknown, None),
         }
     }
 
