@@ -36,7 +36,7 @@ struct ToolBuild {
 impl Step for ToolBuild {
     type Output = Option<PathBuf>;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
@@ -44,7 +44,7 @@ impl Step for ToolBuild {
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
         let tool = self.tool;
@@ -192,7 +192,7 @@ impl Step for ToolBuild {
 }
 
 pub fn prepare_tool_cargo(
-    builder: &Builder,
+    builder: &Builder<'_>,
     compiler: Compiler,
     mode: Mode,
     target: Interned<String>,
@@ -315,18 +315,18 @@ macro_rules! tool {
         impl Step for $name {
             type Output = PathBuf;
 
-            fn should_run(run: ShouldRun) -> ShouldRun {
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)
             }
 
-            fn make_run(run: RunConfig) {
+            fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
                 });
             }
 
-            fn run(self, builder: &Builder) -> PathBuf {
+            fn run(self, builder: &Builder<'_>) -> PathBuf {
                 builder.ensure(ToolBuild {
                     compiler: self.compiler,
                     target: self.target,
@@ -371,18 +371,18 @@ pub struct RemoteTestServer {
 impl Step for RemoteTestServer {
     type Output = PathBuf;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/remote-test-server")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RemoteTestServer {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
@@ -406,17 +406,17 @@ impl Step for Rustdoc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
             host: run.host,
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target_compiler = builder.compiler(builder.top_stage, self.host);
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
@@ -490,19 +490,19 @@ impl Step for Cargo {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         run.path("src/tools/cargo").default_condition(builder.config.extended)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
@@ -542,12 +542,12 @@ macro_rules! tool_extended {
             const DEFAULT: bool = true;
             const ONLY_HOSTS: bool = true;
 
-            fn should_run(run: ShouldRun) -> ShouldRun {
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
                 run.path($path).default_condition(builder.config.extended)
             }
 
-            fn make_run(run: RunConfig) {
+            fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
@@ -556,7 +556,7 @@ macro_rules! tool_extended {
             }
 
             #[allow(unused_mut)]
-            fn run(mut $sel, $builder: &Builder) -> Option<PathBuf> {
+            fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
                 $extra_deps
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,

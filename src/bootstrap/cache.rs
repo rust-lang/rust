@@ -68,20 +68,20 @@ unsafe impl<T> Send for Interned<T> {}
 unsafe impl<T> Sync for Interned<T> {}
 
 impl fmt::Display for Interned<String> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &str = &*self;
         f.write_str(s)
     }
 }
 
 impl fmt::Debug for Interned<String> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &str = &*self;
         f.write_fmt(format_args!("{:?}", s))
     }
 }
 impl fmt::Debug for Interned<PathBuf> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &Path = &*self;
         f.write_fmt(format_args!("{:?}", s))
     }
