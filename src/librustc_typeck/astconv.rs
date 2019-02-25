@@ -196,7 +196,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         seg: &hir::PathSegment,
         generics: &ty::Generics,
@@ -227,7 +227,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// Used specifically for function calls.
     pub fn check_generic_arg_count_for_call(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         def: &ty::Generics,
         seg: &hir::PathSegment,
@@ -259,7 +259,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// This is used both for datatypes and function calls.
     fn check_generic_arg_count(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         def: &ty::Generics,
         args: &hir::GenericArgs,
@@ -1502,7 +1502,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         has_err
     }
 
-    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt, span: Span) {
+    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_, '_, '_>, span: Span) {
         let mut err = struct_span_err!(tcx.sess, span, E0229,
                                        "associated type bindings are not allowed here");
         err.span_label(span, "associated type not allowed here").emit();

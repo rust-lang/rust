@@ -598,7 +598,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             })
     }
 
-    fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
+    fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         match pick.item.container {
             ty::TraitContainer(trait_def_id) => {

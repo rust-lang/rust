@@ -27,7 +27,7 @@ pub mod test;
 /// Code for transforming variances.
 mod xform;
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         variances_of,
         crate_variances,
@@ -91,4 +91,3 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
                        .unwrap_or(&crate_map.empty_variance)
                        .clone()
 }
-
