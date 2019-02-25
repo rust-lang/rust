@@ -1,7 +1,7 @@
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function};
 use if_chain::if_chain;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -45,6 +45,10 @@ impl LintPass for EtaPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if in_external_macro(cx.sess(), expr.span) {
+            return;
+        }
+
         match expr.node {
             ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
                 for arg in args {
