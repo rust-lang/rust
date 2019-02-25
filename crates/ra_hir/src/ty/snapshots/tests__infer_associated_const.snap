@@ -1,14 +1,14 @@
 ---
-created: "2019-02-21T21:51:46.497925200Z"
+created: "2019-02-25T08:36:33.885804400Z"
 creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
 [227; 305) '{     ...:ID; }': ()
-[237; 238) 'x': [unknown]
-[241; 252) 'Struct::FOO': [unknown]
-[262; 263) 'y': [unknown]
-[266; 275) 'Enum::BAR': [unknown]
-[285; 286) 'z': [unknown]
-[289; 302) 'TraitTest::ID': [unknown]
+[237; 238) 'x': u32
+[241; 252) 'Struct::FOO': u32
+[262; 263) 'y': u32
+[266; 275) 'Enum::BAR': u32
+[285; 286) 'z': u32
+[289; 302) 'TraitTest::ID': u32
 
