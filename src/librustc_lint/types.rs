@@ -16,7 +16,6 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{ast, attr};
 use syntax::errors::Applicability;
 use rustc_target::spec::abi::Abi;
-use syntax::edition::Edition;
 use syntax_pos::Span;
 use syntax::source_map;
 
@@ -34,9 +33,8 @@ declare_lint! {
 
 declare_lint! {
     OVERFLOWING_LITERALS,
-    Warn,
-    "literal out of range for its type",
-    Edition::Edition2018 => Deny
+    Deny,
+    "literal out of range for its type"
 }
 
 declare_lint! {
