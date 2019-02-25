@@ -8,9 +8,6 @@
 #![feature(unboxed_closures)]
 #![feature(vecdeque_rotate)]
 
-extern crate core;
-extern crate rand;
-
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
