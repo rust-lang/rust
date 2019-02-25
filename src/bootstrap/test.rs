@@ -624,11 +624,11 @@ impl Step for RustdocJSNotStd {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/test/rustdoc-js")
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.host);
         run.builder.ensure(RustdocJSNotStd {
             host: run.host,
@@ -637,7 +637,7 @@ impl Step for RustdocJSNotStd {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
             builder.ensure(crate::doc::Std {
                 target: self.target,
