@@ -114,22 +114,10 @@ extern crate build_helper;
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde_json;
-extern crate cmake;
-extern crate filetime;
-extern crate cc;
-extern crate getopts;
-extern crate num_cpus;
-extern crate toml;
-extern crate time;
-extern crate petgraph;
 
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
-
-#[cfg(unix)]
-extern crate libc;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
