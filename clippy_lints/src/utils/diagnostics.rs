@@ -8,7 +8,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
 
 /// Wrapper around `DiagnosticBuilder` that adds a link to Clippy documentation for the emitted lint
-pub struct DiagnosticWrapper<'a>(pub DiagnosticBuilder<'a>);
+struct DiagnosticWrapper<'a>(DiagnosticBuilder<'a>);
 
 impl<'a> Drop for DiagnosticWrapper<'a> {
     fn drop(&mut self) {
