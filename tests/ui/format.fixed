@@ -10,24 +10,24 @@ macro_rules! foo {
 }
 
 fn main() {
-    format!("foo");
+    "foo".to_string();
 
-    format!("{}", "foo");
+    "foo".to_string();
     format!("{:?}", "foo"); // don't warn about debug
     format!("{:8}", "foo");
     format!("{:width$}", "foo", width = 8);
-    format!("{:+}", "foo"); // warn when the format makes no difference
-    format!("{:<}", "foo"); // warn when the format makes no difference
+    "foo".to_string(); // warn when the format makes no difference
+    "foo".to_string(); // warn when the format makes no difference
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
     let arg: String = "".to_owned();
-    format!("{}", arg);
+    arg.to_string();
     format!("{:?}", arg); // don't warn about debug
     format!("{:8}", arg);
     format!("{:width$}", arg, width = 8);
-    format!("{:+}", arg); // warn when the format makes no difference
-    format!("{:<}", arg); // warn when the format makes no difference
+    arg.to_string(); // warn when the format makes no difference
+    arg.to_string(); // warn when the format makes no difference
     format!("foo {}", arg);
     format!("{} bar", arg);
 
@@ -54,7 +54,7 @@ fn main() {
     format!("{:.prec$}", "foo", prec = 1);
     format!("{:.prec$}", "foo", prec = 10);
 
-    format!("{}", 42.to_string());
+    42.to_string();
     let x = std::path::PathBuf::from("/bar/foo/qux");
-    format!("{}", x.display().to_string());
+    x.display().to_string();
 }

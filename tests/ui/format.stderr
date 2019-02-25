@@ -1,74 +1,58 @@
 error: useless use of `format!`
-  --> $DIR/format.rs:11:5
+  --> $DIR/format.rs:13:5
    |
 LL |     format!("foo");
-   |     ^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
+   |     ^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
    |
    = note: `-D clippy::useless-format` implied by `-D warnings`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:13:5
+  --> $DIR/format.rs:15:5
    |
 LL |     format!("{}", "foo");
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:17:5
+  --> $DIR/format.rs:19:5
    |
 LL |     format!("{:+}", "foo"); // warn when the format makes no difference
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:18:5
+  --> $DIR/format.rs:20:5
    |
 LL |     format!("{:<}", "foo"); // warn when the format makes no difference
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:23:5
+  --> $DIR/format.rs:25:5
    |
 LL |     format!("{}", arg);
-   |     ^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string();`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:27:5
+  --> $DIR/format.rs:29:5
    |
 LL |     format!("{:+}", arg); // warn when the format makes no difference
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string();`
 
 error: useless use of `format!`
-  --> $DIR/format.rs:28:5
+  --> $DIR/format.rs:30:5
    |
 LL |     format!("{:<}", arg); // warn when the format makes no difference
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: useless use of `format!`
-  --> $DIR/format.rs:55:5
-   |
-LL |     format!("{}", 42.to_string());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `42.to_string()`
-   |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string();`
 
 error: useless use of `format!`
   --> $DIR/format.rs:57:5
    |
-LL |     format!("{}", x.display().to_string());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `x.display().to_string()`
+LL |     format!("{}", 42.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `42.to_string();`
+
+error: useless use of `format!`
+  --> $DIR/format.rs:59:5
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+LL |     format!("{}", x.display().to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `x.display().to_string();`
 
 error: aborting due to 9 previous errors
 
