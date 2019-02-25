@@ -9,8 +9,8 @@ use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use thread::LocalKey;
 
-/// Stdout used by print! and println! macros
 thread_local! {
+    /// Stdout used by print! and println! macros
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
