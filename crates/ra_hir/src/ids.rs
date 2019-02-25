@@ -22,7 +22,7 @@ pub struct HirInterner {
     consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
     statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
     traits: LocationIntener<ItemLoc<ast::TraitDef>, TraitId>,
-    types: LocationIntener<ItemLoc<ast::TypeDef>, TypeId>,
+    types: LocationIntener<ItemLoc<ast::TypeAliasDef>, TypeId>,
 }
 
 impl HirInterner {
@@ -278,8 +278,8 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeId(RawId);
 impl_arena_id!(TypeId);
-impl AstItemDef<ast::TypeDef> for TypeId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeDef>, Self> {
+impl AstItemDef<ast::TypeAliasDef> for TypeId {
+    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeAliasDef>, Self> {
         &interner.types
     }
 }

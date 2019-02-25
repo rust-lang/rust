@@ -141,7 +141,7 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
         .visit(|node: &ast::EnumDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::EnumVariant| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::FnDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::TypeDef| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::TypeAliasDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::ConstDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::StaticDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::TraitDef| NavigationTarget::from_named(file_id, node))
@@ -327,7 +327,7 @@ mod tests {
             //- /lib.rs
             type Thing<|> = Option<()>;
             "#,
-            "Thing TYPE_DEF FileId(1) [0; 24) [5; 10)",
+            "Thing TYPE_ALIAS_DEF FileId(1) [0; 24) [5; 10)",
         );
 
         check_goto(

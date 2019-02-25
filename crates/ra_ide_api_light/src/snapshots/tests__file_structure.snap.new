@@ -1,6 +1,6 @@
 ---
-created: "2019-02-05T22:03:50.763530100Z"
-creator: insta@0.6.1
+created: "2019-02-25T10:38:16.909647631Z"
+creator: insta@0.6.3
 source: crates/ra_ide_api_light/src/structure.rs
 expression: structure
 ---

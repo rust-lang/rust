@@ -1508,7 +1508,7 @@ unsafe impl TransparentNewType for ImplItem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImplItemKind<'a> {
     FnDef(&'a FnDef),
-    TypeDef(&'a TypeDef),
+    TypeAliasDef(&'a TypeAliasDef),
     ConstDef(&'a ConstDef),
 }
 impl<'a> From<&'a FnDef> for &'a ImplItem {
@@ -1516,8 +1516,8 @@ impl<'a> From<&'a FnDef> for &'a ImplItem {
         ImplItem::cast(&n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TypeDef> for &'a ImplItem {
-    fn from(n: &'a TypeDef) -> &'a ImplItem {
+impl<'a> From<&'a TypeAliasDef> for &'a ImplItem {
+    fn from(n: &'a TypeAliasDef) -> &'a ImplItem {
         ImplItem::cast(&n.syntax).unwrap()
     }
 }
@@ -1532,7 +1532,7 @@ impl AstNode for ImplItem {
     fn cast(syntax: &SyntaxNode) -> Option<&Self> {
         match syntax.kind() {
             | FN_DEF
-            | TYPE_DEF
+            | TYPE_ALIAS_DEF
             | CONST_DEF => Some(ImplItem::from_repr(syntax.into_repr())),
             _ => None,
         }
@@ -1549,7 +1549,7 @@ impl ImplItem {
     pub fn kind(&self) -> ImplItemKind {
         match self.syntax.kind() {
             FN_DEF => ImplItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
-            TYPE_DEF => ImplItemKind::TypeDef(TypeDef::cast(&self.syntax).unwrap()),
+            TYPE_ALIAS_DEF => ImplItemKind::TypeAliasDef(TypeAliasDef::cast(&self.syntax).unwrap()),
             CONST_DEF => ImplItemKind::ConstDef(ConstDef::cast(&self.syntax).unwrap()),
             _ => unreachable!(),
         }
@@ -2359,7 +2359,7 @@ pub enum ModuleItemKind<'a> {
     EnumDef(&'a EnumDef),
     FnDef(&'a FnDef),
     TraitDef(&'a TraitDef),
-    TypeDef(&'a TypeDef),
+    TypeAliasDef(&'a TypeAliasDef),
     ImplBlock(&'a ImplBlock),
     UseItem(&'a UseItem),
     ExternCrateItem(&'a ExternCrateItem),
@@ -2387,8 +2387,8 @@ impl<'a> From<&'a TraitDef> for &'a ModuleItem {
         ModuleItem::cast(&n.syntax).unwrap()
     }
 }
-impl<'a> From<&'a TypeDef> for &'a ModuleItem {
-    fn from(n: &'a TypeDef) -> &'a ModuleItem {
+impl<'a> From<&'a TypeAliasDef> for &'a ModuleItem {
+    fn from(n: &'a TypeAliasDef) -> &'a ModuleItem {
         ModuleItem::cast(&n.syntax).unwrap()
     }
 }
@@ -2431,7 +2431,7 @@ impl AstNode for ModuleItem {
             | ENUM_DEF
             | FN_DEF
             | TRAIT_DEF
-            | TYPE_DEF
+            | TYPE_ALIAS_DEF
             | IMPL_BLOCK
             | USE_ITEM
             | EXTERN_CRATE_ITEM
@@ -2456,7 +2456,7 @@ impl ModuleItem {
             ENUM_DEF => ModuleItemKind::EnumDef(EnumDef::cast(&self.syntax).unwrap()),
             FN_DEF => ModuleItemKind::FnDef(FnDef::cast(&self.syntax).unwrap()),
             TRAIT_DEF => ModuleItemKind::TraitDef(TraitDef::cast(&self.syntax).unwrap()),
-            TYPE_DEF => ModuleItemKind::TypeDef(TypeDef::cast(&self.syntax).unwrap()),
+            TYPE_ALIAS_DEF => ModuleItemKind::TypeAliasDef(TypeAliasDef::cast(&self.syntax).unwrap()),
             IMPL_BLOCK => ModuleItemKind::ImplBlock(ImplBlock::cast(&self.syntax).unwrap()),
             USE_ITEM => ModuleItemKind::UseItem(UseItem::cast(&self.syntax).unwrap()),
             EXTERN_CRATE_ITEM => ModuleItemKind::ExternCrateItem(ExternCrateItem::cast(&self.syntax).unwrap()),
@@ -4273,6 +4273,43 @@ impl TupleType {
     }
 }
 
+// TypeAliasDef
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeAliasDef {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeAliasDef {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TypeAliasDef {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TYPE_ALIAS_DEF => Some(TypeAliasDef::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for TypeAliasDef {
+    type Owned = TreeArc<TypeAliasDef>;
+    fn to_owned(&self) -> TreeArc<TypeAliasDef> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::VisibilityOwner for TypeAliasDef {}
+impl ast::NameOwner for TypeAliasDef {}
+impl ast::TypeParamsOwner for TypeAliasDef {}
+impl ast::AttrsOwner for TypeAliasDef {}
+impl ast::DocCommentsOwner for TypeAliasDef {}
+impl TypeAliasDef {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+}
+
 // TypeArg
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -4342,43 +4379,6 @@ impl TypeArgList {
 
     pub fn assoc_type_args(&self) -> impl Iterator<Item = &AssocTypeArg> {
         super::children(self)
-    }
-}
-
-// TypeDef
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct TypeDef {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for TypeDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for TypeDef {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            TYPE_DEF => Some(TypeDef::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TypeDef {
-    type Owned = TreeArc<TypeDef>;
-    fn to_owned(&self) -> TreeArc<TypeDef> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::VisibilityOwner for TypeDef {}
-impl ast::NameOwner for TypeDef {}
-impl ast::TypeParamsOwner for TypeDef {}
-impl ast::AttrsOwner for TypeDef {}
-impl ast::DocCommentsOwner for TypeDef {}
-impl TypeDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
     }
 }
 

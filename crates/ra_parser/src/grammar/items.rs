@@ -173,7 +173,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         }
         TYPE_KW => {
             type_def(p);
-            TYPE_DEF
+            TYPE_ALIAS_DEF
         }
         MOD_KW => {
             mod_item(p);

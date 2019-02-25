@@ -105,7 +105,7 @@ impl NavigationTarget {
             .visit(doc_comments::<ast::EnumDef>)
             .visit(doc_comments::<ast::TraitDef>)
             .visit(doc_comments::<ast::Module>)
-            .visit(doc_comments::<ast::TypeDef>)
+            .visit(doc_comments::<ast::TypeAliasDef>)
             .visit(doc_comments::<ast::ConstDef>)
             .visit(doc_comments::<ast::StaticDef>)
             .accept(&node)?
@@ -135,7 +135,7 @@ impl NavigationTarget {
             .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
             .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
             .visit(|node: &ast::Module| visit_node(node, "mod "))
-            .visit(|node: &ast::TypeDef| visit_node(node, "type "))
+            .visit(|node: &ast::TypeAliasDef| visit_node(node, "type "))
             .visit(|node: &ast::ConstDef| visit_node(node, "const "))
             .visit(|node: &ast::StaticDef| visit_node(node, "static "))
             .accept(&node)?
