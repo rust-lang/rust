@@ -612,6 +612,16 @@ impl Static {
     pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
         self.id.module(db)
     }
+
+    pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
+        db.static_signature(*self)
+    }
+
+    /// Builds a resolver for code inside this item.
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        self.module(db).resolver(db)
+    }
 }
 
 impl Docs for Static {

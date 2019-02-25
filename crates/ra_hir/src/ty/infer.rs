@@ -485,7 +485,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             TypableDef::TypeAlias(_)
             | TypableDef::Function(_)
             | TypableDef::Enum(_)
-            | TypableDef::Const(_) => (Ty::Unknown, None),
+            | TypableDef::Const(_)
+            | TypableDef::Static(_) => (Ty::Unknown, None),
         }
     }
 
