@@ -576,7 +576,7 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
     if hir_id == parent_id {
         return None;
     }
-    map.find_by_hir_id(hir_id).and_then(|node| {
+    map.find_by_hir_id(parent_id).and_then(|node| {
         if let Node::Expr(parent) = node {
             Some(parent)
         } else {
