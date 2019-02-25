@@ -1,6 +1,7 @@
 //ignore-windows: Inspects allocation base address on Windows
 #![feature(allocator_api)]
 
+use std::ptr::NonNull;
 use std::alloc::{Global, Alloc, Layout, System};
 
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {
@@ -23,7 +24,31 @@ fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     }
 }
 
+fn global_to_box() {
+    type T = [i32; 4];
+    let l = Layout::new::<T>();
+    // allocate manually with global allocator, then turn into Box and free there
+    unsafe {
+        let ptr = Global.alloc(l).unwrap().as_ptr() as *mut T;
+        let b = Box::from_raw(ptr);
+        drop(b);
+    }
+}
+
+fn box_to_global() {
+    type T = [i32; 4];
+    let l = Layout::new::<T>();
+    // allocate with the Box, then deallocate manually with global allocator
+    unsafe {
+        let b = Box::new(T::default());
+        let ptr = Box::into_raw(b);
+        Global.dealloc(NonNull::new(ptr as *mut u8).unwrap(), l);
+    }
+}
+
 fn main() {
     check_overalign_requests(System);
     check_overalign_requests(Global);
+    global_to_box();
+    box_to_global();
 }
