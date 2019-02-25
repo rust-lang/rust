@@ -738,7 +738,7 @@ fn check_impl_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: De
     wfcheck::check_impl_item(tcx, def_id);
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
@@ -1437,7 +1437,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt, id: DefId, span: Span) {
+fn maybe_check_static_with_link_section(tcx: TyCtxt<'_, '_, '_>, id: DefId, span: Span) {
     // Only restricted on wasm32 target for now
     if !tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
         return
@@ -2122,7 +2122,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn tag(&self) -> String {
-        let self_ptr: *const FnCtxt = self;
+        let self_ptr: *const FnCtxt<'_, '_, '_> = self;
         format!("{:?}", self_ptr)
     }
 
@@ -3369,7 +3369,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
         let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
+        let mut coerce: DynamicCoerceMany<'_, '_> = CoerceMany::new(coerce_to_ty);
 
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
@@ -5043,7 +5043,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node) -> Option<(hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl(&self, node: Node<'_>) -> Option<(hir::FnDecl, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..

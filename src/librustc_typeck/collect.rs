@@ -1406,7 +1406,7 @@ fn find_existential_constraints<'a, 'tcx>(
                         ty::Param(p) => Some(*index_map.get(p).unwrap()),
                         _ => None,
                     }).collect();
-                let is_param = |ty: ty::Ty| match ty.sty {
+                let is_param = |ty: ty::Ty<'_>| match ty.sty {
                     ty::Param(_) => true,
                     _ => false,
                 };
@@ -2216,7 +2216,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
         && abi != abi::Abi::PlatformIntrinsic
         && !tcx.features().simd_ffi
     {
-        let check = |ast_ty: &hir::Ty, ty: Ty| {
+        let check = |ast_ty: &hir::Ty, ty: Ty<'_>| {
             if ty.is_simd() {
                 tcx.sess
                    .struct_span_err(
@@ -2251,7 +2251,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool
 }
 
 fn from_target_feature(
-    tcx: TyCtxt,
+    tcx: TyCtxt<'_, '_, '_>,
     id: DefId,
     attr: &ast::Attribute,
     whitelist: &FxHashMap<String, Option<String>>,

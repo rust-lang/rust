@@ -574,7 +574,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expr_def_id: DefId,
         decl: &hir::FnDecl,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv = self;
+        let astconv: &dyn AstConv<'_, '_> = self;
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
@@ -606,7 +606,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv = self;
+        let astconv: &dyn AstConv<'_, '_> = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

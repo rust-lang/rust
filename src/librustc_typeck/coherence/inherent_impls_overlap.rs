@@ -20,7 +20,7 @@ struct InherentOverlapChecker<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
     fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId,
-                                       overlap: traits::OverlapResult,
+                                       overlap: traits::OverlapResult<'_>,
                                        used_to_be_allowed: bool) {
 
         let name_and_namespace = |def_id| {

@@ -388,7 +388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
@@ -1180,7 +1180,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn emit_unstable_name_collision_hint(
         &self,
-        stable_pick: &Pick,
+        stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
         let mut diag = self.tcx.struct_span_lint_hir(

@@ -544,7 +544,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             let into_sugg = into_suggestion.clone();
-            let suggest_to_change_suffix_or_into = |err: &mut DiagnosticBuilder,
+            let suggest_to_change_suffix_or_into = |err: &mut DiagnosticBuilder<'_>,
                                                     note: Option<&str>| {
                 let suggest_msg = if literal_is_ty_suffixed(expr) {
                     format!(

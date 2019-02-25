@@ -32,7 +32,7 @@ pub enum VarianceTerm<'a> {
 }
 
 impl<'a> fmt::Debug for VarianceTerm<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ConstantTerm(c1) => write!(f, "{:?}", c1),
             TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
@@ -86,7 +86,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt<'_, '_, '_>) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
     let lang_items = tcx.lang_items();
     let all = vec![
         (lang_items.phantom_data(), vec![ty::Covariant]),
