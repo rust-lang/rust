@@ -353,6 +353,7 @@ pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[3\] = a\[3\] - a\[3\]
 ///
 /// where [0] is the lower 8 bits and [3] is the upper 8 bits.
+/// The GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(usub8))]
 pub unsafe fn __usub8(a: uint8x4_t, b: uint8x4_t) -> uint8x4_t {
