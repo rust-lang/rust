@@ -103,7 +103,7 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(bare_trait_objects)]
+#![deny(rust_2018_idioms)]
 #![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
@@ -164,8 +164,6 @@ mod job;
 
 #[cfg(all(unix, not(target_os = "haiku")))]
 mod job {
-    use libc;
-
     pub unsafe fn setup(build: &mut crate::Build) {
         if build.config.low_priority {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);

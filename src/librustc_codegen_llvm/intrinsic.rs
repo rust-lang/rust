@@ -1251,8 +1251,8 @@ fn generic_simd_intrinsic(
 
     fn simd_simple_float_intrinsic(
         name: &str,
-        in_elem: &::rustc::ty::TyS,
-        in_ty: &::rustc::ty::TyS,
+        in_elem: &::rustc::ty::TyS<'_>,
+        in_ty: &::rustc::ty::TyS<'_>,
         in_len: usize,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
@@ -1362,7 +1362,7 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: ty::Ty, vec_len: usize, no_pointers: usize) -> String {
+    fn llvm_vector_str(elem_ty: ty::Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match elem_ty.sty {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
@@ -1372,7 +1372,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: ty::Ty, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: ty::Ty<'_>, vec_len: usize,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.sty {
@@ -1418,7 +1418,7 @@ fn generic_simd_intrinsic(
                  in_ty, ret_ty);
 
         // This counts how many pointers
-        fn ptr_count(t: ty::Ty) -> usize {
+        fn ptr_count(t: ty::Ty<'_>) -> usize {
             match t.sty {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
@@ -1426,7 +1426,7 @@ fn generic_simd_intrinsic(
         }
 
         // Non-ptr type
-        fn non_ptr(t: ty::Ty) -> ty::Ty {
+        fn non_ptr(t: ty::Ty<'_>) -> ty::Ty<'_> {
             match t.sty {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
@@ -1517,7 +1517,7 @@ fn generic_simd_intrinsic(
                  arg_tys[2].simd_size(tcx));
 
         // This counts how many pointers
-        fn ptr_count(t: ty::Ty) -> usize {
+        fn ptr_count(t: ty::Ty<'_>) -> usize {
             match t.sty {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
@@ -1525,7 +1525,7 @@ fn generic_simd_intrinsic(
         }
 
         // Non-ptr type
-        fn non_ptr(t: ty::Ty) -> ty::Ty {
+        fn non_ptr(t: ty::Ty<'_>) -> ty::Ty<'_> {
             match t.sty {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
@@ -1901,7 +1901,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 // Returns None if the type is not an integer
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
-fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
+fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.sty {
         ty::Int(t) => Some((match t {
             ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,

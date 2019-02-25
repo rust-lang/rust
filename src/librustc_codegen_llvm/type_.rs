@@ -31,7 +31,7 @@ impl PartialEq for Type {
 }
 
 impl fmt::Debug for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&llvm::build_string(|s| unsafe {
             llvm::LLVMRustWriteTypeToString(self, s);
         }).expect("non-UTF8 type description from LLVM"))

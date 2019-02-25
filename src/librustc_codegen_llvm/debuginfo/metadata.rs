@@ -60,7 +60,7 @@ impl Hash for llvm::Metadata {
 }
 
 impl fmt::Debug for llvm::Metadata {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (self as *const Self).fmt(f)
     }
 }
@@ -817,7 +817,7 @@ fn pointer_type_metadata(
     }
 }
 
-pub fn compile_unit_metadata(tcx: TyCtxt,
+pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
                              codegen_unit_name: &str,
                              debug_context: &CrateDebugContext<'ll, '_>)
                              -> &'ll DIDescriptor {
@@ -1162,7 +1162,7 @@ fn prepare_union_metadata(
 // sometimes emit the old style rather than emit something completely
 // useless when rust is compiled against LLVM 6 or older.  This
 // function decides which representation will be emitted.
-fn use_enum_fallback(cx: &CodegenCx) -> bool {
+fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.
     return cx.sess().target.target.options.is_like_msvc
@@ -1736,7 +1736,7 @@ fn prepare_enum_metadata(
         }),
     );
 
-    fn get_enum_discriminant_name(cx: &CodegenCx,
+    fn get_enum_discriminant_name(cx: &CodegenCx<'_, '_>,
                                   def_id: DefId)
                                   -> InternedString {
         cx.tcx.item_name(def_id)
@@ -1863,7 +1863,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
     }
     return Some(create_DIArray(DIB(cx), &[]));
 
-    fn get_parameter_names(cx: &CodegenCx,
+    fn get_parameter_names(cx: &CodegenCx<'_, '_>,
                            generics: &ty::Generics)
                            -> Vec<InternedString> {
         let mut names = generics.parent.map_or(vec![], |def_id| {

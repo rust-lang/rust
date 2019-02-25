@@ -62,13 +62,13 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
-    fn run(self, builder: &Builder) -> Self::Output;
+    fn run(self, builder: &Builder<'_>) -> Self::Output;
 
     /// When bootstrap is passed a set of paths, this controls whether this rule
     /// will execute. However, it does not get called in a "default" context
     /// when we are not passed any paths; in that case, `make_run` is called
     /// directly.
-    fn should_run(run: ShouldRun) -> ShouldRun;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_>;
 
     /// Builds up a "root" rule, either as a default rule or from a path passed
     /// to us.
@@ -76,7 +76,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// When path is `None`, we are executing in a context where no paths were
     /// passed. When `./x.py build` is run, for example, this rule could get
     /// called if it is in the correct list below with a path of `None`.
-    fn make_run(_run: RunConfig) {
+    fn make_run(_run: RunConfig<'_>) {
         // It is reasonable to not have an implementation of make_run for rules
         // who do not want to get called from the root context. This means that
         // they are likely dependencies (e.g., sysroot creation) or similar, and
@@ -95,8 +95,8 @@ pub struct RunConfig<'a> {
 struct StepDescription {
     default: bool,
     only_hosts: bool,
-    should_run: fn(ShouldRun) -> ShouldRun,
-    make_run: fn(RunConfig),
+    should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
+    make_run: fn(RunConfig<'_>),
     name: &'static str,
 }
 
@@ -124,7 +124,7 @@ impl PathSet {
         }
     }
 
-    fn path(&self, builder: &Builder) -> PathBuf {
+    fn path(&self, builder: &Builder<'_>) -> PathBuf {
         match self {
             PathSet::Set(set) => set
                 .iter()
@@ -147,7 +147,7 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder, pathset: &PathSet) {
+    fn maybe_run(&self, builder: &Builder<'_>, pathset: &PathSet) {
         if builder.config.exclude.iter().any(|e| pathset.has(e)) {
             eprintln!("Skipping {:?} because it is excluded", pathset);
             return;
@@ -183,7 +183,7 @@ impl StepDescription {
         }
     }
 
-    fn run(v: &[StepDescription], builder: &Builder, paths: &[PathBuf]) {
+    fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
         let should_runs = v
             .iter()
             .map(|desc| (desc.should_run)(ShouldRun::new(builder)))
@@ -245,7 +245,7 @@ pub struct ShouldRun<'a> {
 }
 
 impl<'a> ShouldRun<'a> {
-    fn new(builder: &'a Builder) -> ShouldRun<'a> {
+    fn new(builder: &'a Builder<'_>) -> ShouldRun<'a> {
         ShouldRun {
             builder,
             paths: BTreeSet::new(),
@@ -511,7 +511,7 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    pub fn new(build: &Build) -> Builder {
+    pub fn new(build: &Build) -> Builder<'_> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
@@ -591,11 +591,11 @@ impl<'a> Builder<'a> {
         impl Step for Libdir {
             type Output = Interned<PathBuf>;
 
-            fn should_run(run: ShouldRun) -> ShouldRun {
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.never()
             }
 
-            fn run(self, builder: &Builder) -> Interned<PathBuf> {
+            fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
                 let compiler = self.compiler;
                 let config = &builder.build.config;
                 let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {

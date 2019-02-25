@@ -420,7 +420,7 @@ impl fmt::Display for CannotReallocInPlace {
 /// }
 /// ```
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
@@ -643,7 +643,7 @@ pub unsafe trait GlobalAlloc {
 ///    currently allocated via an allocator `a`, then it is legal to
 ///    use that layout to deallocate it, i.e., `a.dealloc(ptr, k);`.
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// The `Alloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
