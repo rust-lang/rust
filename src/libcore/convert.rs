@@ -41,6 +41,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
+
 /// An identity function.
 ///
 /// Two things are important to note about this function:
@@ -367,22 +369,26 @@ pub trait From<T>: Sized {
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Into`]: trait.Into.html
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
+    #[stable(feature = "try_from", since = "1.34.0")]
     type Error;
 
     /// Performs the conversion.
+    #[stable(feature = "try_from", since = "1.34.0")]
     fn try_into(self) -> Result<T, Self::Error>;
 }
 
 /// Attempt to construct `Self` via a conversion.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
+    #[stable(feature = "try_from", since = "1.34.0")]
     type Error;
 
     /// Performs the conversion.
+    #[stable(feature = "try_from", since = "1.34.0")]
     fn try_from(value: T) -> Result<Self, Self::Error>;
 }
 
@@ -450,7 +456,7 @@ impl<T> From<T> for T {
 
 
 // TryFrom implies TryInto
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl<T, U> TryInto<U> for T where U: TryFrom<T>
 {
     type Error = U::Error;
@@ -462,9 +468,9 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl<T, U> TryFrom<U> for T where U: Into<T> {
-    type Error = !;
+    type Error = Infallible;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
         Ok(U::into(value))
@@ -494,5 +500,117 @@ impl AsRef<str> for str {
     #[inline]
     fn as_ref(&self) -> &str {
         self
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// THE NO-ERROR ERROR TYPE
+////////////////////////////////////////////////////////////////////////////////
+
+/// The error type for errors that can never happen.
+///
+/// Since this enum has no variant, a value of this type can never actually exist.
+/// This can be useful for generic APIs that use [`Result`] and parameterize the error type,
+/// to indicate that the result is always [`Ok`].
+///
+/// For example, the [`TryFrom`] trait (conversion that returns a [`Result`])
+/// has a blanket implementation for all types where a reverse [`Into`] implementation exists.
+///
+/// ```ignore (illustrates std code, duplicating the impl in a doctest would be an error)
+/// impl<T, U> TryFrom<U> for T where U: Into<T> {
+///     type Error = Infallible;
+///
+///     fn try_from(value: U) -> Result<Self, Infallible> {
+///         Ok(U::into(value))  // Never returns `Err`
+///     }
+/// }
+/// ```
+///
+/// # Future compatibility
+///
+/// This enum has the same role as [the `!` “never” type][never],
+/// which is unstable in this version of Rust.
+/// When `!` is stabilized, we plan to make `Infallible` a type alias to it:
+///
+/// ```ignore (illustrates future std change)
+/// pub type Infallible = !;
+/// ```
+///
+/// … and eventually deprecate `Infallible`.
+///
+///
+/// However there is one case where `!` syntax can be used
+/// before `!` is stabilized as a full-fleged type: in the position of a function’s return type.
+/// Specifically, it is possible implementations for two different function pointer types:
+///
+/// ```
+/// trait MyTrait {}
+/// impl MyTrait for fn() -> ! {}
+/// impl MyTrait for fn() -> std::convert::Infallible {}
+/// ```
+///
+/// With `Infallible` being an enum, this code is valid.
+/// However when `Infallible` becomes an alias for the never type,
+/// the two `impl`s will start to overlap
+/// and therefore will be disallowed by the language’s trait coherence rules.
+///
+/// [`Ok`]: ../result/enum.Result.html#variant.Ok
+/// [`Result`]: ../result/enum.Result.html
+/// [`TryFrom`]: trait.TryFrom.html
+/// [`Into`]: trait.Into.html
+/// [never]: ../../std/primitive.never.html
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+#[derive(Copy)]
+pub enum Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Clone for Infallible {
+    fn clone(&self) -> Infallible {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl fmt::Debug for Infallible {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl fmt::Display for Infallible {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl PartialEq for Infallible {
+    fn eq(&self, _: &Infallible) -> bool {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Eq for Infallible {}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl PartialOrd for Infallible {
+    fn partial_cmp(&self, _other: &Self) -> Option<crate::cmp::Ordering> {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl Ord for Infallible {
+    fn cmp(&self, _other: &Self) -> crate::cmp::Ordering {
+        match *self {}
+    }
+}
+
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+impl From<!> for Infallible {
+    fn from(x: !) -> Self {
+        x
     }
 }

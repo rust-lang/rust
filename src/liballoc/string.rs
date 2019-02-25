@@ -486,7 +486,7 @@ impl String {
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     /// [`as_bytes`]: struct.String.html#method.as_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
-    /// [`Err`]: ../../stdresult/enum.Result.html#variant.Err
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
@@ -2073,48 +2073,17 @@ impl ops::DerefMut for String {
 /// [`String`]: struct.String.html
 /// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
-#[derive(Copy)]
-pub enum ParseError {}
+pub type ParseError = core::convert::Infallible;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
-    type Err = ParseError;
+    type Err = core::convert::Infallible;
     #[inline]
     fn from_str(s: &str) -> Result<String, ParseError> {
         Ok(String::from(s))
     }
 }
 
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Clone for ParseError {
-    fn clone(&self) -> ParseError {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl fmt::Debug for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl fmt::Display for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl PartialEq for ParseError {
-    fn eq(&self, _: &ParseError) -> bool {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Eq for ParseError {}
 
 /// A trait for converting a value to a `String`.
 ///

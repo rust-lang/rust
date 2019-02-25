@@ -4,9 +4,9 @@
 // This test was added to show the motivation for doing this
 // over `TryFrom` being blanket impl for all `T: From`
 
-#![feature(try_from, never_type)]
+#![feature(never_type)]
 
-use std::convert::TryInto;
+use std::convert::{TryInto, Infallible};
 
 struct Foo<T> {
     t: T,
@@ -32,6 +32,6 @@ impl<T> Into<Vec<T>> for Foo<T> {
 }
 
 pub fn main() {
-    let _: Result<Vec<i32>, !> = Foo { t: 10 }.try_into();
+    let _: Result<Vec<i32>, Infallible> = Foo { t: 10 }.try_into();
 }
 

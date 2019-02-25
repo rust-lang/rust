@@ -78,7 +78,6 @@ use iter::{self, FusedIterator};
 use ops::{self, Deref};
 use rc::Rc;
 use str::FromStr;
-use string::ParseError;
 use sync::Arc;
 
 use ffi::{OsStr, OsString};
@@ -1533,7 +1532,7 @@ impl From<String> for PathBuf {
 
 #[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
-    type Err = ParseError;
+    type Err = core::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(PathBuf::from(s))
