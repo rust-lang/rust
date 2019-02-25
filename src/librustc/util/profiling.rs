@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::mem;
@@ -7,6 +6,8 @@ use std::thread::ThreadId;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::session::config::Options;
+
+use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum ProfileCategory {
@@ -57,7 +58,7 @@ fn thread_id_to_u64(tid: ThreadId) -> u64 {
 }
 
 pub struct SelfProfiler {
-    events: HashMap<ThreadId, Vec<ProfilerEvent>>,
+    events: FxHashMap<ThreadId, Vec<ProfilerEvent>>,
     start_time: SystemTime,
     start_instant: Instant,
 }
@@ -65,7 +66,7 @@ pub struct SelfProfiler {
 impl SelfProfiler {
     pub fn new() -> SelfProfiler {
         let profiler = SelfProfiler {
-            events: HashMap::new(),
+            events: Default::default(),
             start_time: SystemTime::now(),
             start_instant: Instant::now(),
         };
