@@ -74,8 +74,6 @@ This API is completely unstable and subject to change.
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 
-#![allow(elided_lifetimes_in_paths)] // WIP
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 

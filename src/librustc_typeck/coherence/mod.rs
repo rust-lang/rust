@@ -41,7 +41,11 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     }
 }
 
-fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
+fn enforce_trait_manually_implementable(
+    tcx: TyCtxt<'_, '_, '_>,
+    impl_def_id: DefId,
+    trait_def_id: DefId
+) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
     let span = tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
@@ -93,7 +97,11 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
 
 /// We allow impls of marker traits to overlap, so they can't override impls
 /// as that could make it ambiguous which associated item to use.
-fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
+fn enforce_empty_impls_for_marker_traits(
+    tcx: TyCtxt<'_, '_, '_>,
+    impl_def_id: DefId,
+    trait_def_id: DefId
+) {
     if !tcx.trait_def(trait_def_id).is_marker {
         return;
     }
@@ -110,7 +118,7 @@ fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt, impl_def_id: DefId, trait_
         .emit();
 }
 
-pub fn provide(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers<'_>) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
