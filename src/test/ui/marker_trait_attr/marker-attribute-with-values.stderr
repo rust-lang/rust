@@ -1,20 +1,20 @@
 error: attribute must be of the form `#[marker]`
-  --> $DIR/marker-attribute-with-values.rs:4:1
+  --> $DIR/marker-attribute-with-values.rs:3:1
    |
 LL | #[marker(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[marker]`
-  --> $DIR/marker-attribute-with-values.rs:8:1
+  --> $DIR/marker-attribute-with-values.rs:7:1
    |
 LL | #[marker("never")]
    | ^^^^^^^^^^^^^^^^^^
 
-error: expected unsuffixed literal or identifier, found value
-  --> $DIR/marker-attribute-with-values.rs:12:10
+error: attribute must be of the form `#[marker]`
+  --> $DIR/marker-attribute-with-values.rs:11:1
    |
-LL | #[marker(key = value)]
-   |          ^^^
+LL | #[marker(key = "value")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
