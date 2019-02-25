@@ -159,7 +159,7 @@ impl Command {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.command().fmt(f)
     }
 }
