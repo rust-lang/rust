@@ -22,7 +22,7 @@ impl Hash for Value {
 
 
 impl fmt::Debug for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&llvm::build_string(|s| unsafe {
             llvm::LLVMRustWriteValueToString(self, s);
         }).expect("non-UTF8 value description from LLVM"))

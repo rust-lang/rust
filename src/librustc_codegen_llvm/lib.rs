@@ -23,7 +23,6 @@
 #![feature(static_nobundle)]
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
-#![allow(elided_lifetimes_in_paths)]
 
 use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;
@@ -114,7 +113,7 @@ mod va_arg;
 pub struct LlvmCodegenBackend(());
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, tcx: TyCtxt, mod_name: &str) -> ModuleLlvm {
+    fn new_metadata(&self, tcx: TyCtxt<'_, '_, '_>, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new(tcx, mod_name)
     }
     fn write_metadata<'b, 'gcx>(
@@ -124,7 +123,12 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> EncodedMetadata {
         base::write_metadata(tcx, metadata)
     }
-    fn codegen_allocator(&self, tcx: TyCtxt, mods: &mut ModuleLlvm, kind: AllocatorKind) {
+    fn codegen_allocator(
+        &self,
+        tcx: TyCtxt<'_, '_, '_>,
+        mods: &mut ModuleLlvm,
+        kind: AllocatorKind
+    ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
     fn compile_codegen_unit<'a, 'tcx: 'a>(
@@ -280,14 +284,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         box metadata::LlvmMetadataLoader
     }
 
-    fn provide(&self, providers: &mut ty::query::Providers) {
+    fn provide(&self, providers: &mut ty::query::Providers<'_>) {
         rustc_codegen_utils::symbol_names::provide(providers);
         rustc_codegen_ssa::back::symbol_export::provide(providers);
         rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide(providers);
     }
 
-    fn provide_extern(&self, providers: &mut ty::query::Providers) {
+    fn provide_extern(&self, providers: &mut ty::query::Providers<'_>) {
         rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
         rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide_extern(providers);
@@ -362,7 +366,7 @@ unsafe impl Send for ModuleLlvm { }
 unsafe impl Sync for ModuleLlvm { }
 
 impl ModuleLlvm {
-    fn new(tcx: TyCtxt, mod_name: &str) -> Self {
+    fn new(tcx: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;

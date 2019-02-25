@@ -144,7 +144,7 @@ pub fn is_pie_binary(sess: &Session) -> bool {
 }
 
 pub unsafe fn create_module(
-    tcx: TyCtxt,
+    tcx: TyCtxt<'_, '_, '_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
