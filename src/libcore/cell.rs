@@ -1430,7 +1430,8 @@ pub struct DowngradedRef<'b, T: ?Sized + 'b> {
     borrow: BorrowRefMut<'b>,
 }
 
-impl <'b, T: ?Sized> DowngradedRef<'b, T> {
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+impl<'b, T: ?Sized> DowngradedRef<'b, T> {
     /// Make a new `DowngradedRef` for a component of the borrowed data.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
@@ -1442,6 +1443,8 @@ impl <'b, T: ?Sized> DowngradedRef<'b, T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(refcell_downgrade)]
+    ///
     /// use std::cell::{RefCell, Ref, RefMut};
     ///
     /// let mut hash: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
