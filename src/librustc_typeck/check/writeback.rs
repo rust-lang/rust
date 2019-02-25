@@ -729,30 +729,30 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 }
 
 trait Locatable {
-    fn to_span(&self, tcx: &TyCtxt) -> Span;
+    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span;
 }
 
 impl Locatable for Span {
-    fn to_span(&self, _: &TyCtxt) -> Span {
+    fn to_span(&self, _: &TyCtxt<'_, '_, '_>) -> Span {
         *self
     }
 }
 
 impl Locatable for ast::NodeId {
-    fn to_span(&self, tcx: &TyCtxt) -> Span {
+    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
         tcx.hir().span(*self)
     }
 }
 
 impl Locatable for DefIndex {
-    fn to_span(&self, tcx: &TyCtxt) -> Span {
+    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
         let hir_id = tcx.hir().def_index_to_hir_id(*self);
         tcx.hir().span_by_hir_id(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
-    fn to_span(&self, tcx: &TyCtxt) -> Span {
+    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
         tcx.hir().span_by_hir_id(*self)
     }
 }

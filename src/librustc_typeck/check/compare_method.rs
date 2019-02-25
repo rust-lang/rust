@@ -408,7 +408,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
                                                      param_env: ty::ParamEnv<'tcx>,
-                                                     terr: &TypeError,
+                                                     terr: &TypeError<'_>,
                                                      cause: &ObligationCause<'tcx>,
                                                      impl_m: &ty::AssociatedItem,
                                                      impl_sig: ty::FnSig<'tcx>,
