@@ -126,3 +126,20 @@ fn test_from_signed_nonzero() {
     let num: i32 = nz.into();
     assert_eq!(num, 1i32);
 }
+
+#[test]
+fn test_from_str() {
+    assert_eq!(FromStr::from_str("123"), Ok(NonZeroU8::new(123).unwrap()));
+    assert_eq!(
+        FromStr::from_str("0"),
+        Err(ParseNonZeroIntError {
+            kind: NonZeroIntErrorKind::Zero
+        })
+    );
+    assert_eq!(
+        FromStr::from_str("-1", 
+        Err(ParseNonZeroIntError {
+            kind: NonZeroIntErrorKind::Underflow
+        })
+    );
+}
