@@ -2042,9 +2042,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(arg.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(arg.id);
         hir::Arg {
-            id: node_id,
             hir_id,
             pat: self.lower_pat(&arg.pat),
         }

@@ -1852,7 +1852,6 @@ pub struct InlineAsm {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
     pub pat: P<Pat>,
-    pub id: NodeId,
     pub hir_id: HirId,
 }
 
