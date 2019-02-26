@@ -1,6 +1,6 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner, TypeParamsOwner},
+    AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
@@ -177,47 +177,6 @@ impl NavigationTarget {
         // TODO: After type inference is done, add type information to improve the output
         let node = self.node(db)?;
 
-        // FIXME: This is copied from `structure.rs` and should probably
-        // be moved somewhere common
-        fn collapse_ws(node: &SyntaxNode, output: &mut String) {
-            let mut can_insert_ws = false;
-            for line in node.text().chunks().flat_map(|chunk| chunk.lines()) {
-                let line = line.trim();
-                if line.is_empty() {
-                    if can_insert_ws {
-                        output.push_str(" ");
-                        can_insert_ws = false;
-                    }
-                } else {
-                    output.push_str(line);
-                    can_insert_ws = true;
-                }
-            }
-        }
-
-        // FIXME: This is also partially copied from `structure.rs`
-        fn visit_fn(node: &ast::FnDef) -> Option<String> {
-            let mut detail =
-                node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
-
-            detail.push_str("fn ");
-
-            node.name()?.syntax().text().push_to(&mut detail);
-
-            if let Some(type_param_list) = node.type_param_list() {
-                collapse_ws(type_param_list.syntax(), &mut detail);
-            }
-            if let Some(param_list) = node.param_list() {
-                collapse_ws(param_list.syntax(), &mut detail);
-            }
-            if let Some(ret_type) = node.ret_type() {
-                detail.push_str(" ");
-                collapse_ws(ret_type.syntax(), &mut detail);
-            }
-
-            Some(detail)
-        }
-
         fn visit_node<T>(node: &T, label: &str) -> Option<String>
         where
             T: NameOwner + VisibilityOwner,
@@ -230,7 +189,7 @@ impl NavigationTarget {
         }
 
         visitor()
-            .visit(visit_fn)
+            .visit(crate::completion::function_label)
             .visit(|node: &ast::StructDef| visit_node(node, "struct "))
             .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
             .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
