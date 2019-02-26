@@ -2058,6 +2058,81 @@ impl<'tcx> Place<'tcx> {
             Place::Base(PlaceBase::Static(..)) => None,
         }
     }
+
+    /// Recursively "unroll" a place into a `PlaceComponents` list,
+    /// invoking `op` with a `PlaceComponentsIter`.
+    pub fn unroll<R>(
+        &self,
+        next: Option<&PlaceComponents<'_, 'tcx>>,
+        op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        match self {
+            Place::Projection(interior) => interior.base.unroll(
+                Some(&PlaceComponents {
+                    component: self,
+                    next,
+                }),
+                op,
+            ),
+
+            Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
+                let list = PlaceComponents {
+                    component: self,
+                    next,
+                };
+                op(list.iter())
+            }
+        }
+    }
+}
+
+/// A linked list of places running up the stack; begins with the
+/// innermost place and extends to projections (e.g., `a.b` would have
+/// the place `a` with a "next" pointer to `a.b`). Created by
+/// `Place::unroll`.
+///
+/// N.B., this particular impl strategy is not the most obvious. It was
+/// chosen because it makes a measurable difference to NLL
+/// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
+pub struct PlaceComponents<'p, 'tcx: 'p> {
+    pub component: &'p Place<'tcx>,
+    pub next: Option<&'p PlaceComponents<'p, 'tcx>>,
+}
+
+impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
+    /// Converts a list of `Place` components into an iterator; this
+    /// iterator yields up a never-ending stream of `Option<&Place>`.
+    /// These begin with the "innermost" place and then with each
+    /// projection therefrom. So given a place like `a.b.c` it would
+    /// yield up:
+    ///
+    /// ```notrust
+    /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
+    /// ```
+    fn iter(&self) -> PlaceComponentsIter<'_, 'tcx> {
+        PlaceComponentsIter { value: Some(self) }
+    }
+}
+
+/// Iterator over components; see `PlaceComponents::iter` for more
+/// information.
+///
+/// N.B., this is not a *true* Rust iterator -- the code above just
+/// manually invokes `next`. This is because we (sometimes) want to
+/// keep executing even after `None` has been returned.
+pub struct PlaceComponentsIter<'p, 'tcx: 'p> {
+    pub value: Option<&'p PlaceComponents<'p, 'tcx>>,
+}
+
+impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
+    pub fn next(&mut self) -> Option<&'p Place<'tcx>> {
+        if let Some(&PlaceComponents { component, next }) = self.value {
+            self.value = next;
+            Some(component)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'tcx> Debug for Place<'tcx> {

@@ -2,7 +2,9 @@ use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
-use rustc::mir::{BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem, StaticKind};
+use rustc::mir::{
+    BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem, PlaceComponentsIter, StaticKind
+};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
 
@@ -65,8 +67,8 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
         }
     }
 
-    unroll_place(borrow_place, None, |borrow_components| {
-        unroll_place(access_place, None, |access_components| {
+    borrow_place.unroll(None, |borrow_components| {
+        access_place.unroll(None, |access_components| {
             place_components_conflict(
                 tcx,
                 mir,
@@ -268,82 +270,6 @@ fn place_components_conflict<'gcx, 'tcx>(
                 debug!("borrow_conflicts_with_place: full borrow, CONFLICT");
                 return true;
             }
-        }
-    }
-}
-
-/// A linked list of places running up the stack; begins with the
-/// innermost place and extends to projections (e.g., `a.b` would have
-/// the place `a` with a "next" pointer to `a.b`). Created by
-/// `unroll_place`.
-///
-/// N.B., this particular impl strategy is not the most obvious. It was
-/// chosen because it makes a measurable difference to NLL
-/// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-struct PlaceComponents<'p, 'tcx: 'p> {
-    component: &'p Place<'tcx>,
-    next: Option<&'p PlaceComponents<'p, 'tcx>>,
-}
-
-impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
-    /// Converts a list of `Place` components into an iterator; this
-    /// iterator yields up a never-ending stream of `Option<&Place>`.
-    /// These begin with the "innermost" place and then with each
-    /// projection therefrom. So given a place like `a.b.c` it would
-    /// yield up:
-    ///
-    /// ```notrust
-    /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
-    /// ```
-    fn iter(&self) -> PlaceComponentsIter<'_, 'tcx> {
-        PlaceComponentsIter { value: Some(self) }
-    }
-}
-
-/// Iterator over components; see `PlaceComponents::iter` for more
-/// information.
-///
-/// N.B., this is not a *true* Rust iterator -- the code above just
-/// manually invokes `next`. This is because we (sometimes) want to
-/// keep executing even after `None` has been returned.
-struct PlaceComponentsIter<'p, 'tcx: 'p> {
-    value: Option<&'p PlaceComponents<'p, 'tcx>>,
-}
-
-impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
-    fn next(&mut self) -> Option<&'p Place<'tcx>> {
-        if let Some(&PlaceComponents { component, next }) = self.value {
-            self.value = next;
-            Some(component)
-        } else {
-            None
-        }
-    }
-}
-
-/// Recursively "unroll" a place into a `PlaceComponents` list,
-/// invoking `op` with a `PlaceComponentsIter`.
-fn unroll_place<'tcx, R>(
-    place: &Place<'tcx>,
-    next: Option<&PlaceComponents<'_, 'tcx>>,
-    op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
-) -> R {
-    match place {
-        Place::Projection(interior) => unroll_place(
-            &interior.base,
-            Some(&PlaceComponents {
-                component: place,
-                next,
-            }),
-            op,
-        ),
-
-        Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
-            let list = PlaceComponents {
-                component: place,
-                next,
-            };
-            op(list.iter())
         }
     }
 }
