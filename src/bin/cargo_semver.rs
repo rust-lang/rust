@@ -120,8 +120,10 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         (work_info, stable_crate.max_version.clone())
     };
 
-    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name, true)?;
-    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name, false)?;
+    let (current_rlib, current_deps_output) =
+        current.rlib_and_dep_output(config, &name, true, matches)?;
+    let (stable_rlib, stable_deps_output) =
+        stable.rlib_and_dep_output(config, &name, false, matches)?;
 
     println!("current_rlib: {:?}", current_rlib);
     println!("stable_rlib: {:?}", stable_rlib);
@@ -385,11 +387,17 @@ impl<'a> WorkInfo<'a> {
         config: &'a cargo::Config,
         name: &str,
         current: bool,
+        matches: &getopts::Matches,
     ) -> Result<(PathBuf, PathBuf)> {
         let mut opts =
             cargo::ops::CompileOptions::new(config, cargo::core::compiler::CompileMode::Build)?;
         // we need the build plan to find our build artifacts
         opts.build_config.build_plan = true;
+
+        if let Some(target) = matches.opt_str("target") {
+            opts.build_config.requested_target = Some(target);
+        }
+
         // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
 
         env::set_var(
@@ -421,8 +429,10 @@ impl<'a> WorkInfo<'a> {
             if i.package_name == name {
                 // FIXME: this is a hack to avoid picking up output artifacts of
                 // build scrits and build programs (no outputs):
-                let build_script =
-                    i.outputs.iter().any(|v| v.to_str().unwrap().contains("build_script"));
+                let build_script = i
+                    .outputs
+                    .iter()
+                    .any(|v| v.to_str().unwrap().contains("build_script"));
                 let build_program = i.outputs.is_empty();
                 if build_script || build_program {
                     continue;
