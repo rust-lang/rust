@@ -3115,12 +3115,11 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
+                            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
                                 let id = this.next_id();
                                 let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path,
-                                    id: id.node_id,
                                     hir_id: id.hir_id,
                                 }
                             }
@@ -3222,12 +3221,11 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
+                            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
                                 let id = this.next_id();
                                 let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path: path,
-                                    id: id.node_id,
                                     hir_id: id.hir_id,
                                 }
                             }
@@ -4721,7 +4719,6 @@ impl<'a> LoweringContext<'a> {
                         ParamMode::Explicit,
                         explicit_owner,
                     )),
-                    id: lowered_id.node_id,
                     hir_id: lowered_id.hir_id,
                 }
             },

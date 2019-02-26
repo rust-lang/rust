@@ -748,9 +748,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
             hir::VisibilityKind::Crate(sugar) => {
                 sugar.hash_stable(hcx, hasher);
             }
-            hir::VisibilityKind::Restricted { ref path, id, hir_id } => {
+            hir::VisibilityKind::Restricted { ref path, hir_id } => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    id.hash_stable(hcx, hasher);
                     hir_id.hash_stable(hcx, hasher);
                 });
                 path.hash_stable(hcx, hasher);

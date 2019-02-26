@@ -2096,7 +2096,7 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
+    Restricted { path: P<Path>, hir_id: HirId },
     Inherited,
 }
 
