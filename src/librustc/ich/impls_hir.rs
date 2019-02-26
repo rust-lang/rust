@@ -294,7 +294,6 @@ impl_stable_hash_for!(struct hir::MethodSig {
 });
 
 impl_stable_hash_for!(struct hir::TypeBinding {
-    id,
     hir_id,
     ident -> (ident.name),
     ty,

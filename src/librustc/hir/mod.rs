@@ -1737,7 +1737,6 @@ pub enum ImplItemKind {
 // Bind a type to an associated type: `A=Foo`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub ty: P<Ty>,

@@ -1151,10 +1151,9 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_ty_binding(&mut self, b: &TypeBinding,
                         itctx: ImplTraitContext<'_>) -> hir::TypeBinding {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(b.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(b.id);
 
         hir::TypeBinding {
-            id: node_id,
             hir_id,
             ident: b.ident,
             ty: self.lower_ty(&b.ty, itctx),
@@ -1982,14 +1981,13 @@ impl<'a> LoweringContext<'a> {
                     let LoweredNodeId { node_id: _, hir_id } = this.next_id();
                     hir::Ty { node: hir::TyKind::Tup(tys), hir_id, span }
                 };
-                let LoweredNodeId { node_id, hir_id } = this.next_id();
+                let LoweredNodeId { node_id: _, hir_id } = this.next_id();
 
                 (
                     hir::GenericArgs {
                         args: hir_vec![GenericArg::Type(mk_tup(this, inputs, span))],
                         bindings: hir_vec![
                             hir::TypeBinding {
-                                id: node_id,
                                 hir_id,
                                 ident: Ident::from_str(FN_OUTPUT_NAME),
                                 ty: output
@@ -2326,13 +2324,12 @@ impl<'a> LoweringContext<'a> {
             };
 
             // "<Output = T>"
-            let LoweredNodeId { node_id, hir_id } = this.next_id();
+            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
             let future_params = P(hir::GenericArgs {
                 args: hir_vec![],
                 bindings: hir_vec![hir::TypeBinding {
                     ident: Ident::from_str(FN_OUTPUT_NAME),
                     ty: output_ty,
-                    id: node_id,
                     hir_id,
                     span,
                 }],
