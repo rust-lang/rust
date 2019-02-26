@@ -55,31 +55,31 @@ fn test() {
 
 fn validate_stderr(stderr: Vec<String>) {
     assert_eq!(stderr, &[
-        ":21] Unit = Unit",
+        ":0021] Unit = Unit",
 
-        ":22] a = Unit",
+        ":0022] a = Unit",
 
-        ":28] Point{x: 42, y: 24,} = Point {",
+        ":0028] Point{x: 42, y: 24,} = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":29] b = Point {",
+        ":0029] b = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":38] &a = NoCopy(",
+        ":0038] &a = NoCopy(",
         "    1337",
         ")",
 
-        ":38] dbg!(& a) = NoCopy(",
+        ":0038] dbg!(& a) = NoCopy(",
         "    1337",
         ")",
-        ":43] f(&42) = 42",
+        ":0043] f(&42) = 42",
 
         "before",
-        ":48] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+        ":0048] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
     ]);
 }
 
