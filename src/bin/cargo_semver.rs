@@ -153,6 +153,10 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         child.args(&["--target", &target]);
     }
 
+    if !matches.opt_present("no-default-features") {
+        child.args(&["--cfg", "feature=\"default\""]);
+    }
+
     let child = child
         .arg("-")
         .stdin(Stdio::piped())
@@ -214,6 +218,11 @@ mod cli {
             "a",
             "api-guidelines",
             "report only changes that are breaking according to the API-guidelines",
+        );
+        opts.optflag(
+            "",
+            "no-default-features",
+            "Do not activate the `default` feature",
         );
         opts.optopt(
             "s",
@@ -397,6 +406,7 @@ impl<'a> WorkInfo<'a> {
         if let Some(target) = matches.opt_str("target") {
             opts.build_config.requested_target = Some(target);
         }
+        opts.no_default_features = matches.opt_present("no-default-features");
 
         // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
 
