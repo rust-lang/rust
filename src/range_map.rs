@@ -3,7 +3,7 @@
 //! Implements a map from integer indices to data.
 //! Rather than storing data for every index, internally, this maps entire ranges to the data.
 //! To this end, the APIs all work on ranges, not on individual integers. Ranges are split as
-//! necessary (e.g. when [0,5) is first associated with X, and then [1,2) is mutated).
+//! necessary (e.g., when [0,5) is first associated with X, and then [1,2) is mutated).
 //! Users must not depend on whether a range is coalesced or not, even though this is observable
 //! via the iteration APIs.
 
@@ -14,7 +14,9 @@ use rustc::ty::layout::Size;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {
-    range: ops::Range<u64>, // the range covered by this element, never empty
+    /// The range covered by this element; never empty.
+    range: ops::Range<u64>,
+    /// The data stored for this element.
     data: T,
 }
 #[derive(Clone, Debug)]
@@ -23,7 +25,7 @@ pub struct RangeMap<T> {
 }
 
 impl<T> RangeMap<T> {
-    /// Create a new RangeMap for the given size, and with the given initial value used for
+    /// Creates a new `RangeMap` for the given size, and with the given initial value used for
     /// the entire range.
     #[inline(always)]
     pub fn new(size: Size, init: T) -> RangeMap<T> {
@@ -38,9 +40,9 @@ impl<T> RangeMap<T> {
         map
     }
 
-    /// Find the index containing the given offset.
+    /// Finds the index containing the given offset.
     fn find_offset(&self, offset: u64) -> usize {
-        // We do a binary search
+        // We do a binary search.
         let mut left = 0usize; // inclusive
         let mut right = self.v.len(); // exclusive
         loop {
@@ -48,11 +50,11 @@ impl<T> RangeMap<T> {
             let candidate = left.checked_add(right).unwrap() / 2;
             let elem = &self.v[candidate];
             if offset < elem.range.start {
-                // we are too far right (offset is further left)
+                // We are too far right (offset is further left).
                 debug_assert!(candidate < right); // we are making progress
                 right = candidate;
             } else if offset >= elem.range.end {
-                // we are too far left (offset is further right)
+                // We are too far left (offset is further right).
                 debug_assert!(candidate >= left); // we are making progress
                 left = candidate+1;
             } else {
@@ -62,22 +64,23 @@ impl<T> RangeMap<T> {
         }
     }
 
-    /// Provide read-only iteration over everything in the given range.  This does
-    /// *not* split items if they overlap with the edges.  Do not use this to mutate
+    /// Provides read-only iteration over everything in the given range. This does
+    /// *not* split items if they overlap with the edges. Do not use this to mutate
     /// through interior mutability.
     pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = &'a T> + 'a {
         let offset = offset.bytes();
         let len = len.bytes();
-        // Compute a slice starting with the elements we care about
+        // Compute a slice starting with the elements we care about.
         let slice: &[Elem<T>] = if len == 0 {
-                // We just need any empty iterator.  We don't even want to
+                // We just need any empty iterator. We don't even want to
                 // yield the element that surrounds this position.
                 &[]
             } else {
                 let first_idx = self.find_offset(offset);
                 &self.v[first_idx..]
             };
-        let end = offset + len; // the first offset that is not included any more
+        // The first offset that is not included any more.
+        let end = offset + len;
         slice.iter()
             .take_while(move |elem| elem.range.start < end)
             .map(|elem| &elem.data)
@@ -87,25 +90,25 @@ impl<T> RangeMap<T> {
         self.v.iter_mut().map(|elem| &mut elem.data)
     }
 
-    // Split the element situated at the given `index`, such that the 2nd one starts at offset `split_offset`.
-    // Do nothing if the element already starts there.
-    // Return whether a split was necessary.
+    // Splits the element situated at the given `index`, such that the 2nd one starts at offset
+    // `split_offset`. Do nothing if the element already starts there.
+    // Returns whether a split was necessary.
     fn split_index(&mut self, index: usize, split_offset: u64) -> bool
     where
         T: Clone,
     {
         let elem = &mut self.v[index];
         if split_offset == elem.range.start || split_offset == elem.range.end {
-            // Nothing to do
+            // Nothing to do.
             return false;
         }
         debug_assert!(elem.range.contains(&split_offset),
-            "The split_offset is not in the element to be split");
+            "the `split_offset` is not in the element to be split");
 
-        // Now we really have to split.  Reduce length of first element.
+        // Now we really have to split. Reduce length of first element.
         let second_range = split_offset..elem.range.end;
         elem.range.end = split_offset;
-        // Copy the data, and insert 2nd element
+        // Copy the data, and insert second element.
         let second = Elem {
             range: second_range,
             data: elem.data.clone(),
@@ -114,7 +117,7 @@ impl<T> RangeMap<T> {
         return true;
     }
 
-    /// Provide mutable iteration over everything in the given range.  As a side-effect,
+    /// Provides mutable iteration over everything in the given range. As a side-effect,
     /// this will split entries in the map that are only partially hit by the given range,
     /// to make sure that when they are mutated, the effect is constrained to the given range.
     /// Moreover, this will opportunistically merge neighbouring equal blocks.
@@ -130,7 +133,7 @@ impl<T> RangeMap<T> {
         let len = len.bytes();
         // Compute a slice containing exactly the elements we care about
         let slice: &mut [Elem<T>] = if len == 0 {
-                // We just need any empty iterator.  We don't even want to
+                // We just need any empty iterator. We don't even want to
                 // yield the element that surrounds this position, nor do
                 // any splitting.
                 &mut []
@@ -142,7 +145,7 @@ impl<T> RangeMap<T> {
                     first_idx += 1;
                 }
                 let first_idx = first_idx; // no more mutation
-                // Find our end.  Linear scan, but that's okay because the iteration
+                // Find our end. Linear scan, but that's ok because the iteration
                 // is doing the same linear scan anyway -- no increase in complexity.
                 // We combine this scan with a scan for duplicates that we can merge, to reduce
                 // the number of elements.
@@ -150,7 +153,7 @@ impl<T> RangeMap<T> {
                 // amounts of time on the merging.
                 let mut equal_since_idx = first_idx;
                 // Once we see too many non-mergeable blocks, we stop.
-                // The initial value is chosen via... magic.  Benchmarking and magic.
+                // The initial value is chosen via... magic. Benchmarking and magic.
                 let mut successful_merge_count = 3usize;
                 let mut end_idx = first_idx; // when the loop is done, this is the first excluded element.
                 loop {
@@ -162,7 +165,7 @@ impl<T> RangeMap<T> {
                     // see if we want to merge everything in `equal_since..end` (exclusive at the end!)
                     if successful_merge_count > 0 {
                         if done || self.v[end_idx].data != self.v[equal_since_idx].data {
-                            // Everything in `equal_since..end` was equal.  Make them just one element covering
+                            // Everything in `equal_since..end` was equal. Make them just one element covering
                             // the entire range.
                             let removed_elems = end_idx - equal_since_idx - 1; // number of elements that we would remove
                             if removed_elems > 0 {
@@ -173,10 +176,10 @@ impl<T> RangeMap<T> {
                                 self.v.splice(equal_since_idx+1..end_idx, std::iter::empty());
                                 // Adjust `end_idx` because we made the list shorter.
                                 end_idx -= removed_elems;
-                                // adjust the count for the cutoff
+                                // Adjust the count for the cutoff.
                                 successful_merge_count += removed_elems;
                             } else {
-                                // adjust the count for the cutoff
+                                // Adjust the count for the cutoff.
                                 successful_merge_count -= 1;
                             }
                             // Go on scanning for the next block starting here.
@@ -188,8 +191,9 @@ impl<T> RangeMap<T> {
                         break;
                     }
                 }
-                let end_idx = end_idx-1; // Move to last included instead of first excluded index.
-                // We need to split the end as well.  Even if this performs a
+                // Move to last included instead of first excluded index.
+                let end_idx = end_idx-1;
+                // We need to split the end as well. Even if this performs a
                 // split, we don't have to adjust our index as we only care about
                 // the first part of the split.
                 self.split_index(end_idx, offset+len);
@@ -220,15 +224,15 @@ mod tests {
     #[test]
     fn basic_insert() {
         let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
-        // Insert
+        // Insert.
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
             *x = 42;
         }
-        // Check
+        // Check.
         assert_eq!(to_vec(&map, 10, 1), vec![42]);
         assert_eq!(map.v.len(), 3);
 
-        // Insert with size 0
+        // Insert with size 0.
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
             *x = 19;
         }
@@ -275,11 +279,11 @@ mod tests {
             to_vec(&map, 10, 10),
             vec![23, 42, 23, 23, 23, 19, 19, 19, 19, 19]
         );
-        // Should be seeing two blocks with 19
+        // Should be seeing two blocks with 19.
         assert_eq!(map.iter(Size::from_bytes(15), Size::from_bytes(2))
             .map(|&t| t).collect::<Vec<_>>(), vec![19, 19]);
 
-        // a NOP iter_mut should trigger merging
+        // A NOP `iter_mut` should trigger merging.
         for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) { }
         assert_eq!(map.v.len(), 5);
         assert_eq!(

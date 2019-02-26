@@ -20,7 +20,7 @@ fn main() {
 
     // Get a pointer to the beginning of the Data struct (one u8 byte, then the pointer bytes).
     // Thanks to the wrapper, we know this is aligned-enough to perform a load at ptr size.
-    // We load at pointer type, so having a relocation is okay -- but here, the relocation
+    // We load at pointer type, so having a relocation is ok -- but here, the relocation
     // starts 1 byte to the right, so using it would actually be wrong!
     let d_alias = &mut w.data as *mut _ as *mut *const u8;
     unsafe {

@@ -1,4 +1,5 @@
-//ignore-windows: Inspects allocation base address on Windows
+//ignore-windows: inspects allocation base address on Windows
+
 #![feature(allocator_api)]
 
 use std::ptr::NonNull;
@@ -6,8 +7,10 @@ use std::alloc::{Global, Alloc, Layout, System};
 
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     let size = 8;
-    let align = 16; // greater than size
-    let iterations = 1; // Miri is deterministic, no need to try many times
+    // Greater than `size`.
+    let align = 16;
+    // Miri is deterministic; no need to try many times.
+    let iterations = 1;
     unsafe {
         let pointers: Vec<_> = (0..iterations).map(|_| {
             allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
@@ -17,7 +20,7 @@ fn check_overalign_requests<T: Alloc>(mut allocator: T) {
                        "Got a pointer less aligned than requested")
         }
 
-        // Clean up
+        // Clean up.
         for &ptr in &pointers {
             allocator.dealloc(ptr, Layout::from_size_align(size, align).unwrap())
         }

@@ -87,10 +87,10 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     compiletest::run_tests(&config);
 }
 
-/// Make sure the MIRI_SYSROOT env var is set
+/// Ensures that the `MIRI_SYSROOT` env var is set.
 fn set_sysroot() {
     if std::env::var("MIRI_SYSROOT").is_ok() {
-        // Nothing to do
+        // Nothing to do.
         return;
     }
     let sysroot = std::process::Command::new("rustc")

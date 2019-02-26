@@ -60,7 +60,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             _ => {},
         }
 
-        // Now we expect no more fat pointers
+        // Now we expect no more fat pointers.
         let left_layout = left.layout;
         let left = left.to_scalar()?;
         let right_layout = right.layout;
@@ -149,9 +149,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 if left.alloc_id == right.alloc_id {
                     left.offset == right.offset
                 } else {
-                    // This accepts one-past-the end.  So technically there is still
+                    // This accepts one-past-the end. Thus, there is still technically
                     // some non-determinism that we do not fully rule out when two
-                    // allocations sit right next to each other.  The C/C++ standards are
+                    // allocations sit right next to each other. The C/C++ standards are
                     // somewhat fuzzy about this case, so I think for now this check is
                     // "good enough".
                     // Dead allocations in miri cannot overlap with live allocations, but
@@ -159,17 +159,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // both pointers to be live.
                     self.memory().check_bounds_ptr(left, InboundsCheck::Live)?;
                     self.memory().check_bounds_ptr(right, InboundsCheck::Live)?;
-                    // Two in-bounds pointers, we can compare across allocations
+                    // Two in-bounds pointers, we can compare across allocations.
                     left == right
                 }
             }
-            // Comparing ptr and integer
+            // Comparing ptr and integer.
             (Scalar::Ptr(ptr), Scalar::Bits { bits, size }) |
             (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 let bits = bits as u64;
 
-                // Case I: Comparing with NULL
+                // Case I: Comparing with NULL.
                 if bits == 0 {
                     // Test if the ptr is in-bounds. Then it cannot be NULL.
                     // Even dangling pointers cannot be NULL.
@@ -186,7 +186,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 if ptr.offset.bytes() % alloc_align.bytes() == 0 {
                     // The offset maintains the allocation alignment, so we know `base+offset`
                     // is aligned by `alloc_align`.
-                    // FIXME: We could be even more general, e.g. offset 2 into a 4-aligned
+                    // FIXME: We could be even more general, e.g., offset 2 into a 4-aligned
                     // allocation cannot equal 3.
                     if bits % alloc_align.bytes() != 0 {
                         // The integer is *not* aligned. So they cannot be equal.
@@ -198,7 +198,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 {
                     // Compute the highest address at which this allocation could live.
                     // Substract one more, because it must be possible to add the size
-                    // to the base address without overflowing -- IOW, the very last address
+                    // to the base address without overflowing; that is, the very last address
                     // of the address space is never dereferencable (but it can be in-bounds, i.e.,
                     // one-past-the-end).
                     let max_base_addr =
@@ -208,7 +208,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                         ) as u64;
                     if let Some(max_addr) = max_base_addr.checked_add(ptr.offset.bytes()) {
                         if bits > max_addr {
-                            // The integer is too big, this cannot possibly be equal
+                            // The integer is too big, this cannot possibly be equal.
                             return Ok(false)
                         }
                     }
@@ -235,7 +235,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
 
         Ok(match bin_op {
             Sub =>
-                // The only way this can overflow is by underflowing, so signdeness of the right operands does not matter
+                // The only way this can overflow is by underflowing, so signdeness of the right
+                // operands does not matter.
                 map_to_primval(left.overflowing_signed_offset(-(right as i128), self)),
             Add if signed =>
                 map_to_primval(left.overflowing_signed_offset(right as i128, self)),
@@ -245,17 +246,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             BitAnd if !signed => {
                 let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
                 let base_mask = {
-                    // FIXME: Use interpret::truncate, once that takes a Size instead of a Layout
+                    // FIXME: use `interpret::truncate`, once that takes a `Size` instead of a `Layout`.
                     let shift = 128 - self.memory().pointer_size().bits();
                     let value = !(ptr_base_align as u128 - 1);
-                    // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
+                    // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
                     (value << shift) >> shift
                 };
                 let ptr_size = self.memory().pointer_size().bytes() as u8;
-                trace!("Ptr BitAnd, align {}, operand {:#010x}, base_mask {:#010x}",
+                trace!("ptr BitAnd, align {}, operand {:#010x}, base_mask {:#010x}",
                     ptr_base_align, right, base_mask);
                 if right & base_mask == base_mask {
-                    // Case 1: The base address bits are all preserved, i.e., right is all-1 there
+                    // Case 1: the base address bits are all preserved, i.e., right is all-1 there.
                     let offset = (left.offset.bytes() as u128 & right) as u64;
                     (
                         Scalar::Ptr(Pointer::new_with_tag(
@@ -266,7 +267,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                         false,
                     )
                 } else if right & base_mask == 0 {
-                    // Case 2: The base address bits are all taken away, i.e., right is all-0 there
+                    // Case 2: the base address bits are all taken away, i.e., right is all-0 there.
                     (Scalar::Bits { bits: (left.offset.bytes() as u128) & right, size: ptr_size }, false)
                 } else {
                     return err!(ReadPointerAsBytes);
@@ -275,43 +276,57 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
 
             Rem if !signed => {
                 // Doing modulo a divisor of the alignment is allowed.
-                // (Intuition: Modulo a divisor leaks less information.)
+                // (Intuition: modulo a divisor leaks less information.)
                 let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
                 let right = right as u64;
                 let ptr_size = self.memory().pointer_size().bytes() as u8;
                 if right == 1 {
-                    // modulo 1 is always 0
+                    // Modulo 1 is always 0.
                     (Scalar::Bits { bits: 0, size: ptr_size }, false)
                 } else if ptr_base_align % right == 0 {
-                    // the base address would be cancelled out by the modulo operation, so we can
-                    // just take the modulo of the offset
-                    (Scalar::Bits { bits: (left.offset.bytes() % right) as u128, size: ptr_size }, false)
+                    // The base address would be cancelled out by the modulo operation, so we can
+                    // just take the modulo of the offset.
+                    (
+                        Scalar::Bits {
+                            bits: (left.offset.bytes() % right) as u128,
+                            size: ptr_size
+                        },
+                        false,
+                    )
                 } else {
                     return err!(ReadPointerAsBytes);
                 }
             }
 
             _ => {
-                let msg = format!("unimplemented binary op on pointer {:?}: {:?}, {:?} ({})", bin_op, left, right, if signed { "signed" } else { "unsigned" });
+                let msg = format!(
+                    "unimplemented binary op on pointer {:?}: {:?}, {:?} ({})",
+                    bin_op,
+                    left,
+                    right,
+                    if signed { "signed" } else { "unsigned" }
+                );
                 return err!(Unimplemented(msg));
             }
         })
     }
 
-    /// This function raises an error if the offset moves the pointer outside of its allocation.  We consider
-    /// ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
-    /// We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
-    /// allocation.
+    /// Raises an error if the offset moves the pointer outside of its allocation.
+    /// We consider ZSTs their own huge allocation that doesn't overlap with anything (and nothing
+    /// moves in there because the size is 0). We also consider the NULL pointer its own separate
+    /// allocation, and all the remaining integers pointers their own allocation.
     fn pointer_offset_inbounds(
         &self,
         ptr: Scalar<Borrow>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
     ) -> EvalResult<'tcx, Scalar<Borrow>> {
-        // FIXME: assuming here that type size is < i64::max_value()
+        // FIXME: assuming here that type size is less than `i64::max_value()`.
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
-        let offset = offset.checked_mul(pointee_size).ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
-        // Now let's see what kind of pointer this is
+        let offset = offset
+            .checked_mul(pointee_size)
+            .ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
+        // Now let's see what kind of pointer this is.
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)

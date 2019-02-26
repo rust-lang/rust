@@ -1,6 +1,6 @@
-//! This is a "monotonic HashMap": A HashMap that, when shared, can be pushed to but not
-//! otherwise mutated.  We also Box items in the map. This means we can safely provide
-//! shared references into existing items in the HashMap, because they will not be dropped
+//! This is a "monotonic `HashMap`": A `HashMap` that, when shared, can be pushed to but not
+//! otherwise mutated. We also box items in the map. This means we can safely provide
+//! shared references into existing items in the `HashMap`, because they will not be dropped
 //! (from being removed) or moved (because they are boxed).
 //! The API is is completely tailored to what `memory.rs` needs. It is still in
 //! a separate file to minimize the amount of code that has to care about the unsafety.
@@ -18,7 +18,7 @@ use crate::AllocMap;
 pub struct MonoHashMap<K: Hash + Eq, V>(RefCell<FxHashMap<K, Box<V>>>);
 
 impl<K: Hash + Eq, V> MonoHashMap<K, V> {
-    /// This function exists for priroda to be able to iterate over all evaluator memory
+    /// This function exists for priroda to be able to iterate over all evaluator memory.
     ///
     /// The function is somewhat roundabout with the closure argument because internally the
     /// `MonoHashMap` uses a `RefCell`. When iterating over the `HashMap` inside the `RefCell`,

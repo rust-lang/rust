@@ -46,8 +46,8 @@ fn read_does_not_invalidate2() {
 }
 
 // Just to make sure that casting a ref to raw, to int and back to raw
-// and only then using it works.  This rules out ideas like "do escape-to-raw lazily":
-// After casting to int and back, we lost the tag that could have let us do that.
+// and only then using it works. This rules out ideas like "do escape-to-raw lazily";
+// after casting to int and back, we lost the tag that could have let us do that.
 fn ref_raw_int_raw() {
     let mut x = 3;
     let xref = &mut x;
@@ -103,7 +103,7 @@ fn partially_invalidate_mut() {
     let data = &mut (0u8, 0u8);
     let reborrow = &mut *data as *mut (u8, u8);
     let shard = unsafe { &mut (*reborrow).0 };
-    data.1 += 1; // the deref overlaps with `shard`, but that is okay; the access does not overlap.
+    data.1 += 1; // the deref overlaps with `shard`, but that is ok; the access does not overlap.
     *shard += 1; // so we can still use `shard`.
     assert_eq!(*data, (1, 1));
 }
