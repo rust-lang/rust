@@ -1453,6 +1453,7 @@ impl<'b, T: ?Sized> DowngradedRef<'b, T> {
     /// #![feature(refcell_downgrade)]
     ///
     /// use std::cell::{RefCell, Ref, RefMut};
+    /// use std::collections::HashMap;
     ///
     /// let mut hash: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
     ///
