@@ -88,6 +88,14 @@ fn test_redundant_closures_containing_method_calls() {
     let c = Some(TestStruct { some_ref: &i })
         .as_ref()
         .map(|c| c.to_ascii_uppercase());
+
+    fn test_different_borrow_levels<T>(t: &[&T])
+    where
+        T: TestTrait,
+    {
+        t.iter().filter(|x| x.trait_foo_ref());
+        t.iter().map(|x| x.trait_foo_ref());
+    }
 }
 
 fn meta<F>(f: F)
