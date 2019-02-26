@@ -4,9 +4,8 @@ error: implementation of `DistributedIteratorMulti` is not general enough
 LL |     multi(Map { //~ ERROR implementation of `DistributedIteratorMulti` is not general enough
    |     ^^^^^
    |
-   = note: Due to a where-clause on `multi`,
-   = note: `Map<Cloned<&()>, X>` must implement `DistributedIteratorMulti<&'0 ()>`, for any lifetime `'0`
-   = note: but `Map<Cloned<&()>, X>` actually implements `DistributedIteratorMulti<&'1 ()>`, for some specific lifetime `'1`
+   = note: `DistributedIteratorMulti<&'0 ()>` would have to be implemented for the type `Cloned<&()>`, for any lifetime `'0`
+   = note: but `DistributedIteratorMulti<&'1 ()>` is actually implemented for the type `Cloned<&'1 ()>`, for some specific lifetime `'1`
 
 error: aborting due to previous error
 
