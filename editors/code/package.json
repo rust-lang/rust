@@ -147,7 +147,7 @@
             "properties": {
                 "rust-analyzer.highlightingOn": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
                 },
                 "rust-analyzer.enableEnhancedTyping": {
