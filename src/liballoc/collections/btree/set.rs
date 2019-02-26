@@ -370,8 +370,11 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
     #[doc(hidden)]
-    #[unstable(feature = "benches_btree_set", reason = "allow benchmarking for pull #58577", issue = "0")]
-    pub fn intersection_stitch<'a>(a_set: &'a BTreeSet<T>, b_set: &'a BTreeSet<T>) -> Intersection<'a, T> {
+    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
+    pub fn intersection_stitch<'a>(
+        a_set: &'a BTreeSet<T>,
+        b_set: &'a BTreeSet<T>,
+    ) -> Intersection<'a, T> {
         let a_min = a_set.iter().next().unwrap();
         let b_min = b_set.iter().next().unwrap();
         let (a_range, b_range) = match Ord::cmp(a_min, b_min) {
@@ -386,8 +389,11 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
     #[doc(hidden)]
-    #[unstable(feature = "benches_btree_set", reason = "allow benchmarking for pull #58577", issue = "0")]
-    pub fn intersection_search<'a>(a_set: &'a BTreeSet<T>, b_set: &'a BTreeSet<T>) -> Intersection<'a, T> {
+    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
+    pub fn intersection_search<'a>(
+        a_set: &'a BTreeSet<T>,
+        b_set: &'a BTreeSet<T>,
+    ) -> Intersection<'a, T> {
         let a_min = a_set.iter().next().unwrap();
         let b_min = b_set.iter().next().unwrap();
         let a_range = match Ord::cmp(a_min, b_min) {
