@@ -46,7 +46,11 @@ mod full {
         };
 
         let out_file: PathBuf = format!("{}.{}", out_file.display(), file_ext).into();
-        assert!(out_file.exists(), "file `{}` does not exist", out_file.display());
+        assert!(
+            out_file.exists(),
+            "file `{}` does not exist",
+            out_file.display()
+        );
 
         if let Some(path) = env::var_os("PATH") {
             let mut paths = env::split_paths(&path).collect::<Vec<_>>();
@@ -94,8 +98,7 @@ mod full {
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
                 .stdout(out_pipe)
-                .stderr(err_pipe)
-                ;
+                .stderr(err_pipe);
 
             if let Ok(target) = std::env::var("TEST_TARGET") {
                 cmd.args(&["--target", &target]);
