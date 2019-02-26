@@ -182,11 +182,15 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         return Err(failure::err_msg("could not pipe to rustc (wtf?)".to_owned()).into());
     }
 
-    child
+    let exit_status = child
         .wait()
         .map_err(|e| failure::err_msg(format!("failed to wait for rustc: {}", e)))?;
 
-    Ok(())
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(failure::err_msg("rustc-semverver errored".to_owned()))
+    }
 }
 
 /// CLI utils

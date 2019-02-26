@@ -81,7 +81,7 @@ mod features {
             let rustsemverver_result = cmd.status().expect("could not run rust-semverver").success();
             assert_eq!(
                 rustsemverver_result, expected_result,
-                "rust-semverver returned an unexpected result"
+                "rust-semverver returned an unexpected exit status"
             );
 
             {
@@ -130,7 +130,7 @@ mod features {
             .expect("could not run git diff")
             .success();
 
-        assert!(git_result, "git reports a diff");
+        assert!(git_result, "git reports unexpected diff");
 
         Command::new("rm")
             .args(&[&old_rlib, &new_rlib])

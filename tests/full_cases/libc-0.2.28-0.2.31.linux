@@ -867,3 +867,5 @@ note: added path (technically breaking)
 
 error: aborting due to 11 previous errors
 
+error: rustc-semverver errored
+
