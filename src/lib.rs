@@ -39,8 +39,7 @@ pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use crate::range_map::RangeMap;
-// FIXME: rustc bug, issue <https://github.com/rust-lang/rust/issues/53682>.
-#[allow(unused_imports)]
+#[allow(unused_imports)] // FIXME: rustc bug, issue <https://github.com/rust-lang/rust/issues/53682>.
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
@@ -129,7 +128,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
-    // Store argc for macOS: `_NSGetArgc`.
+    // Store argc for macOS's `_NSGetArgc`.
     {
         let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argc, argc_place.into())?;

@@ -14,8 +14,9 @@ use rustc::ty::layout::Size;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {
-    /// The range covered by this element, never empty.
+    /// The range covered by this element; never empty.
     range: ops::Range<u64>,
+    /// The data stored for this element.
     data: T,
 }
 #[derive(Clone, Debug)]
@@ -49,11 +50,11 @@ impl<T> RangeMap<T> {
             let candidate = left.checked_add(right).unwrap() / 2;
             let elem = &self.v[candidate];
             if offset < elem.range.start {
-                // we are too far right (offset is further left)
+                // We are too far right (offset is further left).
                 debug_assert!(candidate < right); // we are making progress
                 right = candidate;
             } else if offset >= elem.range.end {
-                // we are too far left (offset is further right)
+                // We are too far left (offset is further right).
                 debug_assert!(candidate >= left); // we are making progress
                 left = candidate+1;
             } else {
