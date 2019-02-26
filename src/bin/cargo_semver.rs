@@ -11,9 +11,9 @@ use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, W
 use log::debug;
 use std::{
     env,
+    fs::File,
     io::BufReader,
     io::Write,
-    fs::File,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -390,8 +390,10 @@ impl<'a> WorkInfo<'a> {
         opts.build_config.build_plan = true;
         // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
 
-        env::set_var("RUSTFLAGS",
-                     format!("-C metadata={}", if current { "new" } else { "old" }));
+        env::set_var(
+            "RUSTFLAGS",
+            format!("-C metadata={}", if current { "new" } else { "old" }),
+        );
 
         let mut outdir = env::temp_dir();
         outdir.push(&format!("cargo_semver_{}_{}", name, current));
@@ -410,8 +412,7 @@ impl<'a> WorkInfo<'a> {
         let compilation = cargo::ops::compile(&self.workspace, &opts)?;
         env::remove_var("RUSTFLAGS");
 
-        let build_plan: BuildPlan =
-            serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
+        let build_plan: BuildPlan = serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
 
         // TODO: handle multiple outputs gracefully
         for i in &build_plan.invocations {

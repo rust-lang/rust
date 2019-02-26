@@ -78,7 +78,10 @@ mod features {
                 cmd.env("RUST_SEMVER_API_GUIDELINES", "true");
             }
 
-            let rustsemverver_result = cmd.status().expect("could not run rust-semverver").success();
+            let rustsemverver_result = cmd
+                .status()
+                .expect("could not run rust-semverver")
+                .success();
             assert_eq!(
                 rustsemverver_result, expected_result,
                 "rust-semverver returned an unexpected exit status"

@@ -6,12 +6,7 @@ mod full {
         process::{Command, Stdio},
     };
 
-    fn test_full(
-        crate_name: &str,
-        old_version: &str,
-        new_version: &str,
-        expected_result: bool
-    ) {
+    fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
         let prog = format!(
             r#"
     # wait for the actual output
