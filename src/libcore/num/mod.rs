@@ -346,7 +346,7 @@ $EndFeature, "
             concat!("Shifts the bits to the left by a specified amount, `n`,
 wrapping the truncated bits to the end of the resulting integer.
 
-Please note this isn't the same operation as `<<`!
+Please note this isn't the same operation as the `<<` shifting operator!
 
 # Examples
 
@@ -370,7 +370,7 @@ assert_eq!(n.rotate_left(", $rot, "), m);
 wrapping the truncated bits to the beginning of the resulting
 integer.
 
-Please note this isn't the same operation as `>>`!
+Please note this isn't the same operation as the `>>` shifting operator!
 
 # Examples
 
@@ -2300,7 +2300,7 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
             concat!("Shifts the bits to the left by a specified amount, `n`,
 wrapping the truncated bits to the end of the resulting integer.
 
-Please note this isn't the same operation as `<<`!
+Please note this isn't the same operation as the `<<` shifting operator!
 
 # Examples
 
@@ -2324,7 +2324,7 @@ assert_eq!(n.rotate_left(", $rot, "), m);
 wrapping the truncated bits to the beginning of the resulting
 integer.
 
-Please note this isn't the same operation as `>>`!
+Please note this isn't the same operation as the `>>` shifting operator!
 
 # Examples
 
