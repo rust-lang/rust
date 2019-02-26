@@ -2892,17 +2892,6 @@ impl<T: ?Sized> !Send for NonNull<T> { }
 impl<T: ?Sized> !Sync for NonNull<T> { }
 
 impl<T: Sized> NonNull<T> {
-    /// No docs here
-    #[stable(feature = "nonnull", since = "1.25.0")]
-    #[inline]
-    #[cfg(stage0)]
-    pub fn dangling() -> Self {
-        unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
-            NonNull::new_unchecked(ptr)
-        }
-    }
-
     /// Creates a new `NonNull` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
@@ -2914,8 +2903,7 @@ impl<T: Sized> NonNull<T> {
     /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
-    #[cfg(not(stage0))]
-    #[rustc_const_unstable(feature = "const_ptr_nonnull")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_nonnull"))]
     pub const fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
@@ -2976,21 +2964,10 @@ impl<T: ?Sized> NonNull<T> {
         &mut *self.as_ptr()
     }
 
-    /// No docs here
-    #[stable(feature = "nonnull_cast", since = "1.27.0")]
-    #[inline]
-    #[cfg(stage0)]
-    pub fn cast<U>(self) -> NonNull<U> {
-        unsafe {
-            NonNull::new_unchecked(self.as_ptr() as *mut U)
-        }
-    }
-
     /// Cast to a pointer of another type
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
-    #[cfg(not(stage0))]
-    #[rustc_const_unstable(feature = "const_ptr_nonnull")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_nonnull"))]
     pub const fn cast<U>(self) -> NonNull<U> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
