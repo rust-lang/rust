@@ -14,7 +14,7 @@ const fn cast<T, U>(non_null: NonNull<T>) -> NonNull<U> {
 
 pub fn main() {
     assert_eq!(dangling(), NonNull::dangling());
-    
+
     let mut i: i32 = 10;
     let non_null_t = NonNull::new(&mut i).unwrap();
     let non_null_u: NonNull<u32> = cast(non_null_t);

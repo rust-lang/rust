@@ -2902,7 +2902,7 @@ impl<T: Sized> NonNull<T> {
             NonNull::new_unchecked(ptr)
         }
     }
-    
+
     /// Creates a new `NonNull` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
