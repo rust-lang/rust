@@ -875,7 +875,7 @@ impl<'tcx> ChangeSet<'tcx> {
     pub fn trait_item_breaking(&self, old: DefId) -> bool {
         self.changes
             .get(&old)
-            .map_or(false, |change| change.trait_item_breaking())
+            .map_or(false, Change::trait_item_breaking)
     }
 
     /// Format the contents of a change set for user output.
