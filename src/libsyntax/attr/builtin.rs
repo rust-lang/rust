@@ -7,7 +7,7 @@ use crate::parse::ParseSess;
 use errors::{Applicability, Handler};
 use syntax_pos::{symbol::Symbol, Span};
 
-use super::{list_contains_name, mark_used, MetaItemKind};
+use super::{mark_used, MetaItemKind};
 
 enum AttrError {
     MultipleItem(Name),
@@ -79,40 +79,26 @@ pub enum UnwindAttr {
 
 /// Determine what `#[unwind]` attribute is present in `attrs`, if any.
 pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
-    let syntax_error = |attr: &Attribute| {
-        mark_used(attr);
-        diagnostic.map(|d| {
-            span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
-        });
-        None
-    };
-
     attrs.iter().fold(None, |ia, attr| {
-        if attr.path != "unwind" {
-            return ia;
-        }
-        let meta = match attr.meta() {
-            Some(meta) => meta.node,
-            None => return ia,
-        };
-        match meta {
-            MetaItemKind::Word => {
-                syntax_error(attr)
-            }
-            MetaItemKind::List(ref items) => {
-                mark_used(attr);
-                if items.len() != 1 {
-                    syntax_error(attr)
-                } else if list_contains_name(&items[..], "allowed") {
-                    Some(UnwindAttr::Allowed)
-                } else if list_contains_name(&items[..], "aborts") {
-                    Some(UnwindAttr::Aborts)
-                } else {
-                    syntax_error(attr)
+        if attr.check_name("unwind") {
+            if let Some(meta) = attr.meta() {
+                if let MetaItemKind::List(items) = meta.node {
+                    if items.len() == 1 {
+                        if items[0].check_name("allowed") {
+                            return Some(UnwindAttr::Allowed);
+                        } else if items[0].check_name("aborts") {
+                            return Some(UnwindAttr::Aborts);
+                        }
+                    }
+
+                    diagnostic.map(|d| {
+                        span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
+                    });
                 }
             }
-            _ => ia,
         }
+
+        ia
     })
 }
 
