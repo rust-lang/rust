@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 #![feature(link_args)]
 
 #[allow(unused_attributes)]
@@ -9,7 +11,5 @@
 #[cfg_attr(all(windows, not(target_env = "msvc")), link_args = "-Wl,--stack,16777216")]
 // See src/rustc/rustc.rs for the corresponding rustc settings.
 extern {}
-
-extern crate rustdoc;
 
 fn main() { rustdoc::main() }

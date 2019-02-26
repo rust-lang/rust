@@ -2,8 +2,6 @@
 // compile-flags:--extern issue_56125
 // aux-build:issue-56125.rs
 
-#![feature(uniform_paths)]
-
 mod m1 {
     use issue_56125::last_segment::*;
     //~^ ERROR `issue_56125` is ambiguous

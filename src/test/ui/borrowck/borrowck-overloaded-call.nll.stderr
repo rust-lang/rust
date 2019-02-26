@@ -20,12 +20,13 @@ LL |     s(3);   //~ ERROR cannot borrow immutable local variable `s` as mutable
 error[E0382]: use of moved value: `s`
   --> $DIR/borrowck-overloaded-call.rs:75:5
    |
+LL |     let s = SFnOnce {
+   |         - move occurs because `s` has type `SFnOnce`, which does not implement the `Copy` trait
+...
 LL |     s(" world".to_string());
    |     - value moved here
 LL |     s(" world".to_string());    //~ ERROR use of moved value: `s`
    |     ^ value used here after move
-   |
-   = note: move occurs because `s` has type `SFnOnce`, which does not implement the `Copy` trait
 
 error: aborting due to 3 previous errors
 

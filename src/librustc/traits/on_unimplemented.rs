@@ -1,9 +1,9 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use hir::def_id::DefId;
-use ty::{self, TyCtxt, GenericParamDefKind};
-use util::common::ErrorReported;
-use util::nodemap::FxHashMap;
+use crate::hir::def_id::DefId;
+use crate::ty::{self, TyCtxt, GenericParamDefKind};
+use crate::util::common::ErrorReported;
+use crate::util::nodemap::FxHashMap;
 
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
@@ -157,10 +157,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                 note: None,
             }))
         } else {
-            return Err(parse_error(tcx, attr.span,
-                                   "`#[rustc_on_unimplemented]` requires a value",
-                                   "value required here",
-                                   Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#)));
+            return Err(ErrorReported);
         };
         debug!("of_item({:?}/{:?}) = {:?}", trait_def_id, impl_def_id, result);
         result

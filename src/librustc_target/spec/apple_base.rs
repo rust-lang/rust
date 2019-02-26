@@ -1,6 +1,6 @@
 use std::env;
 
-use spec::{LinkArgs, TargetOptions};
+use crate::spec::{LinkArgs, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6

@@ -1,8 +1,8 @@
-error: variable `_InappropriateCamelCasing` should have a snake case name such as `_inappropriate_camel_casing`
+error: variable `_InappropriateCamelCasing` should have a snake case name
   --> $DIR/command-line-lint-group-deny.rs:4:9
    |
 LL |     let _InappropriateCamelCasing = true; //~ ERROR should have a snake
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `_inappropriate_camel_casing`
    |
    = note: `-D non-snake-case` implied by `-D bad-style`
 

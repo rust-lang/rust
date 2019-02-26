@@ -5,6 +5,11 @@ LL | impl ToNbt<Self> {}
    |            ^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/issue-23305.rs:5:1: 5:20>`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/issue-23305.rs:1:1
+   |
+LL | pub trait ToNbt<T> {
+   | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

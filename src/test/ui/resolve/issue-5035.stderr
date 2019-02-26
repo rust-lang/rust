@@ -10,8 +10,8 @@ error[E0404]: expected trait, found type alias `K`
 LL | impl K for isize {} //~ ERROR expected trait, found type alias `K`
    |      ^
    |      |
-   |      did you mean `I`?
    |      type aliases cannot be used as traits
+   |      help: a trait with a similar name exists: `I`
    |
    = note: did you mean to use a trait alias?
 

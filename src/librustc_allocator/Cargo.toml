@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_allocator"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 path = "lib.rs"

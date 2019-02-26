@@ -17,8 +17,6 @@
 
 #![deny(warnings)]
 
-extern crate bootstrap;
-
 use std::env;
 use std::ffi::OsString;
 use std::io;
@@ -284,8 +282,8 @@ fn main() {
         }
     }
 
-    if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
-        cmd.arg("--cfg").arg("parallel_queries");
+    if env::var_os("RUSTC_PARALLEL_COMPILER").is_some() {
+        cmd.arg("--cfg").arg("parallel_compiler");
     }
 
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()

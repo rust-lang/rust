@@ -377,7 +377,7 @@ impl CString {
     ///
     /// # Examples
     ///
-    /// Create a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
+    /// Creates a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
     /// ownership with `from_raw`:
     ///
     /// ```ignore (extern-declaration)
@@ -659,8 +659,8 @@ impl fmt::Debug for CStr {
 }
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
-impl<'a> Default for &'a CStr {
-    fn default() -> &'a CStr {
+impl Default for &CStr {
+    fn default() -> Self {
         const SLICE: &[c_char] = &[0];
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
     }

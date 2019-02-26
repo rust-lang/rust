@@ -1,8 +1,0 @@
-error: cannot find macro `unexported_macro!` in this scope
-  --> $DIR/macro-crate-unexported-macro.rs:7:5
-   |
-LL |     unexported_macro!();
-   |     ^^^^^^^^^^^^^^^^ help: you could try the macro: `exported_macro`
-
-error: aborting due to previous error
-

@@ -370,7 +370,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// }
 ///
 /// impl Viking {
-///     /// Create a new Viking.
+///     /// Creates a new Viking.
 ///     fn new(name: &str, country: &str) -> Viking {
 ///         Viking { name: name.to_string(), country: country.to_string() }
 ///     }
@@ -556,7 +556,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
     (retkey, retval, gap.into_table())
 }
 
-/// Perform robin hood bucket stealing at the given `bucket`. You must
+/// Performs robin hood bucket stealing at the given `bucket`. You must
 /// also pass that bucket's displacement so we don't have to recalculate it.
 ///
 /// `hash`, `key`, and `val` are the elements to "robin hood" into the hashtable.
@@ -716,6 +716,232 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     }
 }
 
+impl<K, V, S> HashMap<K, V, S> {
+    /// Returns the number of elements the map can hold without reallocating.
+    ///
+    /// This number is a lower bound; the `HashMap<K, V>` might be able to hold
+    /// more, but is guaranteed to be able to hold at least this many.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// let map: HashMap<i32, i32> = HashMap::with_capacity(100);
+    /// assert!(map.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn capacity(&self) -> usize {
+        self.resize_policy.capacity(self.raw_capacity())
+    }
+
+    /// Returns the hash map's raw capacity.
+    #[inline]
+    fn raw_capacity(&self) -> usize {
+        self.table.capacity()
+    }
+
+    /// An iterator visiting all keys in arbitrary order.
+    /// The iterator element type is `&'a K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for key in map.keys() {
+    ///     println!("{}", key);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn keys(&self) -> Keys<K, V> {
+        Keys { inner: self.iter() }
+    }
+
+    /// An iterator visiting all values in arbitrary order.
+    /// The iterator element type is `&'a V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for val in map.values() {
+    ///     println!("{}", val);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn values(&self) -> Values<K, V> {
+        Values { inner: self.iter() }
+    }
+
+    /// An iterator visiting all values mutably in arbitrary order.
+    /// The iterator element type is `&'a mut V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    ///
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for val in map.values_mut() {
+    ///     *val = *val + 10;
+    /// }
+    ///
+    /// for val in map.values() {
+    ///     println!("{}", val);
+    /// }
+    /// ```
+    #[stable(feature = "map_values_mut", since = "1.10.0")]
+    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
+        ValuesMut { inner: self.iter_mut() }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order.
+    /// The iterator element type is `(&'a K, &'a V)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for (key, val) in map.iter() {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter { inner: self.table.iter() }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order,
+    /// with mutable references to the values.
+    /// The iterator element type is `(&'a K, &'a mut V)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Update all values
+    /// for (_, val) in map.iter_mut() {
+    ///     *val *= 2;
+    /// }
+    ///
+    /// for (key, val) in &map {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        IterMut { inner: self.table.iter_mut() }
+    }
+
+    /// Returns the number of elements in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// assert_eq!(a.len(), 0);
+    /// a.insert(1, "a");
+    /// assert_eq!(a.len(), 1);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn len(&self) -> usize {
+        self.table.size()
+    }
+
+    /// Returns `true` if the map contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// assert!(a.is_empty());
+    /// a.insert(1, "a");
+    /// assert!(!a.is_empty());
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
+    /// allocated memory for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// for (k, v) in a.drain().take(1) {
+    ///     assert!(k == 1 || k == 2);
+    ///     assert!(v == "a" || v == "b");
+    /// }
+    ///
+    /// assert!(a.is_empty());
+    /// ```
+    #[inline]
+    #[stable(feature = "drain", since = "1.6.0")]
+    pub fn drain(&mut self) -> Drain<K, V> {
+        Drain { inner: self.table.drain() }
+    }
+
+    /// Clears the map, removing all key-value pairs. Keeps the allocated memory
+    /// for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.clear();
+    /// assert!(a.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn clear(&mut self) {
+        self.drain();
+    }
+}
+
 impl<K, V, S> HashMap<K, V, S>
     where K: Eq + Hash,
           S: BuildHasher
@@ -800,30 +1026,6 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
-    }
-
-    /// Returns the number of elements the map can hold without reallocating.
-    ///
-    /// This number is a lower bound; the `HashMap<K, V>` might be able to hold
-    /// more, but is guaranteed to be able to hold at least this many.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// let map: HashMap<i32, i32> = HashMap::with_capacity(100);
-    /// assert!(map.capacity() >= 100);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.resize_policy.capacity(self.raw_capacity())
-    }
-
-    /// Returns the hash map's raw capacity.
-    #[inline]
-    fn raw_capacity(&self) -> usize {
-        self.table.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -1048,127 +1250,6 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// An iterator visiting all keys in arbitrary order.
-    /// The iterator element type is `&'a K`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for key in map.keys() {
-    ///     println!("{}", key);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys(&self) -> Keys<K, V> {
-        Keys { inner: self.iter() }
-    }
-
-    /// An iterator visiting all values in arbitrary order.
-    /// The iterator element type is `&'a V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for val in map.values() {
-    ///     println!("{}", val);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values(&self) -> Values<K, V> {
-        Values { inner: self.iter() }
-    }
-
-    /// An iterator visiting all values mutably in arbitrary order.
-    /// The iterator element type is `&'a mut V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for val in map.values_mut() {
-    ///     *val = *val + 10;
-    /// }
-    ///
-    /// for val in map.values() {
-    ///     println!("{}", val);
-    /// }
-    /// ```
-    #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
-        ValuesMut { inner: self.iter_mut() }
-    }
-
-    /// An iterator visiting all key-value pairs in arbitrary order.
-    /// The iterator element type is `(&'a K, &'a V)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for (key, val) in map.iter() {
-    ///     println!("key: {} val: {}", key, val);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<K, V> {
-        Iter { inner: self.table.iter() }
-    }
-
-    /// An iterator visiting all key-value pairs in arbitrary order,
-    /// with mutable references to the values.
-    /// The iterator element type is `(&'a K, &'a mut V)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// // Update all values
-    /// for (_, val) in map.iter_mut() {
-    ///     *val *= 2;
-    /// }
-    ///
-    /// for (key, val) in &map {
-    ///     println!("key: {} val: {}", key, val);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
-        IterMut { inner: self.table.iter_mut() }
-    }
-
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
@@ -1195,85 +1276,6 @@ impl<K, V, S> HashMap<K, V, S>
         let hash = self.make_hash(&key);
         search_hashed(&mut self.table, hash, |q| q.eq(&key))
             .into_entry(key).expect("unreachable")
-    }
-
-    /// Returns the number of elements in the map.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// assert_eq!(a.len(), 0);
-    /// a.insert(1, "a");
-    /// assert_eq!(a.len(), 1);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.table.size()
-    }
-
-    /// Returns true if the map contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// assert!(a.is_empty());
-    /// a.insert(1, "a");
-    /// assert!(!a.is_empty());
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
-    /// allocated memory for reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// a.insert(1, "a");
-    /// a.insert(2, "b");
-    ///
-    /// for (k, v) in a.drain().take(1) {
-    ///     assert!(k == 1 || k == 2);
-    ///     assert!(v == "a" || v == "b");
-    /// }
-    ///
-    /// assert!(a.is_empty());
-    /// ```
-    #[inline]
-    #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<K, V> {
-        Drain { inner: self.table.drain() }
-    }
-
-    /// Clears the map, removing all key-value pairs. Keeps the allocated memory
-    /// for reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// a.insert(1, "a");
-    /// a.clear();
-    /// assert!(a.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub fn clear(&mut self) {
-        self.drain();
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -1332,7 +1334,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.search(k).map(|bucket| bucket.into_refs())
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -1641,7 +1643,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
+impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
     where K: Eq + Hash + Borrow<Q>,
           Q: Eq + Hash,
           S: BuildHasher
@@ -1673,14 +1675,14 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Iter<'a, K, V> {
-    fn clone(&self) -> Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
         Iter { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
+impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1726,14 +1728,14 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Keys<'a, K, V> {
-    fn clone(&self) -> Keys<'a, K, V> {
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V> fmt::Debug for Keys<'a, K, V> {
+impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1755,14 +1757,14 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Values<'a, K, V> {
-    fn clone(&self) -> Values<'a, K, V> {
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
+impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1896,7 +1898,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     where S: BuildHasher,
           K: Eq + Hash,
 {
-    /// Create a `RawEntryMut` from the given key.
+    /// Creates a `RawEntryMut` from the given key.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
         where K: Borrow<Q>,
@@ -1907,7 +1909,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         self.from_key_hashed_nocheck(hasher.finish(), k)
     }
 
-    /// Create a `RawEntryMut` from the given key and its hash.
+    /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
@@ -1939,7 +1941,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
             }
         }
     }
-    /// Create a `RawEntryMut` from the given hash.
+    /// Creates a `RawEntryMut` from the given hash.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
@@ -2241,7 +2243,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
+impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
@@ -2249,7 +2251,7 @@ impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
+impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RawEntryMut::Vacant(ref v) => {
@@ -2267,7 +2269,7 @@ impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
          .field("key", self.key())
@@ -2277,7 +2279,7 @@ impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
+impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut")
          .finish()
@@ -2285,7 +2287,7 @@ impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
-impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
+impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
@@ -2312,7 +2314,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for Entry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
@@ -2340,7 +2342,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -2361,7 +2363,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
+impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(self.key())
@@ -2379,10 +2381,7 @@ enum VacantEntryState<K, V, M> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-    where K: Eq + Hash,
-          S: BuildHasher
-{
+impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -2392,10 +2391,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
-    where K: Eq + Hash,
-          S: BuildHasher
-{
+impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -2405,10 +2401,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S> IntoIterator for HashMap<K, V, S>
-    where K: Eq + Hash,
-          S: BuildHasher
-{
+impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
@@ -2448,7 +2441,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
@@ -2456,7 +2449,7 @@ impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
@@ -2472,17 +2465,17 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
+impl<K, V> fmt::Debug for IterMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
@@ -2539,14 +2532,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
+impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
@@ -2562,14 +2555,14 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
@@ -2585,17 +2578,17 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     }
 }
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
+impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
+impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
@@ -2620,17 +2613,17 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     }
 }
 #[stable(feature = "drain", since = "1.6.0")]
-impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+impl<K, V> ExactSizeIterator for Drain<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
+impl<K, V> FusedIterator for Drain<'_, K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
+impl<K, V> fmt::Debug for Drain<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {

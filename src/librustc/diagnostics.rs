@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 #![allow(non_snake_case)]
 
 // Error messages for EXXXX errors.
@@ -362,6 +363,10 @@ struct Foo1 { x: &bool }
               // ^ expected lifetime parameter
 struct Foo2<'a> { x: &'a bool } // correct
 
+impl Foo2 {}
+  // ^^^^ expected lifetime parameter
+impl<'a> Foo2<'a> {} // correct
+
 struct Bar1 { x: Foo2 }
               // ^^^^ expected lifetime parameter
 struct Bar2<'a> { x: Foo2<'a> } // correct
@@ -403,11 +408,7 @@ fn bar(x: &str, y: &str) -> &str { }
 fn baz<'a>(x: &'a str, y: &str) -> &str { }
 ```
 
-Lifetime elision in implementation headers was part of the lifetime elision
-RFC. It is, however, [currently unimplemented][iss15872].
-
-[book-le]: https://doc.rust-lang.org/nightly/book/first-edition/lifetimes.html#lifetime-elision
-[iss15872]: https://github.com/rust-lang/rust/issues/15872
+[book-le]: https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#lifetime-elision
 "##,
 
 E0119: r##"
@@ -642,7 +643,9 @@ attributes:
 #![no_std]
 ```
 
-See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
+See also the [unstable book][1].
+
+[1]: https://doc.rust-lang.org/unstable-book/language-features/lang-items.html#writing-an-executable-without-stdlib
 "##,
 
 E0214: r##"
@@ -766,10 +769,39 @@ struct Foo {
 These can be fixed by declaring lifetime parameters:
 
 ```
-fn foo<'a>(x: &'a str) {}
-
 struct Foo<'a> {
     x: &'a str,
+}
+
+fn foo<'a>(x: &'a str) {}
+```
+
+Impl blocks declare lifetime parameters separately. You need to add lifetime
+parameters to an impl block if you're implementing a type that has a lifetime
+parameter of its own.
+For example:
+
+```compile_fail,E0261
+struct Foo<'a> {
+    x: &'a str,
+}
+
+// error,  use of undeclared lifetime name `'a`
+impl Foo<'a> {
+    fn foo<'a>(x: &'a str) {}
+}
+```
+
+This is fixed by declaring the impl block like this:
+
+```
+struct Foo<'a> {
+    x: &'a str,
+}
+
+// correct
+impl<'a> Foo<'a> {
+    fn foo(x: &'a str) {}
 }
 ```
 "##,
@@ -1154,7 +1186,7 @@ impl Generator for AnotherImpl {
 fn main() {
     let cont: u32 = Generator::create();
     // error, impossible to choose one of Generator trait implementation
-    // Impl or AnotherImpl? Maybe anything else?
+    // Should it be Impl or AnotherImpl, maybe something else?
 }
 ```
 
@@ -1177,27 +1209,6 @@ fn main() {
     // if there are multiple methods with same name (different traits)
     let gen2 = <AnotherImpl as Generator>::create();
 }
-```
-"##,
-
-E0296: r##"
-This error indicates that the given recursion limit could not be parsed. Ensure
-that the value provided is a positive integer between quotes.
-
-Erroneous code example:
-
-```compile_fail,E0296
-#![recursion_limit]
-
-fn main() {}
-```
-
-And a working example:
-
-```
-#![recursion_limit="1000"]
-
-fn main() {}
 ```
 "##,
 
@@ -1701,7 +1712,7 @@ fn main() {
 ```
 
 To understand better how closures work in Rust, read:
-https://doc.rust-lang.org/book/first-edition/closures.html
+https://doc.rust-lang.org/book/ch13-01-closures.html
 "##,
 
 E0580: r##"
@@ -2093,20 +2104,6 @@ trait Foo { }
 ```
 "##,
 
-E0702: r##"
-This error indicates that a `#[non_exhaustive]` attribute had a value. The
-`#[non_exhaustive]` should be empty.
-
-Examples of erroneous code:
-
-```compile_fail,E0702
-# #![feature(non_exhaustive)]
-
-#[non_exhaustive(anything)]
-struct Foo;
-```
-"##,
-
 E0718: r##"
 This error indicates that a `#[lang = ".."]` attribute was placed
 on the wrong type of item.
@@ -2138,6 +2135,7 @@ register_diagnostics! {
     E0280, // requirement is not satisfied
     E0284, // cannot resolve type
 //  E0285, // overflow evaluation builtin bounds
+//  E0296, // replaced with a generic attribute input check
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
@@ -2180,4 +2178,5 @@ register_diagnostics! {
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
+//  E0702, // replaced with a generic attribute input check
 }

@@ -5,10 +5,9 @@ environment:
   # server goes down presumably. See #43333 for more info
   CARGO_HTTP_CHECK_REVOKE: false
 
-  # Recommended by AppVeyor this moves our builds to GCE which incurs a 3-4
-  # minute startup overhead, but that's paltry compared to our overall build
-  # times so we're will to eat the cost. This is intended to give us better
-  # performance I believe!
+  # Execute the builds on GCE instead of Hyper-V. Those builders have a 3-4
+  # minute startup overhead, but AppVeyor support recommended this as a
+  # possible solution for #58160 (spurious 259 exit codes)
   appveyor_build_worker_cloud: gce
 
   matrix:

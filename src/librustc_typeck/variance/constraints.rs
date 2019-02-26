@@ -41,7 +41,7 @@ pub struct Constraint<'a> {
 ///     }
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
-/// the def-id and the start of `Foo`'s inferreds.
+/// the `DefId` and the start of `Foo`'s inferreds.
 pub struct CurrentItem {
     inferred_start: InferredIndex,
 }

@@ -1,7 +1,7 @@
-use index::Index;
-use index_builder::{FromId, IndexBuilder, Untracked};
-use isolated_encoder::IsolatedEncoder;
-use schema::*;
+use crate::index::Index;
+use crate::index_builder::{FromId, IndexBuilder, Untracked};
+use crate::isolated_encoder::IsolatedEncoder;
+use crate::schema::*;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -34,6 +34,7 @@ use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
 use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
+use log::{debug, trace};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -482,13 +483,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             has_global_allocator: has_global_allocator,
             has_panic_handler: has_panic_handler,
             has_default_lib_allocator: has_default_lib_allocator,
-            plugin_registrar_fn: tcx.sess
-                .plugin_registrar_fn
-                .get()
-                .map(|id| tcx.hir().local_def_id(id).index),
+            plugin_registrar_fn: tcx.plugin_registrar_fn(LOCAL_CRATE).map(|id| id.index),
             proc_macro_decls_static: if is_proc_macro {
-                let id = tcx.sess.proc_macro_decls_static.get().unwrap();
-                Some(tcx.hir().local_def_id(id).index)
+                let id = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap();
+                Some(id.index)
             } else {
                 None
             },
@@ -676,7 +674,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let def_id = field.did;
         debug!("IsolatedEncoder::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().as_local_node_id(variant.did).unwrap();
+        let variant_id = tcx.hir().as_local_hir_id(variant.did).unwrap();
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         Entry {
@@ -980,7 +978,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             let body = self.tcx.hir().body(body_id);
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
-                    PatKind::Binding(_, _, ident, _) => ident.name,
+                    PatKind::Binding(_, _, _, ident, _) => ident.name,
                     _ => keywords::Invalid.name(),
                 }
             }))
@@ -1131,8 +1129,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Impl(self.lazy(&data))
             }
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::TraitAlias(..) => {
+            hir::ItemKind::Trait(..) => {
                 let trait_def = tcx.trait_def(def_id);
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
@@ -1143,6 +1140,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 };
 
                 EntryKind::Trait(self.lazy(&data))
+            }
+            hir::ItemKind::TraitAlias(..) => {
+                let data = TraitAliasData {
+                    super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
+                };
+
+                EntryKind::TraitAlias(self.lazy(&data))
             }
             hir::ItemKind::ExternCrate(_) |
             hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
@@ -1217,6 +1221,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Impl(..) |
                 hir::ItemKind::Existential(..) |
                 hir::ItemKind::Trait(..) => Some(self.encode_generics(def_id)),
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_generics(def_id)),
                 _ => None,
             },
             predicates: match item.node {
@@ -1229,7 +1234,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Impl(..) |
                 hir::ItemKind::Existential(..) |
-                hir::ItemKind::Trait(..) => Some(self.encode_predicates(def_id)),
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_predicates(def_id)),
                 _ => None,
             },
 
@@ -1239,7 +1245,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             // hack. (No reason not to expand it in the future if
             // necessary.)
             predicates_defined_on: match item.node {
-                hir::ItemKind::Trait(..) => Some(self.encode_predicates_defined_on(def_id)),
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) => Some(self.encode_predicates_defined_on(def_id)),
                 _ => None, // not *wrong* for other kinds of items, but not needed
             },
 
@@ -1324,6 +1331,29 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
+    fn encode_info_for_const_param(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("IsolatedEncoder::encode_info_for_const_param({:?})", def_id);
+        let tcx = self.tcx;
+        Entry {
+            kind: EntryKind::Type,
+            visibility: self.lazy(&ty::Visibility::Public),
+            span: self.lazy(&tcx.def_span(def_id)),
+            attributes: LazySeq::empty(),
+            children: LazySeq::empty(),
+            stability: None,
+            deprecation: None,
+
+            ty: Some(self.encode_item_type(def_id)),
+            inherent_impls: LazySeq::empty(),
+            variances: LazySeq::empty(),
+            generics: None,
+            predicates: None,
+            predicates_defined_on: None,
+
+            mir: None,
+        }
+    }
+
     fn encode_info_for_closure(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_closure({:?})", def_id);
         let tcx = self.tcx;
@@ -1331,7 +1361,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tables = self.tcx.typeck_tables_of(def_id);
         let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
         let hir_id = self.tcx.hir().node_to_hir_id(node_id);
-        let kind = match tables.node_id_to_type(hir_id).sty {
+        let kind = match tables.node_type(hir_id).sty {
             ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
                 let data = GeneratorData {
@@ -1515,7 +1545,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
     fn encode_exported_symbols(&mut self,
-                               exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
+                               exported_symbols: &[(ExportedSymbol<'_>, SymbolExportLevel)])
                                -> EncodedExportedSymbols {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
@@ -1633,7 +1663,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     fn visit_variant(&mut self,
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     id: ast::NodeId) {
+                     id: hir::HirId) {
         intravisit::walk_variant(self, v, g, id);
 
         if let Some(ref discr) = v.node.disr_expr {
@@ -1676,6 +1706,11 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                     let has_default = Untracked(default.is_some());
                     let encode_info = IsolatedEncoder::encode_info_for_ty_param;
                     self.record(def_id, encode_info, (def_id, has_default));
+                }
+                hir::GenericParamKind::Const { .. } => {
+                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let encode_info = IsolatedEncoder::encode_info_for_const_param;
+                    self.record(def_id, encode_info, def_id);
                 }
             }
         }

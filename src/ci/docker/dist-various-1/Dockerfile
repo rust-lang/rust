@@ -21,11 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   patch \
   libssl-dev \
   pkg-config \
-  gcc-arm-none-eabi \
   libnewlib-arm-none-eabi \
-  qemu-system-arm
+  qemu-system-arm \
+# software-properties-common for the add-apt-repository command
+  software-properties-common
 
 WORKDIR /build
+
+# Use the team-gcc-arm-embedded PPA for a newer version of Arm GCC
+RUN add-apt-repository ppa:team-gcc-arm-embedded/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gcc-arm-embedded
 
 COPY dist-various-1/build-rumprun.sh /build
 RUN ./build-rumprun.sh
@@ -103,19 +109,26 @@ ENV TARGETS=$TARGETS,thumbv6m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
+ENV TARGETS=$TARGETS,thumbv8m.main-none-eabi
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
+ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
+ENV TARGETS=$TARGETS,riscv64gc-unknown-none-elf
 ENV TARGETS=$TARGETS,armebv7r-none-eabi
 ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
+ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
-    CC_armebv7r_none_eabi=arm-none-eabi-gcc
-
+    CC_armebv7r_none_eabi=arm-none-eabi-gcc \
+    CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
+    AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
+    CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
+    
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \

@@ -1,20 +1,20 @@
+use crate::llvm::{self, SetUnnamedAddr, True};
+use crate::debuginfo;
+use crate::monomorphize::MonoItem;
+use crate::common::CodegenCx;
+use crate::monomorphize::Instance;
+use crate::base;
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
 use libc::c_uint;
-use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
 use rustc::hir::Node;
-use debuginfo;
-use monomorphize::MonoItem;
-use common::CodegenCx;
-use monomorphize::Instance;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
 use syntax_pos::symbol::LocalInternedString;
-use base;
-use type_::Type;
-use type_of::LayoutLlvmExt;
-use value::Value;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
@@ -71,7 +71,7 @@ pub fn codegen_static_initializer(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstValue::ByRef(_, alloc, n) if n.bytes() == 0 => alloc,
+        ConstValue::ByRef(ptr, alloc) if ptr.offset.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
@@ -275,12 +275,12 @@ impl CodegenCx<'ll, 'tcx> {
                 self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when cross-language LTO is enabled.
-                !self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
+                // dynamic linking when linker plugin based LTO is enabled.
+                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
-            debug_assert!(!(self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+            debug_assert!(!(self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
                             self.tcx.sess.target.target.options.is_like_msvc &&
                             self.tcx.sess.opts.cg.prefer_dynamic));
 

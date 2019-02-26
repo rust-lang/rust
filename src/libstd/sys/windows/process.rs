@@ -252,9 +252,9 @@ impl Stdio {
             // should still be unavailable so propagate the
             // INVALID_HANDLE_VALUE.
             Stdio::Inherit => {
-                match stdio::get(stdio_id) {
+                match stdio::get_handle(stdio_id) {
                     Ok(io) => {
-                        let io = Handle::new(io.handle());
+                        let io = Handle::new(io);
                         let ret = io.duplicate(0, true,
                                                c::DUPLICATE_SAME_ACCESS);
                         io.into_raw();
@@ -393,7 +393,16 @@ impl From<c::DWORD> for ExitStatus {
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "exit code: {}", self.0)
+        // Windows exit codes with the high bit set typically mean some form of
+        // unhandled exception or warning. In this scenario printing the exit
+        // code in decimal doesn't always make sense because it's a very large
+        // and somewhat gibberish number. The hex code is a bit more
+        // recognizable and easier to search for, so print that.
+        if self.0 & 0x80000000 != 0 {
+            write!(f, "exit code: {:#x}", self.0)
+        } else {
+            write!(f, "exit code: {}", self.0)
+        }
     }
 }
 

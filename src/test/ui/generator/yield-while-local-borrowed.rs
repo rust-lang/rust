@@ -4,8 +4,9 @@
 
 use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
+use std::pin::Pin;
 
-unsafe fn borrow_local_inline() {
+fn borrow_local_inline() {
     // Not OK to yield with a borrow of a temporary.
     //
     // (This error occurs because the region shows up in the type of
@@ -17,10 +18,10 @@ unsafe fn borrow_local_inline() {
         yield();
         println!("{}", a);
     };
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
-unsafe fn borrow_local_inline_done() {
+fn borrow_local_inline_done() {
     // No error here -- `a` is not in scope at the point of `yield`.
     let mut b = move || {
         {
@@ -28,10 +29,10 @@ unsafe fn borrow_local_inline_done() {
         }
         yield();
     };
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
-unsafe fn borrow_local() {
+fn borrow_local() {
     // Not OK to yield with a borrow of a temporary.
     //
     // (This error occurs because the region shows up in the type of
@@ -46,7 +47,7 @@ unsafe fn borrow_local() {
             println!("{}", b);
         }
     };
-    b.resume();
+    Pin::new(&mut b).resume();
 }
 
 fn main() { }

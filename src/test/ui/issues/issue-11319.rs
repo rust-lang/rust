@@ -1,12 +1,14 @@
 fn main() {
     match Some(10) {
-    //~^ ERROR match arms have incompatible types
-    //~| expected type `bool`
-    //~| found type `()`
-    //~| expected bool, found ()
+    //~^ NOTE `match` arms have incompatible types
         Some(5) => false,
+        //~^ NOTE this is found to be of type `bool`
         Some(2) => true,
+        //~^ NOTE this is found to be of type `bool`
         None    => (),
+        //~^ ERROR match arms have incompatible types
+        //~| NOTE expected bool, found ()
+        //~| NOTE expected type `bool`
         _       => true
     }
 }

@@ -2,9 +2,6 @@
 // pretty-expanded FIXME #23616
 
 #![allow(warnings)]
-#![feature(iter_empty)]
-#![feature(iter_once)]
-#![feature(str_escape)]
 
 use std::iter::{empty, once, repeat};
 

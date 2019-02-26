@@ -1,6 +1,6 @@
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub};
+use ops::{self, Add, Sub, Try};
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -20,19 +20,19 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// without overflow.
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
-    /// Replaces this step with `1`, returning itself
+    /// Replaces this step with `1`, returning itself.
     fn replace_one(&mut self) -> Self;
 
-    /// Replaces this step with `0`, returning itself
+    /// Replaces this step with `0`, returning itself.
     fn replace_zero(&mut self) -> Self;
 
-    /// Adds one to this step, returning the result
+    /// Adds one to this step, returning the result.
     fn add_one(&self) -> Self;
 
-    /// Subtracts one to this step, returning the result
+    /// Subtracts one to this step, returning the result.
     fn sub_one(&self) -> Self;
 
-    /// Add an usize, returning None on overflow
+    /// Adds a `usize`, returning `None` on overflow.
     fn add_usize(&self, n: usize) -> Option<Self>;
 }
 
@@ -368,11 +368,11 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
                 Some(Less) => {
                     self.is_empty = Some(false);
                     self.start = plus_n.add_one();
-                    return Some(plus_n)
+                    return Some(plus_n);
                 }
                 Some(Equal) => {
                     self.is_empty = Some(true);
-                    return Some(plus_n)
+                    return Some(plus_n);
                 }
                 _ => {}
             }
@@ -380,6 +380,34 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
         self.is_empty = Some(true);
         None
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        self.compute_is_empty();
+
+        if self.is_empty() {
+            return Try::from_ok(init);
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            let n = self.start.add_one();
+            let n = mem::replace(&mut self.start, n);
+            accum = f(accum, n)?;
+        }
+
+        self.is_empty = Some(true);
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        Try::from_ok(accum)
     }
 
     #[inline]
@@ -414,6 +442,33 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         } else {
             self.end.clone()
         })
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        self.compute_is_empty();
+
+        if self.is_empty() {
+            return Try::from_ok(init);
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            let n = self.end.sub_one();
+            let n = mem::replace(&mut self.end, n);
+            accum = f(accum, n)?;
+        }
+
+        self.is_empty = Some(true);
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        Try::from_ok(accum)
     }
 }
 

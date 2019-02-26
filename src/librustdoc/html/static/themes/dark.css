@@ -68,24 +68,8 @@ pre {
 	border-bottom-color: #DDD;
 }
 
-.docblock table {
+.docblock table, .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.docblock table td {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
-}
-
-.docblock table th {
-	border-top-color: #ddd;
-	border-bottom-color: #ddd;
-}
-
-:target { background: #494a3d; }
-
-:target > .in-band {
-	background: #494a3d;
 }
 
 .content .method .where,
@@ -100,6 +84,7 @@ pre {
 }
 .content .highlighted a, .content .highlighted span { color: #eee !important; }
 .content .highlighted.trait { background-color: #013191; }
+.content .highlighted.traitalias { background-color: #013191; }
 .content .highlighted.mod,
 .content .highlighted.externcrate { background-color: #afc6e4; }
 .content .highlighted.mod { background-color: #803a1b; }
@@ -134,6 +119,7 @@ pre {
 .content span.externcrate,
 .content span.mod, .content a.mod, .block a.current.mod { color: #bda000; }
 .content span.trait, .content a.trait, .block a.current.trait { color: #b78cf2; }
+.content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #b397da; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
@@ -194,14 +180,14 @@ a.test-arrow {
 	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
 }
 
-.stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #404040; }
-.stab.internal { background: #FFB9B3; border-color: #B71C1C; color: #404040; }
-.stab.deprecated { background: #F3DFFF; border-color: #7F0087;  color: #404040; }
-.stab.portability { background: #C4ECFF; border-color: #7BA5DB;  color: #404040; }
-
 .module-item .stab {
 	color: #ddd;
 }
+
+.stab.unstable {background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
+.stab.internal { background: #FFB9B3; border-color: #B71C1C; color: #2f2f2f; }
+.stab.deprecated { background: #F3DFFF; border-color: #7F0087; color: #2f2f2f; }
+.stab.portability { background: #C4ECFF; border-color: #7BA5DB; color: #2f2f2f; }
 
 #help > div {
 	background: #4d4d4d;
@@ -252,7 +238,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target > code {
+:target > code, :target > .in-band {
 	background-color: #494a3d;
 }
 
@@ -414,10 +400,6 @@ kbd {
 }
 .search-results td span.grey {
 	color: #ccc;
-}
-
-.impl-items code {
-	background-color: rgba(0, 0, 0, 0);
 }
 
 #sidebar-toggle {

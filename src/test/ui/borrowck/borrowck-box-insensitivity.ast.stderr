@@ -61,7 +61,7 @@ error[E0502]: cannot borrow `a` (via `a.y`) as immutable because `a` is also bor
 LL |     let _x = &mut a.x;
    |                   --- mutable borrow occurs here (via `a.x`)
 LL |     let _y = &a.y; //[ast]~ ERROR cannot borrow
-   |               ^^^ immutable borrow occurs here (via `a.y`)
+   |               ^^^ immutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
 ...
 LL | }
    | - mutable borrow ends here
@@ -72,7 +72,7 @@ error[E0502]: cannot borrow `a` (via `a.y`) as mutable because `a` is also borro
 LL |     let _x = &a.x;
    |               --- immutable borrow occurs here (via `a.x`)
 LL |     let _y = &mut a.y; //[ast]~ ERROR cannot borrow
-   |                   ^^^ mutable borrow occurs here (via `a.y`)
+   |                   ^^^ mutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
 ...
 LL | }
    | - immutable borrow ends here

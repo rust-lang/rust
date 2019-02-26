@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "term"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "term"

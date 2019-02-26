@@ -1,10 +1,10 @@
 use rustc::mir;
 
-use traits::BuilderMethods;
+use crate::traits::BuilderMethods;
 use super::FunctionCx;
 use super::LocalRef;
 use super::OperandValue;
-use traits::*;
+use crate::traits::*;
 
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(

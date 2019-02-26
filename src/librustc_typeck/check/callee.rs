@@ -15,9 +15,9 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
-/// Check that it is legal to call methods of the trait corresponding
+/// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
-/// method that is called)
+/// method that is called).
 pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
@@ -29,7 +29,7 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
-    /// e.g., enum variant constructors
+    /// E.g., enum variant constructors.
     Overloaded(MethodCallee<'tcx>),
 }
 
@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     );
 
                     if let Some(ref path) = unit_variant {
-                        err.span_suggestion_with_applicability(
+                        err.span_suggestion(
                             call_expr.span,
                             &format!(
                                 "`{}` is a unit variant, you need to write it \
@@ -294,7 +294,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 self.tcx.sess.source_map().is_multiline(call_expr.span);
                             if call_is_multiline {
                                 let span = self.tcx.sess.source_map().next_point(callee.span);
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     span,
                                     "try adding a semicolon",
                                     ";".to_owned(),

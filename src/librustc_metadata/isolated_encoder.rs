@@ -1,5 +1,5 @@
-use encoder::EncodeContext;
-use schema::{Lazy, LazySeq};
+use crate::encoder::EncodeContext;
+use crate::schema::{Lazy, LazySeq};
 use rustc::ty::TyCtxt;
 use rustc_serialize::Encodable;
 

@@ -1,4 +1,3 @@
-use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -9,13 +8,12 @@ use testing;
 use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
 
-use externalfiles::{LoadStringError, load_string};
-
-use config::{Options, RenderOptions};
-use html::escape::Escape;
-use html::markdown;
-use html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
-use test::{TestOptions, Collector};
+use crate::externalfiles::{LoadStringError, load_string};
+use crate::config::{Options, RenderOptions};
+use crate::html::escape::Escape;
+use crate::html::markdown;
+use crate::html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
+use crate::test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
@@ -127,7 +125,7 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
     }
 }
 
-/// Run any tests/code examples in the markdown file `input`.
+/// Runs any tests/code examples in the markdown file `input`.
 pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
     let input_str = match load_string(&options.input, diag) {
         Ok(s) => s,
@@ -142,7 +140,7 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
                                        options.libs, options.codegen_options, options.externs,
                                        true, opts, options.maybe_sysroot, None,
                                        Some(options.input),
-                                       options.linker, options.edition);
+                                       options.linker, options.edition, options.persist_doctests);
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let res = find_testable_code(&input_str, &mut collector, codes);

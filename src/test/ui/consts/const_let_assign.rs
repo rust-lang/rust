@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(const_let)]
-
 struct S(i32);
 
 const A: () = {

@@ -37,7 +37,7 @@ fn baz(x: &S) -> &S {
 fn supply_F() {
     want_F(foo);
 
-    want_F(bar);
+    want_F(bar); //~ ERROR mismatched types
 
     want_F(baz);
 }
@@ -45,7 +45,7 @@ fn supply_F() {
 fn supply_G() {
     want_G(foo);
     want_G(bar);
-    want_G(baz); //~ ERROR
+    want_G(baz); //~ ERROR mismatched types
 }
 
 pub fn main() {

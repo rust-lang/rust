@@ -2,7 +2,6 @@
 
 // Enabling `ireffutable_let_patterns` isn't necessary for what this tests, but it makes coming up
 // with examples easier.
-#![feature(irrefutable_let_patterns)]
 
 #[allow(irrefutable_let_patterns)]
 fn main() {

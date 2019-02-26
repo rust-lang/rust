@@ -4,25 +4,25 @@
 // this test incompatible with the "warnings only" nature of
 // issue-43106-gating-of-builtin-attrs.rs
 
-#![stable                     = "1300"]
+#![stable()]
 //~^ ERROR stability attributes may not be used outside of the standard library
 
-#[stable = "1300"]
+#[stable()]
 //~^ ERROR stability attributes may not be used outside of the standard library
 mod stable {
-    mod inner { #![stable="1300"] }
+    mod inner { #![stable()] }
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[stable = "1300"] fn f() { }
+    #[stable()] fn f() { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[stable = "1300"] struct S;
+    #[stable()] struct S;
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[stable = "1300"] type T = S;
+    #[stable()] type T = S;
     //~^ ERROR stability attributes may not be used outside of the standard library
 
-    #[stable = "1300"] impl S { }
+    #[stable()] impl S { }
     //~^ ERROR stability attributes may not be used outside of the standard library
 }
 

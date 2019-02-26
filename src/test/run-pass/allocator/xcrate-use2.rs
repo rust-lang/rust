@@ -12,9 +12,9 @@ extern crate custom_as_global;
 extern crate helper;
 
 use std::alloc::{alloc, dealloc, GlobalAlloc, System, Layout};
-use std::sync::atomic::{Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static GLOBAL: custom::A = custom::A(ATOMIC_USIZE_INIT);
+static GLOBAL: custom::A = custom::A(AtomicUsize::new(0));
 
 fn main() {
     unsafe {
@@ -45,4 +45,3 @@ fn main() {
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), 2);
     }
 }
-

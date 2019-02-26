@@ -248,11 +248,11 @@ impl<K, V, M> FullBucket<K, V, M> {
     pub fn into_table(self) -> M {
         self.table
     }
-    /// Get the raw index.
+    /// Gets the raw index.
     pub fn index(&self) -> usize {
         self.raw.idx
     }
-    /// Get the raw bucket.
+    /// Gets the raw bucket.
     pub fn raw(&self) -> RawBucket<K, V> {
         self.raw
     }
@@ -270,7 +270,7 @@ impl<K, V, M> EmptyBucket<K, V, M> {
 }
 
 impl<K, V, M> Bucket<K, V, M> {
-    /// Get the raw index.
+    /// Gets the raw index.
     pub fn index(&self) -> usize {
         self.raw.idx
     }
@@ -296,7 +296,7 @@ pub trait Put<K, V> {
 }
 
 
-impl<'t, K, V> Put<K, V> for &'t mut RawTable<K, V> {
+impl<K, V> Put<K, V> for &mut RawTable<K, V> {
     unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
         *self
     }
@@ -503,7 +503,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> FullBucket<K, V, M> {
         }
     }
 
-    /// Get the distance between this bucket and the 'ideal' location
+    /// Gets the distance between this bucket and the 'ideal' location
     /// as determined by the key's hash stored in it.
     ///
     /// In the cited blog posts above, this is called the "distance to
@@ -839,12 +839,12 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    /// Set the table tag
+    /// Sets the table tag.
     pub fn set_tag(&mut self, value: bool) {
         self.hashes.set_tag(value)
     }
 
-    /// Get the table tag
+    /// Gets the table tag.
     pub fn tag(&self) -> bool {
         self.hashes.tag()
     }
@@ -865,8 +865,8 @@ struct RawBuckets<'a, K, V> {
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
-    fn clone(&self) -> RawBuckets<'a, K, V> {
+impl<K, V> Clone for RawBuckets<'_, K, V> {
+    fn clone(&self) -> Self {
         RawBuckets {
             raw: self.raw,
             elems_left: self.elems_left,
@@ -901,7 +901,7 @@ impl<'a, K, V> Iterator for RawBuckets<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for RawBuckets<'a, K, V> {
+impl<K, V> ExactSizeIterator for RawBuckets<'_, K, V> {
     fn len(&self) -> usize {
         self.elems_left
     }
@@ -912,12 +912,12 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
 }
 
-unsafe impl<'a, K: Sync, V: Sync> Sync for Iter<'a, K, V> {}
-unsafe impl<'a, K: Sync, V: Sync> Send for Iter<'a, K, V> {}
+unsafe impl<K: Sync, V: Sync> Sync for Iter<'_, K, V> {}
+unsafe impl<K: Sync, V: Sync> Send for Iter<'_, K, V> {}
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-impl<'a, K, V> Clone for Iter<'a, K, V> {
-    fn clone(&self) -> Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
         Iter {
             iter: self.iter.clone(),
         }
@@ -931,10 +931,10 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
     _marker: marker::PhantomData<&'a mut V>,
 }
 
-unsafe impl<'a, K: Sync, V: Sync> Sync for IterMut<'a, K, V> {}
+unsafe impl<K: Sync, V: Sync> Sync for IterMut<'_, K, V> {}
 // Both K: Sync and K: Send are correct for IterMut's Send impl,
 // but Send is the more useful bound
-unsafe impl<'a, K: Send, V: Send> Send for IterMut<'a, K, V> {}
+unsafe impl<K: Send, V: Send> Send for IterMut<'_, K, V> {}
 
 impl<'a, K: 'a, V: 'a> IterMut<'a, K, V> {
     pub fn iter(&self) -> Iter<K, V> {
@@ -968,8 +968,8 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     marker: marker::PhantomData<&'a RawTable<K, V>>,
 }
 
-unsafe impl<'a, K: Sync, V: Sync> Sync for Drain<'a, K, V> {}
-unsafe impl<'a, K: Send, V: Send> Send for Drain<'a, K, V> {}
+unsafe impl<K: Sync, V: Sync> Sync for Drain<'_, K, V> {}
+unsafe impl<K: Send, V: Send> Send for Drain<'_, K, V> {}
 
 impl<'a, K, V> Drain<'a, K, V> {
     pub fn iter(&self) -> Iter<K, V> {
@@ -994,7 +994,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1015,7 +1015,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1064,13 +1064,13 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     }
 }
 
-impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+impl<K, V> ExactSizeIterator for Drain<'_, K, V> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
+impl<K, V> Drop for Drain<'_, K, V> {
     fn drop(&mut self) {
         self.for_each(drop);
     }

@@ -2,9 +2,9 @@ use std::cmp;
 use std::string::String;
 use std::usize;
 
-use clean::{self, DocFragment, Item};
-use fold::{self, DocFolder};
-use passes::Pass;
+use crate::clean::{self, DocFragment, Item};
+use crate::fold::{self, DocFolder};
+use crate::passes::Pass;
 
 pub const UNINDENT_COMMENTS: Pass =
     Pass::late("unindent-comments", unindent_comments,

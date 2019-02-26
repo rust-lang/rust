@@ -128,6 +128,14 @@ impl Instant {
         Instant { t: now(syscall::CLOCK_MONOTONIC) }
     }
 
+    pub const fn zero() -> Instant {
+        Instant { t: Timespec { t: syscall::TimeSpec { tv_sec: 0, tv_nsec: 0 } } }
+    }
+
+    pub fn actually_monotonic() -> bool {
+        false
+    }
+
     pub fn sub_instant(&self, other: &Instant) -> Duration {
         self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
             panic!("specified instant was later than self")

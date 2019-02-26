@@ -14,6 +14,14 @@ impl Instant {
         Instant(TimeSysCall::perform(TimeClock::Monotonic))
     }
 
+    pub const fn zero() -> Instant {
+        Instant(Duration::from_secs(0))
+    }
+
+    pub fn actually_monotonic() -> bool {
+        false
+    }
+
     pub fn sub_instant(&self, other: &Instant) -> Duration {
         self.0 - other.0
     }

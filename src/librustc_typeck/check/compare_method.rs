@@ -17,10 +17,10 @@ use super::{Inherited, FnCtxt, potentially_plural_count};
 ///
 /// # Parameters
 ///
-/// - impl_m: type of the method we are checking
-/// - impl_m_span: span to use for reporting errors
-/// - trait_m: the method in the trait
-/// - impl_trait_ref: the TraitRef corresponding to the trait implementation
+/// - `impl_m`: type of the method we are checking
+/// - `impl_m_span`: span to use for reporting errors
+/// - `trait_m`: the method in the trait
+/// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 
 pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
@@ -84,10 +84,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_m_node_id = tcx.hir().as_local_node_id(impl_m.def_id).unwrap();
+    let impl_m_hir_id = tcx.hir().node_to_hir_id(impl_m_node_id);
 
     let cause = ObligationCause {
         span: impl_m_span,
-        body_id: impl_m_node_id,
+        body_id: impl_m_hir_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
@@ -205,7 +206,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
+    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
     let param_env = ty::ParamEnv::new(
         tcx.intern_predicates(&hybrid_preds.predicates),
         Reveal::UserFacing,
@@ -262,7 +263,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
@@ -275,7 +276,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_node_id,
+                                              impl_m_hir_id,
                                               param_env,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
@@ -316,7 +317,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if let Some(trait_err_span) = trait_err_span {
                     if let Ok(trait_err_str) = tcx.sess.source_map()
                                                        .span_to_snippet(trait_err_span) {
-                        diag.span_suggestion_with_applicability(
+                        diag.span_suggestion(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
                             trait_err_str,
@@ -347,8 +348,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
-        fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
+        fcx.regionck_item(impl_m_hir_id, impl_m_span, &[]);
 
         Ok(())
     })
@@ -736,8 +737,8 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in impl_m_type_params.zip(trait_m_type_params)
     {
         if impl_synthetic != trait_synthetic {
-            let impl_node_id = tcx.hir().as_local_node_id(impl_def_id).unwrap();
-            let impl_span = tcx.hir().span(impl_node_id);
+            let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+            let impl_span = tcx.hir().span_by_hir_id(impl_hir_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
@@ -784,7 +785,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(trait_m.generics.span)
                             .ok()?;
 
-                        err.multipart_suggestion_with_applicability(
+                        err.multipart_suggestion(
                             "try changing the `impl Trait` argument to a generic parameter",
                             vec![
                                 // replace `impl Trait` with `T`
@@ -839,8 +840,9 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let bounds = impl_m.generics.params.iter().find_map(|param| {
                             match param.kind {
                                 GenericParamKind::Lifetime { .. } => None,
-                                GenericParamKind::Type { .. } => {
-                                    if param.id == impl_node_id {
+                                GenericParamKind::Type { .. } |
+                                GenericParamKind::Const { .. } => {
+                                    if param.hir_id == impl_hir_id {
                                         Some(&param.bounds)
                                     } else {
                                         None
@@ -855,7 +857,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .span_to_snippet(bounds)
                             .ok()?;
 
-                        err.multipart_suggestion_with_applicability(
+                        err.multipart_suggestion(
                             "try removing the generic parameter and using `impl Trait` instead",
                             vec![
                                 // delete generic parameters
@@ -903,22 +905,23 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Create a parameter environment that represents the implementation's
         // method.
         let impl_c_node_id = tcx.hir().as_local_node_id(impl_c.def_id).unwrap();
+        let impl_c_hir_id = tcx.hir().node_to_hir_id(impl_c_node_id);
 
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
-        let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
+        let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                        impl_c_node_id,
+                                                        impl_c_hir_id,
                                                         param_env,
                                                         &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
         let trait_ty = inh.normalize_associated_types_in(impl_c_span,
-                                                         impl_c_node_id,
+                                                         impl_c_hir_id,
                                                          param_env,
                                                          &trait_ty);
 
@@ -973,7 +976,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             return;
         }
 
-        let fcx = FnCtxt::new(&inh, param_env, impl_c_node_id);
-        fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
+        let fcx = FnCtxt::new(&inh, param_env, impl_c_hir_id);
+        fcx.regionck_item(impl_c_hir_id, impl_c_span, &[]);
     });
 }

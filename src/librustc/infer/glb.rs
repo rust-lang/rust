@@ -3,9 +3,9 @@ use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
-use traits::ObligationCause;
-use ty::{self, Ty, TyCtxt};
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use crate::traits::ObligationCause;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {

@@ -4,9 +4,9 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::session::Session;
 use errors::{Applicability, DiagnosticBuilder};
-use lint::{LintPass, LateLintPass, LintArray};
-use session::Session;
 use syntax::ast;
 use syntax::source_map::Span;
 
@@ -126,6 +126,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub EXPORTED_PRIVATE_DEPENDENCIES,
+    Warn,
+    "public interface leaks type from a private dependency"
+}
+
+declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates"
@@ -205,12 +211,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub BAD_REPR,
-    Warn,
-    "detects incorrect use of `repr` attribute"
-}
-
-declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
@@ -286,7 +286,7 @@ declare_lint! {
 
 declare_lint! {
     pub IRREFUTABLE_LET_PATTERNS,
-    Deny,
+    Warn,
     "detects irrefutable patterns in if-let and while-let statements"
 }
 
@@ -352,12 +352,24 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub DUPLICATE_MATCHER_BINDING_NAME,
+    Warn,
+    "duplicate macro matcher binding name"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
         pub QUESTION_MARK_MACRO_SEP,
         Allow,
         "detects the use of `?` as a macro separator"
+    }
+
+    declare_lint! {
+        pub ILL_FORMED_ATTRIBUTE_INPUT,
+        Warn,
+        "ill-formed attribute inputs that were previously accepted and used in practice"
     }
 }
 
@@ -368,12 +380,22 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+declare_lint! {
+    pub AMBIGUOUS_ASSOCIATED_ITEMS,
+    Warn,
+    "ambiguous associated items"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
 pub struct HardwiredLints;
 
 impl LintPass for HardwiredLints {
+    fn name(&self) -> &'static str {
+        "HardwiredLints"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(
             ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
@@ -395,6 +417,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            EXPORTED_PRIVATE_DEPENDENCIES,
             PUB_USE_OF_PRIVATE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
@@ -431,7 +454,9 @@ impl LintPass for HardwiredLints {
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
+            parser::ILL_FORMED_ATTRIBUTE_INPUT,
             DEPRECATED_IN_FUTURE,
+            AMBIGUOUS_ASSOCIATED_ITEMS,
         )
     }
 }
@@ -448,6 +473,7 @@ pub enum BuiltinLintDiagnostics {
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
+    UnusedImports(String, Vec<(Span, String)>),
 }
 
 impl BuiltinLintDiagnostics {
@@ -461,7 +487,7 @@ impl BuiltinLintDiagnostics {
                     Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
                     Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders)
                 };
-                db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
+                db.span_suggestion(span, "use `dyn`", sugg, app);
             }
             BuiltinLintDiagnostics::AbsPathWithModule(span) => {
                 let (sugg, app) = match sess.source_map().span_to_snippet(span) {
@@ -478,7 +504,7 @@ impl BuiltinLintDiagnostics {
                     }
                     Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders)
                 };
-                db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
+                db.span_suggestion(span, "use `crate`", sugg, app);
             }
             BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
                 db.span_label(later_span, format!("`{}` already exported", ident));
@@ -519,7 +545,7 @@ impl BuiltinLintDiagnostics {
                         (insertion_span, anon_lts)
                     }
                 };
-                db.span_suggestion_with_applicability(
+                db.span_suggestion(
                     replace_span,
                     &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
                     suggestion,
@@ -527,12 +553,16 @@ impl BuiltinLintDiagnostics {
                 );
             }
             BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
-                db.span_suggestion_with_applicability(
-                    span,
-                    &note,
-                    sugg,
-                    Applicability::MaybeIncorrect
-                );
+                db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
+            }
+            BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                if !replaces.is_empty() {
+                    db.tool_only_multipart_suggestion(
+                        &message,
+                        replaces,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
     }

@@ -4,8 +4,8 @@ error[E0423]: expected value, found struct `Handle`
 LL |         handle: Handle
    |                 ^^^^^^
    |                 |
-   |                 did you mean `handle`?
    |                 did you mean `Handle { /* fields */ }`?
+   |                 help: a local variable with a similar name exists: `handle`
 
 error: aborting due to previous error
 

@@ -1,15 +1,13 @@
-// compile-pass
-
 #[repr]
-//^ WARN `repr` attribute must have a hint
+//~^ ERROR attribute must be of the form
 struct _A {}
 
 #[repr = "B"]
-//^ WARN `repr` attribute isn't configurable with a literal
+//~^ ERROR attribute must be of the form
 struct _B {}
 
 #[repr = "C"]
-//^ WARN `repr` attribute isn't configurable with a literal
+//~^ ERROR attribute must be of the form
 struct _C {}
 
 #[repr(C)]

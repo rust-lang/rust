@@ -1,6 +1,6 @@
 //! Routines for manipulating the control-flow graph.
 
-use build::CFG;
+use crate::build::CFG;
 use rustc::mir::*;
 
 impl<'tcx> CFG<'tcx> {

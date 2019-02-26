@@ -1,12 +1,19 @@
-error: implementation of `Bar` is not general enough
+error[E0277]: the trait bound `for<'a> &'a _: Bar` is not satisfied
   --> $DIR/where-for-self-2.rs:21:5
    |
-LL |     foo(&X); //~ ERROR implementation of `Bar` is not general enough
-   |     ^^^
+LL |     foo(&X); //~ ERROR trait bound
+   |     ^^^ the trait `for<'a> Bar` is not implemented for `&'a _`
    |
-   = note: Due to a where-clause on `foo`,
-   = note: `&'0 _` must implement `Bar` for any lifetime `'0`
-   = note: but `&'1 u32` only implements `Bar` for the lifetime `'1`
+   = help: the following implementations were found:
+             <&'static u32 as Bar>
+note: required by `foo`
+  --> $DIR/where-for-self-2.rs:16:1
+   |
+LL | / fn foo<T>(x: &T)
+LL | |     where for<'a> &'a T: Bar
+LL | | {}
+   | |__^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 

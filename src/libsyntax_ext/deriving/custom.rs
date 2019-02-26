@@ -1,4 +1,8 @@
+use crate::proc_macro_impl::EXEC_STRATEGY;
+use crate::proc_macro_server;
+
 use errors::FatalError;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::source_map::Span;
@@ -8,8 +12,6 @@ use syntax::parse::token::{self, Token};
 use syntax::tokenstream;
 use syntax::visit::Visitor;
 use syntax_pos::DUMMY_SP;
-
-use proc_macro_impl::EXEC_STRATEGY;
 
 struct MarkAttrs<'a>(&'a [ast::Name]);
 
@@ -25,15 +27,15 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
 }
 
 pub struct ProcMacroDerive {
-    pub client: ::proc_macro::bridge::client::Client<
-        fn(::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    pub client: proc_macro::bridge::client::Client<
+        fn(proc_macro::TokenStream) -> proc_macro::TokenStream,
     >,
     pub attrs: Vec<ast::Name>,
 }
 
 impl MultiItemModifier for ProcMacroDerive {
     fn expand(&self,
-              ecx: &mut ExtCtxt,
+              ecx: &mut ExtCtxt<'_>,
               span: Span,
               _meta_item: &ast::MetaItem,
               item: Annotatable)
@@ -64,10 +66,10 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let token = Token::interpolated(token::NtItem(item));
+        let token = Token::Interpolated(Lrc::new(token::NtItem(item)));
         let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
 
-        let server = ::proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx);
         let stream = match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {

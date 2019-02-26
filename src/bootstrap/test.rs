@@ -30,9 +30,9 @@ const ADB_TEST_DIR: &str = "/data/tmp/work";
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
 pub enum TestKind {
-    /// Run `cargo test`
+    /// Run `cargo test`.
     Test,
-    /// Run `cargo bench`
+    /// Run `cargo bench`.
     Bench,
 }
 
@@ -848,12 +848,6 @@ host_test!(RunPassFullDeps {
     suite: "run-pass-fulldeps"
 });
 
-host_test!(RunFailFullDeps {
-    path: "src/test/run-fail-fulldeps",
-    mode: "run-fail",
-    suite: "run-fail-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
@@ -885,20 +879,6 @@ test!(RunPassValgrindPretty {
     path: "src/test/run-pass-valgrind/pretty",
     mode: "pretty",
     suite: "run-pass-valgrind",
-    default: false,
-    host: true
-});
-test!(RunPassFullDepsPretty {
-    path: "src/test/run-pass-fulldeps/pretty",
-    mode: "pretty",
-    suite: "run-pass-fulldeps",
-    default: false,
-    host: true
-});
-test!(RunFailFullDepsPretty {
-    path: "src/test/run-fail-fulldeps/pretty",
-    mode: "pretty",
-    suite: "run-fail-fulldeps",
     default: false,
     host: true
 });
@@ -1108,9 +1088,7 @@ impl Step for Compiletest {
         };
         let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
             // Test against the lldb that was just built.
-            builder.llvm_out(target)
-                .join("bin")
-                .join("lldb")
+            builder.llvm_out(target).join("bin").join("lldb")
         } else {
             PathBuf::from("lldb")
         };
@@ -1124,6 +1102,26 @@ impl Step for Compiletest {
             let lldb_python_dir = run(Command::new(&lldb_exe).arg("-P")).ok();
             if let Some(ref dir) = lldb_python_dir {
                 cmd.arg("--lldb-python-dir").arg(dir);
+            }
+        }
+
+        if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
+            match &var.to_string_lossy().to_lowercase()[..] {
+                "1" | "yes" | "on" => {
+                    assert!(builder.config.lldb_enabled,
+                        "RUSTBUILD_FORCE_CLANG_BASED_TESTS needs Clang/LLDB to \
+                         be built.");
+                    let clang_exe = builder.llvm_out(target).join("bin").join("clang");
+                    cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
+                }
+                "0" | "no" | "off" => {
+                    // Nothing to do.
+                }
+                other => {
+                    // Let's make sure typos don't get unnoticed
+                    panic!("Unrecognized option '{}' set in \
+                            RUSTBUILD_FORCE_CLANG_BASED_TESTS", other);
+                }
             }
         }
 
@@ -1290,7 +1288,7 @@ impl Step for DocTest {
         run.never()
     }
 
-    /// Run `rustdoc --test` for all documentation in `src/doc`.
+    /// Runs `rustdoc --test` for all documentation in `src/doc`.
     ///
     /// This will run all tests in our markdown documentation (e.g., the book)
     /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
@@ -1385,6 +1383,7 @@ test_book!(
     RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
     RustcBook, "src/doc/rustc", "rustc", default=true;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false;
     TheBook, "src/doc/book", "book", default=false;
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
 );
@@ -1409,7 +1408,7 @@ impl Step for ErrorIndex {
         });
     }
 
-    /// Run the error index generator tool to execute the tests located in the error
+    /// Runs the error index generator tool to execute the tests located in the error
     /// index.
     ///
     /// The `error_index_generator` tool lives in `src/tools` and is used to
@@ -1615,7 +1614,7 @@ impl Step for Crate {
         }
     }
 
-    /// Run all unit tests plus documentation tests for a given crate defined
+    /// Runs all unit tests plus documentation tests for a given crate defined
     /// by a `Cargo.toml` (single manifest)
     ///
     /// This is what runs tests for crates like the standard library, compiler, etc.
@@ -1834,7 +1833,7 @@ fn envify(s: &str) -> String {
 /// the standard library and such to the emulator ahead of time. This step
 /// represents this and is a dependency of all test suites.
 ///
-/// Most of the time this is a noop. For some steps such as shipping data to
+/// Most of the time this is a no-op. For some steps such as shipping data to
 /// QEMU we have to build our own tools so we've got conditional dependencies
 /// on those programs as well. Note that the remote test client is built for
 /// the build target (us) and the server is built for the target.
@@ -1905,7 +1904,7 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Run "distcheck", a 'make check' from a tarball
+    /// Runs "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
         builder.info("Distcheck");
         let dir = builder.out.join("tmp").join("distcheck");
@@ -1966,7 +1965,7 @@ impl Step for Bootstrap {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    /// Test the build system itself
+    /// Tests the build system itself.
     fn run(self, builder: &Builder) {
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")

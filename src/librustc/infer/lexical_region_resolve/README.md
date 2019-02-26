@@ -2,8 +2,12 @@
 
 > WARNING: This README is obsolete and will be removed soon! For
 > more info on how the current borrowck works, see the [rustc guide].
+>
+> As of edition 2018, region inference is done using Non-lexical lifetimes,
+> which is described in the guide and [this RFC].
 
 [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
+[this RFC]: https://github.com/rust-lang/rfcs/blob/master/text/2094-nll.md
 
 ## Terminology
 

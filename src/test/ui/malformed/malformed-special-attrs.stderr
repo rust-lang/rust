@@ -1,0 +1,25 @@
+error: expected `(`, found `<eof>`
+
+error: expected `(`, found `=`
+  --> $DIR/malformed-special-attrs.rs:4:12
+   |
+LL | #[cfg_attr] //~ ERROR expected `(`, found `<eof>`
+   | - expected `(`
+...
+LL | #[cfg_attr = ""] //~ ERROR expected `(`, found `=`
+   |            ^ unexpected token
+
+error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
+  --> $DIR/malformed-special-attrs.rs:7:1
+   |
+LL | #[derive] //~ ERROR attribute must be of the form
+   | ^^^^^^^^^
+
+error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
+  --> $DIR/malformed-special-attrs.rs:10:1
+   |
+LL | #[derive = ""] //~ ERROR attribute must be of the form
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

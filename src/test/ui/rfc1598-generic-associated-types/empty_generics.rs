@@ -3,7 +3,7 @@
 
 trait Foo {
     type Bar<,>;
-    //~^ ERROR expected one of `>`, identifier, or lifetime, found `,`
+    //~^ ERROR expected one of `>`, `const`, identifier, or lifetime, found `,`
 }
 
 fn main() {}

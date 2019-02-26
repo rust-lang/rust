@@ -510,7 +510,7 @@ impl SocketAddrV6 {
         self.inner.sin6_scope_id
     }
 
-    /// Change the scope ID associated with this socket address.
+    /// Changes the scope ID associated with this socket address.
     ///
     /// See the [`scope_id`] method's documentation for more details.
     ///
@@ -671,7 +671,7 @@ impl hash::Hash for SocketAddrV6 {
 /// [`SocketAddr`] values.
 ///
 /// This trait is used for generic address resolution when constructing network
-/// objects.  By default it is implemented for the following types:
+/// objects. By default it is implemented for the following types:
 ///
 ///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///
@@ -861,7 +861,7 @@ fn resolve_socket_addr(lh: LookupHost) -> io::Result<vec::IntoIter<SocketAddr>> 
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> ToSocketAddrs for (&'a str, u16) {
+impl ToSocketAddrs for (&str, u16) {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
         let (host, port) = *self;
@@ -904,7 +904,7 @@ impl<'a> ToSocketAddrs for &'a [SocketAddr] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
+impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
     type Iter = T::Iter;
     fn to_socket_addrs(&self) -> io::Result<T::Iter> {
         (**self).to_socket_addrs()

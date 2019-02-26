@@ -1,9 +1,10 @@
-use ast::{self, Ident};
-use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use source_map::{SourceMap, FilePathMapping};
+use crate::ast::{self, Ident};
+use crate::source_map::{SourceMap, FilePathMapping};
+use crate::parse::{token, ParseSess};
+use crate::symbol::{Symbol, keywords};
+
 use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
-use parse::{token, ParseSess};
-use symbol::{Symbol, keywords};
+use syntax_pos::{BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -11,6 +12,7 @@ use std::char;
 use std::iter;
 use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
+use log::debug;
 
 pub mod comments;
 mod tokentrees;
@@ -29,6 +31,15 @@ impl Default for TokenAndSpan {
             sp: syntax_pos::DUMMY_SP,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct UnmatchedBrace {
+    pub expected_delim: token::DelimToken,
+    pub found_delim: token::DelimToken,
+    pub found_span: Span,
+    pub unclosed_span: Option<Span>,
+    pub candidate_span: Option<Span>,
 }
 
 pub struct StringReader<'a> {
@@ -56,6 +67,7 @@ pub struct StringReader<'a> {
     span_src_raw: Span,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
+    crate unmatched_braces: Vec<UnmatchedBrace>,
     /// The type and spans for all braces
     ///
     /// Used only for error recovery when arriving to EOF with mismatched braces.
@@ -100,7 +112,7 @@ impl<'a> StringReader<'a> {
         self.unwrap_or_abort(res)
     }
 
-    /// Return the next token. EFFECT: advances the string_reader.
+    /// Returns the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
         assert!(self.fatal_errs.is_empty());
         let ret_val = TokenAndSpan {
@@ -111,6 +123,28 @@ impl<'a> StringReader<'a> {
         self.span_src_raw = self.peek_span_src_raw;
 
         Ok(ret_val)
+    }
+
+    /// Immutably extract string if found at current position with given delimiters
+    pub fn peek_delimited(&self, from_ch: char, to_ch: char) -> Option<String> {
+        let mut pos = self.pos;
+        let mut idx = self.src_index(pos);
+        let mut ch = char_at(&self.src, idx);
+        if ch != from_ch {
+            return None;
+        }
+        pos = pos + Pos::from_usize(ch.len_utf8());
+        let start_pos = pos;
+        idx = self.src_index(pos);
+        while idx < self.end_src_index {
+            ch = char_at(&self.src, idx);
+            if ch == to_ch {
+                return Some(self.src[self.src_index(start_pos)..self.src_index(pos)].to_string());
+            }
+            pos = pos + Pos::from_usize(ch.len_utf8());
+            idx = self.src_index(pos);
+        }
+        return None;
     }
 
     fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
@@ -220,6 +254,7 @@ impl<'a> StringReader<'a> {
             span: syntax_pos::DUMMY_SP,
             span_src_raw: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
+            unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
             override_span,
             last_unclosed_found_span: None,
@@ -236,19 +271,6 @@ impl<'a> StringReader<'a> {
         }
 
         sr
-    }
-
-    pub fn new_without_err(sess: &'a ParseSess,
-                           source_file: Lrc<syntax_pos::SourceFile>,
-                           override_span: Option<Span>,
-                           prepend_error_text: &str) -> Result<Self, ()> {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            eprintln!("{}", prepend_error_text);
-            sr.emit_fatal_errors();
-            return Err(());
-        }
-        Ok(sr)
     }
 
     pub fn new_or_buffered_errs(sess: &'a ParseSess,
@@ -299,7 +321,7 @@ impl<'a> StringReader<'a> {
 
     /// Report a lexical error with a given span.
     fn err_span(&self, sp: Span, m: &str) {
-        self.sess.span_diagnostic.span_err(sp, m)
+        self.sess.span_diagnostic.struct_span_err(sp, m).emit();
     }
 
 
@@ -425,7 +447,7 @@ impl<'a> StringReader<'a> {
         self.with_str_from_to(start, self.pos, f)
     }
 
-    /// Create a Name from a given offset to the current offset, each
+    /// Creates a Name from a given offset to the current offset, each
     /// adjusted 1 towards each other (assumes that on either side there is a
     /// single-byte delimiter).
     fn name_from(&self, start: BytePos) -> ast::Name {
@@ -462,7 +484,7 @@ impl<'a> StringReader<'a> {
         }
         return s.into();
 
-        fn translate_crlf_(rdr: &StringReader,
+        fn translate_crlf_(rdr: &StringReader<'_>,
                            start: BytePos,
                            s: &str,
                            mut j: usize,
@@ -670,7 +692,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
-    /// return None.
+    /// return `None`.
     fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
         match self.ch.unwrap_or('\0') {
             // # to handle shebang at start of file -- this is the entry point
@@ -920,7 +942,7 @@ impl<'a> StringReader<'a> {
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
     ///
-    /// Returns true if there was a valid char/byte, false otherwise.
+    /// Returns `true` if there was a valid char/byte.
     fn scan_char_or_byte(&mut self,
                          start: BytePos,
                          first_source_char: char,
@@ -962,7 +984,7 @@ impl<'a> StringReader<'a> {
                                     }
                                     if i != 0 {
                                         suggestion.push('}');
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             self.mk_sp(start, self.pos),
                                             "format of unicode escape sequences uses braces",
                                             suggestion,
@@ -1152,7 +1174,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Check that a base is valid for a floating literal, emitting a nice
+    /// Checks that a base is valid for a floating literal, emitting a nice
     /// error if it isn't.
     fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: usize) {
         match base {
@@ -1185,7 +1207,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Return the next token from the string, advances the input past that
+    /// Returns the next token from the string, advances the input past that
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> Result<token::Token, ()> {
         let c = self.ch;
@@ -1408,9 +1430,10 @@ impl<'a> StringReader<'a> {
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        self.fatal_span_verbose(start_with_quote, self.next_pos,
-                                String::from("character literal may only contain one codepoint"))
-                            .raise();
+                        self.err_span_(start_with_quote, self.next_pos,
+                                "character literal may only contain one codepoint");
+                        self.bump();
+                        return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
 
                     }
 
@@ -1439,13 +1462,13 @@ impl<'a> StringReader<'a> {
                             self.sess.span_diagnostic
                                 .struct_span_err(span,
                                                  "character literal may only contain one codepoint")
-                                .span_suggestion_with_applicability(
+                                .span_suggestion(
                                     span,
                                     "if you meant to write a `str` literal, use double quotes",
                                     format!("\"{}\"", &self.src[start..end]),
                                     Applicability::MachineApplicable
                                 ).emit();
-                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                            return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
                         }
                         if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
                             // Only attempt to infer single line string literals. If we encounter
@@ -1878,19 +1901,19 @@ fn char_at(s: &str, byte: usize) -> char {
 mod tests {
     use super::*;
 
-    use ast::{Ident, CrateConfig};
-    use symbol::Symbol;
-    use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use source_map::SourceMap;
-    use errors;
-    use feature_gate::UnstableFeatures;
-    use parse::token;
+    use crate::ast::{Ident, CrateConfig};
+    use crate::symbol::Symbol;
+    use crate::source_map::SourceMap;
+    use crate::feature_gate::UnstableFeatures;
+    use crate::parse::token;
+    use crate::diagnostics::plugin::ErrorMap;
+    use crate::with_globals;
     use std::io;
     use std::path::PathBuf;
-    use diagnostics::plugin::ErrorMap;
+    use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use rustc_data_structures::fx::FxHashSet;
     use rustc_data_structures::sync::Lock;
-    use with_globals;
+
     fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(sm.clone()),
@@ -1955,7 +1978,7 @@ mod tests {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader, expected: Vec<token::Token>) {
+    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<token::Token>) {
         for expected_tok in &expected {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }

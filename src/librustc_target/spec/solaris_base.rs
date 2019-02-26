@@ -1,4 +1,4 @@
-use spec::TargetOptions;
+use crate::spec::TargetOptions;
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {

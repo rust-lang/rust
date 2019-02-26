@@ -1,35 +1,27 @@
-//! This module defines types which are thread safe if cfg!(parallel_queries) is true.
+//! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
 //!
 //! `Lrc` is an alias of either Rc or Arc.
 //!
 //! `Lock` is a mutex.
-//! It internally uses `parking_lot::Mutex` if cfg!(parallel_queries) is true,
+//! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
 //! `RefCell` otherwise.
 //!
 //! `RwLock` is a read-write lock.
-//! It internally uses `parking_lot::RwLock` if cfg!(parallel_queries) is true,
+//! It internally uses `parking_lot::RwLock` if cfg!(parallel_compiler) is true,
 //! `RefCell` otherwise.
 //!
-//! `LockCell` is a thread safe version of `Cell`, with `set` and `get` operations.
-//! It can never deadlock. It uses `Cell` when
-//! cfg!(parallel_queries) is false, otherwise it is a `Lock`.
+//! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
 //!
-//! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
-//!
-//! `MTRef` is a immutable reference if cfg!(parallel_queries), and an mutable reference otherwise.
+//! `MTRef` is a immutable reference if cfg!(parallel_compiler), and an mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
-//! depending on the value of cfg!(parallel_queries).
+//! depending on the value of cfg!(parallel_compiler).
 
 use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
-use std::cmp::Ordering;
 use std::marker::PhantomData;
-use std::fmt::Debug;
-use std::fmt::Formatter;
-use std::fmt;
 use std::ops::{Deref, DerefMut};
-use owning_ref::{Erased, OwningRef};
+use crate::owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
     where A: FnOnce() -> RA,
@@ -54,8 +46,11 @@ pub fn serial_scope<F, R>(f: F) -> R
     f(&SerialScope)
 }
 
+pub use std::sync::atomic::Ordering::SeqCst;
+pub use std::sync::atomic::Ordering;
+
 cfg_if! {
-    if #[cfg(not(parallel_queries))] {
+    if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
         pub auto trait Sync {}
 
@@ -69,8 +64,75 @@ cfg_if! {
             }
         }
 
+        use std::ops::Add;
+
+        #[derive(Debug)]
+        pub struct Atomic<T: Copy>(Cell<T>);
+
+        impl<T: Copy> Atomic<T> {
+            #[inline]
+            pub fn new(v: T) -> Self {
+                Atomic(Cell::new(v))
+            }
+        }
+
+        impl<T: Copy + PartialEq> Atomic<T> {
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            #[inline]
+            pub fn load(&self, _: Ordering) -> T {
+                self.0.get()
+            }
+
+            #[inline]
+            pub fn store(&self, val: T, _: Ordering) {
+                self.0.set(val)
+            }
+
+            pub fn swap(&self, val: T, _: Ordering) -> T {
+                self.0.replace(val)
+            }
+
+            pub fn compare_exchange(&self,
+                                    current: T,
+                                    new: T,
+                                    _: Ordering,
+                                    _: Ordering)
+                                    -> Result<T, T> {
+                let read = self.0.get();
+                if read == current {
+                    self.0.set(new);
+                    Ok(read)
+                } else {
+                    Err(read)
+                }
+            }
+        }
+
+        impl<T: Add<Output=T> + Copy> Atomic<T> {
+            pub fn fetch_add(&self, val: T, _: Ordering) -> T {
+                let old = self.0.get();
+                self.0.set(old + val);
+                old
+            }
+        }
+
+        pub type AtomicUsize = Atomic<usize>;
+        pub type AtomicBool = Atomic<bool>;
+        pub type AtomicU32 = Atomic<u32>;
+        pub type AtomicU64 = Atomic<u64>;
+
         pub use self::serial_join as join;
         pub use self::serial_scope as scope;
+
+        #[macro_export]
+        macro_rules! parallel {
+            ($($blocks:tt),*) => {
+                $($blocks)*;
+            }
+        }
 
         pub use std::iter::Iterator as ParallelIterator;
 
@@ -160,47 +222,6 @@ cfg_if! {
                 MTLock(self.0.clone())
             }
         }
-
-        pub struct LockCell<T>(Cell<T>);
-
-        impl<T> LockCell<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                LockCell(Cell::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline(always)]
-            pub fn set(&self, new_inner: T) {
-                self.0.set(new_inner);
-            }
-
-            #[inline(always)]
-            pub fn get(&self) -> T where T: Copy {
-                self.0.get()
-            }
-
-            #[inline(always)]
-            pub fn set_mut(&mut self, new_inner: T) {
-                self.0.set(new_inner);
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> T where T: Copy {
-                self.0.get()
-            }
-        }
-
-        impl<T> LockCell<Option<T>> {
-            #[inline(always)]
-            pub fn take(&self) -> Option<T> {
-                unsafe { (*self.0.as_ptr()).take() }
-            }
-        }
     } else {
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
@@ -212,6 +233,8 @@ cfg_if! {
 
         pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
+
+        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
@@ -238,12 +261,12 @@ cfg_if! {
             }
 
             #[inline(always)]
-            pub fn lock(&self) -> LockGuard<T> {
+            pub fn lock(&self) -> LockGuard<'_, T> {
                 self.0.lock()
             }
 
             #[inline(always)]
-            pub fn lock_mut(&self) -> LockGuard<T> {
+            pub fn lock_mut(&self) -> LockGuard<'_, T> {
                 self.lock()
             }
         }
@@ -254,6 +277,26 @@ cfg_if! {
         use std;
         use std::thread;
         pub use rayon::{join, scope};
+
+        #[macro_export]
+        macro_rules! parallel {
+            (impl [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
+                parallel!(impl [$block, $($c,)*] [$($rest),*])
+            };
+            (impl [$($blocks:tt,)*] []) => {
+                ::rustc_data_structures::sync::scope(|s| {
+                    $(
+                        s.spawn(|_| $blocks);
+                    )*
+                })
+            };
+            ($($blocks:tt),*) => {
+                // Reverse the order of the blocks since Rayon executes them in reverse order
+                // when using a single thread. This ensures the execution order matches that
+                // of a single threaded rustc
+                parallel!(impl [] [$($blocks),*]);
+            };
+        }
 
         pub use rayon_core::WorkerLocal;
 
@@ -278,51 +321,11 @@ cfg_if! {
                 v.erase_send_sync_owner()
             }}
         }
-
-        pub struct LockCell<T>(Lock<T>);
-
-        impl<T> LockCell<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                LockCell(Lock::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline(always)]
-            pub fn set(&self, new_inner: T) {
-                *self.0.lock() = new_inner;
-            }
-
-            #[inline(always)]
-            pub fn get(&self) -> T where T: Copy {
-                *self.0.lock()
-            }
-
-            #[inline(always)]
-            pub fn set_mut(&mut self, new_inner: T) {
-                *self.0.get_mut() = new_inner;
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> T where T: Copy {
-                *self.0.get_mut()
-            }
-        }
-
-        impl<T> LockCell<Option<T>> {
-            #[inline(always)]
-            pub fn take(&self) -> Option<T> {
-                self.0.lock().take()
-            }
-        }
     }
 }
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
+pub fn assert_send<T: ?Sized + Send>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
@@ -466,65 +469,6 @@ impl<T> Once<T> {
     }
 }
 
-impl<T: Copy + Debug> Debug for LockCell<T> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("LockCell")
-            .field("value", &self.get())
-            .finish()
-    }
-}
-
-impl<T:Default> Default for LockCell<T> {
-    /// Creates a `LockCell<T>`, with the `Default` value for T.
-    #[inline]
-    fn default() -> LockCell<T> {
-        LockCell::new(Default::default())
-    }
-}
-
-impl<T:PartialEq + Copy> PartialEq for LockCell<T> {
-    #[inline]
-    fn eq(&self, other: &LockCell<T>) -> bool {
-        self.get() == other.get()
-    }
-}
-
-impl<T:Eq + Copy> Eq for LockCell<T> {}
-
-impl<T:PartialOrd + Copy> PartialOrd for LockCell<T> {
-    #[inline]
-    fn partial_cmp(&self, other: &LockCell<T>) -> Option<Ordering> {
-        self.get().partial_cmp(&other.get())
-    }
-
-    #[inline]
-    fn lt(&self, other: &LockCell<T>) -> bool {
-        self.get() < other.get()
-    }
-
-    #[inline]
-    fn le(&self, other: &LockCell<T>) -> bool {
-        self.get() <= other.get()
-    }
-
-    #[inline]
-    fn gt(&self, other: &LockCell<T>) -> bool {
-        self.get() > other.get()
-    }
-
-    #[inline]
-    fn ge(&self, other: &LockCell<T>) -> bool {
-        self.get() >= other.get()
-    }
-}
-
-impl<T:Ord + Copy> Ord for LockCell<T> {
-    #[inline]
-    fn cmp(&self, other: &LockCell<T>) -> Ordering {
-        self.get().cmp(&other.get())
-    }
-}
-
 #[derive(Debug)]
 pub struct Lock<T>(InnerLock<T>);
 
@@ -544,21 +488,21 @@ impl<T> Lock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         self.0.try_lock()
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         self.0.try_borrow_mut().ok()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn lock(&self) -> LockGuard<T> {
+    pub fn lock(&self) -> LockGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_lock().expect("lock was already held")
         } else {
@@ -566,9 +510,9 @@ impl<T> Lock<T> {
         }
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn lock(&self) -> LockGuard<T> {
+    pub fn lock(&self) -> LockGuard<'_, T> {
         self.0.borrow_mut()
     }
 
@@ -578,12 +522,12 @@ impl<T> Lock<T> {
     }
 
     #[inline(always)]
-    pub fn borrow(&self) -> LockGuard<T> {
+    pub fn borrow(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 
     #[inline(always)]
-    pub fn borrow_mut(&self) -> LockGuard<T> {
+    pub fn borrow_mut(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 }
@@ -622,15 +566,15 @@ impl<T> RwLock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn read(&self) -> ReadGuard<T> {
+    pub fn read(&self) -> ReadGuard<'_, T> {
         self.0.borrow()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn read(&self) -> ReadGuard<T> {
+    pub fn read(&self) -> ReadGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_read().expect("lock was already held")
         } else {
@@ -643,27 +587,27 @@ impl<T> RwLock<T> {
         f(&*self.read())
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_borrow_mut().map_err(|_| ())
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_write().ok_or(())
     }
 
-    #[cfg(not(parallel_queries))]
+    #[cfg(not(parallel_compiler))]
     #[inline(always)]
-    pub fn write(&self) -> WriteGuard<T> {
+    pub fn write(&self) -> WriteGuard<'_, T> {
         self.0.borrow_mut()
     }
 
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     #[inline(always)]
-    pub fn write(&self) -> WriteGuard<T> {
+    pub fn write(&self) -> WriteGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_write().expect("lock was already held")
         } else {
@@ -677,12 +621,12 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
-    pub fn borrow(&self) -> ReadGuard<T> {
+    pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
 
     #[inline(always)]
-    pub fn borrow_mut(&self) -> WriteGuard<T> {
+    pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
     }
 }
@@ -699,27 +643,27 @@ impl<T: Clone> Clone for RwLock<T> {
 /// It will panic if it is used on multiple threads.
 #[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
 pub struct OneThread<T> {
-    #[cfg(parallel_queries)]
+    #[cfg(parallel_compiler)]
     thread: thread::ThreadId,
     inner: T,
 }
 
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Sync for OneThread<T> {}
-#[cfg(parallel_queries)]
+#[cfg(parallel_compiler)]
 unsafe impl<T> std::marker::Send for OneThread<T> {}
 
 impl<T> OneThread<T> {
     #[inline(always)]
     fn check(&self) {
-        #[cfg(parallel_queries)]
+        #[cfg(parallel_compiler)]
         assert_eq!(thread::current().id(), self.thread);
     }
 
     #[inline(always)]
     pub fn new(inner: T) -> Self {
         OneThread {
-            #[cfg(parallel_queries)]
+            #[cfg(parallel_compiler)]
             thread: thread::current().id(),
             inner,
         }

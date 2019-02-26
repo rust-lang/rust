@@ -789,7 +789,7 @@ struct LLVMRustThinLTOData {
   StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
 
 #if LLVM_VERSION_GE(7, 0)
-  LLVMRustThinLTOData() : Index(/* isPerformingAnalysis = */ false) {}
+  LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
 #endif
 };
 
@@ -865,7 +865,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
   };
+#if LLVM_VERSION_GE(8, 0)
+  computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
+                                  deadIsPrevailing, /* ImportEnabled = */ true);
+#else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
+#endif
 #else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
 #endif
@@ -1087,10 +1092,10 @@ LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
 // processing.  We'll call this once per module optimized through ThinLTO, and
 // it'll be called concurrently on many threads.
 extern "C" LLVMModuleRef
-LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
-                               const char *data,
-                               size_t len,
-                               const char *identifier) {
+LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
+                           const char *data,
+                           size_t len,
+                           const char *identifier) {
   StringRef Data(data, len);
   MemoryBufferRef Buffer(Data, identifier);
   unwrap(Context)->enableDebugTypeODRUniquing();

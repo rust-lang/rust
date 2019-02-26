@@ -1,9 +1,9 @@
 //! Error Reporting for static impl Traits.
 
-use infer::error_reporting::nice_region_error::NiceRegionError;
-use infer::lexical_region_resolve::RegionResolutionError;
-use ty::{BoundRegion, FreeRegion, RegionKind};
-use util::common::ErrorReported;
+use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::ty::{BoundRegion, FreeRegion, RegionKind};
+use crate::util::common::ErrorReported;
 use errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
@@ -19,13 +19,13 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                     sup_r,
                 ) = error.clone()
             {
-                let anon_reg_sup = self.tcx.is_suitable_region(sup_r)?;
+                let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
                 if sub_r == &RegionKind::ReStatic &&
-                    self.tcx.return_type_impl_trait(anon_reg_sup.def_id).is_some()
+                    self.tcx().return_type_impl_trait(anon_reg_sup.def_id).is_some()
                 {
                     let sp = var_origin.span();
                     let return_sp = sub_origin.span();
-                    let mut err = self.tcx.sess.struct_span_err(
+                    let mut err = self.tcx().sess.struct_span_err(
                         sp,
                         "cannot infer an appropriate lifetime",
                     );
@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         "...but this borrow...",
                     );
 
-                    let (lifetime, lt_sp_opt) = self.tcx.msg_span_from_free_region(sup_r);
+                    let (lifetime, lt_sp_opt) = self.tcx().msg_span_from_free_region(sup_r);
                     if let Some(lifetime_sp) = lt_sp_opt {
                         err.span_note(
                             lifetime_sp,
@@ -52,8 +52,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         }) => name.to_string(),
                         _ => "'_".to_owned(),
                     };
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(return_sp) {
-                        err.span_suggestion_with_applicability(
+                    if let Ok(snippet) = self.tcx().sess.source_map().span_to_snippet(return_sp) {
+                        err.span_suggestion(
                             return_sp,
                             &format!(
                                 "you can add a constraint to the return type to make it last \

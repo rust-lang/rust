@@ -2,9 +2,7 @@ error[E0054]: cannot cast as `bool`
   --> $DIR/cast-rfc0401-2.rs:6:13
    |
 LL |     let _ = 3 as bool;
-   |             ^^^^^^^^^ unsupported cast
-   |
-   = help: compare with zero instead
+   |             ^^^^^^^^^ help: compare with zero instead: `3 != 0`
 
 error: aborting due to previous error
 

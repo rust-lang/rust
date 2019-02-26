@@ -7,7 +7,7 @@ fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
     // in `g`. These are related via the `UnsafeFnPointer` cast.
     let g: unsafe fn(_) -> _ = f;
     unsafe { g(input) }
-    //~^ ERROR unsatisfied lifetime constraints
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

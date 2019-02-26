@@ -33,7 +33,7 @@ pub fn exe(name: &str, target: &str) -> String {
     }
 }
 
-/// Returns whether the file name given looks like a dynamic library.
+/// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(name: &str) -> bool {
     name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll")
 }
@@ -70,7 +70,11 @@ pub fn dylib_path_var() -> &'static str {
 /// Parses the `dylib_path_var()` environment variable, returning a list of
 /// paths that are members of this lookup path.
 pub fn dylib_path() -> Vec<PathBuf> {
-    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or_default()).collect()
+    let var = match env::var_os(dylib_path_var()) {
+        Some(v) => v,
+        None => return vec![],
+    };
+    env::split_paths(&var).collect()
 }
 
 /// `push` all components to `buf`. On windows, append `.exe` to the last component.

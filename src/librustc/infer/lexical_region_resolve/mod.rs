@@ -1,25 +1,26 @@
-//! The code to do lexical region resolution.
+//! Lexical region resolution.
 
-use infer::region_constraints::Constraint;
-use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarInfos;
-use infer::region_constraints::VerifyBound;
-use infer::RegionVariableOrigin;
-use infer::SubregionOrigin;
-use middle::free_region::RegionRelations;
+use crate::infer::region_constraints::Constraint;
+use crate::infer::region_constraints::GenericKind;
+use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::region_constraints::VarInfos;
+use crate::infer::region_constraints::VerifyBound;
+use crate::infer::RegionVariableOrigin;
+use crate::infer::SubregionOrigin;
+use crate::middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use smallvec::SmallVec;
 use std::fmt;
 use std::u32;
-use ty::fold::TypeFoldable;
-use ty::{self, Ty, TyCtxt};
-use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
-use ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
-use ty::{Region, RegionVid};
+use crate::ty::fold::TypeFoldable;
+use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use crate::ty::{ReLateBound, ReScope, RePlaceholder, ReVar};
+use crate::ty::{Region, RegionVid};
 
 mod graphviz;
 
@@ -185,29 +186,39 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
-            debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
-            match *constraint {
+        self.iterate_until_fixed_point("Expansion", |constraint| {
+            debug!("expansion: constraint={:?}", constraint);
+            let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
-                    self.expand_node(a_region, b_vid, b_data)
+                    (a_region, b_vid, b_data, false)
                 }
                 Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => false,
+                    VarValue::ErrorValue => return (false, false),
                     VarValue::Value(a_region) => {
-                        let b_node = var_values.value_mut(b_vid);
-                        self.expand_node(a_region, b_vid, b_node)
+                        let b_data = var_values.value_mut(b_vid);
+                        let retain = match *b_data {
+                            VarValue::Value(ReStatic) | VarValue::ErrorValue => false,
+                            _ => true
+                        };
+                        (a_region, b_vid, b_data, retain)
                     }
                 },
                 Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
-                    false
+                    return (false, false)
                 }
-            }
+            };
+
+            let changed = self.expand_node(a_region, b_vid, b_data);
+            (changed, retain)
         })
     }
 
+    // This function is very hot in some workloads. There's a single callsite
+    // so always inlining is ok even though it's large.
+    #[inline(always)]
     fn expand_node(
         &self,
         a_region: Region<'tcx>,
@@ -230,6 +241,14 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
+                // Identical scopes can show up quite often, if the fixed point
+                // iteration converges slowly, skip them
+                if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
+                    if a_scope == cur_scope {
+                        return false;
+                    }
+                }
+
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
                     return false;
@@ -268,6 +287,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.tcx();
+
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
@@ -472,20 +492,20 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             match *value {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
-                    /* Inference impossible, this value contains
+                    /* Inference impossible: this value contains
                        inconsistent constraints.
 
                        I think that in this case we should report an
-                       error now---unlike the case above, we can't
+                       error now -- unlike the case above, we can't
                        wait to see whether the user needs the result
-                       of this variable.  The reason is that the mere
+                       of this variable. The reason is that the mere
                        existence of this variable implies that the
                        region graph is inconsistent, whether or not it
                        is used.
 
                        For example, we may have created a region
                        variable that is the GLB of two other regions
-                       which do not have a GLB.  Even if that variable
+                       which do not have a GLB. Even if that variable
                        is not used, it implies that those two regions
                        *should* have a GLB.
 
@@ -709,22 +729,23 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
-    where
-        F: FnMut(&Constraint<'tcx>, &SubregionOrigin<'tcx>) -> bool,
+        where F: FnMut(&Constraint<'tcx>) -> (bool, bool),
     {
+        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.keys().collect();
         let mut iteration = 0;
         let mut changed = true;
         while changed {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, origin) in &self.data.constraints {
-                let edge_changed = body(constraint, origin);
+            constraints.retain(|constraint| {
+                let (edge_changed, retain) = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
                     changed = true;
                 }
-            }
+                retain
+            });
         }
         debug!("---- {} Complete after {} iteration(s)", tag, iteration);
     }

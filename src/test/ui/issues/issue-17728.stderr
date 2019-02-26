@@ -10,17 +10,19 @@ LL |             Some(entry) => Ok(entry),
    |                            ^^^^^^^^^ ...but data from `room` is returned here
 
 error[E0308]: match arms have incompatible types
-  --> $DIR/issue-17728.rs:100:5
+  --> $DIR/issue-17728.rs:109:14
    |
-LL | /     match to_parse { //~ ERROR match arms have incompatible types
+LL | /     match to_parse {
 LL | |         "w" | "west" => RoomDirection::West,
 LL | |         "e" | "east" => RoomDirection::East,
 LL | |         "n" | "north" => RoomDirection::North,
 ...  |
+LL | |         "down" => RoomDirection::Down,
+   | |                   ------------------- this and all prior arms are found to be of type `RoomDirection`
 LL | |         _ => None
-   | |              ---- match arm with an incompatible type
+   | |              ^^^^ expected enum `RoomDirection`, found enum `std::option::Option`
 LL | |     }
-   | |_____^ expected enum `RoomDirection`, found enum `std::option::Option`
+   | |_____- `match` arms have incompatible types
    |
    = note: expected type `RoomDirection`
               found type `std::option::Option<_>`

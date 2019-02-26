@@ -1,4 +1,4 @@
-//! Representation of a `#[doc(cfg(...))]` attribute.
+//! The representation of a `#[doc(cfg(...))]` attribute.
 
 // FIXME: Once the portability lint RFC is implemented (see tracking issue #41619),
 // switch to use those structures instead.
@@ -14,7 +14,7 @@ use syntax::feature_gate::Features;
 
 use syntax_pos::Span;
 
-use html::escape::Escape;
+use crate::html::escape::Escape;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, Hash)]
 pub enum Cfg {
@@ -24,7 +24,7 @@ pub enum Cfg {
     False,
     /// A generic configuration option, e.g., `test` or `target_os = "linux"`.
     Cfg(Symbol, Option<Symbol>),
-    /// Negate a configuration requirement, i.e., `not(x)`.
+    /// Negates a configuration requirement, i.e., `not(x)`.
     Not(Box<Cfg>),
     /// Union of a list of configuration requirements, i.e., `any(...)`.
     Any(Vec<Cfg>),
@@ -261,7 +261,7 @@ impl ops::BitOr for Cfg {
 struct Html<'a>(&'a Cfg, bool);
 
 fn write_with_opt_paren<T: fmt::Display>(
-    fmt: &mut fmt::Formatter,
+    fmt: &mut fmt::Formatter<'_>,
     has_paren: bool,
     obj: T,
 ) -> fmt::Result {
@@ -277,7 +277,7 @@ fn write_with_opt_paren<T: fmt::Display>(
 
 
 impl<'a> fmt::Display for Html<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Cfg::Not(ref child) => match **child {
                 Cfg::Any(ref sub_cfgs) => {
@@ -370,6 +370,7 @@ impl<'a> fmt::Display for Html<'a> {
                         "pc" => "PC",
                         "rumprun" => "Rumprun",
                         "sun" => "Sun",
+                        "fortanix" => "Fortanix",
                         _ => ""
                     },
                     ("target_env", Some(env)) => match &*env.as_str() {
@@ -378,6 +379,7 @@ impl<'a> fmt::Display for Html<'a> {
                         "musl" => "musl",
                         "newlib" => "Newlib",
                         "uclibc" => "uClibc",
+                        "sgx" => "SGX",
                         _ => "",
                     },
                     ("target_endian", Some(endian)) => return write!(fmt, "{}-endian", endian),
@@ -429,7 +431,7 @@ mod test {
     }
 
     macro_rules! dummy_meta_item_list {
-        ($name:ident, [$($list:ident),* $(,)*]) => {
+        ($name:ident, [$($list:ident),* $(,)?]) => {
             MetaItem {
                 ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
@@ -443,7 +445,7 @@ mod test {
             }
         };
 
-        ($name:ident, [$($list:expr),* $(,)*]) => {
+        ($name:ident, [$($list:expr),* $(,)?]) => {
             MetaItem {
                 ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![

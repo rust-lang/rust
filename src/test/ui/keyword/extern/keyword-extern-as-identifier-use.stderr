@@ -1,0 +1,12 @@
+error: expected identifier, found keyword `extern`
+  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+   |
+LL | use extern::foo; //~ ERROR expected identifier, found keyword `extern`
+   |     ^^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | use r#extern::foo; //~ ERROR expected identifier, found keyword `extern`
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+

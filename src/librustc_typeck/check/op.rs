@@ -12,7 +12,7 @@ use syntax::ast::Ident;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    /// Check a `a <op>= b`
+    /// Checks a `a <op>= b`
     pub fn check_binop_assign(&self,
                               expr: &'gcx hir::Expr,
                               op: hir::BinOp,
@@ -42,7 +42,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    /// Check a potentially overloaded binary operator.
+    /// Checks a potentially overloaded binary operator.
     pub fn check_binop(&self,
                        expr: &'gcx hir::Expr,
                        op: hir::BinOp,
@@ -280,7 +280,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             rty,
                                             lstring,
                                         );
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             lhs_expr.span,
                                             msg,
                                             format!("*{}", lstring),
@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
                     match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => err.span_suggestion_with_applicability(
+                        Ok(lstring) => err.span_suggestion(
                             lhs_expr.span,
                             msg,
                             format!("{}.to_owned()", lstring),
@@ -455,7 +455,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        err.multipart_suggestion_with_applicability(
+                        err.multipart_suggestion(
                             msg,
                             vec![
                                 (lhs_expr.span, format!("{}.to_owned()", l)),
@@ -672,7 +672,7 @@ enum Op {
     Unary(hir::UnOp, Span),
 }
 
-/// Returns true if this is a built-in arithmetic operation (e.g., u32
+/// Returns `true` if this is a built-in arithmetic operation (e.g., u32
 /// + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive
@@ -681,7 +681,7 @@ enum Op {
 ///
 /// 1. Builtin operations can trivially be evaluated in constants.
 /// 2. For comparison operators applied to SIMD types the result is
-///    not of type `bool`. For example, `i16x4==i16x4` yields a
+///    not of type `bool`. For example, `i16x4 == i16x4` yields a
 ///    type like `i16x4`. This means that the overloaded trait
 ///    `PartialEq` is not applicable.
 ///

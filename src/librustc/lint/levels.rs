@@ -1,20 +1,20 @@
 use std::cmp;
 
+use crate::hir::HirId;
+use crate::ich::StableHashingContext;
+use crate::lint::builtin;
+use crate::lint::context::CheckLintNameResult;
+use crate::lint::{self, Lint, LintId, Level, LintSource};
+use crate::session::Session;
+use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
-use hir::HirId;
-use ich::StableHashingContext;
-use lint::builtin;
-use lint::context::CheckLintNameResult;
-use lint::{self, Lint, LintId, Level, LintSource};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
-use session::Session;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::Symbol;
-use util::nodemap::FxHashMap;
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,
@@ -204,8 +204,6 @@ impl<'a> LintLevelsBuilder<'a> {
             let mut metas = if let Some(metas) = meta.meta_item_list() {
                 metas
             } else {
-                let mut err = bad_attr(meta.span);
-                err.emit();
                 continue;
             };
 
@@ -326,7 +324,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                     Some(li.span.into()),
                                     &msg,
                                 );
-                                err.span_suggestion_with_applicability(
+                                err.span_suggestion(
                                     li.span,
                                     "change it to",
                                     new_lint_name.to_string(),
@@ -364,7 +362,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                                               Some(li.span.into()),
                                                               &msg);
                         if let Some(new_name) = renamed {
-                            err.span_suggestion_with_applicability(
+                            err.span_suggestion(
                                 li.span,
                                 "use the new name",
                                 new_name,
@@ -388,7 +386,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 &msg);
 
                         if let Some(suggestion) = suggestion {
-                            db.span_suggestion_with_applicability(
+                            db.span_suggestion(
                                 li.span,
                                 "did you mean",
                                 suggestion.to_string(),

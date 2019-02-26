@@ -47,17 +47,17 @@ where
 
     /// How are we relating `a` and `b`?
     ///
-    /// - covariant means `a <: b`
-    /// - contravariant means `b <: a`
-    /// - invariant means `a == b
-    /// - bivariant means that it doesn't matter
+    /// - Covariant means `a <: b`.
+    /// - Contravariant means `b <: a`.
+    /// - Invariant means `a == b.
+    /// - Bivariant means that it doesn't matter.
     ambient_variance: ty::Variance,
 
     /// When we pass through a set of binders (e.g., when looking into
-    /// a `fn` type), we push a new bound region scope onto here.  This
+    /// a `fn` type), we push a new bound region scope onto here. This
     /// will contain the instantiated region for each region in those
     /// binders. When we then encounter a `ReLateBound(d, br)`, we can
-    /// use the debruijn index `d` to find the right scope, and then
+    /// use the De Bruijn index `d` to find the right scope, and then
     /// bound region name `br` to find the specific instantiation from
     /// within that scope. See `replace_bound_region`.
     ///
@@ -114,7 +114,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// Define the normalization strategy to use, eager or lazy.
     fn normalization() -> NormalizationStrategy;
 
-    /// Enable some optimizations if we do not expect inference variables
+    /// Enables some optimizations if we do not expect inference variables
     /// in the RHS of the relation.
     fn forbid_inference_vars() -> bool;
 }
@@ -208,7 +208,7 @@ where
     /// When we encounter binders during the type traversal, we record
     /// the value to substitute for each of the things contained in
     /// that binder. (This will be either a universal placeholder or
-    /// an existential inference variable.) Given the debruijn index
+    /// an existential inference variable.) Given the De Bruijn index
     /// `debruijn` (and name `br`) of some binder we have now
     /// encountered, this routine finds the value that we instantiated
     /// the region with; to do so, it indexes backwards into the list

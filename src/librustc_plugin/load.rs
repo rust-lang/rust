@@ -3,18 +3,19 @@
 use rustc::session::Session;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
-use registry::Registry;
+use crate::registry::Registry;
 
 use std::borrow::ToOwned;
 use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
+use syntax::span_err;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
-    fn(&mut Registry);
+    fn(&mut Registry<'_>);
 
 pub struct PluginRegistrar {
     pub fun: PluginRegistrarFun,
@@ -50,10 +51,7 @@ pub fn load_plugins(sess: &Session,
 
             let plugins = match attr.meta_item_list() {
                 Some(xs) => xs,
-                None => {
-                    call_malformed_plugin_attribute(sess, attr.span);
-                    continue;
-                }
+                None => continue,
             };
 
             for plugin in plugins {

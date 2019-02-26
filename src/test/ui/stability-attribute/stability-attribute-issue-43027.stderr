@@ -1,7 +1,7 @@
-error: This node does not have a stability attribute
+error: field has missing stability attribute
   --> $DIR/stability-attribute-issue-43027.rs:5:23
    |
-LL | pub struct Reverse<T>(pub T); //~ ERROR This node does not have a stability attribute
+LL | pub struct Reverse<T>(pub T); //~ ERROR field has missing stability attribute
    |                       ^^^^^
 
 error: aborting due to previous error

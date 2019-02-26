@@ -129,7 +129,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-fn encode_dep_graph(tcx: TyCtxt,
+fn encode_dep_graph(tcx: TyCtxt<'_, '_, '_>,
                     encoder: &mut Encoder) {
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
@@ -149,8 +149,6 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
-        let (total_edge_reads, total_duplicate_edge_reads) =
-            tcx.dep_graph.edge_deduplication_data();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
@@ -188,8 +186,11 @@ fn encode_dep_graph(tcx: TyCtxt,
         println!("[incremental]");
         println!("[incremental] Total Node Count: {}", total_node_count);
         println!("[incremental] Total Edge Count: {}", total_edge_count);
-        println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-        println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        if let Some((total_edge_reads,
+                     total_duplicate_edge_reads)) = tcx.dep_graph.edge_deduplication_data() {
+            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
+            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        }
         println!("[incremental]");
         println!("[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                  "Node Kind",
@@ -233,7 +234,7 @@ fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduc
     serialized_products.encode(encoder).unwrap();
 }
 
-fn encode_query_cache(tcx: TyCtxt,
+fn encode_query_cache(tcx: TyCtxt<'_, '_, '_>,
                       encoder: &mut Encoder) {
     time(tcx.sess, "serialize query result cache", || {
         tcx.serialize_query_result_cache(encoder).unwrap();

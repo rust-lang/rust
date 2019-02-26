@@ -1,11 +1,11 @@
-//! Simplification of where clauses and parameter bounds into a prettier and
+//! Simplification of where-clauses and parameter bounds into a prettier and
 //! more canonical form.
 //!
 //! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
 //! the AST (e.g., see all of `clean::inline`), but this is not always a
-//! non-lossy transformation. The current format of storage for where clauses
+//! non-lossy transformation. The current format of storage for where-clauses
 //! for functions and such is simply a list of predicates. One example of this
-//! is that the AST predicate of: `where T: Trait<Foo=Bar>` is encoded as:
+//! is that the AST predicate of: `where T: Trait<Foo = Bar>` is encoded as:
 //! `where T: Trait, <T as Trait>::Foo = Bar`.
 //!
 //! This module attempts to reconstruct the original where and/or parameter
@@ -17,12 +17,12 @@ use std::collections::BTreeMap;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 
-use clean::GenericArgs as PP;
-use clean::WherePredicate as WP;
-use clean;
-use core::DocContext;
+use crate::clean::GenericArgs as PP;
+use crate::clean::WherePredicate as WP;
+use crate::clean;
+use crate::core::DocContext;
 
-pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
+pub fn where_clauses(cx: &DocContext<'_, '_, '_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
@@ -141,7 +141,7 @@ fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
     bounds
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
+fn trait_is_same_or_supertrait(cx: &DocContext<'_, '_, '_>, child: DefId,
                                trait_: DefId) -> bool {
     if child == trait_ {
         return true

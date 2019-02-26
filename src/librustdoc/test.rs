@@ -5,13 +5,11 @@ use rustc_lint;
 use rustc_driver::{self, driver, target_features, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
-use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_resolve::MakeGlobMap;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::{SearchPath, PathKind};
+use rustc::session::search_paths::SearchPath;
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
@@ -22,7 +20,6 @@ use tempfile::Builder as TempFileBuilder;
 use testing;
 
 use std::env;
-use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -31,9 +28,9 @@ use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
 
-use clean::Attributes;
-use config::Options;
-use html::markdown::{self, ErrorCodes, LangString};
+use crate::clean::Attributes;
+use crate::config::Options;
+use crate::html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -100,7 +97,6 @@ pub fn run(mut options: Options) -> isize {
                 None,
                 "rustdoc-test",
                 None,
-                MakeGlobMap::No,
                 |_| Ok(()),
             ).expect("phase_2_configure_and_expand aborted in rustdoc!")
         };
@@ -122,7 +118,8 @@ pub fn run(mut options: Options) -> isize {
             Some(source_map),
             None,
             options.linker,
-            options.edition
+            options.edition,
+            options.persist_doctests,
         );
 
         {
@@ -186,7 +183,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             cg: CodegenOptions, externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) {
+            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
+            persist_doctests: Option<PathBuf>) {
     // The test harness wants its own `main` and top-level functions, so
     // never wrap the test in `fn main() { ... }`.
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
@@ -251,7 +249,21 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
-    let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
+    enum DirState {
+        Temp(tempfile::TempDir),
+        Perm(PathBuf),
+    }
+
+    impl DirState {
+        fn path(&self) -> &std::path::Path {
+            match self {
+                DirState::Temp(t) => t.path(),
+                DirState::Perm(p) => p.as_path(),
+            }
+        }
+    }
+
+    let (outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
         let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                         Some(source_map.clone()),
@@ -269,9 +281,27 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let outdir = Mutex::new(
-            TempFileBuilder::new().prefix("rustdoctest").tempdir().expect("rustdoc needs a tempdir")
+            if let Some(mut path) = persist_doctests {
+                path.push(format!("{}_{}",
+                    filename
+                        .to_string()
+                        .rsplit('/')
+                        .next()
+                        .unwrap()
+                        .replace(".", "_"),
+                        line)
+                );
+                std::fs::create_dir_all(&path)
+                    .expect("Couldn't create directory for doctest executables");
+
+                DirState::Perm(path)
+            } else {
+                DirState::Temp(TempFileBuilder::new()
+                                .prefix("rustdoctest")
+                                .tempdir()
+                                .expect("rustdoc needs a tempdir"))
+            }
         );
-        let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
         let mut control = driver::CompileController::basic();
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -303,7 +333,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
         };
 
-        (libdir, outdir, compile_result)
+        (outdir, compile_result)
     });
 
     match (compile_result, compile_fail) {
@@ -329,21 +359,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     if no_run { return }
 
     // Run the code!
-    //
-    // We're careful to prepend the *target* dylib search path to the child's
-    // environment to ensure that the target loads the right libraries at
-    // runtime. It would be a sad day if the *host* libraries were loaded as a
-    // mistake.
     let mut cmd = Command::new(&outdir.lock().unwrap().path().join("rust_out"));
-    let var = DynamicLibrary::envvar();
-    let newpath = {
-        let path = env::var_os(var).unwrap_or(OsString::new());
-        let mut path = env::split_paths(&path).collect::<Vec<_>>();
-        path.insert(0, libdir);
-        env::join_paths(path).unwrap()
-    };
-    cmd.env(var, &newpath);
-
     match cmd.output() {
         Err(e) => panic!("couldn't run the test: {}{}", e,
                         if e.kind() == io::ErrorKind::PermissionDenied {
@@ -394,7 +410,7 @@ pub fn make_test(s: &str,
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
-    let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
+    let (already_has_main, already_has_extern_crate, found_macro) = crate::syntax::with_globals(|| {
         use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
         use crate::syntax_pos::FileName;
         use errors::emitter::EmitterWriter;
@@ -412,6 +428,7 @@ pub fn make_test(s: &str,
 
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
+        let mut found_macro = false;
 
         let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
             Ok(p) => p,
@@ -420,7 +437,7 @@ pub fn make_test(s: &str,
                     err.cancel();
                 }
 
-                return (found_main, found_extern_crate);
+                return (found_main, found_extern_crate, found_macro);
             }
         };
 
@@ -448,6 +465,12 @@ pub fn make_test(s: &str,
                         }
                     }
 
+                    if !found_macro {
+                        if let ast::ItemKind::Mac(..) = item.node {
+                            found_macro = true;
+                        }
+                    }
+
                     if found_main && found_extern_crate {
                         break;
                     }
@@ -460,8 +483,27 @@ pub fn make_test(s: &str,
             }
         }
 
-        (found_main, found_extern_crate)
+        (found_main, found_extern_crate, found_macro)
     });
+
+    // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
+    // see it. In that case, run the old text-based scan to see if they at least have a main
+    // function written inside a macro invocation. See
+    // https://github.com/rust-lang/rust/issues/56898
+    let already_has_main = if found_macro && !already_has_main {
+        s.lines()
+            .map(|line| {
+                let comment = line.find("//");
+                if let Some(comment_begins) = comment {
+                    &line[0..comment_begins]
+                } else {
+                    line
+                }
+            })
+            .any(|code| code.contains("fn main"))
+    } else {
+        already_has_main
+    };
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
@@ -475,13 +517,19 @@ pub fn make_test(s: &str,
         }
     }
 
-    if dont_insert_main || already_has_main {
+    // FIXME: This code cannot yet handle no_std test cases yet
+    if dont_insert_main || already_has_main || prog.contains("![no_std]") {
         prog.push_str(everything_else);
     } else {
-        prog.push_str("fn main() {\n");
+        let returns_result = everything_else.trim_end().ends_with("(())");
+        let (main_pre, main_post) = if returns_result {
+            ("fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
+             "}\n_inner().unwrap() }")
+        } else {
+            ("fn main() {\n", "\n}")
+        };
+        prog.extend([main_pre, everything_else, main_post].iter().cloned());
         line_offset += 1;
-        prog.push_str(everything_else);
-        prog.push_str("\n}");
     }
 
     debug!("final doctest:\n{}", prog);
@@ -605,13 +653,15 @@ pub struct Collector {
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
     edition: Edition,
+    persist_doctests: Option<PathBuf>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: Vec<SearchPath>, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
-               filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {
+               filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
+               persist_doctests: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -628,6 +678,7 @@ impl Collector {
             filename,
             linker,
             edition,
+            persist_doctests,
         }
     }
 
@@ -671,6 +722,8 @@ impl Tester for Collector {
         let maybe_sysroot = self.maybe_sysroot.clone();
         let linker = self.linker.clone();
         let edition = config.edition.unwrap_or(self.edition);
+        let persist_doctests = self.persist_doctests.clone();
+
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -703,7 +756,8 @@ impl Tester for Collector {
                                  &opts,
                                  maybe_sysroot,
                                  linker,
-                                 edition)
+                                 edition,
+                                 persist_doctests)
                     }))
                 } {
                     Ok(()) => (),
@@ -845,7 +899,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     fn visit_variant(&mut self,
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
-                     item_id: ast::NodeId) {
+                     item_id: hir::HirId) {
         self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
@@ -1142,5 +1196,24 @@ assert_eq!(asdf::foo, 4);
 
         let output = make_test(input, Some("asdf"), false, &opts);
         assert_eq!(output, (expected, 3));
+    }
+
+    #[test]
+    fn make_test_main_in_macro() {
+        let opts = TestOptions::default();
+        let input =
+"#[macro_use] extern crate my_crate;
+test_wrapper! {
+    fn main() {}
+}";
+        let expected =
+"#![allow(unused)]
+#[macro_use] extern crate my_crate;
+test_wrapper! {
+    fn main() {}
+}".to_string();
+
+        let output = make_test(input, Some("my_crate"), false, &opts);
+        assert_eq!(output, (expected, 1));
     }
 }

@@ -1,7 +1,7 @@
 //! This module implements the check that the lifetime of a borrow
 //! does not exceed the lifetime of the value being borrowed.
 
-use borrowck::*;
+use crate::borrowck::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -10,6 +10,7 @@ use rustc::ty;
 
 use syntax::ast;
 use syntax_pos::Span;
+use log::debug;
 
 type R = Result<(),()>;
 
@@ -52,7 +53,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     fn check(&self, cmt: &mc::cmt_<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the
-        //! "guarantor".  Reports an error if `self.loan_region` is
+        //! "guarantor". Reports an error if `self.loan_region` is
         //! larger than scope of `cmt`.
         debug!("guarantee_lifetime.check(cmt={:?}, loan_region={:?})",
                cmt,

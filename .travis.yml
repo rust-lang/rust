@@ -168,7 +168,7 @@ matrix:
       if: branch = auto
     - env: IMAGE=i686-gnu-nopt
       if: branch = auto
-    - env: IMAGE=wasm32-unknown
+    - env: IMAGE=test-various
       if: branch = auto
     - env: IMAGE=x86_64-gnu
       if: branch = auto

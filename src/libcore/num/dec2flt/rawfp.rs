@@ -59,10 +59,10 @@ pub trait RawFloat
     /// Type used by `to_bits` and `from_bits`.
     type Bits: Add<Output = Self::Bits> + From<u8> + TryFrom<u64>;
 
-    /// Raw transmutation to integer.
+    /// Performs a raw transmutation to an integer.
     fn to_bits(self) -> Self::Bits;
 
-    /// Raw transmutation from integer.
+    /// Performs a raw transmutation from an integer.
     fn from_bits(v: Self::Bits) -> Self;
 
     /// Returns the category that this number falls into.
@@ -71,14 +71,14 @@ pub trait RawFloat
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8);
 
-    /// Decode the float.
+    /// Decodes the float.
     fn unpack(self) -> Unpacked;
 
-    /// Cast from a small integer that can be represented exactly.  Panic if the integer can't be
+    /// Casts from a small integer that can be represented exactly. Panic if the integer can't be
     /// represented, the other code in this module makes sure to never let that happen.
     fn from_int(x: u64) -> Self;
 
-    /// Get the value 10<sup>e</sup> from a pre-computed table.
+    /// Gets the value 10<sup>e</sup> from a pre-computed table.
     /// Panics for `e >= CEIL_LOG5_OF_MAX_SIG`.
     fn short_fast_pow10(e: usize) -> Self;
 
@@ -240,7 +240,7 @@ impl RawFloat for f64 {
     fn from_bits(v: Self::Bits) -> Self { Self::from_bits(v) }
 }
 
-/// Convert an Fp to the closest machine float type.
+/// Converts an `Fp` to the closest machine float type.
 /// Does not handle subnormal results.
 pub fn fp_to_float<T: RawFloat>(x: Fp) -> T {
     let x = x.normalize();
@@ -319,7 +319,7 @@ pub fn big_to_fp(f: &Big) -> Fp {
     }
 }
 
-/// Find the largest floating point number strictly smaller than the argument.
+/// Finds the largest floating point number strictly smaller than the argument.
 /// Does not handle subnormals, zero, or exponent underflow.
 pub fn prev_float<T: RawFloat>(x: T) -> T {
     match x.classify() {

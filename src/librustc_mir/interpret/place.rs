@@ -7,8 +7,10 @@ use std::hash::Hash;
 
 use rustc::hir;
 use rustc::mir;
+use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::TypeFoldable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
@@ -23,7 +25,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
     /// However, it may never be undef.
     pub ptr: Scalar<Tag, Id>,
     pub align: Align,
-    /// Metadata for unsized places.  Interpretation is up to the type.
+    /// Metadata for unsized places. Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g., `extern type`).
     pub meta: Option<Scalar<Tag, Id>>,
@@ -57,7 +59,7 @@ impl<'tcx, Tag> ::std::ops::Deref for PlaceTy<'tcx, Tag> {
 }
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct MPlaceTy<'tcx, Tag=()> {
     mplace: MemPlace<Tag>,
     pub layout: TyLayout<'tcx>,
@@ -243,10 +245,10 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: ::std::fmt::Debug> OpTy<'tcx, Tag> {
+impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, Immediate<Tag>> {
-        match self.op {
+        match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
             Operand::Immediate(imm) => Err(imm),
         }
@@ -325,6 +327,10 @@ where
 
         let mplace = MemPlace {
             ptr: val.to_scalar_ptr()?,
+            // We could use the run-time alignment here. For now, we do not, because
+            // the point of tracking the alignment here is to make sure that the *static*
+            // alignment information emitted with the loads is correct. The run-time
+            // alignment can only be more restrictive.
             align: layout.align.abi,
             meta: val.to_meta()?,
         };
@@ -384,9 +390,11 @@ where
         // above). In that case, all fields are equal.
         let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
-        // Offset may need adjustment for unsized fields
+        // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
-            // re-use parent metadata to determine dynamic field layout
+            // Re-use parent metadata to determine dynamic field layout.
+            // With custom DSTS, this *will* execute user-defined code, but the same
+            // happens at run-time so that's okay.
             let align = match self.size_and_align_of(base.meta, field_layout)? {
                 Some((_, align)) => align,
                 None if offset == Size::ZERO =>
@@ -486,9 +494,9 @@ where
             Deref => self.deref_operand(base.into())?,
 
             Index(local) => {
-                let n = *self.frame().locals[local].access()?;
-                let n_layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.read_scalar(OpTy { op: n, layout: n_layout })?;
+                let layout = self.layout_of(self.tcx.types.usize)?;
+                let n = self.access_local(self.frame(), local, Some(layout))?;
+                let n = self.read_scalar(n)?;
                 let n = n.to_bits(self.tcx.data_layout.pointer_size)?;
                 self.mplace_field(base, u64::try_from(n).unwrap())?
             }
@@ -515,7 +523,7 @@ where
         })
     }
 
-    /// Get the place of a field inside the place, and also the field's type.
+    /// Gets the place of a field inside the place, and also the field's type.
     /// Just a convenience function, but used quite a bit.
     /// This is the only projection that might have a side-effect: We cannot project
     /// into the field of a local `ScalarPair`, we have to first allocate it.
@@ -546,7 +554,7 @@ where
         })
     }
 
-    /// Project into a place
+    /// Projects into a place.
     pub fn place_projection(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
@@ -566,7 +574,7 @@ where
         })
     }
 
-    /// Evaluate statics and promoteds to an `MPlace`.  Used to share some code between
+    /// Evaluate statics and promoteds to an `MPlace`. Used to share some code between
     /// `eval_place` and `eval_place_to_op`.
     pub(super) fn eval_place_to_mplace(
         &self,
@@ -583,8 +591,8 @@ where
             }
 
             Static(ref static_) => {
-                let ty = self.monomorphize(static_.ty, self.substs());
-                let layout = self.layout_of(ty)?;
+                assert!(!static_.ty.needs_subst());
+                let layout = self.layout_of(static_.ty)?;
                 let instance = ty::Instance::mono(*self.tcx, static_.def_id);
                 let cid = GlobalId {
                     instance,
@@ -609,7 +617,7 @@ where
         })
     }
 
-    /// Compute a place.  You should only use this if you intend to write into this
+    /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
     pub fn eval_place(
         &mut self,
@@ -623,7 +631,7 @@ where
                     // their layout on return.
                     PlaceTy {
                         place: *return_place,
-                        layout: self.layout_of_local(self.frame(), mir::RETURN_PLACE)?,
+                        layout: self.layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
                     },
                 None => return err!(InvalidNullPointerUsage),
             },
@@ -632,7 +640,7 @@ where
                     frame: self.cur_frame(),
                     local,
                 },
-                layout: self.layout_of_local(self.frame(), local)?,
+                layout: self.layout_of_local(self.frame(), local, None)?,
             },
 
             Projection(ref proj) => {
@@ -784,7 +792,7 @@ where
         }
     }
 
-    /// Copy the data from an operand to a place.  This does not support transmuting!
+    /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     #[inline(always)]
     pub fn copy_op(
@@ -802,7 +810,7 @@ where
         Ok(())
     }
 
-    /// Copy the data from an operand to a place.  This does not support transmuting!
+    /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     /// Also, if you use this you are responsible for validating that things git copied at the
     /// right type.
@@ -822,6 +830,8 @@ where
         let src = match self.try_read_immediate(src)? {
             Ok(src_val) => {
                 // Yay, we got a value that we can write directly.
+                // FIXME: Add a check to make sure that if `src` is indirect,
+                // it does not overlap with `dest`.
                 return self.write_immediate_no_validate(src_val, dest);
             }
             Err(mplace) => mplace,
@@ -835,13 +845,14 @@ where
         self.memory.copy(
             src_ptr, src_align,
             dest_ptr, dest_align,
-            dest.layout.size, false
+            dest.layout.size,
+            /*nonoverlapping*/ true,
         )?;
 
         Ok(())
     }
 
-    /// Copy the data from an operand to a place.  The layouts may disagree, but they must
+    /// Copies the data from an operand to a place. The layouts may disagree, but they must
     /// have the same size.
     pub fn copy_op_transmute(
         &mut self,
@@ -880,7 +891,7 @@ where
         Ok(())
     }
 
-    /// Make sure that a place is in memory, and return where it is.
+    /// Ensures that a place is in memory, and returns where it is.
     /// If the place currently refers to a local that doesn't yet have a matching allocation,
     /// create such an allocation.
     /// This is essentially `force_to_memplace`.
@@ -900,7 +911,7 @@ where
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout = self.layout_of_local(&self.stack[frame], local)?;
+                        let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack);
                         // We don't have to validate as we can assume the local
                         // was already valid for its type.
@@ -955,8 +966,7 @@ where
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
                 let size = tag.value.size(self);
-                let shift = 128 - size.bits();
-                let discr_val = (discr_val << shift) >> shift;
+                let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, 0)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
@@ -985,22 +995,6 @@ where
         }
 
         Ok(())
-    }
-
-    /// Every place can be read from, so we can turm them into an operand
-    #[inline(always)]
-    pub fn place_to_op(
-        &self,
-        place: PlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match place.place {
-            Place::Ptr(mplace) => {
-                Operand::Indirect(mplace)
-            }
-            Place::Local { frame, local } =>
-                *self.stack[frame].locals[local].access()?
-        };
-        Ok(OpTy { op, layout: place.layout })
     }
 
     pub fn raw_const_to_mplace(

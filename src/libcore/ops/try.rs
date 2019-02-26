@@ -1,7 +1,7 @@
 /// A trait for customizing the behavior of the `?` operator.
 ///
 /// A type implementing `Try` is one that has a canonical way to view it
-/// in terms of a success/failure dichotomy.  This trait allows both
+/// in terms of a success/failure dichotomy. This trait allows both
 /// extracting those success or failure values from an existing instance and
 /// creating a new instance from a success or failure value.
 #[unstable(feature = "try_trait", issue = "42327")]

@@ -17,6 +17,10 @@ declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
 struct Pass;
 
 impl LintPass for Pass {
+    fn name(&self) -> &'static str {
+        "Pass"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(CRATE_NOT_OKAY)
     }

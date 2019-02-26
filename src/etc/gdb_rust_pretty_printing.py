@@ -16,7 +16,7 @@ rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to
 # This fix went in 8.1, so check for that.
 # See https://github.com/rust-lang/rust/issues/56730
 gdb_81 = False
-_match = re.match('([0-9]+)\\.([0-9]+)', gdb.VERSION)
+_match = re.search('([0-9]+)\\.([0-9]+)', gdb.VERSION)
 if _match:
     if int(_match.group(1)) > 8 or (int(_match.group(1)) == 8 and int(_match.group(2)) >= 1):
         gdb_81 = True
@@ -330,19 +330,20 @@ def children_of_node(boxed_node, height, want_values):
         leaf = node_ptr['data']
     else:
         leaf = node_ptr.dereference()
-    keys = leaf['keys']['value']['value']
+    keys = leaf['keys']
     if want_values:
-        values = leaf['vals']['value']['value']
+        values = leaf['vals']
     length = int(leaf['len'])
     for i in xrange(0, length + 1):
         if height > 0:
-            for child in children_of_node(node_ptr['edges'][i], height - 1, want_values):
+            child_ptr = node_ptr['edges'][i]['value']['value']
+            for child in children_of_node(child_ptr, height - 1, want_values):
                 yield child
         if i < length:
             if want_values:
-                yield (keys[i], values[i])
+                yield (keys[i]['value']['value'], values[i]['value']['value'])
             else:
-                yield keys[i]
+                yield keys[i]['value']['value']
 
 class RustStdBTreeSetPrinter(object):
     def __init__(self, val):

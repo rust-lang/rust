@@ -4,6 +4,16 @@
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
 //! drop their contents when they go out of scope.
 //!
+//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
+//! its allocation. It is valid to convert both ways between a [`Box`] and a
+//! raw pointer allocated with the [`Global`] allocator, given that the
+//! [`Layout`] used with the allocator is correct for the type. More precisely,
+//! a `value: *mut T` that has been allocated with the [`Global`] allocator
+//! with `Layout::for_value(&*value)` may be converted into a box using
+//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
+//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
+//! [`Global`] allocator with `Layout::for_value(&*value)`.
+//!
 //! # Examples
 //!
 //! Move a value from the stack to the heap by creating a [`Box`]:
@@ -71,11 +81,11 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
-use core::task::{LocalWaker, Poll};
+use core::task::{Waker, Poll};
 
-use vec::Vec;
-use raw_vec::RawVec;
-use str::from_boxed_utf8_unchecked;
+use crate::vec::Vec;
+use crate::raw_vec::RawVec;
+use crate::str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.
 ///
@@ -202,10 +212,15 @@ impl<T: ?Sized> Box<T> {
     #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
     #[doc(hidden)]
-    pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let unique = b.0;
+    pub fn into_unique(mut b: Box<T>) -> Unique<T> {
+        // Box is kind-of a library type, but recognized as a "unique pointer" by
+        // Stacked Borrows.  This function here corresponds to "reborrowing to
+        // a raw pointer", but there is no actual reborrow here -- so
+        // without some care, the pointer we are returning here still carries
+        // the `Uniq` tag.  We round-trip through a mutable reference to avoid that.
+        let unique = unsafe { b.0.as_mut() as *mut T };
         mem::forget(b);
-        unique
+        unsafe { Unique::new_unchecked(unique) }
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
@@ -311,7 +326,7 @@ impl<T: Clone> Clone for Box<T> {
     /// let x = Box::new(5);
     /// let y = x.clone();
     /// ```
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     #[inline]
     fn clone(&self) -> Box<T> {
         box { (**self).clone() }
@@ -603,21 +618,21 @@ impl Box<dyn Any + Send> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Box<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // It's not possible to extract the inner Uniq directly from the Box,
         // instead we cast it to a *const which aliases the Unique
         let ptr: *const T = &**self;
@@ -737,7 +752,7 @@ impl<A, F> FnBox<A> for F
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -747,7 +762,7 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
+impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -873,13 +888,22 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 impl<T: ?Sized> Unpin for Box<T> { }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<T> Generator for Box<T>
-    where T: Generator + ?Sized
-{
-    type Yield = T::Yield;
-    type Return = T::Return;
-    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
-        (**self).resume()
+impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(Pin::new(&mut *self))
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume((*self).as_mut())
     }
 }
 
@@ -887,7 +911,7 @@ impl<T> Generator for Box<T>
 impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut *self), lw)
+    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut *self), waker)
     }
 }

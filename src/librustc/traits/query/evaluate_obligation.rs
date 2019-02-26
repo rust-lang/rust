@@ -1,6 +1,6 @@
-use infer::InferCtxt;
-use infer::canonical::OriginalQueryValues;
-use traits::{EvaluationResult, PredicateObligation, SelectionContext,
+use crate::infer::InferCtxt;
+use crate::infer::canonical::OriginalQueryValues;
+use crate::traits::{EvaluationResult, PredicateObligation, SelectionContext,
              TraitQueryMode, OverflowError};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {

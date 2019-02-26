@@ -61,7 +61,7 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         }
     }
 
-    /// FIXME(pcwalton): This should update the def-use chains.
+    // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
                                           mir: &mut Mir<'tcx>,
@@ -107,7 +107,7 @@ impl<'tcx> Info<'tcx> {
 
     pub fn defs_not_including_drop(
         &self,
-    ) -> iter::Filter<slice::Iter<Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
+    ) -> iter::Filter<slice::Iter<'_, Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
         self.defs_and_uses.iter().filter(|place_use| {
             place_use.context.is_mutating_use() && !place_use.context.is_drop()
         })

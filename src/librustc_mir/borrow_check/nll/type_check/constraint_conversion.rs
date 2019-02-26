@@ -1,8 +1,8 @@
-use borrow_check::nll::constraints::OutlivesConstraint;
-use borrow_check::nll::region_infer::TypeTest;
-use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
-use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::constraints::OutlivesConstraint;
+use crate::borrow_check::nll::region_infer::TypeTest;
+use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
+use crate::borrow_check::nll::universal_regions::UniversalRegions;
+use crate::borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};

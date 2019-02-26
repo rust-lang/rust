@@ -9,7 +9,6 @@ use rustc::util::common::time_ext;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::path::Path;
-use std;
 
 use super::data::*;
 use super::fs::*;

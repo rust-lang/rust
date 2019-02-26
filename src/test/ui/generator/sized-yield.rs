@@ -1,6 +1,7 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
+use std::pin::Pin;
 
 fn main() {
    let s = String::from("foo");
@@ -8,6 +9,6 @@ fn main() {
    //~^ ERROR the size for values of type
        yield s[..];
    };
-   unsafe { gen.resume(); }
+   Pin::new(&mut gen).resume();
    //~^ ERROR the size for values of type
 }

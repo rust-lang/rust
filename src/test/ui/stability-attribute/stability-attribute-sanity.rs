@@ -21,28 +21,6 @@ mod bogus_attribute_types_1 {
     fn f6() { }
 }
 
-mod bogus_attribute_types_2 {
-    #[unstable] //~ ERROR incorrect stability attribute type [E0548]
-    fn f1() { }
-
-    #[unstable = "b"] //~ ERROR incorrect stability attribute type [E0548]
-    fn f2() { }
-
-    #[stable] //~ ERROR incorrect stability attribute type [E0548]
-    fn f3() { }
-
-    #[stable = "a"] //~ ERROR incorrect stability attribute type [E0548]
-    fn f4() { }
-
-    #[stable(feature = "a", since = "b")]
-    #[rustc_deprecated] //~ ERROR incorrect stability attribute type [E0548]
-    fn f5() { }
-
-    #[stable(feature = "a", since = "b")]
-    #[rustc_deprecated = "a"] //~ ERROR incorrect stability attribute type [E0548]
-    fn f6() { }
-}
-
 mod missing_feature_names {
     #[unstable(issue = "0")] //~ ERROR missing 'feature' [E0546]
     fn f1() { }

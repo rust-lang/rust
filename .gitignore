@@ -13,6 +13,7 @@ __pycache__/
 .settings/
 .valgrindrc
 .vscode/
+.favorites.json
 /*-*-*-*/
 /*-*-*/
 /Makefile

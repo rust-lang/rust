@@ -6,6 +6,7 @@ license = 'MIT/Apache-2.0'
 description = """
 Hack for the compiler's own build system
 """
+edition = "2018"
 
 [lib]
 path = "lib.rs"

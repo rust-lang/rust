@@ -20,7 +20,7 @@ pub struct DecodeUtf16Error {
     code: u16,
 }
 
-/// Create an iterator over the UTF-16 encoded code points in `iter`,
+/// Creates an iterator over the UTF-16 encoded code points in `iter`,
 /// returning unpaired surrogates as `Err`s.
 ///
 /// # Examples

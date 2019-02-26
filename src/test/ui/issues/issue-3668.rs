@@ -6,7 +6,7 @@ trait PTrait {
 impl PTrait for P {
    fn getChildOption(&self) -> Option<Box<P>> {
        static childVal: Box<P> = self.child.get();
-       //~^ ERROR can't capture dynamic environment
+       //~^ ERROR attempt to use a non-constant value in a constant
        panic!();
    }
 }

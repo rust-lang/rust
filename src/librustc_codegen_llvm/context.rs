@@ -1,14 +1,14 @@
-use attributes;
-use llvm;
+use crate::attributes;
+use crate::llvm;
+use crate::debuginfo;
+use crate::monomorphize::Instance;
+use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
-use debuginfo;
-use monomorphize::Instance;
-use value::Value;
 
-use monomorphize::partitioning::CodegenUnit;
-use type_::Type;
-use type_of::PointeeInfo;
+use crate::monomorphize::partitioning::CodegenUnit;
+use crate::type_::Type;
+use crate::type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
 use libc::c_uint;
 
@@ -23,7 +23,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::callee::resolve_and_get_fn;
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use callee::get_fn;
+use crate::callee::get_fn;
 
 use std::ffi::CStr;
 use std::cell::{Cell, RefCell};
@@ -31,7 +31,7 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use syntax::symbol::LocalInternedString;
-use abi::Abi;
+use crate::abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
@@ -75,7 +75,7 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
+    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -103,7 +103,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         None => &sess.target.target.options.relocation_model[..],
     };
 
-    match ::back::write::RELOC_MODEL_ARGS.iter().find(
+    match crate::back::write::RELOC_MODEL_ARGS.iter().find(
         |&&arg| arg.0 == reloc_model_arg) {
         Some(x) => x.1,
         _ => {
@@ -121,7 +121,7 @@ fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
         None => &sess.target.target.options.tls_model[..],
     };
 
-    match ::back::write::TLS_MODEL_ARGS.iter().find(
+    match crate::back::write::TLS_MODEL_ARGS.iter().find(
         |&&arg| arg.0 == tls_model_arg) {
         Some(x) => x.1,
         _ => {
@@ -144,16 +144,17 @@ pub fn is_pie_binary(sess: &Session) -> bool {
 }
 
 pub unsafe fn create_module(
-    sess: &Session,
+    tcx: TyCtxt,
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
+    let sess = tcx.sess;
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = ::back::write::create_target_machine(sess, false);
+        let tm = crate::back::write::create_target_machine(tcx, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
@@ -211,7 +212,7 @@ pub unsafe fn create_module(
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     crate fn new(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
                  codegen_unit: Arc<CodegenUnit<'tcx>>,
-                 llvm_module: &'ll ::ModuleLlvm)
+                 llvm_module: &'ll crate::ModuleLlvm)
                  -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -376,7 +377,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
     fn eh_unwind_resume(&self) -> &'ll Value {
-        use attributes;
+        use crate::attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
             return llfn;
@@ -464,6 +465,20 @@ impl CodegenCx<'b, 'tcx> {
         self.declare_intrinsic(key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
+    fn insert_intrinsic(
+        &self, name: &'static str, args: Option<&[&'b llvm::Type]>, ret: &'b llvm::Type
+    ) -> &'b llvm::Value {
+        let fn_ty = if let Some(args) = args {
+            self.type_func(args, ret)
+        } else {
+            self.type_variadic_func(&[], ret)
+        };
+        let f = self.declare_cfn(name, fn_ty);
+        llvm::SetUnnamedAddr(f, false);
+        self.intrinsics.borrow_mut().insert(name, f.clone());
+        f
+    }
+
     fn declare_intrinsic(
         &self,
         key: &str
@@ -471,26 +486,17 @@ impl CodegenCx<'b, 'tcx> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[]), $ret));
                 }
             );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_variadic_func(&[], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, None, $ret));
                 }
             );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
-                    let f = self.declare_cfn($name, self.type_func(&[$($arg),*], $ret));
-                    llvm::SetUnnamedAddr(f, false);
-                    self.intrinsics.borrow_mut().insert($name, f.clone());
-                    return Some(f);
+                    return Some(self.insert_intrinsic($name, Some(&[$($arg),*]), $ret));
                 }
             );
         }
@@ -509,14 +515,24 @@ impl CodegenCx<'b, 'tcx> {
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
 
-        let t_v2f32 = self.type_vector(t_f32, 2);
-        let t_v4f32 = self.type_vector(t_f32, 4);
-        let t_v8f32 = self.type_vector(t_f32, 8);
-        let t_v16f32 = self.type_vector(t_f32, 16);
+        macro_rules! vector_types {
+            ($id_out:ident: $elem_ty:ident, $len:expr) => {
+                let $id_out = self.type_vector($elem_ty, $len);
+            };
+            ($($id_out:ident: $elem_ty:ident, $len:expr;)*) => {
+                $(vector_types!($id_out: $elem_ty, $len);)*
+            }
+        }
+        vector_types! {
+            t_v2f32: t_f32, 2;
+            t_v4f32: t_f32, 4;
+            t_v8f32: t_f32, 8;
+            t_v16f32: t_f32, 16;
 
-        let t_v2f64 = self.type_vector(t_f64, 2);
-        let t_v4f64 = self.type_vector(t_f64, 4);
-        let t_v8f64 = self.type_vector(t_f64, 8);
+            t_v2f64: t_f64, 2;
+            t_v4f64: t_f64, 4;
+            t_v8f64: t_f64, 8;
+        }
 
         ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
         ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
@@ -756,6 +772,30 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.umul.with.overflow.i64", fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
         ifn!("llvm.umul.with.overflow.i128", fn(t_i128, t_i128) -> mk_struct!{t_i128, i1});
 
+        ifn!("llvm.sadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.sadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.sadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.sadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.sadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.uadd.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.uadd.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.uadd.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.uadd.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.uadd.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.ssub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ssub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.ssub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.ssub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.ssub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
+        ifn!("llvm.usub.sat.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.usub.sat.i16", fn(t_i16, t_i16) -> t_i16);
+        ifn!("llvm.usub.sat.i32", fn(t_i32, t_i32) -> t_i32);
+        ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
+
         ifn!("llvm.lifetime.start", fn(t_i64,i8p) -> void);
         ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
@@ -782,7 +822,7 @@ impl CodegenCx<'b, 'tcx> {
 }
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
-    /// Generate a new symbol name with the given prefix. This symbol name must
+    /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();

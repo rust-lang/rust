@@ -1,15 +1,10 @@
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `with`
   --> $DIR/removed-syntax-with-1.rs:8:25
    |
-LL |     let b = S { foo: () with a };
-   |                         ^^^^ expected one of `,`, `.`, `?`, `}`, or an operator here
+LL |     let b = S { foo: () with a, bar: () };
+   |             -           ^^^^ expected one of `,`, `.`, `?`, `}`, or an operator here
+   |             |
+   |             while parsing this struct
 
-error[E0063]: missing field `bar` in initializer of `main::S`
-  --> $DIR/removed-syntax-with-1.rs:8:13
-   |
-LL |     let b = S { foo: () with a };
-   |             ^ missing `bar`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0063`.

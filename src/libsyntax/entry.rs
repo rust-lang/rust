@@ -1,5 +1,5 @@
-use attr;
-use ast::{Item, ItemKind};
+use crate::attr;
+use crate::ast::{Item, ItemKind};
 
 pub enum EntryPointType {
     None,

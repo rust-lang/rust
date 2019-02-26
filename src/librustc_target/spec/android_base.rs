@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, TargetOptions};
+use crate::spec::{LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();

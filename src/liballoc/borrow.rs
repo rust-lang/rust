@@ -6,13 +6,13 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, Deref};
 
-use fmt;
-use string::String;
-
-use self::Cow::*;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
+
+use crate::fmt;
+use crate::string::String;
+
+use Cow::*;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
@@ -137,11 +137,11 @@ impl<T> ToOwned for T
 /// ```
 /// use std::borrow::{Cow, ToOwned};
 ///
-/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned=Vec<X>> {
+/// struct Items<'a, X: 'a> where [X]: ToOwned<Owned = Vec<X>> {
 ///     values: Cow<'a, [X]>,
 /// }
 ///
-/// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned=Vec<X>> {
+/// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
 ///     fn new(v: Cow<'a, [X]>) -> Self {
 ///         Items { values: v }
 ///     }
@@ -182,10 +182,8 @@ pub enum Cow<'a, B: ?Sized + 'a>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Clone for Cow<'a, B>
-    where B: ToOwned
-{
-    fn clone(&self) -> Cow<'a, B> {
+impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
+    fn clone(&self) -> Self {
         match *self {
             Borrowed(b) => Borrowed(b),
             Owned(ref o) => {
@@ -195,7 +193,7 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B>
         }
     }
 
-    fn clone_from(&mut self, source: &Cow<'a, B>) {
+    fn clone_from(&mut self, source: &Self) {
         if let Owned(ref mut dest) = *self {
             if let Owned(ref o) = *source {
                 o.borrow().clone_into(dest);
@@ -207,9 +205,7 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B>
     }
 }
 
-impl<'a, B: ?Sized> Cow<'a, B>
-    where B: ToOwned
-{
+impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// Acquires a mutable reference to the owned form of the data.
     ///
     /// Clones the data if it is not already owned.
@@ -285,9 +281,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Deref for Cow<'a, B>
-    where B: ToOwned
-{
+impl<B: ?Sized + ToOwned> Deref for Cow<'_, B> {
     type Target = B;
 
     fn deref(&self) -> &B {
@@ -299,14 +293,14 @@ impl<'a, B: ?Sized> Deref for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Eq for Cow<'a, B> where B: Eq + ToOwned {}
+impl<B: ?Sized> Eq for Cow<'_, B> where B: Eq + ToOwned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Ord for Cow<'a, B>
+impl<B: ?Sized> Ord for Cow<'_, B>
     where B: Ord + ToOwned
 {
     #[inline]
-    fn cmp(&self, other: &Cow<'a, B>) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 }
@@ -333,11 +327,11 @@ impl<'a, B: ?Sized> PartialOrd for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> fmt::Debug for Cow<'a, B>
+impl<B: ?Sized> fmt::Debug for Cow<'_, B>
     where B: fmt::Debug + ToOwned,
           <B as ToOwned>::Owned: fmt::Debug
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Borrowed(ref b) => fmt::Debug::fmt(b, f),
             Owned(ref o) => fmt::Debug::fmt(o, f),
@@ -346,11 +340,11 @@ impl<'a, B: ?Sized> fmt::Debug for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> fmt::Display for Cow<'a, B>
+impl<B: ?Sized> fmt::Display for Cow<'_, B>
     where B: fmt::Display + ToOwned,
           <B as ToOwned>::Owned: fmt::Display
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Borrowed(ref b) => fmt::Display::fmt(b, f),
             Owned(ref o) => fmt::Display::fmt(o, f),
@@ -359,18 +353,18 @@ impl<'a, B: ?Sized> fmt::Display for Cow<'a, B>
 }
 
 #[stable(feature = "default", since = "1.11.0")]
-impl<'a, B: ?Sized> Default for Cow<'a, B>
+impl<B: ?Sized> Default for Cow<'_, B>
     where B: ToOwned,
           <B as ToOwned>::Owned: Default
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
-    fn default() -> Cow<'a, B> {
+    fn default() -> Self {
         Owned(<B as ToOwned>::Owned::default())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Hash for Cow<'a, B>
+impl<B: ?Sized> Hash for Cow<'_, B>
     where B: Hash + ToOwned
 {
     #[inline]
@@ -380,8 +374,7 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
+impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
     fn as_ref(&self) -> &T {
         self
     }

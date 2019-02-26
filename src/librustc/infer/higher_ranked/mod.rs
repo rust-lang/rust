@@ -4,8 +4,9 @@
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 
-use ty::relate::{Relate, RelateResult, TypeRelation};
-use ty::{self, Binder, TypeFoldable};
+use crate::infer::CombinedSnapshot;
+use crate::ty::relate::{Relate, RelateResult, TypeRelation};
+use crate::ty::{self, Binder, TypeFoldable};
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     pub fn higher_ranked_sub<T>(
@@ -29,32 +30,37 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         let span = self.trace.cause.span;
 
-        // First, we instantiate each bound region in the supertype with a
-        // fresh placeholder region.
-        let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
+        return self.infcx.commit_if_ok(|snapshot| {
+            // First, we instantiate each bound region in the supertype with a
+            // fresh placeholder region.
+            let (b_prime, placeholder_map) = self.infcx.replace_bound_vars_with_placeholders(b);
 
-        // Next, we instantiate each bound region in the subtype
-        // with a fresh region variable. These region variables --
-        // but no other pre-existing region variables -- can name
-        // the placeholders.
-        let (a_prime, _) =
+            // Next, we instantiate each bound region in the subtype
+            // with a fresh region variable. These region variables --
+            // but no other pre-existing region variables -- can name
+            // the placeholders.
+            let (a_prime, _) =
+                self.infcx
+                    .replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+
+            debug!("a_prime={:?}", a_prime);
+            debug!("b_prime={:?}", b_prime);
+
+            // Compare types now that bound regions have been replaced.
+            let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
+
             self.infcx
-                .replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+                .leak_check(!a_is_expected, &placeholder_map, snapshot)?;
 
-        debug!("a_prime={:?}", a_prime);
-        debug!("b_prime={:?}", b_prime);
+            debug!("higher_ranked_sub: OK result={:?}", result);
 
-        // Compare types now that bound regions have been replaced.
-        let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
-
-        debug!("higher_ranked_sub: OK result={:?}", result);
-
-        Ok(ty::Binder::bind(result))
+            Ok(ty::Binder::bind(result))
+        });
     }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    /// Replace all regions (resp. types) bound by `binder` with placeholder
+    /// Replaces all regions (resp. types) bound by `binder` with placeholder
     /// regions (resp. types) and return a map indicating which bound-region
     /// placeholder region. This is the first step of checking subtyping
     /// when higher-ranked things are involved.
@@ -72,10 +78,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
     pub fn replace_bound_vars_with_placeholders<T>(
         &self,
-        binder: &ty::Binder<T>
+        binder: &ty::Binder<T>,
     ) -> (T, PlaceholderMap<'tcx>)
     where
-        T: TypeFoldable<'tcx>
+        T: TypeFoldable<'tcx>,
     {
         let next_universe = self.create_next_universe();
 
@@ -96,12 +102,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t);
 
         debug!(
-            "replace_bound_vars_with_placeholders(binder={:?}, result={:?}, map={:?})",
-            binder,
-            result,
-            map
+            "replace_bound_vars_with_placeholders(\
+             next_universe={:?}, \
+             binder={:?}, \
+             result={:?}, \
+             map={:?})",
+            next_universe, binder, result, map,
         );
 
         (result, map)
+    }
+
+    /// See `infer::region_constraints::RegionConstraintCollector::leak_check`.
+    pub fn leak_check(
+        &self,
+        overly_polymorphic: bool,
+        placeholder_map: &PlaceholderMap<'tcx>,
+        snapshot: &CombinedSnapshot<'_, 'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        self.borrow_region_constraints()
+            .leak_check(self.tcx, overly_polymorphic, placeholder_map, snapshot)
     }
 }

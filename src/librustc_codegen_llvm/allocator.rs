@@ -1,15 +1,15 @@
 use std::ffi::CString;
 
-use attributes;
+use crate::attributes;
 use libc::c_uint;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::ty::TyCtxt;
 use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
 
-use ModuleLlvm;
-use llvm::{self, False, True};
+use crate::ModuleLlvm;
+use crate::llvm::{self, False, True};
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &mut ModuleLlvm, kind: AllocatorKind) {
     let llcx = &*mods.llcx;
     let llmod = mods.llmod();
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {

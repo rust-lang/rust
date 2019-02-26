@@ -2,25 +2,25 @@ error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
   --> $DIR/empty-struct-unit-pat.rs:21:9
    |
 LL |         Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
-   |         ^^^^^^ did you mean `XEmpty6`?
+   |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:24:9
    |
 LL |         XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
-   |         ^^^^^^^ did you mean `XEmpty6`?
+   |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
   --> $DIR/empty-struct-unit-pat.rs:27:9
    |
 LL |         Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
-   |         ^^^^^^ did you mean `XEmpty6`?
+   |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:30:9
    |
 LL |         XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
-   |         ^^^^^^^ did you mean `XEmpty6`?
+   |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:34:9
@@ -34,7 +34,7 @@ error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`
 LL |         XE::XEmpty4() => (),
    |         ^^^^-------
    |             |
-   |             did you mean `XEmpty5`?
+   |             help: a tuple variant with a similar name exists: `XEmpty5`
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:42:9
@@ -48,7 +48,7 @@ error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`
 LL |         XE::XEmpty4(..) => (),
    |         ^^^^-------
    |             |
-   |             did you mean `XEmpty5`?
+   |             help: a tuple variant with a similar name exists: `XEmpty5`
 
 error: aborting due to 8 previous errors
 

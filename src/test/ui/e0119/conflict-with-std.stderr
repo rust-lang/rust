@@ -25,7 +25,7 @@ LL | impl TryFrom<X> for X { //~ ERROR conflicting implementations
    |
    = note: conflicting implementation in crate `core`:
            - impl<T, U> std::convert::TryFrom<U> for T
-             where T: std::convert::From<U>;
+             where U: std::convert::Into<T>;
 
 error: aborting due to 3 previous errors
 

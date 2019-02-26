@@ -15,14 +15,14 @@ use rustc_driver;
 use rustc_target::spec::TargetTriple;
 use syntax::edition::Edition;
 
-use core::new_handler;
-use externalfiles::ExternalHtml;
-use html;
-use html::markdown::IdMap;
-use html::static_files;
-use opts;
-use passes::{self, DefaultPassOption};
-use theme;
+use crate::core::new_handler;
+use crate::externalfiles::ExternalHtml;
+use crate::html;
+use crate::html::{static_files};
+use crate::html::markdown::{IdMap};
+use crate::opts;
+use crate::passes::{self, DefaultPassOption};
+use crate::theme;
 
 /// Configuration options for rustdoc.
 #[derive(Clone)]
@@ -68,6 +68,9 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
+    /// Optional path to persist the doctest executables to, defaults to a
+    /// temporary directory if not set.
+    pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
 
@@ -92,11 +95,11 @@ pub struct Options {
 }
 
 impl fmt::Debug for Options {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct FmtExterns<'a>(&'a Externs);
 
         impl<'a> fmt::Debug for FmtExterns<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_map()
                     .entries(self.0.iter())
                     .finish()
@@ -121,6 +124,7 @@ impl fmt::Debug for Options {
             .field("lint_cap", &self.lint_cap)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
+            .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
@@ -146,9 +150,9 @@ pub struct RenderOptions {
     pub playground_url: Option<String>,
     /// Whether to sort modules alphabetically on a module page instead of using declaration order.
     /// `true` by default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
-    /// inverted once read
+    //
+    // FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
+    // inverted once read.
     pub sort_modules_alphabetically: bool,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
@@ -161,9 +165,9 @@ pub struct RenderOptions {
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
     /// default.
-    ///
-    /// FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
-    /// once read
+    //
+    // FIXME(misdreavus): the flag name is `--disable-minification` but the meaning is inverted
+    // once read.
     pub enable_minification: bool,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
@@ -188,6 +192,8 @@ pub struct RenderOptions {
     /// If false, the `select` element to have search filtering by crates on rendered docs
     /// won't be generated.
     pub generate_search_filter: bool,
+    /// Option (disabled by default) to generate files used by RLS and some other tools.
+    pub generate_redirect_pages: bool,
 }
 
 impl Options {
@@ -198,7 +204,7 @@ impl Options {
         nightly_options::check_nightly_options(&matches, &opts());
 
         if matches.opt_present("h") || matches.opt_present("help") {
-            ::usage("rustdoc");
+            crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
             rustc_driver::version("rustdoc", &matches);
@@ -431,6 +437,8 @@ impl Options {
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
+        let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
+        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -456,6 +464,7 @@ impl Options {
             manual_passes,
             display_warnings,
             crate_version,
+            persist_doctests,
             render_options: RenderOptions {
                 output,
                 external_html,
@@ -474,11 +483,12 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
+                generate_redirect_pages,
             }
         })
     }
 
-    /// Returns whether the file given as `self.input` is a Markdown file.
+    /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub fn markdown_input(&self) -> bool {
         self.input.extension()
             .map_or(false, |e| e == "md" || e == "markdown")

@@ -10,24 +10,24 @@ use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
-use llvm;
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
-    DILexicalBlock};
+use crate::llvm;
+use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
+    DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::{DefId, CrateNum};
+use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::subst::{Substs, UnpackedKind};
 
-use abi::Abi;
-use common::CodegenCx;
-use builder::Builder;
-use monomorphize::Instance;
+use crate::abi::Abi;
+use crate::common::CodegenCx;
+use crate::builder::Builder;
+use crate::monomorphize::Instance;
+use crate::value::Value;
 use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::indexed_vec::IndexVec;
-use value::Value;
 use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
     VariableKind, FunctionDebugContextData};
 
@@ -102,7 +102,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
     }
 }
 
-/// Create any deferred debug metadata nodes
+/// Creates any deferred debug metadata nodes
 pub fn finalize(cx: &CodegenCx) {
     if cx.dbg_cx.is_none() {
         return;
@@ -283,22 +283,28 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let linkage_name = mangled_name_of_instance(self, instance);
 
         let scope_line = span_start(self, span).line;
-        let is_local_to_unit = is_node_local_to_unit(self, def_id);
 
         let function_name = CString::new(name).unwrap();
         let linkage_name = SmallCStr::new(&linkage_name.as_str());
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        let local_id = self.tcx().hir().as_local_node_id(def_id);
-        if let Some((id, _, _)) = *self.sess().entry_fn.borrow() {
-            if local_id == Some(id) {
+        if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
+            if id == def_id {
                 flags |= DIFlags::FlagMainSubprogram;
             }
         }
 
         if self.layout_of(sig.output()).abi.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
+        }
+
+        let mut spflags = DISPFlags::SPFlagDefinition;
+        if is_node_local_to_unit(self, def_id) {
+            spflags |= DISPFlags::SPFlagLocalToUnit;
+        }
+        if self.sess().opts.optimize != config::OptLevel::No {
+            spflags |= DISPFlags::SPFlagOptimized;
         }
 
         let fn_metadata = unsafe {
@@ -310,11 +316,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 file_metadata,
                 loc.line as c_uint,
                 function_type_metadata,
-                is_local_to_unit,
-                true,
                 scope_line as c_uint,
                 flags,
-                self.sess().opts.optimize != config::OptLevel::No,
+                spflags,
                 llfn,
                 template_parameters,
                 None)

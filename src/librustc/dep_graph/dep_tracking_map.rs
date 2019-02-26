@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use util::common::MemoizationMap;
+use crate::util::common::MemoizationMap;
 
 use super::{DepKind, DepNodeIndex, DepGraph};
 
@@ -43,7 +43,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     ///
     /// Here, `[op]` represents whatever nodes `op` reads in the
     /// course of execution; `Map(key)` represents the node for this
-    /// map; and `CurrentTask` represents the current task when
+    /// map, and `CurrentTask` represents the current task when
     /// `memoize` is invoked.
     ///
     /// **Important:** when `op` is invoked, the current task will be

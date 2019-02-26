@@ -39,14 +39,14 @@ macro_rules! associated_item {
 
 macro_rules! declare_server_traits {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         pub trait Types {
             $(associated_item!(type $name);)*
         }
 
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)*);)*
+            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
@@ -59,14 +59,14 @@ pub(super) struct MarkedTypes<S: Types>(S);
 
 macro_rules! define_mark_types_impls {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
-            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)* {
+            $(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)? {
                 <_>::mark($name::$method(&mut self.0, $($arg.unmark()),*))
             })*
         })*
@@ -81,8 +81,8 @@ struct Dispatcher<S: Types> {
 
 macro_rules! define_dispatcher_impl {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
@@ -131,7 +131,7 @@ pub trait ExecutionStrategy {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8>;
 }
@@ -143,7 +143,7 @@ impl ExecutionStrategy for SameThread {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         let mut dispatch = |b| dispatcher.dispatch(b);
@@ -168,7 +168,7 @@ impl ExecutionStrategy for CrossThread1 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         use std::sync::mpsc::channel;
@@ -206,7 +206,7 @@ impl ExecutionStrategy for CrossThread2 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer<u8>,
-        run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+        run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
         client_data: D,
     ) -> Buffer<u8> {
         use std::sync::{Arc, Mutex};
@@ -273,7 +273,7 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge, D) -> Buffer<u8>,
+    run_client: extern "C" fn(Bridge<'_>, D) -> Buffer<u8>,
     client_data: D,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher = Dispatcher {
@@ -289,7 +289,7 @@ fn run_server<
     Result::decode(&mut &b[..], &mut dispatcher.handle_store)
 }
 
-impl client::Client<fn(::TokenStream) -> ::TokenStream> {
+impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -313,7 +313,7 @@ impl client::Client<fn(::TokenStream) -> ::TokenStream> {
     }
 }
 
-impl client::Client<fn(::TokenStream, ::TokenStream) -> ::TokenStream> {
+impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,

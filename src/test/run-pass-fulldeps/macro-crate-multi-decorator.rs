@@ -5,11 +5,9 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#![feature(plugin, rustc_attrs)]
-#![plugin(macro_crate_test)]
+#![feature(rustc_attrs)]
 
 #[macro_use]
-#[no_link]
 extern crate macro_crate_test;
 
 // The duplicate macro will create a copy of the item with the given identifier.

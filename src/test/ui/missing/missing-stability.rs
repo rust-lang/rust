@@ -6,7 +6,7 @@
 #![stable(feature = "stable_test_feature", since = "1.0.0")]
 
 pub fn unmarked() {
-    //~^ ERROR This node does not have a stability attribute
+    //~^ ERROR function has missing stability attribute
     ()
 }
 
@@ -20,5 +20,5 @@ pub mod foo {
 pub mod bar {
     // #[stable] is not inherited
     pub fn unmarked() {}
-    //~^ ERROR This node does not have a stability attribute
+    //~^ ERROR function has missing stability attribute
 }

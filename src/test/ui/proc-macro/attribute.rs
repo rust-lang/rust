@@ -6,13 +6,13 @@
 extern crate proc_macro;
 
 #[proc_macro_derive]
-//~^ ERROR: attribute must be of form: #[proc_macro_derive(TraitName)]
+//~^ ERROR: attribute must be of the form
 pub fn foo1(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     input
 }
 
 #[proc_macro_derive = "foo"]
-//~^ ERROR: attribute must be of form: #[proc_macro_derive(TraitName)]
+//~^ ERROR: attribute must be of the form
 pub fn foo2(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     input
 }

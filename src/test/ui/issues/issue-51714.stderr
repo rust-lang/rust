@@ -22,13 +22,14 @@ error[E0572]: return statement outside of function body
 LL |     [(); return while let Some(n) = Some(0) {}];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0165]: irrefutable while-let pattern
-  --> $DIR/issue-51714.rs:11:27
+warning: irrefutable while-let pattern
+  --> $DIR/issue-51714.rs:11:17
    |
 LL |     [(); return while let Some(n) = Some(0) {}];
-   |                           ^^^^^^^ irrefutable pattern
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(irrefutable_let_patterns)] on by default
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors occurred: E0165, E0572.
-For more information about an error, try `rustc --explain E0165`.
+For more information about this error, try `rustc --explain E0572`.

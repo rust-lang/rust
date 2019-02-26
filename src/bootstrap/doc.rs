@@ -23,7 +23,7 @@ use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -49,6 +49,7 @@ macro_rules! book {
                 builder.ensure(Rustbook {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
+                    version: $book_ver,
                 })
             }
         }
@@ -56,19 +57,29 @@ macro_rules! book {
     }
 }
 
+// NOTE: When adding a book here, make sure to ALSO build the book by
+// adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    Nomicon, "src/doc/nomicon", "nomicon";
-    Reference, "src/doc/reference", "reference";
-    EditionGuide, "src/doc/edition-guide", "edition-guide";
-    RustdocBook, "src/doc/rustdoc", "rustdoc";
-    RustcBook, "src/doc/rustc", "rustc";
-    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
+    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
+    Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
+    RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook1;
 );
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+enum RustbookVersion {
+    MdBook1,
+    MdBook2,
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct Rustbook {
     target: Interned<String>,
     name: Interned<String>,
+    version: RustbookVersion,
 }
 
 impl Step for Rustbook {
@@ -90,6 +101,7 @@ impl Step for Rustbook {
             target: self.target,
             name: self.name,
             src: INTERNER.intern_path(src),
+            version: self.version,
         });
     }
 }
@@ -122,6 +134,7 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
+            version: RustbookVersion::MdBook1,
         })
     }
 }
@@ -175,6 +188,7 @@ struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
+    version: RustbookVersion,
 }
 
 impl Step for RustbookSrc {
@@ -205,11 +219,19 @@ impl Step for RustbookSrc {
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
+
+        let vers = match self.version {
+            RustbookVersion::MdBook1 => "1",
+            RustbookVersion::MdBook2 => "2",
+        };
+
         builder.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
-                       .arg(out));
+                       .arg(out)
+                       .arg("-m")
+                       .arg(vers));
     }
 }
 
@@ -237,7 +259,7 @@ impl Step for TheBook {
         });
     }
 
-    /// Build the book and associated stuff.
+    /// Builds the book and associated stuff.
     ///
     /// We need to build:
     ///
@@ -255,6 +277,7 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(name.to_string()),
+            version: RustbookVersion::MdBook1,
         });
 
         // building older edition redirects
@@ -263,18 +286,21 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         let source_name = format!("{}/second-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         let source_name = format!("{}/2018-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
+            version: RustbookVersion::MdBook1,
         });
 
         // build the version info page and CSS
@@ -491,6 +517,7 @@ impl Step for Std {
             cargo.arg("--")
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
+                 .arg("--generate-redirect-pages")
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
@@ -555,7 +582,9 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
         compile::test_cargo(builder, &compiler, target, &mut cargo);
 
-        cargo.arg("--no-deps").arg("-p").arg("test");
+        cargo.arg("--no-deps")
+             .arg("-p").arg("test")
+             .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
         builder.cp_r(&my_out, &out);
@@ -585,7 +614,7 @@ impl Step for WhitelistedRustc {
         });
     }
 
-    /// Generate whitelisted compiler crate documentation.
+    /// Generates whitelisted compiler crate documentation.
     ///
     /// This will generate all documentation for crates that are whitelisted
     /// to be included in the standard documentation. This documentation is
@@ -624,9 +653,9 @@ impl Step for WhitelistedRustc {
         // We don't want to build docs for internal compiler dependencies in this
         // step (there is another step for that). Therefore, we whitelist the crates
         // for which docs must be built.
-        cargo.arg("--no-deps");
         for krate in &["proc_macro"] {
-            cargo.arg("-p").arg(krate);
+            cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
         builder.run(&mut cargo);
@@ -657,7 +686,7 @@ impl Step for Rustc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure
@@ -758,7 +787,7 @@ impl Step for Rustdoc {
         });
     }
 
-    /// Generate compiler documentation.
+    /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
     /// Compiler documentation is distributed separately, so we make sure

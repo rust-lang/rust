@@ -1,8 +1,8 @@
 //! This module contains `HashStable` implementations for various MIR data
 //! types in no particular order.
 
-use ich::StableHashingContext;
-use mir;
+use crate::ich::StableHashingContext;
+use crate::mir;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::mem;

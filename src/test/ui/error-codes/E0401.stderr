@@ -1,26 +1,26 @@
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/E0401.rs:4:39
    |
 LL | fn foo<T>(x: T) {
    |        - type variable from outer function
 LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) { //~ ERROR E0401
-   |        ---------------------------    ^ use of type variable from outer function
+   |        ---------------------------    ^ use of generic parameter from outer function
    |        |
-   |        help: try using a local type parameter instead: `bfnr<U, V: Baz<U>, W: Fn(), T>`
+   |        help: try using a local generic parameter instead: `bfnr<U, V: Baz<U>, W: Fn(), T>`
 
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/E0401.rs:9:16
    |
 LL | fn foo<T>(x: T) {
    |        - type variable from outer function
 ...
 LL |     fn baz<U,
-   |        --- try adding a local type parameter in this method instead
+   |        --- try adding a local generic parameter in this method instead
 ...
 LL |            (y: T) { //~ ERROR E0401
-   |                ^ use of type variable from outer function
+   |                ^ use of generic parameter from outer function
 
-error[E0401]: can't use type parameters from outer function
+error[E0401]: can't use generic parameters from outer function
   --> $DIR/E0401.rs:22:25
    |
 LL | impl<T> Iterator for A<T> {
@@ -29,7 +29,7 @@ LL | impl<T> Iterator for A<T> {
 LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
    |                         ^^^^
    |                         |
-   |                         use of type variable from outer function
+   |                         use of generic parameter from outer function
    |                         use a type here instead
 
 error: aborting due to 3 previous errors

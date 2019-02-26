@@ -1,7 +1,7 @@
 pub use super::*;
 
 use rustc::mir::*;
-use dataflow::BitDenotation;
+use crate::dataflow::BitDenotation;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {
@@ -31,7 +31,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<Local>,
+                        sets: &mut BlockSets<'_, Local>,
                         loc: Location) {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
@@ -43,7 +43,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn terminator_effect(&self,
-                         _sets: &mut BlockSets<Local>,
+                         _sets: &mut BlockSets<'_, Local>,
                          _loc: Location) {
         // Terminators have no effect
     }

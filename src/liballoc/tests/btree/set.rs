@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
-
 use std::iter::FromIterator;
+
 use super::DeterministicRng;
 
 #[test]
@@ -15,6 +15,8 @@ fn test_clone_eq() {
 
 #[test]
 fn test_hash() {
+    use crate::hash;
+
     let mut x = BTreeSet::new();
     let mut y = BTreeSet::new();
 
@@ -26,7 +28,7 @@ fn test_hash() {
     y.insert(2);
     y.insert(1);
 
-    assert!(::hash(&x) == ::hash(&y));
+    assert!(hash(&x) == hash(&y));
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)

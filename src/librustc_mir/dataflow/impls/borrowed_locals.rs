@@ -2,7 +2,7 @@ pub use super::*;
 
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
-use dataflow::BitDenotation;
+use crate::dataflow::BitDenotation;
 
 /// This calculates if any part of a MIR local could have previously been borrowed.
 /// This means that once a local has been borrowed, its bit will be set
@@ -38,7 +38,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<Local>,
+                        sets: &mut BlockSets<'_, Local>,
                         loc: Location) {
         let stmt = &self.mir[loc.block].statements[loc.statement_index];
 
@@ -54,7 +54,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<Local>,
+                         sets: &mut BlockSets<'_, Local>,
                          loc: Location) {
         BorrowedLocalsVisitor {
             sets,

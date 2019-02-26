@@ -1,8 +1,6 @@
-use rand::{thread_rng};
-use std::mem;
-use std::ptr;
+use std::{mem, ptr};
 
-use rand::{Rng, SeedableRng};
+use rand::{thread_rng, Rng, SeedableRng};
 use rand::distributions::{Standard, Alphanumeric};
 use rand_xorshift::XorShiftRng;
 use test::{Bencher, black_box};

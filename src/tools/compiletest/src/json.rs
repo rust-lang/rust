@@ -1,5 +1,5 @@
-use errors::{Error, ErrorKind};
-use runtest::ProcRes;
+use crate::errors::{Error, ErrorKind};
+use crate::runtest::ProcRes;
 use serde_json;
 use std::path::Path;
 use std::str::FromStr;

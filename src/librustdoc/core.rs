@@ -33,12 +33,13 @@ use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use visit_ast::RustdocVisitor;
-use config::{Options as RustdocOptions, RenderOptions};
-use clean;
-use clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
-use html::render::RenderInfo;
-use passes;
+use crate::visit_ast::RustdocVisitor;
+use crate::config::{Options as RustdocOptions, RenderOptions};
+use crate::clean;
+use crate::clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
+use crate::html::render::RenderInfo;
+
+use crate::passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
 pub use rustc::session::search_paths::SearchPath;
@@ -51,9 +52,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
-    // Note that external items for which `doc(hidden)` applies to are shown as
-    // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from crateanalysis.
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -66,8 +64,10 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
 
     /// Table type parameter definition -> substituted type
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
-    /// Table node id of lifetime parameter definition -> substituted lifetime
+    /// Table `NodeId` of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    /// Table node id of const parameter definition -> substituted const
+    pub ct_substs: RefCell<FxHashMap<Def, clean::Constant>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
     pub send_trait: Option<DefId>,
@@ -88,14 +88,18 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn enter_alias<F, R>(&self,
                              ty_substs: FxHashMap<Def, clean::Type>,
                              lt_substs: FxHashMap<DefId, clean::Lifetime>,
+                             ct_substs: FxHashMap<Def, clean::Constant>,
                              f: F) -> R
     where F: FnOnce() -> R {
-        let (old_tys, old_lts) =
-            (mem::replace(&mut *self.ty_substs.borrow_mut(), ty_substs),
-             mem::replace(&mut *self.lt_substs.borrow_mut(), lt_substs));
+        let (old_tys, old_lts, old_cts) = (
+            mem::replace(&mut *self.ty_substs.borrow_mut(), ty_substs),
+            mem::replace(&mut *self.lt_substs.borrow_mut(), lt_substs),
+            mem::replace(&mut *self.ct_substs.borrow_mut(), ct_substs),
+        );
         let r = f();
         *self.ty_substs.borrow_mut() = old_tys;
         *self.lt_substs.borrow_mut() = old_lts;
+        *self.ct_substs.borrow_mut() = old_cts;
         r
     }
 
@@ -177,6 +181,7 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
             real_name.unwrap_or(last.ident),
             None,
             None,
+            None,
             self.generics_to_path_params(generics.clone()),
             false,
         ));
@@ -209,11 +214,12 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: ast::DUMMY_NODE_ID,
+                        hir_id: hir::DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         name: hir::LifetimeName::Param(name),
                     }));
                 }
-                ty::GenericParamDefKind::Type {..} => {
+                ty::GenericParamDefKind::Type { .. } => {
                     args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
                 }
             }
@@ -451,7 +457,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         None,
                                                         &name,
                                                         None,
-                                                        resolve::MakeGlobMap::No,
                                                         &resolver_arenas,
                                                         &mut crate_loader,
                                                         |_| Ok(()));
@@ -469,14 +474,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             freevars: resolver.freevars.clone(),
             export_map: resolver.export_map.clone(),
             trait_map: resolver.trait_map.clone(),
+            glob_map: resolver.glob_map.clone(),
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
             extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                 (ident.name, entry.introduced_by_item)
             }).collect(),
-        };
-        let analysis = ty::CrateAnalysis {
-            glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
         let mut arenas = AllArenas::new();
@@ -493,12 +496,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         &sess,
                                                         &*cstore,
                                                         hir_map,
-                                                        analysis,
                                                         resolutions,
                                                         &mut arenas,
                                                         &name,
                                                         &output_filenames,
-                                                        |tcx, _, _, result| {
+                                                        |tcx, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
@@ -532,6 +534,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 renderinfo: RefCell::new(renderinfo),
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
+                ct_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
                 send_trait: send_trait,
                 fake_def_ids: Default::default(),

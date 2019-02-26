@@ -1,3 +1,11 @@
+error[E0658]: The attribute `my_attr` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/derive-helper-shadowing.rs:20:15
+   |
+LL |             #[my_attr] //~ ERROR attribute `my_attr` is currently unknown
+   |               ^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
 error[E0659]: `my_attr` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/derive-helper-shadowing.rs:6:3
    |
@@ -16,6 +24,7 @@ LL | use derive_helper_shadowing::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::my_attr` to refer to this attribute macro unambiguously
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0659`.
+Some errors occurred: E0658, E0659.
+For more information about an error, try `rustc --explain E0658`.

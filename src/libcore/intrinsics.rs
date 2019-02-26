@@ -1,6 +1,6 @@
-//! rustc compiler intrinsics.
+//! Compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
+//! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
 //!
 //! # Volatiles
 //!
@@ -315,35 +315,35 @@ extern "rust-intrinsic" {
     /// [`AtomicBool::swap`](../../std/sync/atomic/struct.AtomicBool.html#method.swap).
     pub fn atomic_xchg_relaxed<T>(dst: *mut T, src: T) -> T;
 
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acq<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_rel<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `order`. For example,
     /// [`AtomicIsize::fetch_add`](../../std/sync/atomic/struct.AtomicIsize.html#method.fetch_add).
     pub fn atomic_xadd_acqrel<T>(dst: *mut T, src: T) -> T;
-    /// Add to the current value, returning the previous value.
+    /// Adds to the current value, returning the previous value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `fetch_add` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
@@ -556,7 +556,7 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_relaxed<T>(dst: *mut T, src: T) -> T;
 
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -564,7 +564,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_read_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -572,7 +572,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_write_data<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -580,7 +580,7 @@ extern "rust-intrinsic" {
     /// ranging from (0) - no locality, to (3) - extremely local keep in cache
     pub fn prefetch_read_instruction<T>(data: *const T, locality: i32);
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-    /// if supported; otherwise, it is a noop.
+    /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
     /// characteristics.
     ///
@@ -692,13 +692,12 @@ extern "rust-intrinsic" {
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
-    #[cfg(not(stage0))]
     pub fn panic_if_uninhabited<T>();
 
     /// Creates a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is `Copy`.  Also, even if T is
+    /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
     pub fn init<T>() -> T;
@@ -858,7 +857,7 @@ extern "rust-intrinsic" {
     ///
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
-    /// // same Vec internals. Therefore the new inner type must have the
+    /// // same `Vec` internals. Therefore, the new inner type must have the
     /// // exact same size, and the same alignment, as the old type.
     /// // The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
@@ -876,8 +875,8 @@ extern "rust-intrinsic" {
     /// ```
     /// use std::{slice, mem};
     ///
-    /// // There are multiple ways to do this; and there are multiple problems
-    /// // with the following, transmute, way.
+    /// // There are multiple ways to do this, and there are multiple problems
+    /// // with the following (transmute) way.
     /// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
     ///                              -> (&mut [T], &mut [T]) {
     ///     let len = slice.len();
@@ -963,221 +962,6 @@ extern "rust-intrinsic" {
     /// value is not necessarily valid to be used to actually access memory.
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination must *not* overlap.
-    ///
-    /// For regions of memory which might overlap, use [`copy`] instead.
-    ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-    /// with the argument order swapped.
-    ///
-    /// [`copy`]: ./fn.copy.html
-    /// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
-    ///
-    /// # Safety
-    ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-    ///
-    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-    ///
-    /// * Both `src` and `dst` must be properly aligned.
-    ///
-    /// * The region of memory beginning at `src` with a size of `count *
-    ///   size_of::<T>()` bytes must *not* overlap with the region of memory
-    ///   beginning at `dst` with the same size.
-    ///
-    /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using *both* the values
-    /// in the region beginning at `*src` and the region beginning at `*dst` can
-    /// [violate memory safety][read-ownership].
-    ///
-    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-    /// `0`, the pointers must be non-NULL and properly aligned.
-    ///
-    /// [`Copy`]: ../marker/trait.Copy.html
-    /// [`read`]: ../ptr/fn.read.html
-    /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
-    /// [valid]: ../ptr/index.html#safety
-    ///
-    /// # Examples
-    ///
-    /// Manually implement [`Vec::append`]:
-    ///
-    /// ```
-    /// use std::ptr;
-    ///
-    /// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
-    /// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
-    ///     let src_len = src.len();
-    ///     let dst_len = dst.len();
-    ///
-    ///     // Ensure that `dst` has enough capacity to hold all of `src`.
-    ///     dst.reserve(src_len);
-    ///
-    ///     unsafe {
-    ///         // The call to offset is always safe because `Vec` will never
-    ///         // allocate more than `isize::MAX` bytes.
-    ///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
-    ///         let src_ptr = src.as_ptr();
-    ///
-    ///         // Truncate `src` without dropping its contents. We do this first,
-    ///         // to avoid problems in case something further down panics.
-    ///         src.set_len(0);
-    ///
-    ///         // The two regions cannot overlap because mutable references do
-    ///         // not alias, and two different vectors cannot own the same
-    ///         // memory.
-    ///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
-    ///
-    ///         // Notify `dst` that it now holds the contents of `src`.
-    ///         dst.set_len(dst_len + src_len);
-    ///     }
-    /// }
-    ///
-    /// let mut a = vec!['r'];
-    /// let mut b = vec!['u', 's', 't'];
-    ///
-    /// append(&mut a, &mut b);
-    ///
-    /// assert_eq!(a, &['r', 'u', 's', 't']);
-    /// assert!(b.is_empty());
-    /// ```
-    ///
-    /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination may overlap.
-    ///
-    /// If the source and destination will *never* overlap,
-    /// [`copy_nonoverlapping`] can be used instead.
-    ///
-    /// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-    /// order swapped.  Copying takes place as if the bytes were copied from `src`
-    /// to a temporary array and then copied from the array to `dst`.
-    ///
-    /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
-    /// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
-    ///
-    /// # Safety
-    ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-    ///
-    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-    ///
-    /// * Both `src` and `dst` must be properly aligned.
-    ///
-    /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-    /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
-    /// in the region beginning at `*src` and the region beginning at `*dst` can
-    /// [violate memory safety][read-ownership].
-    ///
-    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-    /// `0`, the pointers must be non-NULL and properly aligned.
-    ///
-    /// [`Copy`]: ../marker/trait.Copy.html
-    /// [`read`]: ../ptr/fn.read.html
-    /// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
-    /// [valid]: ../ptr/index.html#safety
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// use std::ptr;
-    ///
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
-    ///     dst
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-    /// `val`.
-    ///
-    /// `write_bytes` is similar to C's [`memset`], but sets `count *
-    /// size_of::<T>()` bytes to `val`.
-    ///
-    /// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
-    ///
-    /// # Safety
-    ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-    ///
-    /// * `dst` must be properly aligned.
-    ///
-    /// Additionally, the caller must ensure that writing `count *
-    /// size_of::<T>()` bytes to the given region of memory results in a valid
-    /// value of `T`. Using a region of memory typed as a `T` that contains an
-    /// invalid value of `T` is undefined behavior.
-    ///
-    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-    /// `0`, the pointer must be non-NULL and properly aligned.
-    ///
-    /// [valid]: ../ptr/index.html#safety
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use std::ptr;
-    ///
-    /// let mut vec = vec![0u32; 4];
-    /// unsafe {
-    ///     let vec_ptr = vec.as_mut_ptr();
-    ///     ptr::write_bytes(vec_ptr, 0xfe, 2);
-    /// }
-    /// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
-    /// ```
-    ///
-    /// Creating an invalid value:
-    ///
-    /// ```
-    /// use std::ptr;
-    ///
-    /// let mut v = Box::new(0i32);
-    ///
-    /// unsafe {
-    ///     // Leaks the previously held value by overwriting the `Box<T>` with
-    ///     // a null pointer.
-    ///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
-    /// }
-    ///
-    /// // At this point, using or dropping `v` results in undefined behavior.
-    /// // drop(v); // ERROR
-    ///
-    /// // Even leaking `v` "uses" it, and hence is undefined behavior.
-    /// // mem::forget(v); // ERROR
-    ///
-    /// // In fact, `v` is invalid according to basic type layout invariants, so *any*
-    /// // operation touching it is undefined behavior.
-    /// // let v2 = v; // ERROR
-    ///
-    /// unsafe {
-    ///     // Let us instead put in a valid value
-    ///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
-    /// }
-    ///
-    /// // Now the box is fine
-    /// assert_eq!(*v, 42);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
@@ -1201,19 +985,19 @@ extern "rust-intrinsic" {
     /// unless size is equal to zero.
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
-    /// Perform a volatile load from the `src` pointer.
+    /// Performs a volatile load from the `src` pointer.
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::read_volatile`](../../std/ptr/fn.read_volatile.html).
     pub fn volatile_load<T>(src: *const T) -> T;
-    /// Perform a volatile store to the `dst` pointer.
+    /// Performs a volatile store to the `dst` pointer.
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
-    /// Perform a volatile load from the `src` pointer
+    /// Performs a volatile load from the `src` pointer
     /// The pointer is not required to be aligned.
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
-    /// Perform a volatile store to the `dst` pointer.
+    /// Performs a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
@@ -1348,7 +1132,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::ctlz;
     ///
     /// let x = 0b0001_1100_u8;
-    /// let num_leading = unsafe { ctlz(x) };
+    /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 3);
     /// ```
     ///
@@ -1360,7 +1144,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::ctlz;
     ///
     /// let x = 0u16;
-    /// let num_leading = unsafe { ctlz(x) };
+    /// let num_leading = ctlz(x);
     /// assert_eq!(num_leading, 16);
     /// ```
     pub fn ctlz<T>(x: T) -> T;
@@ -1391,7 +1175,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::cttz;
     ///
     /// let x = 0b0011_1000_u8;
-    /// let num_trailing = unsafe { cttz(x) };
+    /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 3);
     /// ```
     ///
@@ -1403,7 +1187,7 @@ extern "rust-intrinsic" {
     /// use std::intrinsics::cttz;
     ///
     /// let x = 0u16;
-    /// let num_trailing = unsafe { cttz(x) };
+    /// let num_trailing = cttz(x);
     /// assert_eq!(num_trailing, 16);
     /// ```
     pub fn cttz<T>(x: T) -> T;
@@ -1494,6 +1278,19 @@ extern "rust-intrinsic" {
     /// [`std::u32::wrapping_mul`](../../std/primitive.u32.html#method.wrapping_mul)
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
 
+    /// Computes `a + b`, while saturating at numeric bounds.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `saturating_add` method. For example,
+    /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
+    #[cfg(not(stage0))]
+    pub fn saturating_add<T>(a: T, b: T) -> T;
+    /// Computes `a - b`, while saturating at numeric bounds.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `saturating_sub` method. For example,
+    /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
+    #[cfg(not(stage0))]
+    pub fn saturating_sub<T>(a: T, b: T) -> T;
+
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
@@ -1511,4 +1308,253 @@ extern "rust-intrinsic" {
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+}
+
+mod real_intrinsics {
+  extern "rust-intrinsic" {
+    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+    /// and destination must *not* overlap.
+    /// For the full docs, see the stabilized wrapper [`copy_nonoverlapping`].
+    ///
+    /// [`copy_nonoverlapping`]: ../../std/ptr/fn.copy_nonoverlapping.html
+    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
+    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+    /// and destination may overlap.
+    /// For the full docs, see the stabilized wrapper [`copy`].
+    ///
+    /// [`copy`]: ../../std/ptr/fn.copy.html
+    pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
+
+    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
+    /// `val`.
+    /// For the full docs, see the stabilized wrapper [`write_bytes`].
+    ///
+    /// [`write_bytes`]: ../../std/ptr/fn.write_bytes.html
+    pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+  }
+}
+
+/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+/// and destination must *not* overlap.
+///
+/// For regions of memory which might overlap, use [`copy`] instead.
+///
+/// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
+/// with the argument order swapped.
+///
+/// [`copy`]: ./fn.copy.html
+/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+///
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+///
+/// * Both `src` and `dst` must be properly aligned.
+///
+/// * The region of memory beginning at `src` with a size of `count *
+///   size_of::<T>()` bytes must *not* overlap with the region of memory
+///   beginning at `dst` with the same size.
+///
+/// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
+/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
+/// in the region beginning at `*src` and the region beginning at `*dst` can
+/// [violate memory safety][read-ownership].
+///
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+/// `0`, the pointers must be non-NULL and properly aligned.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read`]: ../ptr/fn.read.html
+/// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// Manually implement [`Vec::append`]:
+///
+/// ```
+/// use std::ptr;
+///
+/// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
+/// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
+///     let src_len = src.len();
+///     let dst_len = dst.len();
+///
+///     // Ensure that `dst` has enough capacity to hold all of `src`.
+///     dst.reserve(src_len);
+///
+///     unsafe {
+///         // The call to offset is always safe because `Vec` will never
+///         // allocate more than `isize::MAX` bytes.
+///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+///         let src_ptr = src.as_ptr();
+///
+///         // Truncate `src` without dropping its contents. We do this first,
+///         // to avoid problems in case something further down panics.
+///         src.set_len(0);
+///
+///         // The two regions cannot overlap because mutable references do
+///         // not alias, and two different vectors cannot own the same
+///         // memory.
+///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
+///
+///         // Notify `dst` that it now holds the contents of `src`.
+///         dst.set_len(dst_len + src_len);
+///     }
+/// }
+///
+/// let mut a = vec!['r'];
+/// let mut b = vec!['u', 's', 't'];
+///
+/// append(&mut a, &mut b);
+///
+/// assert_eq!(a, &['r', 'u', 's', 't']);
+/// assert!(b.is_empty());
+/// ```
+///
+/// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
+#[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
+pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+    real_intrinsics::copy_nonoverlapping(src, dst, count);
+}
+
+/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+/// and destination may overlap.
+///
+/// If the source and destination will *never* overlap,
+/// [`copy_nonoverlapping`] can be used instead.
+///
+/// `copy` is semantically equivalent to C's [`memmove`], but with the argument
+/// order swapped. Copying takes place as if the bytes were copied from `src`
+/// to a temporary array and then copied from the array to `dst`.
+///
+/// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
+/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+///
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+///
+/// * Both `src` and `dst` must be properly aligned.
+///
+/// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
+/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
+/// in the region beginning at `*src` and the region beginning at `*dst` can
+/// [violate memory safety][read-ownership].
+///
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+/// `0`, the pointers must be non-NULL and properly aligned.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read`]: ../ptr/fn.read.html
+/// [read-ownership]: ../ptr/fn.read.html#ownership-of-the-returned-value
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// Efficiently create a Rust vector from an unsafe buffer:
+///
+/// ```
+/// use std::ptr;
+///
+/// # #[allow(dead_code)]
+/// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
+///     let mut dst = Vec::with_capacity(elts);
+///     dst.set_len(elts);
+///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
+///     dst
+/// }
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
+pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+    real_intrinsics::copy(src, dst, count)
+}
+
+/// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
+/// `val`.
+///
+/// `write_bytes` is similar to C's [`memset`], but sets `count *
+/// size_of::<T>()` bytes to `val`.
+///
+/// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+///
+/// * `dst` must be properly aligned.
+///
+/// Additionally, the caller must ensure that writing `count *
+/// size_of::<T>()` bytes to the given region of memory results in a valid
+/// value of `T`. Using a region of memory typed as a `T` that contains an
+/// invalid value of `T` is undefined behavior.
+///
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
+/// `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut vec = vec![0u32; 4];
+/// unsafe {
+///     let vec_ptr = vec.as_mut_ptr();
+///     ptr::write_bytes(vec_ptr, 0xfe, 2);
+/// }
+/// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
+/// ```
+///
+/// Creating an invalid value:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut v = Box::new(0i32);
+///
+/// unsafe {
+///     // Leaks the previously held value by overwriting the `Box<T>` with
+///     // a null pointer.
+///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
+/// }
+///
+/// // At this point, using or dropping `v` results in undefined behavior.
+/// // drop(v); // ERROR
+///
+/// // Even leaking `v` "uses" it, and hence is undefined behavior.
+/// // mem::forget(v); // ERROR
+///
+/// // In fact, `v` is invalid according to basic type layout invariants, so *any*
+/// // operation touching it is undefined behavior.
+/// // let v2 = v; // ERROR
+///
+/// unsafe {
+///     // Let us instead put in a valid value
+///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
+/// }
+///
+/// // Now the box is fine
+/// assert_eq!(*v, 42);
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
+pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+    real_intrinsics::write_bytes(dst, val, count)
 }

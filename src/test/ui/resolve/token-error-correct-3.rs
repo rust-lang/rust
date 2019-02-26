@@ -17,7 +17,7 @@ pub mod raw {
             //~| expected type `()`
             //~| found type `std::result::Result<bool, std::io::Error>`
             //~| expected one of
-        } else { //~ ERROR: incorrect close delimiter: `}`
+        } else {
             //~^ ERROR: expected one of
             //~| unexpected token
             Ok(false);

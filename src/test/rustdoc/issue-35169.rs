@@ -18,7 +18,6 @@ impl Deref for Bar {
     fn deref(&self) -> &Foo { loop {} }
 }
 
-// @has issue_35169/Bar.t.html
 // @has issue_35169/struct.Bar.html
 // @has - '//*[@id="by_ref.v"]' 'fn by_ref(&self)'
 // @has - '//*[@id="method.by_ref"]' 'fn by_ref(&self)'

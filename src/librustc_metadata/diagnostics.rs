@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use syntax::{register_diagnostic, register_diagnostics, register_long_diagnostics};
+
 register_long_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
@@ -35,7 +37,7 @@ extern {}
 ```
 
 See more:
-https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
+https://doc.rust-lang.org/reference/attributes.html#conditional-compilation
 "##,
 
 E0458: r##"

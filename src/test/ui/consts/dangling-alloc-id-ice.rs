@@ -1,7 +1,5 @@
 // https://github.com/rust-lang/rust/issues/55223
 
-#![feature(const_let)]
-
 union Foo<'a> {
     y: &'a (),
     long_live_the_unit: &'static (),

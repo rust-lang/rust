@@ -13,8 +13,12 @@ Read ["Installation"] from [The Book].
 ["Installation"]: https://doc.rust-lang.org/book/ch01-01-installation.html
 [The Book]: https://doc.rust-lang.org/book/index.html
 
-## Building from Source
+## Installing from Source
 [building-from-source]: #building-from-source
+
+_Note: If you wish to contribute to the compiler, you should read
+[this chapter](https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html)
+of the rustc-guide instead._
 
 ### Building on *nix
 1. Make sure you have installed the dependencies:
@@ -38,7 +42,6 @@ Read ["Installation"] from [The Book].
 3. Build and install:
 
     ```sh
-    $ git submodule update --init --recursive --progress
     $ ./x.py build && sudo ./x.py install
     ```
 

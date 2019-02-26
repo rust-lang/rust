@@ -4,6 +4,13 @@ error[E0010]: allocations are not allowed in constants
 LL | const CON : Box<i32> = box 0; //~ ERROR E0010
    |                        ^^^^^ allocation not allowed in constants
 
-error: aborting due to previous error
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/E0010.rs:4:28
+   |
+LL | const CON : Box<i32> = box 0; //~ ERROR E0010
+   |                            ^
 
-For more information about this error, try `rustc --explain E0010`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0010, E0019.
+For more information about an error, try `rustc --explain E0010`.

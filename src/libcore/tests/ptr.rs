@@ -44,13 +44,13 @@ fn test_is_null() {
     let p: *const isize = null();
     assert!(p.is_null());
 
-    let q = unsafe { p.offset(1) };
+    let q = p.wrapping_offset(1);
     assert!(!q.is_null());
 
     let mp: *mut isize = null_mut();
     assert!(mp.is_null());
 
-    let mq = unsafe { mp.offset(1) };
+    let mq = mp.wrapping_offset(1);
     assert!(!mq.is_null());
 
     // Pointers to unsized types -- slices
@@ -145,6 +145,7 @@ fn test_as_ref() {
 }
 
 #[test]
+#[cfg(not(miri))] // This test is UB according to Stacked Borrows
 fn test_as_mut() {
     unsafe {
         let p: *mut isize = null_mut();
@@ -221,8 +222,11 @@ fn test_ptr_subtraction() {
         let m_start = xs_mut.as_mut_ptr();
         let mut m_ptr = m_start.offset(9);
 
-        while m_ptr >= m_start {
+        loop {
             *m_ptr += *m_ptr;
+            if m_ptr == m_start {
+                break;
+            }
             m_ptr = m_ptr.offset(-1);
         }
 
@@ -249,6 +253,7 @@ fn test_unsized_nonnull() {
 
 #[test]
 #[allow(warnings)]
+#[cfg(not(miri))] // Miri cannot hash pointers
 // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
 // ABI, or even point to an actual executable code, because the function itself is never invoked.
 #[no_mangle]
@@ -288,6 +293,7 @@ fn write_unaligned_drop() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
 fn align_offset_zst() {
     // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
     // all, because no amount of elements will align the pointer.
@@ -302,6 +308,7 @@ fn align_offset_zst() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
 fn align_offset_stride1() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
@@ -318,6 +325,7 @@ fn align_offset_stride1() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri is too slow
 fn align_offset_weird_strides() {
     #[repr(packed)]
     struct A3(u16, u8);

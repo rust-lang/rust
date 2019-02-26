@@ -3,13 +3,13 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use build::expr::category::{Category, RvalueFunc};
-use build::{BlockAnd, BlockAndExtension, Builder};
-use hair::*;
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::interpret::EvalErrorKind;
 use rustc::mir::*;
-use rustc::ty::{self, Ty, UpvarSubsts};
+use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -67,7 +67,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Borrow {
-                region,
                 borrow_kind,
                 arg,
             } => {
@@ -75,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, arg)),
                     _ => unpack!(block = this.as_place(block, arg)),
                 };
-                block.and(Rvalue::Ref(region, borrow_kind, arg_place))
+                block.and(Rvalue::Ref(this.hir.tcx().types.re_erased, borrow_kind, arg_place))
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, scope, lhs));
@@ -249,11 +248,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                             BorrowKind::Mut {
                                                 allow_two_phase_borrow: false,
                                             },
-                                        region,
                                         arg,
                                     } => unpack!(
                                         block = this.limit_capture_mutability(
-                                            upvar.span, upvar.ty, scope, block, arg, region,
+                                            upvar.span, upvar.ty, scope, block, arg,
                                         )
                                     ),
                                     _ => unpack!(block = this.as_operand(block, scope, upvar)),
@@ -270,7 +268,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
                             user_ty: None,
-                            literal: this.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+                            literal: this.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(
                                 ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,
@@ -333,8 +331,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .collect()
                 };
 
+                let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {
-                    this.canonical_user_type_annotations.push((expr_span, ty))
+                    this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        span: source_info.span,
+                        user_ty: ty,
+                        inferred_ty,
+                    })
                 });
                 let adt = box AggregateKind::Adt(
                     adt_def,
@@ -500,7 +503,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         temp_lifetime: Option<region::Scope>,
         mut block: BasicBlock,
         arg: ExprRef<'tcx>,
-        region: &'tcx ty::RegionKind,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
 
@@ -582,7 +584,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             block,
             source_info,
             &Place::Local(temp),
-            Rvalue::Ref(region, borrow_kind, arg_place),
+            Rvalue::Ref(this.hir.tcx().types.re_erased, borrow_kind, arg_place),
         );
 
         // In constants, temp_lifetime is None. We should not need to drop

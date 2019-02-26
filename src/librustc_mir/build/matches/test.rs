@@ -5,10 +5,10 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use build::Builder;
-use build::matches::{Candidate, MatchPair, Test, TestKind};
-use hair::*;
-use hair::pattern::compare_const_vals;
+use crate::build::Builder;
+use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
+use crate::hair::*;
+use crate::hair::pattern::compare_const_vals;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::{self, Ty};
@@ -35,10 +35,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Constant { .. }
-            if is_switch_ty(match_pair.pattern.ty) => {
-                // for integers, we use a SwitchInt match, which allows
-                // us to handle more cases
+            PatternKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
+                // For integers, we use a `SwitchInt` match, which allows
+                // us to handle more cases.
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::SwitchInt {
@@ -253,12 +252,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             TestKind::Eq { value, mut ty } => {
                 let val = Operand::Copy(place.clone());
                 let mut expect = self.literal_operand(test.span, ty, value);
-                // Use PartialEq::eq instead of BinOp::Eq
+                // Use `PartialEq::eq` instead of `BinOp::Eq`
                 // (the binop can only handle primitives)
                 let fail = self.cfg.start_new_block();
                 if !ty.is_scalar() {
-                    // If we're using b"..." as a pattern, we need to insert an
-                    // unsizing coercion, as the byte string has the type &[u8; N].
+                    // If we're using `b"..."` as a pattern, we need to insert an
+                    // unsizing coercion, as the byte string has the type `&[u8; N]`.
                     //
                     // We want to do this even when the scrutinee is a reference to an
                     // array, so we can call `<[u8]>::eq` rather than having to find an
@@ -302,19 +301,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
-                    let method = self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(method));
+                    let method = self.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(method));
 
+                    let re_erased = self.hir.tcx().types.re_erased;
                     // take the argument by reference
-                    let region_scope = self.topmost_scope();
-                    let region = self.hir.tcx().mk_region(ty::ReScope(region_scope));
                     let tam = ty::TypeAndMut {
                         ty,
                         mutbl: Mutability::MutImmutable,
                     };
-                    let ref_ty = self.hir.tcx().mk_ref(region, tam);
+                    let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
 
                     // let lhs_ref_place = &lhs;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
                     let lhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
                     let val = Operand::Move(lhs_ref_place);
@@ -324,7 +322,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
 
                     // let rhs_ref_place = &rhs_place;
-                    let ref_rvalue = Rvalue::Ref(region, BorrowKind::Shared, rhs_place);
+                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
                     let rhs_ref_place = self.temp(ref_ty, test.span);
                     self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
                     let expect = Operand::Move(rhs_ref_place);
@@ -444,7 +442,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// appropriate.
     ///
     /// So, for example, if this candidate is `x @ Some(P0)` and the
-    /// test is a variant test, then we would add `(x as Option).0 @
+    /// Tests is a variant test, then we would add `(x as Option).0 @
     /// P0` to the `resulting_candidates` entry corresponding to the
     /// variant `Some`.
     ///
@@ -504,6 +502,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 resulting_candidates[variant_index.as_usize()].push(new_candidate);
                 true
             }
+
             (&TestKind::Switch { .. }, _) => false,
 
             // If we are performing a switch over integers, then this informs integer
@@ -539,7 +538,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             (&TestKind::SwitchInt { .. }, _) => false,
-
 
             (&TestKind::Len { len: test_len, op: BinOp::Eq },
              &PatternKind::Slice { ref prefix, ref slice, ref suffix }) => {

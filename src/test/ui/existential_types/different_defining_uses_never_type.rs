@@ -9,10 +9,10 @@ fn foo() -> Foo {
     ""
 }
 
-fn bar() -> Foo { //~ ERROR defining existential type use differs from previous
+fn bar() -> Foo { //~ ERROR concrete type differs from previous
     panic!()
 }
 
-fn boo() -> Foo { //~ ERROR defining existential type use differs from previous
+fn boo() -> Foo { //~ ERROR concrete type differs from previous
     loop {}
 }

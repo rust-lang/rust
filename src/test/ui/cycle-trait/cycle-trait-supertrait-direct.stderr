@@ -5,6 +5,11 @@ LL | trait Chromosome: Chromosome {
    |                   ^^^^^^^^^^
    |
    = note: ...which again requires computing the supertraits of `Chromosome`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/cycle-trait-supertrait-direct.rs:3:1
+   |
+LL | trait Chromosome: Chromosome {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

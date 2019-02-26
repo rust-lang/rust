@@ -1,8 +1,8 @@
-error: expected one of `>`, identifier, or lifetime, found `,`
+error: expected one of `>`, `const`, identifier, or lifetime, found `,`
   --> $DIR/bounds-lifetime.rs:9:14
    |
-LL | type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
-   |              ^ expected one of `>`, identifier, or lifetime here
+LL | type A = for<,> fn(); //~ ERROR expected one of `>`, `const`, identifier, or lifetime, found `,`
+   |              ^ expected one of `>`, `const`, identifier, or lifetime here
 
 error: aborting due to previous error
 

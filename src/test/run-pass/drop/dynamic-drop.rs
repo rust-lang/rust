@@ -12,6 +12,7 @@
 use std::cell::{Cell, RefCell};
 use std::ops::Generator;
 use std::panic;
+use std::pin::Pin;
 use std::usize;
 
 struct InjectedFailure;
@@ -172,7 +173,7 @@ fn generator(a: &Allocator, run_count: usize) {
          );
     };
     for _ in 0..run_count {
-        unsafe { gen.resume(); }
+        Pin::new(&mut gen).resume();
     }
 }
 

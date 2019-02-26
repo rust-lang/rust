@@ -18,7 +18,7 @@ mod visitor;
 pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
 pub use self::eval_context::{
-    EvalContext, Frame, StackPopCleanup, LocalValue,
+    EvalContext, Frame, StackPopCleanup, LocalState, LocalValue,
 };
 
 pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};

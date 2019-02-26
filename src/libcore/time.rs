@@ -27,7 +27,7 @@ const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f
 /// timeouts.
 ///
 /// Each `Duration` is composed of a whole number of seconds and a fractional part
-/// represented in nanoseconds.  If the underlying system does not support
+/// represented in nanoseconds. If the underlying system does not support
 /// nanosecond-level precision, APIs binding a system timeout will typically round up
 /// the number of nanoseconds.
 ///
@@ -59,6 +59,58 @@ pub struct Duration {
 }
 
 impl Duration {
+    /// The duration of one second.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::SECOND, Duration::from_secs(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const SECOND: Duration = Duration::from_secs(1);
+
+    /// The duration of one millisecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MILLISECOND, Duration::from_millis(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MILLISECOND: Duration = Duration::from_millis(1);
+
+    /// The duration of one microsecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MICROSECOND, Duration::from_micros(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MICROSECOND: Duration = Duration::from_micros(1);
+
+    /// The duration of one nanosecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::NANOSECOND, Duration::from_nanos(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const NANOSECOND: Duration = Duration::from_nanos(1);
+
     /// Creates a new `Duration` from the specified number of whole seconds and
     /// additional nanoseconds.
     ///
@@ -499,7 +551,7 @@ impl Duration {
         }
     }
 
-    /// Multiply `Duration` by `f64`.
+    /// Multiplies `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is not finite, negative or overflows `Duration`.

@@ -2,18 +2,18 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use hir::Node;
-use hir::{self, PatKind};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::Node;
+use crate::hir::{self, PatKind};
+use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use crate::hir::itemlikevisit::ItemLikeVisitor;
 
-use hir::def::Def;
-use hir::CodegenFnAttrFlags;
-use hir::def_id::{DefId, LOCAL_CRATE};
-use lint;
-use middle::privacy;
-use ty::{self, TyCtxt};
-use util::nodemap::FxHashSet;
+use crate::hir::def::Def;
+use crate::hir::CodegenFnAttrFlags;
+use crate::hir::def_id::{DefId, LOCAL_CRATE};
+use crate::lint;
+use crate::middle::privacy;
+use crate::ty::{self, TyCtxt};
+use crate::util::nodemap::FxHashSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -112,7 +112,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, def: Def,
                                   pats: &[source_map::Spanned<hir::FieldPat>]) {
-        let variant = match self.tables.node_id_to_type(lhs.hir_id).sty {
+        let variant = match self.tables.node_type(lhs.hir_id).sty {
             ty::Adt(adt, _) => adt.variant_of_def(def),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
@@ -211,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
-                          _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
+                          _: &hir::Generics, _: hir::HirId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
@@ -409,7 +409,7 @@ fn create_and_seed_worklist<'a, 'tcx>(
         }
     }).chain(
         // Seed entry point
-        tcx.sess.entry_fn.borrow().map(|(id, _, _)| id)
+        tcx.entry_fn(LOCAL_CRATE).map(|(def_id, _)| tcx.hir().as_local_node_id(def_id).unwrap())
     ).collect::<Vec<_>>();
 
     // Seed implemented trait items
@@ -570,7 +570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     fn visit_variant(&mut self,
                      variant: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     id: ast::NodeId) {
+                     id: hir::HirId) {
         if self.should_warn_about_variant(&variant.node) {
             self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.ident.name,
                                 "variant", "constructed");

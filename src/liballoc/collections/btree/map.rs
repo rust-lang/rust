@@ -1,23 +1,18 @@
+use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::Index;
-use core::ops::RangeBounds;
+use core::ops::{Index, RangeBounds};
 use core::{fmt, intrinsics, mem, ptr};
 
-use borrow::Borrow;
+use super::node::{self, Handle, NodeRef, marker, InsertResult::*, ForceResult::*};
+use super::search::{self, SearchResult::*};
 
-use super::node::{self, Handle, NodeRef, marker};
-use super::search;
-
-use super::node::InsertResult::*;
-use super::node::ForceResult::*;
-use super::search::SearchResult::*;
-use self::UnderflowResult::*;
-use self::Entry::*;
+use UnderflowResult::*;
+use Entry::*;
 
 /// A map based on a B-Tree.
 ///
@@ -248,7 +243,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
 
     fn replace(&mut self, key: K) -> Option<K> {
         self.ensure_root_is_owned();
-        match search::search_tree::<marker::Mut, K, (), K>(self.root.as_mut(), &key) {
+        match search::search_tree::<marker::Mut<'_>, K, (), K>(self.root.as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
                 VacantEntry {
@@ -278,8 +273,8 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -314,7 +309,7 @@ pub struct IntoIter<K, V> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let range = Range {
             front: self.front.reborrow(),
             back: self.back.reborrow(),
@@ -336,8 +331,8 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a> fmt::Debug for Keys<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug, V> fmt::Debug for Keys<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -355,8 +350,8 @@ pub struct Values<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -388,8 +383,8 @@ pub struct Range<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -411,8 +406,8 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let range = Range {
             front: self.front.reborrow(),
             back: self.back.reborrow(),
@@ -441,8 +436,8 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry")
                               .field(v)
@@ -469,8 +464,8 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry")
          .field(self.key())
          .finish()
@@ -492,8 +487,8 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 }
 
 #[stable(feature= "debug_btree_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
          .field("key", self.key())
          .field("value", self.get())
@@ -817,7 +812,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
+    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<'_, K, V>
         where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_ref();
@@ -858,7 +853,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<'_, K, V>
         where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_mut();
@@ -891,7 +886,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
         self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
@@ -1201,7 +1196,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
@@ -1216,15 +1211,15 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     fn len(&self) -> usize {
         self.length
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Iter<'a, K, V> {
-    fn clone(&self) -> Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
         Iter {
             range: self.range.clone(),
             length: self.length,
@@ -1273,14 +1268,14 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: 'a, V: 'a> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     fn len(&self) -> usize {
         self.length
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> IntoIterator for BTreeMap<K, V> {
@@ -1436,18 +1431,18 @@ impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
+impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Keys<'a, K, V> {
-    fn clone(&self) -> Keys<'a, K, V> {
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
     }
 }
@@ -1473,18 +1468,18 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Values<'a, K, V> {
-    fn clone(&self) -> Values<'a, K, V> {
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
     }
 }
@@ -1523,15 +1518,14 @@ impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
-impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
-
+impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
@@ -1609,11 +1603,11 @@ impl<'a, K, V> Range<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for Range<'a, K, V> {}
+impl<K, V> FusedIterator for Range<'_, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
-impl<'a, K, V> Clone for Range<'a, K, V> {
-    fn clone(&self) -> Range<'a, K, V> {
+impl<K, V> Clone for Range<'_, K, V> {
+    fn clone(&self) -> Self {
         Range {
             front: self.front,
             back: self.back,
@@ -1640,9 +1634,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.right_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.front = kv.right_edge();
-                return (k, v);
+                self.front = ptr::read(&kv).right_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1653,9 +1649,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.right_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
-                    return (k, v);
+                    self.front = first_leaf_edge(ptr::read(&kv).right_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();
@@ -1678,7 +1676,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K, V> FusedIterator for RangeMut<'a, K, V> {}
+impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
@@ -1686,9 +1684,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.left_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.back = kv.left_edge();
-                return (k, v);
+                self.back = ptr::read(&kv).left_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1699,9 +1699,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.left_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
-                    return (k, v);
+                    self.back = last_leaf_edge(ptr::read(&kv).left_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();
@@ -1783,13 +1785,13 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K: Ord, Q: ?Sized, V> Index<&'a Q> for BTreeMap<K, V>
+impl<K: Ord, Q: ?Sized, V> Index<&Q> for BTreeMap<K, V>
     where K: Borrow<Q>,
           Q: Ord
 {
@@ -1940,7 +1942,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             range: Range {
                 front: first_leaf_edge(self.root.as_ref()),
@@ -1972,7 +1974,7 @@ impl<K, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
         IterMut {
@@ -2049,7 +2051,7 @@ impl<K, V> BTreeMap<K, V> {
     ///                     String::from("goodbye!")]);
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
     }
 
@@ -2374,7 +2376,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
     /// Gets a mutable reference to the value in the entry.
     ///
-    /// If you need a reference to the `OccupiedEntry` which may outlive the
+    /// If you need a reference to the `OccupiedEntry` that may outlive the
     /// destruction of the `Entry` value, see [`into_mut`].
     ///
     /// [`into_mut`]: #method.into_mut

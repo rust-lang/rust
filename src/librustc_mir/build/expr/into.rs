@@ -1,8 +1,8 @@
 //! See docs in build/expr/mod.rs
 
-use build::expr::category::{Category, RvalueFunc};
-use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use hair::*;
+use crate::build::expr::category::{Category, RvalueFunc};
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::hair::*;
 use rustc::mir::*;
 use rustc::ty;
 

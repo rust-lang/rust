@@ -13,7 +13,7 @@ error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
-   |         ^ did you mean `f`?
+   |         ^ help: a function with a similar name exists: `f`
    |
    = note: did you mean to use one of the following variants?
            - `m::Z::Fn`
@@ -30,14 +30,16 @@ error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
    |
 LL |     let _: E = m::E;
-   |                ^^^-
-   |                   |
-   |                   did you mean `f`?
+   |                ^^^^
    |
    = note: did you mean to use one of the following variants?
            - `E::Fn`
            - `E::Struct`
            - `E::Unit`
+help: a function with a similar name exists
+   |
+LL |     let _: E = m::f;
+   |                   ^
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use std::f32::consts::E;
@@ -78,7 +80,11 @@ error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
    |
 LL |     let _: Z = m::n::Z;
-   |            ^ did you mean `E`?
+   |            ^
+help: an enum with a similar name exists
+   |
+LL |     let _: E = m::n::Z;
+   |            ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use m::n::Z;
@@ -99,7 +105,11 @@ error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
    |
 LL |     let _: Z = m::n::Z::Fn;
-   |            ^ did you mean `E`?
+   |            ^
+help: an enum with a similar name exists
+   |
+LL |     let _: E = m::n::Z::Fn;
+   |            ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use m::n::Z;
@@ -109,7 +119,11 @@ error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
    |
 LL |     let _: Z = m::n::Z::Struct;
-   |            ^ did you mean `E`?
+   |            ^
+help: an enum with a similar name exists
+   |
+LL |     let _: E = m::n::Z::Struct;
+   |            ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use m::n::Z;
@@ -125,7 +139,11 @@ error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
    |
 LL |     let _: Z = m::n::Z::Unit {};
-   |            ^ did you mean `E`?
+   |            ^
+help: an enum with a similar name exists
+   |
+LL |     let _: E = m::n::Z::Unit {};
+   |            ^
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use m::n::Z;

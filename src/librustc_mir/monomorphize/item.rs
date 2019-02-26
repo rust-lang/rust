@@ -1,6 +1,6 @@
-use monomorphize::Instance;
+use crate::monomorphize::Instance;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::OptLevel;
 use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
 use rustc::ty::subst::Substs;
@@ -75,8 +75,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
-                let entry_def_id =
-                    tcx.sess.entry_fn.borrow().map(|(id, _, _)| tcx.hir().local_def_id(id));
+                let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
@@ -123,7 +122,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         codegen_fn_attrs.linkage
     }
 
-    /// Returns whether this instance is instantiable - whether it has no unsatisfied
+    /// Returns `true` if this instance is instantiable - whether it has no unsatisfied
     /// predicates.
     ///
     /// In order to codegen an item, all of its predicates must hold, because
@@ -160,14 +159,14 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
-    fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, debug: bool) -> String {
         return match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
-                to_string_internal(tcx, "fn ", instance)
+                to_string_internal(tcx, "fn ", instance, debug)
             },
             MonoItem::Static(def_id) => {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
-                to_string_internal(tcx, "static ", instance)
+                to_string_internal(tcx, "static ", instance, debug)
             },
             MonoItem::GlobalAsm(..) => {
                 "global_asm".to_string()
@@ -176,12 +175,13 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         prefix: &str,
-                                        instance: Instance<'tcx>)
+                                        instance: Instance<'tcx>,
+                                        debug: bool)
                                         -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
             let printer = DefPathBasedNames::new(tcx, false, false);
-            printer.push_instance_as_string(instance, &mut result);
+            printer.push_instance_as_string(instance, &mut result, debug);
             result
         }
     }
@@ -239,7 +239,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         }
     }
 
-    pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String) {
+    // Pushes the type name of the specified type to the provided string.
+    // If 'debug' is true, printing normally unprintable types is allowed
+    // (e.g. ty::GeneratorWitness). This parameter should only be set when
+    // this method is being used for logging purposes (e.g. with debug! or info!)
+    // When being used for codegen purposes, 'debug' should be set to 'false'
+    // in order to catch unexpected types that should never end up in a type name
+    pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String, debug: bool) {
         match t.sty {
             ty::Bool              => output.push_str("bool"),
             ty::Char              => output.push_str("char"),
@@ -261,12 +267,12 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Float(ast::FloatTy::F64) => output.push_str("f64"),
             ty::Adt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
-                self.push_type_params(substs, iter::empty(), output);
+                self.push_type_params(substs, iter::empty(), output, debug);
             },
             ty::Tuple(component_types) => {
                 output.push('(');
                 for &component_type in component_types {
-                    self.push_type_name(component_type, output);
+                    self.push_type_name(component_type, output, debug);
                     output.push_str(", ");
                 }
                 if !component_types.is_empty() {
@@ -282,7 +288,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     hir::MutMutable => output.push_str("mut "),
                 }
 
-                self.push_type_name(inner_type, output);
+                self.push_type_name(inner_type, output, debug);
             },
             ty::Ref(_, inner_type, mutbl) => {
                 output.push('&');
@@ -290,17 +296,17 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     output.push_str("mut ");
                 }
 
-                self.push_type_name(inner_type, output);
+                self.push_type_name(inner_type, output, debug);
             },
             ty::Array(inner_type, len) => {
                 output.push('[');
-                self.push_type_name(inner_type, output);
+                self.push_type_name(inner_type, output, debug);
                 write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
                 output.push(']');
             },
             ty::Slice(inner_type) => {
                 output.push('[');
-                self.push_type_name(inner_type, output);
+                self.push_type_name(inner_type, output, debug);
                 output.push(']');
             },
             ty::Dynamic(ref trait_data, ..) => {
@@ -310,6 +316,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         principal.skip_binder().substs,
                         trait_data.projection_bounds(),
                         output,
+                        debug
                     );
                 } else {
                     output.push_str("dyn '_");
@@ -339,7 +346,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {
-                        self.push_type_name(parameter_type, output);
+                        self.push_type_name(parameter_type, output, debug);
                         output.push_str(", ");
                     }
                     output.pop();
@@ -358,7 +365,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 if !sig.output().is_unit() {
                     output.push_str(" -> ");
-                    self.push_type_name(sig.output(), output);
+                    self.push_type_name(sig.output(), output, debug);
                 }
             },
             ty::Generator(def_id, GeneratorSubsts { ref substs }, _) |
@@ -366,7 +373,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);
-                self.push_type_params(substs, iter::empty(), output);
+                self.push_type_params(substs, iter::empty(), output, debug);
             }
             ty::Error |
             ty::Bound(..) |
@@ -377,8 +384,12 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Param(_) |
             ty::GeneratorWitness(_) |
             ty::Opaque(..) => {
-                bug!("DefPathBasedNames: Trying to create type name for \
+                if debug {
+                    output.push_str(&format!("`{:?}`", t));
+                } else {
+                    bug!("DefPathBasedNames: Trying to create type name for \
                                          unexpected type: {:?}", t);
+                }
             }
         }
     }
@@ -413,7 +424,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     fn push_type_params<I>(&self,
                             substs: &Substs<'tcx>,
                             projections: I,
-                            output: &mut String)
+                            output: &mut String,
+                            debug: bool)
         where I: Iterator<Item=ty::PolyExistentialProjection<'tcx>>
     {
         let mut projections = projections.peekable();
@@ -424,7 +436,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         output.push('<');
 
         for type_parameter in substs.types() {
-            self.push_type_name(type_parameter, output);
+            self.push_type_name(type_parameter, output, debug);
             output.push_str(", ");
         }
 
@@ -433,7 +445,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             let name = &self.tcx.associated_item(projection.item_def_id).ident.as_str();
             output.push_str(name);
             output.push_str("=");
-            self.push_type_name(projection.ty, output);
+            self.push_type_name(projection.ty, output, debug);
             output.push_str(", ");
         }
 
@@ -445,8 +457,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
     pub fn push_instance_as_string(&self,
                                    instance: Instance<'tcx>,
-                                   output: &mut String) {
+                                   output: &mut String,
+                                   debug: bool) {
         self.push_def_path(instance.def_id(), output);
-        self.push_type_params(instance.substs, iter::empty(), output);
+        self.push_type_params(instance.substs, iter::empty(), output, debug);
     }
 }

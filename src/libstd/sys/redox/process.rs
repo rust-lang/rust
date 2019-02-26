@@ -116,8 +116,10 @@ impl Command {
         self.gid = Some(id);
     }
 
-    pub fn before_exec(&mut self,
-                       f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
+    pub unsafe fn pre_exec(
+        &mut self,
+        f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>,
+    ) {
         self.closures.push(f);
     }
 
@@ -561,7 +563,7 @@ impl ExitCode {
     }
 }
 
-/// The unique id of the process (this should never be negative).
+/// The unique ID of the process (this should never be negative).
 pub struct Process {
     pid: usize,
     status: Option<ExitStatus>,

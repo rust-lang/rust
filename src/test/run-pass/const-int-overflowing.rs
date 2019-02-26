@@ -1,5 +1,3 @@
-#![feature(const_int_overflowing)]
-
 const ADD_A: (u32, bool) = 5u32.overflowing_add(2);
 const ADD_B: (u32, bool) = u32::max_value().overflowing_add(1);
 
@@ -14,6 +12,9 @@ const SHL_B: (u32, bool) = 0x1u32.overflowing_shl(132);
 
 const SHR_A: (u32, bool) = 0x10u32.overflowing_shr(4);
 const SHR_B: (u32, bool) = 0x10u32.overflowing_shr(132);
+
+const NEG_A: (u32, bool) = 0u32.overflowing_neg();
+const NEG_B: (u32, bool) = core::u32::MAX.overflowing_neg();
 
 fn ident<T>(ident: T) -> T {
     ident
@@ -34,4 +35,7 @@ fn main() {
 
     assert_eq!(SHR_A, ident((0x1, false)));
     assert_eq!(SHR_B, ident((0x1, true)));
+
+    assert_eq!(NEG_A, ident((0, false)));
+    assert_eq!(NEG_B, ident((1, true)));
 }

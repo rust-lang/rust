@@ -6,12 +6,12 @@ use super::namespace::item_namespace;
 use rustc::hir::def_id::DefId;
 use rustc::ty::DefIdTree;
 
-use llvm;
-use llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
-use common::{CodegenCx};
+use crate::llvm;
+use crate::llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
+use crate::common::{CodegenCx};
 use rustc_codegen_ssa::traits::*;
 
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 
 pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
 {
@@ -36,7 +36,7 @@ pub fn create_DIArray(
     };
 }
 
-/// Return syntax_pos::Loc corresponding to the beginning of the span
+/// Returns syntax_pos::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
     cx.sess().source_map().lookup_char_pos(span.lo())
 }

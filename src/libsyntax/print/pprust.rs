@@ -1,21 +1,22 @@
+use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
+use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::util::parser::{self, AssocOp, Fixity};
+use crate::attr;
+use crate::source_map::{self, SourceMap, Spanned};
+use crate::parse::token::{self, BinOpToken, Nonterminal, Token};
+use crate::parse::lexer::comments;
+use crate::parse::{self, ParseSess};
+use crate::print::pp::{self, Breaks};
+use crate::print::pp::Breaks::{Consistent, Inconsistent};
+use crate::ptr::P;
+use crate::std_inject;
+use crate::symbol::keywords;
+use crate::tokenstream::{self, TokenStream, TokenTree};
+
 use rustc_target::spec::abi::{self, Abi};
-use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use ast::{SelfKind, GenericBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter, GenericArg};
-use util::parser::{self, AssocOp, Fixity};
-use attr;
-use source_map::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
-use parse::token::{self, BinOpToken, Token};
-use parse::lexer::comments;
-use parse::{self, ParseSess};
-use print::pp::{self, Breaks};
-use print::pp::Breaks::{Consistent, Inconsistent};
-use ptr::P;
-use std_inject;
-use symbol::keywords;
 use syntax_pos::{DUMMY_SP, FileName};
-use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
 use std::borrow::Cow;
@@ -34,8 +35,8 @@ pub enum AnnNode<'a> {
 }
 
 pub trait PpAnn {
-    fn pre(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
-    fn post(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
+    fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) -> io::Result<()> { Ok(()) }
+    fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) -> io::Result<()> { Ok(()) }
 }
 
 #[derive(Copy, Clone)]
@@ -150,7 +151,7 @@ impl<'a> State<'a> {
 }
 
 pub fn to_string<F>(f: F) -> String where
-    F: FnOnce(&mut State) -> io::Result<()>,
+    F: FnOnce(&mut State<'_>) -> io::Result<()>,
 {
     let mut wr = Vec::new();
     {
@@ -224,6 +225,7 @@ pub fn token_to_string(tok: &Token) -> String {
             let mut out = match lit {
                 token::Byte(b)           => format!("b'{}'", b),
                 token::Char(c)           => format!("'{}'", c),
+                token::Err(c)            => format!("'{}'", c),
                 token::Float(c)          |
                 token::Integer(c)        => c.to_string(),
                 token::Str_(s)           => format!("\"{}\"", s),
@@ -255,29 +257,33 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match nt.0 {
-            token::NtExpr(ref e)        => expr_to_string(e),
-            token::NtMeta(ref e)        => meta_item_to_string(e),
-            token::NtTy(ref e)          => ty_to_string(e),
-            token::NtPath(ref e)        => path_to_string(e),
-            token::NtItem(ref e)        => item_to_string(e),
-            token::NtBlock(ref e)       => block_to_string(e),
-            token::NtStmt(ref e)        => stmt_to_string(e),
-            token::NtPat(ref e)         => pat_to_string(e),
-            token::NtIdent(e, false)    => ident_to_string(e),
-            token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
-            token::NtLifetime(e)        => ident_to_string(e),
-            token::NtLiteral(ref e)     => expr_to_string(e),
-            token::NtTT(ref tree)       => tt_to_string(tree.clone()),
-            token::NtArm(ref e)         => arm_to_string(e),
-            token::NtImplItem(ref e)    => impl_item_to_string(e),
-            token::NtTraitItem(ref e)   => trait_item_to_string(e),
-            token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
-            token::NtWhereClause(ref e) => where_clause_to_string(e),
-            token::NtArg(ref e)         => arg_to_string(e),
-            token::NtVis(ref e)         => vis_to_string(e),
-            token::NtForeignItem(ref e) => foreign_item_to_string(e),
-        }
+        token::Interpolated(ref nt) => nonterminal_to_string(nt),
+    }
+}
+
+pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
+    match *nt {
+        token::NtExpr(ref e)        => expr_to_string(e),
+        token::NtMeta(ref e)        => meta_item_to_string(e),
+        token::NtTy(ref e)          => ty_to_string(e),
+        token::NtPath(ref e)        => path_to_string(e),
+        token::NtItem(ref e)        => item_to_string(e),
+        token::NtBlock(ref e)       => block_to_string(e),
+        token::NtStmt(ref e)        => stmt_to_string(e),
+        token::NtPat(ref e)         => pat_to_string(e),
+        token::NtIdent(e, false)    => ident_to_string(e),
+        token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
+        token::NtLifetime(e)        => ident_to_string(e),
+        token::NtLiteral(ref e)     => expr_to_string(e),
+        token::NtTT(ref tree)       => tt_to_string(tree.clone()),
+        token::NtArm(ref e)         => arm_to_string(e),
+        token::NtImplItem(ref e)    => impl_item_to_string(e),
+        token::NtTraitItem(ref e)   => trait_item_to_string(e),
+        token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
+        token::NtWhereClause(ref e) => where_clause_to_string(e),
+        token::NtArg(ref e)         => arg_to_string(e),
+        token::NtVis(ref e)         => vis_to_string(e),
+        token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
 }
 
@@ -603,6 +609,14 @@ pub trait PrintState<'a> {
         }
         match lit.node {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
+            ast::LitKind::Err(st) => {
+                let st = st.as_str().escape_debug().to_string();
+                let mut res = String::with_capacity(st.len() + 2);
+                res.push('\'');
+                res.push_str(&st);
+                res.push('\'');
+                self.writer().word(res)
+            }
             ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
@@ -807,7 +821,7 @@ pub trait PrintState<'a> {
             TokenTree::Delimited(_, delim, tts) => {
                 self.writer().word(token_to_string(&token::OpenDelim(delim)))?;
                 self.writer().space()?;
-                self.print_tts(tts.stream())?;
+                self.print_tts(tts)?;
                 self.writer().space()?;
                 self.writer().word(token_to_string(&token::CloseDelim(delim)))
             },
@@ -960,7 +974,7 @@ impl<'a> State<'a> {
                                   elts: &[T],
                                   mut op: F,
                                   mut get_span: G) -> io::Result<()> where
-        F: FnMut(&mut State, &T) -> io::Result<()>,
+        F: FnMut(&mut State<'_>, &T) -> io::Result<()>,
         G: FnMut(&T) -> syntax_pos::Span,
     {
         self.rbox(0, b)?;
@@ -1015,6 +1029,7 @@ impl<'a> State<'a> {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
             GenericArg::Type(ty) => self.print_type(ty),
+            GenericArg::Const(ct) => self.print_expr(&ct.value),
         }
     }
 
@@ -2919,7 +2934,7 @@ impl<'a> State<'a> {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
                     s.print_lifetime_bounds(lt, &param.bounds)
-                },
+                }
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_ident(param.ident)?;
@@ -2932,6 +2947,15 @@ impl<'a> State<'a> {
                         }
                         _ => Ok(())
                     }
+                }
+                ast::GenericParamKind::Const { ref ty } => {
+                    s.print_outer_attributes_inline(&param.attrs)?;
+                    s.word_space("const")?;
+                    s.print_ident(param.ident)?;
+                    s.s.space()?;
+                    s.word_space(":")?;
+                    s.print_type(ty)?;
+                    s.print_type_bounds(":", &param.bounds)
                 }
             }
         })?;
@@ -3201,10 +3225,10 @@ impl<'a> State<'a> {
 mod tests {
     use super::*;
 
-    use ast;
-    use source_map;
+    use crate::ast;
+    use crate::source_map;
+    use crate::with_globals;
     use syntax_pos;
-    use with_globals;
 
     #[test]
     fn test_fun_to_string() {

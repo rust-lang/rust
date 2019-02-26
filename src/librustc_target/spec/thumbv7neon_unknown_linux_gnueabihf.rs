@@ -1,4 +1,4 @@
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 // This target is for glibc Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)

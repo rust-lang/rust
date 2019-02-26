@@ -5,9 +5,10 @@ LL | enum Foo {
    | -------- variant `Baz` not found here
 ...
 LL |             Foo::Baz(..) => (),
-   |             -----^^^---- variant not found in `Foo`
-   |
-   = help: did you mean `Bar`?
+   |             -----^^^----
+   |             |    |
+   |             |    help: did you mean: `Bar`
+   |             variant not found in `Foo`
 
 error: aborting due to previous error
 

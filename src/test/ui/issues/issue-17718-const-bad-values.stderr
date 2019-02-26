@@ -4,17 +4,17 @@ error[E0017]: references in constants may only refer to immutable values
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^ constants require immutable values
 
-error[E0013]: constants cannot refer to statics, use a constant instead
-  --> $DIR/issue-17718-const-bad-values.rs:5:41
-   |
-LL | const C2: &'static mut usize = unsafe { &mut S };
-   |                                         ^^^^^^
-
 error[E0017]: references in constants may only refer to immutable values
   --> $DIR/issue-17718-const-bad-values.rs:5:41
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                         ^^^^^^ constants require immutable values
+
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-17718-const-bad-values.rs:5:41
+   |
+LL | const C2: &'static mut usize = unsafe { &mut S };
+   |                                         ^^^^^^
 
 error: aborting due to 3 previous errors
 

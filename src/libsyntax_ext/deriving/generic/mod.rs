@@ -174,8 +174,8 @@
 //!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
 
-pub use self::StaticFields::*;
-pub use self::SubstructureFields::*;
+pub use StaticFields::*;
+pub use SubstructureFields::*;
 
 use std::cell::RefCell;
 use std::iter;
@@ -189,15 +189,15 @@ use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::source_map::{self, respan};
-use syntax::util::move_map::MoveMap;
+use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
 
-use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
-use deriving;
+use crate::deriving;
 
 pub mod ty;
 
@@ -243,7 +243,7 @@ pub struct MethodDef<'a> {
     /// Arguments other than the self argument
     pub args: Vec<(Ty<'a>, &'a str)>,
 
-    /// Return type
+    /// Returns type
     pub ret_ty: Ty<'a>,
 
     pub attributes: Vec<ast::Attribute>,
@@ -303,7 +303,7 @@ pub enum SubstructureFields<'a> {
     EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// Non-matching variants of the enum, but with all state hidden from
-    /// the consequent code.  The first component holds `Ident`s for all of
+    /// the consequent code. The first component holds `Ident`s for all of
     /// the `Self` arguments; the second component is a slice of all of the
     /// variants for the enum itself, and the third component is a list of
     /// `Ident`s bound to the variant index values for each of the actual
@@ -321,15 +321,15 @@ pub enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt, Span, &Substructure) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> P<Expr> + 'a>;
 
-/// Deal with non-matching enum variants.  The tuple is a list of
+/// Deal with non-matching enum variants. The tuple is a list of
 /// identifiers (one for each `Self` argument, which could be any of the
 /// variants since they have been collapsed together) and the identifiers
-/// holding the variant index value for each of the `Self` arguments.  The
+/// holding the variant index value for each of the `Self` arguments. The
 /// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
                                 -> RefCell<CombineSubstructureFunc<'a>> {
@@ -342,7 +342,7 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 fn find_type_parameters(ty: &ast::Ty,
                         ty_param_names: &[ast::Name],
                         span: Span,
-                        cx: &ExtCtxt)
+                        cx: &ExtCtxt<'_>)
                         -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
@@ -386,7 +386,7 @@ fn find_type_parameters(ty: &ast::Ty,
 
 impl<'a> TraitDef<'a> {
     pub fn expand(self,
-                  cx: &mut ExtCtxt,
+                  cx: &mut ExtCtxt<'_>,
                   mitem: &ast::MetaItem,
                   item: &'a Annotatable,
                   push: &mut dyn FnMut(Annotatable)) {
@@ -394,7 +394,7 @@ impl<'a> TraitDef<'a> {
     }
 
     pub fn expand_ext(self,
-                      cx: &mut ExtCtxt,
+                      cx: &mut ExtCtxt<'_>,
                       mitem: &ast::MetaItem,
                       item: &'a Annotatable,
                       push: &mut dyn FnMut(Annotatable),
@@ -497,7 +497,7 @@ impl<'a> TraitDef<'a> {
     /// create an impl like:
     ///
     /// ```ignore (only-for-syntax-highlight)
-    /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ...  Z> where
+    /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ... Z> where
     ///     C:                       WhereTrait,
     ///     A: DerivedTrait + B1 + ... + BN,
     ///     B: DerivedTrait + B1 + ... + BN,
@@ -513,7 +513,7 @@ impl<'a> TraitDef<'a> {
     /// where B1, ..., BN are the bounds given by `bounds_paths`.'. Z is a phantom type, and
     /// therefore does not get bound by the derived trait.
     fn create_derived_impl(&self,
-                           cx: &mut ExtCtxt,
+                           cx: &mut ExtCtxt<'_>,
                            type_ident: Ident,
                            generics: &Generics,
                            field_tys: Vec<P<ast::Ty>>,
@@ -560,6 +560,7 @@ impl<'a> TraitDef<'a> {
 
                 cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
+            GenericParamKind::Const { .. } => param.clone(),
         }));
 
         // and similarly for where clauses
@@ -657,6 +658,9 @@ impl<'a> TraitDef<'a> {
             GenericParamKind::Type { .. } => {
                 GenericArg::Type(cx.ty_ident(self.span, param.ident))
             }
+            GenericParamKind::Const { .. } => {
+                GenericArg::Const(cx.const_ident(self.span, param.ident))
+            }
         }).collect();
 
         // Create the type of `self`.
@@ -696,7 +700,7 @@ impl<'a> TraitDef<'a> {
     }
 
     fn expand_struct_def(&self,
-                         cx: &mut ExtCtxt,
+                         cx: &mut ExtCtxt<'_>,
                          struct_def: &'a VariantData,
                          type_ident: Ident,
                          generics: &Generics,
@@ -746,7 +750,7 @@ impl<'a> TraitDef<'a> {
     }
 
     fn expand_enum_def(&self,
-                       cx: &mut ExtCtxt,
+                       cx: &mut ExtCtxt<'_>,
                        enum_def: &'a EnumDef,
                        type_attrs: &[ast::Attribute],
                        type_ident: Ident,
@@ -832,12 +836,12 @@ fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'sta
 
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(&self,
-                                cx: &mut ExtCtxt,
-                                trait_: &TraitDef,
+                                cx: &mut ExtCtxt<'_>,
+                                trait_: &TraitDef<'_>,
                                 type_ident: Ident,
                                 self_args: &[P<Expr>],
                                 nonself_args: &[P<Expr>],
-                                fields: &SubstructureFields)
+                                fields: &SubstructureFields<'_>)
                                 -> P<Expr> {
         let substructure = Substructure {
             type_ident,
@@ -847,13 +851,13 @@ impl<'a> MethodDef<'a> {
             fields,
         };
         let mut f = self.combine_substructure.borrow_mut();
-        let f: &mut CombineSubstructureFunc = &mut *f;
+        let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, trait_.span, &substructure)
     }
 
     fn get_ret_ty(&self,
-                  cx: &mut ExtCtxt,
-                  trait_: &TraitDef,
+                  cx: &mut ExtCtxt<'_>,
+                  trait_: &TraitDef<'_>,
                   generics: &Generics,
                   type_ident: Ident)
                   -> P<ast::Ty> {
@@ -866,8 +870,8 @@ impl<'a> MethodDef<'a> {
 
     fn split_self_nonself_args
         (&self,
-         cx: &mut ExtCtxt,
-         trait_: &TraitDef,
+         cx: &mut ExtCtxt<'_>,
+         trait_: &TraitDef<'_>,
          type_ident: Ident,
          generics: &Generics)
          -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
@@ -912,8 +916,8 @@ impl<'a> MethodDef<'a> {
     }
 
     fn create_method(&self,
-                     cx: &mut ExtCtxt,
-                     trait_: &TraitDef,
+                     cx: &mut ExtCtxt<'_>,
+                     trait_: &TraitDef<'_>,
                      type_ident: Ident,
                      generics: &Generics,
                      abi: Abi,
@@ -1005,7 +1009,7 @@ impl<'a> MethodDef<'a> {
     /// }
     /// ```
     fn expand_struct_method_body<'b>(&self,
-                                     cx: &mut ExtCtxt,
+                                     cx: &mut ExtCtxt<'_>,
                                      trait_: &TraitDef<'b>,
                                      struct_def: &'b VariantData,
                                      type_ident: Ident,
@@ -1077,8 +1081,8 @@ impl<'a> MethodDef<'a> {
     }
 
     fn expand_static_struct_method_body(&self,
-                                        cx: &mut ExtCtxt,
-                                        trait_: &TraitDef,
+                                        cx: &mut ExtCtxt<'_>,
+                                        trait_: &TraitDef<'_>,
                                         struct_def: &VariantData,
                                         type_ident: Ident,
                                         self_args: &[P<Expr>],
@@ -1122,10 +1126,10 @@ impl<'a> MethodDef<'a> {
     ///
     /// (Of course `__self_vi` and `__arg_1_vi` are unused for
     /// `PartialEq`, and those subcomputations will hopefully be removed
-    /// as their results are unused.  The point of `__self_vi` and
+    /// as their results are unused. The point of `__self_vi` and
     /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
     fn expand_enum_method_body<'b>(&self,
-                                   cx: &mut ExtCtxt,
+                                   cx: &mut ExtCtxt<'_>,
                                    trait_: &TraitDef<'b>,
                                    enum_def: &'b EnumDef,
                                    type_attrs: &[ast::Attribute],
@@ -1179,12 +1183,12 @@ impl<'a> MethodDef<'a> {
     /// }
     /// ```
     fn build_enum_match_tuple<'b>(&self,
-                                  cx: &mut ExtCtxt,
+                                  cx: &mut ExtCtxt<'_>,
                                   trait_: &TraitDef<'b>,
                                   enum_def: &'b EnumDef,
                                   type_attrs: &[ast::Attribute],
                                   type_ident: Ident,
-                                  self_args: Vec<P<Expr>>,
+                                  mut self_args: Vec<P<Expr>>,
                                   nonself_args: &[P<Expr>])
                                   -> P<Expr> {
         let sp = trait_.span;
@@ -1230,7 +1234,7 @@ impl<'a> MethodDef<'a> {
             .enumerate()
             .filter(|&(_, v)| !(self.unify_fieldless_variants && v.node.data.fields().is_empty()))
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
+                let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(cx,
                                                      type_ident,
                                                      variant,
@@ -1296,7 +1300,7 @@ impl<'a> MethodDef<'a> {
                                     other: others,
                                     attrs,
                         }
-                    }).collect::<Vec<FieldInfo>>();
+                    }).collect::<Vec<FieldInfo<'_>>>();
 
                 // Now, for some given VariantK, we have built up
                 // expressions for referencing every field of every
@@ -1417,8 +1421,8 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
 
             // Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1494,15 +1498,15 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
             cx.expr_match(sp, match_arg, match_arms)
         }
     }
 
     fn expand_static_enum_method_body(&self,
-                                      cx: &mut ExtCtxt,
-                                      trait_: &TraitDef,
+                                      cx: &mut ExtCtxt<'_>,
+                                      trait_: &TraitDef<'_>,
                                       enum_def: &EnumDef,
                                       type_ident: Ident,
                                       self_args: &[P<Expr>],
@@ -1527,7 +1531,7 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &mut ExtCtxt, struct_def: &VariantData) -> StaticFields {
+    fn summarise_struct(&self, cx: &mut ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
@@ -1553,7 +1557,7 @@ impl<'a> TraitDef<'a> {
     }
 
     fn create_subpatterns(&self,
-                          cx: &mut ExtCtxt,
+                          cx: &mut ExtCtxt<'_>,
                           field_paths: Vec<ast::Ident>,
                           mutbl: ast::Mutability,
                           use_temporaries: bool)
@@ -1573,7 +1577,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_pattern
         (&self,
-         cx: &mut ExtCtxt,
+         cx: &mut ExtCtxt<'_>,
          struct_path: ast::Path,
          struct_def: &'a VariantData,
          prefix: &str,
@@ -1633,7 +1637,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_enum_variant_pattern
         (&self,
-         cx: &mut ExtCtxt,
+         cx: &mut ExtCtxt<'_>,
          enum_ident: ast::Ident,
          variant: &'a ast::Variant,
          prefix: &str,
@@ -1652,10 +1656,10 @@ impl<'a> TraitDef<'a> {
 pub fn cs_fold_fields<'a, F>(use_foldl: bool,
                              mut f: F,
                              base: P<Expr>,
-                             cx: &mut ExtCtxt,
+                             cx: &mut ExtCtxt<'_>,
                              all_fields: &[FieldInfo<'a>])
                              -> P<Expr>
-    where F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>
+    where F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>
 {
     if use_foldl {
         all_fields.iter().fold(base, |old, field| {
@@ -1668,10 +1672,10 @@ pub fn cs_fold_fields<'a, F>(use_foldl: bool,
     }
 }
 
-pub fn cs_fold_enumnonmatch(mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                            cx: &mut ExtCtxt,
+pub fn cs_fold_enumnonmatch(mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+                            cx: &mut ExtCtxt<'_>,
                             trait_span: Span,
-                            substructure: &Substructure)
+                            substructure: &Substructure<'_>)
                             -> P<Expr>
 {
     match *substructure.fields {
@@ -1685,7 +1689,7 @@ pub fn cs_fold_enumnonmatch(mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
     }
 }
 
-pub fn cs_fold_static(cx: &mut ExtCtxt,
+pub fn cs_fold_static(cx: &mut ExtCtxt<'_>,
                       trait_span: Span)
                       -> P<Expr>
 {
@@ -1697,12 +1701,12 @@ pub fn cs_fold_static(cx: &mut ExtCtxt,
 pub fn cs_fold<F>(use_foldl: bool,
                   f: F,
                   base: P<Expr>,
-                  enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                  cx: &mut ExtCtxt,
+                  enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+                  cx: &mut ExtCtxt<'_>,
                   trait_span: Span,
-                  substructure: &Substructure)
+                  substructure: &Substructure<'_>)
                   -> P<Expr>
-    where F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>
+    where F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) |
@@ -1720,7 +1724,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 
 /// Function to fold over fields, with three cases, to generate more efficient and concise code.
 /// When the `substructure` has grouped fields, there are two cases:
-/// Zero fields: call the base case function with None (like the usual base case of `cs_fold`).
+/// Zero fields: call the base case function with `None` (like the usual base case of `cs_fold`).
 /// One or more fields: call the base case function on the first value (which depends on
 /// `use_fold`), and use that as the base case. Then perform `cs_fold` on the remainder of the
 /// fields.
@@ -1730,13 +1734,13 @@ pub fn cs_fold<F>(use_foldl: bool,
 pub fn cs_fold1<F, B>(use_foldl: bool,
                       f: F,
                       mut b: B,
-                      enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                      cx: &mut ExtCtxt,
+                      enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+                      cx: &mut ExtCtxt<'_>,
                       trait_span: Span,
-                      substructure: &Substructure)
+                      substructure: &Substructure<'_>)
                       -> P<Expr>
-    where F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
-          B: FnMut(&mut ExtCtxt, Option<(Span, P<Expr>, &[P<Expr>])>) -> P<Expr>
+    where F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
+          B: FnMut(&mut ExtCtxt<'_>, Option<(Span, P<Expr>, &[P<Expr>])>) -> P<Expr>
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) |
@@ -1776,12 +1780,12 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
 /// ```
 #[inline]
 pub fn cs_same_method<F>(f: F,
-                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
-                         cx: &mut ExtCtxt,
+                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+                         cx: &mut ExtCtxt<'_>,
                          trait_span: Span,
-                         substructure: &Substructure)
+                         substructure: &Substructure<'_>)
                          -> P<Expr>
-    where F: FnOnce(&mut ExtCtxt, Span, Vec<P<Expr>>) -> P<Expr>
+    where F: FnOnce(&mut ExtCtxt<'_>, Span, Vec<P<Expr>>) -> P<Expr>
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) |
@@ -1811,7 +1815,7 @@ pub fn cs_same_method<F>(f: F,
     }
 }
 
-/// Return true if the type has no value fields
+/// Returns `true` if the type has no value fields
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {

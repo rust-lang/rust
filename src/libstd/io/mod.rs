@@ -252,7 +252,7 @@
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
-//! [`?` operator]: ../../book/first-edition/syntax-index.html
+//! [`?` operator]: ../../book/appendix-02-operators.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
 //! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
@@ -299,7 +299,7 @@ const DEFAULT_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
 
 struct Guard<'a> { buf: &'a mut Vec<u8>, len: usize }
 
-impl<'a> Drop for Guard<'a> {
+impl Drop for Guard<'_> {
     fn drop(&mut self) {
         unsafe { self.buf.set_len(self.len); }
     }
@@ -1114,7 +1114,7 @@ pub trait Write {
             error: Result<()>,
         }
 
-        impl<'a, T: Write + ?Sized> fmt::Write for Adaptor<'a, T> {
+        impl<T: Write + ?Sized> fmt::Write for Adaptor<'_, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 match self.inner.write_all(s.as_bytes()) {
                     Ok(()) => Ok(()),
@@ -1219,11 +1219,11 @@ pub trait Seek {
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
-    /// Set the offset to the provided number of bytes.
+    /// Sets the offset to the provided number of bytes.
     #[stable(feature = "rust1", since = "1.0.0")]
     Start(#[stable(feature = "rust1", since = "1.0.0")] u64),
 
-    /// Set the offset to the size of this object plus the specified number of
+    /// Sets the offset to the size of this object plus the specified number of
     /// bytes.
     ///
     /// It is possible to seek beyond the end of an object, but it's an error to
@@ -1231,7 +1231,7 @@ pub enum SeekFrom {
     #[stable(feature = "rust1", since = "1.0.0")]
     End(#[stable(feature = "rust1", since = "1.0.0")] i64),
 
-    /// Set the offset to the current position plus the specified number of
+    /// Sets the offset to the current position plus the specified number of
     /// bytes.
     ///
     /// It is possible to seek beyond the end of an object, but it's an error to

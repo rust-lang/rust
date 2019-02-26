@@ -1,11 +1,21 @@
 error[E0054]: cannot cast as `bool`
   --> $DIR/cast-as-bool.rs:2:13
    |
-LL |     let u = 5 as bool;
-   |             ^^^^^^^^^ unsupported cast
-   |
-   = help: compare with zero instead
+LL |     let u = 5 as bool; //~ ERROR cannot cast as `bool`
+   |             ^^^^^^^^^ help: compare with zero instead: `5 != 0`
 
-error: aborting due to previous error
+error[E0054]: cannot cast as `bool`
+  --> $DIR/cast-as-bool.rs:5:13
+   |
+LL |     let t = (1 + 2) as bool; //~ ERROR cannot cast as `bool`
+   |             ^^^^^^^^^^^^^^^ help: compare with zero instead: `(1 + 2) != 0`
+
+error[E0054]: cannot cast as `bool`
+  --> $DIR/cast-as-bool.rs:8:13
+   |
+LL |     let v = "hello" as bool; //~ ERROR cannot cast as `bool`
+   |             ^^^^^^^^^^^^^^^ unsupported cast
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0054`.

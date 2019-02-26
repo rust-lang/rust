@@ -36,7 +36,10 @@ impl Step for Llvm {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/llvm").path("src/llvm-emscripten")
+        run.path("src/llvm-project")
+            .path("src/llvm-project/llvm")
+            .path("src/llvm")
+            .path("src/llvm-emscripten")
     }
 
     fn make_run(run: RunConfig) {
@@ -97,7 +100,7 @@ impl Step for Llvm {
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
-        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
+        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm-project/llvm" };
         let mut cfg = cmake::Config::new(builder.src.join(root));
 
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
@@ -189,10 +192,10 @@ impl Step for Llvm {
         }
 
         if want_lldb {
-            cfg.define("LLVM_EXTERNAL_CLANG_SOURCE_DIR", builder.src.join("src/tools/clang"));
-            cfg.define("LLVM_EXTERNAL_LLDB_SOURCE_DIR", builder.src.join("src/tools/lldb"));
+            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
+            cfg.define("LLDB_NO_DEBUGSERVER", "ON");
         } else {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
             // See https://github.com/rust-lang/rust/pull/50104
@@ -231,11 +234,15 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
+        if let Some(ref linker) = builder.config.llvm_use_linker {
+            cfg.define("LLVM_USE_LINKER", linker);
+        }
+
         if let Some(ref python) = builder.config.python {
             cfg.define("PYTHON_EXECUTABLE", python);
         }
 
-        configure_cmake(builder, target, &mut cfg, false);
+        configure_cmake(builder, target, &mut cfg);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
@@ -277,8 +284,7 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
 
 fn configure_cmake(builder: &Builder,
                    target: Interned<String>,
-                   cfg: &mut cmake::Config,
-                   building_dist_binaries: bool) {
+                   cfg: &mut cmake::Config) {
     if builder.config.ninja {
         cfg.generator("Ninja");
     }
@@ -347,26 +353,32 @@ fn configure_cmake(builder: &Builder,
        if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
        }
-
-    // If ccache is configured we inform the build a little differently how
-    // to invoke ccache while also invoking our compilers.
-    } else if let Some(ref ccache) = builder.config.ccache {
-       cfg.define("CMAKE_C_COMPILER", ccache)
-          .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
-          .define("CMAKE_CXX_COMPILER", ccache)
-          .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
     } else {
+       // If ccache is configured we inform the build a little differently how
+       // to invoke ccache while also invoking our compilers.
+       if let Some(ref ccache) = builder.config.ccache {
+         cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+            .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
+       }
        cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
           .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", builder.cflags(target, GitRepo::Llvm).join(" "));
+    let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
+    if let Some(ref s) = builder.config.llvm_cxxflags {
+        cflags.push_str(&format!(" {}", s));
+    }
+    cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if building_dist_binaries {
-        if builder.config.llvm_static_stdcpp && !target.contains("windows") {
-            cxxflags.push_str(" -static-libstdc++");
-        }
+    if builder.config.llvm_static_stdcpp &&
+        !target.contains("windows") &&
+        !target.contains("netbsd")
+    {
+        cxxflags.push_str(" -static-libstdc++");
+    }
+    if let Some(ref s) = builder.config.llvm_cxxflags {
+        cxxflags.push_str(&format!(" {}", s));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -385,6 +397,12 @@ fn configure_cmake(builder: &Builder,
         }
     }
 
+    if let Some(ref s) = builder.config.llvm_ldflags {
+        cfg.define("CMAKE_SHARED_LINKER_FLAGS", s);
+        cfg.define("CMAKE_MODULE_LINKER_FLAGS", s);
+        cfg.define("CMAKE_EXE_LINKER_FLAGS", s);
+    }
+
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
         cfg.env("RUST_LOG", "sccache=warn");
     }
@@ -400,7 +418,7 @@ impl Step for Lld {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/lld")
+        run.path("src/llvm-project/lld").path("src/tools/lld")
     }
 
     fn make_run(run: RunConfig) {
@@ -430,8 +448,8 @@ impl Step for Lld {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
-        let mut cfg = cmake::Config::new(builder.src.join("src/tools/lld"));
-        configure_cmake(builder, target, &mut cfg, true);
+        let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
+        configure_cmake(builder, target, &mut cfg);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of

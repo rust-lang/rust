@@ -7,28 +7,29 @@
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//!   * There's no way to find out the Ty type of a Value.  Doing so
-//!     would be "trying to get the eggs out of an omelette" (credit:
-//!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
-//!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
-//!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
+//! * There's no way to find out the `Ty` type of a Value. Doing so
+//!   would be "trying to get the eggs out of an omelette" (credit:
+//!   pcwalton). You can, instead, find out its `llvm::Type` by calling `val_ty`,
+//!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
+//!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use super::ModuleLlvm;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use super::LlvmCodegenBackend;
 
-use llvm;
-use metadata;
+use crate::llvm;
+use crate::metadata;
+use crate::builder::Builder;
+use crate::common;
+use crate::context::CodegenCx;
+use crate::monomorphize::partitioning::CodegenUnitExt;
+use rustc::dep_graph;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::TyCtxt;
 use rustc::middle::exported_symbols;
 use rustc::session::config::{self, DebugInfo};
-use builder::Builder;
-use common;
-use context::CodegenCx;
-use monomorphize::partitioning::CodegenUnitExt;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
 
@@ -40,12 +41,12 @@ use std::time::Instant;
 use syntax_pos::symbol::InternedString;
 use rustc::hir::CodegenFnAttrs;
 
-use value::Value;
+use crate::value::Value;
 
 
 pub fn write_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    llvm_module: &ModuleLlvm
+    llvm_module: &mut ModuleLlvm
 ) -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
@@ -136,7 +137,7 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   cgu_name: InternedString)
                                   -> Stats {
     let start_time = Instant::now();
@@ -145,7 +146,8 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     let ((stats, module), _) = tcx.dep_graph.with_task(dep_node,
                                                        tcx,
                                                        cgu_name,
-                                                       module_codegen);
+                                                       module_codegen,
+                                                       dep_graph::hash_result);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -164,7 +166,7 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
         let backend = LlvmCodegenBackend(());
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = backend.new_metadata(tcx.sess, &cgu_name.as_str());
+        let llvm_module = backend.new_metadata(tcx, &cgu_name.as_str());
         let stats = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit

@@ -1,9 +1,0 @@
-error[E0444]: platform-specific intrinsic has invalid number of arguments: found 3, expected 1
-  --> $DIR/intrinsic-invalid-number-of-arguments.rs:11:5
-   |
-LL |     fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32; //~ platform-specific intrinsic
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0444`.

@@ -17,8 +17,10 @@ extern {
 // Do not remove inline: will result in relocation failure
 // For the same reason we use inline ASM here instead of an extern static to
 // locate the base
+/// Returns address at which current enclave is loaded.
 #[inline(always)]
-fn image_base() -> u64 {
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn image_base() -> u64 {
     let base;
     unsafe { asm!("lea IMAGE_BASE(%rip),$0":"=r"(base)) };
     base

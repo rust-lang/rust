@@ -15,7 +15,7 @@ import datetime
 import stat
 
 
-template = """
+template = """\
 // This file was auto-generated using 'src/etc/generate-keyword-tests.py %s'
 
 fn main() {
@@ -35,7 +35,7 @@ for kw in sys.argv[1:]:
         os.chmod(test_file, stat.S_IWUSR)
 
     with open(test_file, 'wt') as f:
-        f.write(template % (datetime.datetime.now().year, kw, kw, kw))
+        f.write(template % (kw, kw, kw))
 
     # mark file read-only
     os.chmod(test_file, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)

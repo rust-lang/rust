@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_privacy"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_privacy"
@@ -14,3 +15,4 @@ rustc_typeck = { path = "../librustc_typeck" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+log = "0.4"

@@ -1,14 +1,15 @@
-use ast;
-use attr;
+use crate::ast;
+use crate::attr;
+use crate::edition::Edition;
+use crate::ext::hygiene::{Mark, SyntaxContext};
+use crate::symbol::{Symbol, keywords};
+use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
+use crate::ptr::P;
+use crate::tokenstream::TokenStream;
+
 use std::cell::Cell;
 use std::iter;
-use edition::Edition;
-use ext::hygiene::{Mark, SyntaxContext};
-use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
-use ptr::P;
-use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
 /// call to source_map's `is_internal` check.
@@ -19,7 +20,9 @@ fn ignored_span(sp: Span) -> Span {
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(Symbol::intern("std_inject")),
-        allow_internal_unstable: true,
+        allow_internal_unstable: Some(vec![
+            Symbol::intern("prelude_import"),
+        ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: hygiene::default_edition(),

@@ -1,7 +1,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use schema;
+use crate::schema;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
@@ -19,7 +19,7 @@ pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePrefere
 pub use rustc::middle::cstore::NativeLibraryKind::*;
 pub use rustc::middle::cstore::{CrateSource, LibSource, ForeignModule};
 
-pub use cstore_impl::{provide, provide_extern};
+pub use crate::cstore_impl::{provide, provide_extern};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -46,7 +46,7 @@ pub struct CrateMetadata {
     /// Original name of the crate.
     pub name: Symbol,
 
-    /// Name of the crate as imported.  I.e., if imported with
+    /// Name of the crate as imported. I.e., if imported with
     /// `extern crate foo as bar;` this will be `bar`.
     pub imported_name: Symbol,
 
@@ -66,9 +66,9 @@ pub struct CrateMetadata {
 
     pub root: schema::CrateRoot,
 
-    /// For each public item in this crate, we encode a key.  When the
+    /// For each public item in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
-    /// hashmap, which gives the reverse mapping.  This allows us to
+    /// hashmap, which gives the reverse mapping. This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
     pub def_path_table: Lrc<DefPathTable>,

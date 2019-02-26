@@ -1,5 +1,5 @@
-use {Category, ExpInt, Float, FloatConvert, Round, ParseError, Status, StatusAnd};
-use ieee;
+use crate::{Category, ExpInt, Float, FloatConvert, Round, ParseError, Status, StatusAnd};
+use crate::ieee;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -124,7 +124,7 @@ impl<F: Float> Neg for DoubleFloat<F> {
 }
 
 impl<F: FloatConvert<Fallback<F>>> fmt::Display for DoubleFloat<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&Fallback::from(*self), f)
     }
 }

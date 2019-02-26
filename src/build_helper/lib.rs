@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -21,6 +23,25 @@ macro_rules! t {
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
     };
+}
+
+// Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
+// break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
+// shared library, which means that when our freshly built llvm-config goes to load it's
+// associated LLVM, it actually loads the compiler's LLVM. In particular when building the first
+// compiler (i.e., in stage 0) that's a problem, as the compiler's LLVM is likely different from
+// the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
+// perfect -- we might actually want to see something from Cargo's added library paths -- but
+// for now it works.
+pub fn restore_library_path() {
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH_VAR");
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH");
+    let key = env::var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
+    if let Some(env) = env::var_os("REAL_LIBRARY_PATH") {
+        env::set_var(&key, &env);
+    } else {
+        env::remove_var(&key);
+    }
 }
 
 pub fn run(cmd: &mut Command) {
@@ -142,7 +163,7 @@ pub fn mtime(path: &Path) -> SystemTime {
         .unwrap_or(UNIX_EPOCH)
 }
 
-/// Returns whether `dst` is up to date given that the file or files in `src`
+/// Returns `true` if `dst` is up to date given that the file or files in `src`
 /// are used to generate it.
 ///
 /// Uses last-modified time checks to verify this.
@@ -169,12 +190,12 @@ pub struct NativeLibBoilerplate {
 }
 
 impl NativeLibBoilerplate {
-    /// On OSX we don't want to ship the exact filename that compiler-rt builds.
+    /// On macOS we don't want to ship the exact filename that compiler-rt builds.
     /// This conflicts with the system and ours is likely a wildly different
     /// version, so they can't be substituted.
     ///
     /// As a result, we rename it here but we need to also use
-    /// `install_name_tool` on OSX to rename the commands listed inside of it to
+    /// `install_name_tool` on macOS to rename the commands listed inside of it to
     /// ensure it's linked against correctly.
     pub fn fixup_sanitizer_lib_name(&self, sanitizer_name: &str) {
         if env::var("TARGET").unwrap() != "x86_64-apple-darwin" {

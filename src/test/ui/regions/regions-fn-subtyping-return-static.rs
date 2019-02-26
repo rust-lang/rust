@@ -5,11 +5,10 @@
 // *ANY* lifetime and returns a reference with the 'static lifetime.
 // This can safely be considered to be an instance of `F` because all
 // lifetimes are sublifetimes of 'static.
-//
-// compile-pass
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(non_snake_case)]
 
 struct S;
 
@@ -39,7 +38,7 @@ fn baz(x: &S) -> &S {
 fn supply_F() {
     want_F(foo);
 
-    want_F(bar);
+    want_F(bar); //~ ERROR mismatched types
 
     want_F(baz);
 }

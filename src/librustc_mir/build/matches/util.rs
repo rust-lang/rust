@@ -1,6 +1,6 @@
-use build::Builder;
-use build::matches::MatchPair;
-use hair::*;
+use crate::build::Builder;
+use crate::build::matches::MatchPair;
+use crate::hair::*;
 use rustc::mir::*;
 use std::u32;
 use std::convert::TryInto;
@@ -13,7 +13,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         subpatterns.iter()
                    .map(|fieldpat| {
                        let place = place.clone().field(fieldpat.field,
-                                                         fieldpat.pattern.ty);
+                                                       fieldpat.pattern.ty);
                        MatchPair::new(place, &fieldpat.pattern)
                    })
                    .collect()

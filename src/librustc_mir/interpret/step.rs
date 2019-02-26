@@ -41,7 +41,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(())
     }
 
-    /// Returns true as long as there are more things to do.
+    /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
@@ -176,7 +176,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
-                let val = self.unary_op(un_op, val.to_scalar()?, dest.layout)?;
+                let val = self.unary_op(un_op, val)?;
                 self.write_scalar(val, dest)?;
             }
 
@@ -248,7 +248,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.monomorphize(ty, self.substs());
+                let ty = self.monomorphize(ty)?;
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
@@ -260,14 +260,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Cast(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest.layout.ty);
+                debug_assert_eq!(self.monomorphize(cast_ty)?, dest.layout.ty);
                 let src = self.eval_operand(operand, None)?;
                 self.cast(src, kind, dest)?;
             }
 
             Discriminant(ref place) => {
-                let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
+                let op = self.eval_place_to_op(place, None)?;
+                let discr_val = self.read_discriminant(op)?.0;
                 let size = dest.layout.size;
                 self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
             }

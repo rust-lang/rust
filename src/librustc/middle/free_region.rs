@@ -1,14 +1,12 @@
-//! This file handles the relationships between free regions --
-//! meaning lifetime parameters. Ordinarily, free regions are
-//! unrelated to one another, but they can be related via implied or
-//! explicit bounds.  In that case, we track the bounds using the
-//! `TransitiveRelation` type and use that to decide when one free
-//! region outlives another and so forth.
+//! This module handles the relationships between "free regions", i.e., lifetime parameters.
+//! Ordinarily, free regions are unrelated to one another, but they can be related via implied
+//! or explicit bounds. In that case, we track the bounds using the `TransitiveRelation` type,
+//! and use that to decide when one free region outlives another, and so forth.
 
-use infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
-use hir::def_id::DefId;
-use middle::region;
-use ty::{self, TyCtxt, Region};
+use crate::infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
+use crate::hir::def_id::DefId;
+use crate::middle::region;
+use crate::ty::{self, TyCtxt, Region};
 
 /// Combines a `region::ScopeTree` (which governs relationships between
 /// scopes) and a `FreeRegionMap` (which governs relationships between
@@ -16,17 +14,17 @@ use ty::{self, TyCtxt, Region};
 /// regions.
 ///
 /// This stuff is a bit convoluted and should be refactored, but as we
-/// move to NLL it'll all go away anyhow.
+/// transition to NLL, it'll all go away anyhow.
 pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
-    /// context used to fetch the region maps
+    /// The context used to fetch the region maps.
     pub context: DefId,
 
-    /// region maps for the given context
+    /// The region maps for the given context.
     pub region_scope_tree: &'a region::ScopeTree,
 
-    /// free-region relationships
+    /// Free-region relationships.
     pub free_regions: &'a FreeRegionMap<'tcx>,
 }
 
@@ -45,7 +43,7 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Determines whether one region is a subregion of another.  This is intended to run *after
+    /// Determines whether one region is a subregion of another. This is intended to run *after
     /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
     pub fn is_subregion_of(&self,
                            sub_region: ty::Region<'tcx>,
@@ -86,7 +84,7 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Determines whether this free-region is required to be 'static
+    /// Determines whether this free region is required to be `'static`.
     fn is_static(&self, super_region: ty::Region<'tcx>) -> bool {
         debug!("is_static(super_region={:?})", super_region);
         match *super_region {

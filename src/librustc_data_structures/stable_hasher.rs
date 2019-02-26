@@ -1,7 +1,9 @@
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
-use sip128::SipHasher128;
+use crate::sip128::SipHasher128;
+use crate::indexed_vec;
+use crate::bit_set;
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
@@ -17,7 +19,7 @@ pub struct StableHasher<W> {
 }
 
 impl<W: StableHasherResult> ::std::fmt::Debug for StableHasher<W> {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(f, "{:?}", self.state)
     }
 }
@@ -433,7 +435,7 @@ impl<T, CTX> HashStable<CTX> for ::std::mem::Discriminant<T> {
     }
 }
 
-impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<I, T>
+impl<I: indexed_vec::Idx, T, CTX> HashStable<CTX> for indexed_vec::IndexVec<I, T>
     where T: HashStable<CTX>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -447,7 +449,7 @@ impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<
 }
 
 
-impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::bit_set::BitSet<I>
+impl<I: indexed_vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,

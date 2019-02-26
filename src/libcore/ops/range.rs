@@ -52,7 +52,7 @@ impl fmt::Debug for RangeFull {
 /// (`start..end`).
 ///
 /// The `Range` `start..end` contains all values with `x >= start` and
-/// `x < end`.  It is empty unless `start < end`.
+/// `x < end`. It is empty unless `start < end`.
 ///
 /// # Examples
 ///
@@ -297,7 +297,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// A range bounded inclusively below and above (`start..=end`).
 ///
 /// The `RangeInclusive` `start..=end` contains all values with `x >= start`
-/// and `x <= end`.  It is empty unless `start <= end`.
+/// and `x <= end`. It is empty unless `start <= end`.
 ///
 /// This iterator is [fused], but the specific values of `start` and `end` after
 /// iteration has finished are **unspecified** other than that [`.is_empty()`]
@@ -334,12 +334,14 @@ pub struct RangeInclusive<Idx> {
 trait RangeInclusiveEquality: Sized {
     fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool;
 }
+
 impl<T> RangeInclusiveEquality for T {
     #[inline]
     default fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
         range.is_empty.unwrap_or_default()
     }
 }
+
 impl<T: PartialOrd> RangeInclusiveEquality for T {
     #[inline]
     fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {

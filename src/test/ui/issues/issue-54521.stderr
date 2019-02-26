@@ -1,0 +1,26 @@
+error: unmatched angle brackets
+  --> $DIR/issue-54521.rs:11:60
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>>>();
+   |                                                            ^^^^ help: remove extra angle brackets
+
+error: unmatched angle brackets
+  --> $DIR/issue-54521.rs:14:60
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>>();
+   |                                                            ^^^ help: remove extra angle brackets
+
+error: unmatched angle brackets
+  --> $DIR/issue-54521.rs:17:60
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
+   |                                                            ^^ help: remove extra angle brackets
+
+error: unmatched angle bracket
+  --> $DIR/issue-54521.rs:20:60
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>();
+   |                                                            ^ help: remove extra angle bracket
+
+error: aborting due to 4 previous errors
+

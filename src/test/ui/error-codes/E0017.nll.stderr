@@ -4,17 +4,17 @@ error[E0017]: references in constants may only refer to immutable values
 LL | const CR: &'static mut i32 = &mut C; //~ ERROR E0017
    |                              ^^^^^^ constants require immutable values
 
-error: cannot mutate statics in the initializer of another static
-  --> $DIR/E0017.rs:5:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X; //~ ERROR E0017
-   |                                       ^^^^^^
-
 error[E0017]: references in statics may only refer to immutable values
   --> $DIR/E0017.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X; //~ ERROR E0017
    |                                       ^^^^^^ statics require immutable values
+
+error: cannot mutate statics in the initializer of another static
+  --> $DIR/E0017.rs:5:39
+   |
+LL | static STATIC_REF: &'static mut i32 = &mut X; //~ ERROR E0017
+   |                                       ^^^^^^
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
   --> $DIR/E0017.rs:5:39

@@ -149,6 +149,118 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     }
 }
 
+impl<T, S> HashSet<T, S> {
+    /// Returns the number of elements the set can hold without reallocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let set: HashSet<i32> = HashSet::with_capacity(100);
+    /// assert!(set.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn capacity(&self) -> usize {
+        self.map.capacity()
+    }
+
+    /// An iterator visiting all elements in arbitrary order.
+    /// The iterator element type is `&'a T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let mut set = HashSet::new();
+    /// set.insert("a");
+    /// set.insert("b");
+    ///
+    /// // Will print in an arbitrary order.
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.map.keys() }
+    }
+
+    /// Returns the number of elements in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Returns `true` if the set contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1);
+    /// assert!(!v.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    /// Clears the set, returning all elements in an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert!(!set.is_empty());
+    ///
+    /// // print 1, 2, 3 in an arbitrary order
+    /// for i in set.drain() {
+    ///     println!("{}", i);
+    /// }
+    ///
+    /// assert!(set.is_empty());
+    /// ```
+    #[inline]
+    #[stable(feature = "drain", since = "1.6.0")]
+    pub fn drain(&mut self) -> Drain<T> {
+        Drain { iter: self.map.drain() }
+    }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// v.insert(1);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn clear(&mut self) {
+        self.map.clear()
+    }
+}
+
 impl<T, S> HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -225,21 +337,6 @@ impl<T, S> HashSet<T, S>
         self.map.hasher()
     }
 
-    /// Returns the number of elements the set can hold without reallocating.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    /// let set: HashSet<i32> = HashSet::with_capacity(100);
-    /// assert!(set.capacity() >= 100);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.map.capacity()
-    }
-
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -308,27 +405,6 @@ impl<T, S> HashSet<T, S>
     #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.map.shrink_to(min_capacity)
-    }
-
-    /// An iterator visiting all elements in arbitrary order.
-    /// The iterator element type is `&'a T`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    /// let mut set = HashSet::new();
-    /// set.insert("a");
-    /// set.insert("b");
-    ///
-    /// // Will print in an arbitrary order.
-    /// for x in set.iter() {
-    ///     println!("{}", x);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
-        Iter { iter: self.map.keys() }
     }
 
     /// Visits the values representing the difference,
@@ -410,9 +486,16 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
-        Intersection {
-            iter: self.iter(),
-            other,
+        if self.len() <= other.len() {
+            Intersection {
+                iter: self.iter(),
+                other,
+            }
+        } else {
+            Intersection {
+                iter: other.iter(),
+                other: self,
+            }
         }
     }
 
@@ -436,81 +519,15 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
-        Union { iter: self.iter().chain(other.difference(self)) }
-    }
-
-    /// Returns the number of elements in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert_eq!(v.len(), 0);
-    /// v.insert(1);
-    /// assert_eq!(v.len(), 1);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    /// Returns true if the set contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert!(v.is_empty());
-    /// v.insert(1);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
-    }
-
-    /// Clears the set, returning all elements in an iterator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// assert!(!set.is_empty());
-    ///
-    /// // print 1, 2, 3 in an arbitrary order
-    /// for i in set.drain() {
-    ///     println!("{}", i);
-    /// }
-    ///
-    /// assert!(set.is_empty());
-    /// ```
-    #[inline]
-    #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<T> {
-        Drain { iter: self.map.drain() }
-    }
-
-    /// Clears the set, removing all values.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// v.insert(1);
-    /// v.clear();
-    /// assert!(v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.map.clear()
+        if self.len() <= other.len() {
+            Union {
+                iter: self.iter().chain(other.difference(self)),
+            }
+        } else {
+            Union {
+                iter: other.iter().chain(self.difference(other)),
+            }
+        }
     }
 
     /// Returns `true` if the set contains a value.
@@ -584,7 +601,11 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_disjoint(&self, other: &HashSet<T, S>) -> bool {
-        self.iter().all(|v| !other.contains(v))
+        if self.len() <= other.len() {
+            self.iter().all(|v| !other.contains(v))
+        } else {
+            other.iter().all(|v| !self.contains(v))
+        }
     }
 
     /// Returns `true` if the set is a subset of another,
@@ -677,7 +698,7 @@ impl<T, S> HashSet<T, S>
         Recover::replace(&mut self.map, value)
     }
 
-    /// Removes a value from the set. Returns `true` if the value was
+    /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type, but
@@ -1047,10 +1068,7 @@ pub struct Union<'a, T: 'a, S: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
-{
+impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1060,10 +1078,7 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S> IntoIterator for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
-{
+impl<T, S> IntoIterator for HashSet<T, S> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -1093,8 +1108,8 @@ impl<T, S> IntoIterator for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K> Clone for Iter<'a, K> {
-    fn clone(&self) -> Iter<'a, K> {
+impl<K> Clone for Iter<'_, K> {
+    fn clone(&self) -> Self {
         Iter { iter: self.iter.clone() }
     }
 }
@@ -1110,16 +1125,16 @@ impl<'a, K> Iterator for Iter<'a, K> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K> ExactSizeIterator for Iter<'a, K> {
+impl<K> ExactSizeIterator for Iter<'_, K> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K> FusedIterator for Iter<'a, K> {}
+impl<K> FusedIterator for Iter<'_, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
+impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -1168,16 +1183,16 @@ impl<'a, K> Iterator for Drain<'a, K> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K> ExactSizeIterator for Drain<'a, K> {
+impl<K> ExactSizeIterator for Drain<'_, K> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, K> FusedIterator for Drain<'a, K> {}
+impl<K> FusedIterator for Drain<'_, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
+impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter
             .inner
@@ -1188,8 +1203,8 @@ impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> Clone for Intersection<'a, T, S> {
-    fn clone(&self) -> Intersection<'a, T, S> {
+impl<T, S> Clone for Intersection<'_, T, S> {
+    fn clone(&self) -> Self {
         Intersection { iter: self.iter.clone(), ..*self }
     }
 }
@@ -1217,7 +1232,7 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
+impl<T, S> fmt::Debug for Intersection<'_, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher
 {
@@ -1227,15 +1242,15 @@ impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
+impl<T, S> FusedIterator for Intersection<'_, T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> Clone for Difference<'a, T, S> {
-    fn clone(&self) -> Difference<'a, T, S> {
+impl<T, S> Clone for Difference<'_, T, S> {
+    fn clone(&self) -> Self {
         Difference { iter: self.iter.clone(), ..*self }
     }
 }
@@ -1263,14 +1278,14 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T, S> FusedIterator for Difference<'a, T, S>
+impl<T, S> FusedIterator for Difference<'_, T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
+impl<T, S> fmt::Debug for Difference<'_, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher
 {
@@ -1280,8 +1295,8 @@ impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> Clone for SymmetricDifference<'a, T, S> {
-    fn clone(&self) -> SymmetricDifference<'a, T, S> {
+impl<T, S> Clone for SymmetricDifference<'_, T, S> {
+    fn clone(&self) -> Self {
         SymmetricDifference { iter: self.iter.clone() }
     }
 }
@@ -1302,14 +1317,14 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
+impl<T, S> FusedIterator for SymmetricDifference<'_, T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
+impl<T, S> fmt::Debug for SymmetricDifference<'_, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher
 {
@@ -1319,21 +1334,21 @@ impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> Clone for Union<'a, T, S> {
-    fn clone(&self) -> Union<'a, T, S> {
+impl<T, S> Clone for Union<'_, T, S> {
+    fn clone(&self) -> Self {
         Union { iter: self.iter.clone() }
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T, S> FusedIterator for Union<'a, T, S>
+impl<T, S> FusedIterator for Union<'_, T, S>
     where T: Eq + Hash,
           S: BuildHasher
 {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, T, S> fmt::Debug for Union<'a, T, S>
+impl<T, S> fmt::Debug for Union<'_, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher
 {
@@ -1494,6 +1509,7 @@ mod test_set {
     fn test_intersection() {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
+        assert!(a.intersection(&b).next().is_none());
 
         assert!(a.insert(11));
         assert!(a.insert(1));
@@ -1514,6 +1530,22 @@ mod test_set {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for x in a.intersection(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+
+        assert!(a.insert(9)); // make a bigger than b
+
+        i = 0;
+        for x in a.intersection(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+
+        i = 0;
+        for x in b.intersection(&a) {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1573,11 +1605,11 @@ mod test_set {
     fn test_union() {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
+        assert!(a.union(&b).next().is_none());
+        assert!(b.union(&a).next().is_none());
 
         assert!(a.insert(1));
         assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
         assert!(a.insert(11));
         assert!(a.insert(16));
         assert!(a.insert(19));
@@ -1593,6 +1625,23 @@ mod test_set {
         let mut i = 0;
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
         for x in a.union(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+
+        assert!(a.insert(9)); // make a bigger than b
+        assert!(a.insert(5));
+
+        i = 0;
+        for x in a.union(&b) {
+            assert!(expected.contains(x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+
+        i = 0;
+        for x in b.union(&a) {
             assert!(expected.contains(x));
             i += 1
         }

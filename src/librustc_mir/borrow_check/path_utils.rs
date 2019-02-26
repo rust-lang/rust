@@ -1,14 +1,14 @@
-use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
-use borrow_check::places_conflict;
-use borrow_check::Context;
-use borrow_check::AccessDepth;
-use dataflow::indexes::BorrowIndex;
+use crate::borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
+use crate::borrow_check::places_conflict;
+use crate::borrow_check::Context;
+use crate::borrow_check::AccessDepth;
+use crate::dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Mir, Place};
 use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
-/// Returns true if the borrow represented by `kind` is
+/// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
 /// Activation phases.
 pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(

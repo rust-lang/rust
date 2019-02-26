@@ -7,7 +7,7 @@ use errors::Applicability;
 use std::slice;
 use syntax::ptr::P;
 
-use borrowck::BorrowckCtxt;
+use crate::borrowck::BorrowckCtxt;
 
 pub fn check<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, body: &'tcx hir::Body) {
     let mut used_mut = bccx.used_mut_nodes.borrow().clone();
@@ -78,11 +78,12 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                                      hir_id,
                                      span,
                                      "variable does not need to be mutable")
-                .span_suggestion_short_with_applicability(
+                .span_suggestion_short(
                     mut_span,
                     "remove this `mut`",
                     String::new(),
-                    Applicability::MachineApplicable)
+                    Applicability::MachineApplicable,
+                )
                 .emit();
         }
     }

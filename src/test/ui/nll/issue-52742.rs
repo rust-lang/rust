@@ -7,14 +7,14 @@ struct Foo<'a, 'b> {
 }
 
 struct Bar<'b> {
-    z: &'b u32
+    z: &'b u32,
 }
 
 impl Foo<'_, '_> {
     fn take_bar(&mut self, b: Bar<'_>) {
         self.y = b.z
-        //~^ ERROR unsatisfied lifetime constraints
+        //~^ ERROR lifetime may not live long enough
     }
 }
 
-fn main() { }
+fn main() {}

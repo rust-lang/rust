@@ -1,5 +1,3 @@
-#![feature(const_let)]
-
 use std::cell::Cell;
 
 const FOO: &u32 = {

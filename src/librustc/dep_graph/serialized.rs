@@ -1,7 +1,7 @@
 //! The data that we will serialize and deserialize.
 
-use dep_graph::DepNode;
-use ich::Fingerprint;
+use crate::dep_graph::DepNode;
+use crate::ich::Fingerprint;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 newtype_index! {

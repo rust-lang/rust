@@ -1,7 +1,7 @@
 // run-pass
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
+static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct A(i32);
 

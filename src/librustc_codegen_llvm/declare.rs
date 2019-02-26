@@ -11,18 +11,18 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
-use llvm;
-use llvm::AttributePlace::Function;
+use crate::llvm;
+use crate::llvm::AttributePlace::Function;
+use crate::abi::{FnType, FnTypeExt};
+use crate::attributes;
+use crate::context::CodegenCx;
+use crate::type_::Type;
+use crate::value::Value;
 use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::LayoutOf;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
-use abi::{FnType, FnTypeExt};
-use attributes;
-use context::CodegenCx;
-use type_::Type;
 use rustc_codegen_ssa::traits::*;
-use value::Value;
 
 /// Declare a function.
 ///
@@ -65,19 +65,8 @@ fn declare_raw_fn(
         }
     }
 
-    match cx.tcx.sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
-        Some("s") => {
-            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        Some("z") => {
-            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
-            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        _ => {},
-    }
-
+    attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
     attributes::non_lazy_bind(cx.sess(), llfn);
-
     llfn
 }
 

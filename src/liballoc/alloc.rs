@@ -34,6 +34,9 @@ extern "Rust" {
 /// This type implements the [`Alloc`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
+///
+/// Note: while this type is unstable, the functionality it provides can be
+/// accessed through the [free functions in `alloc`](index.html#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
@@ -227,9 +230,9 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::Bencher;
-    use boxed::Box;
-    use alloc::{Global, Alloc, Layout, handle_alloc_error};
+    use test::Bencher;
+    use crate::boxed::Box;
+    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {

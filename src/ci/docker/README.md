@@ -131,13 +131,15 @@ $category > $option = $value -- $comment
 For targets: `arm-unknown-linux-gnueabi`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Floating point = software (no FPU) -- (\*)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.72 -- Precise kernel
-- C-library > glibc version = 2.14.1
-- C compiler > gcc version = 4.9.3
+- C-library > glibc version = 2.16.0
+- C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `arm-linux-gnueabihf.config`
@@ -145,6 +147,8 @@ For targets: `arm-unknown-linux-gnueabi`
 For targets: `arm-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Use specific FPU = vfp -- (+)
@@ -152,8 +156,8 @@ For targets: `arm-unknown-linux-gnueabihf`
 - Target options > Default instruction set mode = arm -- (+)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.72 -- Precise kernel
-- C-library > glibc version = 2.14.1
-- C compiler > gcc version = 4.9.3
+- C-library > glibc version = 2.16.0
+- C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `armv7-linux-gnueabihf.config`
@@ -161,6 +165,8 @@ For targets: `arm-unknown-linux-gnueabihf`
 For targets: `armv7-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = arm
 - Target options > Suffix to the arch-part = v7
 - Target options > Architecture level = armv7-a -- (+)
@@ -169,8 +175,8 @@ For targets: `armv7-unknown-linux-gnueabihf`
 - Target options > Default instruction set mode = thumb -- (\*)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.72 -- Precise kernel
-- C-library > glibc version = 2.14.1
-- C compiler > gcc version = 4.9.3
+- C-library > glibc version = 2.16.0
+- C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 (\*) These options have been selected to match the configuration of the arm
@@ -204,7 +210,7 @@ For targets: `powerpc-unknown-linux-gnu`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
 - C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
-- C compiler > gcc version = 4.9.3
+- C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `powerpc64-linux-gnu.config`
@@ -221,7 +227,7 @@ For targets: `powerpc64-unknown-linux-gnu`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
 - C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
-- C compiler > gcc version = 4.9.3
+- C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 (+) These CPU options match the configuration of the toolchains in RHEL6.
@@ -232,12 +238,12 @@ For targets: `s390x-unknown-linux-gnu`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
 - Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /build/patches
+- Path and misc options > Local patch directory = /tmp/patches
 - Target options > Target Architecture = s390
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
 - C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
-- C compiler > gcc version = 4.9.3
+- C compiler > gcc version = 5.2.0
 - C compiler > gcc extra config = --with-arch=z10 -- LLVM's minimum support
 - C compiler > C++ = ENABLE -- to cross compile LLVM

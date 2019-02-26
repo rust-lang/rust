@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 // See Cargo.toml for a comment explaining this crate.
 #![allow(unused_extern_crates)]
 

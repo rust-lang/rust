@@ -497,7 +497,7 @@ impl TcpStream {
         self.0.ttl()
     }
 
-    /// Get the value of the `SO_ERROR` option on this socket.
+    /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
@@ -580,7 +580,7 @@ impl Write for TcpStream {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for &'a TcpStream {
+impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
     #[inline]
@@ -589,7 +589,7 @@ impl<'a> Read for &'a TcpStream {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for &'a TcpStream {
+impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
@@ -636,7 +636,7 @@ impl TcpListener {
     ///
     /// # Examples
     ///
-    /// Create a TCP listener bound to `127.0.0.1:80`:
+    /// Creates a TCP listener bound to `127.0.0.1:80`:
     ///
     /// ```no_run
     /// use std::net::TcpListener;
@@ -644,7 +644,7 @@ impl TcpListener {
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
     /// ```
     ///
-    /// Create a TCP listener bound to `127.0.0.1:80`. If that fails, create a
+    /// Creates a TCP listener bound to `127.0.0.1:80`. If that fails, create a
     /// TCP listener bound to `127.0.0.1:443`:
     ///
     /// ```no_run
@@ -811,7 +811,7 @@ impl TcpListener {
         self.0.only_v6()
     }
 
-    /// Get the value of the `SO_ERROR` option on this socket.
+    /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
     /// the field in the process. This can be useful for checking errors between
@@ -1187,9 +1187,13 @@ mod tests {
     #[test]
     fn double_bind() {
         each_ip(&mut |addr| {
-            let _listener = t!(TcpListener::bind(&addr));
+            let listener1 = t!(TcpListener::bind(&addr));
             match TcpListener::bind(&addr) {
-                Ok(..) => panic!(),
+                Ok(listener2) => panic!(
+                    "This system (perhaps due to options set by TcpListener::bind) \
+                     permits double binding: {:?} and {:?}",
+                    listener1, listener2
+                ),
                 Err(e) => {
                     assert!(e.kind() == ErrorKind::ConnectionRefused ||
                             e.kind() == ErrorKind::Other ||
@@ -1671,17 +1675,6 @@ mod tests {
             }
             t!(txdone.send(()));
         })
-    }
-
-    #[test]
-    fn connect_timeout_unroutable() {
-        // this IP is unroutable, so connections should always time out,
-        // provided the network is reachable to begin with.
-        let addr = "10.255.255.1:80".parse().unwrap();
-        let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
-        assert!(e.kind() == io::ErrorKind::TimedOut ||
-                e.kind() == io::ErrorKind::Other,
-                "bad error: {} {:?}", e, e.kind());
     }
 
     #[test]

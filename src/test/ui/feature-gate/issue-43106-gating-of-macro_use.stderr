@@ -1,20 +1,26 @@
 error: arguments to macro_use are not allowed here
   --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
    |
-LL | #![macro_use                  = "4900"] //~ ERROR arguments to macro_use are not allowed here
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to macro_use are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:8:1
+  --> $DIR/issue-43106-gating-of-macro_use.rs:9:1
    |
-LL | #[macro_use = "2700"]
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL | #[macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: arguments to macro_use are not allowed here
-  --> $DIR/issue-43106-gating-of-macro_use.rs:11:17
+  --> $DIR/issue-43106-gating-of-macro_use.rs:12:17
    |
-LL |     mod inner { #![macro_use="2700"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^
+LL |     mod inner { #![macro_use(my_macro)] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: attribute must be of the form `#[macro_use]` or `#[macro_use(name1, name2, ...)]`
+  --> $DIR/issue-43106-gating-of-macro_use.rs:15:5
+   |
+LL |     #[macro_use = "2700"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

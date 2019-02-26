@@ -11,6 +11,7 @@ use super::{LldFlavor, LinkerFlavor, Target, TargetOptions, PanicStrategy};
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: Some("rust-lld".to_owned()),
+        features: "+strict-align".to_string(),
         executables: true,
         relocation_model: "static".to_string(),
         disable_redzone: true,

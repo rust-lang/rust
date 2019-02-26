@@ -1,8 +1,8 @@
 error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
-  --> $DIR/issue-18294.rs:3:22
+  --> $DIR/issue-18294.rs:3:31
    |
-LL |     const Y: usize = &X as *const u32 as usize; //~ ERROR is unstable
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const Y: usize = unsafe { &X as *const u32 as usize }; //~ ERROR is unstable
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 

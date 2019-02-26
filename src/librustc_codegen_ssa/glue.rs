@@ -2,12 +2,10 @@
 //
 // Code relating to drop glue.
 
-use std;
-
-use common::IntPredicate;
-use meth;
 use rustc::ty::{self, Ty};
-use traits::*;
+use crate::common::IntPredicate;
+use crate::meth;
+use crate::traits::*;
 
 pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,

@@ -1,8 +1,9 @@
+use crate::back::write::create_informational_target_machine;
+use crate::llvm;
 use syntax_pos::symbol::Symbol;
-use back::write::create_target_machine;
-use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
+use rustc_target::spec::MergeFunctions;
 use libc::c_int;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
@@ -61,7 +62,14 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-disable-preinline");
         }
         if llvm::LLVMRustIsRustLLVM() {
-            add("-mergefunc-use-aliases");
+            match sess.opts.debugging_opts.merge_functions
+                  .unwrap_or(sess.target.target.options.merge_functions) {
+                MergeFunctions::Disabled |
+                MergeFunctions::Trampolines => {}
+                MergeFunctions::Aliases => {
+                    add("-mergefunc-use-aliases");
+                }
+            }
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
@@ -92,9 +100,11 @@ const ARM_WHITELIST: &[(&str, Option<&str>)] = &[
     ("dsp", Some("arm_target_feature")),
     ("neon", Some("arm_target_feature")),
     ("v5te", Some("arm_target_feature")),
+    ("v6", Some("arm_target_feature")),
     ("v6k", Some("arm_target_feature")),
     ("v6t2", Some("arm_target_feature")),
     ("v7", Some("arm_target_feature")),
+    ("v8", Some("arm_target_feature")),
     ("vfp2", Some("arm_target_feature")),
     ("vfp3", Some("arm_target_feature")),
     ("vfp4", Some("arm_target_feature")),
@@ -139,6 +149,7 @@ const X86_WHITELIST: &[(&str, Option<&str>)] = &[
     ("fxsr", None),
     ("lzcnt", None),
     ("mmx", Some("mmx_target_feature")),
+    ("movbe", Some("movbe_target_feature")),
     ("pclmulqdq", None),
     ("popcnt", None),
     ("rdrand", None),
@@ -215,7 +226,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
-    let target_machine = create_target_machine(sess, true);
+    let target_machine = create_informational_target_machine(sess, true);
     target_feature_whitelist(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
@@ -268,7 +279,7 @@ pub fn print_passes() {
 
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
     require_inited();
-    let tm = create_target_machine(sess, true);
+    let tm = create_informational_target_machine(sess, true);
     unsafe {
         match req {
             PrintRequest::TargetCPUs => llvm::LLVMRustPrintTargetCPUs(tm),

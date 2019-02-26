@@ -9,7 +9,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
                for<'r, 's, 't0> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) mut &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't0)) i32))
            ]
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/escape-argument-callee.rs:26:45
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);

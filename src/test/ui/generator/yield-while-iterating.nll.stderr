@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/yield-while-iterating.rs:12:18
+  --> $DIR/yield-while-iterating.rs:13:18
    |
 LL |         for p in &x { //~ ERROR
    |                  ^^
@@ -7,7 +7,7 @@ LL |             yield();
    |             ------- possible yield occurs here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/yield-while-iterating.rs:57:20
+  --> $DIR/yield-while-iterating.rs:58:20
    |
 LL |     let mut b = || {
    |                 -- mutable borrow occurs here
@@ -16,8 +16,8 @@ LL |         for p in &mut x {
 ...
 LL |     println!("{}", x[0]); //~ ERROR
    |                    ^ immutable borrow occurs here
-LL |     b.resume();
-   |     - mutable borrow later used here
+LL |     Pin::new(&mut b).resume();
+   |              ------ mutable borrow later used here
 
 error: aborting due to 2 previous errors
 

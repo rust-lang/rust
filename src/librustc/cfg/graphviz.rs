@@ -4,9 +4,9 @@
 // For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
-use cfg;
-use hir;
-use ty::TyCtxt;
+use crate::cfg;
+use crate::hir;
+use crate::ty::TyCtxt;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
 pub type Edge<'a> = &'a cfg::CFGEdge;

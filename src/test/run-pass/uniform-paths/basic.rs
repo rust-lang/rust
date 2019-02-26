@@ -1,10 +1,8 @@
 // run-pass
-#![allow(unused_imports)]
-#![allow(non_camel_case_types)]
-
 // edition:2018
 
-#![feature(uniform_paths)]
+#![allow(unused_imports)]
+#![allow(non_camel_case_types)]
 
 // Test that ambiguity errors are not emitted between `self::test` and
 // `::test`, assuming the latter (crate) is not in `extern_prelude`.

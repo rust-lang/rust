@@ -1,22 +1,22 @@
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-3.rs:3:5
+  --> $DIR/lex-bad-char-literals-3.rs:1:18
    |
-LL |     '●●' //~ ERROR: character literal may only contain one codepoint
-   |     ^^^^
+LL | static c: char = '●●';
+   |                  ^^^^
 help: if you meant to write a `str` literal, use double quotes
    |
-LL |     "●●" //~ ERROR: character literal may only contain one codepoint
-   |     ^^^^
+LL | static c: char = "●●";
+   |                  ^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/lex-bad-char-literals-3.rs:3:5
+error: character literal may only contain one codepoint
+  --> $DIR/lex-bad-char-literals-3.rs:5:20
    |
-LL |     '●●' //~ ERROR: character literal may only contain one codepoint
-   |     ^^^^ expected char, found reference
+LL |     let ch: &str = '●●';
+   |                    ^^^^
+help: if you meant to write a `str` literal, use double quotes
    |
-   = note: expected type `char`
-              found type `&'static str`
+LL |     let ch: &str = "●●";
+   |                    ^^^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

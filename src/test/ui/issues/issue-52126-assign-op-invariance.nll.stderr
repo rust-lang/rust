@@ -5,7 +5,7 @@ LL |         let v: Vec<&str> = line.split_whitespace().collect();
    |                            ^^^^ borrowed value does not live long enough
 ...
 LL |         acc += cnt2;
-   |         --- borrow used here, in later iteration of loop
+   |         --- borrow later used here
 ...
 LL |     }
    |     - `line` dropped here while still borrowed

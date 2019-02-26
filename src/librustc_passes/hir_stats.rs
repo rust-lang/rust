@@ -61,7 +61,7 @@ impl<'k> StatCollector<'k> {
         });
 
         entry.count += 1;
-        entry.size = ::std::mem::size_of_val(node);
+        entry.size = std::mem::size_of_val(node);
     }
 
     fn print(&self, title: &str) {
@@ -123,7 +123,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod, _s: Span, n: NodeId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod, _s: Span, n: hir::HirId) {
         self.record("Mod", Id::None, m);
         hir_visit::walk_mod(self, m, n)
     }
@@ -144,7 +144,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_stmt(&mut self, s: &'v hir::Stmt) {
-        self.record("Stmt", Id::Node(s.node.id()), s);
+        self.record("Stmt", Id::Node(s.id), s);
         hir_visit::walk_stmt(self, s)
     }
 
@@ -156,11 +156,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_pat(&mut self, p: &'v hir::Pat) {
         self.record("Pat", Id::Node(p.id), p);
         hir_visit::walk_pat(self, p)
-    }
-
-    fn visit_decl(&mut self, d: &'v hir::Decl) {
-        self.record("Decl", Id::None, d);
-        hir_visit::walk_decl(self, d)
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr) {
@@ -178,7 +173,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 fd: &'v hir::FnDecl,
                 b: hir::BodyId,
                 s: Span,
-                id: NodeId) {
+                id: hir::HirId) {
         self.record("FnDecl", Id::None, fd);
         hir_visit::walk_fn(self, fk, fd, b, s, id)
     }
@@ -211,7 +206,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_variant(&mut self,
                      v: &'v hir::Variant,
                      g: &'v hir::Generics,
-                     item_id: NodeId) {
+                     item_id: hir::HirId) {
         self.record("Variant", Id::None, v);
         hir_visit::walk_variant(self, v, g, item_id)
     }

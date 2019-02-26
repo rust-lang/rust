@@ -1,27 +1,22 @@
 //! Functionality for ordering and comparison.
 //!
-//! This module defines both [`PartialOrd`] and [`PartialEq`] traits which are used
-//! by the compiler to implement comparison operators. Rust programs may
-//! implement [`PartialOrd`] to overload the `<`, `<=`, `>`, and `>=` operators,
-//! and may implement [`PartialEq`] to overload the `==` and `!=` operators.
+//! This module contains various tools for ordering and comparing values. In
+//! summary:
 //!
-//! [`PartialOrd`]: trait.PartialOrd.html
-//! [`PartialEq`]: trait.PartialEq.html
+//! * [`Eq`] and [`PartialEq`] are traits that allow you to define total and
+//!   partial equality between values, respectively. Implementing them overloads
+//!   the `==` and `!=` operators.
+//! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
+//!   partial orderings between values, respectively. Implementing them overloads
+//!   the `<`, `<=`, `>`, and `>=` operators.
+//! * [`Ordering`][cmp::Ordering] is an enum returned by the
+//!   main functions of [`Ord`] and [`PartialOrd`], and describes an ordering.
+//! * [`Reverse`][cmp::Reverse] is a struct that allows you to easily reverse
+//!   an ordering.
+//! * [`max`][cmp::max] and [`min`][cmp::min] are functions that build off of
+//!   [`Ord`] and allow you to find the maximum or minimum of two values.
 //!
-//! # Examples
-//!
-//! ```
-//! let x: u32 = 0;
-//! let y: u32 = 1;
-//!
-//! // these two lines are equivalent
-//! assert_eq!(x < y, true);
-//! assert_eq!(x.lt(&y), true);
-//!
-//! // these two lines are also equivalent
-//! assert_eq!(x == y, false);
-//! assert_eq!(x.eq(&y), false);
-//! ```
+//! For more details, see the respective documentation of each item in the list.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -31,7 +26,7 @@ use self::Ordering::*;
 /// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// This trait allows for partial equality, for types that do not have a full
-/// equivalence relation.  For example, in floating point numbers `NaN != NaN`,
+/// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not `Eq`.
 ///
 /// Formally, the equality must be (for all `a`, `b` and `c`):
@@ -96,6 +91,8 @@ use self::Ordering::*;
 /// For example, let's tweak our previous code a bit:
 ///
 /// ```
+/// // The derive implements <BookFormat> == <BookFormat> comparisons
+/// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
 ///     Hardback,
@@ -107,31 +104,34 @@ use self::Ordering::*;
 ///     format: BookFormat,
 /// }
 ///
+/// // Implement <Book> == <BookFormat> comparisons
 /// impl PartialEq<BookFormat> for Book {
 ///     fn eq(&self, other: &BookFormat) -> bool {
-///         match (&self.format, other) {
-///            (BookFormat::Paperback, BookFormat::Paperback) => true,
-///            (BookFormat::Hardback,  BookFormat::Hardback)  => true,
-///            (BookFormat::Ebook,     BookFormat::Ebook)     => true,
-///            (_, _) => false,
-///         }
+///         self.format == *other
+///     }
+/// }
+///
+/// // Implement <BookFormat> == <Book> comparisons
+/// impl PartialEq<Book> for BookFormat {
+///     fn eq(&self, other: &Book) -> bool {
+///         *self == other.format
 ///     }
 /// }
 ///
 /// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
 ///
 /// assert!(b1 == BookFormat::Paperback);
-/// assert!(b1 != BookFormat::Ebook);
+/// assert!(BookFormat::Ebook != b1);
 /// ```
 ///
 /// By changing `impl PartialEq for Book` to `impl PartialEq<BookFormat> for Book`,
-/// we've changed what type we can use on the right side of the `==` operator.
-/// This lets us use it in the `assert!` statements at the bottom.
+/// we allow `BookFormat`s to be compared with `Book`s.
 ///
 /// You can also combine these implementations to let the `==` operator work with
 /// two different types:
 ///
 /// ```
+/// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
 ///     Hardback,
@@ -145,12 +145,13 @@ use self::Ordering::*;
 ///
 /// impl PartialEq<BookFormat> for Book {
 ///     fn eq(&self, other: &BookFormat) -> bool {
-///         match (&self.format, other) {
-///            (&BookFormat::Paperback, &BookFormat::Paperback) => true,
-///            (&BookFormat::Hardback,  &BookFormat::Hardback)  => true,
-///            (&BookFormat::Ebook,     &BookFormat::Ebook)     => true,
-///            (_, _) => false,
-///         }
+///         self.format == *other
+///     }
+/// }
+///
+/// impl PartialEq<Book> for BookFormat {
+///     fn eq(&self, other: &Book) -> bool {
+///         *self == other.format
 ///     }
 /// }
 ///
@@ -164,7 +165,7 @@ use self::Ordering::*;
 /// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
 ///
 /// assert!(b1 == BookFormat::Paperback);
-/// assert!(b1 != BookFormat::Ebook);
+/// assert!(BookFormat::Ebook != b1);
 /// assert!(b1 == b2);
 /// ```
 ///

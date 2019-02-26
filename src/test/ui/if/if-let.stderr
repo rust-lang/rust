@@ -1,39 +1,62 @@
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:13:10
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:6:13
    |
-LL |     foo!(a, 1, { //~ ERROR irrefutable if-let
-   |          ^ irrefutable pattern
-
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:16:10
+LL |               if let $p = $e $b
+   |               ^^
+...
+LL | /     foo!(a, 1, { //~ WARN irrefutable if-let
+LL | |         println!("irrefutable pattern");
+LL | |     });
+   | |_______- in this macro invocation
    |
-LL |     bar!(a, 1, { //~ ERROR irrefutable if-let
-   |          ^ irrefutable pattern
+   = note: #[warn(irrefutable_let_patterns)] on by default
 
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:22:12
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:6:13
    |
-LL |     if let a = 1 { //~ ERROR irrefutable if-let
-   |            ^ irrefutable pattern
+LL |               if let $p = $e $b
+   |               ^^
+...
+LL | /     bar!(a, 1, { //~ WARN irrefutable if-let
+LL | |         println!("irrefutable pattern");
+LL | |     });
+   | |_______- in this macro invocation
 
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:26:12
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:24:5
    |
-LL |     if let a = 1 { //~ ERROR irrefutable if-let
-   |            ^ irrefutable pattern
+LL | /     if let a = 1 { //~ WARN irrefutable if-let
+LL | |         println!("irrefutable pattern");
+LL | |     }
+   | |_____^
 
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:36:19
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:28:5
    |
-LL |     } else if let a = 1 { //~ ERROR irrefutable if-let
-   |                   ^ irrefutable pattern
+LL | /     if let a = 1 { //~ WARN irrefutable if-let
+LL | |         println!("irrefutable pattern");
+LL | |     } else if true {
+LL | |         println!("else-if in irrefutable if-let");
+LL | |     } else {
+LL | |         println!("else in irrefutable if-let");
+LL | |     }
+   | |_____^
 
-error[E0162]: irrefutable if-let pattern
-  --> $DIR/if-let.rs:42:19
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:38:12
    |
-LL |     } else if let a = 1 { //~ ERROR irrefutable if-let
-   |                   ^ irrefutable pattern
+LL |       } else if let a = 1 { //~ WARN irrefutable if-let
+   |  ____________^
+LL | |         println!("irrefutable pattern");
+LL | |     }
+   | |_____^
 
-error: aborting due to 6 previous errors
+warning: irrefutable if-let pattern
+  --> $DIR/if-let.rs:44:12
+   |
+LL |       } else if let a = 1 { //~ WARN irrefutable if-let
+   |  ____________^
+LL | |         println!("irrefutable pattern");
+LL | |     }
+   | |_____^
 
-For more information about this error, try `rustc --explain E0162`.

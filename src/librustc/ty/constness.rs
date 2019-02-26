@@ -1,9 +1,9 @@
-use ty::query::Providers;
-use hir::def_id::DefId;
-use hir;
-use ty::TyCtxt;
+use crate::ty::query::Providers;
+use crate::hir::def_id::DefId;
+use crate::hir;
+use crate::ty::TyCtxt;
 use syntax_pos::symbol::Symbol;
-use hir::map::blocks::FnLikeNode;
+use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
@@ -37,7 +37,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Returns true if this function must conform to `min_const_fn`
+    /// Returns `true` if this function must conform to `min_const_fn`
     pub fn is_min_const_fn(self, def_id: DefId) -> bool {
         // Bail out if the signature doesn't contain `const`
         if !self.is_const_fn_raw(def_id) {

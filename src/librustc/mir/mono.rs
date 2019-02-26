@@ -1,12 +1,12 @@
-use hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
+use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use ty::{Instance, TyCtxt};
-use util::nodemap::FxHashMap;
+use crate::ty::{Instance, TyCtxt};
+use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
                                            StableHasher};
-use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
 use std::fmt;
 use std::hash::Hash;
 
@@ -57,7 +57,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
 
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
-    /// name be unique amongst **all** crates.  Therefore, it should
+    /// name be unique amongst **all** crates. Therefore, it should
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: InternedString,

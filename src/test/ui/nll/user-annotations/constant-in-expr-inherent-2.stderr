@@ -1,0 +1,50 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/constant-in-expr-inherent-2.rs:25:9
+   |
+LL |     FUN(&x);                        //~ ERROR `x` does not live long enough
+   |     ----^^-
+   |     |   |
+   |     |   borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/constant-in-expr-inherent-2.rs:26:23
+   |
+LL |     A::ASSOCIATED_FUN(&x);          //~ ERROR `x` does not live long enough
+   |     ------------------^^-
+   |     |                 |
+   |     |                 borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+...
+LL | }
+   | - `x` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/constant-in-expr-inherent-2.rs:27:28
+   |
+LL |     B::ALSO_ASSOCIATED_FUN(&x);     //~ ERROR `x` does not live long enough
+   |     -----------------------^^-
+   |     |                      |
+   |     |                      borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+LL |     <_>::TRAIT_ASSOCIATED_FUN(&x);  //~ ERROR `x` does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/constant-in-expr-inherent-2.rs:28:31
+   |
+LL |     <_>::TRAIT_ASSOCIATED_FUN(&x);  //~ ERROR `x` does not live long enough
+   |     --------------------------^^-
+   |     |                         |
+   |     |                         borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

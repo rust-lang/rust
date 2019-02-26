@@ -1,27 +1,29 @@
-use dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use errors::Diagnostic;
-use hir;
-use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
-use hir::map::definitions::DefPathHash;
-use ich::{CachingSourceMapView, Fingerprint};
-use mir::{self, interpret};
-use mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
+use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::hir;
+use crate::hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
+use crate::hir::map::definitions::DefPathHash;
+use crate::ich::{CachingSourceMapView, Fingerprint};
+use crate::mir::{self, interpret};
+use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use crate::rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
-use session::{CrateDisambiguator, Session};
+use crate::session::{CrateDisambiguator, Session};
+use crate::ty;
+use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
+use crate::ty::context::TyCtxt;
+use crate::util::common::time;
+
+use errors::Diagnostic;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use std::mem;
 use syntax::ast::NodeId;
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
-use ty;
-use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
-use ty::context::TyCtxt;
-use util::common::time;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -102,7 +104,7 @@ impl AbsoluteBytePos {
 }
 
 impl<'sess> OnDiskCache<'sess> {
-    /// Create a new OnDiskCache instance from the serialized data in `data`.
+    /// Creates a new OnDiskCache instance from the serialized data in `data`.
     pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
@@ -201,7 +203,7 @@ impl<'sess> OnDiskCache<'sess> {
             let mut query_result_index = EncodedQueryResultIndex::new();
 
             time(tcx.sess, "encode query results", || {
-                use ty::query::queries::*;
+                use crate::ty::query::queries::*;
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
@@ -224,12 +226,12 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<specialization_graph_of<'_>, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants
-                use ty::query::QueryAccessors;
+                use crate::ty::query::QueryAccessors;
                 let cache = const_eval::query_cache(tcx).borrow();
                 assert!(cache.active.is_empty());
                 for (key, entry) in cache.results.iter() {
-                    use ty::query::config::QueryDescription;
-                    if const_eval::cache_on_disk(key.clone()) {
+                    use crate::ty::query::config::QueryDescription;
+                    if const_eval::cache_on_disk(tcx, key.clone()) {
                         if let Ok(ref value) = entry.value {
                             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
@@ -324,7 +326,7 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 
-    /// Load a diagnostic emitted during the previous compilation session.
+    /// Loads a diagnostic emitted during the previous compilation session.
     pub fn load_diagnostics<'a, 'tcx>(&self,
                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       dep_node_index: SerializedDepNodeIndex)
@@ -338,19 +340,21 @@ impl<'sess> OnDiskCache<'sess> {
         diagnostics.unwrap_or_default()
     }
 
-    /// Store a diagnostic emitted during the current compilation session.
+    /// Stores a diagnostic emitted during the current compilation session.
     /// Anything stored like this will be available via `load_diagnostics` in
     /// the next compilation session.
+    #[inline(never)]
+    #[cold]
     pub fn store_diagnostics(&self,
                              dep_node_index: DepNodeIndex,
-                             diagnostics: Vec<Diagnostic>) {
+                             diagnostics: ThinVec<Diagnostic>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
-        let prev = current_diagnostics.insert(dep_node_index, diagnostics);
+        let prev = current_diagnostics.insert(dep_node_index, diagnostics.into());
         debug_assert!(prev.is_none());
     }
 
     /// Returns the cached query result if there is something in the cache for
-    /// the given SerializedDepNodeIndex. Otherwise returns None.
+    /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
     pub fn try_load_query_result<'tcx, T>(&self,
                                           tcx: TyCtxt<'_, 'tcx, 'tcx>,
                                           dep_node_index: SerializedDepNodeIndex)
@@ -363,20 +367,20 @@ impl<'sess> OnDiskCache<'sess> {
                           "query result")
     }
 
-    /// Store a diagnostic emitted during computation of an anonymous query.
+    /// Stores a diagnostic emitted during computation of an anonymous query.
     /// Since many anonymous queries can share the same `DepNode`, we aggregate
     /// them -- as opposed to regular queries where we assume that there is a
     /// 1:1 relationship between query-key and `DepNode`.
+    #[inline(never)]
+    #[cold]
     pub fn store_diagnostics_for_anon_node(&self,
                                            dep_node_index: DepNodeIndex,
-                                           mut diagnostics: Vec<Diagnostic>) {
+                                           diagnostics: ThinVec<Diagnostic>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
-        let x = current_diagnostics.entry(dep_node_index).or_insert_with(|| {
-            mem::replace(&mut diagnostics, Vec::new())
-        });
+        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
 
-        x.extend(diagnostics.into_iter());
+        x.extend(Into::<Vec<_>>::into(diagnostics));
     }
 
     fn load_indexed<'tcx, T>(&self,
@@ -774,7 +778,7 @@ impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
                                                  value: &V)
                                                  -> Result<(), E::Error>
     {
-        use ty::codec::TyEncoder;
+        use crate::ty::codec::TyEncoder;
         let start_pos = self.position();
 
         tag.encode(self)?;
@@ -1083,7 +1087,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let map = Q::query_cache(tcx).borrow();
     assert!(map.active.is_empty());
     for (key, entry) in map.results.iter() {
-        if Q::cache_on_disk(key.clone()) {
+        if Q::cache_on_disk(tcx, key.clone()) {
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
             // Record position of the cache entry

@@ -1,8 +1,7 @@
 enum X {
-    A =
-        b'a' //~ ERROR discriminator values can only be used with a field-less enum
-    ,
-    B(isize)
+    A = 3,
+    //~^ ERROR discriminator values can only be used with a field-less enum
+    B(usize)
 }
 
 fn main() {}

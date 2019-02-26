@@ -5,7 +5,7 @@
 /*
 # Comparison of static arrays
 
-The expected behaviour would be that test==test1, therefore 'true'
+The expected behaviour would be that `test == test1`, therefore 'true'
 would be printed, however the below prints false.
 */
 

@@ -1,4 +1,4 @@
-//! This is an NFA-based parser, which calls out to the main rust parser for named nonterminals
+//! This is an NFA-based parser, which calls out to the main rust parser for named non-terminals
 //! (which it commits to fully when it hits one in a grammar). There's a set of current NFA threads
 //! and a set of next ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
 //! pathological cases, is worse than traditional use of NFA or Earley parsing, but it's an easier
@@ -22,7 +22,7 @@
 //!
 //! As it processes them, it fills up `eof_items` with threads that would be valid if
 //! the macro invocation is now over, `bb_items` with threads that are waiting on
-//! a Rust nonterminal like `$e:expr`, and `next_items` with threads that are waiting
+//! a Rust non-terminal like `$e:expr`, and `next_items` with threads that are waiting
 //! on a particular token. Most of the logic concerns moving the · through the
 //! repetitions indicated by Kleene stars. The rules for moving the · without
 //! consuming any input are called epsilon transitions. It only advances or calls
@@ -70,23 +70,25 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-pub use self::NamedMatch::*;
-pub use self::ParseResult::*;
-use self::TokenTreeOrTokenTreeSlice::*;
+pub use NamedMatch::*;
+pub use ParseResult::*;
+use TokenTreeOrTokenTreeSlice::*;
 
-use ast::Ident;
-use syntax_pos::{self, Span};
+use crate::ast::Ident;
+use crate::ext::tt::quoted::{self, TokenTree};
+use crate::parse::{Directory, ParseSess};
+use crate::parse::parser::{Parser, PathStyle};
+use crate::parse::token::{self, DocComment, Nonterminal, Token};
+use crate::print::pprust;
+use crate::symbol::keywords;
+use crate::tokenstream::{DelimSpan, TokenStream};
+
 use errors::FatalError;
-use ext::tt::quoted::{self, TokenTree};
-use parse::{Directory, ParseSess};
-use parse::parser::{Parser, PathStyle};
-use parse::token::{self, DocComment, Nonterminal, Token};
-use print::pprust;
-use smallvec::SmallVec;
-use symbol::keywords;
-use tokenstream::{DelimSpan, TokenStream};
+use smallvec::{smallvec, SmallVec};
+use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -178,7 +180,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
     /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
     /// wants the shared `matches`, one should use `up.matches`.
-    matches: Box<[Rc<NamedMatchVec>]>,
+    matches: Box<[Lrc<NamedMatchVec>]>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
     /// to `matches[match_lo]`.
@@ -215,9 +217,9 @@ struct MatcherPos<'root, 'tt: 'root> {
 }
 
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
-    /// Add `m` as a named match for the `idx`-th metavar.
+    /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
-        let matches = Rc::make_mut(&mut self.matches[idx]);
+        let matches = Lrc::make_mut(&mut self.matches[idx]);
         matches.push(m);
     }
 }
@@ -271,7 +273,7 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token, String),
+    Failure(syntax_pos::Span, Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
@@ -294,16 +296,16 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
 }
 
 /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
-fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
+fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
     if len == 0 {
         vec![]
     } else {
-        let empty_matches = Rc::new(SmallVec::new());
+        let empty_matches = Lrc::new(SmallVec::new());
         vec![empty_matches; len]
     }.into_boxed_slice()
 }
 
-/// Generate the top-level matcher position in which the "dot" is before the first token of the
+/// Generates the top-level matcher position in which the "dot" is before the first token of the
 /// matcher `ms` and we are going to start matching at the span `open` in the source.
 fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherPos<'root, 'tt> {
     let match_idx_hi = count_names(ms);
@@ -336,7 +338,7 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherP
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
 /// so it is associated with a single ident in a parse, and all
-/// `MatchedNonterminal`s in the `NamedMatch` have the same nonterminal type
+/// `MatchedNonterminal`s in the `NamedMatch` have the same non-terminal type
 /// (expr, item, etc). Each leaf in a single `NamedMatch` corresponds to a
 /// single `token::MATCH_NONTERMINAL` in the `TokenTree` that produced it.
 ///
@@ -352,8 +354,8 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree], open: Span) -> MatcherP
 /// token tree it was derived from.
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
-    MatchedSeq(Rc<NamedMatchVec>, DelimSpan),
-    MatchedNonterminal(Rc<Nonterminal>),
+    MatchedSeq(Lrc<NamedMatchVec>, DelimSpan),
+    MatchedNonterminal(Lrc<Nonterminal>),
 }
 
 /// Takes a sequence of token trees `ms` representing a matcher which successfully matched input
@@ -413,7 +415,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     Success(ret_val)
 }
 
-/// Generate an appropriate parsing failure message. For EOF, this is "unexpected end...". For
+/// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
 pub fn parse_failure_msg(tok: Token) -> String {
     match tok {
@@ -425,7 +427,7 @@ pub fn parse_failure_msg(tok: Token) -> String {
     }
 }
 
-/// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
+/// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
@@ -560,7 +562,7 @@ fn inner_parse_loop<'root, 'tt>(
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
                         for idx in item.match_cur..item.match_cur + seq.num_captures {
-                            new_item.push_match(idx, MatchedSeq(Rc::new(smallvec![]), sp));
+                            new_item.push_match(idx, MatchedSeq(Lrc::new(smallvec![]), sp));
                         }
                         cur_items.push(new_item);
                     }
@@ -649,7 +651,7 @@ pub fn parse(
     sess: &ParseSess,
     tts: TokenStream,
     ms: &[TokenTree],
-    directory: Option<Directory>,
+    directory: Option<Directory<'_>>,
     recurse_into_modules: bool,
 ) -> NamedParseResult {
     // Create a parser that can be used for the "black box" parts.
@@ -706,7 +708,7 @@ pub fn parse(
                 let matches = eof_items[0]
                     .matches
                     .iter_mut()
-                    .map(|dv| Rc::make_mut(dv).pop().unwrap());
+                    .map(|dv| Lrc::make_mut(dv).pop().unwrap());
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
@@ -721,7 +723,7 @@ pub fn parse(
                         sess.source_map().next_point(parser.span)
                     },
                     token::Eof,
-                    "missing tokens in macro arguments".to_string(),
+                    "missing tokens in macro arguments",
                 );
             }
         }
@@ -760,7 +762,7 @@ pub fn parse(
             return Failure(
                 parser.span,
                 parser.token,
-                "no rules expected this token in macro call".to_string(),
+                "no rules expected this token in macro call",
             );
         }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
@@ -779,7 +781,7 @@ pub fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.as_str()))),
+                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, &ident.as_str()))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
@@ -828,7 +830,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "block" => match *token {
             Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -842,9 +844,9 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         },
         "path" | "meta" => match *token {
             Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
-                _ => may_be_ident(&nt.0),
+                _ => may_be_ident(&nt),
             },
             _ => false,
         },
@@ -861,12 +863,12 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::ModSep |                     // path
             Token::Lt |                         // path (UFCS constant)
             Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(&nt.0),
+            Token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
         "lifetime" => match *token {
             Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },
@@ -879,7 +881,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
     }
 }
 
-/// A call to the "black-box" parser to parse some rust nonterminal.
+/// A call to the "black-box" parser to parse some Rust non-terminal.
 ///
 /// # Parameters
 ///
@@ -890,7 +892,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
 ///
 /// # Returns
 ///
-/// The parsed nonterminal.
+/// The parsed non-terminal.
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     if name == "tt" {
         return token::NtTT(p.parse_token_tree());

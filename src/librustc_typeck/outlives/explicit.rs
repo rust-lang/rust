@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, OutlivesPredicate, TyCtxt};
-use util::nodemap::FxHashMap;
+use crate::util::nodemap::FxHashMap;
 
 use super::utils::*;
 

@@ -1,6 +1,6 @@
-use build::scope::BreakableScope;
-use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use hair::*;
+use crate::build::scope::BreakableScope;
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::hair::*;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {

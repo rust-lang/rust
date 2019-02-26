@@ -1,6 +1,6 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
-use ty::tls;
+use crate::ty::tls;
 use std::fmt;
 use syntax_pos::{Span, MultiSpan};
 

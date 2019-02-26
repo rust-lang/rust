@@ -4,6 +4,16 @@
 .global IMAGE_BASE
 IMAGE_BASE:
 
+.section ".note.x86_64-fortanix-unknown-sgx", "", @note
+    .align 4
+    .long 1f - 0f              /* name length (not including padding) */
+    .long 3f - 2f              /* desc length (not including padding) */
+    .long 1                    /* type = NT_VERSION */
+0:  .asciz "toolchain-version" /* name */
+1:  .align 4
+2:  .long 0                    /* desc - toolchain version number, 32-bit LE */
+3:  .align 4
+
 .section .rodata
 /*  The XSAVE area needs to be a large chunk of readable memory, but since we are */
 /*  going to restore everything to its initial state (XSTATE_BV=0), only certain */
@@ -56,12 +66,8 @@ IMAGE_BASE:
     globvar EH_FRM_HDR_SIZE 8
 
 .Lreentry_panic_msg:
-    .asciz "Re-entered panicked enclave!"
+    .asciz "Re-entered aborted enclave!"
 .Lreentry_panic_msg_end:
-
-.Lusercall_panic_msg:
-    .asciz "Invalid usercall#!"
-.Lusercall_panic_msg_end:
 
 .org .Lxsave_clear+512
 .Lxsave_header:
@@ -70,7 +76,7 @@ IMAGE_BASE:
     .org .+48 /*  reserved bits */
 
 .data
-.Lpanicked:
+.Laborted:
     .byte 0
 
 /*  TCS local storage section */
@@ -124,6 +130,9 @@ sgx_entry:
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
+/*  check for abort */
+    bt $0,.Laborted(%rip)
+    jc .Lreentry_panic
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
@@ -154,9 +163,6 @@ sgx_entry:
     mov %r14,%r8
     mov %r15,%r9
 .Lskip_init:
-/*  check for panic */
-    bt $0,.Lpanicked(%rip)
-    jc .Lreentry_panic
 /*  call into main entry point */
     load_tcsls_flag_secondary_bool cx /* RCX = entry() argument: secondary: bool */
     call entry /* RDI, RSI, RDX, R8, R9 passed in from userspace */
@@ -209,13 +215,21 @@ sgx_entry:
     orq $8,%rsp
     jmp panic_msg
 
-.Lusercall_panic:
-    lea .Lusercall_panic_msg(%rip),%rdi
-    mov $.Lusercall_panic_msg_end-.Lusercall_panic_msg,%esi
-    orq $8,%rsp
-    jmp panic_msg
-
-.macro push_callee_saved_registers
+/*  This *MUST* be called with 6 parameters, otherwise register information */
+/*  might leak! */
+.global usercall
+usercall:
+    test %rcx,%rcx            /* check `abort` function argument */
+    jnz .Lusercall_abort      /* abort is set, jump to abort code (unlikely forward conditional) */
+    jmp .Lusercall_save_state /* non-aborting usercall */
+.Lusercall_abort:
+/* set aborted bit */
+    movb $1,.Laborted(%rip)
+/* save registers in DEBUG mode, so that debugger can reconstruct the stack */
+    testb $0xff,DEBUG(%rip)
+    jz .Lusercall_noreturn
+.Lusercall_save_state:
+/*  save callee-saved state */
     push %r15
     push %r14
     push %r13
@@ -225,33 +239,8 @@ sgx_entry:
     sub $8, %rsp
     fstcw 4(%rsp)
     stmxcsr (%rsp)
-.endm
-
-.global panic_exit
-panic_exit:
-/* save registers in DEBUG mode, so that debugger can reconstruct the stack */
-    testb $0xff,DEBUG(%rip)
-    jz .Lskip_save_registers
-    push_callee_saved_registers
-    movq %rsp,%gs:tcsls_panic_last_rsp
-.Lskip_save_registers:
-/* set panicked bit */
-    movb $1,.Lpanicked(%rip)
-/* call usercall exit(true) */
-    mov $1,%esi   /*  RSI = usercall() argument: panic = true */
-    xor %rdx,%rdx /*  RDX cleared */
-    movq $usercall_nr_exit,%rdi /*  RDI = usercall exit */
-    jmp .Lexit
-
-/*  This *MUST* be called with 6 parameters, otherwise register information */
-/*  might leak! */
-.global usercall
-usercall:
-    test %rdi,%rdi
-    jle .Lusercall_panic
-/*  save callee-saved state */
-    push_callee_saved_registers
     movq %rsp,%gs:tcsls_last_rsp
+.Lusercall_noreturn:
 /*  clear general purpose register state */
     /*  RAX overwritten by ENCLU */
     /*  RBX set by sgx_exit */
@@ -271,7 +260,7 @@ usercall:
     jmp .Lsgx_exit
 .Lusercall_ret:
     movq $0,%gs:tcsls_last_rsp
-/*  restore callee-saved state, cf. push_callee_saved_registers */
+/*  restore callee-saved state, cf. "save" above */
     mov %r11,%rsp
     ldmxcsr (%rsp)
     fldcw 4(%rsp)

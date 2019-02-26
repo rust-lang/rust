@@ -18,7 +18,7 @@
 //!
 //! Consider a situation where we want to log out a value passed to a function.
 //! We know the value we're working on implements Debug, but we don't know its
-//! concrete type.  We want to give special treatment to certain types: in this
+//! concrete type. We want to give special treatment to certain types: in this
 //! case printing out the length of String values prior to their value.
 //! We don't know the concrete type of our value at compile time, so we need to
 //! use runtime reflection instead.
@@ -31,8 +31,8 @@
 //! fn log<T: Any + Debug>(value: &T) {
 //!     let value_any = value as &dyn Any;
 //!
-//!     // try to convert our value to a String.  If successful, we want to
-//!     // output the String's length as well as its value.  If not, it's a
+//!     // Try to convert our value to a `String`. If successful, we want to
+//!     // output the String`'s length as well as its value. If not, it's a
 //!     // different type: just print it out unadorned.
 //!     match value_any.downcast_ref::<String>() {
 //!         Some(as_string) => {
@@ -81,12 +81,10 @@ pub trait Any: 'static {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_type_id)]
-    ///
     /// use std::any::{Any, TypeId};
     ///
     /// fn is_string(s: &dyn Any) -> bool {
-    ///     TypeId::of::<String>() == s.get_type_id()
+    ///     TypeId::of::<String>() == s.type_id()
     /// }
     ///
     /// fn main() {
@@ -94,15 +92,13 @@ pub trait Any: 'static {
     ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
-    #[unstable(feature = "get_type_id",
-               reason = "this method will likely be replaced by an associated static",
-               issue = "27745")]
-    fn get_type_id(&self) -> TypeId;
+    #[stable(feature = "get_type_id", since = "1.34.0")]
+    fn type_id(&self) -> TypeId;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: 'static + ?Sized > Any for T {
-    fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
+    fn type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -161,10 +157,10 @@ impl dyn Any {
         let t = TypeId::of::<T>();
 
         // Get TypeId of the type in the trait object
-        let boxed = self.get_type_id();
+        let concrete = self.type_id();
 
         // Compare both TypeIds on equality
-        t == boxed
+        t == concrete
     }
 
     /// Returns some reference to the boxed value if it is of type `T`, or

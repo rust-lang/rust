@@ -1,14 +1,14 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![deny(rust_2018_idioms)]
+
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
+#![feature(bind_by_move_pattern_guards)]
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]
 #![feature(set_stdio)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
@@ -19,7 +19,6 @@
 
 #![recursion_limit="256"]
 
-extern crate arena;
 extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
@@ -37,10 +36,6 @@ extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
-extern crate pulldown_cmark;
-extern crate tempfile;
-extern crate minifier;
-extern crate parking_lot;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -340,6 +335,17 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag("",
                       "disable-per-crate-search",
                       "disables generating the crate selector on the search box")
+        }),
+        unstable("persist-doctests", |o| {
+             o.optopt("",
+                       "persist-doctests",
+                       "Directory to persist doctest executables into",
+                       "PATH")
+        }),
+        unstable("generate-redirect-pages", |o| {
+            o.optflag("",
+                      "generate-redirect-pages",
+                      "Generate extra pages to support legacy URLs and tool links")
         }),
     ]
 }

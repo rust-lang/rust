@@ -160,7 +160,7 @@
 //!
 //! This algorithm also provides a stable ID for types that are defined in one
 //! crate but instantiated from metadata within another crate. We just have to
-//! take care to always map crate and node IDs back to the original crate
+//! take care to always map crate and `NodeId`s back to the original crate
 //! context.
 //!
 //! As a side-effect these unique type IDs also help to solve a problem arising
@@ -170,7 +170,7 @@
 //! with different concrete substitutions for `'a`, and thus there will be N
 //! `Ty` instances for the type `Struct<'a>` even though it is not generic
 //! otherwise. Unfortunately this means that we cannot use `ty::type_id()` as
-//! cheap identifier for type metadata---we have done this in the past, but it
+//! cheap identifier for type metadata -- we have done this in the past, but it
 //! led to unnecessary metadata duplication in the best case and LLVM
 //! assertions in the worst. However, the unique type ID as described above
 //! *can* be used as identifier. Since it is comparatively expensive to

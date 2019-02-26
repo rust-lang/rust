@@ -1,9 +1,9 @@
 //! Computes moves.
 
-use borrowck::*;
-use borrowck::gather_loans::move_error::MovePlace;
-use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
-use borrowck::move_data::*;
+use crate::borrowck::*;
+use crate::borrowck::gather_loans::move_error::MovePlace;
+use crate::borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
+use crate::borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -15,6 +15,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::*;
 use rustc::hir::Node;
+use log::debug;
 
 struct GatherMoveInfo<'c, 'tcx: 'c> {
     id: hir::ItemLocalId,
@@ -99,7 +100,7 @@ pub fn gather_move_from_pat<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                               cmt: &'c mc::cmt_<'tcx>) {
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
-        PatKind::Binding(_, _, ident, _) => {
+        PatKind::Binding(_, _, _, ident, _) => {
             Some(MovePlace {
                      span: move_pat.span,
                      name: ident.name,

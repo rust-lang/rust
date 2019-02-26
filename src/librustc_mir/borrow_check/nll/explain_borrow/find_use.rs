@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
-use borrow_check::nll::ToRegionVid;
+use crate::borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
+use crate::borrow_check::nll::ToRegionVid;
+use crate::util::liveness::{self, DefUse};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Mir};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
-use util::liveness::{self, DefUse};
 
 crate fn find<'tcx>(
     mir: &Mir<'tcx>,
@@ -65,10 +65,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
                 None => {
                     if p.statement_index < block_data.statements.len() {
-                        queue.push_back(Location {
-                            statement_index: p.statement_index + 1,
-                            ..p
-                        });
+                        queue.push_back(p.successor_within_block());
                     } else {
                         queue.extend(
                             block_data

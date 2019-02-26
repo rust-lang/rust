@@ -261,8 +261,9 @@ mod this_crate {
         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
 
-        deprecated_future(); // Fine; no error.
-        deprecated_future_text(); // Fine; no error.
+        // Future deprecations are only permitted for rustc_deprecated.
+        deprecated_future(); //~ ERROR use of deprecated item
+        deprecated_future_text(); //~ ERROR use of deprecated item
 
         let _ = DeprecatedStruct {
             //~^ ERROR use of deprecated item 'this_crate::DeprecatedStruct': text

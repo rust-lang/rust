@@ -2,7 +2,7 @@ error[E0658]: The attribute `derive_A` is currently unknown to the compiler and 
   --> $DIR/derive-still-gated.rs:8:3
    |
 LL | #[derive_A] //~ ERROR attribute `derive_A` is currently unknown
-   |   ^^^^^^^^
+   |   ^^^^^^^^ help: a built-in attribute with a similar name exists: `derive`
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 

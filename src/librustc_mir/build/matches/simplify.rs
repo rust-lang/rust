@@ -12,9 +12,9 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use build::Builder;
-use build::matches::{Ascription, Binding, MatchPair, Candidate};
-use hair::*;
+use crate::build::Builder;
+use crate::build::matches::{Ascription, Binding, MatchPair, Candidate};
+use crate::hair::{self, *};
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -45,10 +45,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Tries to simplify `match_pair`, returning true if
+    /// Tries to simplify `match_pair`, returning `Ok(())` if
     /// successful. If successful, new match pairs and bindings will
     /// have been pushed into the candidate. If no simplification is
-    /// possible, Err is returned and no changes are made to
+    /// possible, `Err` is returned and no changes are made to
     /// candidate.
     fn simplify_match_pair<'pat>(&mut self,
                                  match_pair: MatchPair<'pat, 'tcx>,
@@ -56,11 +56,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
-            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType {
+                ref subpattern,
+                ascription: hair::pattern::Ascription {
+                    variance,
+                    ref user_ty,
+                    user_ty_span,
+                },
+            } => {
+                // Apply the type ascription to the value at `match_pair.place`, which is the
+                // value being matched, taking the variance field into account.
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty: user_ty.clone(),
                     source: match_pair.place.clone(),
+                    variance,
                 });
 
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
@@ -98,27 +108,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
-                let range = match ty.sty {
+                let (range, bias) = match ty.sty {
                     ty::Char => {
-                        Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
+                        (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
                     ty::Int(ity) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let min = 1u128 << (size.bits() - 1);
-                        let max = (1u128 << (size.bits() - 1)) - 1;
-                        Some((min, max, size))
+                        let max = !0u128 >> (128 - size.bits());
+                        let bias = 1u128 << (size.bits() - 1);
+                        (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
                         let max = !0u128 >> (128 - size.bits());
-                        Some((0, max, size))
+                        (Some((0, max, size)), 0)
                     }
-                    _ => None,
+                    _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
                     if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
+                        // We want to compare ranges numerically, but the order of the bitwise
+                        // representation of signed integers does not match their numeric order.
+                        // Thus, to correct the ordering, we need to shift the range of signed
+                        // integers to correct the comparison. This is achieved by XORing with a
+                        // bias (see pattern/_match.rs for another pertinent example of this
+                        // pattern).
+                        let (lo, hi) = (lo ^ bias, hi ^ bias);
                         if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
                             // Irrefutable pattern match.
                             return Ok(());
@@ -157,7 +174,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     Err(match_pair)
                 }
-            },
+            }
 
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(&mut candidate.match_pairs,

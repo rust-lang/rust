@@ -1,6 +1,4 @@
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
@@ -8,33 +6,24 @@
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
+#![deny(rust_2018_idioms)]
 
-extern crate atty;
-extern crate termcolor;
-#[cfg(unix)]
-extern crate libc;
-#[macro_use]
-extern crate log;
-extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
-extern crate syntax_pos;
-extern crate unicode_width;
+#[allow(unused_extern_crates)]
+extern crate serialize as rustc_serialize; // used by deriving
 
 pub use emitter::ColorConfig;
 
-use self::Level::*;
+use Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
-use rustc_data_structures::sync::{self, Lrc, Lock, LockCell};
+use rustc_data_structures::sync::{self, Lrc, Lock, AtomicUsize, AtomicBool, SeqCst};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::{error, fmt};
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::SeqCst;
 use std::panic;
 
 use termcolor::{ColorSpec, Color};
@@ -56,12 +45,51 @@ use syntax_pos::{BytePos,
                  Span,
                  NO_EXPANSION};
 
+/// Indicates the confidence in the correctness of a suggestion.
+///
+/// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
+/// to determine whether it should be automatically applied or if the user should be consulted
+/// before applying the suggestion.
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Applicability {
+    /// The suggestion is definitely what the user intended. This suggestion should be
+    /// automatically applied.
     MachineApplicable,
-    HasPlaceholders,
+
+    /// The suggestion may be what the user intended, but it is uncertain. The suggestion should
+    /// result in valid Rust code if it is applied.
     MaybeIncorrect,
-    Unspecified
+
+    /// The suggestion contains placeholders like `(...)` or `{ /* fields */ }`. The suggestion
+    /// cannot be applied automatically because it will not result in valid Rust code. The user
+    /// will need to fill in the placeholders.
+    HasPlaceholders,
+
+    /// The applicability of the suggestion is unknown.
+    Unspecified,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RustcEncodable, RustcDecodable)]
+pub enum SuggestionStyle {
+    /// Hide the suggested code when displaying this suggestion inline.
+    HideCodeInline,
+    /// Always hide the suggested code but display the message.
+    HideCodeAlways,
+    /// Do not display this suggestion in the cli output, it is only meant for tools.
+    CompletelyHidden,
+    /// Always show the suggested code.
+    /// This will *not* show the code if the suggestion is inline *and* the suggested code is
+    /// empty.
+    ShowCode,
+}
+
+impl SuggestionStyle {
+    fn hide_inline(&self) -> bool {
+        match *self {
+            SuggestionStyle::ShowCode => false,
+            _ => true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -89,7 +117,8 @@ pub struct CodeSuggestion {
     /// ```
     pub substitutions: Vec<Substitution>,
     pub msg: String,
-    pub show_code_when_inline: bool,
+    /// Visual representation of this suggestion.
+    pub style: SuggestionStyle,
     /// Whether or not the suggestion is approximate
     ///
     /// Sometimes we may show suggestions with placeholders,
@@ -130,17 +159,18 @@ impl CodeSuggestion {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
-                         line_opt: Option<&Cow<str>>,
+                         line_opt: Option<&Cow<'_, str>>,
                          lo: &Loc,
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
                 if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
                     let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
-                    buf.push_str(match hi_opt {
-                        Some(hi) => &line[lo..hi],
-                        None => &line[lo..],
-                    });
+                    match hi_opt {
+                        Some(hi) if hi > lo => buf.push_str(&line[lo..hi]),
+                        Some(_) => (),
+                        None => buf.push_str(&line[lo..]),
+                    }
                 }
                 if let None = hi_opt {
                     buf.push('\n');
@@ -232,7 +262,7 @@ impl FatalError {
 }
 
 impl fmt::Display for FatalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "parser fatal error")
     }
 }
@@ -249,7 +279,7 @@ impl error::Error for FatalError {
 pub struct ExplicitBug;
 
 impl fmt::Display for ExplicitBug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "parser internal bug")
     }
 }
@@ -271,7 +301,7 @@ pub struct Handler {
 
     err_count: AtomicUsize,
     emitter: Lock<Box<dyn Emitter + sync::Send>>,
-    continue_after_error: LockCell<bool>,
+    continue_after_error: AtomicBool,
     delayed_span_bugs: Lock<Vec<Diagnostic>>,
 
     // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -370,7 +400,7 @@ impl Handler {
             flags,
             err_count: AtomicUsize::new(0),
             emitter: Lock::new(e),
-            continue_after_error: LockCell::new(true),
+            continue_after_error: AtomicBool::new(true),
             delayed_span_bugs: Lock::new(Vec::new()),
             taught_diagnostics: Default::default(),
             emitted_diagnostic_codes: Default::default(),
@@ -379,12 +409,12 @@ impl Handler {
     }
 
     pub fn set_continue_after_error(&self, continue_after_error: bool) {
-        self.continue_after_error.set(continue_after_error);
+        self.continue_after_error.store(continue_after_error, SeqCst);
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
     ///
-    /// NOTE: DO NOT call this function from rustc. It is only meant to be called from external
+    /// NOTE: *do not* call this function from rustc. It is only meant to be called from external
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
@@ -481,7 +511,7 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
-    pub fn cancel(&self, err: &mut DiagnosticBuilder) {
+    pub fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
         err.cancel();
     }
 
@@ -658,7 +688,7 @@ impl Handler {
         let mut db = DiagnosticBuilder::new(self, lvl, msg);
         db.set_span(msp.clone());
         db.emit();
-        if !self.continue_after_error.get() {
+        if !self.continue_after_error.load(SeqCst) {
             self.abort_if_errors();
         }
     }
@@ -669,7 +699,7 @@ impl Handler {
         let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code), msg);
         db.set_span(msp.clone());
         db.emit();
-        if !self.continue_after_error.get() {
+        if !self.continue_after_error.load(SeqCst) {
             self.abort_if_errors();
         }
     }
@@ -683,12 +713,12 @@ impl Handler {
         self.taught_diagnostics.borrow_mut().insert(code.clone())
     }
 
-    pub fn force_print_db(&self, mut db: DiagnosticBuilder) {
+    pub fn force_print_db(&self, mut db: DiagnosticBuilder<'_>) {
         self.emitter.borrow_mut().emit(&db);
         db.cancel();
     }
 
-    fn emit_db(&self, db: &DiagnosticBuilder) {
+    fn emit_db(&self, db: &DiagnosticBuilder<'_>) {
         let diagnostic = &**db;
 
         TRACK_DIAGNOSTICS.with(|track_diagnostics| {
@@ -734,7 +764,7 @@ pub enum Level {
 }
 
 impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_str().fmt(f)
     }
 }

@@ -10,10 +10,10 @@ extern crate custom;
 extern crate helper;
 
 use std::alloc::{Global, Alloc, System, Layout};
-use std::sync::atomic::{Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{Ordering, AtomicUsize};
 
 #[global_allocator]
-static GLOBAL: custom::A = custom::A(ATOMIC_USIZE_INIT);
+static GLOBAL: custom::A = custom::A(AtomicUsize::new(0));
 
 fn main() {
     unsafe {

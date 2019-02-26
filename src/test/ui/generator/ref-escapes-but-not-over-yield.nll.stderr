@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of generator
-  --> $DIR/ref-escapes-but-not-over-yield.rs:14:9
+  --> $DIR/ref-escapes-but-not-over-yield.rs:11:9
    |
 LL |     let mut a = &3;
    |         ----- `a` is declared here, outside of the generator body

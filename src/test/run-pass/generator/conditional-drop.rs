@@ -3,9 +3,10 @@
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-static A: AtomicUsize = ATOMIC_USIZE_INIT;
+static A: AtomicUsize = AtomicUsize::new(0);
 
 struct B;
 
@@ -34,9 +35,9 @@ fn t1() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    unsafe { a.resume() };
+    Pin::new(&mut a).resume();
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
-    unsafe { a.resume() };
+    Pin::new(&mut a).resume();
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
 }
 
@@ -50,8 +51,8 @@ fn t2() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    unsafe { a.resume() };
+    Pin::new(&mut a).resume();
     assert_eq!(A.load(Ordering::SeqCst), n);
-    unsafe { a.resume() };
+    Pin::new(&mut a).resume();
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
 }

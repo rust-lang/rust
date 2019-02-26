@@ -3,21 +3,23 @@
 // corresponds to cases where the attribute is currently unused, so we
 // get that warning; see issue-43106-gating-of-builtin-attrs.rs
 
-#![macro_use                  = "4900"] //~ ERROR arguments to macro_use are not allowed here
+#![macro_use(my_macro)]
+//~^ ERROR arguments to macro_use are not allowed here
 
-#[macro_use = "2700"]
+#[macro_use(my_macro)]
 //~^ ERROR arguments to macro_use are not allowed here
 mod macro_escape {
-    mod inner { #![macro_use="2700"] }
+    mod inner { #![macro_use(my_macro)] }
     //~^ ERROR arguments to macro_use are not allowed here
 
-    #[macro_use = "2700"] fn f() { }
-
     #[macro_use = "2700"] struct S;
+    //~^ ERROR attribute must be of the form
 
-    #[macro_use = "2700"] type T = S;
+    #[macro_use] fn f() { }
 
-    #[macro_use = "2700"] impl S { }
+    #[macro_use] type T = S;
+
+    #[macro_use] impl S { }
 }
 
 fn main() { }

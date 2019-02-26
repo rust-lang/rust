@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/E0308-4.rs:4:9
    |
+LL |     match x {
+   |           - this match expression has type `u8`
 LL |         0u8..=3i8 => (), //~ ERROR E0308
    |         ^^^^^^^^^ expected u8, found i8
 

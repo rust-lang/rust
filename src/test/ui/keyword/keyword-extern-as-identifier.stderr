@@ -1,9 +1,0 @@
-error[E0531]: cannot find unit struct/variant or constant `extern` in this scope
-  --> $DIR/keyword-extern-as-identifier.rs:4:9
-   |
-LL |     let extern = 0; //~ ERROR cannot find unit struct/variant or constant `extern` in this scope
-   |         ^^^^^^ not found in this scope
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0531`.

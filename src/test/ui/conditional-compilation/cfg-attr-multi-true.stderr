@@ -1,5 +1,5 @@
 warning: use of deprecated item 'MustUseDeprecated'
-  --> $DIR/cfg-attr-multi-true.rs:13:6
+  --> $DIR/cfg-attr-multi-true.rs:12:6
    |
 LL | impl MustUseDeprecated { //~ warning: use of deprecated item
    |      ^^^^^^^^^^^^^^^^^
@@ -7,25 +7,25 @@ LL | impl MustUseDeprecated { //~ warning: use of deprecated item
    = note: #[warn(deprecated)] on by default
 
 warning: use of deprecated item 'MustUseDeprecated'
-  --> $DIR/cfg-attr-multi-true.rs:20:5
+  --> $DIR/cfg-attr-multi-true.rs:19:5
    |
 LL |     MustUseDeprecated::new(); //~ warning: use of deprecated item
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: use of deprecated item 'MustUseDeprecated'
-  --> $DIR/cfg-attr-multi-true.rs:14:17
+  --> $DIR/cfg-attr-multi-true.rs:13:17
    |
 LL |     fn new() -> MustUseDeprecated { //~ warning: use of deprecated item
    |                 ^^^^^^^^^^^^^^^^^
 
 warning: use of deprecated item 'MustUseDeprecated'
-  --> $DIR/cfg-attr-multi-true.rs:15:9
+  --> $DIR/cfg-attr-multi-true.rs:14:9
    |
 LL |         MustUseDeprecated {} //~ warning: use of deprecated item
    |         ^^^^^^^^^^^^^^^^^
 
 warning: unused `MustUseDeprecated` that must be used
-  --> $DIR/cfg-attr-multi-true.rs:20:5
+  --> $DIR/cfg-attr-multi-true.rs:19:5
    |
 LL |     MustUseDeprecated::new(); //~ warning: use of deprecated item
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-48238.rs:11:13
    |
 LL |     move || use_val(&orig); //~ ERROR

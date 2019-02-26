@@ -1,12 +1,12 @@
-use llvm::{self, AttributePlace};
+use crate::llvm::{self, AttributePlace};
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::type_::Type;
+use crate::type_of::{LayoutLlvmExt, PointerKind};
+use crate::value::Value;
 use rustc_codegen_ssa::MemFlags;
-use builder::Builder;
-use context::CodegenCx;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
-use type_::Type;
-use type_of::{LayoutLlvmExt, PointerKind};
-use value::Value;
 use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
@@ -174,13 +174,13 @@ pub trait ArgTypeExt<'ll, 'tcx> {
 }
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
-    /// Get the LLVM type for a place of the original Rust type of
+    /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         self.layout.llvm_type(cx)
     }
 
-    /// Store a direct/indirect value described by this ArgType into a
+    /// Stores a direct/indirect value described by this ArgType into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.

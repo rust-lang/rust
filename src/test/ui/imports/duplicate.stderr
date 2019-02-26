@@ -4,13 +4,12 @@ error[E0252]: the name `foo` is defined multiple times
 LL |     use a::foo;
    |         ------ previous import of the value `foo` here
 LL |     use a::foo; //~ ERROR the name `foo` is defined multiple times
-   |         ^^^^^^ `foo` reimported here
+   |     ----^^^^^^-
+   |     |   |
+   |     |   `foo` reimported here
+   |     help: remove unnecessary import
    |
    = note: `foo` must be defined only once in the value namespace of this module
-help: you can use `as` to change the binding name of the import
-   |
-LL |     use a::foo as other_foo; //~ ERROR the name `foo` is defined multiple times
-   |         ^^^^^^^^^^^^^^^^^^^
 
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/duplicate.rs:46:15

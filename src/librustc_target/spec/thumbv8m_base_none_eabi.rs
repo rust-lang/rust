@@ -1,6 +1,6 @@
 // Targets the Cortex-M23 processor (Baseline ARMv8-M)
 
-use spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {

@@ -4,6 +4,7 @@ use rustc::hir::Node;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
+use rustc::{lint, util};
 use rustc_data_structures::indexed_vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -20,6 +21,10 @@ use syntax_pos::Span;
 use syntax::source_map;
 
 use rustc::hir;
+
+use rustc::mir::interpret::{sign_extend, truncate};
+
+use log::debug;
 
 declare_lint! {
     UNUSED_COMPARISONS,
@@ -53,6 +58,10 @@ impl TypeLimits {
 }
 
 impl LintPass for TypeLimits {
+    fn name(&self) -> &'static str {
+        "TypeLimits"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_COMPARISONS,
                     OVERFLOWING_LITERALS)
@@ -76,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprKind::Lit(ref lit) => {
-                match cx.tables.node_id_to_type(e.hir_id).sty {
+                match cx.tables.node_type(e.hir_id).sty {
                     ty::Int(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -137,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                              OVERFLOWING_LITERALS,
                                                              parent_expr.span,
                                                              "only u8 can be cast into char");
-                                        err.span_suggestion_with_applicability(
+                                        err.span_suggestion(
                                             parent_expr.span,
                                             &"use a char literal instead",
                                             format!("'\\u{{{:X}}}'", lit_val),
@@ -235,7 +244,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn check_limits(cx: &LateContext,
+        fn check_limits(cx: &LateContext<'_, '_>,
                         binop: hir::BinOp,
                         l: &hir::Expr,
                         r: &hir::Expr)
@@ -248,7 +257,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_id_to_type(expr.hir_id).sty {
+            match cx.tables.node_type(expr.hir_id).sty {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
@@ -292,7 +301,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn get_bin_hex_repr(cx: &LateContext, lit: &ast::Lit) -> Option<String> {
+        fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &ast::Lit) -> Option<String> {
             let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
             let firstch = src.chars().next()?;
 
@@ -314,7 +323,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //
         // No suggestion for: `isize`, `usize`.
         fn get_type_suggestion<'a>(
-            t: &ty::TyKind,
+            t: &ty::TyKind<'_>,
             val: u128,
             negative: bool,
         ) -> Option<String> {
@@ -358,9 +367,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn report_bin_hex_error(
-            cx: &LateContext,
+            cx: &LateContext<'_, '_>,
             expr: &hir::Expr,
-            ty: ty::TyKind,
+            ty: ty::TyKind<'_>,
             repr_str: String,
             val: u128,
             negative: bool,
@@ -368,14 +377,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             let (t, actually) = match ty {
                 ty::Int(t) => {
                     let ity = attr::IntType::SignedInt(t);
-                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
-                    let actually = (val << (128 - bits)) as i128 >> (128 - bits);
+                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                    let actually = sign_extend(val, size) as i128;
                     (format!("{:?}", t), actually.to_string())
                 }
                 ty::Uint(t) => {
                     let ity = attr::IntType::UnsignedInt(t);
-                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
-                    let actually = (val << (128 - bits)) >> (128 - bits);
+                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                    let actually = truncate(val, size);
                     (format!("{:?}", t), actually.to_string())
                 }
                 _ => bug!(),
@@ -391,11 +400,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 repr_str, val, t, actually, t
             ));
             if let Some(sugg_ty) =
-                get_type_suggestion(&cx.tables.node_id_to_type(expr.hir_id).sty, val, negative)
+                get_type_suggestion(&cx.tables.node_type(expr.hir_id).sty, val, negative)
             {
                 if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                     let (sans_suffix, _) = repr_str.split_at(pos);
-                    err.span_suggestion_with_applicability(
+                    err.span_suggestion(
                         expr.span,
                         &format!("consider using `{}` instead", sugg_ty),
                         format!("{}{}", sans_suffix, sugg_ty),
@@ -470,12 +479,12 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    /// Check if the given type is "ffi-safe" (has a stable, well-defined
+    /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn check_type_for_ffi(&self,
                           cache: &mut FxHashSet<Ty<'tcx>>,
                           ty: Ty<'tcx>) -> FfiResult<'tcx> {
-        use self::FfiResult::*;
+        use FfiResult::*;
 
         let cx = self.cx.tcx;
 
@@ -783,13 +792,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 pub struct ImproperCTypes;
 
 impl LintPass for ImproperCTypes {
+    fn name(&self) -> &'static str {
+        "ImproperCTypes"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(IMPROPER_CTYPES)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
-    fn check_foreign_item(&mut self, cx: &LateContext, it: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir().get_foreign_abi(it.id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
@@ -809,13 +822,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
 pub struct VariantSizeDifferences;
 
 impl LintPass for VariantSizeDifferences {
+    fn name(&self) -> &'static str {
+        "VariantSizeDifferences"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(VARIANT_SIZE_DIFFERENCES)
     }
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
             let item_def_id = cx.tcx.hir().local_def_id(it.id);
             let t = cx.tcx.type_of(item_def_id);

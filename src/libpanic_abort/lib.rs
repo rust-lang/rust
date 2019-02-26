@@ -5,14 +5,13 @@
 
 #![no_std]
 #![unstable(feature = "panic_abort", issue = "32837")]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
+#![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
-#![allow(unused_features)]
 
-#![feature(cfg_target_vendor)]
+#![allow(unused_features)]
+#![deny(rust_2018_idioms)]
+
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(nll)]
@@ -47,7 +46,6 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 
     #[cfg(any(unix, target_os = "cloudabi"))]
     unsafe fn abort() -> ! {
-        extern crate libc;
         libc::abort();
     }
 
@@ -60,8 +58,9 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 
     #[cfg(all(target_vendor="fortanix", target_env="sgx"))]
     unsafe fn abort() -> ! {
-        extern "C" { pub fn panic_exit() -> !; }
-        panic_exit();
+        // call std::sys::abort_internal
+        extern "C" { pub fn __rust_abort() -> !; }
+        __rust_abort();
     }
 }
 

@@ -1,4 +1,4 @@
-/// Shared channels
+/// Shared channels.
 ///
 /// This is the flavor of channels which are not necessarily optimized for any
 /// particular use case, but are the most general in how they are used. Shared

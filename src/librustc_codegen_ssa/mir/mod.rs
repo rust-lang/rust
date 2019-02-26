@@ -4,11 +4,11 @@ use rustc::ty::layout::{TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
-use base;
-use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode};
-use traits::*;
+use crate::base;
+use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
+use crate::traits::*;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -422,7 +422,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }).unzip()
 }
 
-/// Produce, for each argument, a `Value` pointing at the
+/// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
 fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -586,10 +586,17 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 return;
             }
 
+            let pin_did = tcx.lang_items().pin_type();
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
                 ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
+                ty::Adt(def, substs) if Some(def.did) == pin_did => {
+                    match substs.type_at(0).sty {
+                        ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
+                        _ => (arg.layout, false),
+                    }
+                }
                 _ => (arg.layout, false)
             };
 

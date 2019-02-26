@@ -441,10 +441,10 @@ impl MetadataExt for Metadata {
 /// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[unstable(feature = "windows_file_type_ext", issue = "0")]
 pub trait FileTypeExt {
-    /// Returns whether this file type is a symbolic link that is also a directory.
+    /// Returns `true` if this file type is a symbolic link that is also a directory.
     #[unstable(feature = "windows_file_type_ext", issue = "0")]
     fn is_symlink_dir(&self) -> bool;
-    /// Returns whether this file type is a symbolic link that is also a file.
+    /// Returns `true` if this file type is a symbolic link that is also a file.
     #[unstable(feature = "windows_file_type_ext", issue = "0")]
     fn is_symlink_file(&self) -> bool;
 }

@@ -1,8 +1,8 @@
+use crate::llvm;
+use crate::llvm::{False, ObjectFile, mk_section_iter};
+use crate::llvm::archive_ro::ArchiveRO;
 use rustc::middle::cstore::MetadataLoader;
 use rustc_target::spec::Target;
-use llvm;
-use llvm::{False, ObjectFile, mk_section_iter};
-use llvm::archive_ro::ArchiveRO;
 
 use rustc_data_structures::owning_ref::OwningRef;
 use std::path::Path;

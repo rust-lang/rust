@@ -1,26 +1,35 @@
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_fn_libstd_stability.rs:15:25
    |
 LL | const fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
    |                         ^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_fn_libstd_stability.rs:22:26
    |
 LL | const fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
    |                          ^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: only int, `bool` and `char` operations are stable in const fn
+error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
   --> $DIR/min_const_fn_libstd_stability.rs:26:26
    |
 LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` operations
    |                          ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: can only call other `min_const_fn` within a `min_const_fn`
+error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_fn_libstd_stability.rs:34:32
    |
 LL | const fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
    |                                ^^^^^^^^^^^^
+   |
+   = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0723`.

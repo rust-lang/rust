@@ -1,10 +1,12 @@
-use attr;
-use ast;
-use source_map::respan;
-use parse::{SeqSep, PResult};
-use parse::token::{self, Nonterminal, DelimToken};
-use parse::parser::{Parser, TokenType, PathStyle};
-use tokenstream::{TokenStream, TokenTree};
+use crate::attr;
+use crate::ast;
+use crate::source_map::respan;
+use crate::parse::{SeqSep, PResult};
+use crate::parse::token::{self, Nonterminal, DelimToken};
+use crate::parse::parser::{Parser, TokenType, PathStyle};
+use crate::tokenstream::{TokenStream, TokenTree};
+
+use log::debug;
 
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -74,7 +76,7 @@ impl<'a> Parser<'a> {
     /// The same as `parse_attribute`, except it takes in an `InnerAttributeParsePolicy`
     /// that prescribes how to handle inner attributes.
     fn parse_attribute_with_inner_parse_policy(&mut self,
-                                               inner_parse_policy: InnerAttributeParsePolicy)
+                                               inner_parse_policy: InnerAttributeParsePolicy<'_>)
                                                -> PResult<'a, ast::Attribute> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
@@ -139,7 +141,7 @@ impl<'a> Parser<'a> {
     /// The delimiters or `=` are still put into the resulting token stream.
     crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
                 _ => None,
             },
@@ -225,7 +227,7 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         let nt_meta = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref e) => Some(e.clone()),
                 _ => None,
             },

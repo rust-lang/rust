@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use std::slice;
 
 #[repr(C)]
-struct Slice<'a, T: 'a> {
+struct Slice<'a, T> {
     data: &'a [T; 0],
     len: usize,
 }
@@ -42,7 +42,7 @@ pub struct Buffer<T: Copy> {
     data: *mut T,
     len: usize,
     capacity: usize,
-    extend_from_slice: extern "C" fn(Buffer<T>, Slice<T>) -> Buffer<T>,
+    extend_from_slice: extern "C" fn(Buffer<T>, Slice<'_, T>) -> Buffer<T>,
     drop: extern "C" fn(Buffer<T>),
 }
 
@@ -139,7 +139,7 @@ impl<T: Copy> From<Vec<T>> for Buffer<T> {
             }
         }
 
-        extern "C" fn extend_from_slice<T: Copy>(b: Buffer<T>, xs: Slice<T>) -> Buffer<T> {
+        extern "C" fn extend_from_slice<T: Copy>(b: Buffer<T>, xs: Slice<'_, T>) -> Buffer<T> {
             let mut v = to_vec(b);
             v.extend_from_slice(&xs);
             Buffer::from(v)

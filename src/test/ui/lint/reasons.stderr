@@ -11,11 +11,11 @@ note: lint level defined here
 LL | #![warn(elided_lifetimes_in_paths,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: variable `Social_exchange_psychology` should have a snake case name such as `social_exchange_psychology`
+warning: variable `Social_exchange_psychology` should have a snake case name
   --> $DIR/reasons.rs:30:9
    |
 LL |     let Social_exchange_psychology = CheaterDetectionMechanism {};
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `social_exchange_psychology`
    |
    = note: people shouldn't have to change their usual style habits
            to contribute to our project

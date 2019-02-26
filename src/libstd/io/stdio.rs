@@ -131,6 +131,11 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// [`io::stdin`]: fn.stdin.html
 /// [`BufRead`]: trait.BufRead.html
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
+/// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
     inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
@@ -144,6 +149,11 @@ pub struct Stdin {
 /// [`Read`]: trait.Read.html
 /// [`BufRead`]: trait.BufRead.html
 /// [`Stdin::lock`]: struct.Stdin.html#method.lock
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
+/// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
@@ -156,6 +166,11 @@ pub struct StdinLock<'a> {
 /// locking, see the [`lock() method`][lock].
 ///
 /// [lock]: struct.Stdin.html#method.lock
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
+/// an error.
 ///
 /// # Examples
 ///
@@ -297,7 +312,7 @@ impl Read for Stdin {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for StdinLock<'a> {
+impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
@@ -308,13 +323,13 @@ impl<'a> Read for StdinLock<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for StdinLock<'a> {
+impl BufRead for StdinLock<'_> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, n: usize) { self.inner.consume(n) }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StdinLock<'a> {
+impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StdinLock { .. }")
     }
@@ -327,6 +342,11 @@ impl<'a> fmt::Debug for StdinLock<'a> {
 /// over locking is available via the [`lock`] method.
 ///
 /// Created by the [`io::stdout`] method.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
 ///
 /// [`lock`]: #method.lock
 /// [`io::stdout`]: fn.stdout.html
@@ -343,6 +363,11 @@ pub struct Stdout {
 /// This handle implements the [`Write`] trait, and is constructed via
 /// the [`Stdout::lock`] method.
 ///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
+///
 /// [`Write`]: trait.Write.html
 /// [`Stdout::lock`]: struct.Stdout.html#method.lock
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -357,6 +382,11 @@ pub struct StdoutLock<'a> {
 /// locking, see the [Stdout::lock] method.
 ///
 /// [Stdout::lock]: struct.Stdout.html#method.lock
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
 ///
 /// # Examples
 ///
@@ -455,7 +485,7 @@ impl Write for Stdout {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for StdoutLock<'a> {
+impl Write for StdoutLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
@@ -465,7 +495,7 @@ impl<'a> Write for StdoutLock<'a> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StdoutLock<'a> {
+impl fmt::Debug for StdoutLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StdoutLock { .. }")
     }
@@ -476,6 +506,11 @@ impl<'a> fmt::Debug for StdoutLock<'a> {
 /// For more information, see the [`io::stderr`] method.
 ///
 /// [`io::stderr`]: fn.stderr.html
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
     inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
@@ -487,6 +522,11 @@ pub struct Stderr {
 /// the [`Stderr::lock`] method.
 ///
 /// [`Stderr::lock`]: struct.Stderr.html#method.lock
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<Maybe<StderrRaw>>>,
@@ -495,6 +535,11 @@ pub struct StderrLock<'a> {
 /// Constructs a new handle to the standard error of the current process.
 ///
 /// This handle is not buffered.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
 ///
 /// # Examples
 ///
@@ -593,7 +638,7 @@ impl Write for Stderr {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Write for StderrLock<'a> {
+impl Write for StderrLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
@@ -603,7 +648,7 @@ impl<'a> Write for StderrLock<'a> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a> fmt::Debug for StderrLock<'a> {
+impl fmt::Debug for StderrLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("StderrLock { .. }")
     }

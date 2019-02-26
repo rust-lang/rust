@@ -19,6 +19,10 @@ declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 struct Pass;
 
 impl LintPass for Pass {
+    fn name(&self) -> &'static str {
+        "Pass"
+    }
+
     fn get_lints(&self) -> LintArray {
         lint_array!(TEST_LINT)
     }

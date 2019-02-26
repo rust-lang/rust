@@ -12,11 +12,13 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+use cmp;
 use error::Error;
 use fmt;
 use ops::{Add, Sub, AddAssign, SubAssign};
 use sys::time;
 use sys_common::FromInner;
+use sys_common::mutex::Mutex;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
@@ -28,7 +30,7 @@ pub use core::time::Duration;
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
-/// Note, however, that instants are not guaranteed to be **steady**.  In other
+/// Note, however, that instants are not guaranteed to be **steady**. In other
 /// words, each tick of the underlying clock may not be the same length (e.g.
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go
@@ -150,7 +152,45 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> Instant {
-        Instant(time::Instant::now())
+        let os_now = time::Instant::now();
+
+        // And here we come upon a sad state of affairs. The whole point of
+        // `Instant` is that it's monotonically increasing. We've found in the
+        // wild, however, that it's not actually monotonically increasing for
+        // one reason or another. These appear to be OS and hardware level bugs,
+        // and there's not really a whole lot we can do about them. Here's a
+        // taste of what we've found:
+        //
+        // * #48514 - OpenBSD, x86_64
+        // * #49281 - linux arm64 and s390x
+        // * #51648 - windows, x86
+        // * #56560 - windows, x86_64, AWS
+        // * #56612 - windows, x86, vm (?)
+        // * #56940 - linux, arm64
+        // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
+        //   Firefox bug
+        //
+        // It simply seems that this it just happens so that a lot in the wild
+        // we're seeing panics across various platforms where consecutive calls
+        // to `Instant::now`, such as via the `elapsed` function, are panicking
+        // as they're going backwards. Placed here is a last-ditch effort to try
+        // to fix things up. We keep a global "latest now" instance which is
+        // returned instead of what the OS says if the OS goes backwards.
+        //
+        // To hopefully mitigate the impact of this though a few platforms are
+        // whitelisted as "these at least haven't gone backwards yet".
+        if time::Instant::actually_monotonic() {
+            return Instant(os_now)
+        }
+
+        static LOCK: Mutex = Mutex::new();
+        static mut LAST_NOW: time::Instant = time::Instant::zero();
+        unsafe {
+            let _lock = LOCK.lock();
+            let now = cmp::max(LAST_NOW, os_now);
+            LAST_NOW = now;
+            Instant(now)
+        }
     }
 
     /// Returns the amount of time elapsed from another instant to this one.
@@ -173,6 +213,52 @@ impl Instant {
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
         self.0.sub_instant(&earlier.0)
+    }
+
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or None if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.checked_duration_since(now));
+    /// println!("{:?}", now.checked_duration_since(new_now)); // None
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
+        if self >= &earlier {
+            Some(self.0.sub_instant(&earlier.0))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is earlier than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(checked_duration_since)]
+    /// use std::time::{Duration, Instant};
+    /// use std::thread::sleep;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.saturating_duration_since(now));
+    /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
+    /// ```
+    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
+        self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
     }
 
     /// Returns the amount of time elapsed since this instant was created.
@@ -202,17 +288,17 @@ impl Instant {
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
     /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_add_duration(&duration).map(|t| Instant(t))
+        self.0.checked_add_duration(&duration).map(Instant)
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
     /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_sub_duration(&duration).map(|t| Instant(t))
+        self.0.checked_sub_duration(&duration).map(Instant)
     }
 }
 
@@ -375,17 +461,17 @@ impl SystemTime {
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
+        self.0.checked_add_duration(&duration).map(SystemTime)
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
-    #[unstable(feature = "time_checked_add", issue = "55940")]
+    #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
-        self.0.checked_sub_duration(&duration).map(|t| SystemTime(t))
+        self.0.checked_sub_duration(&duration).map(SystemTime)
     }
 }
 
@@ -568,10 +654,33 @@ mod tests {
     }
 
     #[test]
+    fn instant_math_is_associative() {
+        let now = Instant::now();
+        let offset = Duration::from_millis(5);
+        // Changing the order of instant math shouldn't change the results,
+        // especially when the expression reduces to X + identity.
+        assert_eq!((now + offset) - now, (now - now) + offset);
+    }
+
+    #[test]
     #[should_panic]
     fn instant_duration_panic() {
         let a = Instant::now();
         (a - Duration::new(1, 0)).duration_since(a);
+    }
+
+    #[test]
+    fn checked_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
+        assert_eq!(ret, None);
+    }
+
+    #[test]
+    fn saturating_instant_duration_nopanic() {
+        let a = Instant::now();
+        let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
+        assert_eq!(ret, Duration::new(0,0));
     }
 
     #[test]

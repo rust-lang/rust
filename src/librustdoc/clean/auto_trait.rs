@@ -220,7 +220,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, Lifetime>) -> Lifetime {
+    fn get_lifetime(
+        &self, region: Region<'_>,
+        names_map: &FxHashMap<String, Lifetime>
+    ) -> Lifetime {
         self.region_name(region)
             .map(|name| {
                 names_map.get(&name).unwrap_or_else(|| {
@@ -231,7 +234,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .clone()
     }
 
-    fn region_name(&self, region: Region) -> Option<String> {
+    fn region_name(&self, region: Region<'_>) -> Option<String> {
         match region {
             &ty::ReEarlyBound(r) => Some(r.name.to_string()),
             _ => None,
@@ -259,7 +262,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         // we need to create the Generics.
         let mut finished: FxHashMap<_, Vec<_>> = Default::default();
 
-        let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = Default::default();
+        let mut vid_map: FxHashMap<RegionTarget<'_>, RegionDeps<'_>> = Default::default();
 
         // Flattening is done in two parts. First, we insert all of the constraints
         // into a map. Each RegionTarget (either a RegionVid or a Region) maps
@@ -574,6 +577,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
 
         for (orig_p, p) in clean_where_predicates {
+            if p.is_none() {
+                continue;
+            }
+            let p = p.unwrap();
             match p {
                 WherePredicate::BoundPredicate { ty, mut bounds } => {
                     // Writing a projection trait bound of the form
@@ -769,6 +776,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     }
                 }
                 GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Const { .. } => {}
             }
         }
 
@@ -837,7 +845,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
 
-    fn is_fn_ty(&self, tcx: &TyCtxt, ty: &Type) -> bool {
+    fn is_fn_ty(&self, tcx: &TyCtxt<'_, '_, '_>, ty: &Type) -> bool {
         match &ty {
             &&Type::ResolvedPath { ref did, .. } => {
                 *did == tcx.require_lang_item(lang_items::FnTraitLangItem)

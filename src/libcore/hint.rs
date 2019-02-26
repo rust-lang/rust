@@ -34,7 +34,7 @@ use intrinsics;
 ///     use std::hint::unreachable_unchecked;
 ///
 ///     // `b.saturating_add(1)` is always positive (not zero),
-///     // hence `checked_div` will never return None.
+///     // hence `checked_div` will never return `None`.
 ///     // Therefore, the else branch is unreachable.
 ///     a.checked_div(b.saturating_add(1))
 ///         .unwrap_or_else(|| unsafe { unreachable_unchecked() })
@@ -48,4 +48,27 @@ use intrinsics;
 #[stable(feature = "unreachable", since = "1.27.0")]
 pub unsafe fn unreachable_unchecked() -> ! {
     intrinsics::unreachable()
+}
+
+/// Save power or switch hyperthreads in a busy-wait spin-loop.
+///
+/// This function is deliberately more primitive than
+/// [`std::thread::yield_now`](../../std/thread/fn.yield_now.html) and
+/// does not directly yield to the system's scheduler.
+/// In some cases it might be useful to use a combination of both functions.
+/// Careful benchmarking is advised.
+///
+/// On some platforms this function may not do anything at all.
+#[inline]
+#[unstable(feature = "renamed_spin_loop", issue = "55002")]
+pub fn spin_loop() {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        asm!("pause" ::: "memory" : "volatile");
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        asm!("yield" ::: "memory" : "volatile");
+    }
 }

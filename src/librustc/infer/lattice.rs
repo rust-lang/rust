@@ -1,7 +1,7 @@
 //! # Lattice Variables
 //!
 //! This file contains generic code for operating on inference variables
-//! that are characterized by an upper- and lower-bound.  The logic and
+//! that are characterized by an upper- and lower-bound. The logic and
 //! reasoning is explained in detail in the large comment in `infer.rs`.
 //!
 //! The code in here is defined quite generically so that it can be
@@ -13,7 +13,7 @@
 //!
 //! Although all the functions are generic, we generally write the
 //! comments in a way that is specific to type variables and the LUB
-//! operation.  It's just easier that way.
+//! operation. It's just easier that way.
 //!
 //! In general all of the functions are defined parametrically
 //! over a `LatticeValue`, which is a value defined with respect to
@@ -22,10 +22,10 @@
 use super::InferCtxt;
 use super::type_variable::TypeVariableOrigin;
 
-use traits::ObligationCause;
-use ty::TyVar;
-use ty::{self, Ty};
-use ty::relate::{RelateResult, TypeRelation};
+use crate::traits::ObligationCause;
+use crate::ty::TyVar;
+use crate::ty::{self, Ty};
+use crate::ty::relate::{RelateResult, TypeRelation};
 
 pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'gcx, 'tcx>;
