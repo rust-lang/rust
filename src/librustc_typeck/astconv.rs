@@ -14,7 +14,7 @@ use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
-use rustc::ty::subst::{Kind, Subst, Substs, SubstsRef};
+use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
@@ -1798,7 +1798,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);
-                let substs = Substs::identity_for_item(tcx, length_def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
                 let length = tcx.mk_lazy_const(length);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
@@ -1839,7 +1839,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let generics = tcx.generics_of(def_id);
 
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
-        let substs = Substs::for_item(tcx, def_id, |param, _| {
+        let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
                 match param.kind {

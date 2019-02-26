@@ -20,7 +20,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -1089,7 +1089,7 @@ impl Clean<GenericBound> for hir::GenericBound {
 }
 
 fn external_generic_args(cx: &DocContext<'_, '_, '_>, trait_did: Option<DefId>, has_self: bool,
-                        bindings: Vec<TypeBinding>, substs: &Substs<'_>) -> GenericArgs {
+                        bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> GenericArgs {
     let lifetimes = substs.regions().filter_map(|v| v.clean(cx)).collect();
     let types = substs.types().skip(has_self as usize).collect::<Vec<_>>();
 
@@ -1131,7 +1131,7 @@ fn external_generic_args(cx: &DocContext<'_, '_, '_>, trait_did: Option<DefId>, 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
 fn external_path(cx: &DocContext<'_, '_, '_>, name: &str, trait_did: Option<DefId>, has_self: bool,
-                 bindings: Vec<TypeBinding>, substs: &Substs<'_>) -> Path {
+                 bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> Path {
     Path {
         global: false,
         def: Def::Err,
@@ -1192,7 +1192,7 @@ impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Option<Vec<GenericBound>>> for Substs<'tcx> {
+impl<'tcx> Clean<Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
     fn clean(&self, cx: &DocContext<'_, '_, '_>) -> Option<Vec<GenericBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().filter_map(|r| r.clean(cx)).map(GenericBound::Outlives));
@@ -2532,7 +2532,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.id);
                 let param_env = cx.tcx.param_env(def_id);
-                let substs = Substs::identity_for_item(cx.tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
                 let cid = GlobalId {
                     instance: ty::Instance::new(def_id, substs),
                     promoted: None
@@ -2776,7 +2776,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
                 let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
-                                         None, false, vec![], Substs::empty());
+                                         None, false, vec![], InternalSubsts::empty());
                 ResolvedPath {
                     path: path,
                     typarams: None,

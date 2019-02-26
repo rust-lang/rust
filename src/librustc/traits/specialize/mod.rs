@@ -20,7 +20,7 @@ use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use crate::ty::subst::{Subst, Substs, SubstsRef};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -399,7 +399,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
 
     let mut w = "impl".to_owned();
 
-    let substs = Substs::identity_for_item(tcx, impl_def_id);
+    let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.

@@ -7,7 +7,7 @@ use crate::hir::{self, Node};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use crate::ty::subst::{Subst, Substs, SubstsRef, UnpackedKind};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given the `DefId` of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
-        Substs::for_item(self, item_def_id, |param, _| {
+        InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.types.re_erased.into(),
                 GenericParamDefKind::Type {..} => {

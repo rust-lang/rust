@@ -29,7 +29,7 @@ use crate::mir::interpret::ErrorHandled;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use crate::ty::subst::{Substs, SubstsRef};
+use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
@@ -992,7 +992,7 @@ fn vtable_methods<'a, 'tcx>(
             let trait_methods = tcx.associated_items(trait_ref.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Method);
 
-            // Now list each method's DefId and Substs (for within its trait).
+            // Now list each method's DefId and InternalSubsts (for within its trait).
             // If the method can never be called from this object, produce None.
             trait_methods.map(move |trait_method| {
                 debug!("vtable_methods: trait_method={:?}", trait_method);
@@ -1007,7 +1007,7 @@ fn vtable_methods<'a, 'tcx>(
                 // the method may have some early-bound lifetimes, add
                 // regions for those
                 let substs = trait_ref.map_bound(|trait_ref|
-                    Substs::for_item(tcx, def_id, |param, _|
+                    InternalSubsts::for_item(tcx, def_id, |param, _|
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type {..} => {

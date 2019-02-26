@@ -157,20 +157,20 @@ impl<'tcx> Decodable for Kind<'tcx> {
 }
 
 /// A substitution mapping generic parameters to new values.
-pub type Substs<'tcx> = List<Kind<'tcx>>;
+pub type InternalSubsts<'tcx> = List<Kind<'tcx>>;
 
-pub type SubstsRef<'tcx> = &'tcx Substs<'tcx>;
+pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
-impl<'a, 'gcx, 'tcx> Substs<'tcx> {
-    /// Creates a `Substs` that maps each generic parameter to itself.
+impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
+    /// Creates a `InternalSubsts` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
                              -> SubstsRef<'tcx> {
-        Substs::for_item(tcx, def_id, |param, _| {
+        Self::for_item(tcx, def_id, |param, _| {
             tcx.mk_param_from_def(param)
         })
     }
 
-    /// Creates a `Substs` that maps each generic parameter to a higher-ranked
+    /// Creates a `InternalSubsts` that maps each generic parameter to a higher-ranked
     /// var bound at index `0`. For types, we use a `BoundVar` index equal to
     /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
     /// variant (which has a `DefId`).
@@ -178,7 +178,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId
     ) -> SubstsRef<'tcx> {
-        Substs::for_item(tcx, def_id, |param, _| {
+        Self::for_item(tcx, def_id, |param, _| {
             match param.kind {
                 ty::GenericParamDefKind::Type { .. } => {
                     tcx.mk_ty(
@@ -199,9 +199,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
-    /// Creates a `Substs` for generic parameter definitions,
+    /// Creates a `InternalSubsts` for generic parameter definitions,
     /// by calling closures to obtain each kind.
-    /// The closures get to observe the `Substs` as they're
+    /// The closures get to observe the `InternalSubsts` as they're
     /// being built, which can be used to correctly
     /// substitute defaults of generic parameters.
     pub fn for_item<F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         let defs = tcx.generics_of(def_id);
         let count = defs.count();
         let mut substs = SmallVec::with_capacity(count);
-        Substs::fill_item(&mut substs, tcx, defs, &mut mk_kind);
+        Self::fill_item(&mut substs, tcx, defs, &mut mk_kind);
         tcx.intern_substs(&substs)
     }
 
@@ -224,7 +224,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                         -> SubstsRef<'tcx>
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
-        Substs::for_item(tcx, def_id, |param, substs| {
+        Self::for_item(tcx, def_id, |param, substs| {
             self.get(param.index as usize)
                 .cloned()
                 .unwrap_or_else(|| mk_kind(param, substs))
@@ -239,9 +239,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     {
         if let Some(def_id) = defs.parent {
             let parent_defs = tcx.generics_of(def_id);
-            Substs::fill_item(substs, tcx, parent_defs, mk_kind);
+            Self::fill_item(substs, tcx, parent_defs, mk_kind);
         }
-        Substs::fill_single(substs, defs, mk_kind)
+        Self::fill_single(substs, defs, mk_kind)
     }
 
     fn fill_single<F>(substs: &mut SmallVec<[Kind<'tcx>; 8]>,
@@ -313,7 +313,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// parameters (e.g., method parameters) on top of that base.
     pub fn rebase_onto(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                        source_ancestor: DefId,
-                       target_substs: &Substs<'tcx>)
+                       target_substs: SubstsRef<'tcx>)
                        -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
         tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned())

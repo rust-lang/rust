@@ -23,7 +23,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::middle::weak_lang_items;
 use rustc::mir::mono::Linkage;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::UnpackedKind;
@@ -1149,7 +1149,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     match tcx.hir().get(node_id) {
         Node::TraitItem(item) => match item.node {
             TraitItemKind::Method(..) => {
-                let substs = Substs::identity_for_item(tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
@@ -1160,7 +1160,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
 
         Node::ImplItem(item) => match item.node {
             ImplItemKind::Method(..) => {
-                let substs = Substs::identity_for_item(tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
             ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
@@ -1193,12 +1193,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                 | ItemKind::Ty(ref t, _)
                 | ItemKind::Impl(.., ref t, _) => icx.to_ty(t),
                 ItemKind::Fn(..) => {
-                    let substs = Substs::identity_for_item(tcx, def_id);
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
                 ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
-                    let substs = Substs::identity_for_item(tcx, def_id);
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::Existential(hir::ExistTy {
@@ -1246,7 +1246,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
 
         Node::ForeignItem(foreign_item) => match foreign_item.node {
             ForeignItemKind::Fn(..) => {
-                let substs = Substs::identity_for_item(tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
             ForeignItemKind::Static(ref t, _) => icx.to_ty(t),
@@ -1262,7 +1262,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                 tcx.type_of(tcx.hir().get_parent_did(node_id))
             }
             VariantData::Tuple(..) => {
-                let substs = Substs::identity_for_item(tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
         },
@@ -1279,7 +1279,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             }
 
             let substs = ty::ClosureSubsts {
-                substs: Substs::identity_for_item(tcx, def_id),
+                substs: InternalSubsts::identity_for_item(tcx, def_id),
             };
 
             tcx.mk_closure(def_id, substs)
@@ -1829,7 +1829,7 @@ fn explicit_predicates_of<'a, 'tcx>(
 
         Node::ImplItem(item) => match item.node {
             ImplItemKind::Existential(ref bounds) => {
-                let substs = Substs::identity_for_item(tcx, def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 let opaque_ty = tcx.mk_opaque(def_id, substs);
 
                 // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.
@@ -1874,7 +1874,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     impl_trait_fn,
                     ref generics,
                 }) => {
-                    let substs = Substs::identity_for_item(tcx, def_id);
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
 
                     // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.

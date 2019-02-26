@@ -56,7 +56,7 @@ use crate::hir::Node;
 use crate::middle::region;
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
-use crate::ty::{self, subst::Subst, Region, Ty, TyCtxt, TyKind, TypeFoldable};
+use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use std::{cmp, fmt};
 use syntax_pos::{Pos, Span};
@@ -570,7 +570,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value: &mut DiagnosticStyledString,
         other_value: &mut DiagnosticStyledString,
         name: String,
-        sub: &ty::subst::Substs<'tcx>,
+        sub: ty::subst::SubstsRef<'tcx>,
         pos: usize,
         other_ty: &Ty<'tcx>,
     ) {
@@ -648,7 +648,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         mut t1_out: &mut DiagnosticStyledString,
         mut t2_out: &mut DiagnosticStyledString,
         path: String,
-        sub: &ty::subst::Substs<'tcx>,
+        sub: ty::subst::SubstsRef<'tcx>,
         other_path: String,
         other_ty: &Ty<'tcx>,
     ) -> Option<()> {
@@ -687,8 +687,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn strip_generic_default_params(
         &self,
         def_id: DefId,
-        substs: &ty::subst::Substs<'tcx>,
-    ) -> &'tcx ty::subst::Substs<'tcx> {
+        substs: ty::subst::SubstsRef<'tcx>,
+    ) -> SubstsRef<'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
         let mut type_params = generics

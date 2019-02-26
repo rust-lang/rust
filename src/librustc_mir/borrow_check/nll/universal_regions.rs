@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Substs, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -138,7 +138,7 @@ struct UniversalRegionIndices<'tcx> {
     /// used because trait matching and type-checking will feed us
     /// region constraints that reference those regions and we need to
     /// be able to map them our internal `RegionVid`. This is
-    /// basically equivalent to a `Substs`, except that it also
+    /// basically equivalent to a `InternalSubsts`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
     /// use a substs, and then handle `ReStatic` another way.
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
@@ -507,7 +507,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
                 assert_eq!(closure_base_def_id, self.mir_def_id);
-                let identity_substs = Substs::identity_for_item(tcx, closure_base_def_id);
+                let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
                 let substs = self.infcx
                     .replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
                 DefiningTy::Const(self.mir_def_id, substs)
@@ -527,7 +527,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let gcx = tcx.global_tcx();
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
-        let identity_substs = Substs::identity_for_item(gcx, closure_base_def_id);
+        let identity_substs = InternalSubsts::identity_for_item(gcx, closure_base_def_id);
         let fr_substs = match defining_ty {
             DefiningTy::Closure(_, ClosureSubsts { ref substs })
             | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {

@@ -81,7 +81,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -1393,7 +1393,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn substs_wf_in_scope(
         &mut self,
         origin: infer::ParameterOrigin,
-        substs: &Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         expr_span: Span,
         expr_region: ty::Region<'tcx>,
     ) {

@@ -10,7 +10,7 @@ use rustc::traits::{
     Environment,
 };
 use rustc::ty;
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -129,7 +129,7 @@ fn assemble_builtin_sized_impls<'tcx>(
 
         // Struct def
         ty::Adt(adt_def, _) => {
-            let substs = Substs::bound_vars_for_item(tcx, adt_def.did);
+            let substs = InternalSubsts::bound_vars_for_item(tcx, adt_def.did);
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
             let sized_constraint = adt_def.sized_constraint(tcx)
                 .iter()

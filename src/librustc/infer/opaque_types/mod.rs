@@ -9,7 +9,7 @@ use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Substs, SubstsRef, UnpackedKind};
+use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = Substs::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
         let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> = opaque_defn
             .substs
             .iter()

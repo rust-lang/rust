@@ -823,7 +823,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-case that coercion alone cannot handle:
-        // Two function item types of differing IDs or Substs.
+        // Two function item types of differing IDs or InternalSubsts.
         if let (&ty::FnDef(..), &ty::FnDef(..)) = (&prev_ty.sty, &new_ty.sty) {
             // Don't reify if the function types have a LUB, i.e., they
             // are the same function and their parameters have a LUB.

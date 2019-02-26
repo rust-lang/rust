@@ -1,4 +1,4 @@
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TypeFlags, TypeFoldable};
 
 #[derive(Debug)]
@@ -241,7 +241,7 @@ impl FlagComputation {
         self.add_substs(projection_ty.substs);
     }
 
-    fn add_substs(&mut self, substs: &Substs<'_>) {
+    fn add_substs(&mut self, substs: SubstsRef<'_>) {
         for ty in substs.types() {
             self.add_ty(ty);
         }

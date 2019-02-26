@@ -15,7 +15,7 @@ use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self, Name};
@@ -406,7 +406,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         self, receiver_ty: Ty<'tcx>, self_ty: Ty<'tcx>, method_def_id: DefId
     ) -> Ty<'tcx> {
         debug!("receiver_for_self_ty({:?}, {:?}, {:?})", receiver_ty, self_ty, method_def_id);
-        let substs = Substs::for_item(self, method_def_id, |param, _| {
+        let substs = InternalSubsts::for_item(self, method_def_id, |param, _| {
             if param.index == 0 {
                 self_ty.into()
             } else {
@@ -559,13 +559,17 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
             // U: Trait<Arg1, ..., ArgN>
             let trait_predicate = {
-                let substs = Substs::for_item(self, method.container.assert_trait(), |param, _| {
-                    if param.index == 0 {
-                        unsized_self_ty.into()
-                    } else {
-                        self.mk_param_from_def(param)
-                    }
-                });
+                let substs = InternalSubsts::for_item(
+                    self,
+                    method.container.assert_trait(),
+                    |param, _| {
+                        if param.index == 0 {
+                            unsized_self_ty.into()
+                        } else {
+                            self.mk_param_from_def(param)
+                        }
+                    },
+                );
 
                 ty::TraitRef {
                     def_id: unsize_did,

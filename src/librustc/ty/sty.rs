@@ -7,7 +7,7 @@ use crate::mir::interpret::{ConstValue, truncate};
 use crate::middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
-use crate::ty::subst::{Substs, Subst, SubstsRef, Kind, UnpackedKind};
+use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, Kind, UnpackedKind};
 use crate::ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::util::captures::Captures;
@@ -101,7 +101,7 @@ pub enum TyKind<'tcx> {
 
     /// Structures, enumerations and unions.
     ///
-    /// Substs here, possibly against intuition, *may* contain `Param`s.
+    /// InternalSubsts here, possibly against intuition, *may* contain `Param`s.
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `Adt` corresponds to an ADT
     /// definition and not a concrete use of it.
@@ -685,7 +685,7 @@ impl<'tcx> TraitRef<'tcx> {
     pub fn identity<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> TraitRef<'tcx> {
         TraitRef {
             def_id,
-            substs: Substs::identity_for_item(tcx, def_id),
+            substs: InternalSubsts::identity_for_item(tcx, def_id),
         }
     }
 
@@ -704,7 +704,7 @@ impl<'tcx> TraitRef<'tcx> {
 
     pub fn from_method(tcx: TyCtxt<'_, '_, 'tcx>,
                        trait_id: DefId,
-                       substs: &Substs<'tcx>)
+                       substs: SubstsRef<'tcx>)
                        -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
 
@@ -1120,7 +1120,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are two kind of
 /// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by a `Substs`, and late-bound, which are part of
+/// and are substituted by a `InternalSubsts`, and late-bound, which are part of
 /// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].

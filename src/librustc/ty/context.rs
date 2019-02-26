@@ -22,7 +22,7 @@ use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
 use crate::mir::interpret::Allocation;
-use crate::ty::subst::{Kind, Substs, Subst, SubstsRef};
+use crate::ty::subst::{Kind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::ReprOptions;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -118,7 +118,7 @@ pub struct CtxtInterners<'tcx> {
     /// they're accessed quite often.
     type_: InternedSet<'tcx, TyS<'tcx>>,
     type_list: InternedSet<'tcx, List<Ty<'tcx>>>,
-    substs: InternedSet<'tcx, Substs<'tcx>>,
+    substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
@@ -557,7 +557,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| Substs::empty())
+        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty())
     }
 
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
@@ -1807,7 +1807,7 @@ nop_list_lift!{Predicate<'a> => Predicate<'tcx>}
 nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
 nop_list_lift!{ProjectionKind<'a> => ProjectionKind<'tcx>}
 
-// this is the impl for `&'a Substs<'a>`
+// this is the impl for `&'a InternalSubsts<'a>`
 nop_list_lift!{Kind<'a> => Kind<'tcx>}
 
 impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
@@ -2183,7 +2183,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
-        println!("Substs interner: #{}", self.interners.substs.borrow().len());
+        println!("InternalSubsts interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
         println!("Allocation interner: #{}", self.allocation_interner.borrow().len());
@@ -2250,7 +2250,7 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<Canoni
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
+impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
         &self.0[..]
     }
@@ -2520,7 +2520,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let substs = Substs::for_item(self, def_id, |param, substs| {
+        let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => bug!(),
                 GenericParamDefKind::Type { has_default, .. } => {

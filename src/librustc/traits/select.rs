@@ -34,7 +34,7 @@ use crate::middle::lang_items;
 use crate::mir::interpret::GlobalId;
 use crate::ty::fast_reject;
 use crate::ty::relate::TypeRelation;
-use crate::ty::subst::{Subst, Substs, SubstsRef};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use crate::hir;
@@ -3761,7 +3761,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,         // of impl or trait
-        substs: &Substs<'tcx>, // for impl or trait
+        substs: SubstsRef<'tcx>,  // for impl or trait
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);
         let tcx = self.tcx();

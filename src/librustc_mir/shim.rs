@@ -4,7 +4,7 @@ use rustc::infer;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::query::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -183,7 +183,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let substs = if let Some(ty) = ty {
         tcx.intern_substs(&[ty.into()])
     } else {
-        Substs::identity_for_item(tcx, def_id)
+        InternalSubsts::identity_for_item(tcx, def_id)
     };
     let sig = tcx.fn_sig(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(&sig);
@@ -451,7 +451,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let substs = Substs::for_item(tcx, self.def_id, |param, _| {
+        let substs = InternalSubsts::for_item(tcx, self.def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                 GenericParamDefKind::Type {..} => ty.into(),
