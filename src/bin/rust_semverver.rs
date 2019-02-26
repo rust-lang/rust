@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(try_from)]
 
 extern crate getopts;
 extern crate rustc;
