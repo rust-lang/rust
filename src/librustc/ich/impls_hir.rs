@@ -385,8 +385,7 @@ impl_stable_hash_for!(enum hir::ImplicitSelfKind {
 });
 
 impl_stable_hash_for!(struct hir::TraitRef {
-    // Don't hash the ref_id. It is tracked via the thing it is used to access
-    ref_id -> _,
+    // Don't hash the hir_ref_id. It is tracked via the thing it is used to access
     hir_ref_id -> _,
     path,
 });

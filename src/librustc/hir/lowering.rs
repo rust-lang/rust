@@ -2338,13 +2338,12 @@ impl<'a> LoweringContext<'a> {
             let future_path =
                 this.std_path(span, &["future", "Future"], Some(future_params), false);
 
-            let LoweredNodeId { node_id, hir_id } = this.next_id();
+            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
             let mut bounds = vec![
                 hir::GenericBound::Trait(
                     hir::PolyTraitRef {
                         trait_ref: hir::TraitRef {
                             path: future_path,
-                            ref_id: node_id,
                             hir_ref_id: hir_id,
                         },
                         bound_generic_params: hir_vec![],
@@ -2714,10 +2713,9 @@ impl<'a> LoweringContext<'a> {
             hir::QPath::Resolved(None, path) => path.and_then(|path| path),
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(p.ref_id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(p.ref_id);
         hir::TraitRef {
             path,
-            ref_id: node_id,
             hir_ref_id: hir_id,
         }
     }
@@ -5056,7 +5054,6 @@ impl<'a> LoweringContext<'a> {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {
                                 path: path.and_then(|path| path),
-                                ref_id: id.node_id,
                                 hir_ref_id: id.hir_id,
                             },
                             span,

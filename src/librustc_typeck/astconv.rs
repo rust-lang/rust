@@ -718,7 +718,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
-                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
+                    trait_ref.hir_ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             // okay to ignore Err because of ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
@@ -802,7 +802,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
-        ref_id: ast::NodeId,
+        hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
         speculative: bool,
@@ -874,7 +874,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                           binding.item_name, binding.span)
         }?;
 
-        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
         let (assoc_ident, def_scope) =
             tcx.adjust_ident(binding.item_name, candidate.def_id(), hir_ref_id);
         let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {

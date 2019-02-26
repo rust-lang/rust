@@ -115,7 +115,6 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         if result.is_auto() {
             let trait_ = hir::TraitRef {
                 path: get_path_for_type(self.cx.tcx, trait_def_id, hir::def::Def::Trait),
-                ref_id: ast::DUMMY_NODE_ID,
                 hir_ref_id: hir::DUMMY_HIR_ID,
             };
 
