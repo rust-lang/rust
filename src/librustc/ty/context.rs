@@ -2859,11 +2859,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn lint_node_note<S: Into<MultiSpan>>(self,
                                               lint: &'static Lint,
-                                              id: NodeId,
+                                              id: hir::HirId,
                                               span: S,
                                               msg: &str,
                                               note: &str) {
-        let mut err = self.struct_span_lint_node(lint, id, span.into(), msg);
+        let mut err = self.struct_span_lint_hir(lint, id, span.into(), msg);
         err.note(note);
         err.emit()
     }

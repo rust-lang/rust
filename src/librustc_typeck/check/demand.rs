@@ -2,7 +2,6 @@ use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 
-use syntax::ast;
 use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::Span;
 use rustc::hir;
@@ -164,7 +163,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      probe::Mode::MethodCall,
                                                      expected,
                                                      checked_ty,
-                                                     ast::DUMMY_NODE_ID);
+                                                     hir::DUMMY_HIR_ID);
         methods.retain(|m| {
             self.has_no_input_arg(m) &&
                 self.tcx.get_attrs(m.def_id).iter()
@@ -218,15 +217,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let hir::def::Def::Local(id) = path.def {
                 let parent = self.tcx.hir().get_parent_node(id);
                 if let Some(Node::Expr(hir::Expr {
-                    id,
+                    hir_id,
                     node: hir::ExprKind::Closure(_, decl, ..),
                     ..
                 })) = self.tcx.hir().find(parent) {
-                    let parent = self.tcx.hir().get_parent_node(*id);
+                    let parent = self.tcx.hir().get_parent_node_by_hir_id(*hir_id);
                     if let (Some(Node::Expr(hir::Expr {
                         node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
-                    })), 1) = (self.tcx.hir().find(parent), decl.inputs.len()) {
+                    })), 1) = (self.tcx.hir().find_by_hir_id(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
                         let name = path.ident.as_str();
@@ -470,8 +469,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let parent_id = self.tcx.hir().get_parent_node(expr.id);
-        if let Some(parent) = self.tcx.hir().find(parent_id) {
+        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
             // Shouldn't suggest `.into()` on `const`s.
             if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
                 // FIXME(estebank): modify once we decide to suggest `as` casts
@@ -501,10 +500,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(hir::Node::Expr(hir::Expr {
             node: hir::ExprKind::Struct(_, fields, _),
             ..
-        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.id)) {
+        })) = self.tcx.hir().find_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id)) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             for field in fields {
-                if field.expr.id == expr.id && field.is_shorthand {
+                if field.expr.hir_id == expr.hir_id && field.is_shorthand {
                     // This is a field literal
                     prefix = format!("{}: ", field.ident);
                     break;

@@ -2248,7 +2248,6 @@ impl<'a> State<'a> {
         let generics = hir::Generics {
             params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
-                id: ast::DUMMY_NODE_ID,
                 hir_id: hir::DUMMY_HIR_ID,
                 predicates: hir::HirVec::new(),
             },

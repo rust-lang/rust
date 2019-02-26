@@ -1279,7 +1279,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
         use syntax::print::pprust;
-        let def_id = self.tcx.hir().local_def_id(macro_def.id);
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(macro_def.hir_id);
         Entry {
             kind: EntryKind::MacroDef(self.lazy(&MacroDef {
                 body: pprust::tts_to_string(&macro_def.body.trees().collect::<Vec<_>>()),
@@ -1680,7 +1680,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         self.index.encode_info_for_ty(ty);
     }
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
-        let def_id = self.index.tcx.hir().local_def_id(macro_def.id);
+        let def_id = self.index.tcx.hir().local_def_id_from_hir_id(macro_def.hir_id);
         self.index.record(def_id, IsolatedEncoder::encode_info_for_macro_def, macro_def);
     }
 }
@@ -1702,13 +1702,13 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { ref default, .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     let has_default = Untracked(default.is_some());
                     let encode_info = IsolatedEncoder::encode_info_for_ty_param;
                     self.record(def_id, encode_info, (def_id, has_default));
                 }
                 hir::GenericParamKind::Const { .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     let encode_info = IsolatedEncoder::encode_info_for_const_param;
                     self.record(def_id, encode_info, def_id);
                 }
@@ -1729,7 +1729,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprKind::Closure(..) => {
-                let def_id = self.tcx.hir().local_def_id(expr.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_closure, def_id);
             }
             _ => {}

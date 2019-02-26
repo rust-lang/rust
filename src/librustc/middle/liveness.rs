@@ -265,7 +265,7 @@ struct IrMaps<'a, 'tcx: 'a> {
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
     variable_map: HirIdMap<Variable>,
-    capture_info_map: NodeMap<Rc<Vec<CaptureInfo>>>,
+    capture_info_map: HirIdMap<Rc<Vec<CaptureInfo>>>,
     var_kinds: Vec<VarKind>,
     lnks: Vec<LiveNodeKind>,
 }
@@ -344,8 +344,8 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         }
     }
 
-    fn set_captures(&mut self, node_id: NodeId, cs: Vec<CaptureInfo>) {
-        self.capture_info_map.insert(node_id, Rc::new(cs));
+    fn set_captures(&mut self, hir_id: HirId, cs: Vec<CaptureInfo>) {
+        self.capture_info_map.insert(hir_id, Rc::new(cs));
     }
 
     fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
@@ -460,7 +460,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-        debug!("expr {}: path that leads to {:?}", expr.id, path.def);
+        debug!("expr {}: path that leads to {:?}", expr.hir_id, path.def);
         if let Def::Local(..) = path.def {
             ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
         }
@@ -476,7 +476,8 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        ir.tcx.with_freevars(expr.id, |freevars| {
+        let node_id = ir.tcx.hir().hir_to_node_id(expr.hir_id);
+        ir.tcx.with_freevars(node_id, |freevars| {
             call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
@@ -487,7 +488,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
                 }
             }));
         });
-        ir.set_captures(expr.id, call_caps);
+        ir.set_captures(expr.hir_id, call_caps);
 
         intravisit::walk_expr(ir, expr);
       }
@@ -925,7 +926,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn compute(&mut self, body: &hir::Expr) -> LiveNode {
-        debug!("compute: using id for body, {}", self.ir.tcx.hir().node_to_pretty_string(body.id));
+        debug!("compute: using id for body, {}",
+               self.ir.tcx.hir().hir_to_pretty_string(body.hir_id));
 
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -940,7 +942,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                    for ln_idx in 0..self.ir.num_live_nodes {
                         debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
                    }
-                   body.id
+                   body.hir_id
                },
                entry_ln);
 
@@ -950,7 +952,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
         if blk.targeted_by_break {
-            self.break_ln.insert(blk.id, succ);
+            let node_id = self.ir.tcx.hir().hir_to_node_id(blk.hir_id);
+            self.break_ln.insert(node_id, succ);
         }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -1002,7 +1005,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
                               -> LiveNode {
-        debug!("propagate_through_expr: {}", self.ir.tcx.hir().node_to_pretty_string(expr.id));
+        debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
         match expr.node {
             // Interesting cases with control flow or which gen/kill
@@ -1016,11 +1019,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Closure(..) => {
                 debug!("{} is an ExprKind::Closure",
-                       self.ir.tcx.hir().node_to_pretty_string(expr.id));
+                       self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
                 // the construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
-                let caps = self.ir.capture_info_map.get(&expr.id).cloned().unwrap_or_else(||
+                let caps = self.ir.capture_info_map.get(&expr.hir_id).cloned().unwrap_or_else(||
                     span_bug!(expr.span, "no registered caps"));
 
                 caps.iter().rev().fold(succ, |succ, cap| {
@@ -1169,7 +1172,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent(expr.id);
+                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1180,7 +1183,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::MethodCall(.., ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent(expr.id);
+                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1386,17 +1389,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, self.ir.tcx.hir().node_to_pretty_string(body.id));
+               expr.hir_id, self.ir.tcx.hir().hir_to_pretty_string(body.hir_id));
 
-
-        self.break_ln.insert(expr.id, succ);
+        let node_id = self.ir.tcx.hir().hir_to_node_id(expr.hir_id);
+        self.break_ln.insert(node_id, succ);
 
         let cond_ln = match kind {
             LoopLoop => ln,
             WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
         };
 
-        self.cont_ln.insert(expr.id, cond_ln);
+        self.cont_ln.insert(node_id, cond_ln);
 
         let body_ln = self.propagate_through_block(body, cond_ln);
 

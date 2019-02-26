@@ -631,7 +631,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     fields.iter()
                           .map(|field| {
                               FieldPattern {
-                                  field: Field::new(self.tcx.field_index(field.node.id,
+                                  field: Field::new(self.tcx.field_index(field.node.hir_id,
                                                                          self.tables)),
                                   pattern: self.lower_pattern(&field.node.pat),
                               }

@@ -21,7 +21,7 @@ use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident};
@@ -271,7 +271,8 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                     return (ctor_vis, span, descr);
                 }
                 Node::Expr(expr) => {
-                    return (ty::Visibility::Restricted(tcx.hir().get_module_parent(expr.id)),
+                    return (ty::Visibility::Restricted(
+                        tcx.hir().get_module_parent_by_hir_id(expr.hir_id)),
                             expr.span, "private")
                 }
                 node => bug!("unexpected node kind: {:?}", node)
@@ -695,18 +696,20 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+        let node_id = self.tcx.hir().hir_to_node_id(md.hir_id);
+
         if md.legacy {
-            self.update(md.id, Some(AccessLevel::Public));
+            self.update(node_id, Some(AccessLevel::Public));
             return
         }
 
         let module_did = ty::DefIdTree::parent(
             self.tcx,
-            self.tcx.hir().local_def_id(md.id)
+            self.tcx.hir().local_def_id_from_hir_id(md.hir_id)
         ).unwrap();
         let mut module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
-        let level = self.update(md.id, level);
+        let level = self.update(node_id, level);
         if level.is_none() {
             return
         }
@@ -870,7 +873,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                     // unmentioned fields, just check them all.
                     for (vf_index, variant_field) in variant.fields.iter().enumerate() {
                         let field = fields.iter().find(|f| {
-                            self.tcx.field_index(f.id, self.tables) == vf_index
+                            self.tcx.field_index(f.hir_id, self.tables) == vf_index
                         });
                         let (use_ctxt, span) = match field {
                             Some(field) => (field.ident.span, field.span),
@@ -881,7 +884,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 } else {
                     for field in fields {
                         let use_ctxt = field.ident.span;
-                        let index = self.tcx.field_index(field.id, self.tables);
+                        let index = self.tcx.field_index(field.hir_id, self.tables);
                         self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                     }
                 }
@@ -900,7 +903,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     let use_ctxt = field.node.ident.span;
-                    let index = self.tcx.field_index(field.node.id, self.tables);
+                    let index = self.tcx.field_index(field.node.hir_id, self.tables);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                 }
             }
@@ -1152,7 +1155,7 @@ struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // Set of errors produced by this obsolete visitor.
-    old_error_set: NodeSet,
+    old_error_set: HirIdSet,
 }
 
 struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
@@ -1196,7 +1199,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
         if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
-                self.old_error_set.insert(trait_ref.trait_ref.ref_id);
+                self.old_error_set.insert(trait_ref.trait_ref.hir_ref_id);
             }
         }
     }
@@ -1452,7 +1455,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = t.node {
             if self.path_is_private_type(path) {
-                self.old_error_set.insert(t.id);
+                self.old_error_set.insert(t.hir_id);
             }
         }
         intravisit::walk_ty(self, t)
@@ -1596,7 +1599,7 @@ impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for SearchInterfaceForPrivateItemsVisitor<
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
-    old_error_set: &'a NodeSet,
+    old_error_set: &'a HirIdSet,
     private_crates: FxHashSet<CrateNum>
 }
 
@@ -1608,7 +1611,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         // Slow path taken only if there any errors in the crate.
         for &id in self.old_error_set {
             // Walk up the nodes until we find `item_id` (or we hit a root).
-            let mut id = id;
+            let mut id = self.tcx.hir().hir_to_node_id(id);
             loop {
                 if id == item_id {
                     has_old_errors = true;

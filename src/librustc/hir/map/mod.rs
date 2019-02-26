@@ -390,14 +390,19 @@ impl<'hir> Map<'hir> {
                 Some(Def::Local(local.id))
             }
             Node::MacroDef(macro_def) => {
-                Some(Def::Macro(self.local_def_id(macro_def.id),
+                Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),
                                 MacroKind::Bang))
             }
             Node::GenericParam(param) => {
                 Some(match param.kind {
-                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
-                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
-                    GenericParamKind::Const { .. } => Def::ConstParam(self.local_def_id(param.id)),
+                    GenericParamKind::Lifetime { .. } => {
+                        let node_id = self.hir_to_node_id(param.hir_id);
+                        Def::Local(node_id)
+                    },
+                    GenericParamKind::Type { .. } => Def::TyParam(
+                        self.local_def_id_from_hir_id(param.hir_id)),
+                    GenericParamKind::Const { .. } => Def::ConstParam(
+                        self.local_def_id_from_hir_id(param.hir_id)),
                 })
             }
         }
@@ -794,7 +799,7 @@ impl<'hir> Map<'hir> {
     ///     false
     /// }
     /// ```
-    pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
+    pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
         let match_fn = |node: &Node<'_>| {
             match *node {
                 Node::Item(_) |
@@ -817,7 +822,10 @@ impl<'hir> Map<'hir> {
             }
         };
 
-        self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
+        let node_id = self.hir_to_node_id(id);
+        self.walk_parent_nodes(node_id, match_fn, match_non_returning_block)
+            .ok()
+            .map(|return_node_id| self.node_to_hir_id(return_node_id))
     }
 
     /// Retrieves the `NodeId` for `id`'s parent item, or `id` itself if no

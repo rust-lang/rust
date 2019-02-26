@@ -507,7 +507,8 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir MacroDef) {
-        let def_index = self.definitions.opt_def_index(macro_def.id).unwrap();
+        let node_id = self.hir_to_node_id[&macro_def.hir_id];
+        let def_index = self.definitions.opt_def_index(node_id).unwrap();
 
         self.with_dep_node_owner(def_index, macro_def, |this| {
             this.insert(macro_def.span, macro_def.hir_id, Node::MacroDef(macro_def));

@@ -413,7 +413,7 @@ pub enum Safety {
     /// Unsafe because of an unsafe fn
     FnUnsafe,
     /// Unsafe because of an `unsafe` block
-    ExplicitUnsafe(ast::NodeId),
+    ExplicitUnsafe(hir::HirId),
 }
 
 impl_stable_hash_for!(struct Mir<'tcx> {
@@ -2103,8 +2103,8 @@ pub struct SourceScopeData {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct SourceScopeLocalData {
-    /// A NodeId with lint levels equivalent to this scope's lint levels.
-    pub lint_root: ast::NodeId,
+    /// A HirId with lint levels equivalent to this scope's lint levels.
+    pub lint_root: hir::HirId,
     /// The unsafe block that contains this node.
     pub safety: Safety,
 }
@@ -2854,8 +2854,8 @@ pub enum UnsafetyViolationKind {
     General,
     /// Permitted in const fn and regular fns.
     GeneralAndConstFn,
-    ExternStatic(ast::NodeId),
-    BorrowPacked(ast::NodeId),
+    ExternStatic(hir::HirId),
+    BorrowPacked(hir::HirId),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -2872,7 +2872,7 @@ pub struct UnsafetyCheckResult {
     pub violations: Lrc<[UnsafetyViolation]>,
     /// unsafe blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Lrc<[(ast::NodeId, bool)]>,
+    pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
 }
 
 /// The layout of generator state

@@ -243,11 +243,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             }
             hir::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.id);
+                    self.visit_field_id(field.hir_id);
                 }
             }
             hir::ExprKind::Field(..) => {
-                self.visit_field_id(e.id);
+                self.visit_field_id(e.hir_id);
             }
             _ => {}
         }
@@ -273,7 +273,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             }
             hir::PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.node.id);
+                    self.visit_field_id(field.node.hir_id);
                 }
             }
             _ => {}
@@ -590,8 +590,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_field_id(&mut self, node_id: ast::NodeId) {
-        let hir_id = self.tcx().hir().node_to_hir_id(node_id);
+    fn visit_field_id(&mut self, hir_id: hir::HirId) {
         if let Some(index) = self.fcx
             .tables
             .borrow_mut()

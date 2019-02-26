@@ -1177,7 +1177,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         Expressions::UpFront(coercion_sites) => {
                             // if the user gave us an array to validate, check that we got
                             // the next expression in the list, as expected
-                            assert_eq!(coercion_sites[self.pushed].as_coercion_site().id, e.id);
+                            assert_eq!(coercion_sites[self.pushed].as_coercion_site().hir_id,
+                                       e.hir_id);
                         }
                     }
                     self.pushed += 1;
@@ -1208,7 +1209,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
-                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        let parent_id = fcx.tcx.hir().get_parent_node_by_hir_id(blk_id);
                         db = self.report_return_mismatched_types(
                             cause,
                             expected,
@@ -1246,8 +1247,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         found: Ty<'tcx>,
         err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-        id: syntax::ast::NodeId,
-        expression: Option<(&'gcx hir::Expr, syntax::ast::NodeId)>,
+        id: hir::HirId,
+        expression: Option<(&'gcx hir::Expr, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
         let mut db = fcx.report_mismatched_types(cause, expected, found, err);
 
@@ -1257,7 +1258,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         // Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
-        let parent_id = fcx.tcx.hir().get_parent_node(id);
+        let parent_id = fcx.tcx.hir().get_parent_node_by_hir_id(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
             pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
                 &mut db,
@@ -1267,7 +1268,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 cause.span,
                 blk_id,
             );
-            let parent = fcx.tcx.hir().get(parent_id);
+            let parent = fcx.tcx.hir().get_by_hir_id(parent_id);
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)

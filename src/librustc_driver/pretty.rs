@@ -420,13 +420,13 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             }
             pprust_hir::AnnNode::Block(blk) => {
                 s.s.space()?;
-                s.synth_comment(format!("block node_id: {} hir local_id: {}",
-                                        blk.id, blk.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("block hir_id: {} hir local_id: {}",
+                                        blk.hir_id, blk.hir_id.local_id.as_u32()))
             }
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
-                s.synth_comment(format!("node_id: {} hir local_id: {}",
-                                        expr.id, expr.hir_id.local_id.as_u32()))?;
+                s.synth_comment(format!("expr hir_id: {} hir local_id: {}",
+                                        expr.hir_id, expr.hir_id.local_id.as_u32()))?;
                 s.pclose()
             }
             pprust_hir::AnnNode::Pat(pat) => {
@@ -834,15 +834,15 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let body_id = match code {
         blocks::Code::Expr(expr) => {
             // Find the function this expression is from.
-            let mut node_id = expr.id;
+            let mut hir_id = expr.hir_id;
             loop {
-                let node = tcx.hir().get(node_id);
+                let node = tcx.hir().get_by_hir_id(hir_id);
                 if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
                     break n.body();
                 }
-                let parent = tcx.hir().get_parent_node(node_id);
-                assert_ne!(node_id, parent);
-                node_id = parent;
+                let parent = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                assert_ne!(hir_id, parent);
+                hir_id = parent;
             }
         }
         blocks::Code::FnLike(fn_like) => fn_like.body(),

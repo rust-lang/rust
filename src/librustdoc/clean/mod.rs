@@ -1221,7 +1221,7 @@ impl Lifetime {
 
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext<'_, '_, '_>) -> Lifetime {
-        if self.id != ast::DUMMY_NODE_ID {
+        if self.hir_id != hir::DUMMY_HIR_ID {
             let def = cx.tcx.named_region(self.hir_id);
             match def {
                 Some(rl::Region::EarlyBound(_, node_id, _)) |
@@ -1513,7 +1513,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
             }
             hir::GenericParamKind::Type { ref default, synthetic } => {
                 (self.name.ident().name.clean(cx), GenericParamDefKind::Type {
-                    did: cx.tcx.hir().local_def_id(self.id),
+                    did: cx.tcx.hir().local_def_id_from_hir_id(self.hir_id),
                     bounds: self.bounds.clean(cx),
                     default: default.clean(cx),
                     synthetic: synthetic,
@@ -1521,7 +1521,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
             }
             hir::GenericParamKind::Const { ref ty } => {
                 (self.name.ident().name.clean(cx), GenericParamDefKind::Const {
-                    did: cx.tcx.hir().local_def_id(self.id),
+                    did: cx.tcx.hir().local_def_id_from_hir_id(self.hir_id),
                     ty: ty.clean(cx),
                 })
             }
@@ -1988,7 +1988,7 @@ impl Clean<bool> for hir::IsAuto {
 
 impl Clean<Type> for hir::TraitRef {
     fn clean(&self, cx: &DocContext<'_, '_, '_>) -> Type {
-        resolve_type(cx, self.path.clean(cx), self.ref_id)
+        resolve_type(cx, self.path.clean(cx), self.hir_ref_id)
     }
 }
 
@@ -2599,7 +2599,7 @@ impl Clean<Type> for hir::Ty {
                                     if let Some(lt) = lifetime.cloned() {
                                         if !lt.is_elided() {
                                             let lt_def_id =
-                                                cx.tcx.hir().local_def_id(param.id);
+                                                cx.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                                             lt_substs.insert(lt_def_id, lt.clean(cx));
                                         }
                                     }
@@ -2607,7 +2607,8 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::TyParam(cx.tcx.hir().local_def_id(param.id));
+                                        Def::TyParam(
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2631,7 +2632,8 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Const { .. } => {
                                     let const_param_def =
-                                        Def::ConstParam(cx.tcx.hir().local_def_id(param.id));
+                                        Def::ConstParam(
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
                                     let mut j = 0;
                                     let const_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2656,7 +2658,7 @@ impl Clean<Type> for hir::Ty {
                     });
                     return cx.enter_alias(ty_substs, lt_substs, const_substs, || ty.clean(cx));
                 }
-                resolve_type(cx, path.clean(cx), self.id)
+                resolve_type(cx, path.clean(cx), self.hir_id)
             }
             TyKind::Path(hir::QPath::Resolved(Some(ref qself), ref p)) => {
                 let mut segments: Vec<_> = p.segments.clone().into();
@@ -2669,7 +2671,7 @@ impl Clean<Type> for hir::Ty {
                 Type::QPath {
                     name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
                     self_type: box qself.clean(cx),
-                    trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
+                    trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id)
                 }
             }
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
@@ -2686,7 +2688,7 @@ impl Clean<Type> for hir::Ty {
                 Type::QPath {
                     name: segment.ident.name.clean(cx),
                     self_type: box qself.clean(cx),
-                    trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
+                    trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id)
                 }
             }
             TyKind::TraitObject(ref bounds, ref lifetime) => {
@@ -3909,8 +3911,8 @@ fn print_const_expr(cx: &DocContext<'_, '_, '_>, body: hir::BodyId) -> String {
 /// Given a type Path, resolve it to a Type using the TyCtxt
 fn resolve_type(cx: &DocContext<'_, '_, '_>,
                 path: Path,
-                id: ast::NodeId) -> Type {
-    if id == ast::DUMMY_NODE_ID {
+                id: hir::HirId) -> Type {
+    if id == hir::DUMMY_HIR_ID {
         debug!("resolve_type({:?})", path);
     } else {
         debug!("resolve_type({:?},{:?})", path, id);

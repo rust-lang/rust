@@ -14,7 +14,7 @@ use crate::session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
-use syntax::ast::{NodeId, Attribute};
+use syntax::ast::Attribute;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
@@ -117,13 +117,13 @@ struct Annotator<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
-    fn annotate<F>(&mut self, id: NodeId, attrs: &[Attribute],
+    fn annotate<F>(&mut self, hir_id: HirId, attrs: &[Attribute],
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
         if self.tcx.features().staged_api {
             // This crate explicitly wants staged API.
-            debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
+            debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
             if let Some(..) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged api, \
                                                  use `#[rustc_deprecated]` instead");
@@ -178,7 +178,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     }
                 }
 
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 self.index.stab_map.insert(hir_id, stab);
 
                 let orig_parent_stab = replace(&mut self.parent_stab, Some(stab));
@@ -188,7 +187,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 debug!("annotate: not found, parent = {:?}", self.parent_stab);
                 if let Some(stab) = self.parent_stab {
                     if stab.level.is_unstable() {
-                        let hir_id = self.tcx.hir().node_to_hir_id(id);
                         self.index.stab_map.insert(hir_id, stab);
                     }
                 }
@@ -209,7 +207,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
                 if stab.level.is_unstable() {
-                    let hir_id = self.tcx.hir().node_to_hir_id(id);
                     self.index.stab_map.insert(hir_id, stab);
                 }
             }
@@ -220,7 +217,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 }
 
                 // `Deprecation` is just two pointers, no need to intern it
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 let depr_entry = DeprecationEntry::local(depr, hir_id);
                 self.index.depr_map.insert(hir_id, depr_entry.clone());
 
@@ -229,7 +225,6 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 visit_children(self);
                 self.parent_depr = orig_parent_depr;
             } else if let Some(parent_depr) = self.parent_depr.clone() {
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 self.index.depr_map.insert(hir_id, parent_depr);
                 visit_children(self);
             } else {
@@ -264,20 +259,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             }
             hir::ItemKind::Struct(ref sd, _) => {
                 if !sd.is_struct() {
-                    self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
+                    self.annotate(sd.hir_id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
             }
             _ => {}
         }
 
-        self.annotate(i.id, &i.attrs, i.span, kind, |v| {
+        self.annotate(i.hir_id, &i.attrs, i.span, kind, |v| {
             intravisit::walk_item(v, i)
         });
         self.in_trait_impl = orig_in_trait_impl;
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        self.annotate(ti.id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
+        self.annotate(ti.hir_id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
             intravisit::walk_trait_item(v, ti);
         });
     }
@@ -288,31 +283,30 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         } else {
             AnnotationKind::Required
         };
-        self.annotate(ii.id, &ii.attrs, ii.span, kind, |v| {
+        self.annotate(ii.hir_id, &ii.attrs, ii.span, kind, |v| {
             intravisit::walk_impl_item(v, ii);
         });
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.annotate(var.node.data.id(), &var.node.attrs, var.span, AnnotationKind::Required, |v| {
-            intravisit::walk_variant(v, var, g, item_id);
-        })
+        self.annotate(var.node.data.hir_id(), &var.node.attrs, var.span, AnnotationKind::Required,
+            |v| { intravisit::walk_variant(v, var, g, item_id) })
     }
 
     fn visit_struct_field(&mut self, s: &'tcx StructField) {
-        self.annotate(s.id, &s.attrs, s.span, AnnotationKind::Required, |v| {
+        self.annotate(s.hir_id, &s.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.annotate(i.id, &i.attrs, i.span, AnnotationKind::Required, |v| {
+        self.annotate(i.hir_id, &i.attrs, i.span, AnnotationKind::Required, |v| {
             intravisit::walk_foreign_item(v, i);
         });
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        self.annotate(md.id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
+        self.annotate(md.hir_id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
     }
 }
 
@@ -322,12 +316,12 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
-    fn check_missing_stability(&self, id: NodeId, span: Span, name: &str) {
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
+    fn check_missing_stability(&self, hir_id: HirId, span: Span, name: &str) {
         let stab = self.tcx.stability().local_stability(hir_id);
+        let node_id = self.tcx.hir().hir_to_node_id(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
-                        self.access_levels.is_reachable(id);
+                        self.access_levels.is_reachable(node_id);
         if is_error {
             self.tcx.sess.span_err(
                 span,
@@ -350,42 +344,42 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.id, i.span, i.node.descriptive_variant())
+            _ => self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant())
         }
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        self.check_missing_stability(ti.id, ti.span, "item");
+        self.check_missing_stability(ti.hir_id, ti.span, "item");
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent(ii.id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.id, ii.span, "item");
+            self.check_missing_stability(ii.hir_id, ii.span, "item");
         }
         intravisit::walk_impl_item(self, ii);
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.check_missing_stability(var.node.data.id(), var.span, "variant");
+        self.check_missing_stability(var.node.data.hir_id(), var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx StructField) {
-        self.check_missing_stability(s.id, s.span, "field");
+        self.check_missing_stability(s.hir_id, s.span, "field");
         intravisit::walk_struct_field(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.id, i.span, i.node.descriptive_variant());
+        self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
-        self.check_missing_stability(md.id, md.span, "macro");
+        self.check_missing_stability(md.hir_id, md.span, "macro");
     }
 }
 
@@ -441,7 +435,7 @@ impl<'a, 'tcx> Index<'tcx> {
                 annotator.parent_stab = Some(stability);
             }
 
-            annotator.annotate(ast::CRATE_NODE_ID,
+            annotator.annotate(hir::CRATE_HIR_ID,
                                &krate.attrs,
                                krate.span,
                                AnnotationKind::Required,
@@ -563,9 +557,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
-    pub fn eval_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) -> EvalResult {
+    pub fn eval_stability(self, def_id: DefId, id: Option<HirId>, span: Span) -> EvalResult {
         let lint_deprecated = |def_id: DefId,
-                               id: NodeId,
+                               id: HirId,
                                note: Option<Symbol>,
                                suggestion: Option<Symbol>,
                                message: &str,
@@ -576,9 +570,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 format!("{}", message)
             };
 
-            let mut diag = self.struct_span_lint_node(lint, id, span, &msg);
+            let mut diag = self.struct_span_lint_hir(lint, id, span, &msg);
             if let Some(suggestion) = suggestion {
-                if let hir::Node::Expr(_) = self.hir().get(id) {
+                if let hir::Node::Expr(_) = self.hir().get_by_hir_id(id) {
                     diag.span_suggestion(
                         span,
                         &msg,
@@ -588,15 +582,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             diag.emit();
-            if id == ast::DUMMY_NODE_ID {
-                span_bug!(span, "emitted a {} lint with dummy node id: {:?}", lint.name, def_id);
+            if id == hir::DUMMY_HIR_ID {
+                span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
             }
         };
 
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
-                let parent_def_id = self.hir().local_def_id(self.hir().get_parent(id));
+                let parent_def_id = self.hir().local_def_id_from_hir_id(
+                    self.hir().get_parent_item(id));
                 let skip = self.lookup_deprecation_entry(parent_def_id)
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
@@ -709,7 +704,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
-    pub fn check_stability(self, def_id: DefId, id: Option<NodeId>, span: Span) {
+    pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue } => {
@@ -769,7 +764,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, Some(item.id), item.span);
+                self.tcx.check_stability(def_id, Some(item.hir_id), item.span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -817,7 +812,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx hir::Path, id: hir::HirId) {
-        let id = self.tcx.hir().hir_to_node_id(id);
         if let Some(def_id) = path.def.opt_def_id() {
             self.tcx.check_stability(def_id, Some(id), path.span)
         }
@@ -843,7 +837,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             tcx,
             access_levels,
         };
-        missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span, "crate");
+        missing.check_missing_stability(hir::CRATE_HIR_ID, krate.span, "crate");
         intravisit::walk_crate(&mut missing, krate);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }

@@ -665,11 +665,11 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // because any code that existed before validation could not have failed validation
                 // thus preventing such a hard error from being a backwards compatibility hazard
                 Some(Def::Const(_)) | Some(Def::AssociatedConst(_)) => {
-                    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+                    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     err.report_as_lint(
                         tcx.at(tcx.def_span(def_id)),
                         "any use of this value will cause an error",
-                        node_id,
+                        hir_id,
                     )
                 },
                 // promoting runtime code is only allowed to error if it references broken constants
@@ -685,7 +685,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                         err.report_as_lint(
                             tcx.at(span),
                             "reaching this expression at runtime will panic or abort",
-                            tcx.hir().as_local_node_id(def_id).unwrap(),
+                            tcx.hir().as_local_hir_id(def_id).unwrap(),
                         )
                     }
                 // anything else (array lengths, enum initializers, constant patterns) are reported

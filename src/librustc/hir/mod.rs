@@ -19,7 +19,7 @@ use errors::FatalError;
 use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
@@ -112,6 +112,12 @@ impl serialize::UseSpecializedDecodable for HirId {
     }
 }
 
+impl fmt::Display for HirId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 // hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
 mod item_local_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
@@ -145,7 +151,6 @@ pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
 
@@ -266,7 +271,7 @@ impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
                "lifetime({}: {})",
-               self.id,
+               self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
     }
 }
@@ -411,11 +416,11 @@ impl GenericArg {
         }
     }
 
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> HirId {
         match self {
-            GenericArg::Lifetime(l) => l.id,
-            GenericArg::Type(t) => t.id,
-            GenericArg::Const(c) => c.value.id,
+            GenericArg::Lifetime(l) => l.hir_id,
+            GenericArg::Type(t) => t.hir_id,
+            GenericArg::Const(c) => c.value.hir_id,
         }
     }
 }
@@ -547,7 +552,6 @@ pub enum GenericParamKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct GenericParam {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,
@@ -579,7 +583,6 @@ impl Generics {
         Generics {
             params: HirVec::new(),
             where_clause: WhereClause {
-                id: DUMMY_NODE_ID,
                 hir_id: DUMMY_HIR_ID,
                 predicates: HirVec::new(),
             },
@@ -624,7 +627,6 @@ pub enum SyntheticTyParamKind {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub predicates: HirVec<WherePredicate>,
 }
@@ -685,7 +687,6 @@ pub struct WhereRegionPredicate {
 /// An equality predicate (e.g., `T = int`); currently unsupported.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
@@ -808,7 +809,6 @@ pub struct MacroDef {
     pub name: Name,
     pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,
@@ -822,7 +822,6 @@ pub struct Block {
     /// An expression at the end of the block
     /// without a semicolon, if any.
     pub expr: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -1334,7 +1333,6 @@ pub struct AnonConst {
 /// An expression
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
-    pub id: NodeId,
     pub span: Span,
     pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
@@ -1437,7 +1435,7 @@ impl Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id,
+        write!(f, "expr({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_expr(self)))
     }
 }
@@ -1754,7 +1752,6 @@ pub struct TypeBinding {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
-    pub id: NodeId,
     pub node: TyKind,
     pub span: Span,
     pub hir_id: HirId,

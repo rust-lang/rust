@@ -158,7 +158,6 @@ impl_stable_hash_for!(struct ast::Label {
 });
 
 impl_stable_hash_for!(struct hir::Lifetime {
-    id,
     hir_id,
     span,
     name
@@ -207,7 +206,6 @@ impl_stable_hash_for!(enum hir::TraitBoundModifier {
 });
 
 impl_stable_hash_for!(struct hir::GenericParam {
-    id,
     hir_id,
     name,
     pure_wrt_drop,
@@ -255,7 +253,6 @@ impl_stable_hash_for!(enum hir::SyntheticTyParamKind {
 });
 
 impl_stable_hash_for!(struct hir::WhereClause {
-    id,
     hir_id,
     predicates
 });
@@ -280,7 +277,6 @@ impl_stable_hash_for!(struct hir::WhereRegionPredicate {
 });
 
 impl_stable_hash_for!(struct hir::WhereEqPredicate {
-    id,
     hir_id,
     span,
     lhs_ty,
@@ -318,7 +314,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
                                           hasher: &mut StableHasher<W>) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
-                id: _,
                 hir_id: _,
                 ref node,
                 ref span,
@@ -411,7 +406,6 @@ impl_stable_hash_for!(struct hir::MacroDef {
     name,
     vis,
     attrs,
-    id,
     hir_id,
     span,
     legacy,
@@ -421,7 +415,6 @@ impl_stable_hash_for!(struct hir::MacroDef {
 impl_stable_hash_for!(struct hir::Block {
     stmts,
     expr,
-    id -> _,
     hir_id -> _,
     rules,
     span,
@@ -566,7 +559,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
                                           hasher: &mut StableHasher<W>) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr {
-                id: _,
                 hir_id: _,
                 ref span,
                 ref node,

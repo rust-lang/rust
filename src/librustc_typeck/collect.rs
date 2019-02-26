@@ -129,12 +129,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
                 hir::GenericParamKind::Type {
                     default: Some(_), ..
                 } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     self.tcx.type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                     self.tcx.type_of(def_id);
                 }
             }
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprKind::Closure(..) = expr.node {
-            let def_id = self.tcx.hir().local_def_id(expr.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
             self.tcx.generics_of(def_id);
             self.tcx.type_of(def_id);
         }
@@ -322,9 +322,10 @@ fn type_param_predicates<'a, 'tcx>(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
+    let param_hir_id = tcx.hir().node_to_hir_id(param_id);
     Lrc::make_mut(&mut result)
         .predicates
-        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
+        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_hir_id, ty,
             OnlySelfBounds(true)));
     result
 }
@@ -337,7 +338,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
     fn type_parameter_bounds_in_generics(
         &self,
         ast_generics: &hir::Generics,
-        param_id: ast::NodeId,
+        param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
@@ -345,7 +346,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Type { .. } if param.id == param_id => Some(&param.bounds),
+                GenericParamKind::Type { .. } if param.hir_id == param_id => Some(&param.bounds),
                 _ => None,
             })
             .flat_map(|bounds| bounds.iter())
@@ -382,12 +383,12 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 fn is_param<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ast_ty: &hir::Ty,
-    param_id: ast::NodeId,
+    param_id: hir::HirId,
 ) -> bool {
     if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
         match path.def {
             Def::SelfTy(Some(def_id), None) | Def::TyParam(def_id) => {
-                def_id == tcx.hir().local_def_id(param_id)
+                def_id == tcx.hir().local_def_id_from_hir_id(param_id)
             }
             _ => false,
         }
@@ -721,7 +722,7 @@ fn super_predicates_of<'a, 'tcx>(
     // as one of its "superpredicates".
     let is_trait_alias = tcx.is_trait_alias(trait_def_id);
     let superbounds2 = icx.type_parameter_bounds_in_generics(
-        generics, item.id, self_param_ty, OnlySelfBounds(!is_trait_alias));
+        generics, item.hir_id, self_param_ty, OnlySelfBounds(!is_trait_alias));
 
     // Combine the two lists to form the complete set of superbounds:
     let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
@@ -987,7 +988,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
             .map(|(i, param)| ty::GenericParamDef {
                 name: param.name.ident().as_interned_str(),
                 index: own_start + i as u32,
-                def_id: tcx.hir().local_def_id(param.id),
+                def_id: tcx.hir().local_def_id_from_hir_id(param.hir_id),
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind: ty::GenericParamDefKind::Lifetime,
             }),
@@ -1018,9 +1019,9 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                     if !allow_defaults && default.is_some() {
                         if !tcx.features().default_type_parameter_fallback {
-                            tcx.lint_node(
+                            tcx.lint_hir(
                                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                                param.id,
+                                param.hir_id,
                                 param.span,
                                 &format!(
                                     "defaults for type parameters are only allowed in \
@@ -1033,7 +1034,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     let ty_param = ty::GenericParamDef {
                         index: type_start + i as u32,
                         name: param.name.ident().as_interned_str(),
-                        def_id: tcx.hir().local_def_id(param.id),
+                        def_id: tcx.hir().local_def_id_from_hir_id(param.hir_id),
                         pure_wrt_drop: param.pure_wrt_drop,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: default.is_some(),
@@ -1704,8 +1705,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
         .iter()
         .filter(move |param| match param.kind {
             GenericParamKind::Lifetime { .. } => {
-                let hir_id = tcx.hir().node_to_hir_id(param.id);
-                !tcx.is_late_bound(hir_id)
+                !tcx.is_late_bound(param.hir_id)
             }
             _ => false,
         })
@@ -1942,7 +1942,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     let mut index = parent_count + has_own_self as u32;
     for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-            def_id: tcx.hir().local_def_id(param.id),
+            def_id: tcx.hir().local_def_id_from_hir_id(param.hir_id),
             index,
             name: param.name.ident().as_interned_str(),
         }));
@@ -2224,7 +2224,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
                        &format!(
                            "use of SIMD type `{}` in FFI is highly experimental and \
                             may result in invalid code",
-                           tcx.hir().node_to_pretty_string(ast_ty.id)
+                           tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
                        ),
                    )
                    .help("add #![feature(simd_ffi)] to the crate attributes to enable")

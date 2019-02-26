@@ -28,7 +28,7 @@ mod util;
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
     Inherited,
-    Explicit(ast::NodeId)
+    Explicit(hir::HirId)
 }
 
 impl LintLevel {
@@ -54,7 +54,7 @@ pub struct Block<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum BlockSafety {
     Safe,
-    ExplicitUnsafe(ast::NodeId),
+    ExplicitUnsafe(hir::HirId),
     PushUnsafe,
     PopUnsafe
 }

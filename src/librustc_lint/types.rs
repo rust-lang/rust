@@ -46,12 +46,12 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: ast::NodeId,
+    negated_expr_id: hir::HirId,
 }
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: ast::DUMMY_NODE_ID }
+        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
     }
 }
 
@@ -71,8 +71,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.node {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.id {
-                    self.negated_expr_id = expr.id;
+                if self.negated_expr_id != e.hir_id {
+                    self.negated_expr_id = expr.hir_id;
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 };
                                 let (_, max) = int_ty_range(int_type);
                                 let max = max as u128;
-                                let negative = self.negated_expr_id == e.id;
+                                let negative = self.negated_expr_id == e.hir_id;
 
                                 // Detect literal value out of range [min, max] inclusive
                                 // avoiding use of -min to prevent overflow/panic
@@ -136,8 +136,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             _ => bug!(),
                         };
                         if lit_val < min || lit_val > max {
-                            let parent_id = cx.tcx.hir().get_parent_node(e.id);
-                            if let Node::Expr(parent_expr) = cx.tcx.hir().get(parent_id) {
+                            let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+                            if let Node::Expr(parent_expr) = cx.tcx.hir().get_by_hir_id(parent_id) {
                                 if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
