@@ -419,6 +419,14 @@ impl<'a> WorkInfo<'a> {
         // TODO: handle multiple outputs gracefully
         for i in &build_plan.invocations {
             if i.package_name == name {
+                // FIXME: this is a hack to avoid picking up output artifacts of
+                // build scrits and build programs (no outputs):
+                let build_script =
+                    i.outputs.iter().any(|v| v.to_str().unwrap().contains("build_script"));
+                let build_program = i.outputs.is_empty();
+                if build_script || build_program {
+                    continue;
+                }
                 return Ok((i.outputs[0].clone(), compilation.deps_output));
             }
         }

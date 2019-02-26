@@ -2,6 +2,9 @@
 
 set -ex
 
+# Note: this is required for correctness,
+# otherwise executing multiple "full" tests in parallel
+# of the same library can alter results.
 export RUST_TEST_THREADS=1
 export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
