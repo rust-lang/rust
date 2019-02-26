@@ -225,23 +225,23 @@ fn check_comparison<'a, 'tcx>(
     use self::Expression::*;
 
     if let ExprKind::Binary(_, ref left_side, ref right_side) = e.node {
-        let mut applicability = Applicability::MachineApplicable;
-        match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-            (Bool(true), Other) => left_true.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
-            }),
-            (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
-            }),
-            (Bool(false), Other) => left_false.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
-            }),
-            (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
-            }),
-            (Other, Other) => no_literal.map_or((), |(h, m)| {
-                let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
-                if l_ty.is_bool() && r_ty.is_bool() {
+        let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
+        if l_ty.is_bool() && r_ty.is_bool() {
+            let mut applicability = Applicability::MachineApplicable;
+            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+                (Bool(true), Other) => left_true.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+                }),
+                (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+                }),
+                (Bool(false), Other) => left_false.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+                }),
+                (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+                }),
+                (Other, Other) => no_literal.map_or((), |(h, m)| {
                     let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
                     let right_side = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
                     span_lint_and_sugg(
@@ -253,9 +253,9 @@ fn check_comparison<'a, 'tcx>(
                         h(left_side, right_side).to_string(),
                         applicability,
                     )
-                }
-            }),
-            _ => (),
+                }),
+                _ => (),
+            }
         }
     }
 }
