@@ -1421,8 +1421,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 }
 
 #[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
-impl<'b, T: ?Sized> Into<DowngradedRef<'b, T>> for RefMut<'b, T> {
-    fn into(self) -> DowngradedRef<'b, T> {
+impl<'b, T: ?Sized> From<RefMut<'b, T>> for DowngradedRef<'b, T> {
+    fn from(ref_mut: RefMut<'b, T>) -> DowngradedRef<'b, T> {
         RefMut::downgrade(self)
     }
 }
