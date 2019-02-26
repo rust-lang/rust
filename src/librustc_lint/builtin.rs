@@ -1112,11 +1112,12 @@ impl LintPass for UnreachablePub {
 }
 
 impl UnreachablePub {
-    fn perform_lint(&self, cx: &LateContext<'_, '_>, what: &str, id: ast::NodeId,
+    fn perform_lint(&self, cx: &LateContext<'_, '_>, what: &str, id: hir::HirId,
                     vis: &hir::Visibility, span: Span, exportable: bool) {
         let mut applicability = Applicability::MachineApplicable;
+        let node_id = cx.tcx.hir().hir_to_node_id(id);
         match vis.node {
-            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
+            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(node_id) => {
                 if span.ctxt().outer().expn_info().is_some() {
                     applicability = Applicability::MaybeIncorrect;
                 }
@@ -1148,20 +1149,20 @@ impl UnreachablePub {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
+        self.perform_lint(cx, "item", item.hir_id, &item.vis, item.span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, foreign_item: &hir::ForeignItem) {
-        self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis,
+        self.perform_lint(cx, "item", foreign_item.hir_id, &foreign_item.vis,
                           foreign_item.span, true);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField) {
-        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false);
+        self.perform_lint(cx, "field", field.hir_id, &field.vis, field.span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
-        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
+        self.perform_lint(cx, "item", impl_item.hir_id, &impl_item.vis, impl_item.span, false);
     }
 }
 

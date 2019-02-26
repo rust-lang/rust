@@ -157,7 +157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        convert_impl_item(self.tcx, impl_item.id);
+        convert_impl_item(self.tcx, impl_item.hir_id);
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -500,12 +500,12 @@ fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: hir:
     tcx.predicates_of(def_id);
 }
 
-fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: ast::NodeId) {
-    let def_id = tcx.hir().local_def_id(impl_item_id);
+fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: hir::HirId) {
+    let def_id = tcx.hir().local_def_id_from_hir_id(impl_item_id);
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
-    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).node {
+    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item_by_hir_id(impl_item_id).node {
         tcx.fn_sig(def_id);
     }
 }
@@ -1485,7 +1485,7 @@ fn find_existential_constraints<'a, 'tcx>(
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
-            let def_id = self.tcx.hir().local_def_id(it.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             // the existential type itself or its children are not within its reveal scope
             if def_id != self.def_id {
                 self.check(def_id);

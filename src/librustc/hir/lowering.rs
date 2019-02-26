@@ -3426,7 +3426,6 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::ImplItem {
-            id: node_id,
             hir_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),

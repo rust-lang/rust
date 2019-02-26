@@ -703,7 +703,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
-            id: _,
             hir_id: _,
             ident,
             ref vis,

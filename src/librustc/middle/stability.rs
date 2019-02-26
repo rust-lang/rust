@@ -355,7 +355,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent(ii.id));
+        let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(
+            self.tcx.hir().get_parent_item(ii.hir_id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.hir_id, ii.span, "item");
         }

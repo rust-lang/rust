@@ -357,7 +357,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ImplItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),

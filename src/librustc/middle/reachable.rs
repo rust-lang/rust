@@ -48,7 +48,7 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
-    let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.id));
+    let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
