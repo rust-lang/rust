@@ -2008,7 +2008,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[hir::ItemId; 1]>) {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(l.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(l.id);
         let mut ids = SmallVec::<[hir::ItemId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
@@ -2018,7 +2018,6 @@ impl<'a> LoweringContext<'a> {
         }
         let parent_def_id = DefId::local(self.current_hir_id_owner.last().unwrap().0);
         (hir::Local {
-            id: node_id,
             hir_id,
             ty: l.ty
                 .as_ref()
@@ -4905,13 +4904,12 @@ impl<'a> LoweringContext<'a> {
         pat: P<hir::Pat>,
         source: hir::LocalSource,
     ) -> hir::Stmt {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         let local = hir::Local {
             pat,
             ty: None,
             init: ex,
-            id: node_id,
             hir_id,
             span: sp,
             attrs: ThinVec::new(),
