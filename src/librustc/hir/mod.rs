@@ -1322,7 +1322,6 @@ impl BodyOwnerKind {
 /// explicit discriminant values for enum variants.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub body: BodyId,
 }

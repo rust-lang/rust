@@ -546,7 +546,6 @@ impl_stable_hash_for!(enum hir::UnsafeSource {
 });
 
 impl_stable_hash_for!(struct hir::AnonConst {
-    id,
     hir_id,
     body
 });

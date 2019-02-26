@@ -560,7 +560,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id(count.id);
+            let def_id = cx.tcx.hir().local_def_id_from_hir_id(count.hir_id);
             let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),

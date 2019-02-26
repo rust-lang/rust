@@ -2531,7 +2531,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
-                let def_id = cx.tcx.hir().local_def_id(length.id);
+                let def_id = cx.tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 let param_env = cx.tcx.param_env(def_id);
                 let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
                 let cid = GlobalId {

@@ -1870,7 +1870,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for v in vs {
         if let Some(ref e) = v.node.disr_expr {
-            tcx.typeck_tables_of(tcx.hir().local_def_id(e.id));
+            tcx.typeck_tables_of(tcx.hir().local_def_id_from_hir_id(e.hir_id));
         }
     }
 
@@ -4552,7 +4552,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_array(element_ty, args.len() as u64)
             }
             ExprKind::Repeat(ref element, ref count) => {
-                let count_def_id = tcx.hir().local_def_id(count.id);
+                let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
                 let param_env = ty::ParamEnv::empty();
                 let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
                 let instance = ty::Instance::resolve(

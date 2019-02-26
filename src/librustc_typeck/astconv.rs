@@ -1798,7 +1798,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, def, segment, false).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir().local_def_id(length.id);
+                let length_def_id = tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 let substs = InternalSubsts::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
                 let length = tcx.mk_lazy_const(length);

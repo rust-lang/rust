@@ -3811,9 +3811,8 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
         self.with_new_scopes(|this| {
-            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(c.id);
+            let LoweredNodeId { node_id: _, hir_id } = this.lower_node_id(c.id);
             hir::AnonConst {
-                id: node_id,
                 hir_id,
                 body: this.lower_body(None, |this| this.lower_expr(&c.value)),
             }
