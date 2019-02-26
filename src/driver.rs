@@ -1,7 +1,6 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(try_from)]
 #![allow(clippy::missing_docs_in_private_items)]
 
 // FIXME: switch to something more ergonomic here, once available.
