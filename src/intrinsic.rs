@@ -50,20 +50,28 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
             "atomic_load" |
             "atomic_load_relaxed" |
-            "atomic_load_acq" |
-            "volatile_load" => {
+            "atomic_load_acq" => {
                 let ptr = this.deref_operand(args[0])?;
                 let val = this.read_scalar(ptr.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
                 this.write_scalar(val, dest)?;
             }
 
+            "volatile_load" => {
+                let ptr = this.deref_operand(args[0])?;
+                this.copy_op(ptr.into(), dest)?;
+            }
+
             "atomic_store" |
             "atomic_store_relaxed" |
-            "atomic_store_rel" |
-            "volatile_store" => {
+            "atomic_store_rel" => {
                 let ptr = this.deref_operand(args[0])?;
                 let val = this.read_scalar(args[1])?; // make sure it fits into a scalar; otherwise it cannot be atomic
                 this.write_scalar(val, ptr.into())?;
+            }
+
+            "volatile_store" => {
+                let ptr = this.deref_operand(args[0])?;
+                this.copy_op(args[1], ptr.into())?;
             }
 
             "atomic_fence_acq" => {
