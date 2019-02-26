@@ -4,12 +4,12 @@
 
 use std::ptr::Unique;
 
-const fn as_ptr<T>(ptr: Unique<T>) -> *mut T {
-    ptr.as_ptr()
+const PTR: *mut u32 = Unique::empty().as_ptr();
+
+fn ident<T>(ident: T) -> T {
+    ident
 }
 
 pub fn main() {
-    let mut i: i32 = 10;
-    let unique = Unique::new(&mut i).unwrap();
-    assert_eq!(unique.as_ptr(), as_ptr(unique));
+    assert_eq!(PTR, ident(Unique::<u32>::empty().as_ptr()));
 }
