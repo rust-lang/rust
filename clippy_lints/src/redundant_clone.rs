@@ -143,7 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 let pred_arg = if_chain! {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
-                    if *res == mir::Place::Local(cloned);
+                    if *res == mir::Place::Base(mir::PlaceBase::Local(cloned));
                     if match_def_path(cx.tcx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
                     if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
                         || match_type(cx, pred_arg_ty, &paths::OS_STRING);
@@ -229,7 +229,7 @@ fn is_call_with_ref_arg<'tcx>(
     if_chain! {
         if let TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
-        if let mir::Operand::Move(mir::Place::Local(local)) = &args[0];
+        if let mir::Operand::Move(mir::Place::Base(mir::PlaceBase::Local(local))) = &args[0];
         if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).sty;
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
@@ -255,7 +255,7 @@ fn find_stmt_assigns_to<'a, 'tcx: 'a>(
     stmts
         .rev()
         .find_map(|stmt| {
-            if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
+            if let mir::StatementKind::Assign(mir::Place::Base(mir::PlaceBase::Local(local)), v) = &stmt.kind {
                 if *local == to {
                     return Some(v);
                 }
@@ -285,6 +285,7 @@ fn base_local_and_movability<'tcx>(
     mut place: &mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     use rustc::mir::Place::*;
+    use rustc::mir::PlaceBase;
 
     // Dereference. You cannot move things out from a borrowed value.
     let mut deref = false;
@@ -293,7 +294,7 @@ fn base_local_and_movability<'tcx>(
 
     loop {
         match place {
-            Local(local) => return Some((*local, deref || field)),
+            Base(PlaceBase::Local(local)) => return Some((*local, deref || field)),
             Projection(proj) => {
                 place = &proj.base;
                 deref = deref || matches!(proj.elem, mir::ProjectionElem::Deref);
