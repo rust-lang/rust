@@ -441,7 +441,7 @@ pub fn handle_hover(
     let res = Hover {
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
-            value: info.info,
+            value: info.info.to_markup(),
         }),
         range: Some(range),
     };
