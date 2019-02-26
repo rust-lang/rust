@@ -5,7 +5,7 @@ use io::prelude::*;
 use cmp;
 use error;
 use fmt;
-use io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
+use io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom, IoVec, IoVecMut};
 use memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
@@ -230,6 +230,19 @@ impl<R: Read> Read for BufReader<R> {
         let nread = {
             let mut rem = self.fill_buf()?;
             rem.read(buf)?
+        };
+        self.consume(nread);
+        Ok(nread)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
+        if self.pos == self.cap && total_len >= self.buf.len() {
+            return self.inner.read_vectored(bufs);
+        }
+        let nread = {
+            let mut rem = self.fill_buf()?;
+            rem.read_vectored(bufs)?
         };
         self.consume(nread);
         Ok(nread)
@@ -577,9 +590,25 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            Write::write(&mut self.buf, buf)
+            self.buf.write(buf)
         }
     }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
+        if self.buf.len() + total_len > self.buf.capacity() {
+            self.flush_buf()?;
+        }
+        if total_len >= self.buf.capacity() {
+            self.panicked = true;
+            let r = self.inner.as_mut().unwrap().write_vectored(bufs);
+            self.panicked = false;
+            r
+        } else {
+            self.buf.write_vectored(bufs)
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         self.flush_buf().and_then(|()| self.get_mut().flush())
     }

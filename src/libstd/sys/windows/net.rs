@@ -1,7 +1,7 @@
 #![unstable(issue = "0", feature = "windows_net")]
 
 use cmp;
-use io::{self, Read};
+use io::{self, Read, IoVec, IoVecMut};
 use libc::{c_int, c_void, c_ulong, c_long};
 use mem;
 use net::{SocketAddr, Shutdown};
@@ -207,6 +207,30 @@ impl Socket {
         self.recv_with_flags(buf, 0)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        // On unix when a socket is shut down all further reads return 0, so we
+        // do the same on windows to map a shut down socket to returning EOF.
+        let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
+        let mut nread = 0;
+        let mut flags = 0;
+        unsafe {
+            let ret = c::WSARecv(
+                self.0,
+                bufs.as_mut_ptr() as *mut c::WSABUF,
+                len,
+                &mut nread,
+                &mut flags,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
+            match ret {
+                0 => Ok(nread as usize),
+                _ if c::WSAGetLastError() == c::WSAESHUTDOWN => Ok(0),
+                _ => Err(last_error()),
+            }
+        }
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.recv_with_flags(buf, c::MSG_PEEK)
     }
@@ -241,6 +265,23 @@ impl Socket {
 
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, c::MSG_PEEK)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
+        let mut nwritten = 0;
+        unsafe {
+            cvt(c::WSASend(
+                self.0,
+                bufs.as_ptr() as *const c::WSABUF as *mut c::WSABUF,
+                len,
+                &mut nwritten,
+                0,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            ))?;
+        }
+        Ok(nwritten as usize)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>,

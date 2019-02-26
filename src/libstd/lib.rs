@@ -234,6 +234,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(bind_by_move_pattern_guards)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]

@@ -1,6 +1,6 @@
 #![allow(dead_code, missing_docs, nonstandard_style)]
 
-use io::{self, ErrorKind};
+use ::io::{ErrorKind};
 
 pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
@@ -17,6 +17,7 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
+pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod net;
@@ -63,8 +64,8 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-pub fn cvt(result: Result<usize, syscall::Error>) -> io::Result<usize> {
-    result.map_err(|err| io::Error::from_raw_os_error(err.errno))
+pub fn cvt(result: Result<usize, syscall::Error>) -> ::io::Result<usize> {
+    result.map_err(|err| ::io::Error::from_raw_os_error(err.errno))
 }
 
 #[doc(hidden)]
@@ -82,9 +83,9 @@ macro_rules! impl_is_minus_one {
 
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
-pub fn cvt_libc<T: IsMinusOne>(t: T) -> io::Result<T> {
+pub fn cvt_libc<T: IsMinusOne>(t: T) -> ::io::Result<T> {
     if t.is_minus_one() {
-        Err(io::Error::last_os_error())
+        Err(::io::Error::last_os_error())
     } else {
         Ok(t)
     }
