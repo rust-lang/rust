@@ -155,24 +155,6 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
     }
 }
 
-/// Whether the sizes of two sets are roughly the same order of magnitude.
-///
-/// If they are, or if either set is empty, then their intersection
-/// is efficiently calculated by iterating the common range of both sets jointly.
-/// If they aren't, then it is more scalable to iterate over the small set
-/// and find matches in the large set.
-const fn are_proportionate_for_intersection(small: usize, large: usize) -> bool {
-    (large >> 4) < small
-}
-struct _AssertProportionateForIntersection {
-    a: [(); are_proportionate_for_intersection(1, 15) as usize - 1],
-    b: [(); !are_proportionate_for_intersection(1, 16) as usize - 1],
-    c: [(); are_proportionate_for_intersection(2, 31) as usize - 1],
-    d: [(); !are_proportionate_for_intersection(2, 32) as usize - 1],
-    e: [(); are_proportionate_for_intersection(3, 47) as usize - 1],
-    f: [(); !are_proportionate_for_intersection(3, 48) as usize - 1],
-}
-
 /// A lazy iterator producing elements in the intersection of `BTreeSet`s.
 ///
 /// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
@@ -357,35 +339,22 @@ impl<T: Ord> BTreeSet<T> {
         } else {
             (other, self)
         };
-        if a_set.is_empty() {
+        if a_set.len() <= 1 {
+            // At least one set is empty or a singleton, so determining
+            // a common range doesn't work or is wasteful.
             Intersection {
                 a: a_set.range(..),
                 b: IntersectionOther::Search(b_set),
-                max_size: 0,
+                max_size: a_set.len(),
             }
-        } else if are_proportionate_for_intersection(a_set.len(), b_set.len()) {
-            Self::intersection_stitch(a_set, b_set)
-        } else {
+        } else if a_set.len() < b_set.len() / 16 {
+            // Large set is much larger, so it's faster to iterate the small set
+            // and find matches in the large set.
             Self::intersection_search(a_set, b_set)
-        }
-    }
-    #[doc(hidden)]
-    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
-    pub fn intersection_stitch<'a>(
-        a_set: &'a BTreeSet<T>,
-        b_set: &'a BTreeSet<T>,
-    ) -> Intersection<'a, T> {
-        let a_min = a_set.iter().next().unwrap();
-        let b_min = b_set.iter().next().unwrap();
-        let (a_range, b_range) = match Ord::cmp(a_min, b_min) {
-            Less => (a_set.range(b_min..), b_set.range(..)),
-            Equal => (a_set.range(..), b_set.range(..)),
-            Greater => (a_set.range(..), b_set.range(a_min..)),
-        };
-        Intersection {
-            a: a_range,
-            b: IntersectionOther::Stitch(b_range),
-            max_size: a_set.len(),
+        } else {
+            // Both sets are roughly of similar size, so it's efficient
+            // to iterate both over the common range.
+            Self::intersection_stitch(a_set, b_set)
         }
     }
     #[doc(hidden)]
@@ -404,6 +373,25 @@ impl<T: Ord> BTreeSet<T> {
         Intersection {
             a: a_range,
             b: IntersectionOther::Search(b_set),
+            max_size: a_set.len(),
+        }
+    }
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
+    pub fn intersection_stitch<'a>(
+        a_set: &'a BTreeSet<T>,
+        b_set: &'a BTreeSet<T>,
+    ) -> Intersection<'a, T> {
+        let a_min = a_set.iter().next().unwrap();
+        let b_min = b_set.iter().next().unwrap();
+        let (a_range, b_range) = match Ord::cmp(a_min, b_min) {
+            Less => (a_set.range(b_min..), b_set.range(..)),
+            Equal => (a_set.range(..), b_set.range(..)),
+            Greater => (a_set.range(..), b_set.range(a_min..)),
+        };
+        Intersection {
+            a: a_range,
+            b: IntersectionOther::Stitch(b_range),
             max_size: a_set.len(),
         }
     }
