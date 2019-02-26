@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
         ) = e.node
         {
             if is_string(cx, left) {
-                if !is_allowed(cx, STRING_ADD_ASSIGN, e.id) {
+                if !is_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
                         if let ExprKind::Assign(ref target, _) = p.node {

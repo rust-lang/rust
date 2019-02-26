@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if let ExprKind::Call(ref path, ..) = expr.node;
-            if !any_parent_is_automatically_derived(cx.tcx, expr.id);
+            if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.node;
             if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
             if match_def_path(cx.tcx, def_id, &paths::DEFAULT_TRAIT_METHOD);

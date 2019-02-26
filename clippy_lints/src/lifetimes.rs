@@ -319,7 +319,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
                     _ => false,
                 })
             {
-                let hir_id = self.cx.tcx.hir().node_to_hir_id(ty.id);
+                let hir_id = ty.hir_id;
                 match self.cx.tables.qpath_def(qpath, hir_id) {
                     Def::TyAlias(def_id) | Def::Struct(def_id) => {
                         let generics = self.cx.tcx.generics_of(def_id);

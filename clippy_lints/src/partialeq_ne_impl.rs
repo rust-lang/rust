@@ -51,10 +51,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             then {
                 for impl_item in impl_items {
                     if impl_item.ident.name == "ne" {
+                        let hir_id = cx.tcx.hir().node_to_hir_id(impl_item.id.node_id);
                         span_lint_node(
                             cx,
                             PARTIALEQ_NE_IMPL,
-                            impl_item.id.node_id,
+                            hir_id,
                             impl_item.span,
                             "re-implementing `PartialEq::ne` is unnecessary",
                         );

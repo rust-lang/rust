@@ -486,7 +486,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for never_loop
         match expr.node {
             ExprKind::While(_, ref block, _) | ExprKind::Loop(ref block, _, _) => {
-                match never_loop_block(block, expr.id) {
+                let node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
+                match never_loop_block(block, node_id) {
                     NeverLoopResult::AlwaysBreak => {
                         span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
                     },
@@ -1109,8 +1110,8 @@ fn check_for_loop_range<'a, 'tcx>(
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
-                    let parent_id = cx.tcx.hir().get_parent(expr.id);
-                    let parent_def_id = cx.tcx.hir().local_def_id(parent_id);
+                    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+                    let parent_def_id = cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
                     let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
@@ -1469,8 +1470,9 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     let map = &cx.tcx.hir();
+    let expr_node_id = map.hir_to_node_id(expr.hir_id);
     let parent_scope = map
-        .get_enclosing_scope(expr.id)
+        .get_enclosing_scope(expr_node_id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
         if let Node::Block(block) = map.get(parent_id) {
@@ -1567,13 +1569,13 @@ struct MutatePairDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
 
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
                 if Some(id) == self.node_id_low {
@@ -1586,7 +1588,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
         }
     }
 
-    fn mutate(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         if let Categorization::Local(id) = cmt.cat {
             if Some(id) == self.node_id_low {
                 self.span_low = Some(sp)
@@ -1778,8 +1780,8 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                             let hir_id = self.cx.tcx.hir().node_to_hir_id(node_id);
 
-                            let parent_id = self.cx.tcx.hir().get_parent(expr.id);
-                            let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
+                            let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
+                            let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
@@ -1932,11 +1934,12 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
     let mut visitor = VarUsedAfterLoopVisitor {
         cx,
         def_id,
-        iter_expr_id: iter_expr.id,
+        iter_expr_id: iter_expr.hir_id,
         past_while_let: false,
         var_used_after_while_let: false,
     };
-    if let Some(enclosing_block) = get_enclosing_block(cx, def_id) {
+    let def_hir_id = cx.tcx.hir().node_to_hir_id(def_id);
+    if let Some(enclosing_block) = get_enclosing_block(cx, def_hir_id) {
         walk_block(&mut visitor, enclosing_block);
     }
     visitor.var_used_after_while_let
@@ -1945,7 +1948,7 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
 struct VarUsedAfterLoopVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     def_id: NodeId,
-    iter_expr_id: NodeId,
+    iter_expr_id: HirId,
     past_while_let: bool,
     var_used_after_while_let: bool,
 }
@@ -1956,7 +1959,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
             if Some(self.def_id) == var_def_id(self.cx, expr) {
                 self.var_used_after_while_let = true;
             }
-        } else if self.iter_expr_id == expr.id {
+        } else if self.iter_expr_id == expr.hir_id {
             self.past_while_let = true;
         }
         walk_expr(self, expr);
@@ -2068,7 +2071,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 
                 match parent.node {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
-                        if lhs.id == expr.id {
+                        if lhs.hir_id == expr.hir_id {
                             if op.node == BinOpKind::Add && is_integer_literal(rhs, 1) {
                                 *state = match *state {
                                     VarState::Initial if self.depth == 0 => VarState::IncrOnce,
@@ -2080,7 +2083,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                             }
                         }
                     },
-                    ExprKind::Assign(ref lhs, _) if lhs.id == expr.id => *state = VarState::DontWarn,
+                    ExprKind::Assign(ref lhs, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
                     ExprKind::AddrOf(mutability, _) if mutability == MutMutable => *state = VarState::DontWarn,
                     _ => (),
                 }
@@ -2153,10 +2156,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         if var_def_id(self.cx, expr) == Some(self.var_id) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.node {
-                    ExprKind::AssignOp(_, ref lhs, _) if lhs.id == expr.id => {
+                    ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
                         self.state = VarState::DontWarn;
                     },
-                    ExprKind::Assign(ref lhs, ref rhs) if lhs.id == expr.id => {
+                    ExprKind::Assign(ref lhs, ref rhs) if lhs.hir_id == expr.hir_id => {
                         self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
@@ -2214,8 +2217,9 @@ fn is_conditional(expr: &Expr) -> bool {
 
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
-        if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
-        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(loop_block.id));
+        if let Some(loop_block) = get_enclosing_block(cx, match_expr.hir_id);
+        let parent_node = cx.tcx.hir().get_parent_node_by_hir_id(loop_block.hir_id);
+        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find_by_hir_id(parent_node);
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
         }
@@ -2224,18 +2228,18 @@ fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> b
 }
 
 fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) -> bool {
-    let mut id = loop_expr.id;
+    let mut id = loop_expr.hir_id;
     let iter_name = if let Some(name) = path_name(iter_expr) {
         name
     } else {
         return true;
     };
     loop {
-        let parent = cx.tcx.hir().get_parent_node(id);
+        let parent = cx.tcx.hir().get_parent_node_by_hir_id(id);
         if parent == id {
             return false;
         }
-        match cx.tcx.hir().find(parent) {
+        match cx.tcx.hir().find_by_hir_id(parent) {
             Some(Node::Expr(expr)) => match expr.node {
                 ExprKind::Loop(..) | ExprKind::While(..) => {
                     return true;
@@ -2244,7 +2248,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
             },
             Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {
-                    id,
+                    hir_id: id,
                     iterator: iter_name,
                     nesting: Unknown,
                 };
@@ -2272,14 +2276,14 @@ enum Nesting {
 use self::Nesting::{LookFurther, RuledOut, Unknown};
 
 struct LoopNestVisitor {
-    id: NodeId,
+    hir_id: HirId,
     iterator: Name,
     nesting: Nesting,
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
-        if stmt.id == self.id {
+        if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
         } else if self.nesting == Unknown {
             walk_stmt(self, stmt);
@@ -2290,7 +2294,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         if self.nesting != Unknown {
             return;
         }
-        if expr.id == self.id {
+        if expr.hir_id == self.hir_id {
             self.nesting = LookFurther;
             return;
         }

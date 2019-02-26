@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
                 ..
             }) = get_parent_expr(cx, expr)
             {
-                if else_expr.id == expr.id {
+                if else_expr.hir_id == expr.hir_id {
                     return;
                 }
             }

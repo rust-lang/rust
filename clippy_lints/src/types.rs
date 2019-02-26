@@ -225,7 +225,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir().node_to_hir_id(ty.id)));
+        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, ty.hir_id));
         if match_def_path(cx.tcx, did, path);
         then {
             return true;
@@ -246,7 +246,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     }
     match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
-            let hir_id = cx.tcx.hir().node_to_hir_id(hir_ty.id);
+            let hir_id = hir_ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
@@ -375,7 +375,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
 fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
-            let hir_id = cx.tcx.hir().node_to_hir_id(mut_ty.ty.id);
+            let hir_id = mut_ty.ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
             if_chain! {
                 if let Some(def_id) = opt_def_id(def);
@@ -617,7 +617,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
         if_chain! {
             let map = &cx.tcx.hir();
-            let opt_parent_node = map.find(map.get_parent_node(expr.id));
+            let opt_parent_node = map.find_by_hir_id(map.get_parent_node_by_hir_id(expr.hir_id));
             if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
             if is_questionmark_desugar_marked_call(parent_expr);
             then {
@@ -961,7 +961,7 @@ fn should_strip_parens(op: &Expr, snip: &str) -> bool {
 
 fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    if in_constant(cx, expr.id) {
+    if in_constant(cx, expr.hir_id) {
         return;
     }
     // The suggestion is to use a function call, so if the original expression

@@ -62,9 +62,9 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 ///     // Do something
 /// }
 /// ```
-pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
-    let parent_id = cx.tcx.hir().get_parent(id);
-    match cx.tcx.hir().get(parent_id) {
+pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
+    let parent_id = cx.tcx.hir().get_parent_item(id);
+    match cx.tcx.hir().get_by_hir_id(parent_id) {
         Node::Item(&Item {
             node: ItemKind::Const(..),
             ..
@@ -378,8 +378,8 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
 
 /// Get the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
-    let parent_id = cx.tcx.hir().get_parent(expr.id);
-    match cx.tcx.hir().find(parent_id) {
+    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+    match cx.tcx.hir().find_by_hir_id(parent_id) {
         Some(Node::Item(&Item { ref ident, .. })) => Some(ident.name),
         Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
             Some(ident.name)
@@ -571,12 +571,12 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
 /// Get a parent expressions if any – this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.hir();
-    let node_id: NodeId = e.id;
-    let parent_id: NodeId = map.get_parent_node(node_id);
-    if node_id == parent_id {
+    let hir_id = e.hir_id;
+    let parent_id = map.get_parent_node_by_hir_id(hir_id);
+    if hir_id == parent_id {
         return None;
     }
-    map.find(parent_id).and_then(|node| {
+    map.find_by_hir_id(parent_id).and_then(|node| {
         if let Node::Expr(parent) = node {
             Some(parent)
         } else {
@@ -585,10 +585,11 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
     })
 }
 
-pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
+pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: HirId) -> Option<&'tcx Block> {
     let map = &cx.tcx.hir();
+    let node_id = map.hir_to_node_id(node);
     let enclosing_node = map
-        .get_enclosing_scope(node)
+        .get_enclosing_scope(node_id)
         .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
@@ -927,8 +928,9 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 /// Returns true if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: NodeId) -> bool {
-    cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
+pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: HirId) -> bool {
+    let node_id = cx.tcx.hir().hir_to_node_id(id);
+    cx.tcx.lint_level_at_node(lint, node_id).0 == Level::Allow
 }
 
 pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
@@ -1001,16 +1003,16 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     without
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId) -> bool {
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: HirId) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if is_automatically_derived(map.attrs(enclosing_node)) {
+        if is_automatically_derived(map.attrs_by_hir_id(enclosing_node)) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.get_parent(enclosing_node);
+        enclosing_node = map.get_parent_item(enclosing_node);
     }
     false
 }

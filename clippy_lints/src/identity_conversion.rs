@@ -6,7 +6,6 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast::NodeId;
 
 /// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
 ///
@@ -27,7 +26,7 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct IdentityConversion {
-    try_desugar_arm: Vec<NodeId>,
+    try_desugar_arm: Vec<HirId>,
 }
 
 impl LintPass for IdentityConversion {
@@ -46,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             return;
         }
 
-        if Some(&e.id) == self.try_desugar_arm.last() {
+        if Some(&e.hir_id) == self.try_desugar_arm.last() {
             return;
         }
 
@@ -57,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                     _ => return,
                 };
                 if let ExprKind::Call(_, ref args) = e.node {
-                    self.try_desugar_arm.push(args[0].id);
+                    self.try_desugar_arm.push(args[0].hir_id);
                 } else {
                     return;
                 }
@@ -126,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
     }
 
     fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if Some(&e.id) == self.try_desugar_arm.last() {
+        if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
         }
     }

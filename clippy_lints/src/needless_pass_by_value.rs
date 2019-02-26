@@ -341,7 +341,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: &mc::cmt_<'tcx>) {
+    fn move_common(&mut self, _consume_id: HirId, _span: Span, cmt: &mc::cmt_<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
@@ -399,7 +399,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
-    fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, consume_id: HirId, consume_span: Span, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
             self.move_common(consume_id, consume_span, cmt);
         }
@@ -407,7 +407,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 
     fn matched_pat(&mut self, matched_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::MatchMode) {
         if let euv::MatchMode::MovingMatch = mode {
-            self.move_common(matched_pat.id, matched_pat.span, cmt);
+            self.move_common(matched_pat.hir_id, matched_pat.span, cmt);
         } else {
             self.non_moving_pat(matched_pat, cmt);
         }
@@ -415,13 +415,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
-            self.move_common(consume_pat.id, consume_pat.span, cmt);
+            self.move_common(consume_pat.hir_id, consume_pat.span, cmt);
         }
     }
 
     fn borrow(
         &mut self,
-        _: NodeId,
+        _: HirId,
         _: Span,
         _: &mc::cmt_<'tcx>,
         _: ty::Region<'_>,
@@ -430,7 +430,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
     ) {
     }
 
-    fn mutate(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
+    fn mutate(&mut self, _: HirId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }

@@ -197,7 +197,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Path(qpath) = &expr.node {
             // Only lint if we use the const item inside a function.
-            if in_constant(cx, expr.id) {
+            if in_constant(cx, expr.hir_id) {
                 return;
             }
 
@@ -212,11 +212,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir().get_parent_node(cur_expr.id);
-                if parent_id == cur_expr.id {
+                let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(cur_expr.hir_id);
+                if parent_id == cur_expr.hir_id {
                     break;
                 }
-                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir().find(parent_id) {
+                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir().find_by_hir_id(parent_id) {
                     match &parent_expr.node {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced

@@ -7,7 +7,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Applicability;
-use syntax::ast::{LitKind, DUMMY_NODE_ID};
+use syntax::ast::LitKind;
 use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 
 /// **What it does:** Checks for boolean expressions that can be written more
@@ -132,7 +132,6 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                     }
 
                     let mk_expr = |op| Expr {
-                        id: DUMMY_NODE_ID,
                         hir_id: DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         attrs: ThinVec::new(),

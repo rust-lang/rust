@@ -1082,7 +1082,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
         }
 
         // don't lint for constant values
-        let owner_def = cx.tcx.hir().get_parent_did(arg.id);
+        let owner_def = cx.tcx.hir().get_parent_did_by_hir_id(arg.hir_id);
         let promotable = cx.tcx.rvalue_promotable_map(owner_def).contains(&arg.hir_id.local_id);
         if promotable {
             return;
@@ -1341,8 +1341,8 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
             if cx.tables.expr_ty(arg) == ty {
                 snip = Some(("try removing the `clone` call", format!("{}", snippet)));
             } else {
-                let parent = cx.tcx.hir().get_parent_node(expr.id);
-                match cx.tcx.hir().get(parent) {
+                let parent = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+                match cx.tcx.hir().get_by_hir_id(parent) {
                     hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
                         hir::ExprKind::AddrOf(..) |

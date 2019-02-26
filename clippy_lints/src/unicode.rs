@@ -2,7 +2,7 @@ use crate::utils::{is_allowed, snippet, span_help_and_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast::{LitKind, NodeId};
+use syntax::ast::LitKind;
 use syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
 
@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Lit(ref lit) = expr.node {
             if let LitKind::Str(_, _) = lit.node {
-                check_str(cx, lit.span, expr.id)
+                check_str(cx, lit.span, expr.hir_id)
             }
         }
     }
@@ -95,7 +95,7 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &LateContext<'_, '_>, span: Span, id: NodeId) {
+fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_help_and_lint(
