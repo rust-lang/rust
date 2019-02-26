@@ -1420,6 +1420,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     }
 }
 
+#[unstable(feature = "refcell_downgrade", issue = "0")] // FIXME issue number
+impl<'b, T: ?Sized> Into<DowngradedRef<'b, T>> for RefMut<'b, T> {
+    fn into(self) -> DowngradedRef<'b, T> {
+        RefMut::downgrade(self)
+    }
+}
+
 /// A wrapper type for a mutably borrowed value from a `RefCell<T>` that has
 /// been downgraded via `RefCell::downgrade()`.
 ///
