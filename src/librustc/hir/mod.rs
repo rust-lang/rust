@@ -1229,7 +1229,6 @@ pub enum Guard {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: P<Expr>,

@@ -2767,10 +2767,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         hir::Field {
-            id: node_id,
             hir_id,
             ident: f.ident,
             expr: P(self.lower_expr(&f.expr)),
@@ -4801,10 +4800,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         hir::Field {
-            id: node_id,
             hir_id,
             ident,
             span,

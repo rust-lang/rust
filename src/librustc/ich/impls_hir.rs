@@ -523,7 +523,6 @@ impl_stable_hash_for!(enum hir::Guard {
 });
 
 impl_stable_hash_for!(struct hir::Field {
-    id -> _,
     hir_id -> _,
     ident,
     expr,
