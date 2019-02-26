@@ -461,4 +461,74 @@ impl f32 {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
     }
+
+    /// Return the floating point value as a byte array in big-endian byte order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(0.0f32.to_be_bytes(), [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000]);
+    /// assert_eq!(1.0f32.to_be_bytes(), [0b0111_1111, 0b1000_0000, 0b0000_0000, 0b0000_0000]);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_be_bytes(self) -> [u8; 4] {
+        self.to_bits().to_be_bytes()
+    }
+
+    /// Return the floating point value as a byte array in little-endian byte order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(0.0f32.to_le_bytes(), [0b0000_0000, 0b0000_0000, 0b0000_0000, 0b0000_0000]);
+    /// assert_eq!(1.0f32.to_le_bytes(), [0b0000_0000, 0b0000_0000, 0b1000_0000, 0b0111_1111]);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 4] {
+        self.to_bits().to_le_bytes()
+    }
+
+    /// Return the floating point value as a byte array in native byte order.
+    ///
+    ///
+    /// As the target platform's native endianness is used, portable code
+    /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(
+    ///     u32::from_ne_bytes(0.0f32.to_ne_bytes()),
+    ///     0b0000_0000_0000_0000_0000_0000_0000_0000,
+    /// );
+    /// assert_eq!(
+    ///     u32::from_ne_bytes(1.0f32.to_ne_bytes()),
+    ///     0b0111_1111_1000_0000_0000_0000_0000_0000,
+    /// );
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_ne_bytes(self) -> [u8; 4] {
+        self.to_bits().to_ne_bytes()
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_be_bytes(bytes))
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_le_bytes(bytes))
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_ne_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_ne_bytes(bytes))
+    }
 }

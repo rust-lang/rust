@@ -474,4 +474,40 @@ impl f64 {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
     }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_be_bytes(self) -> [u8; 8] {
+        self.to_bits().to_be_bytes()
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 8] {
+        self.to_bits().to_le_bytes()
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_ne_bytes(self) -> [u8; 8] {
+        self.to_bits().to_ne_bytes()
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_be_bytes(bytes: [u8; 8]) -> Self {
+        Self::from_bits(u64::from_be_bytes(bytes))
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
+        Self::from_bits(u64::from_le_bytes(bytes))
+    }
+
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_ne_bytes(bytes: [u8; 8]) -> Self {
+        Self::from_bits(u64::from_ne_bytes(bytes))
+    }
 }
