@@ -1308,11 +1308,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    fn encode_info_for_generic_param(
+    fn encode_info_for_ty_in_generic_param(
         &mut self,
         (def_id, Untracked(encode_type)): (DefId, Untracked<bool>),
     ) -> Entry<'tcx> {
-        debug!("IsolatedEncoder::encode_info_for_generic_param({:?})", def_id);
+        debug!("IsolatedEncoder::encode_info_for_ty_in_generic_param({:?})", def_id);
         let tcx = self.tcx;
         Entry {
             kind: EntryKind::Type,
@@ -1690,7 +1690,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
             self.record(
                 def_id,
-                IsolatedEncoder::encode_info_for_generic_param,
+                IsolatedEncoder::encode_info_for_ty_in_generic_param,
                 (def_id, Untracked(encode_type)),
             );
         }
