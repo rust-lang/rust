@@ -320,7 +320,7 @@ index 5b7d5f4..0cfb96c 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4501,7 +4476,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4376,7 +4376,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -328,7 +328,7 @@ index 5b7d5f4..0cfb96c 100644
 +from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
  
  /// The error type returned when a checked integral type conversion fails.
- #[unstable(feature = "try_from", issue = "33417")]
+ #[stable(feature = "try_from", since = "1.34.0")]
 @@ -4617,30 +4592,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);

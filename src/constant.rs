@@ -224,7 +224,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                 let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
 
                 let alloc = match const_.val {
-                    ConstValue::ByRef(_alloc_id, alloc, n) if n.bytes() == 0 => alloc,
+                    ConstValue::ByRef(ptr, alloc) if ptr.offset.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
