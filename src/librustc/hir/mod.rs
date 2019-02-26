@@ -1162,7 +1162,6 @@ impl UnOp {
 /// A statement.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: StmtKind,
     pub span: Span,
@@ -1170,7 +1169,7 @@ pub struct Stmt {
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "stmt({}: {})", self.id,
+        write!(f, "stmt({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_stmt(self)))
     }
 }

@@ -495,7 +495,6 @@ impl_stable_hash_for!(enum hir::UnOp {
 });
 
 impl_stable_hash_for!(struct hir::Stmt {
-    id,
     hir_id,
     node,
     span,
