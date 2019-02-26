@@ -612,8 +612,8 @@ struct ClauseDumper<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
-    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id(node_id);
+    fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
         for attr in attrs {
             let mut clauses = None;
 
@@ -655,22 +655,22 @@ impl<'a, 'tcx> Visitor<'tcx> for ClauseDumper<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.process_attrs(item.id, &item.attrs);
+        self.process_attrs(item.hir_id, &item.attrs);
         intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        self.process_attrs(trait_item.id, &trait_item.attrs);
+        self.process_attrs(trait_item.hir_id, &trait_item.attrs);
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        self.process_attrs(impl_item.id, &impl_item.attrs);
+        self.process_attrs(impl_item.hir_id, &impl_item.attrs);
         intravisit::walk_impl_item(self, impl_item);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
-        self.process_attrs(s.id, &s.attrs);
+        self.process_attrs(s.hir_id, &s.attrs);
         intravisit::walk_struct_field(self, s);
     }
 }

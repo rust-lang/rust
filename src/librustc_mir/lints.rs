@@ -130,7 +130,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // recurs.
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
         let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let sp = tcx.sess.source_map().def_span(tcx.hir().span(node_id));
+        let sp = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(hir_id));
         let mut db = tcx.struct_span_lint_node(UNCONDITIONAL_RECURSION,
                                                 node_id,
                                                 sp,

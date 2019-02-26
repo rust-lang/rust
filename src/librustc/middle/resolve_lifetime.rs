@@ -781,7 +781,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent(trait_item.id)),
+                    Some(tcx.hir().get_parent_item(trait_item.hir_id)),
                     &sig.decl,
                     &trait_item.generics,
                     |this| intravisit::walk_trait_item(this, trait_item),
@@ -833,7 +833,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             Method(ref sig, _) => {
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent(impl_item.id)),
+                    Some(tcx.hir().get_parent_item(impl_item.hir_id)),
                     &sig.decl,
                     &impl_item.generics,
                     |this| intravisit::walk_impl_item(this, impl_item),
@@ -1685,7 +1685,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// ordering is not important there.
     fn visit_early_late<F>(
         &mut self,
-        parent_id: Option<ast::NodeId>,
+        parent_id: Option<hir::HirId>,
         decl: &'tcx hir::FnDecl,
         generics: &'tcx hir::Generics,
         walk: F,
@@ -1697,7 +1697,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // Find the start of nested early scopes, e.g., in methods.
         let mut index = 0;
         if let Some(parent_id) = parent_id {
-            let parent = self.tcx.hir().expect_item(parent_id);
+            let parent = self.tcx.hir().expect_item_by_hir_id(parent_id);
             if sub_items_have_self_param(&parent.node) {
                 index += 1; // Self comes before lifetimes
             }

@@ -669,7 +669,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
-            id: _,
             hir_id: _,
             ident,
             ref attrs,

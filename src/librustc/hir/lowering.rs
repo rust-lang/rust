@@ -3351,7 +3351,6 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::TraitItem {
-            id: node_id,
             hir_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),

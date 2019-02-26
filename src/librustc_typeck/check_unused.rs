@@ -34,7 +34,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
             return;
         }
         if let hir::ItemKind::Use(ref path, _) = item.node {
-            self.check_import(item.id, path.span);
+            self.check_import(item.hir_id, path.span);
         }
     }
 

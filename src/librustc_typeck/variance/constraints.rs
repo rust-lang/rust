@@ -6,7 +6,6 @@
 use hir::def_id::DefId;
 use rustc::ty::subst::{UnpackedKind, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
@@ -72,31 +71,31 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
         match item.node {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
-                self.visit_node_helper(item.id);
+                self.visit_node_helper(item.hir_id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
-                    self.visit_node_helper(struct_def.id());
+                    self.visit_node_helper(struct_def.hir_id());
                 }
             }
 
             hir::ItemKind::Enum(ref enum_def, _) => {
-                self.visit_node_helper(item.id);
+                self.visit_node_helper(item.hir_id);
 
                 for variant in &enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.node.data {
-                        self.visit_node_helper(variant.node.data.id());
+                        self.visit_node_helper(variant.node.data.hir_id());
                     }
                 }
             }
 
             hir::ItemKind::Fn(..) => {
-                self.visit_node_helper(item.id);
+                self.visit_node_helper(item.hir_id);
             }
 
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
-                        self.visit_node_helper(foreign_item.id);
+                        self.visit_node_helper(foreign_item.hir_id);
                     }
                 }
             }
@@ -107,21 +106,21 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         if let hir::TraitItemKind::Method(..) = trait_item.node {
-            self.visit_node_helper(trait_item.id);
+            self.visit_node_helper(trait_item.hir_id);
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
         if let hir::ImplItemKind::Method(..) = impl_item.node {
-            self.visit_node_helper(impl_item.id);
+            self.visit_node_helper(impl_item.hir_id);
         }
     }
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn visit_node_helper(&mut self, id: ast::NodeId) {
+    fn visit_node_helper(&mut self, id: hir::HirId) {
         let tcx = self.terms_cx.tcx;
-        let def_id = tcx.hir().local_def_id(id);
+        let def_id = tcx.hir().local_def_id_from_hir_id(id);
         self.build_constraints_for_item(def_id);
     }
 
@@ -138,7 +137,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
         match tcx.type_of(def_id).sty {
@@ -356,7 +355,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let (local, remote) = if let Some(id) = self.tcx().hir().as_local_node_id(def_id) {
+        let (local, remote) = if let Some(id) = self.tcx().hir().as_local_hir_id(def_id) {
             (Some(self.terms_cx.inferred_starts[&id]), None)
         } else {
             (None, Some(self.tcx().variances_of(def_id)))

@@ -324,7 +324,7 @@ pub struct MissingDoc {
     doc_hidden_stack: Vec<bool>,
 
     /// Private traits or trait items that leaked through. Don't check their methods.
-    private_traits: FxHashSet<ast::NodeId>,
+    private_traits: FxHashSet<hir::HirId>,
 }
 
 fn has_doc(attr: &ast::Attribute) -> bool {
@@ -361,7 +361,7 @@ impl MissingDoc {
 
     fn check_missing_docs_attrs(&self,
                                 cx: &LateContext<'_, '_>,
-                                id: Option<ast::NodeId>,
+                                id: Option<hir::HirId>,
                                 attrs: &[ast::Attribute],
                                 sp: Span,
                                 desc: &'static str) {
@@ -380,7 +380,8 @@ impl MissingDoc {
         // It's an option so the crate root can also use this function (it doesn't
         // have a NodeId).
         if let Some(id) = id {
-            if !cx.access_levels.is_exported(id) {
+            let node_id = cx.tcx.hir().hir_to_node_id(id);
+            if !cx.access_levels.is_exported(node_id) {
                 return;
             }
         }
@@ -444,9 +445,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
-                    self.private_traits.insert(it.id);
+                    self.private_traits.insert(it.hir_id);
                     for trait_item_ref in trait_item_refs {
-                        self.private_traits.insert(trait_item_ref.id.node_id);
+                        let hir_id = cx.tcx.hir().node_to_hir_id(trait_item_ref.id.node_id);
+                        self.private_traits.insert(hir_id);
                     }
                     return;
                 }
@@ -462,7 +464,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
-                                    self.private_traits.insert(impl_item_ref.id.node_id);
+                                    let hir_id = cx.tcx.hir().node_to_hir_id(
+                                        impl_item_ref.id.node_id);
+                                    self.private_traits.insert(hir_id);
                                 }
                             }
                         }
@@ -476,11 +480,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             _ => return,
         };
 
-        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs, it.span, desc);
+        self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, trait_item: &hir::TraitItem) {
-        if self.private_traits.contains(&trait_item.id) {
+        if self.private_traits.contains(&trait_item.hir_id) {
             return;
         }
 
@@ -491,7 +495,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         };
 
         self.check_missing_docs_attrs(cx,
-                                      Some(trait_item.id),
+                                      Some(trait_item.hir_id),
                                       &trait_item.attrs,
                                       trait_item.span,
                                       desc);
@@ -510,7 +514,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ImplItemKind::Existential(_) => "an associated existential type",
         };
         self.check_missing_docs_attrs(cx,
-                                      Some(impl_item.id),
+                                      Some(impl_item.hir_id),
                                       &impl_item.attrs,
                                       impl_item.span,
                                       desc);
@@ -519,7 +523,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, sf: &hir::StructField) {
         if !sf.is_positional() {
             self.check_missing_docs_attrs(cx,
-                                          Some(sf.id),
+                                          Some(sf.hir_id),
                                           &sf.attrs,
                                           sf.span,
                                           "a struct field")
@@ -528,7 +532,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant, _: &hir::Generics) {
         self.check_missing_docs_attrs(cx,
-                                      Some(v.node.data.id()),
+                                      Some(v.node.data.hir_id()),
                                       &v.node.attrs,
                                       v.span,
                                       "a variant");
