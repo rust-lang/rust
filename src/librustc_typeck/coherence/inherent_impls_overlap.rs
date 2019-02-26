@@ -36,11 +36,11 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
-                    let node_id = self.tcx.hir().as_local_node_id(impl1);
-                    let mut err = if used_to_be_allowed && node_id.is_some() {
-                        self.tcx.struct_span_lint_node(
+                    let hir_id = self.tcx.hir().as_local_hir_id(impl1);
+                    let mut err = if used_to_be_allowed && hir_id.is_some() {
+                        self.tcx.struct_span_lint_hir(
                             lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                            node_id.unwrap(),
+                            hir_id.unwrap(),
                             self.tcx.span_of_impl(item1).unwrap(),
                             &format!("duplicate definitions with name `{}` (E0592)", name)
                         )

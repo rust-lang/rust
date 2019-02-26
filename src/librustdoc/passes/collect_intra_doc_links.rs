@@ -473,9 +473,9 @@ fn resolution_failure(
 ) {
     let sp = span_of_attrs(attrs);
 
-    let mut diag = cx.tcx.struct_span_lint_node(
+    let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        NodeId::from_u32(0),
+        hir::CRATE_HIR_ID,
         sp,
         &format!("`[{}]` cannot be resolved, ignoring it...", path_str),
     );

@@ -729,8 +729,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
         match span {
             Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg),
             None => {
-                let node_id = self.tcx.hir().hir_to_node_id(hir_id); // FIXME(@ljedrz): remove later
-                self.tcx.struct_lint_node(lint, node_id, msg)
+                self.tcx.struct_lint_node(lint, hir_id, msg)
             },
         }
     }

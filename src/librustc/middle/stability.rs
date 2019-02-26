@@ -13,7 +13,6 @@ use crate::middle::privacy::AccessLevels;
 use crate::session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
-use syntax::ast;
 use syntax::ast::Attribute;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -922,8 +921,8 @@ fn unnecessary_stable_feature_lint<'a, 'tcx>(
     feature: Symbol,
     since: Symbol
 ) {
-    tcx.lint_node(lint::builtin::STABLE_FEATURES,
-        ast::CRATE_NODE_ID,
+    tcx.lint_hir(lint::builtin::STABLE_FEATURES,
+        hir::CRATE_HIR_ID,
         span,
         &format!("the feature `{}` has been stable since {} and no longer requires \
                   an attribute to enable", feature, since));
