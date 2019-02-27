@@ -112,103 +112,15 @@ nonzero_integers! {
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
-/// An error which can be returned when parsing a non-zero integer.
-///
-/// # Potential causes
-///
-/// Among other causes, `ParseNonZeroIntError` can be thrown because of leading or trailing
-/// whitespace in the string e.g., when it is obtained from the standard input.
-/// Using the [`str.trim()`] method ensures that no whitespace remains before parsing.
-///
-/// [`str.trim()`]: ../../std/primitive.str.html#method.trim
-#[unstable(feature = "nonzero_parse", issue = "0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseNonZeroIntError {
-    kind: NonZeroIntErrorKind,
-}
-
-/// Enum to store the various types of errors that can cause parsing a non-zero integer to fail.
-#[unstable(feature = "nonzero_parse", issue = "0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum NonZeroIntErrorKind {
-    /// Value being parsed is empty.
-    ///
-    /// Among other causes, this variant will be constructed when parsing an empty string.
-    Empty,
-    /// Contains an invalid digit.
-    ///
-    /// Among other causes, this variant will be constructed when parsing a string that
-    /// contains a letter.
-    InvalidDigit,
-    /// Integer is too large to store in target integer type.
-    Overflow,
-    /// Integer is too small to store in target integer type.
-    Underflow,
-    /// Integer contains the value `0` which is forbidden for a non-zero integer
-    Zero,
-}
-
-#[unstable(feature = "nonzero_parse", issue = "0")]
-impl From<ParseIntError> for ParseNonZeroIntError {
-    fn from(p: ParseIntError) -> Self {
-        use self::IntErrorKind as IK;
-        use self::NonZeroIntErrorKind as NK;
-        ParseNonZeroIntError {
-            kind: match p.kind {
-                IK::Empty => NK::Empty,
-                IK::InvalidDigit => NK::InvalidDigit,
-                IK::Overflow => NK::Overflow,
-                IK::Underflow => NK::Underflow,
-            },
-        }
-    }
-}
-
-impl ParseNonZeroIntError {
-    /// Outputs the detailed cause of parsing an integer failing.
-    #[unstable(feature = "int_error_matching",
-               reason = "it can be useful to match errors when making error messages \
-                         for integer parsing",
-               issue = "22639")]
-    pub fn kind(&self) -> &NonZeroIntErrorKind {
-        &self.kind
-    }
-
-    #[unstable(feature = "int_error_internals",
-               reason = "available through Error trait and this method should \
-                         not be exposed publicly",
-               issue = "0")]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
-        match self.kind {
-            NonZeroIntErrorKind::Empty => "cannot parse integer from empty string",
-            NonZeroIntErrorKind::InvalidDigit => "invalid digit found in string",
-            NonZeroIntErrorKind::Overflow => "number too large to fit in target type",
-            NonZeroIntErrorKind::Underflow => "number too small to fit in target type",
-            NonZeroIntErrorKind::Zero => "number is 0",
-        }
-    }
-
-}
-
-#[unstable(feature = "nonzero_parse", issue = "0")]
-impl fmt::Display for ParseNonZeroIntError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.__description().fmt(f)
-    }
-}
-
-
 macro_rules! from_str_radix_nzint_impl {
     ($($t:ty)*) => {$(
-        #[unstable(feature = "nonzero_parse", issue = "0")]
+        #[stable(feature = "nonzero_parse", since = "1.35.0")]
         impl FromStr for $t {
-            type Err = ParseNonZeroIntError;
+            type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::new(from_str_radix(src, 10)?)
-                    .ok_or(ParseNonZeroIntError {
-                        kind: NonZeroIntErrorKind::Zero
+                    .ok_or(ParseIntError {
+                        kind: IntErrorKind::Zero
                     })
             }
         }
@@ -4968,6 +4880,11 @@ pub enum IntErrorKind {
     Overflow,
     /// Integer is too small to store in target integer type.
     Underflow,
+    /// Value was Zero
+    ///
+    /// This variant will be emitted when the parsing string has a value of zero, which
+    /// would be illegal for non-zero types.
+    Zero,
 }
 
 impl ParseIntError {
@@ -4990,6 +4907,7 @@ impl ParseIntError {
             IntErrorKind::InvalidDigit => "invalid digit found in string",
             IntErrorKind::Overflow => "number too large to fit in target type",
             IntErrorKind::Underflow => "number too small to fit in target type",
+            IntErrorKind::Zero => "number would be zero for non-zero type",
         }
     }
 }

@@ -129,17 +129,23 @@ fn test_from_signed_nonzero() {
 
 #[test]
 fn test_from_str() {
-    assert_eq!(FromStr::from_str("123"), Ok(NonZeroU8::new(123).unwrap()));
+    assert_eq!("123".parse::<NonZeroU8>(), Ok(NonZeroU8::new(123).unwrap()));
     assert_eq!(
-        FromStr::from_str("0"),
-        Err(ParseNonZeroIntError {
-            kind: NonZeroIntErrorKind::Zero
+        "0".parse::<NonZeroU8>(),
+        Err(ParseIntError {
+            kind: IntErrorKind::Zero
         })
     );
     assert_eq!(
-        FromStr::from_str("-1", 
-        Err(ParseNonZeroIntError {
-            kind: NonZeroIntErrorKind::Underflow
+        "-1".parse::<NonZeroU8>(),
+        Err(ParseIntError {
+            kind: IntErrorKind::Underflow
+        })
+    );
+    assert_eq!(
+        "129".parse::<NonZeroU8>(),
+        Err(ParseIntError {
+            kind: IntErrorKind::Overflow
         })
     );
 }
