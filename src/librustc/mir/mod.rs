@@ -2063,11 +2063,18 @@ impl<'tcx> Place<'tcx> {
     /// invoking `op` with a `PlaceComponentsIter`.
     pub fn iterate<R>(
         &self,
+        op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        self.iterate2(None, op)
+    }
+
+    fn iterate2<R>(
+        &self,
         next: Option<&PlaceComponents<'_, 'tcx>>,
         op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
     ) -> R {
         match self {
-            Place::Projection(interior) => interior.base.iterate(
+            Place::Projection(interior) => interior.base.iterate2(
                 Some(&PlaceComponents {
                     component: self,
                     next,
