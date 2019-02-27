@@ -45,6 +45,7 @@ ENV WASM_SCRIPT python2.7 /checkout/x.py test --target $WASM_TARGETS \
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python2.7 /checkout/x.py test --target $NVPTX_TARGETS \
-  src/test/run-make
+  src/test/run-make \
+  src/test/assembly
 
 ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT
