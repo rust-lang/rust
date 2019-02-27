@@ -67,8 +67,8 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
         }
     }
 
-    borrow_place.unroll(None, |borrow_components| {
-        access_place.unroll(None, |access_components| {
+    borrow_place.iterate(None, |borrow_components| {
+        access_place.iterate(None, |access_components| {
             place_components_conflict(
                 tcx,
                 mir,
