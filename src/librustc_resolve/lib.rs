@@ -806,9 +806,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         debug!("(resolving function) entering function");
         let (rib_kind, asyncness) = match function_kind {
             FnKind::ItemFn(_, ref header, ..) =>
-                (ItemRibKind, header.asyncness),
+                (ItemRibKind, header.asyncness.node),
             FnKind::Method(_, ref sig, _, _) =>
-                (TraitOrImplItemRibKind, sig.header.asyncness),
+                (TraitOrImplItemRibKind, sig.header.asyncness.node),
             FnKind::Closure(_) =>
                 // Async closures aren't resolved through `visit_fn`-- they're
                 // processed separately

@@ -5001,6 +5001,11 @@ impl<'a> Parser<'a> {
         )
     }
 
+    fn is_async_fn(&mut self) -> bool {
+        self.token.is_keyword(keywords::Async) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Fn))
+    }
+
     fn is_do_catch_block(&mut self) -> bool {
         self.token.is_keyword(keywords::Do) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
@@ -5133,7 +5138,8 @@ impl<'a> Parser<'a> {
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
                   !self.is_existential_type_decl() &&
-                  !self.is_auto_trait_item() {
+                  !self.is_auto_trait_item() &&
+                  !self.is_async_fn() {
             let pth = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
@@ -6384,7 +6390,7 @@ impl<'a> Parser<'a> {
     /// Parses an item-position function declaration.
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
-                     asyncness: IsAsync,
+                     asyncness: Spanned<IsAsync>,
                      constness: Spanned<Constness>,
                      abi: Abi)
                      -> PResult<'a, ItemInfo> {
@@ -6416,7 +6422,7 @@ impl<'a> Parser<'a> {
         -> PResult<'a, (
             Spanned<Constness>,
             Unsafety,
-            IsAsync,
+            Spanned<IsAsync>,
             Abi
         )>
     {
@@ -6424,6 +6430,7 @@ impl<'a> Parser<'a> {
         let const_span = self.prev_span;
         let unsafety = self.parse_unsafety();
         let asyncness = self.parse_asyncness();
+        let asyncness = respan(self.prev_span, asyncness);
         let (constness, unsafety, abi) = if is_const_fn {
             (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
@@ -7834,7 +7841,7 @@ impl<'a> Parser<'a> {
                 let abi = opt_abi.unwrap_or(Abi::C);
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(Unsafety::Normal,
-                                       IsAsync::NotAsync,
+                                       respan(fn_span, IsAsync::NotAsync),
                                        respan(fn_span, Constness::NotConst),
                                        abi)?;
                 let prev_span = self.prev_span;
@@ -7878,7 +7885,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(unsafety,
-                                       IsAsync::NotAsync,
+                                       respan(const_span, IsAsync::NotAsync),
                                        respan(const_span, Constness::Const),
                                        Abi::Rust)?;
                 let prev_span = self.prev_span;
@@ -7926,14 +7933,15 @@ impl<'a> Parser<'a> {
             // ASYNC FUNCTION ITEM
             let unsafety = self.parse_unsafety();
             self.expect_keyword(keywords::Async)?;
+            let async_span = self.prev_span;
             self.expect_keyword(keywords::Fn)?;
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(unsafety,
-                                   IsAsync::Async {
+                                   respan(async_span, IsAsync::Async {
                                        closure_id: ast::DUMMY_NODE_ID,
                                        return_impl_trait_id: ast::DUMMY_NODE_ID,
-                                   },
+                                   }),
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
             let prev_span = self.prev_span;
@@ -7942,6 +7950,13 @@ impl<'a> Parser<'a> {
                                     item_,
                                     visibility,
                                     maybe_append(attrs, extra_attrs));
+            if self.span.rust_2015() {
+                self.diagnostic().struct_span_err_with_code(
+                    async_span,
+                    "`async fn` is not permitted in the 2015 edition",
+                    DiagnosticId::Error("E0670".into())
+                ).emit();
+            }
             return Ok(Some(item));
         }
         if self.check_keyword(keywords::Unsafe) &&
@@ -7989,7 +8004,7 @@ impl<'a> Parser<'a> {
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(Unsafety::Normal,
-                                   IsAsync::NotAsync,
+                                   respan(fn_span, IsAsync::NotAsync),
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
             let prev_span = self.prev_span;
@@ -8015,7 +8030,7 @@ impl<'a> Parser<'a> {
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(Unsafety::Unsafe,
-                                   IsAsync::NotAsync,
+                                   respan(fn_span, IsAsync::NotAsync),
                                    respan(fn_span, Constness::NotConst),
                                    abi)?;
             let prev_span = self.prev_span;
@@ -8282,7 +8297,8 @@ impl<'a> Parser<'a> {
         lo: Span,
         visibility: Visibility
     ) -> PResult<'a, Option<P<Item>>> {
-        if macros_allowed && self.token.is_path_start() {
+        if macros_allowed && self.token.is_path_start() &&
+                !(self.is_async_fn() && self.span.rust_2015()) {
             // MACRO INVOCATION ITEM
 
             let prev_span = self.prev_span;
@@ -8337,7 +8353,8 @@ impl<'a> Parser<'a> {
     fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
                                at_end: &mut bool) -> PResult<'a, Option<Mac>>
     {
-        if self.token.is_path_start() {
+        if self.token.is_path_start() &&
+                !(self.is_async_fn() && self.span.rust_2015()) {
             let prev_span = self.prev_span;
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
