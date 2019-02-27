@@ -39,7 +39,8 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
-    CanonicalUserTypeAnnotation, UserTypeAnnotationIndex,
+    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -283,7 +284,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
-                let annotation = &self.mir.user_type_annotations[annotation_index];
+                let annotation = &self.cx.user_type_annotations[annotation_index];
                 span_mirbug!(
                     self,
                     constant,
@@ -550,8 +551,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
 
-        let main_mir = mem::replace(&mut self.mir, promoted_mir);
-        self.cx.mir = promoted_mir;
+        let parent_mir = mem::replace(&mut self.mir, promoted_mir);
 
         let all_facts = &mut None;
         let mut constraints = Default::default();
@@ -573,8 +573,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             self.cx.typeck_mir(promoted_mir);
         }
 
-        self.mir = main_mir;
-        self.cx.mir = main_mir;
+        self.mir = parent_mir;
         // Merge the outlives constraints back in, at the given location.
         if let Some(ref mut base_bcx) = self.cx.borrowck_context {
             mem::swap(base_bcx.all_facts, all_facts);
@@ -818,7 +817,9 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
-    mir: &'a Mir<'tcx>,
+    /// User type annotations are shared between the main MIR and the MIR of
+    /// all of the promoted items.
+    user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     mir_def_id: DefId,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -973,8 +974,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let mut checker = Self {
             infcx,
             last_span: DUMMY_SP,
-            mir,
             mir_def_id,
+            user_type_annotations: &mir.user_type_annotations,
             param_env,
             region_bound_pairs,
             implicit_region_bound,
@@ -990,9 +991,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn check_user_type_annotations(&mut self) {
         debug!(
             "check_user_type_annotations: user_type_annotations={:?}",
-             self.mir.user_type_annotations
+             self.user_type_annotations
         );
-        for user_annotation in &self.mir.user_type_annotations {
+        for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let (annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
                 span, user_ty
@@ -1175,7 +1176,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        let annotated_type = self.mir.user_type_annotations[user_ty.base].inferred_ty;
+        let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
         let tcx = self.infcx.tcx;
@@ -1361,7 +1362,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
-                        let annotation = &mir.user_type_annotations[annotation_index];
+                        let annotation = &self.user_type_annotations[annotation_index];
                         span_mirbug!(
                             self,
                             stmt,
@@ -1420,7 +1421,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
                 ) {
-                    let annotation = &mir.user_type_annotations[projection.base];
+                    let annotation = &self.user_type_annotations[projection.base];
                     span_mirbug!(
                         self,
                         stmt,
@@ -2078,7 +2079,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(location, region, borrowed_place);
+                self.add_reborrow_constraint(mir, location, region, borrowed_place);
             }
 
             // FIXME: These other cases have to be implemented in future PRs
@@ -2177,6 +2178,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// - `borrowed_place`: the place `P` being borrowed
     fn add_reborrow_constraint(
         &mut self,
+        mir: &Mir<'tcx>,
         location: Location,
         borrow_region: ty::Region<'tcx>,
         borrowed_place: &Place<'tcx>,
@@ -2226,7 +2228,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             match *elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                    let base_ty = base.ty(mir, tcx).to_ty(tcx);
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
