@@ -425,8 +425,11 @@ impl<'a> PoolDispatcher<'a> {
                                     //     ErrorCode::ContentModified as i32,
                                     //     "content modified".to_string(),
                                     // )
-                                    RawResponse::empty(id)
-
+                                    RawResponse {
+                                        id,
+                                        result: Some(serde_json::to_value(&()).unwrap()),
+                                        error: None,
+                                    }
                                 } else {
                                     RawResponse::err(
                                         id,

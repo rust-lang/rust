@@ -120,11 +120,6 @@ impl RawResponse {
         let error = RawResponseError { code, message, data: None };
         RawResponse { id, result: None, error: Some(error) }
     }
-    /// Returns an "empty" RawResponse
-    /// Empty response still has a value `()` in its `result` field.
-    pub fn empty(id: u64) -> RawResponse {
-        RawResponse { id, result: Some(to_value(&()).unwrap()), error: None }
-    }
 }
 
 impl RawNotification {
