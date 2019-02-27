@@ -3,11 +3,6 @@ use crate::mem;
 
 pub struct Mutex { inner: UnsafeCell<libc::pthread_mutex_t> }
 
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
-    m.inner.get()
-}
-
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 

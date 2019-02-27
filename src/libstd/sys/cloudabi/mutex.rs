@@ -12,10 +12,6 @@ extern "C" {
 // implemented identically.
 pub struct Mutex(RWLock);
 
-pub unsafe fn raw(m: &Mutex) -> *mut AtomicU32 {
-    rwlock::raw(&m.0)
-}
-
 impl Mutex {
     pub const fn new() -> Mutex {
         Mutex(RWLock::new())

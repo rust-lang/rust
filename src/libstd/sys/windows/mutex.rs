@@ -39,12 +39,6 @@ enum Kind {
     CriticalSection = 2,
 }
 
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
-    debug_assert!(mem::size_of::<c::SRWLOCK>() <= mem::size_of_val(&m.lock));
-    &m.lock as *const _ as *mut _
-}
-
 impl Mutex {
     pub const fn new() -> Mutex {
         Mutex {
