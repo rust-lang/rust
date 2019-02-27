@@ -212,7 +212,7 @@ In our example, the implementation would look like:
 fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
     match fn_kind {
         FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) => {
-            return ident.name == "foo"
+            ident.name == "foo"
         },
         FnKind::Closure(..) => false
     }
