@@ -41,6 +41,8 @@
                    since = "1.18.0")]
 pub use crate::ptr::drop_in_place;
 
+use crate::mem;
+
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -1323,6 +1325,29 @@ mod real_intrinsics {
   }
 }
 
+/// Checks whether `ptr` is properly aligned with respect to
+/// `align_of::<T>()`.
+fn is_aligned<T>(ptr: *const T) -> bool {
+    return ptr as usize % mem::align_of::<T>() == 0;
+}
+
+/// Checks whether the regions of memory starting at `src` and `dst` of size
+/// `count * size_of::<T>()` overlap.
+fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
+    use crate::cmp::Ordering;
+    let src_usize = src as usize;
+    let dst_usize = dst as usize;
+    let size = mem::size_of::<T>() * count;
+    match src_usize.cmp(&dst_usize) {
+        // src < dst < src + offset
+        Ordering::Less => src_usize + size > dst_usize,
+        // dst < src < dst + offset
+        Ordering::Greater => dst_usize + size > src_usize,
+        // src == dst
+        Ordering::Equal => count != 0,
+    }
+}
+
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination must *not* overlap.
 ///
@@ -1409,6 +1434,9 @@ mod real_intrinsics {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+    debug_assert!(is_aligned(src), "attempt to copy from unaligned pointer");
+    debug_assert!(is_aligned(dst), "attempt to copy to unaligned pointer");
+    debug_assert!(!overlaps(src, dst, count), "attempt to copy to overlapping memory");
     real_intrinsics::copy_nonoverlapping(src, dst, count);
 }
 
@@ -1466,6 +1494,13 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+    debug_assert!(is_aligned(src), "attempt to copy from unaligned pointer");
+    debug_assert!(is_aligned(dst), "attempt to copy to unaligned pointer");
+    let src_usize = src as usize;
+    let dst_usize = dst as usize;
+    let size = mem::size_of::<T>() * count;
+    debug_assert!(dst_usize < src_usize || dst_usize + size >= src_usize,
+                  "attempt to copy to a destination overlapping with the source");
     real_intrinsics::copy(src, dst, count)
 }
 
@@ -1544,5 +1579,6 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+    debug_assert!(is_aligned(dst), "attempt to copy to unaligned pointer");
     real_intrinsics::write_bytes(dst, val, count)
 }
