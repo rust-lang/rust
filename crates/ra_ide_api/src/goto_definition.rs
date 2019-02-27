@@ -110,7 +110,7 @@ pub(crate) fn reference_definition(
     Approximate(navs)
 }
 
-fn name_definition(
+pub(crate) fn name_definition(
     db: &RootDatabase,
     file_id: FileId,
     name: &ast::Name,

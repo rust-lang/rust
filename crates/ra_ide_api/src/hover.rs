@@ -88,6 +88,18 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         if !res.is_empty() {
             range = Some(name_ref.syntax().range())
         }
+    } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
+        let navs = crate::goto_definition::name_definition(db, position.file_id, name);
+
+        if let Some(navs) = navs {
+            for nav in navs {
+                res.extend(doc_text_for(db, nav))
+            }
+        }
+
+        if !res.is_empty() && range.is_none() {
+            range = Some(name.syntax().range());
+        }
     }
 
     if range.is_none() {
@@ -97,7 +109,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(Into::into));
         range = Some(node.range());
-    };
+    }
 
     let range = range?;
     if res.is_empty() {
@@ -291,6 +303,20 @@ mod tests {
             }
         "#,
             &["pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str"],
+        );
+    }
+
+    #[test]
+    fn hover_shows_fn_signature_on_fn_name() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            pub fn foo<|>(a: u32, b: u32) -> u32 {}
+
+            fn main() {
+            }
+        "#,
+            &["pub fn foo(a: u32, b: u32) -> u32"],
         );
     }
 
