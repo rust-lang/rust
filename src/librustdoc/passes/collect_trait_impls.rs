@@ -6,9 +6,11 @@ use super::Pass;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::def_id::DefId;
 
-pub const COLLECT_TRAIT_IMPLS: Pass =
-    Pass::early("collect-trait-impls", collect_trait_impls,
-                "retrieves trait impls for items in the crate");
+pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
+    name: "collect-trait-impls",
+    pass: collect_trait_impls,
+    description: "retrieves trait impls for items in the crate",
+};
 
 pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);

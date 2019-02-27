@@ -13,6 +13,6 @@ crate-type = ["dylib"]
 serialize = { path = "../libserialize" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 arena = { path = "../libarena" }
-scoped-tls = { version = "0.1.1", features = ["nightly"] }
+scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"

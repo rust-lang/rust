@@ -233,8 +233,8 @@ declare_features! (
 
     // Allows `#[unwind(..)]`.
     //
-    // rustc internal for rust runtime
-    (active, unwind_attributes, "1.4.0", None, None),
+    // Permits specifying whether a function should permit unwinding or abort on unwind.
+    (active, unwind_attributes, "1.4.0", Some(58760), None),
 
     // Allows the use of `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
@@ -1898,7 +1898,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match fn_kind {
             FnKind::ItemFn(_, header, _, _) => {
                 // Check for const fn and async fn declarations.
-                if header.asyncness.is_async() {
+                if header.asyncness.node.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
                 // Stability of const fn methods are covered in

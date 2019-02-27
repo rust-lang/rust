@@ -4,6 +4,7 @@ use crate::hir::def::Def;
 use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
 use crate::hir::{self, Node};
+use crate::mir::interpret::{sign_extend, truncate};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
@@ -32,12 +33,12 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.ty.sty {
             ty::Int(ity) => {
-                let bits = ty::tls::with(|tcx| {
-                    Integer::from_attr(&tcx, SignedInt(ity)).size().bits()
+                let size = ty::tls::with(|tcx| {
+                    Integer::from_attr(&tcx, SignedInt(ity)).size()
                 });
-                let x = self.val as i128;
+                let x = self.val;
                 // sign extend the raw representation to be an i128
-                let x = (x << (128 - bits)) >> (128 - bits);
+                let x = sign_extend(x, size) as i128;
                 write!(fmt, "{}", x)
             },
             _ => write!(fmt, "{}", self.val),
@@ -57,12 +58,12 @@ impl<'tcx> Discr<'tcx> {
             _ => bug!("non integer discriminant"),
         };
 
+        let size = int.size();
         let bit_size = int.size().bits();
         let shift = 128 - bit_size;
         if signed {
             let sext = |u| {
-                let i = u as i128;
-                (i << shift) >> shift
+                sign_extend(u, size) as i128
             };
             let min = sext(1_u128 << (bit_size - 1));
             let max = i128::max_value() >> shift;
@@ -77,7 +78,7 @@ impl<'tcx> Discr<'tcx> {
             };
             // zero the upper bits
             let val = val as u128;
-            let val = (val << shift) >> shift;
+            let val = truncate(val, size);
             (Self {
                 val: val as u128,
                 ty: self.ty,

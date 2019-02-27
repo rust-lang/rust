@@ -1700,7 +1700,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
-                tcx.at(span).type_of(def_id)
+                // Try to evaluate any array length constants
+                self.normalize_ty(span, tcx.at(span).type_of(def_id))
             }
             Def::SelfTy(Some(_), None) => {
                 // `Self` in trait.
