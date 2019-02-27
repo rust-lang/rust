@@ -81,38 +81,47 @@ macro_rules! intersection_bench {
     };
 }
 
-intersection_bench! {intersect_neg_vs_pos_100,          neg_vs_pos(100, 100)}
-intersection_bench! {intersect_neg_vs_pos_10k,          neg_vs_pos(10_000, 10_000)}
-intersection_bench! {intersect_neg_vs_pos_10_vs_10k,    neg_vs_pos(10, 10_000)}
-intersection_bench! {intersect_neg_vs_pos_10k_vs_10,    neg_vs_pos(10_000, 10)}
-intersection_bench! {intersect_pos_vs_neg_100,          pos_vs_neg(100, 100)}
-intersection_bench! {intersect_pos_vs_neg_10k,          pos_vs_neg(10_000, 10_000)}
-intersection_bench! {intersect_pos_vs_neg_10_vs_10k,    pos_vs_neg(10, 10_000)}
-intersection_bench! {intersect_pos_vs_neg_10k_vs_10,    pos_vs_neg(10_000, 10)}
-intersection_bench! {intersect_random_100,              random(100, 100)}
-intersection_bench! {intersect_random_10k,              random(10_000, 10_000)}
-intersection_bench! {intersect_random_10_vs_10k,        random(10, 10_000)}
-intersection_bench! {intersect_random_10k_vs_10,        random(10_000, 10)}
+intersection_bench! {intersect_100_neg_vs_100_pos,      neg_vs_pos(100, 100)}
+intersection_bench! {intersect_100_neg_vs_10k_pos,      neg_vs_pos(100, 10_000)}
+intersection_bench! {intersect_100_pos_vs_100_neg,      pos_vs_neg(100, 100)}
+intersection_bench! {intersect_100_pos_vs_10k_neg,      pos_vs_neg(100, 10_000)}
+intersection_bench! {intersect_10k_neg_vs_100_pos,      neg_vs_pos(10_000, 100)}
+intersection_bench! {intersect_10k_neg_vs_10k_pos,      neg_vs_pos(10_000, 10_000)}
+intersection_bench! {intersect_10k_pos_vs_100_neg,      pos_vs_neg(10_000, 100)}
+intersection_bench! {intersect_10k_pos_vs_10k_neg,      pos_vs_neg(10_000, 10_000)}
+intersection_bench! {intersect_random_100_vs_100_actual,random(100, 100)}
+intersection_bench! {intersect_random_100_vs_100_search,random(100, 100), intersection_search}
+intersection_bench! {intersect_random_100_vs_100_stitch,random(100, 100), intersection_stitch}
+intersection_bench! {intersect_random_100_vs_10k_actual,random(100, 10_000)}
+intersection_bench! {intersect_random_100_vs_10k_search,random(100, 10_000), intersection_search}
+intersection_bench! {intersect_random_100_vs_10k_stitch,random(100, 10_000), intersection_stitch}
+intersection_bench! {intersect_random_10k_vs_10k_actual,random(10_000, 10_000)}
+intersection_bench! {intersect_random_10k_vs_10k_search,random(10_000, 10_000)}
+intersection_bench! {intersect_random_10k_vs_10k_stitch,random(10_000, 10_000)}
+intersection_bench! {intersect_stagger_100_actual,      stagger(100, 1)}
+intersection_bench! {intersect_stagger_100_search,      stagger(100, 1), intersection_search}
+intersection_bench! {intersect_stagger_100_stitch,      stagger(100, 1), intersection_stitch}
+intersection_bench! {intersect_stagger_10k_actual,      stagger(10_000, 1)}
+intersection_bench! {intersect_stagger_10k_search,      stagger(10_000, 1), intersection_search}
+intersection_bench! {intersect_stagger_10k_stitch,      stagger(10_000, 1), intersection_stitch}
 intersection_bench! {intersect_stagger_1_actual,        stagger(1, 1)}
-intersection_bench! {intersect_stagger_1_stitch,        stagger(1, 1), intersection_stitch}
 intersection_bench! {intersect_stagger_1_search,        stagger(1, 1), intersection_search}
-intersection_bench! {intersect_stagger_100,             stagger(100, 1)}
-intersection_bench! {intersect_stagger_10k,             stagger(10_000, 1)}
-intersection_bench! {intersect_stagger_100_df1_actual,  stagger(100, 1 << 1)}
-intersection_bench! {intersect_stagger_100_df1_stitch,  stagger(100, 1 << 1), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df1_search,  stagger(100, 1 << 1), intersection_search}
-intersection_bench! {intersect_stagger_100_df2_actual,  stagger(100, 1 << 2)}
-intersection_bench! {intersect_stagger_100_df2_stitch,  stagger(100, 1 << 2), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df2_search,  stagger(100, 1 << 2), intersection_search}
-intersection_bench! {intersect_stagger_100_df3_actual,  stagger(100, 1 << 3)}
-intersection_bench! {intersect_stagger_100_df3_stitch,  stagger(100, 1 << 3), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df3_search,  stagger(100, 1 << 3), intersection_search}
-intersection_bench! {intersect_stagger_100_df4_actual,  stagger(100, 1 << 4)}
-intersection_bench! {intersect_stagger_100_df4_stitch,  stagger(100, 1 << 4), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df4_search,  stagger(100, 1 << 4), intersection_search}
-intersection_bench! {intersect_stagger_100_df5_actual,  stagger(100, 1 << 5)}
-intersection_bench! {intersect_stagger_100_df5_stitch,  stagger(100, 1 << 5), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df5_search,  stagger(100, 1 << 5), intersection_search}
-intersection_bench! {intersect_stagger_100_df6_actual,  stagger(100, 1 << 6)}
-intersection_bench! {intersect_stagger_100_df6_stitch,  stagger(100, 1 << 6), intersection_stitch}
-intersection_bench! {intersect_stagger_100_df6_search,  stagger(100, 1 << 6), intersection_search}
+intersection_bench! {intersect_stagger_1_stitch,        stagger(1, 1), intersection_stitch}
+intersection_bench! {intersect_stagger_diff1_actual,    stagger(100, 1 << 1)}
+intersection_bench! {intersect_stagger_diff1_search,    stagger(100, 1 << 1), intersection_search}
+intersection_bench! {intersect_stagger_diff1_stitch,    stagger(100, 1 << 1), intersection_stitch}
+intersection_bench! {intersect_stagger_diff2_actual,    stagger(100, 1 << 2)}
+intersection_bench! {intersect_stagger_diff2_search,    stagger(100, 1 << 2), intersection_search}
+intersection_bench! {intersect_stagger_diff2_stitch,    stagger(100, 1 << 2), intersection_stitch}
+intersection_bench! {intersect_stagger_diff3_actual,    stagger(100, 1 << 3)}
+intersection_bench! {intersect_stagger_diff3_search,    stagger(100, 1 << 3), intersection_search}
+intersection_bench! {intersect_stagger_diff3_stitch,    stagger(100, 1 << 3), intersection_stitch}
+intersection_bench! {intersect_stagger_diff4_actual,    stagger(100, 1 << 4)}
+intersection_bench! {intersect_stagger_diff4_search,    stagger(100, 1 << 4), intersection_search}
+intersection_bench! {intersect_stagger_diff4_stitch,    stagger(100, 1 << 4), intersection_stitch}
+intersection_bench! {intersect_stagger_diff5_actual,    stagger(100, 1 << 5)}
+intersection_bench! {intersect_stagger_diff5_search,    stagger(100, 1 << 5), intersection_search}
+intersection_bench! {intersect_stagger_diff5_stitch,    stagger(100, 1 << 5), intersection_stitch}
+intersection_bench! {intersect_stagger_diff6_actual,    stagger(100, 1 << 6)}
+intersection_bench! {intersect_stagger_diff6_search,    stagger(100, 1 << 6), intersection_search}
+intersection_bench! {intersect_stagger_diff6_stitch,    stagger(100, 1 << 6), intersection_stitch}
