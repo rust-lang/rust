@@ -3,14 +3,17 @@ use std::string::String;
 use std::usize;
 
 use crate::clean::{self, DocFragment, Item};
+use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
 
-pub const UNINDENT_COMMENTS: Pass =
-    Pass::late("unindent-comments", unindent_comments,
-        "removes excess indentation on comments in order for markdown to like it");
+pub const UNINDENT_COMMENTS: Pass = Pass {
+    name: "unindent-comments",
+    pass: unindent_comments,
+    description: "removes excess indentation on comments in order for markdown to like it",
+};
 
-pub fn unindent_comments(krate: clean::Crate) -> clean::Crate {
+pub fn unindent_comments(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 
