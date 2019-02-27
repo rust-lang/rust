@@ -1,14 +1,74 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, SyntaxNode, TreeArc, ast,
+    AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
 
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<String>> {
+/// Contains the results when hovering over an item
+#[derive(Debug, Clone)]
+pub struct HoverResult {
+    results: Vec<String>,
+    exact: bool,
+}
+
+impl HoverResult {
+    pub fn new() -> HoverResult {
+        HoverResult {
+            results: Vec::new(),
+            // We assume exact by default
+            exact: true,
+        }
+    }
+
+    pub fn extend(&mut self, item: Option<String>) {
+        self.results.extend(item);
+    }
+
+    pub fn is_exact(&self) -> bool {
+        self.exact
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.results.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.results.len()
+    }
+
+    pub fn first(&self) -> Option<&str> {
+        self.results.first().map(String::as_str)
+    }
+
+    pub fn results(&self) -> &[String] {
+        &self.results
+    }
+
+    /// Returns the results converted into markup
+    /// for displaying in a UI
+    pub fn to_markup(&self) -> String {
+        let mut markup = if !self.exact {
+            let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.");
+            if !self.results.is_empty() {
+                msg.push_str("  \nThese items were found instead:");
+            }
+            msg.push_str("\n\n---\n");
+            msg
+        } else {
+            String::new()
+        };
+
+        markup.push_str(&self.results.join("\n\n---\n"));
+
+        markup
+    }
+}
+
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse(position.file_id);
-    let mut res = Vec::new();
+    let mut res = HoverResult::new();
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
@@ -17,11 +77,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         match ref_result {
             Exact(nav) => res.extend(doc_text_for(db, nav)),
             Approximate(navs) => {
-                let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.");
-                if !navs.is_empty() {
-                    msg.push_str("  \nThese items were found instead:");
-                }
-                res.push(msg);
+                // We are no longer exact
+                res.exact = false;
+
                 for nav in navs {
                     res.extend(doc_text_for(db, nav))
                 }
@@ -30,7 +88,20 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         if !res.is_empty() {
             range = Some(name_ref.syntax().range())
         }
+    } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
+        let navs = crate::goto_definition::name_definition(db, position.file_id, name);
+
+        if let Some(navs) = navs {
+            for nav in navs {
+                res.extend(doc_text_for(db, nav))
+            }
+        }
+
+        if !res.is_empty() && range.is_none() {
+            range = Some(name.syntax().range());
+        }
     }
+
     if range.is_none() {
         let node = find_leaf_at_offset(file.syntax(), position.offset).find_map(|leaf| {
             leaf.ancestors().find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
@@ -38,13 +109,13 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(Into::into));
         range = Some(node.range());
-    };
+    }
 
     let range = range?;
     if res.is_empty() {
         return None;
     }
-    let res = RangeInfo::new(range, res.join("\n\n---\n"));
+    let res = RangeInfo::new(range, res);
     Some(res)
 }
 
@@ -120,7 +191,7 @@ impl NavigationTarget {
 
         fn visit_node<T>(node: &T, label: &str) -> Option<String>
         where
-            T: ast::NameOwner + ast::VisibilityOwner,
+            T: NameOwner + VisibilityOwner,
         {
             let mut string =
                 node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
@@ -130,7 +201,7 @@ impl NavigationTarget {
         }
 
         visitor()
-            .visit(|node: &ast::FnDef| visit_node(node, "fn "))
+            .visit(crate::completion::function_label)
             .visit(|node: &ast::StructDef| visit_node(node, "struct "))
             .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
             .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
@@ -145,7 +216,24 @@ impl NavigationTarget {
 #[cfg(test)]
 mod tests {
     use ra_syntax::TextRange;
-    use crate::mock_analysis::{single_file_with_position, single_file_with_range};
+    use crate::mock_analysis::{single_file_with_position, single_file_with_range, analysis_and_position};
+
+    fn trim_markup(s: &str) -> &str {
+        s.trim_start_matches("```rust\n").trim_end_matches("\n```")
+    }
+
+    fn check_hover_result(fixture: &str, expected: &[&str]) {
+        let (analysis, position) = analysis_and_position(fixture);
+        let hover = analysis.hover(position).unwrap().unwrap();
+
+        for (markup, expected) in
+            hover.info.results().iter().zip(expected.iter().chain(std::iter::repeat(&"<missing>")))
+        {
+            assert_eq!(trim_markup(&markup), *expected);
+        }
+
+        assert_eq!(hover.info.len(), expected.len());
+    }
 
     #[test]
     fn hover_shows_type_of_an_expression() {
@@ -160,7 +248,76 @@ mod tests {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::from_to(95.into(), 100.into()));
-        assert_eq!(hover.info, "u32");
+        assert_eq!(hover.info.first(), Some("u32"));
+    }
+
+    #[test]
+    fn hover_shows_fn_signature() {
+        // Single file with result
+        check_hover_result(
+            r#"
+            //- /main.rs
+            pub fn foo() -> u32 { 1 }
+
+            fn main() {
+                let foo_test = fo<|>o();
+            }
+        "#,
+            &["pub fn foo() -> u32"],
+        );
+
+        // Multiple results
+        check_hover_result(
+            r#"
+            //- /a.rs
+            pub fn foo() -> u32 { 1 }
+
+            //- /b.rs
+            pub fn foo() -> &str { "" }
+
+            //- /c.rs
+            pub fn foo(a: u32, b: u32) {}
+
+            //- /main.rs
+            mod a;
+            mod b;
+            mod c;
+
+            fn main() {
+                let foo_test = fo<|>o();
+            }
+        "#,
+            &["pub fn foo() -> &str", "pub fn foo() -> u32", "pub fn foo(a: u32, b: u32)"],
+        );
+    }
+
+    #[test]
+    fn hover_shows_fn_signature_with_type_params() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
+
+            fn main() {
+                let foo_test = fo<|>o();
+            }
+        "#,
+            &["pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str"],
+        );
+    }
+
+    #[test]
+    fn hover_shows_fn_signature_on_fn_name() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            pub fn foo<|>(a: u32, b: u32) -> u32 {}
+
+            fn main() {
+            }
+        "#,
+            &["pub fn foo(a: u32, b: u32) -> u32"],
+        );
     }
 
     #[test]
@@ -177,21 +334,21 @@ mod tests {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         // not the nicest way to show it currently
-        assert_eq!(hover.info, "Some<i32>(T) -> Option<T>");
+        assert_eq!(hover.info.first(), Some("Some<i32>(T) -> Option<T>"));
     }
 
     #[test]
     fn hover_for_local_variable() {
         let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info, "i32");
+        assert_eq!(hover.info.first(), Some("i32"));
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = single_file_with_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info, "i32");
+        assert_eq!(hover.info.first(), Some("i32"));
     }
 
     #[test]
@@ -258,6 +415,6 @@ mod tests {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info, "Thing");
+        assert_eq!(hover.info.first(), Some("Thing"));
     }
 }

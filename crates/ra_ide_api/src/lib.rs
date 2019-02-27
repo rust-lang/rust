@@ -58,6 +58,7 @@ pub use crate::{
     navigation_target::NavigationTarget,
     references::ReferenceSearchResult,
     assists::{Assist, AssistId},
+    hover::{HoverResult},
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
@@ -328,7 +329,7 @@ impl Analysis {
     }
 
     /// Returns a short text describing element at position.
-    pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<String>>> {
+    pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<HoverResult>>> {
         self.with_db(|db| hover::hover(db, position))
     }
 
