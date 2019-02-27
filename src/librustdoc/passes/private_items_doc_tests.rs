@@ -3,10 +3,11 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::{look_for_tests, Pass};
 
-
-pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass =
-    Pass::early("check-private-items-doc-tests", check_private_items_doc_tests,
-                "check private items doc tests");
+pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
+    name: "check-private-items-doc-tests",
+    pass: check_private_items_doc_tests,
+    description: "check private items doc tests",
+};
 
 struct PrivateItemDocTestLinter<'a, 'tcx: 'a, 'rcx: 'a> {
     cx: &'a DocContext<'a, 'tcx, 'rcx>,
