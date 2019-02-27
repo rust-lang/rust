@@ -4544,9 +4544,14 @@ macro_rules! try_from_unbounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create the target type from the source type.
-            /// This particular variant will never fail, but is included
-            /// for completeness's sake.
+            /// Try to create the target number type from a source
+            /// number type.  If the source type has a larger range
+            /// than the target, or their ranges are disjoint (such
+            /// as converting a signed to unsigned number or vice 
+            /// versa), this will return `None` if the source value
+            /// doesn't fit into the range of the destination value.
+            /// If the conversion can never fail, this is still
+            /// implemented for completeness's sake.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as $target)
@@ -4562,10 +4567,14 @@ macro_rules! try_from_lower_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create a target number type from a
-            /// source type that has `source::MIN > dest::MIN`.
-            /// Will return an error if `source` is less than
-            /// `dest::MIN`.
+            /// Try to create the target number type from a source
+            /// number type.  If the source type has a larger range
+            /// than the target, or their ranges are disjoint (such
+            /// as converting a signed to unsigned number or vice 
+            /// versa), this will return `None` if the source value
+            /// doesn't fit into the range of the destination value.
+            /// If the conversion can never fail, this is still
+            /// implemented for completeness's sake.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u >= 0 {
@@ -4585,10 +4594,14 @@ macro_rules! try_from_upper_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to create a target number type from a
-            /// source type that has `source::MAX > dest::MAX`.
-            /// Will return an error if `source` is greater than
-            /// `dest::MAX`.
+            /// Try to create the target number type from a source
+            /// number type.  If the source type has a larger range
+            /// than the target, or their ranges are disjoint (such
+            /// as converting a signed to unsigned number or vice 
+            /// versa), this will return `None` if the source value
+            /// doesn't fit into the range of the destination value.
+            /// If the conversion can never fail, this is still
+            /// implemented for completeness's sake.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u > (<$target>::max_value() as $source) {
@@ -4608,11 +4621,14 @@ macro_rules! try_from_both_bounded {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            /// Try to "narrow" a number from the source type
-            /// to the target type.  Will return an error if
-            /// the source value is either larger than the
-            /// `MAX` value for the target type or smaller
-            /// than the `MIN` value for it.
+            /// Try to create the target number type from a source
+            /// number type.  If the source type has a larger range
+            /// than the target, or their ranges are disjoint (such
+            /// as converting a signed to unsigned number or vice 
+            /// versa), this will return `None` if the source value
+            /// doesn't fit into the range of the destination value.
+            /// If the conversion can never fail, this is still
+            /// implemented for completeness's sake.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 let min = <$target>::min_value() as $source;
