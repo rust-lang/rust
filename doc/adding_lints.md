@@ -214,7 +214,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
         FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) => {
             return ident.name == "foo"
         },
-        FnKind::Closure(..) => return false
+        FnKind::Closure(..) => false
     }
 }
 ```
