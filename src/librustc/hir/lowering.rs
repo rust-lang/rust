@@ -2743,11 +2743,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(f.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(f.id);
 
         hir::StructField {
             span: f.span,
-            id: node_id,
             hir_id,
             ident: match f.ident {
                 Some(ident) => ident,

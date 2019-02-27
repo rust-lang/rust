@@ -465,7 +465,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.id));
+        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id_from_hir_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
             && !field_type.is_phantom_data()

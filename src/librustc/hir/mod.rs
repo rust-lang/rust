@@ -2132,7 +2132,6 @@ pub struct StructField {
     pub span: Span,
     pub ident: Ident,
     pub vis: Visibility,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,

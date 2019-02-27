@@ -317,10 +317,9 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, hir_id: HirId, span: Span, name: &str) {
         let stab = self.tcx.stability().local_stability(hir_id);
-        let node_id = self.tcx.hir().hir_to_node_id(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
-                        self.access_levels.is_reachable(node_id);
+                        self.access_levels.is_reachable(self.tcx.hir().hir_to_node_id(hir_id));
         if is_error {
             self.tcx.sess.span_err(
                 span,

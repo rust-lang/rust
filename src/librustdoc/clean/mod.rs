@@ -2913,14 +2913,16 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext<'_, '_, '_>) -> Item {
+        let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
+
         Item {
             name: Some(self.ident.name).clean(cx),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, cx.tcx.hir().local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.hir().local_def_id(self.id)),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            stability: get_stability(cx, local_did),
+            deprecation: get_deprecation(cx, local_did),
+            def_id: local_did,
             inner: StructFieldItem(self.ty.clean(cx)),
         }
     }

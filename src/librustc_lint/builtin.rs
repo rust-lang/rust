@@ -148,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id(struct_field.id);
+                    let def_id = cx.tcx.hir().local_def_id_from_hir_id(struct_field.hir_id);
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.type_of(def_id));
                 }
@@ -560,7 +560,8 @@ impl LintPass for MissingCopyImplementations {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        if !cx.access_levels.is_reachable(item.id) {
+        let node_id = cx.tcx.hir().hir_to_node_id(item.hir_id);
+        if !cx.access_levels.is_reachable(node_id) {
             return;
         }
         let (def, ty) = match item.node {
@@ -631,7 +632,8 @@ impl LintPass for MissingDebugImplementations {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        if !cx.access_levels.is_reachable(item.id) {
+        let node_id = cx.tcx.hir().hir_to_node_id(item.hir_id);
+        if !cx.access_levels.is_reachable(node_id) {
             return;
         }
 
@@ -1078,7 +1080,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item) {
         if let hir::ItemKind::Union(ref vdata, _) = item.node {
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.type_of(ctx.tcx.hir().local_def_id(field.id));
+                let field_ty = ctx.tcx.type_of(
+                    ctx.tcx.hir().local_def_id_from_hir_id(field.hir_id));
                 if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,

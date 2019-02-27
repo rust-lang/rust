@@ -447,7 +447,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.predicates_of(def_id);
 
             for f in struct_def.fields() {
-                let def_id = tcx.hir().local_def_id(f.id);
+                let def_id = tcx.hir().local_def_id_from_hir_id(f.hir_id);
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);
@@ -555,7 +555,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
         );
 
         for f in variant.node.data.fields() {
-            let def_id = tcx.hir().local_def_id(f.id);
+            let def_id = tcx.hir().local_def_id_from_hir_id(f.hir_id);
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
@@ -582,7 +582,7 @@ fn convert_variant<'a, 'tcx>(
         .fields()
         .iter()
         .map(|f| {
-            let fid = tcx.hir().local_def_id(f.id);
+            let fid = tcx.hir().local_def_id_from_hir_id(f.hir_id);
             let dup_span = seen_fields.get(&f.ident.modern()).cloned();
             if let Some(prev_span) = dup_span {
                 struct_span_err!(
@@ -1577,7 +1577,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
             let ty = tcx.type_of(tcx.hir().get_parent_did(node_id));
             let inputs = fields
                 .iter()
-                .map(|f| tcx.type_of(tcx.hir().local_def_id(f.id)));
+                .map(|f| tcx.type_of(tcx.hir().local_def_id_from_hir_id(f.hir_id)));
             ty::Binder::bind(tcx.mk_fn_sig(
                 inputs,
                 ty,

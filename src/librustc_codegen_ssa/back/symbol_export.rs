@@ -69,7 +69,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut reachable_non_generics: DefIdMap<_> = tcx.reachable_set(LOCAL_CRATE).0
         .iter()
-        .filter_map(|&node_id| {
+        .filter_map(|&hir_id| {
             // We want to ignore some FFI functions that are not exposed from
             // this crate. Reachable FFI functions can be lumped into two
             // categories:
@@ -83,9 +83,9 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir().get(node_id) {
+            match tcx.hir().get_by_hir_id(hir_id) {
                 Node::ForeignItem(..) => {
-                    let def_id = tcx.hir().local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     if tcx.is_statically_included_foreign_item(def_id) {
                         Some(def_id)
                     } else {
@@ -105,7 +105,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     node: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
-                    let def_id = tcx.hir().local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
@@ -343,8 +343,8 @@ fn upstream_monomorphizations_for_provider<'a, 'tcx>(
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
+    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+        !tcx.reachable_set(LOCAL_CRATE).0.contains(&hir_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
              def_id)

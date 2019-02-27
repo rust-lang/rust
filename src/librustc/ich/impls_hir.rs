@@ -838,7 +838,6 @@ impl_stable_hash_for!(struct hir::StructField {
     span,
     ident -> (ident.name),
     vis,
-    id,
     hir_id,
     ty,
     attrs
