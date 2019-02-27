@@ -416,11 +416,17 @@ impl<'a> PoolDispatcher<'a> {
                             }
                             Err(e) => {
                                 if is_canceled(&e) {
-                                    RawResponse::err(
-                                        id,
-                                        ErrorCode::ContentModified as i32,
-                                        "content modified".to_string(),
-                                    )
+                                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
+                                    // gets fixed, we can return the proper response.
+                                    // This works around the issue where "content modified" error would continuously
+                                    // show an message pop-up in VsCode
+                                    // RawResponse::err(
+                                    //     id,
+                                    //     ErrorCode::ContentModified as i32,
+                                    //     "content modified".to_string(),
+                                    // )
+                                    RawResponse::empty(id)
+
                                 } else {
                                     RawResponse::err(
                                         id,
