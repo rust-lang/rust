@@ -5,7 +5,7 @@ use if_chain::if_chain;
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
@@ -209,7 +209,7 @@ pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     needed_resolution: bool,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
 }
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
