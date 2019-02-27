@@ -1578,7 +1578,7 @@ pub trait BufRead: Read {
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
-    /// An empty buffer returned indicates that the stream has reached EOF.
+    /// If this function returns `Ok(0)`, the stream has reached EOF.
     ///
     /// # Errors
     ///
