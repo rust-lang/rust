@@ -179,6 +179,13 @@ fn option_methods() {
     // macro case
     let _ = opt_map!(opt, |x| x + 1).unwrap_or(0); // should not lint
 
+    // Should not lint if not copyable
+    let id: String = "identifier".to_string();
+    let _ = Some("prefix").map(|p| format!("{}.{}", p, id)).unwrap_or(id);
+    // ...but DO lint if the `unwrap_or` argument is not used in the `map`
+    let id: String = "identifier".to_string();
+    let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
+
     // Check OPTION_MAP_UNWRAP_OR_ELSE
     // single line case
     let _ = opt.map(|x| x + 1)
