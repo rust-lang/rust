@@ -26,7 +26,9 @@ use ra_lsp_server::{
 
 pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
-    INIT.call_once(|| Logger::with_env_or_str(crate::LOG).start().unwrap());
+    INIT.call_once(|| {
+        let _ = Logger::with_env_or_str(crate::LOG).start().unwrap();
+    });
 
     let tmp_dir = TempDir::new().unwrap();
     let mut paths = vec![];
