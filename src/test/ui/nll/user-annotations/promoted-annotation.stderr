@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/promoted-annotation.rs:8:7
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let x = 0;
+LL |     let f = &drop::<&'a i32>;
+   |             ---------------- assignment requires that `x` is borrowed for `'a`
+LL |     f(&x);
+   |       ^^ borrowed value does not live long enough
+LL |     //~^ ERROR `x` does not live long enough
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.
