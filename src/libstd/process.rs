@@ -1015,7 +1015,7 @@ impl From<ChildStdin> for Stdio {
     ///
     /// `ChildStdin` will be converted to `Stdio` using `Stdio::from` under the hood.
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// use std::process::{Command, Stdio};
     ///
     /// let reverse = Command::new("rev")
@@ -1044,7 +1044,7 @@ impl From<ChildStdout> for Stdio {
     ///
     /// `ChildStdout` will be converted to `Stdio` using `Stdio::from` under the hood.
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// use std::process::{Command, Stdio};
     ///
     /// let hello = Command::new("echo")
