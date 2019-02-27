@@ -397,10 +397,14 @@ impl<'a, 'tcx> Index<'tcx> {
             active_features: Default::default(),
         };
 
-        let ref active_lib_features = tcx.features().declared_lib_features;
+        let active_lib_features = &tcx.features().declared_lib_features;
+        let active_lang_features = &tcx.features().declared_lang_features;
 
-        // Put the active features into a map for quick lookup
-        index.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
+        // Put the active features into a map for quick lookup.
+        index.active_features =
+            active_lib_features.iter().map(|&(ref s, ..)| s.clone())
+            .chain(active_lang_features.iter().map(|&(ref s, ..)| s.clone()))
+            .collect();
 
         {
             let krate = tcx.hir().krate();
