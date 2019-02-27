@@ -76,7 +76,7 @@ fn test_to_digit() {
 #[test]
 fn test_to_lowercase() {
     fn lower(c: char) -> String {
-        let to_lowercase = c.to_uppercase();
+        let to_lowercase = c.to_lowercase();
         assert_eq!(to_lowercase.len(), to_lowercase.count());
         let iter: String = c.to_lowercase().collect();
         let disp: String = c.to_lowercase().to_string();
