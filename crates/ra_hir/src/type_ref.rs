@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use ra_syntax::ast;
+use ra_syntax::ast::{self, TypeAscriptionOwner};
 
 use crate::Path;
 
@@ -81,7 +81,7 @@ impl TypeRef {
             FnPointerType(inner) => {
                 let ret_ty = TypeRef::from_ast_opt(inner.ret_type().and_then(|rt| rt.type_ref()));
                 let mut params = if let Some(pl) = inner.param_list() {
-                    pl.params().map(|p| p.type_ref()).map(TypeRef::from_ast_opt).collect()
+                    pl.params().map(|p| p.ascribed_type()).map(TypeRef::from_ast_opt).collect()
                 } else {
                     Vec::new()
                 };

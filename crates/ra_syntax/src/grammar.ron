@@ -271,7 +271,15 @@ Grammar(
             ]
         ),
         "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
-        "NamedFieldDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner"], options: ["TypeRef"] ),
+        "NamedFieldDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "AttrsOwner",
+                "DocCommentsOwner",
+                "TypeAscriptionOwner"
+            ]
+        ),
         "PosFieldDefList": (collections: [["fields", "PosFieldDef"]]),
         "PosFieldDef": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
@@ -298,9 +306,9 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
-                "DocCommentsOwner"
+                "DocCommentsOwner",
+                "TypeAscriptionOwner",
             ],
-            options: ["TypeRef"]
         ),
         "StaticDef": (
             traits: [
@@ -308,9 +316,9 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
-                "DocCommentsOwner"
+                "DocCommentsOwner",
+                "TypeAscriptionOwner",
             ],
-            options: ["TypeRef"]
         ),
         "TypeAliasDef": (
             traits: [
@@ -569,11 +577,15 @@ Grammar(
         "ExprStmt": (
             options: [ ["expr", "Expr"] ]
         ),
-        "LetStmt": ( options: [
-            ["pat", "Pat"],
-            ["type_ref", "TypeRef"],
-            ["initializer", "Expr"],
-        ]),
+        "LetStmt": (
+            options: [
+                ["pat", "Pat"],
+                ["initializer", "Expr"],
+            ],
+            traits: [
+                "TypeAscriptionOwner",
+            ]
+        ),
         "Condition": (
             options: [ "Pat", "Expr" ]
         ),
@@ -595,10 +607,18 @@ Grammar(
                 ["params", "Param"]
             ]
         ),
-        "SelfParam": (options: ["TypeRef", "SelfKw"]),
+        "SelfParam": (
+            options: ["SelfKw"],
+            traits: [
+                "TypeAscriptionOwner",
+            ]
+        ),
         "SelfKw": (),
         "Param": (
-            options: [ "Pat", "TypeRef" ],
+            options: [ "Pat" ],
+            traits: [
+                "TypeAscriptionOwner",
+            ]
         ),
         "UseItem": (
             traits: ["AttrsOwner"],

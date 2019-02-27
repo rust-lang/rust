@@ -6,7 +6,7 @@ use std::sync::Arc;
 use ra_arena::{RawId, Arena, impl_arena_id};
 use ra_syntax::{
     TreeArc,
-    ast::{self, NameOwner, StructFlavor}
+    ast::{self, NameOwner, StructFlavor, TypeAscriptionOwner}
 };
 
 use crate::{
@@ -164,7 +164,7 @@ impl VariantData {
                     .fields()
                     .map(|fd| StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: TypeRef::from_ast_opt(fd.type_ref()),
+                        type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
                     })
                     .collect();
                 VariantDataInner::Struct(fields)

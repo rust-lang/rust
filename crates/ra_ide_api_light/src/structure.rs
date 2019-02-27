@@ -2,7 +2,7 @@ use crate::TextRange;
 
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{self, AttrsOwner, NameOwner, TypeParamsOwner},
+    ast::{self, AttrsOwner, NameOwner, TypeParamsOwner, TypeAscriptionOwner},
     AstNode, SourceFile, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
@@ -43,6 +43,12 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     fn decl<N: NameOwner + AttrsOwner>(node: &N) -> Option<StructureNode> {
         decl_with_detail(node, None)
+    }
+
+    fn decl_with_ascription<N: NameOwner + AttrsOwner + TypeAscriptionOwner>(
+        node: &N,
+    ) -> Option<StructureNode> {
+        decl_with_type_ref(node, node.ascribed_type())
     }
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
@@ -107,14 +113,14 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             decl_with_detail(fn_def, Some(detail))
         })
         .visit(decl::<ast::StructDef>)
-        .visit(|nfd: &ast::NamedFieldDef| decl_with_type_ref(nfd, nfd.type_ref()))
         .visit(decl::<ast::EnumDef>)
         .visit(decl::<ast::EnumVariant>)
         .visit(decl::<ast::TraitDef>)
         .visit(decl::<ast::Module>)
         .visit(|td: &ast::TypeAliasDef| decl_with_type_ref(td, td.type_ref()))
-        .visit(|cd: &ast::ConstDef| decl_with_type_ref(cd, cd.type_ref()))
-        .visit(|sd: &ast::StaticDef| decl_with_type_ref(sd, sd.type_ref()))
+        .visit(decl_with_ascription::<ast::NamedFieldDef>)
+        .visit(decl_with_ascription::<ast::ConstDef>)
+        .visit(decl_with_ascription::<ast::StaticDef>)
         .visit(|im: &ast::ImplBlock| {
             let target_type = im.target_type()?;
             let target_trait = im.target_trait();

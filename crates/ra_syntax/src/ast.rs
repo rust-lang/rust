@@ -31,6 +31,12 @@ pub trait AstToken: AstNode {
     }
 }
 
+pub trait TypeAscriptionOwner: AstNode {
+    fn ascribed_type(&self) -> Option<&TypeRef> {
+        child_opt(self)
+    }
+}
+
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<&Name> {
         child_opt(self)
