@@ -1133,8 +1133,8 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
-impl<'a, T> Clone for IntersectionOther<'a, T> {
-    fn clone(&self) -> IntersectionOther<'a, T> {
+impl<T> Clone for IntersectionOther<'_, T> {
+    fn clone(&self) -> Self {
         match &self {
             IntersectionOther::Stitch(range) => IntersectionOther::Stitch(range.clone()),
             IntersectionOther::Search(set) => IntersectionOther::Search(set),
