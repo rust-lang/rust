@@ -2,14 +2,17 @@ use std::sync::Arc;
 
 use crate::clean::{Crate, Item};
 use crate::clean::cfg::Cfg;
+use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
 
-pub const PROPAGATE_DOC_CFG: Pass =
-    Pass::late("propagate-doc-cfg", propagate_doc_cfg,
-        "propagates `#[doc(cfg(...))]` to child items");
+pub const PROPAGATE_DOC_CFG: Pass = Pass {
+    name: "propagate-doc-cfg",
+    pass: propagate_doc_cfg,
+    description: "propagates `#[doc(cfg(...))]` to child items",
+};
 
-pub fn propagate_doc_cfg(cr: Crate) -> Crate {
+pub fn propagate_doc_cfg(cr: Crate, _: &DocContext<'_, '_, '_>) -> Crate {
     CfgPropagator { parent_cfg: None }.fold_crate(cr)
 }
 
