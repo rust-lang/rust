@@ -53,7 +53,7 @@ Language
   ```
 - [`extern` functions will now abort by default when panicking.][55982]
   This was previously undefined behaviour.
-- [You may now use `Rc`, `Arc` and `Pin` as method receivers](56805)
+- [You may now use `Rc`, `Arc` and `Pin` as method receivers][56805].
 
 Compiler
 --------
