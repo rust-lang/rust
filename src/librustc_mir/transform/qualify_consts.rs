@@ -507,7 +507,7 @@ impl Qualif for IsNotPromotable {
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
         callee: &Operand<'tcx>,
-        _args: &[Operand<'tcx>],
+        args: &[Operand<'tcx>],
         _return_ty: Ty<'tcx>,
     ) -> bool {
         if cx.mode == Mode::Fn {
@@ -520,10 +520,7 @@ impl Qualif for IsNotPromotable {
             }
         }
 
-        // FIXME(eddyb) do we need "not promotable" in anything
-        // other than `Mode::Fn` by any chance?
-
-        false
+        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
     }
 }
 
