@@ -99,10 +99,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_access(&mut self, lhs: &hir::Expr, node_id: ast::NodeId) {
+    fn handle_field_access(&mut self, lhs: &hir::Expr, hir_id: hir::HirId) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::Adt(def, _) => {
-                let index = self.tcx.field_index(node_id, self.tables);
+                let index = self.tcx.field_index(hir_id, self.tables);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
@@ -120,7 +120,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let PatKind::Wild = pat.node.pat.node {
                 continue;
             }
-            let index = self.tcx.field_index(pat.node.id, self.tables);
+            let index = self.tcx.field_index(pat.node.hir_id, self.tables);
             self.insert_def_id(variant.fields[index].did);
         }
     }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &hir::HirVec<hir::Field>) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
             for field in fields {
-                let index = self.tcx.field_index(field.id, self.tables);
+                let index = self.tcx.field_index(field.hir_id, self.tables);
                 self.insert_def_id(adt.non_enum_variant().fields[index].did);
             }
         }
@@ -211,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
-                          _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
+                          _: &hir::Generics, _: hir::HirId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
@@ -232,7 +232,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprKind::Field(ref lhs, ..) => {
-                self.handle_field_access(&lhs, expr.id);
+                self.handle_field_access(&lhs, expr.hir_id);
             }
             hir::ExprKind::Struct(_, ref fields, _) => {
                 if let ty::Adt(ref adt, _) = self.tables.expr_ty(expr).sty {
@@ -570,7 +570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     fn visit_variant(&mut self,
                      variant: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
-                     id: ast::NodeId) {
+                     id: hir::HirId) {
         if self.should_warn_about_variant(&variant.node) {
             self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.ident.name,
                                 "variant", "constructed");

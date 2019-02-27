@@ -7,7 +7,7 @@ use crate::hir::{self, Node};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use crate::ty::subst::{Subst, Substs, UnpackedKind};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
@@ -588,8 +588,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Given the `DefId` of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self, item_def_id, |param, _| {
+    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
+        InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.types.re_erased.into(),
                 GenericParamDefKind::Type {..} => {
@@ -633,7 +633,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         use crate::ty::fold::TypeFolder;
 
@@ -652,7 +652,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fn expand_opaque_ty(
                 &mut self,
                 def_id: DefId,
-                substs: &'tcx Substs<'tcx>,
+                substs: SubstsRef<'tcx>,
             ) -> Option<Ty<'tcx>> {
                 if self.found_recursion {
                     None

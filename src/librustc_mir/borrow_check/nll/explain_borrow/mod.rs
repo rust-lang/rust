@@ -1,14 +1,16 @@
+use std::collections::VecDeque;
+
 use crate::borrow_check::borrow_set::BorrowData;
 use crate::borrow_check::error_reporting::UseSpans;
-use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::nll::region_infer::{Cause, RegionName};
+use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::ty::{self, TyCtxt};
 use rustc::mir::{
-    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand,
-    Place, Projection, ProjectionElem, Rvalue, Statement, StatementKind,
-    TerminatorKind
+    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand, Place, Projection,
+    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
 };
+use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -60,50 +62,58 @@ impl BorrowExplanation {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture => "borrow later captured here by trait object",
                     LaterUseKind::ClosureCapture => "borrow later captured here by closure",
-                    LaterUseKind::Call =>  "borrow later used by call",
+                    LaterUseKind::Call => "borrow later used by call",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow later used here",
                 };
                 err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
-            },
+            }
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
-                    LaterUseKind::TraitCapture =>
-                        "borrow captured here by trait object, in later iteration of loop",
-                    LaterUseKind::ClosureCapture =>
-                        "borrow captured here by closure, in later iteration of loop",
-                    LaterUseKind::Call =>  "borrow used by call, in later iteration of loop",
+                    LaterUseKind::TraitCapture => {
+                        "borrow captured here by trait object, in later iteration of loop"
+                    }
+                    LaterUseKind::ClosureCapture => {
+                        "borrow captured here by closure, in later iteration of loop"
+                    }
+                    LaterUseKind::Call => "borrow used by call, in later iteration of loop",
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
                 err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
-            },
-            BorrowExplanation::UsedLaterWhenDropped { drop_loc, dropped_local,
-                                                      should_note_order } =>
-            {
+            }
+            BorrowExplanation::UsedLaterWhenDropped {
+                drop_loc,
+                dropped_local,
+                should_note_order,
+            } => {
                 let local_decl = &mir.local_decls[dropped_local];
                 let (dtor_desc, type_desc) = match local_decl.ty.sty {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
-                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() =>
-                        ("`Drop` code", format!("type `{}`", tcx.item_path_str(adt.did))),
+                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => (
+                        "`Drop` code",
+                        format!("type `{}`", tcx.item_path_str(adt.did)),
+                    ),
 
                     // Otherwise, just report the whole type (and use
                     // the intentionally fuzzy phrase "destructor")
-                    ty::Closure(..) =>
-                        ("destructor", "closure".to_owned()),
-                    ty::Generator(..) =>
-                        ("destructor", "generator".to_owned()),
+                    ty::Closure(..) => ("destructor", "closure".to_owned()),
+                    ty::Generator(..) => ("destructor", "generator".to_owned()),
 
                     _ => ("destructor", format!("type `{}`", local_decl.ty)),
                 };
 
                 match local_decl.name {
                     Some(local_name) => {
-                        let message =
-                            format!("{B}borrow might be used here, when `{LOC}` is dropped \
-                                     and runs the {DTOR} for {TYPE}",
-                                    B=borrow_desc, LOC=local_name, TYPE=type_desc, DTOR=dtor_desc);
+                        let message = format!(
+                            "{B}borrow might be used here, when `{LOC}` is dropped \
+                             and runs the {DTOR} for {TYPE}",
+                            B = borrow_desc,
+                            LOC = local_name,
+                            TYPE = type_desc,
+                            DTOR = dtor_desc
+                        );
                         err.span_label(mir.source_info(drop_loc).span, message);
 
                         if should_note_order {
@@ -114,15 +124,22 @@ impl BorrowExplanation {
                         }
                     }
                     None => {
-                        err.span_label(local_decl.source_info.span,
-                                       format!("a temporary with access to the {B}borrow \
-                                                is created here ...",
-                                               B=borrow_desc));
-                        let message =
-                            format!("... and the {B}borrow might be used here, \
-                                     when that temporary is dropped \
-                                     and runs the {DTOR} for {TYPE}",
-                                    B=borrow_desc, TYPE=type_desc, DTOR=dtor_desc);
+                        err.span_label(
+                            local_decl.source_info.span,
+                            format!(
+                                "a temporary with access to the {B}borrow \
+                                 is created here ...",
+                                B = borrow_desc
+                            ),
+                        );
+                        let message = format!(
+                            "... and the {B}borrow might be used here, \
+                             when that temporary is dropped \
+                             and runs the {DTOR} for {TYPE}",
+                            B = borrow_desc,
+                            TYPE = type_desc,
+                            DTOR = dtor_desc
+                        );
                         err.span_label(mir.source_info(drop_loc).span, message);
 
                         if let Some(info) = &local_decl.is_block_tail {
@@ -146,7 +163,7 @@ impl BorrowExplanation {
                         }
                     }
                 }
-            },
+            }
             BorrowExplanation::MustBeValidFor {
                 category,
                 span,
@@ -157,18 +174,28 @@ impl BorrowExplanation {
                 region_name.highlight_region_name(err);
 
                 if let Some(desc) = opt_place_desc {
-                    err.span_label(span, format!(
-                        "{}requires that `{}` is borrowed for `{}`",
-                        category.description(), desc, region_name,
-                    ));
+                    err.span_label(
+                        span,
+                        format!(
+                            "{}requires that `{}` is borrowed for `{}`",
+                            category.description(),
+                            desc,
+                            region_name,
+                        ),
+                    );
                 } else {
-                    err.span_label(span, format!(
-                        "{}requires that {}borrow lasts for `{}`",
-                        category.description(), borrow_desc, region_name,
-                    ));
+                    err.span_label(
+                        span,
+                        format!(
+                            "{}requires that {}borrow lasts for `{}`",
+                            category.description(),
+                            borrow_desc,
+                            region_name,
+                        ),
+                    );
                 };
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }
@@ -214,13 +241,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             region_sub
         );
 
-         match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
+        match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
             Some(Cause::LiveVar(local, location)) => {
                 let span = mir.source_info(location).span;
-                let spans = self.move_spans(&Place::Local(local), location)
+                let spans = self
+                    .move_spans(&Place::Local(local), location)
                     .or_else(|| self.borrow_spans(span, location));
 
-                if self.is_borrow_location_in_loop(context.loc) {
+                let borrow_location = context.loc;
+                if self.is_use_in_later_iteration_of_loop(borrow_location, location) {
                     let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
@@ -232,127 +261,191 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
 
-             Some(Cause::DropVar(local, location)) => {
-                 let mut should_note_order = false;
-                 if mir.local_decls[local].name.is_some() {
-                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                         if let Place::Local(borrowed_local) = place {
-                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
-                             let borrowed_local_scope =
-                                 mir.local_decls[*borrowed_local].visibility_scope;
+            Some(Cause::DropVar(local, location)) => {
+                let mut should_note_order = false;
+                if mir.local_decls[local].name.is_some() {
+                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
+                        if let Place::Local(borrowed_local) = place {
+                            let dropped_local_scope = mir.local_decls[local].visibility_scope;
+                            let borrowed_local_scope =
+                                mir.local_decls[*borrowed_local].visibility_scope;
 
-                             if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope)
-                                 && local != *borrowed_local
-                             {
-                                 should_note_order = true;
-                             }
-                         }
-                     }
-                 }
+                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope)
+                                && local != *borrowed_local
+                            {
+                                should_note_order = true;
+                            }
+                        }
+                    }
+                }
 
-                 BorrowExplanation::UsedLaterWhenDropped {
-                     drop_loc: location,
-                     dropped_local: local,
-                     should_note_order,
-                 }
+                BorrowExplanation::UsedLaterWhenDropped {
+                    drop_loc: location,
+                    dropped_local: local,
+                    should_note_order,
+                }
             }
 
-            None => if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
-                let (category, from_closure, span, region_name) = self
-                    .nonlexical_regioncx
-                    .free_region_constraint_info(
-                        self.mir,
-                        self.mir_def_id,
-                        self.infcx,
-                        borrow_region_vid,
-                        region,
-                    );
-                if let Some(region_name) = region_name {
-                    let opt_place_desc = self.describe_place(&borrow.borrowed_place);
-                    BorrowExplanation::MustBeValidFor {
-                        category,
-                        from_closure,
-                        span,
-                        region_name,
-                        opt_place_desc,
+            None => {
+                if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
+                    let (category, from_closure, span, region_name) =
+                        self.nonlexical_regioncx.free_region_constraint_info(
+                            self.mir,
+                            self.mir_def_id,
+                            self.infcx,
+                            borrow_region_vid,
+                            region,
+                        );
+                    if let Some(region_name) = region_name {
+                        let opt_place_desc = self.describe_place(&borrow.borrowed_place);
+                        BorrowExplanation::MustBeValidFor {
+                            category,
+                            from_closure,
+                            span,
+                            region_name,
+                            opt_place_desc,
+                        }
+                    } else {
+                        BorrowExplanation::Unexplained
                     }
                 } else {
                     BorrowExplanation::Unexplained
                 }
-            } else {
-                BorrowExplanation::Unexplained
             }
         }
     }
 
-    /// Checks if a borrow location is within a loop.
-    fn is_borrow_location_in_loop(
+    /// true if `borrow_location` can reach `use_location` by going through a loop and
+    /// `use_location` is also inside of that loop
+    fn is_use_in_later_iteration_of_loop(
         &self,
         borrow_location: Location,
+        use_location: Location,
     ) -> bool {
-        let mut visited_locations = Vec::new();
-        let mut pending_locations = vec![ borrow_location ];
-        debug!("is_in_loop: borrow_location={:?}", borrow_location);
+        let back_edge = self.reach_through_backedge(borrow_location, use_location);
+        back_edge.map_or(false, |back_edge| {
+            self.can_reach_head_of_loop(use_location, back_edge)
+        })
+    }
 
-        while let Some(location) = pending_locations.pop() {
-            debug!("is_in_loop: location={:?} pending_locations={:?} visited_locations={:?}",
-                   location, pending_locations, visited_locations);
-            if location == borrow_location && visited_locations.contains(&borrow_location) {
-                // We've managed to return to where we started (and this isn't the start of the
-                // search).
-                debug!("is_in_loop: found!");
-                return true;
+    /// Returns the outmost back edge if `from` location can reach `to` location passing through
+    /// that back edge
+    fn reach_through_backedge(&self, from: Location, to: Location) -> Option<Location> {
+        let mut visited_locations = FxHashSet::default();
+        let mut pending_locations = VecDeque::new();
+        visited_locations.insert(from);
+        pending_locations.push_back(from);
+        debug!("reach_through_backedge: from={:?} to={:?}", from, to,);
+
+        let mut outmost_back_edge = None;
+        while let Some(location) = pending_locations.pop_front() {
+            debug!(
+                "reach_through_backedge: location={:?} outmost_back_edge={:?}
+                   pending_locations={:?} visited_locations={:?}",
+                location, outmost_back_edge, pending_locations, visited_locations
+            );
+
+            if location == to && outmost_back_edge.is_some() {
+                // We've managed to reach the use location
+                debug!("reach_through_backedge: found!");
+                return outmost_back_edge;
             }
-
-            // Skip locations we've been.
-            if visited_locations.contains(&location) { continue; }
 
             let block = &self.mir.basic_blocks()[location.block];
-            if location.statement_index ==  block.statements.len() {
-                // Add start location of the next blocks to pending locations.
-                match block.terminator().kind {
-                    TerminatorKind::Goto { target } => {
-                        pending_locations.push(target.start_location());
-                    },
-                    TerminatorKind::SwitchInt { ref targets, .. } => {
-                        pending_locations.extend(
-                            targets.into_iter().map(|target| target.start_location()));
-                    },
-                    TerminatorKind::Drop { target, unwind, .. } |
-                    TerminatorKind::DropAndReplace { target, unwind, .. } |
-                    TerminatorKind::Assert { target, cleanup: unwind, .. } |
-                    TerminatorKind::Yield { resume: target, drop: unwind, .. } |
-                    TerminatorKind::FalseUnwind { real_target: target, unwind, .. } => {
-                        pending_locations.push(target.start_location());
-                        if let Some(unwind) = unwind {
-                            pending_locations.push(unwind.start_location());
-                        }
-                    },
-                    TerminatorKind::Call { ref destination, cleanup, .. } => {
-                        if let Some((_, destination)) = destination {
-                            pending_locations.push(destination.start_location());
-                        }
-                        if let Some(cleanup) = cleanup {
-                            pending_locations.push(cleanup.start_location());
-                        }
-                    },
-                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets, .. } => {
-                        pending_locations.push(real_target.start_location());
-                        pending_locations.extend(
-                            imaginary_targets.into_iter().map(|target| target.start_location()));
-                    },
-                    _ => {},
+
+            if location.statement_index < block.statements.len() {
+                let successor = location.successor_within_block();
+                if visited_locations.insert(successor) {
+                    pending_locations.push_back(successor);
                 }
             } else {
-                // Add the next statement to pending locations.
-                pending_locations.push(location.successor_within_block());
-            }
+                pending_locations.extend(
+                    block
+                        .terminator()
+                        .successors()
+                        .map(|bb| Location {
+                            statement_index: 0,
+                            block: *bb,
+                        })
+                        .filter(|s| visited_locations.insert(*s))
+                        .map(|s| {
+                            if self.is_back_edge(location, s) {
+                                match outmost_back_edge {
+                                    None => {
+                                        outmost_back_edge = Some(location);
+                                    }
 
-            // Keep track of where we have visited.
-            visited_locations.push(location);
+                                    Some(back_edge)
+                                        if location.dominates(back_edge, &self.dominators) =>
+                                    {
+                                        outmost_back_edge = Some(location);
+                                    }
+
+                                    Some(_) => {}
+                                }
+                            }
+
+                            s
+                        }),
+                );
+            }
+        }
+
+        None
+    }
+
+    /// true if `from` location can reach `loop_head` location and `loop_head` dominates all the
+    /// intermediate nodes
+    fn can_reach_head_of_loop(&self, from: Location, loop_head: Location) -> bool {
+        self.find_loop_head_dfs(from, loop_head, &mut FxHashSet::default())
+    }
+
+    fn find_loop_head_dfs(
+        &self,
+        from: Location,
+        loop_head: Location,
+        visited_locations: &mut FxHashSet<Location>,
+    ) -> bool {
+        visited_locations.insert(from);
+
+        if from == loop_head {
+            return true;
+        }
+
+        if loop_head.dominates(from, &self.dominators) {
+            let block = &self.mir.basic_blocks()[from.block];
+
+            if from.statement_index < block.statements.len() {
+                let successor = from.successor_within_block();
+
+                if !visited_locations.contains(&successor)
+                    && self.find_loop_head_dfs(successor, loop_head, visited_locations)
+                {
+                    return true;
+                }
+            } else {
+                for bb in block.terminator().successors() {
+                    let successor = Location {
+                        statement_index: 0,
+                        block: *bb,
+                    };
+
+                    if !visited_locations.contains(&successor)
+                        && self.find_loop_head_dfs(successor, loop_head, visited_locations)
+                    {
+                        return true;
+                    }
+                }
+            }
         }
 
         false
+    }
+
+    /// True if an edge `source -> target` is a backedge -- in other words, if the target
+    /// dominates the source.
+    fn is_back_edge(&self, source: Location, target: Location) -> bool {
+        target.dominates(source, &self.mir.dominators())
     }
 
     /// Determine how the borrow was later used.
@@ -360,27 +453,31 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         borrow: &BorrowData<'tcx>,
         use_spans: UseSpans,
-        location: Location
+        location: Location,
     ) -> (LaterUseKind, Span) {
         match use_spans {
             UseSpans::ClosureUse { var_span, .. } => {
                 // Used in a closure.
                 (LaterUseKind::ClosureCapture, var_span)
-            },
+            }
             UseSpans::OtherUse(span) => {
                 let block = &self.mir.basic_blocks()[location.block];
 
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
                     ..
-                }) = block.statements.get(location.statement_index) {
+                }) = block.statements.get(location.statement_index)
+                {
                     LaterUseKind::FakeLetRead
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
                     if let TerminatorKind::Call {
-                        ref func, from_hir_call: true, ..
-                    } = block.terminator().kind {
+                        ref func,
+                        from_hir_call: true,
+                        ..
+                    } = block.terminator().kind
+                    {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
                             Operand::Constant(c) => c.span,
@@ -391,7 +488,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 } else {
                                     span
                                 }
-                            },
+                            }
                             _ => span,
                         };
                         return (LaterUseKind::Call, function_span);
@@ -415,7 +512,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let location = borrow.reserve_location;
         let block = &self.mir[location.block];
         let stmt = block.statements.get(location.statement_index);
-        debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
+        debug!(
+            "was_captured_by_trait_object: location={:?} stmt={:?}",
+            location, stmt
+        );
 
         // We make a `queue` vector that has the locations we want to visit. As of writing, this
         // will only ever have one item at any given time, but by using a vector, we can pop from
@@ -424,13 +524,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut target = if let Some(&Statement {
             kind: StatementKind::Assign(Place::Local(local), _),
             ..
-        }) = stmt {
+        }) = stmt
+        {
             local
         } else {
             return false;
         };
 
-        debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
+        debug!(
+            "was_captured_by_trait: target={:?} queue={:?}",
+            target, queue
+        );
         while let Some(current_location) = queue.pop() {
             debug!("was_captured_by_trait: target={:?}", target);
             let block = &self.mir[current_location.block];
@@ -441,55 +545,55 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
-                if let StatementKind::Assign(
-                    place,
-                    box rvalue,
-                ) = &stmt.kind {
+                if let StatementKind::Assign(place, box rvalue) = &stmt.kind {
                     let into = match place {
                         Place::Local(into) => into,
                         Place::Projection(box Projection {
                             base: Place::Local(into),
                             elem: ProjectionElem::Deref,
                         }) => into,
-                        _ =>  {
+                        _ => {
                             // Continue at the next location.
                             queue.push(current_location.successor_within_block());
                             continue;
-                        },
+                        }
                     };
 
                     match rvalue {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
                         Rvalue::Use(operand) => match operand {
-                            Operand::Copy(Place::Local(from)) |
-                            Operand::Move(Place::Local(from)) if *from == target => {
+                            Operand::Copy(Place::Local(from))
+                            | Operand::Move(Place::Local(from))
+                                if *from == target =>
+                            {
                                 target = *into;
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         },
                         // If we see a unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(CastKind::Unsize, operand, ty) => match operand {
-                            Operand::Copy(Place::Local(from)) |
-                            Operand::Move(Place::Local(from)) if *from == target => {
+                            Operand::Copy(Place::Local(from))
+                            | Operand::Move(Place::Local(from))
+                                if *from == target =>
+                            {
                                 debug!("was_captured_by_trait_object: ty={:?}", ty);
                                 // Check the type for a trait object.
                                 return match ty.sty {
                                     // `&dyn Trait`
                                     ty::TyKind::Ref(_, ty, _) if ty.is_trait() => true,
                                     // `Box<dyn Trait>`
-                                    _ if ty.is_box() && ty.boxed_ty().is_trait() =>
-                                        true,
+                                    _ if ty.is_box() && ty.boxed_ty().is_trait() => true,
                                     // `dyn Trait`
                                     _ if ty.is_trait() => true,
                                     // Anything else.
                                     _ => false,
                                 };
-                            },
+                            }
                             _ => return false,
                         },
-                        _ => {},
+                        _ => {}
                     }
                 }
 
@@ -504,7 +608,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     destination: Some((Place::Local(dest), block)),
                     args,
                     ..
-                } = &terminator.kind {
+                } = &terminator.kind
+                {
                     debug!(
                         "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
                         target, dest, args

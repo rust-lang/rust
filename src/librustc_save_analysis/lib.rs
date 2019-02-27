@@ -397,7 +397,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     Some(Node::Item(item)) => match item.node {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
-                            qualname.push_str(&self.tcx.hir().node_to_pretty_string(ty.id));
+                            qualname.push_str(&self.tcx.hir().hir_to_pretty_string(ty.hir_id));
 
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;

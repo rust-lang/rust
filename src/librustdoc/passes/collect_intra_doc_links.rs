@@ -1,6 +1,7 @@
 use rustc::lint as lint;
 use rustc::hir;
 use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use syntax;
 use syntax::ast::{self, Ident, NodeId};
@@ -10,19 +11,19 @@ use syntax_pos::DUMMY_SP;
 
 use std::ops::Range;
 
-use core::DocContext;
-use fold::DocFolder;
-use html::markdown::markdown_links;
+use crate::core::DocContext;
+use crate::fold::DocFolder;
+use crate::html::markdown::markdown_links;
+use crate::clean::*;
+use crate::passes::{look_for_tests, Pass};
 
-use clean::*;
-use passes::{look_for_tests, Pass};
 use super::span_of_attrs;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
     Pass::early("collect-intra-doc-links", collect_intra_doc_links,
                 "reads a crate's documentation to resolve intra-doc-links");
 
-pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext) -> Crate {
+pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
         krate
     } else {
@@ -125,6 +126,17 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
                 if let Some(name) = current_item.as_ref() {
                     path = name.clone();
                 }
+            }
+            if let Some(prim) = is_primitive(&path, false) {
+                let did = primitive_impl(cx, &path).ok_or(())?;
+                return cx.tcx.associated_items(did)
+                    .find(|item| item.ident.name == item_name)
+                    .and_then(|item| match item.kind {
+                        ty::AssociatedKind::Method => Some("method"),
+                        _ => None,
+                    })
+                    .map(|out| (prim, Some(format!("{}#{}.{}", path, out, item_name))))
+                    .ok_or(());
             }
 
             // FIXME: `with_scope` requires the `NodeId` of a module.
@@ -423,7 +435,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
 }
 
 /// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
+fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
@@ -451,33 +463,25 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
 /// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
 /// line containing the failure as a note as well.
 fn resolution_failure(
-    cx: &DocContext,
+    cx: &DocContext<'_, '_, '_>,
     attrs: &Attributes,
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
 ) {
     let sp = span_of_attrs(attrs);
-    let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
-    let mut diag = if let Some(link_range) = link_range {
+    let mut diag = cx.tcx.struct_span_lint_node(
+        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        NodeId::from_u32(0),
+        sp,
+        &format!("`[{}]` cannot be resolved, ignoring it...", path_str),
+    );
+    if let Some(link_range) = link_range {
         if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
-            let mut diag = cx.tcx.struct_span_lint_node(
-                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                NodeId::from_u32(0),
-                sp,
-                &msg,
-            );
+            diag.set_span(sp);
             diag.span_label(sp, "cannot be resolved, ignoring");
-            diag
         } else {
-            let mut diag = cx.tcx.struct_span_lint_node(
-                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                NodeId::from_u32(0),
-                sp,
-                &msg,
-            );
-
             // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
             //                       ^     ~~~~
             //                       |     link_range
@@ -494,20 +498,14 @@ fn resolution_failure(
                 before=link_range.start - last_new_line_offset,
                 found=link_range.len(),
             ));
-            diag
         }
-    } else {
-        cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                     NodeId::from_u32(0),
-                                     sp,
-                                     &msg)
     };
     diag.help("to escape `[` and `]` characters, just add '\\' before them like \
                `\\[` or `\\]`");
     diag.emit();
 }
 
-fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
+fn ambiguity_error(cx: &DocContext<'_, '_, '_>, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
@@ -563,7 +561,7 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()> {
+fn handle_variant(cx: &DocContext<'_, '_, '_>, def: Def) -> Result<(Def, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
     let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
@@ -601,5 +599,28 @@ fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
         None
     } else {
         PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1)
+    }
+}
+
+fn primitive_impl(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<DefId> {
+    let tcx = cx.tcx;
+    match path_str {
+        "u8" => tcx.lang_items().u8_impl(),
+        "u16" => tcx.lang_items().u16_impl(),
+        "u32" => tcx.lang_items().u32_impl(),
+        "u64" => tcx.lang_items().u64_impl(),
+        "u128" => tcx.lang_items().u128_impl(),
+        "usize" => tcx.lang_items().usize_impl(),
+        "i8" => tcx.lang_items().i8_impl(),
+        "i16" => tcx.lang_items().i16_impl(),
+        "i32" => tcx.lang_items().i32_impl(),
+        "i64" => tcx.lang_items().i64_impl(),
+        "i128" => tcx.lang_items().i128_impl(),
+        "isize" => tcx.lang_items().isize_impl(),
+        "f32" => tcx.lang_items().f32_impl(),
+        "f64" => tcx.lang_items().f64_impl(),
+        "str" => tcx.lang_items().str_impl(),
+        "char" => tcx.lang_items().char_impl(),
+        _ => None,
     }
 }

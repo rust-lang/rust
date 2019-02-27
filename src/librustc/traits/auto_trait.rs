@@ -631,7 +631,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, substs: &Substs<'_>) -> bool {
+    fn is_param_no_infer(&self, substs: SubstsRef<'_>) -> bool {
         return self.is_of_param(substs.type_at(0)) &&
             !substs.types().any(|t| t.has_infer_types());
     }
@@ -771,7 +771,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
-                    let () = select.infcx().region_outlives_predicate(&dummy_cause, binder);
+                    if select
+                        .infcx()
+                        .region_outlives_predicate(&dummy_cause, binder)
+                        .is_err()
+                    {
+                        return false;
+                    }
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
                     match (

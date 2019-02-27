@@ -18,7 +18,7 @@ use rustc::traits::{
 };
 use rustc::ty::query::Providers;
 use rustc::ty::{self, List, TyCtxt};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use syntax::ast;
 
 use std::iter;
@@ -182,7 +182,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // }
     // ```
 
-    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+    let bound_vars = InternalSubsts::bound_vars_for_item(tcx, def_id);
 
     // `Self: Trait<P1..Pn>`
     let trait_pred = ty::TraitPredicate {
@@ -294,7 +294,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     // }
     // ```
 
-    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+    let bound_vars = InternalSubsts::bound_vars_for_item(tcx, def_id);
 
     let trait_ref = tcx.impl_trait_ref(def_id)
         .expect("not an impl")
@@ -336,7 +336,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     // }
     // ```
 
-    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+    let bound_vars = InternalSubsts::bound_vars_for_item(tcx, def_id);
 
     // `Ty<...>`
     let ty = tcx.type_of(def_id).subst(tcx, bound_vars);
@@ -426,7 +426,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
         _ => bug!("not an trait container"),
     };
 
-    let trait_bound_vars = Substs::bound_vars_for_item(tcx, trait_id);
+    let trait_bound_vars = InternalSubsts::bound_vars_for_item(tcx, trait_id);
     let trait_ref = ty::TraitRef {
         def_id: trait_id,
         substs: trait_bound_vars,
@@ -564,7 +564,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
         _ => bug!("not an impl container"),
     };
 
-    let impl_bound_vars = Substs::bound_vars_for_item(tcx, impl_id);
+    let impl_bound_vars = InternalSubsts::bound_vars_for_item(tcx, impl_id);
 
     // `A0 as Trait<A1..An>`
     let trait_ref = tcx.impl_trait_ref(impl_id)

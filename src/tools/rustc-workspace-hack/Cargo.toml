@@ -56,7 +56,7 @@ features = [
 
 [dependencies]
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
-parking_lot = { version = "0.6", features = ['nightly'] }
+parking_lot = { version = "0.7", features = ['nightly'] }
 rand = { version = "0.5.5", features = ["i128_support"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }

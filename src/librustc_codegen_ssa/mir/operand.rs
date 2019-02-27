@@ -48,7 +48,7 @@ pub struct OperandRef<'tcx, V> {
 }
 
 impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
 }
@@ -101,8 +101,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.cx().const_usize(b);
                 OperandValue::Pair(a_llval, b_llval)
             },
-            ConstValue::ByRef(_, alloc, offset) => {
-                return Ok(bx.load_operand(bx.cx().from_const_alloc(layout, alloc, offset)));
+            ConstValue::ByRef(ptr, alloc) => {
+                return Ok(bx.load_operand(bx.cx().from_const_alloc(layout, alloc, ptr.offset)));
             },
         };
 

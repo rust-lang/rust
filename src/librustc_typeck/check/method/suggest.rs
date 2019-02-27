@@ -72,7 +72,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let report_candidates = |err: &mut DiagnosticBuilder, mut sources: Vec<CandidateSource>| {
+        let report_candidates = |err: &mut DiagnosticBuilder<'_>,
+                                 mut sources: Vec<CandidateSource>| {
             sources.sort();
             sources.dedup();
             // Dynamic limit to avoid hiding just one candidate, which is silly.
@@ -497,11 +498,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn suggest_use_candidates(&self,
-                              err: &mut DiagnosticBuilder,
+                              err: &mut DiagnosticBuilder<'_>,
                               mut msg: String,
                               candidates: Vec<DefId>) {
         let module_did = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
-        let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
+        let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -549,7 +550,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn suggest_valid_traits(&self,
-                            err: &mut DiagnosticBuilder,
+                            err: &mut DiagnosticBuilder<'_>,
                             valid_out_of_scope_traits: Vec<DefId>) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
@@ -577,7 +578,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn suggest_traits_to_import<'b>(&self,
-                                    err: &mut DiagnosticBuilder,
+                                    err: &mut DiagnosticBuilder<'_>,
                                     span: Span,
                                     rcvr_ty: Ty<'tcx>,
                                     item_name: ast::Ident,
@@ -648,8 +649,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_derefs_to_local(&self,
                             span: Span,
                             rcvr_ty: Ty<'tcx>,
-                            source: SelfSource) -> bool {
-        fn is_local(ty: Ty) -> bool {
+                            source: SelfSource<'_>) -> bool {
+        fn is_local(ty: Ty<'_>) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
@@ -749,7 +750,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     // Cross-crate:
 
     let mut external_mods = FxHashSet::default();
-    fn handle_external_def(tcx: TyCtxt,
+    fn handle_external_def(tcx: TyCtxt<'_, '_, '_>,
                            traits: &mut Vec<DefId>,
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
@@ -779,7 +780,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     traits
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(compute_all_traits(tcx))
@@ -787,7 +788,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 }
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
-    target_module: ast::NodeId,
+    target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
     tcx: TyCtxt<'a, 'gcx, 'tcx>
@@ -797,7 +798,7 @@ impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
     fn check(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         krate: &'tcx hir::Crate,
-        target_module: ast::NodeId,
+        target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder {
             target_module,
@@ -815,13 +816,13 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
         &mut self,
         module: &'tcx hir::Mod,
         _: Span,
-        node_id: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
         if self.span.is_some() {
             return;
         }
-        if node_id != self.target_module {
-            hir::intravisit::walk_mod(self, module, node_id);
+        if hir_id != self.target_module {
+            hir::intravisit::walk_mod(self, module, hir_id);
             return;
         }
         // Find a `use` statement.

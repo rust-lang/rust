@@ -745,7 +745,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_, '_>,
 }
 
 fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk: &'tcx hir::Block) {
-    debug!("resolve_block(blk.id={:?})", blk.id);
+    debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
 

@@ -1,5 +1,6 @@
 use cmp;
-use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind};
+use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
+         IoVec};
 use fmt;
 use mem;
 
@@ -11,6 +12,11 @@ impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
     }
 
     #[inline]
@@ -37,6 +43,11 @@ impl<R: Read + ?Sized> Read for &mut R {
 impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        (**self).write_vectored(bufs)
+    }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> { (**self).flush() }
@@ -83,6 +94,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -106,6 +122,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
 impl<W: Write + ?Sized> Write for Box<W> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        (**self).write_vectored(bufs)
+    }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> { (**self).flush() }
@@ -172,6 +193,19 @@ impl Read for &[u8] {
     }
 
     #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let mut nread = 0;
+        for buf in bufs {
+            nread += self.read(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nread)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -232,6 +266,19 @@ impl Write for &mut [u8] {
     }
 
     #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            nwritten += self.write(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nwritten)
+    }
+
+    #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
         if self.write(data)? == data.len() {
             Ok(())
@@ -252,6 +299,16 @@ impl Write for Vec<u8> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.extend_from_slice(buf);
         Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let len = bufs.iter().map(|b| b.len()).sum();
+        self.reserve(len);
+        for buf in bufs {
+            self.extend_from_slice(buf);
+        }
+        Ok(len)
     }
 
     #[inline]

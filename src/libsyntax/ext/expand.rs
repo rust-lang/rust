@@ -25,6 +25,7 @@ use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use std::fs;
 use std::io::ErrorKind;
 use std::{iter, mem};
@@ -36,10 +37,8 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
-            // repetition was removed from 2015 edition in #51587 because of ambiguities.
-            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)*
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)*
+            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
+            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)?
             fn $make_ast:ident;
         })*
     ) => {
@@ -586,14 +585,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             AttrProcMacro(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
-                let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
+                let item_tok = TokenTree::Token(DUMMY_SP, Token::Interpolated(Lrc::new(match item {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
                     Annotatable::ForeignItem(item) => token::NtForeignItem(item.into_inner()),
                     Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                     Annotatable::Expr(expr) => token::NtExpr(expr),
-                })).into();
+                }))).into();
                 let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
                 let tok_result = mac.expand(self.cx, attr.span, input, item_tok);
                 let res = self.parse_ast_fragment(tok_result, invoc.fragment_kind,

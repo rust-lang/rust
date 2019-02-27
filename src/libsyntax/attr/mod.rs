@@ -517,7 +517,7 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments }
             }
-            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
+            Some(TokenTree::Token(_, Token::Interpolated(nt))) => match *nt {
                 token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
@@ -682,7 +682,7 @@ impl LitKind {
         match token {
             Token::Ident(ident, false) if ident.name == "true" => Some(LitKind::Bool(true)),
             Token::Ident(ident, false) if ident.name == "false" => Some(LitKind::Bool(false)),
-            Token::Interpolated(ref nt) => match nt.0 {
+            Token::Interpolated(nt) => match *nt {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => Some(lit.node.clone()),
                     _ => None,

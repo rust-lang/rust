@@ -1,5 +1,5 @@
 use cmp;
-use io::{self, Error, ErrorKind, Result};
+use io::{self, Error, ErrorKind, Result, IoVec, IoVecMut};
 use mem;
 use net::{SocketAddr, Shutdown};
 use path::Path;
@@ -34,8 +34,22 @@ impl TcpStream {
         self.0.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        match bufs.iter_mut().find(|b| !b.is_empty()) {
+            Some(buf) => self.read(buf),
+            None => Ok(0),
+        }
+    }
+
     pub fn write(&self, buf: &[u8]) -> Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        match bufs.iter().find(|b| !b.is_empty()) {
+            Some(buf) => self.write(buf),
+            None => Ok(0),
+        }
     }
 
     pub fn take_error(&self) -> Result<Option<Error>> {

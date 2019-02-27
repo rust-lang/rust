@@ -222,8 +222,8 @@ impl fmt::Debug for Span {
 
 macro_rules! define_client_side {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)*) $(-> $ret_ty:ty)*;)*
-    }),* $(,)*) => {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+    }),* $(,)?) => {
         $(impl $name {
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
                 Bridge::with(|bridge| {

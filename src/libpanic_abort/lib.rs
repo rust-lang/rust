@@ -58,8 +58,9 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 
     #[cfg(all(target_vendor="fortanix", target_env="sgx"))]
     unsafe fn abort() -> ! {
-        extern "C" { pub fn panic_exit() -> !; }
-        panic_exit();
+        // call std::sys::abort_internal
+        extern "C" { pub fn __rust_abort() -> !; }
+        __rust_abort();
     }
 }
 

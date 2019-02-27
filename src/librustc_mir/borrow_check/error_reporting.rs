@@ -130,6 +130,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
 
             let mut is_loop_move = false;
+            let is_partial_move = move_site_vec.iter().any(|move_site| {
+                let move_out = self.move_data.moves[(*move_site).moi];
+                let moved_place = &self.move_data.move_paths[move_out.path].place;
+                used_place != moved_place && used_place.is_prefix_of(moved_place)
+            });
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
@@ -175,8 +180,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.span_label(
                     span,
                     format!(
-                        "value {} here after move",
-                        desired_action.as_verb_in_past_tense()
+                        "value {} here {}",
+                        desired_action.as_verb_in_past_tense(),
+                        if is_partial_move { "after partial move" } else { "after move" },
                     ),
                 );
             }
@@ -1330,22 +1336,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let tcx = self.infcx.tcx;
-        let mut err = if loan.kind == BorrowKind::Shallow {
-            tcx.cannot_mutate_in_match_guard(
+        if loan.kind == BorrowKind::Shallow {
+            let mut err = tcx.cannot_mutate_in_match_guard(
                 span,
                 loan_span,
                 &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
                 "assign",
                 Origin::Mir,
-            )
-        } else {
-            tcx.cannot_assign_to_borrowed(
-                span,
-                loan_span,
-                &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
-                Origin::Mir,
-            )
-        };
+            );
+            loan_spans.var_span_label(
+                &mut err,
+                format!("borrow occurs due to use{}", loan_spans.describe()),
+            );
+
+            err.buffer(&mut self.errors_buffer);
+
+            return;
+        }
+
+        let mut err = tcx.cannot_assign_to_borrowed(
+            span,
+            loan_span,
+            &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
+            Origin::Mir,
+        );
 
         loan_spans.var_span_label(
             &mut err,

@@ -9,6 +9,7 @@ use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
@@ -24,7 +25,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             data: region::ScopeData::Node
         };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
+        debug!("Expr::make_mirror(): id={}, span={:?}", self.hir_id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
 
@@ -44,7 +45,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
-                lint_level: cx.lint_level_of(self.id),
+                lint_level: cx.lint_level_of(self.hir_id),
             },
         };
 
@@ -529,7 +530,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.with_freevars(expr.id, |freevars| {
+            let expr_node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
+            let upvars = cx.tcx.with_freevars(expr_node_id, |freevars| {
                 freevars.iter()
                     .zip(substs.upvar_tys(def_id, cx.tcx))
                     .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
@@ -559,7 +561,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
             let def_id = cx.tcx.hir().local_def_id(count.id);
-            let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
+            let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
                 cx.param_env,
@@ -611,7 +613,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprKind::Match(ref discr, ref arms, _) => {
             ExprKind::Match {
-                discriminant: discr.to_ref(),
+                scrutinee: discr.to_ref(),
                 arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
             }
         }
@@ -637,7 +639,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprKind::Field(ref source, ..) => {
             ExprKind::Field {
                 lhs: source.to_ref(),
-                name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(expr.hir_id, cx.tables)),
             }
         }
         hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -715,7 +717,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
-                            let substs = Substs::identity_for_item(cx.tcx(), did);
+                            let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(ty::LazyConst::Unevaluated(did, substs));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
@@ -833,7 +835,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &hir::Expr,
     span: Span,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
 ) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs, user_ty) = match overloaded_callee {
@@ -1132,7 +1134,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &'tcx hir::Expr,
     place_ty: Ty<'tcx>,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method
@@ -1184,7 +1186,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_hir_id = cx.tcx.hir().node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
@@ -1223,7 +1225,7 @@ fn field_refs<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     fields.iter()
         .map(|field| {
             FieldExprRef {
-                name: Field::new(cx.tcx.field_index(field.id, cx.tables)),
+                name: Field::new(cx.tcx.field_index(field.hir_id, cx.tables)),
                 expr: field.expr.to_ref(),
             }
         })

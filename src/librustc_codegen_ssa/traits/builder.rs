@@ -100,7 +100,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
-        ty: Ty,
+        ty: Ty<'_>,
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value);

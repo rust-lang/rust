@@ -12,7 +12,7 @@ use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use std::cmp;
 use std::iter;
 use rustc_target::spec::abi::Abi;
@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id(expr.id);
+        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,
@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
             liberated_sig,
             decl,
-            expr.id,
+            expr.hir_id,
             body,
             gen,
         ).1;
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
         let base_substs =
-            Substs::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
         let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
@@ -131,8 +131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
-            "check_closure: expr.id={:?} closure_type={:?}",
-            expr.id, closure_type
+            "check_closure: expr.hir_id={:?} closure_type={:?}",
+            expr.hir_id, closure_type
         );
 
         // Tuple up the arguments and insert the resulting function type into
@@ -574,7 +574,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expr_def_id: DefId,
         decl: &hir::FnDecl,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv = self;
+        let astconv: &dyn AstConv<'_, '_> = self;
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
@@ -606,7 +606,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv = self;
+        let astconv: &dyn AstConv<'_, '_> = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

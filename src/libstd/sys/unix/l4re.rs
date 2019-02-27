@@ -5,7 +5,7 @@ macro_rules! unimpl {
 pub mod net {
     #![allow(warnings)]
     use fmt;
-    use io;
+    use io::{self, IoVec, IoVecMut};
     use libc;
     use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
     use sys_common::{AsInner, FromInner, IntoInner};
@@ -46,6 +46,10 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+            unimpl!();
+        }
+
         pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
             unimpl!();
         }
@@ -59,6 +63,10 @@ pub mod net {
         }
 
         pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -144,7 +152,15 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+            unimpl!();
+        }
+
         pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 

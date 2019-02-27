@@ -1,7 +1,5 @@
 // aux-build:derive-b.rs
 
-#![feature(unrestricted_attribute_tokens)]
-
 extern crate derive_b;
 
 #[derive(Debug, PartialEq, derive_b::B, Eq, Copy, Clone)]

@@ -17,6 +17,30 @@ fn ok_mutation_in_guard(mut q: i32) {
     }
 }
 
+fn ok_mutation_in_guard2(mut u: bool) {
+    // OK value of u is unused before modification
+    match u {
+        _ => (),
+        _ if {
+            u = true;
+            false
+        } => (),
+        x => (),
+    }
+}
+
+fn ok_mutation_in_guard4(mut w: (&mut bool,)) {
+    // OK value of u is unused before modification
+    match w {
+        _ => (),
+        _ if {
+            *w.0 = true;
+            false
+        } => (),
+        x => (),
+    }
+}
+
 fn ok_indirect_mutation_in_guard(mut p: &bool) {
     match *p {
         // OK, mutation doesn't change which patterns s matches
@@ -30,7 +54,7 @@ fn ok_indirect_mutation_in_guard(mut p: &bool) {
 
 fn mutation_invalidates_pattern_in_guard(mut q: bool) {
     match q {
-        // s doesn't match the pattern with the guard by the end of the guard.
+        // q doesn't match the pattern with the guard by the end of the guard.
         false if {
             q = true; //~ ERROR
             true
@@ -41,7 +65,7 @@ fn mutation_invalidates_pattern_in_guard(mut q: bool) {
 
 fn mutation_invalidates_previous_pattern_in_guard(mut r: bool) {
     match r {
-        // s matches a previous pattern by the end of the guard.
+        // r matches a previous pattern by the end of the guard.
         true => (),
         _ if {
             r = true; //~ ERROR
@@ -53,8 +77,8 @@ fn mutation_invalidates_previous_pattern_in_guard(mut r: bool) {
 
 fn match_on_borrowed_early_end(mut s: bool) {
     let h = &mut s;
-    match s { //~ ERROR
-        // s changes value between the start of the match and when its value is checked.
+    // OK value of s is unused before modification.
+    match s {
         _ if {
             *h = !*h;
             false
@@ -75,19 +99,7 @@ fn bad_mutation_in_guard(mut t: bool) {
     }
 }
 
-fn bad_mutation_in_guard2(mut u: bool) {
-    match u {
-        // Guard changes the value bound in the last pattern.
-        _ => (),
-        _ if {
-            u = true; //~ ERROR
-            false
-        } => (),
-        x => (),
-    }
-}
-
-pub fn bad_mutation_in_guard3(mut x: Option<Option<&i32>>) {
+fn bad_mutation_in_guard2(mut x: Option<Option<&i32>>) {
     // Check that nested patterns are checked.
     match x {
         None => (),
@@ -103,16 +115,13 @@ pub fn bad_mutation_in_guard3(mut x: Option<Option<&i32>>) {
     }
 }
 
-
-fn bad_mutation_in_guard4(mut w: (&mut bool,)) {
-    match w {
-        // Guard changes the value bound in the last pattern.
-        _ => (),
-        _ if {
-            *w.0 = true; //~ ERROR
+fn bad_mutation_in_guard3(mut t: bool) {
+    match t {
+        s if {
+            t = !t; //~ ERROR
             false
-        } => (),
-        x => (),
+        } => (), // What value should `s` have in the arm?
+        _ => (),
     }
 }
 

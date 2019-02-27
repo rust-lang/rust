@@ -2,7 +2,7 @@
 
 use std::fmt;
 use syntax::ext::base::MacroKind;
-use clean;
+use crate::clean;
 
 /// Item type. Corresponds to `clean::ItemEnum` variants.
 ///
@@ -189,7 +189,7 @@ impl ItemType {
 }
 
 impl fmt::Display for ItemType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.css_class().fmt(f)
     }
 }
@@ -211,7 +211,7 @@ impl NameSpace {
 }
 
 impl fmt::Display for NameSpace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_static_str().fmt(f)
     }
 }

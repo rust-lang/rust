@@ -20,7 +20,7 @@ use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -73,9 +73,9 @@ pub struct OverlapError {
 pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                         param_env: ty::ParamEnv<'tcx>,
                                         source_impl: DefId,
-                                        source_substs: &'tcx Substs<'tcx>,
+                                        source_substs: SubstsRef<'tcx>,
                                         target_node: specialization_graph::Node)
-                                        -> &'tcx Substs<'tcx> {
+                                        -> SubstsRef<'tcx> {
     debug!("translate_substs({:?}, {:?}, {:?}, {:?})",
            param_env, source_impl, source_substs, target_node);
     let source_trait_ref = infcx.tcx
@@ -114,9 +114,9 @@ pub fn find_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssociatedItem,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
     impl_data: &super::VtableImplData<'tcx, ()>,
-) -> (DefId, &'tcx Substs<'tcx>) {
+) -> (DefId, SubstsRef<'tcx>) {
     debug!("find_associated_item({:?}, {:?}, {:?}, {:?})",
            param_env, item, substs, impl_data);
     assert!(!substs.needs_infer());
@@ -214,7 +214,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        param_env: ty::ParamEnv<'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
-                                       -> Result<&'tcx Substs<'tcx>, ()> {
+                                       -> Result<SubstsRef<'tcx>, ()> {
     debug!("fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
            param_env, source_trait_ref, target_impl);
 
@@ -399,7 +399,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
 
     let mut w = "impl".to_owned();
 
-    let substs = Substs::identity_for_item(tcx, impl_def_id);
+    let substs = InternalSubsts::identity_for_item(tcx, impl_def_id);
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.

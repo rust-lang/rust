@@ -16,7 +16,15 @@ LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                |
    |                                expected signature of `for<'r> fn(&'r &str) -> _`
 
-error: aborting due to 2 previous errors
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/issue-36053-2.rs:7:32
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
+   |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`
+   |                                |
+   |                                expected signature of `fn(&&str) -> _`
+
+error: aborting due to 3 previous errors
 
 Some errors occurred: E0599, E0631.
 For more information about an error, try `rustc --explain E0599`.

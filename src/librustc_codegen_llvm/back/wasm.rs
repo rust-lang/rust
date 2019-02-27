@@ -60,7 +60,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
     fs::write(path, &ret.data).expect("failed to write wasm output");
 
     fn rewrite_import_section(
-        wasm: &mut WasmDecoder,
+        wasm: &mut WasmDecoder<'_>,
         import_map: &FxHashMap<String, String>,
     )
         -> Vec<u8>
@@ -75,7 +75,7 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
         return dst.data
     }
 
-    fn rewrite_import_entry(wasm: &mut WasmDecoder,
+    fn rewrite_import_entry(wasm: &mut WasmDecoder<'_>,
                             dst: &mut WasmEncoder,
                             import_map: &FxHashMap<String, String>) {
         // More info about the binary format here is available at:

@@ -597,34 +597,43 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types which can be safely moved after being pinned.
 ///
-/// Since Rust itself has no notion of immovable types, and will consider moves to always be safe,
+/// Since Rust itself has no notion of immovable types, and considers moves
+/// (e.g. through assignment or [`mem::replace`]) to always be safe,
 /// this trait cannot prevent types from moving by itself.
 ///
-/// Instead it can be used to prevent moves through the type system,
-/// by controlling the behavior of pointers wrapped in the [`Pin`] wrapper,
+/// Instead it is used to prevent moves through the type system,
+/// by controlling the behavior of pointers `P` wrapped in the [`Pin<P>`] wrapper,
 /// which "pin" the type in place by not allowing it to be moved out of them.
 /// See the [`pin module`] documentation for more information on pinning.
 ///
 /// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out with functions such as [`replace`].
+/// which then allows it to move out with functions such as [`mem::replace`].
+///
+/// `Unpin` has no consequence at all for non-pinned data. In particular,
+/// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
+/// just when `T: Unpin`). However, you cannot use
+/// [`mem::replace`] on data wrapped inside a [`Pin<P>`] because you cannot get the
+/// `&mut T` you need for that, and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
-/// use std::mem::replace;
+/// use std::mem;
 /// use std::pin::Pin;
 ///
 /// let mut string = "this".to_string();
 /// let mut pinned_string = Pin::new(&mut string);
 ///
-/// // dereferencing the pointer mutably is only possible because String implements Unpin
-/// replace(&mut *pinned_string, "other".to_string());
+/// // We need a mutable reference to call `mem::replace`.
+/// // We can obtain such a reference by (implicitly) invoking `Pin::deref_mut`,
+/// // but that is only possible because `String` implements `Unpin`.
+/// mem::replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`replace`]: ../../std/mem/fn.replace.html
-/// [`Pin`]: ../pin/struct.Pin.html
+/// [`mem::replace`]: ../../std/mem/fn.replace.html
+/// [`Pin<P>`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
 #[cfg_attr(not(stage0), lang = "unpin")]

@@ -1,0 +1,11 @@
+error[E0658]: the `#[ffi_returns_twice]` attribute is an experimental feature (see issue #58314)
+  --> $DIR/feature-gate-ffi_returns_twice.rs:5:5
+   |
+LL |     #[ffi_returns_twice] //~ ERROR the `#[ffi_returns_twice]` attribute is an experimental feature (see issue #58314)
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(ffi_returns_twice)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

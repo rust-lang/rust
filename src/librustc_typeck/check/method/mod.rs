@@ -18,7 +18,7 @@ use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::subst::Subst;
@@ -38,7 +38,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// Instantiated method signature, i.e., it has been
     /// substituted, normalized, and has had late-bound
@@ -105,7 +105,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn method_exists(&self,
                          method_name: ast::Ident,
                          self_ty: Ty<'tcx>,
-                         call_expr_id: ast::NodeId,
+                         call_expr_id: hir::HirId,
                          allow_private: bool)
                          -> bool {
         let mode = probe::Mode::MethodCall;
@@ -131,7 +131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         msg: &str,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr_id: ast::NodeId,
+        call_expr_id: hir::HirId,
     ) {
         let has_params = self
             .probe_for_name(
@@ -202,7 +202,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .unwrap().insert(import_def_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
 
         let result = self.confirm_method(
             span,
@@ -255,7 +255,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_type_vars_if_possible(&self_ty);
         self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                            self_ty, call_expr.id, scope)
+                            self_ty, call_expr.hir_id, scope)
     }
 
     /// `lookup_method_in_trait` is used for overloaded operators.
@@ -281,7 +281,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                trait_def_id);
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let substs = Substs::for_item(self.tcx, trait_def_id, |param, _| {
+        let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type {..} => {
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        expr_id: ast::NodeId
+        expr_id: hir::HirId
     ) -> Result<Def, MethodError<'tcx>> {
         debug!(
             "resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",

@@ -1,12 +1,12 @@
 use crate::traits::*;
 use rustc::ty;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::hir::def_id::DefId;
 
 pub fn resolve_and_get_fn<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
 ) -> Cx::Value {
     cx.get_fn(
         ty::Instance::resolve(
@@ -23,7 +23,7 @@ pub fn resolve_and_get_fn_for_vtable<'tcx,
 >(
     cx: &Cx,
     def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
 ) -> Cx::Value {
     cx.get_fn(
         ty::Instance::resolve_for_vtable(

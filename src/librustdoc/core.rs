@@ -33,12 +33,13 @@ use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use visit_ast::RustdocVisitor;
-use config::{Options as RustdocOptions, RenderOptions};
-use clean;
-use clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
-use html::render::RenderInfo;
-use passes;
+use crate::visit_ast::RustdocVisitor;
+use crate::config::{Options as RustdocOptions, RenderOptions};
+use crate::clean;
+use crate::clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
+use crate::html::render::RenderInfo;
+
+use crate::passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
 pub use rustc::session::search_paths::SearchPath;
@@ -192,7 +193,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
         };
 
         hir::Ty {
-            id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
             span: DUMMY_SP,
             hir_id: hir::DUMMY_HIR_ID,
@@ -212,7 +212,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                     };
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        id: ast::DUMMY_NODE_ID,
                         hir_id: hir::DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         name: hir::LifetimeName::Param(name),
@@ -234,7 +233,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
-            id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(
                 None,
                 P(hir::Path {

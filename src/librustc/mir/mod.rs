@@ -27,7 +27,7 @@ use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::layout::VariantIdx;
 use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
@@ -413,7 +413,7 @@ pub enum Safety {
     /// Unsafe because of an unsafe fn
     FnUnsafe,
     /// Unsafe because of an `unsafe` block
-    ExplicitUnsafe(ast::NodeId),
+    ExplicitUnsafe(hir::HirId),
 }
 
 impl_stable_hash_for!(struct Mir<'tcx> {
@@ -1823,16 +1823,21 @@ pub enum RetagKind {
 /// The `FakeReadCause` describes the type of pattern why a `FakeRead` statement exists.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum FakeReadCause {
-    /// Inject a fake read of the borrowed input at the start of each arm's
-    /// pattern testing code.
+    /// Inject a fake read of the borrowed input at the end of each guards
+    /// code.
     ///
-    /// This should ensure that you cannot change the variant for an enum
-    /// while you are in the midst of matching on it.
+    /// This should ensure that you cannot change the variant for an enum while
+    /// you are in the midst of matching on it.
     ForMatchGuard,
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
     ForMatchedPlace,
+
+    /// A fake read of the RefWithinGuard version of a bind-by-value variable
+    /// in a match guard to ensure that it's value hasn't change by the time
+    /// we create the OutsideGuard version.
+    ForGuardBinding,
 
     /// Officially, the semantics of
     ///
@@ -2098,8 +2103,8 @@ pub struct SourceScopeData {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct SourceScopeLocalData {
-    /// A NodeId with lint levels equivalent to this scope's lint levels.
-    pub lint_root: ast::NodeId,
+    /// A HirId with lint levels equivalent to this scope's lint levels.
+    pub lint_root: hir::HirId,
     /// The unsafe block that contains this node.
     pub safety: Safety,
 }
@@ -2146,7 +2151,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle<'a>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         span: Span,
     ) -> Self {
         let ty = tcx.type_of(def_id).subst(tcx, substs);
@@ -2242,7 +2247,7 @@ pub enum AggregateKind<'tcx> {
     Adt(
         &'tcx AdtDef,
         VariantIdx,
-        &'tcx Substs<'tcx>,
+        SubstsRef<'tcx>,
         Option<UserTypeAnnotationIndex>,
         Option<usize>,
     ),
@@ -2849,8 +2854,8 @@ pub enum UnsafetyViolationKind {
     General,
     /// Permitted in const fn and regular fns.
     GeneralAndConstFn,
-    ExternStatic(ast::NodeId),
-    BorrowPacked(ast::NodeId),
+    ExternStatic(hir::HirId),
+    BorrowPacked(hir::HirId),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -2867,7 +2872,7 @@ pub struct UnsafetyCheckResult {
     pub violations: Lrc<[UnsafetyViolation]>,
     /// unsafe blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Lrc<[(ast::NodeId, bool)]>,
+    pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
 }
 
 /// The layout of generator state

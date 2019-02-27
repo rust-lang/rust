@@ -1,4 +1,3 @@
-#![feature(try_from)]
 
 use std::marker::PhantomData;
 use std::convert::{TryFrom, AsRef};

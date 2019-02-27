@@ -15,5 +15,7 @@ fn main() {
 
     SomeStruct::<_> { t: 22 }; // Nothing interesting given, no annotation.
 
-    SomeStruct::<u32> { t: 22 }; //~ ERROR [u32]
+    SomeStruct::<u32> { t: 22 }; // No lifetime bounds given.
+
+    SomeStruct::<&'static u32> { t: &22 }; //~ ERROR [&ReStatic u32]
 }

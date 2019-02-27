@@ -5,7 +5,7 @@ LL |         Foo {f} => {}
    |              - value moved here
 ...
 LL |     touch(&x); //~ ERROR use of partially moved value: `x`
-   |           ^^ value borrowed here after move
+   |           ^^ value borrowed here after partial move
    |
    = note: move occurs because `x.f` has type `std::string::String`, which does not implement the `Copy` trait
 

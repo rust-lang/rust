@@ -1,0 +1,34 @@
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/match-cfg-fake-edges.rs:23:13
+   |
+LL |             x; //~ ERROR use of possibly uninitialized variable: `x`
+   |             ^ use of possibly uninitialized `x`
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/match-cfg-fake-edges.rs:37:13
+   |
+LL |     let x = String::new();
+   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+...
+LL |         false if { drop(x); true } => 1,
+   |                         - value moved here
+LL |         true => {
+LL |             x; //~ ERROR use of moved value: `x`
+   |             ^ value used here after move
+
+error[E0503]: cannot use `y.1` because it was mutably borrowed
+  --> $DIR/match-cfg-fake-edges.rs:49:17
+   |
+LL |     let r = &mut y.1;
+   |             -------- borrow of `y.1` occurs here
+...
+LL |         (false, true) => 1, //~ ERROR cannot use `y.1` because it was mutably borrowed
+   |                 ^^^^ use of borrowed `y.1`
+LL |         (true, _) => {
+LL |             r;
+   |             - borrow later used here
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0381, E0382, E0503.
+For more information about an error, try `rustc --explain E0381`.

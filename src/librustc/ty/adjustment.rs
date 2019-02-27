@@ -1,7 +1,7 @@
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 
 
 /// Represents coercing a value to a different type of value.
@@ -98,7 +98,7 @@ pub struct OverloadedDeref<'tcx> {
 
 impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, source: Ty<'tcx>)
-                       -> (DefId, &'tcx Substs<'tcx>) {
+                       -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
             hir::MutImmutable => tcx.lang_items().deref_trait(),
             hir::MutMutable => tcx.lang_items().deref_mut_trait()

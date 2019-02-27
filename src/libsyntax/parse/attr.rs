@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
     /// The delimiters or `=` are still put into the resulting token stream.
     crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
                 _ => None,
             },
@@ -158,11 +158,21 @@ impl<'a> Parser<'a> {
                    self.parse_token_tree().into()
             } else if self.eat(&token::Eq) {
                 let eq = TokenTree::Token(self.prev_span, token::Eq);
-                let tree = match self.token {
-                    token::CloseDelim(_) | token::Eof => self.unexpected()?,
-                    _ => self.parse_token_tree(),
+                let mut is_interpolated_expr = false;
+                if let token::Interpolated(nt) = &self.token {
+                    if let token::NtExpr(..) = **nt {
+                        is_interpolated_expr = true;
+                    }
+                }
+                let tokens = if is_interpolated_expr {
+                    // We need to accept arbitrary interpolated expressions to continue
+                    // supporting things like `doc = $expr` that work on stable.
+                    // Non-literal interpolated expressions are rejected after expansion.
+                    self.parse_token_tree().into()
+                } else {
+                    self.parse_unsuffixed_lit()?.tokens()
                 };
-                TokenStream::new(vec![eq.into(), tree.into()])
+                TokenStream::from_streams(vec![eq.into(), tokens])
             } else {
                 TokenStream::empty()
             };
@@ -227,7 +237,7 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         let nt_meta = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref e) => Some(e.clone()),
                 _ => None,
             },

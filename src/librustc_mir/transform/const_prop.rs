@@ -10,7 +10,7 @@ use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUs
 use rustc::mir::interpret::{EvalErrorKind, Scalar, GlobalId, EvalResult};
 use rustc::ty::{TyCtxt, self, Instance};
 use syntax::source_map::{Span, DUMMY_SP};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;
 use rustc::ty::layout::{
@@ -253,7 +253,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.lazy_const_to_op(*c.literal, c.ty) {
+        match self.ecx.eval_lazy_const_to_op(*c.literal, None) {
             Ok(op) => {
                 Some((op, c.span))
             },
@@ -288,7 +288,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     // FIXME: can't handle code with generics
                     return None;
                 }
-                let substs = Substs::identity_for_item(self.tcx, self.source.def_id());
+                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
                 let instance = Instance::new(self.source.def_id(), substs);
                 let cid = GlobalId {
                     instance,
@@ -430,10 +430,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         } else {
                             "left"
                         };
-                        let node_id = source_scope_local_data[source_info.scope].lint_root;
-                        self.tcx.lint_node(
+                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
+                        self.tcx.lint_hir(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            node_id,
+                            hir_id,
                             span,
                             &format!("attempt to shift {} with overflow", dir));
                         return None;

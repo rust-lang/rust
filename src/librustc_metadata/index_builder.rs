@@ -185,7 +185,7 @@ macro_rules! read_hir {
     ($t:ty) => {
         impl<'tcx> DepGraphRead for &'tcx $t {
             fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
-                tcx.hir().read(self.id);
+                tcx.hir().read_by_hir_id(self.hir_id);
             }
         }
     }

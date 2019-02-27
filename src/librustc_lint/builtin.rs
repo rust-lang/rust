@@ -200,7 +200,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(_, _, _, ident, None) = fieldpat.node.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
-                       Some(cx.tcx.field_index(fieldpat.node.id, cx.tables)) {
+                       Some(cx.tcx.field_index(fieldpat.node.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
@@ -499,7 +499,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.id) == MethodLateContext::TraitImpl {
+        if method_context(cx, impl_item.hir_id) == MethodLateContext::TraitImpl {
             return;
         }
 

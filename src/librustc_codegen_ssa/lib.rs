@@ -11,7 +11,6 @@
 #![allow(dead_code)]
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
-#![allow(elided_lifetimes_in_paths)]
 
 #![recursion_limit="256"]
 

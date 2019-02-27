@@ -14,7 +14,7 @@ use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
@@ -177,7 +177,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment)
-        -> &'tcx Substs<'tcx>
+        -> SubstsRef<'tcx>
     {
         let (substs, assoc_bindings, _) = item_segment.with_generic_args(|generic_args| {
             self.create_substs_for_ast_path(
@@ -196,7 +196,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         seg: &hir::PathSegment,
         generics: &ty::Generics,
@@ -227,7 +227,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// Used specifically for function calls.
     pub fn check_generic_arg_count_for_call(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         def: &ty::Generics,
         seg: &hir::PathSegment,
@@ -259,7 +259,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// This is used both for datatypes and function calls.
     fn check_generic_arg_count(
-        tcx: TyCtxt,
+        tcx: TyCtxt<'_, '_, '_>,
         span: Span,
         def: &ty::Generics,
         args: &hir::GenericArgs,
@@ -304,8 +304,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
-                    tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                  args.args[0].id(), multispan, msg);
+                    tcx.lint_hir(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                 args.args[0].id(), multispan, msg);
                     return (false, None);
                 }
             }
@@ -436,7 +436,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs>, bool),
         provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
         inferred_kind: impl Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>,
-    ) -> &'tcx Substs<'tcx> {
+    ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
         // generic parameters).
@@ -548,7 +548,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         generic_args: &hir::GenericArgs,
         infer_types: bool,
         self_ty: Option<Ty<'tcx>>)
-        -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
+        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
     {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -760,7 +760,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment,
-    ) -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>) {
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
@@ -885,7 +885,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let msg = format!("associated type `{}` is private", binding.item_name);
             tcx.sess.span_err(binding.span, &msg);
         }
-        tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
+        tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span);
 
         if !speculative {
             dup_bindings.entry(assoc_ty.def_id)
@@ -1267,7 +1267,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     // parameter or `Self`.
     pub fn associated_path_to_ty(
         &self,
-        ref_id: ast::NodeId,
+        hir_ref_id: hir::HirId,
         span: Span,
         qself_ty: Ty<'tcx>,
         qself_def: Def,
@@ -1292,7 +1292,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let def = Def::Variant(variant_def.did);
                     if permit_variants {
                         check_type_alias_enum_variants_enabled(tcx, span);
-                        tcx.check_stability(variant_def.did, Some(ref_id), span);
+                        tcx.check_stability(variant_def.did, Some(hir_ref_id), span);
                         return (qself_ty, def);
                     } else {
                         variant_resolution = Some(def);
@@ -1370,7 +1370,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
         let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_ident, trait_did, hir_ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
@@ -1385,12 +1384,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let msg = format!("{} `{}` is private", def.kind_name(), assoc_ident);
             tcx.sess.span_err(span, &msg);
         }
-        tcx.check_stability(item.def_id, Some(ref_id), span);
+        tcx.check_stability(item.def_id, Some(hir_ref_id), span);
 
         if let Some(variant_def) = variant_resolution {
-            let mut err = tcx.struct_span_lint_node(
+            let mut err = tcx.struct_span_lint_hir(
                 AMBIGUOUS_ASSOCIATED_ITEMS,
-                ref_id,
+                hir_ref_id,
                 span,
                 "ambiguous associated item",
             );
@@ -1502,7 +1501,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         has_err
     }
 
-    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt, span: Span) {
+    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_, '_, '_>, span: Span) {
         let mut err = struct_span_err!(tcx.sess, span, E0229,
                                        "associated type bindings are not allowed here");
         err.span_label(span, "associated type not allowed here").emit();
@@ -1742,7 +1741,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
-               ast_ty.id, ast_ty, ast_ty.node);
+               ast_ty.hir_id, ast_ty, ast_ty.node);
 
         let tcx = self.tcx();
 
@@ -1795,11 +1794,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_to_ty(ast_ty.id, ast_ty.span, ty, def, segment, false).0
+                self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, def, segment, false).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);
-                let substs = Substs::identity_for_item(tcx, length_def_id);
+                let substs = InternalSubsts::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
                 let length = tcx.mk_lazy_const(length);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
@@ -1840,7 +1839,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let generics = tcx.generics_of(def_id);
 
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
-        let substs = Substs::for_item(tcx, def_id, |param, _| {
+        let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
                 match param.kind {

@@ -15,14 +15,14 @@ use rustc_driver;
 use rustc_target::spec::TargetTriple;
 use syntax::edition::Edition;
 
-use core::new_handler;
-use externalfiles::ExternalHtml;
-use html;
-use html::markdown::IdMap;
-use html::static_files;
-use opts;
-use passes::{self, DefaultPassOption};
-use theme;
+use crate::core::new_handler;
+use crate::externalfiles::ExternalHtml;
+use crate::html;
+use crate::html::{static_files};
+use crate::html::markdown::{IdMap};
+use crate::opts;
+use crate::passes::{self, DefaultPassOption};
+use crate::theme;
 
 /// Configuration options for rustdoc.
 #[derive(Clone)]
@@ -95,11 +95,11 @@ pub struct Options {
 }
 
 impl fmt::Debug for Options {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct FmtExterns<'a>(&'a Externs);
 
         impl<'a> fmt::Debug for FmtExterns<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_map()
                     .entries(self.0.iter())
                     .finish()
@@ -204,7 +204,7 @@ impl Options {
         nightly_options::check_nightly_options(&matches, &opts());
 
         if matches.opt_present("h") || matches.opt_present("help") {
-            ::usage("rustdoc");
+            crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
             rustc_driver::version("rustdoc", &matches);

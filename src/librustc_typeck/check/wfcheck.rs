@@ -4,7 +4,7 @@ use crate::constrained_type_params::{identify_constrained_type_params, Parameter
 use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_existential_type;
@@ -459,7 +459,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
     // First we build the defaulted substitution.
-    let substs = Substs::for_item(fcx.tcx, def_id, |param, _| {
+    let substs = InternalSubsts::for_item(fcx.tcx, def_id, |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
@@ -938,7 +938,7 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     err.emit();
 }
 
-fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
+fn reject_shadowing_parameters(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
@@ -1093,7 +1093,7 @@ fn error_392<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, param_name: ast:
     err
 }
 
-fn error_194(tcx: TyCtxt, span: Span, trait_decl_span: Span, name: &str) {
+fn error_194(tcx: TyCtxt<'_, '_, '_>, span: Span, trait_decl_span: Span, name: &str) {
     struct_span_err!(tcx.sess, span, E0194,
                      "type parameter `{}` shadows another type parameter of the same name",
                      name)

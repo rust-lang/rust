@@ -149,6 +149,118 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     }
 }
 
+impl<T, S> HashSet<T, S> {
+    /// Returns the number of elements the set can hold without reallocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let set: HashSet<i32> = HashSet::with_capacity(100);
+    /// assert!(set.capacity() >= 100);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn capacity(&self) -> usize {
+        self.map.capacity()
+    }
+
+    /// An iterator visiting all elements in arbitrary order.
+    /// The iterator element type is `&'a T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// let mut set = HashSet::new();
+    /// set.insert("a");
+    /// set.insert("b");
+    ///
+    /// // Will print in an arbitrary order.
+    /// for x in set.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.map.keys() }
+    }
+
+    /// Returns the number of elements in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Returns `true` if the set contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1);
+    /// assert!(!v.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    /// Clears the set, returning all elements in an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert!(!set.is_empty());
+    ///
+    /// // print 1, 2, 3 in an arbitrary order
+    /// for i in set.drain() {
+    ///     println!("{}", i);
+    /// }
+    ///
+    /// assert!(set.is_empty());
+    /// ```
+    #[inline]
+    #[stable(feature = "drain", since = "1.6.0")]
+    pub fn drain(&mut self) -> Drain<T> {
+        Drain { iter: self.map.drain() }
+    }
+
+    /// Clears the set, removing all values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut v = HashSet::new();
+    /// v.insert(1);
+    /// v.clear();
+    /// assert!(v.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn clear(&mut self) {
+        self.map.clear()
+    }
+}
+
 impl<T, S> HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -225,21 +337,6 @@ impl<T, S> HashSet<T, S>
         self.map.hasher()
     }
 
-    /// Returns the number of elements the set can hold without reallocating.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    /// let set: HashSet<i32> = HashSet::with_capacity(100);
-    /// assert!(set.capacity() >= 100);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.map.capacity()
-    }
-
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -308,27 +405,6 @@ impl<T, S> HashSet<T, S>
     #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.map.shrink_to(min_capacity)
-    }
-
-    /// An iterator visiting all elements in arbitrary order.
-    /// The iterator element type is `&'a T`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    /// let mut set = HashSet::new();
-    /// set.insert("a");
-    /// set.insert("b");
-    ///
-    /// // Will print in an arbitrary order.
-    /// for x in set.iter() {
-    ///     println!("{}", x);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
-        Iter { iter: self.map.keys() }
     }
 
     /// Visits the values representing the difference,
@@ -452,80 +528,6 @@ impl<T, S> HashSet<T, S>
                 iter: other.iter().chain(self.difference(other)),
             }
         }
-    }
-
-    /// Returns the number of elements in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert_eq!(v.len(), 0);
-    /// v.insert(1);
-    /// assert_eq!(v.len(), 1);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    /// Returns `true` if the set contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// assert!(v.is_empty());
-    /// v.insert(1);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
-    }
-
-    /// Clears the set, returning all elements in an iterator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
-    /// assert!(!set.is_empty());
-    ///
-    /// // print 1, 2, 3 in an arbitrary order
-    /// for i in set.drain() {
-    ///     println!("{}", i);
-    /// }
-    ///
-    /// assert!(set.is_empty());
-    /// ```
-    #[inline]
-    #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<T> {
-        Drain { iter: self.map.drain() }
-    }
-
-    /// Clears the set, removing all values.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashSet;
-    ///
-    /// let mut v = HashSet::new();
-    /// v.insert(1);
-    /// v.clear();
-    /// assert!(v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.map.clear()
     }
 
     /// Returns `true` if the set contains a value.
@@ -1066,10 +1068,7 @@ pub struct Union<'a, T: 'a, S: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
-{
+impl<'a, T, S> IntoIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1079,10 +1078,7 @@ impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S> IntoIterator for HashSet<T, S>
-    where T: Eq + Hash,
-          S: BuildHasher
-{
+impl<T, S> IntoIterator for HashSet<T, S> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 

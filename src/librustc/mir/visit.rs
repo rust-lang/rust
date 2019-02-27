@@ -1,5 +1,5 @@
 use crate::hir::def_id::DefId;
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Region, Ty};
 use crate::mir::*;
 use syntax_pos::Span;
@@ -238,7 +238,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_substs(&mut self,
-                            substs: & $($mutability)? &'tcx Substs<'tcx>,
+                            substs: & $($mutability)? SubstsRef<'tcx>,
                             _: Location) {
                 self.super_substs(substs);
             }
@@ -889,7 +889,7 @@ macro_rules! make_mir_visitor {
             fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::LazyConst<'tcx>) {
             }
 
-            fn super_substs(&mut self, _substs: & $($mutability)? &'tcx Substs<'tcx>) {
+            fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {
             }
 
             fn super_generator_substs(&mut self,

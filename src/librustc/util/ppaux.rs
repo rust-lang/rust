@@ -1,7 +1,7 @@
 use crate::hir::def_id::DefId;
 use crate::hir::map::definitions::DefPathData;
 use crate::middle::region;
-use crate::ty::subst::{self, Subst};
+use crate::ty::subst::{self, Subst, SubstsRef};
 use crate::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use crate::ty::{Bool, Char, Adt};
 use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
@@ -384,7 +384,7 @@ impl PrintContext {
 
     fn parameterized<F: fmt::Write>(&mut self,
                                     f: &mut F,
-                                    substs: &subst::Substs<'_>,
+                                    substs: SubstsRef<'_>,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
@@ -692,7 +692,7 @@ pub fn identify_regions() -> bool {
 }
 
 pub fn parameterized<F: fmt::Write>(f: &mut F,
-                                    substs: &subst::Substs<'_>,
+                                    substs: SubstsRef<'_>,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
@@ -1290,7 +1290,7 @@ define_print! {
                         Ok(())
                     }
                 }
-                Foreign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
+                Foreign(def_id) => parameterized(f, subst::InternalSubsts::empty(), def_id, &[]),
                 Projection(ref data) => data.print(f, cx),
                 UnnormalizedProjection(ref data) => {
                     write!(f, "Unnormalized(")?;

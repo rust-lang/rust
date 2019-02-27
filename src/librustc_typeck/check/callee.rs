@@ -18,7 +18,7 @@ use rustc::hir;
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
-pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
+pub fn check_legal_trait_for_method_call(tcx: TyCtxt<'_, '_, '_>, span: Span, trait_id: DefId) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
             .span_label(span, "explicit destructor calls not allowed")
@@ -250,7 +250,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
-                            unit_variant = Some(self.tcx.hir().node_to_pretty_string(expr.id))
+                            unit_variant = Some(self.tcx.hir().hir_to_pretty_string(expr.hir_id))
                         }
                     }
                 }

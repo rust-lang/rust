@@ -4,7 +4,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::ty::subst::{Substs, UnpackedKind};
+use rustc::ty::subst::{UnpackedKind, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use rustc::hir;
@@ -222,7 +222,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
     fn add_constraints_from_invariant_substs(&mut self,
                                              current: &CurrentItem,
-                                             substs: &Substs<'tcx>,
+                                             substs: SubstsRef<'tcx>,
                                              variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_invariant_substs: substs={:?} variance={:?}",
                substs,
@@ -344,7 +344,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraints_from_substs(&mut self,
                                    current: &CurrentItem,
                                    def_id: DefId,
-                                   substs: &Substs<'tcx>,
+                                   substs: SubstsRef<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
                def_id,

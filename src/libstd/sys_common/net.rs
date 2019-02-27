@@ -1,7 +1,7 @@
 use cmp;
 use ffi::CString;
 use fmt;
-use io::{self, Error, ErrorKind};
+use io::{self, Error, ErrorKind, IoVec, IoVecMut};
 use libc::{c_int, c_void};
 use mem;
 use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
@@ -255,6 +255,10 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -264,6 +268,10 @@ impl TcpStream {
                     MSG_NOSIGNAL)
         })?;
         Ok(ret as usize)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustdoc"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustdoc"
@@ -11,4 +12,4 @@ path = "lib.rs"
 pulldown-cmark = { version = "0.1.2", default-features = false }
 minifier = "0.0.28"
 tempfile = "3"
-parking_lot = "0.6.4"
+parking_lot = "0.7"

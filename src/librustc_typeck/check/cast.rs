@@ -37,9 +37,9 @@ use rustc::hir;
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable, TypeAndMut};
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
-use rustc::ty::subst::Substs;
 use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
@@ -69,7 +69,7 @@ enum PointerKind<'tcx> {
     /// The unsize info of this projection
     OfProjection(&'tcx ty::ProjectionTy<'tcx>),
     /// The unsize info of this opaque ty
-    OfOpaque(DefId, &'tcx Substs<'tcx>),
+    OfOpaque(DefId, SubstsRef<'tcx>),
     /// The unsize info of this parameter
     OfParam(&'tcx ty::ParamTy),
 }
@@ -399,9 +399,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        let mut err = fcx.tcx.struct_span_lint_node(
+        let mut err = fcx.tcx.struct_span_lint_hir(
             lint,
-            self.expr.id,
+            self.expr.hir_id,
             self.span,
             &format!("trivial {}cast: `{}` as `{}`",
                      adjective,
@@ -417,7 +417,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})",
-               self.expr.id,
+               self.expr.hir_id,
                self.expr_ty,
                self.cast_ty);
 

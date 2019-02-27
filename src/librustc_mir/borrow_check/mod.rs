@@ -301,7 +301,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             }
 
             let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-            tcx.struct_span_lint_node(
+            tcx.struct_span_lint_hir(
                 UNUSED_MUT,
                 vsi[local_decl.source_info.scope].lint_root,
                 span,
@@ -998,7 +998,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
 
                 (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
-                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
+                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
+                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
                     Control::Continue
                 }
 

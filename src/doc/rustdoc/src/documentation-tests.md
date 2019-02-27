@@ -244,7 +244,7 @@ disambiguate the error type:
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
-/// # Ok::<(), io:Error>(())
+/// # Ok::<(), io::Error>(())
 /// ```
 ```
 

@@ -6,8 +6,6 @@ use rustc::mir::*;
 use rustc::hir;
 use syntax_pos::Span;
 
-use std::slice;
-
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Place<'tcx>,
@@ -125,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None,
                             remainder_span,
                             lint_level,
-                            slice::from_ref(&pattern),
+                            &pattern,
                             ArmHasGuard(false),
                             Some((None, initializer_span)),
                         );
@@ -138,7 +136,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             }));
                     } else {
                         scope = this.declare_bindings(
-                            None, remainder_span, lint_level, slice::from_ref(&pattern),
+                            None, remainder_span, lint_level, &pattern,
                             ArmHasGuard(false), None);
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
@@ -206,14 +204,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,
-            BlockSafety::ExplicitUnsafe(node_id) => {
+            BlockSafety::ExplicitUnsafe(hir_id) => {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
                     Safety::Safe => {}
                     _ => return
                 }
-                self.unpushed_unsafe = Safety::ExplicitUnsafe(node_id);
-                Some(Safety::ExplicitUnsafe(node_id))
+                self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);
+                Some(Safety::ExplicitUnsafe(hir_id))
             }
             BlockSafety::PushUnsafe => {
                 self.push_unsafe_count += 1;

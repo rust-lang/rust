@@ -13,7 +13,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc::hir;
 use rustc::lint;
 use rustc::session::config::nightly_options;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use rustc::traits::{self, ObligationCause};
 use rustc::traits::query::{CanonicalTyGoal};
 use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
@@ -125,7 +125,7 @@ struct Candidate<'tcx> {
 
 #[derive(Debug)]
 enum CandidateKind<'tcx> {
-    InherentImplCandidate(&'tcx Substs<'tcx>,
+    InherentImplCandidate(SubstsRef<'tcx>,
                           // Normalize obligations
                           Vec<traits::PredicateObligation<'tcx>>),
     ObjectCandidate,
@@ -209,7 +209,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  mode: Mode,
                                  return_type: Ty<'tcx>,
                                  self_ty: Ty<'tcx>,
-                                 scope_expr_id: ast::NodeId)
+                                 scope_expr_id: hir::HirId)
                                  -> Vec<ty::AssociatedItem> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
@@ -238,7 +238,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
-                          scope_expr_id: ast::NodeId,
+                          scope_expr_id: hir::HirId,
                           scope: ProbeScope)
                           -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
-                      scope_expr_id: ast::NodeId,
+                      scope_expr_id: hir::HirId,
                       scope: ProbeScope,
                       op: OP)
                       -> Result<R, MethodError<'tcx>>
@@ -340,7 +340,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               "the type of this value must be known \
                                to call a method on a raw pointer on it");
                 } else {
-                   self.tcx.lint_node(
+                   self.tcx.lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
@@ -388,7 +388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
@@ -825,13 +825,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
-                                                         expr_id: ast::NodeId)
+                                                         expr_hir_id: hir::HirId)
                                                          -> Result<(), MethodError<'tcx>> {
-        if expr_id == ast::DUMMY_NODE_ID {
+        if expr_hir_id == hir::DUMMY_HIR_ID {
             return Ok(())
         }
         let mut duplicates = FxHashSet::default();
-        let expr_hir_id = self.tcx.hir().node_to_hir_id(expr_id);
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
@@ -1180,7 +1179,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn emit_unstable_name_collision_hint(
         &self,
-        stable_pick: &Pick,
+        stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
         let mut diag = self.tcx.struct_span_lint_hir(
@@ -1415,7 +1414,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                             steps, IsSuggestion(true));
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
-            pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
+            pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)?;
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
@@ -1425,7 +1424,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
-                    pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)
+                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
                         .ok().map_or(None, |_| {
                             pcx.pick_core()
                                 .and_then(|pick| pick.ok())
@@ -1481,7 +1480,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn xform_self_ty(&self,
                      item: &ty::AssociatedItem,
                      impl_ty: Ty<'tcx>,
-                     substs: &Substs<'tcx>)
+                     substs: SubstsRef<'tcx>)
                      -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.kind == ty::AssociatedKind::Method && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, substs);
@@ -1493,7 +1492,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn xform_method_sig(&self,
                         method: DefId,
-                        substs: &Substs<'tcx>)
+                        substs: SubstsRef<'tcx>)
                         -> ty::FnSig<'tcx>
     {
         let fn_sig = self.tcx.fn_sig(method);
@@ -1518,7 +1517,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
-            let substs = Substs::for_item(self.tcx, method, |param, _| {
+            let substs = InternalSubsts::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
                 if i < substs.len() {
                     substs[i]
@@ -1538,12 +1537,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     /// Gets the type of an impl and generate substitutions with placeholders.
-    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, &'tcx Substs<'tcx>) {
+    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, SubstsRef<'tcx>) {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
-    fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx, def_id, |param, _| {
+    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
+        InternalSubsts::for_item(self.tcx, def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
                 GenericParamDefKind::Type {..} => {

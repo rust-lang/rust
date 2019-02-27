@@ -4,7 +4,8 @@
 // longer get an error, because we recognize these two types as
 // equivalent!
 //
-// compile-pass
+// Whoops -- now that we reinstituted the leak-check, we get an error
+// again.
 
 fn foo(
     x: fn(&u8, &u8),
@@ -12,7 +13,7 @@ fn foo(
 ) {
     let z = match 22 {
         0 => x,
-        _ => y,
+        _ => y, //~ ERROR match arms have incompatible types
     };
 }
 

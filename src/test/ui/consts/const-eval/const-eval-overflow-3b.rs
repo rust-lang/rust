@@ -7,11 +7,11 @@
 // types for the left- and right-hand sides of the addition do not
 // match (as well as overflow).
 
-// FIXME (#23926): the error output is not consistent between a
-// self-hosted and a cross-compiled setup; therefore resorting to
-// error-pattern for now.
 
-// error-pattern: mismatched types
+
+
+
+
 
 #![allow(unused_imports)]
 
@@ -22,6 +22,8 @@ use std::{u8, u16, u32, u64, usize};
 const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1u8) as usize];
+//~^ ERROR mismatched types
+//~| ERROR cannot add `u8` to `i8`
 
 fn main() {
     foo(&A_I8_I[..]);

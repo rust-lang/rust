@@ -2,7 +2,7 @@
 
 use crate::common::CodegenCx;
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
@@ -178,7 +178,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
     }
 
-    fn push_item_name(cx: &CodegenCx,
+    fn push_item_name(cx: &CodegenCx<'_, '_>,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {
@@ -193,13 +193,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
     }
 
-    // Pushes the type parameters in the given `Substs` to the output string.
+    // Pushes the type parameters in the given `InternalSubsts` to the output string.
     // This ignores region parameters, since they can't reliably be
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
     fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                  substs: &Substs<'tcx>,
+                                  substs: SubstsRef<'tcx>,
                                   output: &mut String) {
         if substs.types().next().is_none() {
             return;

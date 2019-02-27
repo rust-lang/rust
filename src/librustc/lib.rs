@@ -62,8 +62,6 @@
 
 #![recursion_limit="512"]
 
-#![warn(elided_lifetimes_in_paths)]
-
 #[macro_use] extern crate bitflags;
 extern crate getopts;
 #[macro_use] extern crate lazy_static;

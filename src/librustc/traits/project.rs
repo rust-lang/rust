@@ -18,7 +18,7 @@ use crate::infer::type_variable::TypeVariableOrigin;
 use crate::mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast::Ident;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts};
 use crate::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::util::common::FN_OUTPUT_NAME;
@@ -191,12 +191,15 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligation);
 
     let infcx = selcx.infcx();
-    infcx.commit_if_ok(|_| {
-        let (placeholder_predicate, _) =
+    infcx.commit_if_ok(|snapshot| {
+        let (placeholder_predicate, placeholder_map) =
             infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
-        project_and_unify_type(selcx, &placeholder_obligation)
+        let result = project_and_unify_type(selcx, &placeholder_obligation)?;
+        infcx.leak_check(false, &placeholder_map, snapshot)
+            .map_err(|err| MismatchedProjectionTypes { err })?;
+        Ok(result)
     })
 }
 
@@ -398,7 +401,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
                 if substs.needs_infer() || substs.has_placeholders() {
-                    let identity_substs = Substs::identity_for_item(tcx, def_id);
+                    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
                     if let Some(instance) = instance {
                         let cid = GlobalId {
@@ -1427,9 +1430,8 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>)
-    -> Progress<'tcx>
-{
+    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
+) -> Progress<'tcx> {
     let infcx = selcx.infcx();
     let cause = &obligation.cause;
     let param_env = obligation.param_env;
@@ -1488,7 +1490,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     }
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
     let ty = if let ty::AssociatedKind::Existential = assoc_ty.item.kind {
-        let item_substs = Substs::identity_for_item(tcx, assoc_ty.item.def_id);
+        let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
     } else {
         tcx.type_of(assoc_ty.item.def_id)

@@ -410,7 +410,8 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
         "simd_and" | "simd_or" | "simd_xor" |
-        "simd_fmin" | "simd_fmax" | "simd_fpow" => {
+        "simd_fmin" | "simd_fmax" | "simd_fpow" |
+        "simd_saturating_add" | "simd_saturating_sub" => {
             (1, vec![param(0), param(0)], param(0))
         }
         "simd_fsqrt" | "simd_fsin" | "simd_fcos" | "simd_fexp" | "simd_fexp2" |

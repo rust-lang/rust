@@ -1,7 +1,7 @@
 #![allow(missing_copy_implementations)]
 
 use fmt;
-use io::{self, Read, Initializer, Write, ErrorKind, BufRead};
+use io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoVec, IoVecMut};
 use mem;
 
 /// Copies the entire contents of a reader into a writer.
@@ -153,6 +153,15 @@ impl Read for Repeat {
     }
 
     #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            nwritten += self.read(buf)?;
+        }
+        Ok(nwritten)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -195,6 +204,13 @@ pub fn sink() -> Sink { Sink { _priv: () } }
 impl Write for Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
     #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }

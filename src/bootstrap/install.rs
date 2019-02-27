@@ -14,45 +14,45 @@ use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::config::Config;
 
-pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_docs(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "docs", "rust-docs", stage, Some(host));
 }
 
-pub fn install_std(builder: &Builder, stage: u32, target: Interned<String>) {
+pub fn install_std(builder: &Builder<'_>, stage: u32, target: Interned<String>) {
     install_sh(builder, "std", "rust-std", stage, Some(target));
 }
 
-pub fn install_cargo(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "cargo", "cargo", stage, Some(host));
 }
 
-pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_rls(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
-pub fn install_clippy(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "clippy", "clippy", stage, Some(host));
 }
-pub fn install_miri(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_miri(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "miri", "miri", stage, Some(host));
 }
 
-pub fn install_rustfmt(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_rustfmt(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
 }
 
-pub fn install_analysis(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_analysis(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
 }
 
-pub fn install_src(builder: &Builder, stage: u32) {
+pub fn install_src(builder: &Builder<'_>, stage: u32) {
     install_sh(builder, "src", "rust-src", stage, None);
 }
-pub fn install_rustc(builder: &Builder, stage: u32, host: Interned<String>) {
+pub fn install_rustc(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "rustc", "rustc", stage, Some(host));
 }
 
 fn install_sh(
-    builder: &Builder,
+    builder: &Builder<'_>,
     package: &str,
     name: &str,
     stage: u32,
@@ -155,7 +155,7 @@ macro_rules! install {
             }
 
             #[allow(dead_code)]
-            fn should_install(builder: &Builder) -> bool {
+            fn should_install(builder: &Builder<'_>) -> bool {
                 builder.config.tools.as_ref().map_or(false, |t| t.contains($path))
             }
         }
@@ -166,12 +166,12 @@ macro_rules! install {
             const ONLY_HOSTS: bool = $only_hosts;
             $(const $c: bool = true;)*
 
-            fn should_run(run: ShouldRun) -> ShouldRun {
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let $_config = &run.builder.config;
                 run.path($path).default_condition($default_cond)
             }
 
-            fn make_run(run: RunConfig) {
+            fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
@@ -179,7 +179,7 @@ macro_rules! install {
                 });
             }
 
-            fn run($sel, $builder: &Builder) {
+            fn run($sel, $builder: &Builder<'_>) {
                 $run_item
             }
         })+
@@ -262,20 +262,20 @@ impl Step for Src {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(run: ShouldRun) -> ShouldRun {
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let config = &run.builder.config;
         let cond = config.extended &&
             config.tools.as_ref().map_or(true, |t| t.contains("src"));
         run.path("src").default_condition(cond)
     }
 
-    fn make_run(run: RunConfig) {
+    fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Src {
             stage: run.builder.top_stage,
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder<'_>) {
         builder.ensure(dist::Src);
         install_src(builder, self.stage);
     }

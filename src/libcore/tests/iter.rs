@@ -1741,18 +1741,36 @@ fn test_range_inclusive_folds() {
     assert_eq!((1..=10).sum::<i32>(), 55);
     assert_eq!((1..=10).rev().sum::<i32>(), 55);
 
-    let mut it = 40..=50;
+    let mut it = 44..=50;
     assert_eq!(it.try_fold(0, i8::checked_add), None);
-    assert_eq!(it, 44..=50);
+    assert_eq!(it, 47..=50);
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it, 50..=50);
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(50));
+    assert!(it.is_empty());
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
+    assert!(it.is_empty());
+
+    let mut it = 40..=47;
     assert_eq!(it.try_rfold(0, i8::checked_add), None);
-    assert_eq!(it, 44..=47);
+    assert_eq!(it, 40..=44);
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it, 40..=41);
+    assert_eq!(it.try_rfold(0, i8::checked_add), Some(81));
+    assert!(it.is_empty());
+    assert_eq!(it.try_rfold(0, i8::checked_add), Some(0));
+    assert!(it.is_empty());
 
     let mut it = 10..=20;
     assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(165));
     assert!(it.is_empty());
+    assert_eq!(it.try_fold(0, |a,b| Some(a+b)), Some(0));
+    assert!(it.is_empty());
 
     let mut it = 10..=20;
     assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(165));
+    assert!(it.is_empty());
+    assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(0));
     assert!(it.is_empty());
 }
 

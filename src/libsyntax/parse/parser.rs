@@ -119,7 +119,7 @@ enum BlockMode {
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            match nt.0 {
+            match *nt {
                 token::NtExpr(ref e) | token::NtLiteral(ref e) => {
                     $p.bump();
                     return Ok((*e).clone());
@@ -146,7 +146,7 @@ macro_rules! maybe_whole_expr {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            if let token::$constructor($x) = nt.0.clone() {
+            if let token::$constructor($x) = (*nt).clone() {
                 $p.bump();
                 return Ok($e);
             }
@@ -1184,8 +1184,10 @@ impl<'a> Parser<'a> {
         match ate {
             Some(_) => {
                 // See doc comment for `unmatched_angle_bracket_count`.
-                self.unmatched_angle_bracket_count -= 1;
-                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                if self.unmatched_angle_bracket_count > 0 {
+                    self.unmatched_angle_bracket_count -= 1;
+                    debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+                }
 
                 Ok(())
             },
@@ -1570,7 +1572,7 @@ impl<'a> Parser<'a> {
                     Some(body)
                 }
                 token::Interpolated(ref nt) => {
-                    match &nt.0 {
+                    match **nt {
                         token::NtBlock(..) => {
                             *at_end = true;
                             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1731,7 +1733,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(keywords::Impl) {
             // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_generic_bounds()?;
+            let bounds = self.parse_generic_bounds(None)?;
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
@@ -1740,13 +1742,13 @@ impl<'a> Parser<'a> {
                                           !can_continue_type_after_non_fn_ident(t))) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_generic_bounds()?;
+            let bounds = self.parse_generic_bounds(None)?;
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
                   self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus()) {
             // Bound list (trait object type)
-            TyKind::TraitObject(self.parse_generic_bounds_common(allow_plus)?,
+            TyKind::TraitObject(self.parse_generic_bounds_common(allow_plus, None)?,
                                 TraitObjectSyntax::None)
         } else if self.eat_lt() {
             // Qualified path
@@ -1792,7 +1794,7 @@ impl<'a> Parser<'a> {
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds()?);
+            bounds.append(&mut self.parse_generic_bounds(None)?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -1817,7 +1819,7 @@ impl<'a> Parser<'a> {
         }
 
         self.bump(); // `+`
-        let bounds = self.parse_generic_bounds()?;
+        let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_span);
 
         let mut err = struct_span_err!(self.sess.span_diagnostic, sum_span, E0178,
@@ -1913,7 +1915,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_argument(&mut self) -> bool {
         let offset = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             }
@@ -2099,7 +2101,7 @@ impl<'a> Parser<'a> {
     /// Matches `token_lit = LIT_INTEGER | ...`.
     fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => { lit.node.clone() }
                     _ => { return self.unexpected_last(&self.token); }
@@ -2248,8 +2250,10 @@ impl<'a> Parser<'a> {
 
         // See doc comment for `unmatched_angle_bracket_count`.
         self.expect(&token::Gt)?;
-        self.unmatched_angle_bracket_count -= 1;
-        debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        if self.unmatched_angle_bracket_count > 0 {
+            self.unmatched_angle_bracket_count -= 1;
+            debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
+        }
 
         self.expect(&token::ModSep)?;
 
@@ -2299,7 +2303,7 @@ impl<'a> Parser<'a> {
     /// attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref meta) => match meta.node {
                     ast::MetaItemKind::Word => Some(meta.ident.clone()),
                     _ => None,
@@ -3271,7 +3275,7 @@ impl<'a> Parser<'a> {
                 self.meta_var_span = Some(self.span);
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
-                match nt.0 {
+                match **nt {
                     token::NtIdent(ident, is_raw) => (token::Ident(ident, is_raw), ident.span),
                     token::NtLifetime(ident) => (token::Lifetime(ident), ident.span),
                     _ => return,
@@ -3403,7 +3407,7 @@ impl<'a> Parser<'a> {
                     // can't continue an expression after an ident
                     token::Ident(ident, is_raw) => token::ident_can_begin_expr(ident, is_raw),
                     token::Literal(..) | token::Pound => true,
-                    token::Interpolated(ref nt) => match nt.0 {
+                    token::Interpolated(ref nt) => match **nt {
                         token::NtIdent(..) | token::NtExpr(..) |
                         token::NtBlock(..) | token::NtPath(..) => true,
                         _ => false,
@@ -5492,17 +5496,24 @@ impl<'a> Parser<'a> {
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
     /// ```
-    fn parse_generic_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, GenericBounds> {
+    fn parse_generic_bounds_common(&mut self,
+                                   allow_plus: bool,
+                                   colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
+        let mut negative_bounds = Vec::new();
+        let mut last_plus_span = None;
         loop {
             // This needs to be synchronized with `Token::can_begin_bound`.
             let is_bound_start = self.check_path() || self.check_lifetime() ||
+                                 self.check(&token::Not) || // used for error reporting only
                                  self.check(&token::Question) ||
                                  self.check_keyword(keywords::For) ||
                                  self.check(&token::OpenDelim(token::Paren));
             if is_bound_start {
                 let lo = self.span;
                 let has_parens = self.eat(&token::OpenDelim(token::Paren));
+                let inner_lo = self.span;
+                let is_negative = self.eat(&token::Not);
                 let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
                 if self.token.is_lifetime() {
                     if let Some(question_span) = question {
@@ -5511,9 +5522,21 @@ impl<'a> Parser<'a> {
                     }
                     bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
+                        let inner_span = inner_lo.to(self.prev_span);
                         self.expect(&token::CloseDelim(token::Paren))?;
-                        self.span_err(self.prev_span,
-                                      "parenthesized lifetime bounds are not supported");
+                        let mut err = self.struct_span_err(
+                            lo.to(self.prev_span),
+                            "parenthesized lifetime bounds are not supported"
+                        );
+                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(inner_span) {
+                            err.span_suggestion_short(
+                                lo.to(self.prev_span),
+                                "remove the parentheses",
+                                snippet.to_owned(),
+                                Applicability::MachineApplicable
+                            );
+                        }
+                        err.emit();
                     }
                 } else {
                     let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -5521,13 +5544,20 @@ impl<'a> Parser<'a> {
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
                     }
-                    let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
-                    let modifier = if question.is_some() {
-                        TraitBoundModifier::Maybe
+                    let poly_span = lo.to(self.prev_span);
+                    if is_negative {
+                        negative_bounds.push(
+                            last_plus_span.or(colon_span).unwrap()
+                                .to(poly_span));
                     } else {
-                        TraitBoundModifier::None
-                    };
-                    bounds.push(GenericBound::Trait(poly_trait, modifier));
+                        let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
+                        let modifier = if question.is_some() {
+                            TraitBoundModifier::Maybe
+                        } else {
+                            TraitBoundModifier::None
+                        };
+                        bounds.push(GenericBound::Trait(poly_trait, modifier));
+                    }
                 }
             } else {
                 break
@@ -5535,14 +5565,39 @@ impl<'a> Parser<'a> {
 
             if !allow_plus || !self.eat_plus() {
                 break
+            } else {
+                last_plus_span = Some(self.prev_span);
             }
+        }
+
+        if !negative_bounds.is_empty() {
+            let plural = negative_bounds.len() > 1;
+            let mut err = self.struct_span_err(negative_bounds,
+                                               "negative trait bounds are not supported");
+            let bound_list = colon_span.unwrap().to(self.prev_span);
+            let mut new_bound_list = String::new();
+            if !bounds.is_empty() {
+                let mut snippets = bounds.iter().map(|bound| bound.span())
+                    .map(|span| self.sess.source_map().span_to_snippet(span));
+                while let Some(Ok(snippet)) = snippets.next() {
+                    new_bound_list.push_str(" + ");
+                    new_bound_list.push_str(&snippet);
+                }
+                new_bound_list = new_bound_list.replacen(" +", ":", 1);
+            }
+            err.span_suggestion_short(bound_list,
+                                      &format!("remove the trait bound{}",
+                                              if plural { "s" } else { "" }),
+                                      new_bound_list,
+                                      Applicability::MachineApplicable);
+            err.emit();
         }
 
         return Ok(bounds);
     }
 
-    fn parse_generic_bounds(&mut self) -> PResult<'a, GenericBounds> {
-        self.parse_generic_bounds_common(true)
+    fn parse_generic_bounds(&mut self, colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
+        self.parse_generic_bounds_common(true, colon_span)
     }
 
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -5570,7 +5625,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds()?
+            self.parse_generic_bounds(None)?
         } else {
             Vec::new()
         };
@@ -5602,7 +5657,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds()?
+            self.parse_generic_bounds(None)?
         } else {
             Vec::new()
         };
@@ -6015,7 +6070,7 @@ impl<'a> Parser<'a> {
                 // or with mandatory equality sign and the second type.
                 let ty = self.parse_ty()?;
                 if self.eat(&token::Colon) {
-                    let bounds = self.parse_generic_bounds()?;
+                    let bounds = self.parse_generic_bounds(None)?;
                     where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                         ast::WhereBoundPredicate {
                             span: lo.to(self.prev_span),
@@ -6529,14 +6584,14 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and supertrait bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds()?
+            self.parse_generic_bounds(Some(self.prev_span))?
         } else {
             Vec::new()
         };
 
         if self.eat(&token::Eq) {
             // it's a trait alias
-            let bounds = self.parse_generic_bounds()?;
+            let bounds = self.parse_generic_bounds(None)?;
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
             if is_auto == IsAuto::Yes {
@@ -7571,7 +7626,7 @@ impl<'a> Parser<'a> {
         tps.where_clause = self.parse_where_clause()?;
         let alias = if existential {
             self.expect(&token::Colon)?;
-            let bounds = self.parse_generic_bounds()?;
+            let bounds = self.parse_generic_bounds(None)?;
             AliasKind::Existential(bounds)
         } else {
             self.expect(&token::Eq)?;

@@ -2873,8 +2873,8 @@ E0370: r##"
 The maximum value of an enum was reached, so it cannot be automatically
 set in the next enum value. Erroneous code example:
 
-```compile_fail
-#[deny(overflowing_literals)]
+```compile_fail,E0370
+#[repr(i64)]
 enum Foo {
     X = 0x7fffffffffffffff,
     Y, // error: enum discriminant overflowed on value after
@@ -2887,6 +2887,7 @@ To fix this, please set manually the next enum value or put the enum variant
 with the maximum value at the end of the enum. Examples:
 
 ```
+#[repr(i64)]
 enum Foo {
     X = 0x7fffffffffffffff,
     Y = 0, // ok!
@@ -2896,6 +2897,7 @@ enum Foo {
 Or:
 
 ```
+#[repr(i64)]
 enum Foo {
     Y = 0, // ok!
     X = 0x7fffffffffffffff,
@@ -4738,4 +4740,5 @@ register_diagnostics! {
     E0698, // type inside generator must be known in this context
     E0719, // duplicate values for associated type binding
     E0722, // Malformed #[optimize] attribute
+    E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
 }

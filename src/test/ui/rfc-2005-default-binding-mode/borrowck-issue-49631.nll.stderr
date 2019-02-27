@@ -7,7 +7,7 @@ LL |         foo.mutate();
    |         ^^^^^^^^^^^^ mutable borrow occurs here
 LL |         //~^ ERROR cannot borrow `foo` as mutable
 LL |         println!("foo={:?}", *string);
-   |                              ------- immutable borrow used here, in later iteration of loop
+   |                              ------- immutable borrow later used here
 
 error: aborting due to previous error
 

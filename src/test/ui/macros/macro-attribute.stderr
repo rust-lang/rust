@@ -1,8 +1,8 @@
-error: expected `]`, found `not_there`
-  --> $DIR/macro-attribute.rs:3:10
+error: unexpected token: `$`
+  --> $DIR/macro-attribute.rs:1:7
    |
-LL | #[doc = $not_there] //~ ERROR expected `]`, found `not_there`
-   |          ^^^^^^^^^ expected `]`
+LL | #[doc = $not_there] //~ ERROR unexpected token: `$`
+   |       ^
 
 error: aborting due to previous error
 

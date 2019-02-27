@@ -28,9 +28,9 @@ use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
 
-use clean::Attributes;
-use config::Options;
-use html::markdown::{self, ErrorCodes, LangString};
+use crate::clean::Attributes;
+use crate::config::Options;
+use crate::html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -868,7 +868,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
 
     fn visit_item(&mut self, item: &'hir hir::Item) {
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
-            self.map.node_to_pretty_string(ty.id)
+            self.map.hir_to_pretty_string(ty.hir_id)
         } else {
             item.ident.to_string()
         };
@@ -899,7 +899,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     fn visit_variant(&mut self,
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
-                     item_id: ast::NodeId) {
+                     item_id: hir::HirId) {
         self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });

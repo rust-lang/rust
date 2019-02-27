@@ -1,17 +1,16 @@
-use clean::*;
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::fold::DocFolder;
+use super::Pass;
 
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::def_id::DefId;
-
-use super::Pass;
-use core::DocContext;
-use fold::DocFolder;
 
 pub const COLLECT_TRAIT_IMPLS: Pass =
     Pass::early("collect-trait-impls", collect_trait_impls,
                 "retrieves trait impls for items in the crate");
 
-pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
+pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
     let mut krate = synth.fold_crate(krate);
 

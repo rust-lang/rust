@@ -257,7 +257,7 @@ macro_rules! CloneTypeFoldableAndLiftImpls {
 macro_rules! BraceStructLiftImpl {
     (impl<$($p:tt),*> Lift<$tcx:tt> for $s:path {
         type Lifted = $lifted:ty;
-        $($field:ident),* $(,)*
+        $($field:ident),* $(,)?
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::Lift<$tcx> for $s
             $(where $($wc)*)*
@@ -327,7 +327,7 @@ macro_rules! EnumLiftImpl {
 #[macro_export]
 macro_rules! BraceStructTypeFoldableImpl {
     (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
-        $($field:ident),* $(,)*
+        $($field:ident),* $(,)?
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
@@ -354,7 +354,7 @@ macro_rules! BraceStructTypeFoldableImpl {
 #[macro_export]
 macro_rules! TupleStructTypeFoldableImpl {
     (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
-        $($field:ident),* $(,)*
+        $($field:ident),* $(,)?
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
@@ -426,7 +426,7 @@ macro_rules! EnumTypeFoldableImpl {
     };
 
     (@FoldVariants($this:expr, $folder:expr)
-     input( ($variant:path) { $($variant_arg:ident),* $(,)* } , $($input:tt)*)
+     input( ($variant:path) { $($variant_arg:ident),* $(,)? } , $($input:tt)*)
      output( $($output:tt)*) ) => {
         EnumTypeFoldableImpl!(
             @FoldVariants($this, $folder)
@@ -480,7 +480,7 @@ macro_rules! EnumTypeFoldableImpl {
     };
 
     (@VisitVariants($this:expr, $visitor:expr)
-     input( ($variant:path) { $($variant_arg:ident),* $(,)* } , $($input:tt)*)
+     input( ($variant:path) { $($variant_arg:ident),* $(,)? } , $($input:tt)*)
      output( $($output:tt)*) ) => {
         EnumTypeFoldableImpl!(
             @VisitVariants($this, $visitor)

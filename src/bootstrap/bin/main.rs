@@ -7,8 +7,6 @@
 
 #![deny(warnings)]
 
-extern crate bootstrap;
-
 use std::env;
 
 use bootstrap::{Config, Build};

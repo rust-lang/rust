@@ -259,6 +259,11 @@ impl ToJson for MergeFunctions {
     }
 }
 
+pub enum LoadTargetError {
+    BuiltinTargetNotFound(String),
+    Other(String),
+}
+
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;
 
@@ -269,21 +274,24 @@ macro_rules! supported_targets {
         /// List of supported targets
         const TARGETS: &[&str] = &[$($triple),*];
 
-        fn load_specific(target: &str) -> TargetResult {
+        fn load_specific(target: &str) -> Result<Target, LoadTargetError> {
             match target {
                 $(
                     $triple => {
-                        let mut t = $module::target()?;
+                        let mut t = $module::target()
+                            .map_err(LoadTargetError::Other)?;
                         t.options.is_builtin = true;
 
                         // round-trip through the JSON parser to ensure at
                         // run-time that the parser works correctly
-                        t = Target::from_json(t.to_json())?;
+                        t = Target::from_json(t.to_json())
+                            .map_err(LoadTargetError::Other)?;
                         debug!("Got builtin target: {:?}", t);
                         Ok(t)
                     },
                 )+
-                _ => Err(format!("Unable to find target: {}", target))
+                    _ => Err(LoadTargetError::BuiltinTargetNotFound(
+                        format!("Unable to find target: {}", target)))
             }
         }
 
@@ -1176,8 +1184,10 @@ impl Target {
         match *target_triple {
             TargetTriple::TargetTriple(ref target_triple) => {
                 // check if triple is in list of supported targets
-                if let Ok(t) = load_specific(target_triple) {
-                    return Ok(t)
+                match load_specific(target_triple) {
+                    Ok(t) => return Ok(t),
+                    Err(LoadTargetError::BuiltinTargetNotFound(_)) => (),
+                    Err(LoadTargetError::Other(e)) => return Err(e),
                 }
 
                 // search for a file named `target_triple`.json in RUST_TARGET_PATH

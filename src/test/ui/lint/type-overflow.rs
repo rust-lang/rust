@@ -1,4 +1,5 @@
 // compile-pass
+#![warn(overflowing_literals)]
 
 fn main() {
     let error = 255i8; //~WARNING literal out of range for i8

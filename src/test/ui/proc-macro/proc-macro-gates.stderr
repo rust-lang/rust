@@ -33,8 +33,8 @@ LL |     #![a] //~ ERROR: custom attributes cannot be applied to modules
 error: custom attribute invocations must be of the form #[foo] or #[foo(..)], the macro name must only be followed by a delimiter token
   --> $DIR/proc-macro-gates.rs:22:1
    |
-LL | #[a = y] //~ ERROR: must only be followed by a delimiter token
-   | ^^^^^^^^
+LL | #[a = "y"] //~ ERROR: must only be followed by a delimiter token
+   | ^^^^^^^^^^
 
 error[E0658]: custom attributes cannot be applied to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:31:5

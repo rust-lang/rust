@@ -103,7 +103,7 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(bare_trait_objects)]
+#![deny(rust_2018_idioms)]
 #![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
@@ -114,22 +114,10 @@ extern crate build_helper;
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
-extern crate serde_json;
-extern crate cmake;
-extern crate filetime;
-extern crate cc;
-extern crate getopts;
-extern crate num_cpus;
-extern crate toml;
-extern crate time;
-extern crate petgraph;
 
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
-
-#[cfg(unix)]
-extern crate libc;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
@@ -176,8 +164,6 @@ mod job;
 
 #[cfg(all(unix, not(target_os = "haiku")))]
 mod job {
-    use libc;
-
     pub unsafe fn setup(build: &mut crate::Build) {
         if build.config.low_priority {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);

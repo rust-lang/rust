@@ -57,6 +57,9 @@ pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 pub type LPSTR = *mut CHAR;
 pub type LPWSTR = *mut WCHAR;
 pub type LPFILETIME = *mut FILETIME;
+pub type LPWSABUF = *mut WSABUF;
+pub type LPWSAOVERLAPPED = *mut c_void;
+pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -322,6 +325,12 @@ pub struct WSADATA {
     pub lpVendorInfo: *mut u8,
     pub szDescription: [u8; WSADESCRIPTION_LEN + 1],
     pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
+}
+
+#[repr(C)]
+pub struct WSABUF {
+    pub len: ULONG,
+    pub buf: *mut CHAR,
 }
 
 #[repr(C)]
@@ -988,6 +997,22 @@ extern "system" {
                                dwProcessId: DWORD,
                                lpProtocolInfo: LPWSAPROTOCOL_INFO)
                                -> c_int;
+    pub fn WSASend(s: SOCKET,
+                   lpBuffers: LPWSABUF,
+                   dwBufferCount: DWORD,
+                   lpNumberOfBytesSent: LPDWORD,
+                   dwFlags: DWORD,
+                   lpOverlapped: LPWSAOVERLAPPED,
+                   lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+                   -> c_int;
+    pub fn WSARecv(s: SOCKET,
+                   lpBuffers: LPWSABUF,
+                   dwBufferCount: DWORD,
+                   lpNumberOfBytesRecvd: LPDWORD,
+                   lpFlags: LPDWORD,
+                   lpOverlapped: LPWSAOVERLAPPED,
+                   lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+                   -> c_int;
     pub fn GetCurrentProcessId() -> DWORD;
     pub fn WSASocketW(af: c_int,
                       kind: c_int,

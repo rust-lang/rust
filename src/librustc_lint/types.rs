@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::Node;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
 use rustc::{lint, util};
@@ -16,7 +16,6 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{ast, attr};
 use syntax::errors::Applicability;
 use rustc_target::spec::abi::Abi;
-use syntax::edition::Edition;
 use syntax_pos::Span;
 use syntax::source_map;
 
@@ -34,9 +33,8 @@ declare_lint! {
 
 declare_lint! {
     OVERFLOWING_LITERALS,
-    Warn,
-    "literal out of range for its type",
-    Edition::Edition2018 => Deny
+    Deny,
+    "literal out of range for its type"
 }
 
 declare_lint! {
@@ -48,12 +46,12 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: ast::NodeId,
+    negated_expr_id: hir::HirId,
 }
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: ast::DUMMY_NODE_ID }
+        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
     }
 }
 
@@ -73,8 +71,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.node {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.id {
-                    self.negated_expr_id = expr.id;
+                if self.negated_expr_id != e.hir_id {
+                    self.negated_expr_id = expr.hir_id;
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
@@ -97,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 };
                                 let (_, max) = int_ty_range(int_type);
                                 let max = max as u128;
-                                let negative = self.negated_expr_id == e.id;
+                                let negative = self.negated_expr_id == e.hir_id;
 
                                 // Detect literal value out of range [min, max] inclusive
                                 // avoiding use of -min to prevent overflow/panic
@@ -138,8 +136,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             _ => bug!(),
                         };
                         if lit_val < min || lit_val > max {
-                            let parent_id = cx.tcx.hir().get_parent_node(e.id);
-                            if let Node::Expr(parent_expr) = cx.tcx.hir().get(parent_id) {
+                            let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+                            if let Node::Expr(parent_expr) = cx.tcx.hir().get_by_hir_id(parent_id) {
                                 if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
@@ -447,7 +445,7 @@ enum FfiResult<'tcx> {
 /// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: &'tcx ty::AdtDef,
-                                  substs: &Substs<'tcx>)
+                                  substs: SubstsRef<'tcx>)
                                   -> bool {
     if def.variants.len() == 2 {
         let data_idx;

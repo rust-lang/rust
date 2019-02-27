@@ -9,7 +9,7 @@ use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Substs, UnpackedKind};
+use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -30,7 +30,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// The type variable that represents the value of the abstract type
     /// that we require. In other words, after we compile this function,
@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = Substs::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
         let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> = opaque_defn
             .substs
             .iter()
@@ -740,7 +740,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;

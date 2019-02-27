@@ -1,7 +1,7 @@
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::traits;
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
@@ -432,7 +432,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     fn nominal_obligations(&mut self,
                            def_id: DefId,
-                           substs: &Substs<'tcx>)
+                           substs: SubstsRef<'tcx>)
                            -> Vec<traits::PredicateObligation<'tcx>>
     {
         let predicates =

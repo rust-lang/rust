@@ -95,7 +95,7 @@ pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
 pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
-pub fn timeit(builder: &Builder) -> TimeIt {
+pub fn timeit(builder: &Builder<'_>) -> TimeIt {
     TimeIt(builder.config.dry_run, Instant::now())
 }
 
