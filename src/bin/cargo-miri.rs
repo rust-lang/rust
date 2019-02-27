@@ -201,7 +201,7 @@ fn setup(ask_user: bool) {
     // Let's see if it is already installed.
     if std::env::var("XARGO_RUST_SRC").is_err() {
         let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
-        let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
+        let sysroot = std::str::from_utf8(&sysroot).unwrap();
         let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
         if !src.exists() {
             if ask_user {
@@ -336,7 +336,7 @@ fn in_cargo_miri() {
         // So after the first `--`, we add `-Zcargo-miri-marker`.
         let mut cmd = Command::new("cargo");
         cmd.arg("rustc");
-        match (subcommand, &kind[..]) {
+        match (subcommand, kind.as_str()) {
             (MiriCommand::Run, "bin") => {
                 // FIXME: we just run all the binaries here.
                 // We should instead support `cargo miri --bin foo`.
