@@ -74,6 +74,30 @@ pub(crate) fn reference_definition(
                 return Exact(NavigationTarget::from_field(db, field));
             };
         }
+
+        // It could also be a named field
+        if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::NamedField::cast) {
+            tested_by!(goto_definition_works_for_named_fields);
+
+            let infer_result = function.infer(db);
+            let syntax_mapping = function.body_syntax_mapping(db);
+
+            let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
+
+            if let Some(expr) = struct_lit.and_then(|lit| syntax_mapping.node_expr(lit.into())) {
+                let ty = infer_result[expr].clone();
+                if let hir::Ty::Adt { def_id, .. } = ty {
+                    if let hir::AdtDef::Struct(s) = def_id {
+                        let hir_path = hir::Path::from_name_ref(name_ref);
+                        let hir_name = hir_path.as_ident().unwrap();
+
+                        if let Some(field) = s.field(db, hir_name) {
+                            return Exact(NavigationTarget::from_field(db, field));
+                        }
+                    }
+                }
+            }
+        }
     }
     // Try name resolution
     let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
@@ -249,6 +273,26 @@ mod tests {
 
             fn bar(foo: &Foo) {
                 foo.spam<|>;
+            }
+            ",
+            "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_named_fields() {
+        covers!(goto_definition_works_for_named_fields);
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo {
+                spam: u32,
+            }
+
+            fn bar() -> Foo {
+                Foo {
+                    spam<|>: 0,
+                }
             }
             ",
             "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
