@@ -4,7 +4,7 @@ error: proc macro panicked
 LL | invalid_raw_ident!();
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: message: `"self"` is not a valid raw identifier
+   = help: message: `self` cannot be a raw identifier
 
 error: aborting due to previous error
 

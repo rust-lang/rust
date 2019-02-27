@@ -128,7 +128,7 @@ impl<'a> CollectProcMacros<'a> {
             }
         };
 
-        if trait_ident.is_path_segment_keyword() {
+        if !trait_ident.can_be_raw() {
             self.handler.span_err(trait_attr.span(),
                                   &format!("`{}` cannot be a name of derive macro", trait_ident));
         }
@@ -162,7 +162,7 @@ impl<'a> CollectProcMacros<'a> {
                         return None;
                     }
                 };
-                if ident.is_path_segment_keyword() {
+                if !ident.can_be_raw() {
                     self.handler.span_err(
                         attr.span(),
                         &format!("`{}` cannot be a name of derive helper attribute", ident),
