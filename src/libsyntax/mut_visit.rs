@@ -934,7 +934,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     let FnHeader { unsafety: _, asyncness, constness: _, abi: _ } = header;
-    vis.visit_asyncness(asyncness);
+    vis.visit_asyncness(&mut asyncness.node);
 }
 
 pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, vis: &mut T) {
