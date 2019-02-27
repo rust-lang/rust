@@ -306,3 +306,31 @@ fn bench_skip_then_zip(b: &mut Bencher) {
         assert_eq!(s, 2009900);
     });
 }
+
+#[bench]
+fn bench_filter_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).map(black_box).filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_ref_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_chain_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).chain(0..1000000).map(black_box).filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_chain_ref_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).chain(0..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
+    })
+}
