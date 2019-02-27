@@ -931,7 +931,6 @@ impl_stable_hash_for!(struct hir::ForeignItem {
     ident -> (ident.name),
     attrs,
     node,
-    id,
     hir_id,
     span,
     vis

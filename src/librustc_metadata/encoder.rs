@@ -1161,7 +1161,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::ForeignMod(ref fm) => {
                     self.lazy_seq(fm.items
                         .iter()
-                        .map(|foreign_item| tcx.hir().local_def_id(foreign_item.id).index))
+                        .map(|foreign_item| tcx.hir().local_def_id_from_hir_id(
+                            foreign_item.hir_id).index))
                 }
                 hir::ItemKind::Enum(..) => {
                     let def = self.tcx.adt_def(def_id);
@@ -1607,9 +1608,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         };
 
+        let node_id = self.tcx.hir().hir_to_node_id(nitem.hir_id);
+
         Entry {
             kind,
-            visibility: self.lazy(&ty::Visibility::from_hir(&nitem.vis, nitem.id, tcx)),
+            visibility: self.lazy(&ty::Visibility::from_hir(&nitem.vis, node_id, tcx)),
             span: self.lazy(&nitem.span),
             attributes: self.encode_attributes(&nitem.attrs),
             children: LazySeq::empty(),
@@ -1655,7 +1658,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
-        let def_id = self.index.tcx.hir().local_def_id(ni.id);
+        let def_id = self.index.tcx.hir().local_def_id_from_hir_id(ni.hir_id);
         self.index.record(def_id,
                           IsolatedEncoder::encode_info_for_foreign_item,
                           (def_id, ni));

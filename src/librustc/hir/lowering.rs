@@ -3551,7 +3551,6 @@ impl<'a> LoweringContext<'a> {
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
         let def_id = self.resolver.definitions().local_def_id(node_id);
         hir::ForeignItem {
-            id: node_id,
             hir_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),

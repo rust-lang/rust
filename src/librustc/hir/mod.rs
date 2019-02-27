@@ -2378,7 +2378,6 @@ pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

@@ -25,7 +25,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
         };
 
         let foreign_items = fm.items.iter()
-            .map(|it| self.tcx.hir().local_def_id(it.id))
+            .map(|it| self.tcx.hir().local_def_id_from_hir_id(it.hir_id))
             .collect();
         self.modules.push(ForeignModule {
             foreign_items,

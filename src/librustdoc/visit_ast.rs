@@ -357,7 +357,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             Node::ForeignItem(it) if !glob => {
                 // Generate a fresh `extern {}` block if we want to inline a foreign item.
                 om.foreigns.push(hir::ForeignMod {
-                    abi: tcx.hir().get_foreign_abi(it.id),
+                    abi: tcx.hir().get_foreign_abi_by_hir_id(it.hir_id),
                     items: vec![hir::ForeignItem {
                         ident: renamed.unwrap_or(it.ident),
                         .. it.clone()

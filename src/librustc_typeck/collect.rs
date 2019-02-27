@@ -409,7 +409,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {
-                let def_id = tcx.hir().local_def_id(item.id);
+                let def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);

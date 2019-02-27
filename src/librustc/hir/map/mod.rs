@@ -341,7 +341,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ForeignItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
                     ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
