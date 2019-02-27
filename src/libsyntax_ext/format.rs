@@ -347,9 +347,9 @@ impl<'a, 'b> Context<'a, 'b> {
 
             Named(name) => {
                 match self.names.get(&name) {
-                    Some(idx) => {
+                    Some(&idx) => {
                         // Treat as positional arg.
-                        self.verify_arg_type(Exact(*idx), ty)
+                        self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
