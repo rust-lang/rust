@@ -13,7 +13,7 @@ crate-type = ["dylib"]
 bitflags = "1.0"
 serialize = { path = "../libserialize" }
 log = "0.4"
-scoped-tls = "0.1"
+scoped-tls = "1.0"
 syntax_pos = { path = "../libsyntax_pos" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
