@@ -4,7 +4,7 @@ error: expected `*` or `+`
 LL |     ($(a)?) => {} //~ERROR expected `*` or `+`
    |          ^
    |
-   = note: `?` is not a macro repetition operator
+   = note: `?` is not a macro repetition operator in the 2015 edition, but is accepted in the 2018 edition
 
 error: expected `*` or `+`
   --> $DIR/macro-at-most-once-rep-2015-ques-rep.rs:10:11
@@ -12,7 +12,7 @@ error: expected `*` or `+`
 LL |     ($(a),?) => {} //~ERROR expected `*` or `+`
    |           ^
    |
-   = note: `?` is not a macro repetition operator
+   = note: `?` is not a macro repetition operator in the 2015 edition, but is accepted in the 2018 edition
 
 error: aborting due to 2 previous errors
 
