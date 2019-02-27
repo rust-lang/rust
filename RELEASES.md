@@ -53,6 +53,7 @@ Language
   ```
 - [`extern` functions will now abort by default when panicking.][55982]
   This was previously undefined behaviour.
+- [You may now use `Rc`, `Arc` and `Pin` as method receivers](56805)
 
 Compiler
 --------
@@ -121,6 +122,7 @@ Compatibility Notes
 [57234]: https://github.com/rust-lang/rust/pull/57234/
 [57332]: https://github.com/rust-lang/rust/pull/57332/
 [56947]: https://github.com/rust-lang/rust/pull/56947/
+[56805]: https://github.com/rust-lang/rust/pull/56805
 [57049]: https://github.com/rust-lang/rust/pull/57049/
 [57067]: https://github.com/rust-lang/rust/pull/57067/
 [56769]: https://github.com/rust-lang/rust/pull/56769/
