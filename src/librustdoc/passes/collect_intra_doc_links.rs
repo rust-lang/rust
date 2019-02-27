@@ -19,9 +19,11 @@ use crate::passes::{look_for_tests, Pass};
 
 use super::span_of_attrs;
 
-pub const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass::early("collect-intra-doc-links", collect_intra_doc_links,
-                "reads a crate's documentation to resolve intra-doc-links");
+pub const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
+    name: "collect-intra-doc-links",
+    pass: collect_intra_doc_links,
+    description: "reads a crate's documentation to resolve intra-doc-links",
+};
 
 pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
