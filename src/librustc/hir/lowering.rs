@@ -1414,7 +1414,6 @@ impl<'a> LoweringContext<'a> {
 
             trace!("exist ty def index: {:#?}", exist_ty_def_index);
             let exist_ty_item = hir::Item {
-                id: exist_ty_id.node_id,
                 hir_id: exist_ty_id.hir_id,
                 ident: keywords::Invalid.ident(),
                 attrs: Default::default(),
@@ -3128,7 +3127,6 @@ impl<'a> LoweringContext<'a> {
                         this.insert_item(
                             new_id.node_id,
                             hir::Item {
-                                id: new_id.node_id,
                                 hir_id: new_id.hir_id,
                                 ident,
                                 attrs: attrs.clone(),
@@ -3234,7 +3232,6 @@ impl<'a> LoweringContext<'a> {
                         this.insert_item(
                             new_id,
                             hir::Item {
-                                id: new_id,
                                 hir_id: new_hir_id,
                                 ident,
                                 attrs: attrs.clone(),
@@ -3534,10 +3531,9 @@ impl<'a> LoweringContext<'a> {
 
         let node = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.node);
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(i.id);
 
         Some(hir::Item {
-            id: node_id,
             hir_id,
             ident,
             attrs,

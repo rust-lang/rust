@@ -29,7 +29,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             .collect();
         self.modules.push(ForeignModule {
             foreign_items,
-            def_id: self.tcx.hir().local_def_id(it.id),
+            def_id: self.tcx.hir().local_def_id_from_hir_id(it.hir_id),
         });
     }
 

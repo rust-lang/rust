@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt<'_, '_, '_>) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility, id: hir::HirId, tcx: TyCtxt<'_, '_, '_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
@@ -271,7 +271,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.hir().get_module_parent(id))
+                Visibility::Restricted(tcx.hir().get_module_parent_by_hir_id(id))
             }
         }
     }
@@ -2737,11 +2737,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::AssociatedItemKind::Existential => bug!("only impls can have existentials"),
         };
 
+        let hir_id = self.hir().node_to_hir_id(trait_item_ref.id.node_id);
+
         AssociatedItem {
             ident: trait_item_ref.ident,
             kind,
             // Visibility of trait items is inherited from their traits.
-            vis: Visibility::from_hir(parent_vis, trait_item_ref.id.node_id, self),
+            vis: Visibility::from_hir(parent_vis, hir_id, self),
             defaultness: trait_item_ref.defaultness,
             def_id,
             container: TraitContainer(parent_def_id),
@@ -2763,11 +2765,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::AssociatedItemKind::Existential => (ty::AssociatedKind::Existential, false),
         };
 
+        let hir_id = self.hir().node_to_hir_id(impl_item_ref.id.node_id);
+
         AssociatedItem {
             ident: impl_item_ref.ident,
             kind,
             // Visibility of trait impl items doesn't matter.
-            vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.node_id, self),
+            vis: ty::Visibility::from_hir(&impl_item_ref.vis, hir_id, self),
             defaultness: impl_item_ref.defaultness,
             def_id,
             container: ImplContainer(parent_def_id),

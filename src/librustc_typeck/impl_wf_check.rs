@@ -79,7 +79,7 @@ struct ImplWfCheck<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.node {
-            let impl_def_id = self.tcx.hir().local_def_id(item.id);
+            let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx,
                                                 impl_def_id,
                                                 impl_item_refs);

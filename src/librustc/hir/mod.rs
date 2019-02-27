@@ -2221,7 +2221,6 @@ pub struct ItemId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
     pub ident: Ident,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: ItemKind,

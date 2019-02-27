@@ -26,7 +26,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty};
 use rustc::{lint, util};
 use hir::Node;
-use util::nodemap::NodeSet;
+use util::nodemap::HirIdSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) => {
-                let def_id = cx.tcx.hir().local_def_id(it.id);
+                let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
                 self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
@@ -569,21 +569,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -611,7 +611,7 @@ declare_lint! {
 }
 
 pub struct MissingDebugImplementations {
-    impling_types: Option<NodeSet>,
+    impling_types: Option<HirIdSet>,
 }
 
 impl MissingDebugImplementations {
@@ -650,11 +650,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let mut impls = NodeSet::default();
+            let mut impls = HirIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(node_id) = cx.tcx.hir().as_local_node_id(ty_def.did) {
-                        impls.insert(node_id);
+                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(ty_def.did) {
+                        impls.insert(hir_id);
                     }
                 }
             });
@@ -663,7 +663,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.hir_id) {
             cx.span_lint(MISSING_DEBUG_IMPLEMENTATIONS,
                          item.span,
                          "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
@@ -860,7 +860,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(it.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
         let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
             Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
 
 
         if cx.tcx.features().trivial_bounds {
-            let def_id = cx.tcx.hir().local_def_id(item.id);
+            let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in &predicates.predicates {
                 let predicate_kind_name = match predicate {
@@ -1500,14 +1500,14 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: ast::NodeId, // NodeId of the item under which things are not nameable
+    boundary: hir::HirId, // HirId of the item under which things are not nameable
     items_nameable: bool,
 }
 
 impl UnnameableTestItems {
     pub fn new() -> Self {
         Self {
-            boundary: ast::DUMMY_NODE_ID,
+            boundary: hir::DUMMY_HIR_ID,
             items_nameable: true
         }
     }
@@ -1529,7 +1529,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.node {}
             else {
                 self.items_nameable = false;
-                self.boundary = it.id;
+                self.boundary = it.hir_id;
             }
             return;
         }
@@ -1544,7 +1544,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_, '_>, it: &hir::Item) {
-        if !self.items_nameable && self.boundary == it.id {
+        if !self.items_nameable && self.boundary == it.hir_id {
             self.items_nameable = true;
         }
     }
@@ -1794,7 +1794,7 @@ impl ExplicitOutlivesRequirements {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
-        let def_id = cx.tcx.hir().local_def_id(item.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         if let hir::ItemKind::Struct(_, ref generics) = item.node {
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();

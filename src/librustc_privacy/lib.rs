@@ -220,16 +220,16 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
 
 fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                                -> (ty::Visibility, Span, &'static str) {
-    match tcx.hir().as_local_node_id(def_id) {
-        Some(node_id) => {
-            let vis = match tcx.hir().get(node_id) {
+    match tcx.hir().as_local_hir_id(def_id) {
+        Some(hir_id) => {
+            let vis = match tcx.hir().get_by_hir_id(hir_id) {
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
                 Node::TraitItem(..) | Node::Variant(..) => {
-                    return def_id_visibility(tcx, tcx.hir().get_parent_did(node_id));
+                    return def_id_visibility(tcx, tcx.hir().get_parent_did_by_hir_id(hir_id));
                 }
                 Node::ImplItem(impl_item) => {
-                    match tcx.hir().get(tcx.hir().get_parent(node_id)) {
+                    match tcx.hir().get_by_hir_id(tcx.hir().get_parent_item(hir_id)) {
                         Node::Item(item) => match &item.node {
                             hir::ItemKind::Impl(.., None, _, _) => &impl_item.vis,
                             hir::ItemKind::Impl(.., Some(trait_ref), _, _)
@@ -240,16 +240,16 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                     }
                 }
                 Node::StructCtor(vdata) => {
-                    let struct_node_id = tcx.hir().get_parent(node_id);
-                    let item = match tcx.hir().get(struct_node_id) {
+                    let struct_hir_id = tcx.hir().get_parent_item(hir_id);
+                    let item = match tcx.hir().get_by_hir_id(struct_hir_id) {
                         Node::Item(item) => item,
                         node => bug!("unexpected node kind: {:?}", node),
                     };
                     let (mut ctor_vis, mut span, mut descr) =
-                        (ty::Visibility::from_hir(&item.vis, struct_node_id, tcx),
+                        (ty::Visibility::from_hir(&item.vis, struct_hir_id, tcx),
                          item.vis.span, item.vis.node.descr());
                     for field in vdata.fields() {
-                        let field_vis = ty::Visibility::from_hir(&field.vis, node_id, tcx);
+                        let field_vis = ty::Visibility::from_hir(&field.vis, hir_id, tcx);
                         if ctor_vis.is_at_least(field_vis, tcx) {
                             ctor_vis = field_vis;
                             span = field.vis.span;
@@ -260,7 +260,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                     // If the structure is marked as non_exhaustive then lower the
                     // visibility to within the crate.
                     if ctor_vis == ty::Visibility::Public {
-                        let adt_def = tcx.adt_def(tcx.hir().get_parent_did(node_id));
+                        let adt_def = tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
                         if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
                             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
                             span = attr::find_by_name(&item.attrs, "non_exhaustive").unwrap().span;
@@ -277,7 +277,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                 }
                 node => bug!("unexpected node kind: {:?}", node)
             };
-            (ty::Visibility::from_hir(vis, node_id, tcx), vis.span, vis.node.descr())
+            (ty::Visibility::from_hir(vis, hir_id, tcx), vis.span, vis.node.descr())
         }
         None => {
             let vis = tcx.visibility(def_id);
@@ -1679,7 +1679,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let tcx = self.tcx;
-        let item_visibility = ty::Visibility::from_hir(&item.vis, item.id, tcx);
+        let item_visibility = ty::Visibility::from_hir(&item.vis, item.hir_id, tcx);
 
         match item.node {
             // Crates are always public.
@@ -1724,7 +1724,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of foreign modules have their own publicity.
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    let vis = ty::Visibility::from_hir(&foreign_item.vis, item.id, tcx);
+                    let vis = ty::Visibility::from_hir(&foreign_item.vis, item.hir_id, tcx);
                     self.check(foreign_item.hir_id, vis).generics().predicates().ty();
                 }
             }
@@ -1734,7 +1734,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
                 for field in struct_def.fields() {
-                    let field_visibility = ty::Visibility::from_hir(&field.vis, item.id, tcx);
+                    let field_visibility = ty::Visibility::from_hir(&field.vis, item.hir_id, tcx);
                     self.check(field.hir_id, min(item_visibility, field_visibility, tcx)).ty();
                 }
             }
@@ -1748,7 +1748,9 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 for impl_item_ref in impl_item_refs {
                     let impl_item = tcx.hir().impl_item(impl_item_ref.id);
                     let impl_item_vis = if trait_ref.is_none() {
-                        min(ty::Visibility::from_hir(&impl_item.vis, item.id, tcx), impl_vis, tcx)
+                        min(ty::Visibility::from_hir(&impl_item.vis, item.hir_id, tcx),
+                            impl_vis,
+                            tcx)
                     } else {
                         impl_vis
                     };

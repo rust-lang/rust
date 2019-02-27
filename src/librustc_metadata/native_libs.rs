@@ -56,7 +56,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                 name: None,
                 kind: cstore::NativeUnknown,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir().local_def_id(it.id)),
+                foreign_module: Some(self.tcx.hir().local_def_id_from_hir_id(it.hir_id)),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;

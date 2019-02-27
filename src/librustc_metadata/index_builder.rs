@@ -215,10 +215,10 @@ impl<T> DepGraphRead for Untracked<T> {
 /// HIR node that doesn't carry its own ID. This will allow an
 /// arbitrary `T` to be passed in, but register a read on the given
 /// `NodeId`.
-pub struct FromId<T>(pub ast::NodeId, pub T);
+pub struct FromId<T>(pub hir::HirId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
-        tcx.hir().read(self.0);
+        tcx.hir().read_by_hir_id(self.0);
     }
 }

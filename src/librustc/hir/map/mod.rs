@@ -319,7 +319,7 @@ impl<'hir> Map<'hir> {
 
         match node {
             Node::Item(item) => {
-                let def_id = || self.local_def_id(item.id);
+                let def_id = || self.local_def_id_from_hir_id(item.hir_id);
 
                 match item.node {
                     ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),

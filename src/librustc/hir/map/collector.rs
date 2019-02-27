@@ -356,7 +356,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
         debug_assert_eq!(i.hir_id.owner,
-                         self.definitions.opt_def_index(i.id).unwrap());
+                         self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap());
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {

@@ -13,7 +13,7 @@ use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
 use crate::rustc::lint;
 use crate::session::Session;
-use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet, NodeMap};
+use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
@@ -204,7 +204,7 @@ struct NamedRegionMap {
 
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
-    pub object_lifetime_defaults: NodeMap<Vec<ObjectLifetimeDefault>>,
+    pub object_lifetime_defaults: HirIdMap<Vec<ObjectLifetimeDefault>>,
 }
 
 /// See [`NamedRegionMap`].
@@ -395,8 +395,7 @@ fn resolve_lifetimes<'tcx>(
             .or_default();
         Lrc::get_mut(map).unwrap().insert(hir_id.local_id);
     }
-    for (k, v) in named_region_map.object_lifetime_defaults {
-        let hir_id = tcx.hir().node_to_hir_id(k);
+    for (hir_id, v) in named_region_map.object_lifetime_defaults {
         let map = rl.object_lifetime_defaults
             .entry(hir_id.owner_local_def_id())
             .or_default();
@@ -1266,8 +1265,8 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 
 fn compute_object_lifetime_defaults(
     tcx: TyCtxt<'_, '_, '_>,
-) -> NodeMap<Vec<ObjectLifetimeDefault>> {
-    let mut map = NodeMap::default();
+) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
+    let mut map = HirIdMap::default();
     for item in tcx.hir().krate().items.values() {
         match item.node {
             hir::ItemKind::Struct(_, ref generics)
@@ -1311,7 +1310,7 @@ fn compute_object_lifetime_defaults(
                     tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
                 }
 
-                map.insert(item.id, result);
+                map.insert(item.hir_id, result);
             }
             _ => {}
         }
@@ -1959,7 +1958,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             };
 
             let map = &self.map;
-            let unsubst = if let Some(id) = self.tcx.hir().as_local_node_id(def_id) {
+            let unsubst = if let Some(id) = self.tcx.hir().as_local_hir_id(def_id) {
                 &map.object_lifetime_defaults[&id]
             } else {
                 let tcx = self.tcx;

@@ -118,7 +118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        convert_item(self.tcx, item.id);
+        convert_item(self.tcx, item.hir_id);
         intravisit::walk_item(self, item);
     }
 
@@ -397,10 +397,10 @@ fn is_param<'a, 'tcx>(
     }
 }
 
-fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
-    let it = tcx.hir().expect_item(item_id);
-    debug!("convert: item {} with id {}", it.ident, it.id);
-    let def_id = tcx.hir().local_def_id(item_id);
+fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: hir::HirId) {
+    let it = tcx.hir().expect_item_by_hir_id(item_id);
+    debug!("convert: item {} with id {}", it.ident, it.hir_id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(item_id);
     match it.node {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
@@ -577,7 +577,7 @@ fn convert_variant<'a, 'tcx>(
     attribute_def_id: DefId
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = Default::default();
-    let node_id = tcx.hir().as_local_node_id(did).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(did).unwrap();
     let fields = def
         .fields()
         .iter()
@@ -601,7 +601,7 @@ fn convert_variant<'a, 'tcx>(
             ty::FieldDef {
                 did: fid,
                 ident: f.ident,
-                vis: ty::Visibility::from_hir(&f.vis, node_id, tcx),
+                vis: ty::Visibility::from_hir(&f.vis, hir_id, tcx),
             }
         })
         .collect();
@@ -937,12 +937,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     //
                     // Something of a hack: use the node id for the trait, also as
                     // the node id for the Self type parameter.
-                    let param_id = item.id;
+                    let param_id = item.hir_id;
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: keywords::SelfUpper.name().as_interned_str(),
-                        def_id: tcx.hir().local_def_id(param_id),
+                        def_id: tcx.hir().local_def_id_from_hir_id(param_id),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
@@ -1477,7 +1477,7 @@ fn find_existential_constraints<'a, 'tcx>(
             intravisit::NestedVisitorMap::All(&self.tcx.hir())
         }
         fn visit_item(&mut self, it: &'tcx Item) {
-            let def_id = self.tcx.hir().local_def_id(it.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             // the existential type itself or its children are not within its reveal scope
             if def_id != self.def_id {
                 self.check(def_id);

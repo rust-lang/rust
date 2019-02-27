@@ -152,7 +152,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                        let def_id = self.tcx.hir().local_def_id(item.id);
+                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                         let def = self.tcx.adt_def(def_id);
                         self.repr_has_repr_c = def.repr.c();
 

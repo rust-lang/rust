@@ -856,7 +856,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
         let hir::Item {
             ident,
             ref attrs,
-            id: _,
             hir_id: _,
             ref node,
             ref vis,

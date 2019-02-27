@@ -761,7 +761,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span.is_dummy() { return }
 
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
                     Some(cnum) => cnum,
                     None => return,
@@ -791,7 +791,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
             hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);
 

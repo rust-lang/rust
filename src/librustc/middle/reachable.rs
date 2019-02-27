@@ -36,7 +36,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match item.node {
         hir::ItemKind::Impl(..) |
         hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(tcx.hir().local_def_id(item.id));
+            let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
         _ => false,
@@ -344,7 +344,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.
-        let def_id = self.tcx.hir().local_def_id(item.id);
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator() ||
             codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
