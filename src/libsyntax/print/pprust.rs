@@ -3195,7 +3195,7 @@ impl<'a> State<'a> {
             ast::Constness::Const => self.word_nbsp("const")?
         }
 
-        self.print_asyncness(header.asyncness)?;
+        self.print_asyncness(header.asyncness.node)?;
         self.print_unsafety(header.unsafety)?;
 
         if header.abi != Abi::Rust {
@@ -3247,7 +3247,7 @@ mod tests {
                     ast::FnHeader {
                         unsafety: ast::Unsafety::Normal,
                         constness: source_map::dummy_spanned(ast::Constness::NotConst),
-                        asyncness: ast::IsAsync::NotAsync,
+                        asyncness: source_map::dummy_spanned(ast::IsAsync::NotAsync),
                         abi: Abi::Rust,
                     },
                     abba_ident,

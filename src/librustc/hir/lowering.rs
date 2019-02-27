@@ -2892,7 +2892,7 @@ impl<'a> LoweringContext<'a> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let body_id = this.lower_async_body(decl, header.asyncness, body);
+                    let body_id = this.lower_async_body(decl, header.asyncness.node, body);
 
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
@@ -2902,7 +2902,7 @@ impl<'a> LoweringContext<'a> {
                             decl,
                             Some((fn_def_id, idty)),
                             true,
-                            header.asyncness.opt_return_id()
+                            header.asyncness.node.opt_return_id()
                         ),
                     );
 
@@ -3398,14 +3398,14 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
-                let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness, body);
+                let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness.node, body);
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
                     impl_item_def_id,
                     impl_trait_return_allow,
-                    sig.header.asyncness.opt_return_id(),
+                    sig.header.asyncness.node.opt_return_id(),
                 );
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
@@ -3624,7 +3624,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(h.asyncness),
+            asyncness: self.lower_asyncness(h.asyncness.node),
             constness: self.lower_constness(h.constness),
             abi: h.abi,
         }

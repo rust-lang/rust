@@ -1898,7 +1898,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match fn_kind {
             FnKind::ItemFn(_, header, _, _) => {
                 // Check for const fn and async fn declarations.
-                if header.asyncness.is_async() {
+                if header.asyncness.node.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
                 // Stability of const fn methods are covered in

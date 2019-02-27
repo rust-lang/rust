@@ -463,7 +463,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.invalid_visibility(&impl_item.vis, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
                         self.check_trait_fn_not_const(sig.header.constness);
-                        self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness);
+                        self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
                     }
                 }
             }
@@ -482,9 +482,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default").emit();
                 }
             }
-            ItemKind::Fn(_, header, ref generics, _) => {
+            ItemKind::Fn(_, ref header, ref generics, _) => {
                 // We currently do not permit const generics in `const fn`, as
                 // this is tantamount to allowing compile-time dependent typing.
+                self.visit_fn_header(header);
                 if header.constness.node == Constness::Const {
                     // Look for const generics and error if we find any.
                     for param in &generics.params {
@@ -535,7 +536,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
-                        self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness);
+                        self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
                         self.check_trait_fn_not_const(sig.header.constness);
                         if block.is_none() {
                             self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
@@ -701,6 +702,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.session.diagnostic()
             .span_bug(mac.span, "macro invocation missed in expansion; did you forget to override \
                                  the relevant `fold_*()` method in `PlaceholderExpander`?");
+    }
+
+    fn visit_fn_header(&mut self, header: &'a FnHeader) {
+        if header.asyncness.node.is_async() && self.session.rust_2015() {
+            struct_span_err!(self.session, header.asyncness.span, E0670,
+                             "`async fn` is not permitted in the 2015 edition").emit();
+        }
     }
 }
 
