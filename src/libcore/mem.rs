@@ -908,7 +908,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// `ManuallyDrop<T>` is subject to the same layout optimizations as `T`.
 /// As a consequence, it has *no effect* on the assumptions that the compiler makes
 /// about all values being initialized at their type.  In particular, initializing
-/// a `ManuallyDrop<&T>` with [`mem::zeroed`] is undefined behavior.
+/// a `ManuallyDrop<&mut T>` with [`mem::zeroed`] is undefined behavior.
 ///
 /// # Examples
 ///
