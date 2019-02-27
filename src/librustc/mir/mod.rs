@@ -2059,15 +2059,15 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
-    /// Recursively "unroll" a place into a `PlaceComponents` list,
+    /// Recursively "iterates" over place components, generating a `PlaceComponents` list,
     /// invoking `op` with a `PlaceComponentsIter`.
-    pub fn unroll<R>(
+    pub fn iterate<R>(
         &self,
         next: Option<&PlaceComponents<'_, 'tcx>>,
         op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
     ) -> R {
         match self {
-            Place::Projection(interior) => interior.base.unroll(
+            Place::Projection(interior) => interior.base.iterate(
                 Some(&PlaceComponents {
                     component: self,
                     next,
@@ -2089,7 +2089,7 @@ impl<'tcx> Place<'tcx> {
 /// A linked list of places running up the stack; begins with the
 /// innermost place and extends to projections (e.g., `a.b` would have
 /// the place `a` with a "next" pointer to `a.b`). Created by
-/// `Place::unroll`.
+/// `Place::iterate`.
 ///
 /// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
