@@ -238,6 +238,10 @@ impl Step for Llvm {
             cfg.define("LLVM_USE_LINKER", linker);
         }
 
+        if let Some(true) = builder.config.llvm_allow_old_toolchain {
+            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
+        }
+
         if let Some(ref python) = builder.config.python {
             cfg.define("PYTHON_EXECUTABLE", python);
         }
