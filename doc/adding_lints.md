@@ -88,7 +88,8 @@ use rustc::lint::{LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 ```
 
-The next step is to provide a lint declaration. Lints are declared using the [`declare_clippy_lint!`][declare_clippy_lint] macro:
+The next step is to provide a lint declaration. Lints are declared using the
+[`declare_clippy_lint!`][declare_clippy_lint] macro:
 
 ```rust
 declare_clippy_lint! {
@@ -107,7 +108,8 @@ state the thing that is being checked for and read well when used with
 * The last part should be a text that explains what exactly is wrong with the
   code
 
-With our lint declaration done, we will now make sure that our lint declaration is assigned to a lint pass:
+With our lint declaration done, we will now make sure that our lint declaration
+is assigned to a lint pass:
 
 ```rust
 // clippy_lints/src/foo_functions.rs
@@ -130,19 +132,23 @@ impl LintPass for FooFunctionsPass {
 }
 ```
 
-Don't worry about the `name` method here. As long as it includes the name of the lint pass it should be fine.
+Don't worry about the `name` method here. As long as it includes the name of the
+lint pass it should be fine.
 
 Next you should run `util/dev update_lints` to register the lint in various
 places, mainly in `clippy_lints/src/lib.rs`.
 
-While `update_lints` automates some things, it doesn't automate everything. We will have to register our lint pass manually in the `register_plugins` function in `clippy_lints/src/lib.rs`:
+While `update_lints` automates some things, it doesn't automate everything. We
+will have to register our lint pass manually in the `register_plugins` function
+in `clippy_lints/src/lib.rs`:
 
 ```rust
 reg.register_early_lint_pass(box foo_functions::FooFunctionsPass);
 ```
 
-Without that, running the UI tests would produce an error like `unknown clippy lint: clippy::foo_functions`.
-The next decision we have to make is which lint pass our lint is going to need.
+Without that, running the UI tests would produce an error like `unknown clippy
+lint: clippy::foo_functions`.  The next decision we have to make is which lint
+pass our lint is going to need.
 
 ### Lint passes
 
@@ -150,11 +156,19 @@ Writing a lint that just checks for the name of a function means that we just
 have to deal with the AST and don't have to deal with the type system at all.
 This is good, because it makes writing this particular lint less complicated.
 
-We have to make this decision with every new Clippy lint. It boils down to using either `EarlyLintPass` or `LateLintPass`. This is a result of Rust's compilation process. You can read more about it [in the rustc guide][compilation_stages].
+We have to make this decision with every new Clippy lint. It boils down to using
+either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
+This is a result of Rust's compilation process. You can read more about it [in
+the rustc guide][compilation_stages].
 
-In short, the `LateLintPass` has access to type information while the `EarlyLintPass` doesn't. If you don't need access to type information, use the `EarlyLintPass`. The `EarlyLintPass` is also faster. However linting speed hasn't really been a concern with Clippy so far.
+In short, the `LateLintPass` has access to type information while the
+`EarlyLintPass` doesn't. If you don't need access to type information, use the
+`EarlyLintPass`. The `EarlyLintPass` is also faster. However linting speed
+hasn't really been a concern with Clippy so far.
 
-Since we don't need type information for checking the function name, we are going to use the `EarlyLintPass`. It has to be imported as well, changing our imports to:
+Since we don't need type information for checking the function name, we are
+going to use the `EarlyLintPass`. It has to be imported as well, changing our
+imports to:
 
 ```rust
 use rustc::lint::{LintArray, LintPass, EarlyLintPass, EarlyContext};
@@ -165,20 +179,25 @@ use rustc::{declare_tool_lint, lint_array};
 
 With UI tests in place, we can start working on the implementation of the lint logic. We can keep executing the tests until we make them pass.
 
-Let's start by emitting a lint for every function definition.
+Let's start by implementing the `EarlyLintPass` for our `FooFunctionsPass`:
 
 ```rust
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for FooFunctionsPass {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
         // TODO: Emit lint here
     }
 }
 ```
 
-We implement the [`check_fn`][check_fn] method from the [`EarlyLintPass`][early_lint_pass] trait. This gives us access to various information about the function that is currently being checked. More on that in the next section. Let's worry about the details later and emit our lint for *every* function definition first.
+We implement the [`check_fn`][check_fn] method from the
+[`EarlyLintPass`][early_lint_pass] trait. This gives us access to various
+information about the function that is currently being checked. More on that in
+the next section. Let's worry about the details later and emit our lint for
+*every* function definition first.
 
-Depending on how complex we want our lint message to be, we can choose from a variety of lint emission functions.
-They can all be found in  [`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
+Depending on how complex we want our lint message to be, we can choose from a
+variety of lint emission functions.  They can all be found in
+[`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
 
 
 ```rust
@@ -203,12 +222,33 @@ so this section is kept rather short.
 Using the [`check_fn`][check_fn] method gives us access to [`FnKind`][fn_kind]
 that has two relevant variants for us `FnKind::ItemFn` and `FnKind::Method`.
 Both provide access to the name of the function/method via an [`Ident`][ident].
-and delegate our check to it's own function, passing through only the data we
-need.
 
-In our example, the implementation would look like:
+With that we can expand our `check_fn` method to:
 
 ```rust
+impl EarlyLintPass for Pass {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
+        if !is_foo_fn(fn_kind) { return; }
+        span_help_and_lint(
+            cx,
+            FOO_FUNCTIONS,
+            span,
+            "function named `foo`",
+            "consider using a more meaningful name"
+        );
+    }
+}
+```
+
+We separate the lint conditional from the lint emissions because it makes the
+code a bit easier to read. In some cases this separation would also allow to
+write some unit tests (as opposed to UI tests) for the separate function.
+
+In our example, `is_foo_fn` looks like:
+
+```rust
+// use statements, impl EarlyLintPass, check_fn, ..
+
 fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
     match fn_kind {
         FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) => {
@@ -219,12 +259,12 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 }
 ```
 
-
 Now you'll want to also run the full test suite with `cargo test`. Apart from
 running all other UI tests, this ensures that our lint implementation is not
-violating any Clippy lints itself. If you are still following the example,
-you'll see that the `FooFunctionsPass` violates a Clippy lint. So we are going
-to rename that struct to just `Pass`:
+violating any Clippy lints itself.
+
+If you are still following the example, you'll see that the `FooFunctionsPass`
+violates a Clippy lint. So we are going to rename that struct to just `Pass`:
 
 ```rust
 #[derive(Copy, Clone)]
@@ -233,6 +273,8 @@ pub struct Pass;
 impl LintPass for Pass { /* .. */ }
 ```
 
+That should be it for the lint implementation. Running `cargo test` should now
+pass and we can finish up our work by adding some documentation.
 
 ### Documentation
 
@@ -255,9 +297,9 @@ Please document your lint with a doc comment akin to the following:
 /// Insert a short example of code that triggers the lint
 ///
 /// // Good
-/// Insert a short example of improved code that doesnt trigger the lint
+/// Insert a short example of improved code that doesn't trigger the lint
 /// ```
-declare_clippy_lint! // ...
+declare_clippy_lint! { /* ... */ }
 ```
 
 Once your lint is merged, this documentation will show up in the [lint
