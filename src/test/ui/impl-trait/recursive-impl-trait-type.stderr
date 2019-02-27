@@ -95,15 +95,7 @@ LL | fn generator_hold() -> impl Sized { //~ ERROR
    = note: expanded type is `[generator@$DIR/recursive-impl-trait-type.rs:58:5: 62:6 {impl Sized, ()}]`
 
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type.rs:65:40
-   |
-LL | async fn recursive_async_function() -> () { //~ ERROR
-   |                                        ^^ expands to self-referential type
-   |
-   = note: expanded type is `std::future::GenFuture<[static generator@$DIR/recursive-impl-trait-type.rs:65:43: 67:2 {impl std::future::Future, ()}]>`
-
-error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type.rs:73:26
+  --> $DIR/recursive-impl-trait-type.rs:69:26
    |
 LL | fn mutual_recursion() -> impl Sync { //~ ERROR
    |                          ^^^^^^^^^ expands to self-referential type
@@ -111,13 +103,13 @@ LL | fn mutual_recursion() -> impl Sync { //~ ERROR
    = note: type resolves to itself
 
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type.rs:77:28
+  --> $DIR/recursive-impl-trait-type.rs:73:28
    |
 LL | fn mutual_recursion_b() -> impl Sized { //~ ERROR
    |                            ^^^^^^^^^^ expands to self-referential type
    |
    = note: type resolves to itself
 
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0720`.
