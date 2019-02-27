@@ -257,7 +257,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
             );
             return false
         }
-        if header.asyncness.is_async() {
+        if header.asyncness.node.is_async() {
             sd.span_err(
                 i.span,
                 "async functions cannot be used for tests"
