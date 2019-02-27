@@ -201,7 +201,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
     const CTRL_Z: u16 = 0x1A;
     const CTRL_Z_MASK: c::ULONG = 1 << CTRL_Z;
     let mut input_control = c::CONSOLE_READCONSOLE_CONTROL {
-        nLength: ::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
+        nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
         nInitialChars: 0,
         dwCtrlWakeupMask: CTRL_Z_MASK,
         dwControlKeyState: 0,

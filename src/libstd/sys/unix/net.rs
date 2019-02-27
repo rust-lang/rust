@@ -11,7 +11,7 @@ use crate::cmp;
 
 use libc::{c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
 
-pub use sys::{cvt, cvt_r};
+pub use crate::sys::{cvt, cvt_r};
 
 #[allow(unused_extern_crates)]
 pub extern crate libc as netc;
