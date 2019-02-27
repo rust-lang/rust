@@ -175,7 +175,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     layout::FieldPlacement::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
                         let mut places = fields.collect::<EvalResult<'tcx, Vec<MPlaceTy<'tcx, Borrow>>>>()?;
-                        places[..].sort_by_key(|place| place.ptr.get_ptr_offset(self.ecx()));
+                        places.sort_by_key(|place| place.ptr.get_ptr_offset(self.ecx()));
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
                     layout::FieldPlacement::Union { .. } => {
