@@ -185,13 +185,13 @@ bench_sums! {
 bench_sums! {
     bench_filter_sum,
     bench_filter_ref_sum,
-    (0i64..1000000).filter(|x| x % 2 == 0)
+    (0i64..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
     bench_filter_chain_sum,
     bench_filter_chain_ref_sum,
-    (0i64..1000000).chain(0..1000000).filter(|x| x % 2 == 0)
+    (0i64..1000000).chain(0..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
