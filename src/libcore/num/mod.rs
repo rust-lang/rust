@@ -4545,13 +4545,8 @@ macro_rules! try_from_unbounded {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
-            /// number type.  If the source type has a larger range
-            /// than the target, or their ranges are disjoint (such
-            /// as converting a signed to unsigned number or vice 
-            /// versa), this will return `None` if the source value
-            /// doesn't fit into the range of the destination value.
-            /// If the conversion can never fail, this is still
-            /// implemented for completeness's sake.
+            /// number type. This returns an error if the source value
+            /// is outside of the range of the target type.
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
                 Ok(value as $target)
@@ -4568,13 +4563,8 @@ macro_rules! try_from_lower_bounded {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
-            /// number type.  If the source type has a larger range
-            /// than the target, or their ranges are disjoint (such
-            /// as converting a signed to unsigned number or vice 
-            /// versa), this will return `None` if the source value
-            /// doesn't fit into the range of the destination value.
-            /// If the conversion can never fail, this is still
-            /// implemented for completeness's sake.
+            /// number type. This returns an error if the source value
+            /// is outside of the range of the target type.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u >= 0 {
@@ -4595,13 +4585,8 @@ macro_rules! try_from_upper_bounded {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
-            /// number type.  If the source type has a larger range
-            /// than the target, or their ranges are disjoint (such
-            /// as converting a signed to unsigned number or vice 
-            /// versa), this will return `None` if the source value
-            /// doesn't fit into the range of the destination value.
-            /// If the conversion can never fail, this is still
-            /// implemented for completeness's sake.
+            /// number type. This returns an error if the source value
+            /// is outside of the range of the target type.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u > (<$target>::max_value() as $source) {
@@ -4622,13 +4607,8 @@ macro_rules! try_from_both_bounded {
             type Error = TryFromIntError;
 
             /// Try to create the target number type from a source
-            /// number type.  If the source type has a larger range
-            /// than the target, or their ranges are disjoint (such
-            /// as converting a signed to unsigned number or vice 
-            /// versa), this will return `None` if the source value
-            /// doesn't fit into the range of the destination value.
-            /// If the conversion can never fail, this is still
-            /// implemented for completeness's sake.
+            /// number type. This returns an error if the source value
+            /// is outside of the range of the target type.
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 let min = <$target>::min_value() as $source;
