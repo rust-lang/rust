@@ -132,14 +132,22 @@ macro_rules! declare_lint {
 
 #[macro_export]
 macro_rules! declare_tool_lint {
-    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr) => (
-        declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, false}
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+    ) => (
+        declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
     );
-    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr,
-     report_in_external_macro: $rep: expr) => (
-         declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, $rep}
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
+        report_in_external_macro: $rep:expr
+    ) => (
+         declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
     );
-    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
+        $external:expr
+    ) => (
+        $(#[$attr])*
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::lint::$Level,

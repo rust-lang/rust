@@ -13,7 +13,11 @@ use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
 use rustc_plugin::Registry;
 use syntax::ast;
 declare_tool_lint!(pub clippy::TEST_LINT, Warn, "Warn about stuff");
-declare_tool_lint!(pub clippy::TEST_GROUP, Warn, "Warn about other stuff");
+declare_tool_lint!(
+    /// Some docs
+    pub clippy::TEST_GROUP,
+    Warn, "Warn about other stuff"
+);
 
 struct Pass;
 
