@@ -1,6 +1,6 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner},
+    AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
 
@@ -179,6 +179,7 @@ impl NavigationTarget {
             .visit(doc_comments::<ast::TypeAliasDef>)
             .visit(doc_comments::<ast::ConstDef>)
             .visit(doc_comments::<ast::StaticDef>)
+            .visit(doc_comments::<ast::NamedFieldDef>)
             .accept(&node)?
     }
 
@@ -188,6 +189,20 @@ impl NavigationTarget {
     fn description(&self, db: &RootDatabase) -> Option<String> {
         // TODO: After type inference is done, add type information to improve the output
         let node = self.node(db)?;
+
+        fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
+        where
+            T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
+        {
+            let mut string = visit_node(node, prefix)?;
+
+            if let Some(type_ref) = node.ascribed_type() {
+                string.push_str(": ");
+                type_ref.syntax().text().push_to(&mut string);
+            }
+
+            Some(string)
+        }
 
         fn visit_node<T>(node: &T, label: &str) -> Option<String>
         where
@@ -207,8 +222,9 @@ impl NavigationTarget {
             .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
             .visit(|node: &ast::Module| visit_node(node, "mod "))
             .visit(|node: &ast::TypeAliasDef| visit_node(node, "type "))
-            .visit(|node: &ast::ConstDef| visit_node(node, "const "))
-            .visit(|node: &ast::StaticDef| visit_node(node, "static "))
+            .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
+            .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
+            .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
             .accept(&node)?
     }
 }
@@ -317,6 +333,66 @@ mod tests {
             }
         "#,
             &["pub fn foo(a: u32, b: u32) -> u32"],
+        );
+    }
+
+    #[test]
+    fn hover_shows_struct_field_info() {
+        // Hovering over the field when instantiating
+        check_hover_result(
+            r#"
+            //- /main.rs
+            struct Foo {
+                field_a: u32,
+            }
+
+            fn main() {
+                let foo = Foo {
+                    field_a<|>: 0,
+                };
+            }
+        "#,
+            &["field_a: u32"],
+        );
+
+        // Hovering over the field in the definition
+        check_hover_result(
+            r#"
+            //- /main.rs
+            struct Foo {
+                field_a<|>: u32,
+            }
+
+            fn main() {
+                let foo = Foo {
+                    field_a: 0,
+                };
+            }
+        "#,
+            &["field_a: u32"],
+        );
+    }
+
+    #[test]
+    fn hover_const_static() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            fn main() {
+                const foo<|>: u32 = 0;
+            }
+        "#,
+            &["const foo: u32"],
+        );
+
+        check_hover_result(
+            r#"
+            //- /main.rs
+            fn main() {
+                static foo<|>: u32 = 0;
+            }
+        "#,
+            &["static foo: u32"],
         );
     }
 
