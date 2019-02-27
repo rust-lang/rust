@@ -23,6 +23,7 @@ pub type Result<T> = cargo::util::CargoResult<T>;
 #[derive(Debug, Deserialize)]
 struct Invocation {
     package_name: String,
+    target_kind: Vec<String>,
     outputs: Vec<PathBuf>,
 }
 
@@ -436,18 +437,10 @@ impl<'a> WorkInfo<'a> {
 
         // TODO: handle multiple outputs gracefully
         for i in &build_plan.invocations {
-            if i.package_name == name {
-                // FIXME: this is a hack to avoid picking up output artifacts of
-                // build scrits and build programs (no outputs):
-                let build_script = i
-                    .outputs
-                    .iter()
-                    .any(|v| v.to_str().unwrap().contains("build_script"));
-                let build_program = i.outputs.is_empty();
-                if build_script || build_program {
-                    continue;
+            if let Some(kind) = i.target_kind.get(0) {
+                if kind.contains("lib") && i.package_name == name {
+                    return Ok((i.outputs[0].clone(), compilation.deps_output));
                 }
-                return Ok((i.outputs[0].clone(), compilation.deps_output));
             }
         }
 
