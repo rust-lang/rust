@@ -4,7 +4,7 @@ use crate::constrained_type_params::{identify_constrained_type_params, Parameter
 use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_existential_type;
@@ -459,7 +459,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
     // First we build the defaulted substitution.
-    let substs = Substs::for_item(fcx.tcx, def_id, |param, _| {
+    let substs = InternalSubsts::for_item(fcx.tcx, def_id, |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.

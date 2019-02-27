@@ -5,7 +5,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
 use std::cmp;
 use std::mem;
 use crate::ty;
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -33,7 +33,7 @@ impl SymbolExportLevel {
 #[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
-    Generic(DefId, &'tcx Substs<'tcx>),
+    Generic(DefId, SubstsRef<'tcx>),
     NoDefId(ty::SymbolName),
 }
 

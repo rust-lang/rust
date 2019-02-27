@@ -3,7 +3,7 @@ use crate::hir::def_id::DefId;
 use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Subst, Substs};
+use crate::ty::subst::{Kind, Subst, SubstsRef};
 use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -358,7 +358,7 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
                                                 param_env: ty::ParamEnv<'tcx>,
                                                 impl_def_id: DefId,
-                                                impl_substs: &Substs<'tcx>)
+                                                impl_substs: SubstsRef<'tcx>,)
                                                 -> (ty::TraitRef<'tcx>,
                                                     Vec<PredicateObligation<'tcx>>)
 {

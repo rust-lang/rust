@@ -863,7 +863,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
         // For type parameter defaults, we have to ban access
-        // to following type parameters, as the Substs can only
+        // to following type parameters, as the InternalSubsts can only
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.

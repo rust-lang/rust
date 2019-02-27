@@ -34,7 +34,7 @@ use crate::middle::lang_items;
 use crate::mir::interpret::GlobalId;
 use crate::ty::fast_reject;
 use crate::ty::relate::TypeRelation;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use crate::hir;
@@ -2944,7 +2944,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn vtable_impl(
         &mut self,
         impl_def_id: DefId,
-        mut substs: Normalized<'tcx, &'tcx Substs<'tcx>>,
+        mut substs: Normalized<'tcx, SubstsRef<'tcx>>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
@@ -3538,7 +3538,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
-    ) -> Normalized<'tcx, &'tcx Substs<'tcx>> {
+    ) -> Normalized<'tcx, SubstsRef<'tcx>> {
         match self.match_impl(impl_def_id, obligation, snapshot) {
             Ok(substs) => substs,
             Err(()) => {
@@ -3556,7 +3556,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         impl_def_id: DefId,
         obligation: &TraitObligation<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
-    ) -> Result<Normalized<'tcx, &'tcx Substs<'tcx>>, ()> {
+    ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
 
         // Before we create the substitutions and everything, first
@@ -3761,7 +3761,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,         // of impl or trait
-        substs: &Substs<'tcx>, // for impl or trait
+        substs: SubstsRef<'tcx>,  // for impl or trait
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);
         let tcx = self.tcx();

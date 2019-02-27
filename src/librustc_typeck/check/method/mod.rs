@@ -18,7 +18,7 @@ use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::subst::Subst;
@@ -38,7 +38,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// Instantiated method signature, i.e., it has been
     /// substituted, normalized, and has had late-bound
@@ -281,7 +281,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                trait_def_id);
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let substs = Substs::for_item(self.tcx, trait_def_id, |param, _| {
+        let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type {..} => {

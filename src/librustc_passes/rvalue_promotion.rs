@@ -22,7 +22,7 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
@@ -75,7 +75,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in_static: false,
         mut_rvalue_borrows: Default::default(),
         param_env: ty::ParamEnv::empty(),
-        identity_substs: Substs::empty(),
+        identity_substs: InternalSubsts::empty(),
         result: ItemLocalSet::default(),
     };
 
@@ -94,7 +94,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     in_static: bool,
     mut_rvalue_borrows: HirIdSet,
     param_env: ty::ParamEnv<'tcx>,
-    identity_substs: &'tcx Substs<'tcx>,
+    identity_substs: SubstsRef<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     result: ItemLocalSet,
 }
@@ -199,7 +199,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
         self.tables = self.tcx.typeck_tables_of(item_def_id);
         self.param_env = self.tcx.param_env(item_def_id);
-        self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
+        self.identity_substs = InternalSubsts::identity_for_item(self.tcx, item_def_id);
 
         let body = self.tcx.hir().body(body_id);
 

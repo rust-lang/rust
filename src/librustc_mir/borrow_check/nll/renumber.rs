@@ -1,4 +1,4 @@
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
 use rustc::mir::{Location, Mir};
 use rustc::mir::visit::{MutVisitor, TyContext};
@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
+    fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
         debug!("visit_substs(substs={:?}, location={:?})", substs, location);
 
         *substs = self.renumber_regions(&{ *substs });

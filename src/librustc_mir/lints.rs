@@ -5,7 +5,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc::mir::{self, Mir, TerminatorKind};
 use rustc::ty::{AssociatedItem, AssociatedItemContainer, Instance, TyCtxt, TyKind};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 
 pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
              mir: &Mir<'tcx>,
@@ -69,7 +69,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }) => tcx.generics_of(trait_def_id).count(),
             _ => 0
         };
-    let caller_substs = &Substs::identity_for_item(tcx, def_id)[..trait_substs_count];
+    let caller_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
 
     while let Some(bb) = reachable_without_self_call_queue.pop() {
         if visited.contains(bb) {

@@ -12,7 +12,7 @@ use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use std::cmp;
 use std::iter;
 use rustc_target::spec::abi::Abi;
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
         let base_substs =
-            Substs::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
         let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {

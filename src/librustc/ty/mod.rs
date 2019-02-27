@@ -22,7 +22,7 @@ use crate::session::CrateDisambiguator;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::layout::VariantIdx;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
@@ -982,14 +982,14 @@ impl<'tcx> serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
 
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
-    pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: SubstsRef<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
         self.instantiate_into(tcx, &mut instantiated, substs);
         instantiated
     }
 
-    pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: SubstsRef<'tcx>)
                            -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)).collect(),
@@ -998,7 +998,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 
     fn instantiate_into(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         instantiated: &mut InstantiatedPredicates<'tcx>,
-                        substs: &Substs<'tcx>) {
+                        substs: SubstsRef<'tcx>) {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
@@ -1067,7 +1067,7 @@ pub enum Predicate<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
+    ConstEvaluatable(DefId, SubstsRef<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -2261,7 +2261,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ) -> Option<Discr<'tcx>> {
         let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
-        let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
+        let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
             instance,
@@ -2463,7 +2463,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 }
 
 impl<'a, 'gcx, 'tcx> FieldDef {
-    pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
     }
 }

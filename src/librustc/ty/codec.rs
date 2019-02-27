@@ -13,7 +13,7 @@ use crate::rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::mir::interpret::Allocation;
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -185,7 +185,7 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
-pub fn decode_substs<'a, 'tcx, D>(decoder: &mut D) -> Result<&'tcx Substs<'tcx>, D::Error>
+pub fn decode_substs<'a, 'tcx, D>(decoder: &mut D) -> Result<SubstsRef<'tcx>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
@@ -281,7 +281,7 @@ macro_rules! implement_ty_decoder {
             use $crate::infer::canonical::CanonicalVarInfos;
             use $crate::ty;
             use $crate::ty::codec::*;
-            use $crate::ty::subst::Substs;
+            use $crate::ty::subst::SubstsRef;
             use $crate::hir::def_id::{CrateNum};
             use crate::rustc_serialize::{Decoder, SpecializedDecoder};
             use std::borrow::Cow;
@@ -344,9 +344,9 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx Substs<'tcx>>
+            impl<$($typaram),*> SpecializedDecoder<SubstsRef<'tcx>>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
+                fn specialized_decode(&mut self) -> Result<SubstsRef<'tcx>, Self::Error> {
                     decode_substs(self)
                 }
             }

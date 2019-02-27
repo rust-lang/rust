@@ -4,7 +4,7 @@ use crate::infer::canonical::Canonical;
 use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use crate::traits;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::mir;
 
@@ -109,7 +109,7 @@ impl Key for (DefId, SimplifiedType) {
     }
 }
 
-impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
+impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     fn query_crate(&self) -> CrateNum {
         self.0.krate
     }

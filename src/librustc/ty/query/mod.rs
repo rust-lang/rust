@@ -36,8 +36,8 @@ use crate::traits::specialization_graph;
 use crate::traits::Clauses;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, AdtSizedConstraint};
 use crate::ty::steal::Steal;
-use crate::ty::subst::Substs;
 use crate::ty::util::NeedsDrop;
+use crate::ty::subst::SubstsRef;
 use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use crate::util::common::{ErrorReported};
 use crate::util::profiling::ProfileCategory::*;
@@ -393,7 +393,7 @@ define_queries! { <'tcx>
 
     Other {
         [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
-                            -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
+                            -> Lrc<Vec<Option<(DefId, SubstsRef<'tcx>)>>>,
     },
 
     Codegen {
@@ -493,9 +493,9 @@ define_queries! { <'tcx>
 
     Codegen {
         [] fn upstream_monomorphizations: UpstreamMonomorphizations(CrateNum)
-            -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
+            -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>>,
         [] fn upstream_monomorphizations_for: UpstreamMonomorphizationsFor(DefId)
-            -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
+            -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>,
     },
 
     Other {
@@ -714,7 +714,7 @@ define_queries! { <'tcx>
         >,
 
         [] fn substitute_normalize_and_test_predicates:
-            substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+            substitute_normalize_and_test_predicates_node((DefId, SubstsRef<'tcx>)) -> bool,
 
         [] fn method_autoderef_steps: MethodAutoderefSteps(
             CanonicalTyGoal<'tcx>
@@ -906,7 +906,7 @@ fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructo
     DepConstructor::VtableMethods{ trait_ref }
 }
 
-fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))
+fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, SubstsRef<'tcx>))
                                             -> DepConstructor<'tcx> {
     DepConstructor::SubstituteNormalizeAndTestPredicates { key }
 }

@@ -1,7 +1,7 @@
 //! Utilities for creating generic types with bound vars in place of parameter values.
 
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -64,17 +64,17 @@ crate fn ref_ty(tcx: ty::TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Ty<'tc
 }
 
 crate fn fn_def(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
-    tcx.mk_ty(ty::FnDef(def_id, Substs::bound_vars_for_item(tcx, def_id)))
+    tcx.mk_ty(ty::FnDef(def_id, InternalSubsts::bound_vars_for_item(tcx, def_id)))
 }
 
 crate fn closure(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     tcx.mk_closure(def_id, ty::ClosureSubsts {
-        substs: Substs::bound_vars_for_item(tcx, def_id),
+        substs: InternalSubsts::bound_vars_for_item(tcx, def_id),
     })
 }
 
 crate fn generator(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     tcx.mk_generator(def_id, ty::GeneratorSubsts {
-        substs: Substs::bound_vars_for_item(tcx, def_id),
+        substs: InternalSubsts::bound_vars_for_item(tcx, def_id),
     }, hir::GeneratorMovability::Movable)
 }

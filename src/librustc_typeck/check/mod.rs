@@ -109,7 +109,7 @@ use rustc::ty::{
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{UnpackedKind, Subst, Substs, UserSelfTy, UserSubsts};
+use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
@@ -1318,7 +1318,7 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_opaque<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
     span: Span,
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
@@ -1385,7 +1385,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
         hir::ItemKind::Existential(..) => {
             let def_id = tcx.hir().local_def_id(it.id);
 
-            let substs = Substs::identity_for_item(tcx, def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, def_id);
             check_opaque(tcx, def_id, substs, it.span);
         }
         hir::ItemKind::Ty(..) => {
@@ -1809,7 +1809,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
 
     // For each field, figure out if it's known to be a ZST and align(1)
     let field_infos = adt.non_enum_variant().fields.iter().map(|field| {
-        let ty = field.ty(tcx, Substs::identity_for_item(tcx, field.did));
+        let ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
@@ -2177,7 +2177,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if !method_generics.params.is_empty() {
                 let user_type_annotation = self.infcx.probe(|_| {
                     let user_substs = UserSubsts {
-                        substs: Substs::for_item(self.tcx, method.def_id, |param, _| {
+                        substs: InternalSubsts::for_item(self.tcx, method.def_id, |param, _| {
                             let i = param.index as usize;
                             if i < method_generics.parent_count {
                                 self.infcx.var_for_def(DUMMY_SP, param)
@@ -2200,7 +2200,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_substs(&self, node_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
+    pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {
         if !substs.is_noop() {
             debug!("write_substs({:?}, {:?}) in fcx {}",
                    node_id,
@@ -2222,7 +2222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         hir_id: hir::HirId,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
         debug!(
@@ -2303,7 +2303,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// types as well. This function combines the two.
     fn instantiate_type_scheme<T>(&self,
                                   span: Span,
-                                  substs: &Substs<'tcx>,
+                                  substs: SubstsRef<'tcx>,
                                   value: &T)
                                   -> T
         where T : TypeFoldable<'tcx>
@@ -2319,7 +2319,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
+    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: SubstsRef<'tcx>)
                           -> ty::InstantiatedPredicates<'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
         let result = bounds.instantiate(self.tcx, substs);
@@ -2477,7 +2477,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
-    pub fn add_wf_bounds(&self, substs: &Substs<'tcx>, expr: &hir::Expr) {
+    pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr) {
         for ty in substs.types() {
             self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
         }
@@ -2521,7 +2521,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn field_ty(&self,
                     span: Span,
                     field: &'tcx ty::FieldDef,
-                    substs: &Substs<'tcx>)
+                    substs: SubstsRef<'tcx>)
                     -> Ty<'tcx>
     {
         self.normalize_associated_types_in(span, &field.ty(self.tcx, substs))
@@ -4554,7 +4554,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ExprKind::Repeat(ref element, ref count) => {
                 let count_def_id = tcx.hir().local_def_id(count.id);
                 let param_env = ty::ParamEnv::empty();
-                let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+                let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
                 let instance = ty::Instance::resolve(
                     tcx.global_tcx(),
                     param_env,

@@ -10,8 +10,8 @@ use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{SourceInfo, Statement, Terminator};
 use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid};
+use rustc::ty::subst::SubstsRef;
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
@@ -50,7 +50,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
 
     /// We sometimes have `substs` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_substs(&mut self, substs: &&'tcx Substs<'tcx>, location: Location) {
+    fn visit_substs(&mut self, substs: &SubstsRef<'tcx>, location: Location) {
         self.add_regular_live_constraint(*substs, location);
         self.super_substs(substs);
     }

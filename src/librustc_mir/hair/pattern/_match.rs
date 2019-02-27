@@ -168,7 +168,7 @@ use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
+use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
@@ -402,7 +402,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_variant_uninhabited(&self,
                               variant: &'tcx ty::VariantDef,
-                              substs: &'tcx ty::subst::Substs<'tcx>)
+                              substs: SubstsRef<'tcx>)
                               -> bool
     {
         if self.tcx.features().exhaustive_patterns {

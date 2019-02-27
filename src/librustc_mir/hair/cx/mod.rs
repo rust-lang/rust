@@ -12,7 +12,7 @@ use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::{Kind, InternalSubsts};
 use rustc::ty::layout::VariantIdx;
 use syntax::ast;
 use syntax::attr;
@@ -29,8 +29,8 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     pub root_lint_level: hir::HirId,
     pub param_env: ty::ParamEnv<'gcx>,
 
-    /// Identity `Substs` for use with const-evaluation.
-    pub identity_substs: &'gcx Substs<'gcx>,
+    /// Identity `InternalSubsts` for use with const-evaluation.
+    pub identity_substs: &'gcx InternalSubsts<'gcx>,
 
     pub region_scope_tree: Lrc<region::ScopeTree>,
     pub tables: &'a ty::TypeckTables<'gcx>,
@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             infcx,
             root_lint_level: lint_level,
             param_env: tcx.param_env(src_def_id),
-            identity_substs: Substs::identity_for_item(tcx.global_tcx(), src_def_id),
+            identity_substs: InternalSubsts::identity_for_item(tcx.global_tcx(), src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables: tcx.typeck_tables_of(src_def_id),
             constness,

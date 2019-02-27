@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::OptLevel;
 use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{SubstsRef, InternalSubsts};
 use syntax::ast;
 use syntax::attr::InlineAttr;
 use std::fmt::{self, Write};
@@ -151,7 +151,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
-            MonoItem::Static(def_id) => (def_id, Substs::empty()),
+            MonoItem::Static(def_id) => (def_id, InternalSubsts::empty()),
             // global asm never has predicates
             MonoItem::GlobalAsm(..) => return true
         };
@@ -422,7 +422,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     }
 
     fn push_type_params<I>(&self,
-                            substs: &Substs<'tcx>,
+                            substs: SubstsRef<'tcx>,
                             projections: I,
                             output: &mut String,
                             debug: bool)

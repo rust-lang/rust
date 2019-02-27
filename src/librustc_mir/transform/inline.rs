@@ -9,7 +9,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc::ty::subst::{Subst,Substs};
+use rustc::ty::subst::{Subst, SubstsRef};
 
 use std::collections::VecDeque;
 use std::iter;
@@ -32,7 +32,7 @@ pub struct Inline;
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: DefId,
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
     bb: BasicBlock,
     location: SourceInfo,
 }

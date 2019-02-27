@@ -4,7 +4,7 @@
  */
 
 use crate::mir::*;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, AdtDef, Ty, TyCtxt};
 use crate::ty::layout::VariantIdx;
 use crate::hir;
@@ -17,7 +17,7 @@ pub enum PlaceTy<'tcx> {
 
     /// Downcast to a particular variant of an enum.
     Downcast { adt_def: &'tcx AdtDef,
-               substs: &'tcx Substs<'tcx>,
+               substs: SubstsRef<'tcx>,
                variant_index: VariantIdx },
 }
 

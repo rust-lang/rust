@@ -4,10 +4,9 @@ use crate::astconv::AstConv;
 use crate::check::{FnCtxt, PlaceOp, callee, Needs};
 use crate::hir::GenericArg;
 use crate::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
-use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
@@ -209,7 +208,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn fresh_receiver_substs(&mut self,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
-                             -> &'tcx Substs<'tcx> {
+                             -> SubstsRef<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container.id();
@@ -300,8 +299,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         seg: &hir::PathSegment,
-        parent_substs: &Substs<'tcx>,
-    ) -> &'tcx Substs<'tcx> {
+        parent_substs: SubstsRef<'tcx>,
+    ) -> SubstsRef<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
@@ -369,7 +368,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     // until we unify the `Self` type.
     fn instantiate_method_sig(&mut self,
                               pick: &probe::Pick<'tcx>,
-                              all_substs: &'tcx Substs<'tcx>)
+                              all_substs: SubstsRef<'tcx>)
                               -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_substs={:?})",
                pick,
@@ -404,7 +403,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn add_obligations(&mut self,
                        fty: Ty<'tcx>,
-                       all_substs: &Substs<'tcx>,
+                       all_substs: SubstsRef<'tcx>,
                        method_predicates: &ty::InstantiatedPredicates<'tcx>) {
         debug!("add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
                fty,

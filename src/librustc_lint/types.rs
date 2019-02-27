@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::Node;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
 use rustc::{lint, util};
@@ -445,7 +445,7 @@ enum FfiResult<'tcx> {
 /// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: &'tcx ty::AdtDef,
-                                  substs: &Substs<'tcx>)
+                                  substs: SubstsRef<'tcx>)
                                   -> bool {
     if def.variants.len() == 2 {
         let data_idx;

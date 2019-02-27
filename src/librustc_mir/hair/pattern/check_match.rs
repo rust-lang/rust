@@ -11,7 +11,7 @@ use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::lint;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::util::common::ErrorReported;
@@ -51,7 +51,7 @@ pub(crate) fn check_match<'a, 'tcx>(
             tables: tcx.body_tables(body_id),
             region_scope_tree: &tcx.region_scope_tree(def_id),
             param_env: tcx.param_env(def_id),
-            identity_substs: Substs::identity_for_item(tcx, def_id),
+            identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
         }.visit_body(tcx.hir().body(body_id));
     })
 }
@@ -64,7 +64,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    identity_substs: &'tcx Substs<'tcx>,
+    identity_substs: SubstsRef<'tcx>,
     region_scope_tree: &'a region::ScopeTree,
 }
 

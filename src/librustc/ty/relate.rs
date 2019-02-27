@@ -5,7 +5,7 @@
 //! subtyping, type equality, etc.
 
 use crate::hir::def_id::DefId;
-use crate::ty::subst::{Kind, UnpackedKind, Substs};
+use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::mir::interpret::GlobalId;
@@ -50,9 +50,9 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     /// accordingly.
     fn relate_item_substs(&mut self,
                           item_def_id: DefId,
-                          a_subst: &'tcx Substs<'tcx>,
-                          b_subst: &'tcx Substs<'tcx>)
-                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+                          a_subst: SubstsRef<'tcx>,
+                          b_subst: SubstsRef<'tcx>)
+                          -> RelateResult<'tcx, SubstsRef<'tcx>>
     {
         debug!("relate_item_substs(item_def_id={:?}, a_subst={:?}, b_subst={:?})",
                item_def_id,
@@ -123,9 +123,9 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                         variances: Option<&Vec<ty::Variance>>,
-                                        a_subst: &'tcx Substs<'tcx>,
-                                        b_subst: &'tcx Substs<'tcx>)
-                                        -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+                                        a_subst: SubstsRef<'tcx>,
+                                        b_subst: SubstsRef<'tcx>)
+                                        -> RelateResult<'tcx, SubstsRef<'tcx>>
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     let tcx = relation.tcx();
@@ -624,11 +624,11 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx Substs<'tcx> {
+impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &&'tcx Substs<'tcx>,
-                           b: &&'tcx Substs<'tcx>)
-                           -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+                           a: &SubstsRef<'tcx>,
+                           b: &SubstsRef<'tcx>)
+                           -> RelateResult<'tcx, SubstsRef<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         relate_substs(relation, None, a, b)

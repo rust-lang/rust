@@ -10,7 +10,7 @@ use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUs
 use rustc::mir::interpret::{EvalErrorKind, Scalar, GlobalId, EvalResult};
 use rustc::ty::{TyCtxt, self, Instance};
 use syntax::source_map::{Span, DUMMY_SP};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;
 use rustc::ty::layout::{
@@ -288,7 +288,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     // FIXME: can't handle code with generics
                     return None;
                 }
-                let substs = Substs::identity_for_item(self.tcx, self.source.def_id());
+                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
                 let instance = Instance::new(self.source.def_id(), substs);
                 let cid = GlobalId {
                     instance,

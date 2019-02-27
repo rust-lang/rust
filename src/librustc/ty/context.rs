@@ -22,7 +22,7 @@ use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
 use crate::mir::interpret::Allocation;
-use crate::ty::subst::{Kind, Substs, Subst};
+use crate::ty::subst::{Kind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::ReprOptions;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -118,7 +118,7 @@ pub struct CtxtInterners<'tcx> {
     /// they're accessed quite often.
     type_: InternedSet<'tcx, TyS<'tcx>>,
     type_list: InternedSet<'tcx, List<Ty<'tcx>>>,
-    substs: InternedSet<'tcx, Substs<'tcx>>,
+    substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
@@ -325,7 +325,7 @@ pub struct ResolvedOpaqueTy<'tcx> {
     /// Generic parameters on the opaque type as passed by this function.
     /// For `existential type Foo<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }` this is `[T, U]`, not
     /// `[A, B]`
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
@@ -352,7 +352,7 @@ pub struct TypeckTables<'tcx> {
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
+    node_substs: ItemLocalMap<SubstsRef<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
     /// or the substitutions that the user explicitly gave (if any) attached
@@ -548,19 +548,19 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<'_, &'tcx Substs<'tcx>> {
+    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<'_, SubstsRef<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.node_substs
         }
     }
 
-    pub fn node_substs(&self, id: hir::HirId) -> &'tcx Substs<'tcx> {
+    pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| Substs::empty())
+        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty())
     }
 
-    pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {
+    pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned()
     }
@@ -1733,7 +1733,7 @@ impl<'gcx> GlobalCtxt<'gcx> {
 /// A trait implemented for all X<'a> types which can be safely and
 /// efficiently converted to X<'tcx> as long as they are part of the
 /// provided TyCtxt<'tcx>.
-/// This can be done, for example, for Ty<'tcx> or &'tcx Substs<'tcx>
+/// This can be done, for example, for Ty<'tcx> or SubstsRef<'tcx>
 /// by looking them up in their respective interners.
 ///
 /// However, this is still not the best implementation as it does
@@ -1807,7 +1807,7 @@ nop_list_lift!{Predicate<'a> => Predicate<'tcx>}
 nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
 nop_list_lift!{ProjectionKind<'a> => ProjectionKind<'tcx>}
 
-// this is the impl for `&'a Substs<'a>`
+// this is the impl for `&'a InternalSubsts<'a>`
 nop_list_lift!{Kind<'a> => Kind<'tcx>}
 
 impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
@@ -2183,7 +2183,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
-        println!("Substs interner: #{}", self.interners.substs.borrow().len());
+        println!("InternalSubsts interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
         println!("Allocation interner: #{}", self.allocation_interner.borrow().len());
@@ -2250,7 +2250,7 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<Canoni
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
+impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
         &self.0[..]
     }
@@ -2507,7 +2507,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn mk_adt(self, def: &'tcx AdtDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_adt(self, def: &'tcx AdtDef, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(Adt(def, substs))
     }
@@ -2520,7 +2520,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let substs = Substs::for_item(self, def_id, |param, substs| {
+        let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => bug!(),
                 GenericParamDefKind::Type { has_default, .. } => {
@@ -2613,7 +2613,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_fn_def(self, def_id: DefId,
-                     substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+                     substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(FnDef(def_id, substs))
     }
 
@@ -2634,7 +2634,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn mk_projection(self,
                          item_def_id: DefId,
-                         substs: &'tcx Substs<'tcx>)
+                         substs: SubstsRef<'tcx>)
         -> Ty<'tcx> {
             self.mk_ty(Projection(ProjectionTy {
                 item_def_id,
@@ -2704,7 +2704,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn mk_opaque(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
     }
 
@@ -2817,7 +2817,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_substs_trait(self,
                      self_ty: Ty<'tcx>,
                      rest: &[Kind<'tcx>])
-                    -> &'tcx Substs<'tcx>
+                    -> SubstsRef<'tcx>
     {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }

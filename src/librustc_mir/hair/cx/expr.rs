@@ -9,6 +9,7 @@ use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
@@ -560,7 +561,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
             let def_id = cx.tcx.hir().local_def_id(count.id);
-            let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
+            let substs = InternalSubsts::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
                 cx.param_env,
@@ -716,7 +717,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
-                            let substs = Substs::identity_for_item(cx.tcx(), did);
+                            let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(ty::LazyConst::Unevaluated(did, substs));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
@@ -834,7 +835,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &hir::Expr,
     span: Span,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
 ) -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs, user_ty) = match overloaded_callee {
@@ -1133,7 +1134,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
     expr: &'tcx hir::Expr,
     place_ty: Ty<'tcx>,
-    overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
+    overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method

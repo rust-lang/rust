@@ -20,7 +20,7 @@ use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TraitRef, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -127,7 +127,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
 {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let tcx = self.def_id_visitor.tcx();
-        // Substs are not visited here because they are visited below in `super_visit_with`.
+        // InternalSubsts are not visited here because they are visited below in `super_visit_with`.
         match ty.sty {
             ty::Adt(&ty::AdtDef { did: def_id, .. }, ..) |
             ty::Foreign(def_id) |
@@ -180,7 +180,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
                         ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
                         ty::ExistentialPredicate::AutoTrait(def_id) =>
-                            ty::ExistentialTraitRef { def_id, substs: Substs::empty() },
+                            ty::ExistentialTraitRef { def_id, substs: InternalSubsts::empty() },
                     };
                     let ty::ExistentialTraitRef { def_id, substs: _ } = trait_ref;
                     if self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) {
