@@ -1,8 +1,8 @@
-error: `r#self` is not currently supported.
-  --> $DIR/raw-literal-self.rs:1:14
+error: `self` cannot be a raw identifier
+  --> $DIR/raw-literal-self.rs:2:9
    |
-LL | fn self_test(r#self: u32) {
-   |              ^^^^^^
+LL |     let r#self;
+   |         ^^^^^^
 
 error: aborting due to previous error
 
