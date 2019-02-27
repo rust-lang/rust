@@ -1,32 +1,98 @@
-error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:4:5
+error: unused doc comment
+  --> $DIR/useless_comment.rs:9:1
    |
-LL |     /// a //~ ERROR doc comment not used by rustdoc
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /// foo //~ ERROR unused doc comment
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | mac!();
+   | ------- rustdoc does not generate documentation for macro expansions
    |
 note: lint level defined here
-  --> $DIR/useless_comment.rs:1:9
+  --> $DIR/useless_comment.rs:3:9
    |
 LL | #![deny(unused_doc_comments)]
    |         ^^^^^^^^^^^^^^^^^^^
+   = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
-error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:7:5
+error: unused doc comment
+  --> $DIR/useless_comment.rs:13:5
    |
-LL |     /// b //~ doc comment not used by rustdoc
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     /// a //~ ERROR unused doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let x = 12;
+   |     ----------- rustdoc does not generate documentation for statements
 
-error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:9:9
+error: unused doc comment
+  --> $DIR/useless_comment.rs:16:5
    |
-LL |         /// c //~ ERROR doc comment not used by rustdoc
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     /// multi-line //~ unused doc comment
+LL | |     /// doc comment
+LL | |     /// that is unused
+   | |______________________^
+LL | /     match x {
+LL | |         /// c //~ ERROR unused doc comment
+LL | |         1 => {},
+LL | |         _ => {}
+LL | |     }
+   | |_____- rustdoc does not generate documentation for expressions
 
-error: doc comment not used by rustdoc
-  --> $DIR/useless_comment.rs:14:5
+error: unused doc comment
+  --> $DIR/useless_comment.rs:20:9
    |
-LL |     /// foo //~ ERROR doc comment not used by rustdoc
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         /// c //~ ERROR unused doc comment
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         1 => {},
+   |         ------- rustdoc does not generate documentation for match arms
 
-error: aborting due to 4 previous errors
+error: unused doc comment
+  --> $DIR/useless_comment.rs:25:5
+   |
+LL |     /// foo //~ ERROR unused doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe {}
+   |     --------- rustdoc does not generate documentation for expressions
+
+error: unused doc comment
+  --> $DIR/useless_comment.rs:28:5
+   |
+LL |     #[doc = "foo"] //~ ERROR unused doc comment
+   |     ^^^^^^^^^^^^^^
+LL |     #[doc = "bar"] //~ ERROR unused doc comment
+LL |     3;
+   |     - rustdoc does not generate documentation for expressions
+
+error: unused doc comment
+  --> $DIR/useless_comment.rs:29:5
+   |
+LL |     #[doc = "bar"] //~ ERROR unused doc comment
+   |     ^^^^^^^^^^^^^^
+LL |     3;
+   |     - rustdoc does not generate documentation for expressions
+
+error: unused doc comment
+  --> $DIR/useless_comment.rs:32:5
+   |
+LL |     /// bar //~ ERROR unused doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     mac!();
+   |     ------- rustdoc does not generate documentation for macro expansions
+   |
+   = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+
+error: unused doc comment
+  --> $DIR/useless_comment.rs:35:13
+   |
+LL |     let x = /** comment */ 47; //~ ERROR unused doc comment
+   |             ^^^^^^^^^^^^^^ -- rustdoc does not generate documentation for expressions
+
+error: unused doc comment
+  --> $DIR/useless_comment.rs:37:5
+   |
+LL |       /// dox //~ ERROR unused doc comment
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     {
+LL | |
+LL | |     }
+   | |_____- rustdoc does not generate documentation for expressions
+
+error: aborting due to 10 previous errors
 
