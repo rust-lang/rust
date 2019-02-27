@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, NameOwner};
+use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     Name, AsName, Function, FnSignature,
@@ -19,7 +19,7 @@ impl FnSignature {
         let mut has_self_param = false;
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_type = if let Some(type_ref) = self_param.type_ref() {
+                let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
                 } else {
                     let self_type = TypeRef::Path(Name::self_type().into());
@@ -37,7 +37,7 @@ impl FnSignature {
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(param.type_ref());
+                let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
                 params.push(type_ref);
             }
         }

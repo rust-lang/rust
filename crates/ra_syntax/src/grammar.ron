@@ -271,7 +271,15 @@ Grammar(
             ]
         ),
         "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
-        "NamedFieldDef": ( traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner", "TypeAscriptionOwner"], options: ["TypeRef"] ),
+        "NamedFieldDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "AttrsOwner",
+                "DocCommentsOwner",
+                "TypeAscriptionOwner"
+            ]
+        ),
         "PosFieldDefList": (collections: [["fields", "PosFieldDef"]]),
         "PosFieldDef": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
@@ -301,7 +309,6 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
-            options: ["TypeRef"]
         ),
         "StaticDef": (
             traits: [
@@ -312,7 +319,6 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
-            options: ["TypeRef"]
         ),
         "TypeAliasDef": (
             traits: [
@@ -574,7 +580,6 @@ Grammar(
         "LetStmt": (
             options: [
                 ["pat", "Pat"],
-                ["type_ref", "TypeRef"],
                 ["initializer", "Expr"],
             ],
             traits: [
@@ -603,14 +608,14 @@ Grammar(
             ]
         ),
         "SelfParam": (
-            options: ["TypeRef", "SelfKw"],
+            options: ["SelfKw"],
             traits: [
                 "TypeAscriptionOwner",
             ]
         ),
         "SelfKw": (),
         "Param": (
-            options: [ "Pat", "TypeRef" ],
+            options: [ "Pat" ],
             traits: [
                 "TypeAscriptionOwner",
             ]

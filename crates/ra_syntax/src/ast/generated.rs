@@ -629,11 +629,7 @@ impl ast::TypeParamsOwner for ConstDef {}
 impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
-impl ConstDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-}
+impl ConstDef {}
 
 // ContinueExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1774,10 +1770,6 @@ impl LetStmt {
         super::child_opt(self)
     }
 
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-
     pub fn initializer(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
@@ -2595,11 +2587,7 @@ impl ast::NameOwner for NamedFieldDef {}
 impl ast::AttrsOwner for NamedFieldDef {}
 impl ast::DocCommentsOwner for NamedFieldDef {}
 impl ast::TypeAscriptionOwner for NamedFieldDef {}
-impl NamedFieldDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-}
+impl NamedFieldDef {}
 
 // NamedFieldDefList
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -2780,10 +2768,6 @@ impl ToOwned for Param {
 impl ast::TypeAscriptionOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<&Pat> {
-        super::child_opt(self)
-    }
-
-    pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
     }
 }
@@ -3691,10 +3675,6 @@ impl ToOwned for SelfParam {
 
 impl ast::TypeAscriptionOwner for SelfParam {}
 impl SelfParam {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-
     pub fn self_kw(&self) -> Option<&SelfKw> {
         super::child_opt(self)
     }
@@ -3826,11 +3806,7 @@ impl ast::TypeParamsOwner for StaticDef {}
 impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
 impl ast::TypeAscriptionOwner for StaticDef {}
-impl StaticDef {
-    pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-}
+impl StaticDef {}
 
 // Stmt
 #[derive(Debug, PartialEq, Eq, Hash)]

@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
     SyntaxNodePtr, AstNode,
-    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor}
+    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor, TypeAscriptionOwner}
 };
 
 use crate::{
@@ -709,7 +709,7 @@ impl ExprCollector {
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref = param.type_ref().map(TypeRef::from_ast);
+                        let type_ref = param.ascribed_type().map(TypeRef::from_ast);
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
@@ -790,7 +790,7 @@ impl ExprCollector {
             .map(|s| match s.kind() {
                 ast::StmtKind::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref = stmt.type_ref().map(TypeRef::from_ast);
+                    let type_ref = stmt.ascribed_type().map(TypeRef::from_ast);
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                     Statement::Let { pat, type_ref, initializer }
                 }
