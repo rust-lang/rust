@@ -907,9 +907,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         let name = implitem.ident.name;
-        let parent = cx.tcx.hir().get_parent(implitem.id);
-        let item = cx.tcx.hir().expect_item(parent);
-        let def_id = cx.tcx.hir().local_def_id(item.id);
+        let parent = cx.tcx.hir().get_parent_item(implitem.hir_id);
+        let item = cx.tcx.hir().expect_item_by_hir_id(parent);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         let ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
@@ -917,7 +917,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
-                if cx.access_levels.is_exported(implitem.id) {
+                let node_id = cx.tcx.hir().hir_to_node_id(implitem.hir_id);
+                if cx.access_levels.is_exported(node_id) {
                 // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
@@ -964,7 +965,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
 
         if let hir::ImplItemKind::Method(_, _) = implitem.node {
-            let ret_ty = return_ty(cx, implitem.id);
+            let ret_ty = return_ty(cx, implitem.hir_id);
 
             // walk the return type and check for Self (this does not check associated types)
             for inner_type in ret_ty.walk() {

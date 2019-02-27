@@ -162,7 +162,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        let def_id = cx.tcx.hir().local_def_id(impl_item.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
         match cx.tcx.associated_item(def_id).container {
             ty::TraitContainer(_) => return,
             ty::ImplContainer(cid) => {

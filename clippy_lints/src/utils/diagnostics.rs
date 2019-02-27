@@ -135,8 +135,7 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
 }
 
 pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: HirId, sp: Span, msg: &str) {
-    let node_id = cx.tcx.hir().hir_to_node_id(node);
-    DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node_id, sp, msg)).docs_link(lint);
+    DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, node, sp, msg)).docs_link(lint);
 }
 
 pub fn span_lint_node_and_then(
@@ -147,8 +146,7 @@ pub fn span_lint_node_and_then(
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
-    let node_id = cx.tcx.hir().hir_to_node_id(node);
-    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node_id, sp, msg));
+    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, node, sp, msg));
     f(&mut db.0);
     db.docs_link(lint);
 }

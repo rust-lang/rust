@@ -146,7 +146,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.access_levels.is_exported(impl_item.id) {
+        let node_id = cx.tcx.hir().hir_to_node_id(impl_item.hir_id);
+        if !cx.access_levels.is_exported(node_id) {
             return;
         }
 
@@ -155,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(impl_item.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
         let trait_def_id = match cx.tcx.associated_item(def_id).container {
             TraitContainer(cid) => Some(cid),
             ImplContainer(cid) => cx.tcx.impl_trait_ref(cid).map(|t| t.def_id),

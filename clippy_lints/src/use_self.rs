@@ -137,7 +137,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
     let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
 
-    let impl_method_def_id = cx.tcx.hir().local_def_id(impl_item.id);
+    let impl_method_def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
     let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
     let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
 

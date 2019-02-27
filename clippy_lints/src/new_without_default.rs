@@ -133,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             let self_did = cx.tcx.hir().local_def_id_from_hir_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_did);
                             if_chain! {
-                                if same_tys(cx, self_ty, return_ty(cx, node_id));
+                                if same_tys(cx, self_ty, return_ty(cx, id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
                                 then {
                                     if self.impling_types.is_none() {
