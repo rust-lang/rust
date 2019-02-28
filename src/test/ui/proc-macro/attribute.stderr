@@ -1,50 +1,110 @@
-error: must only be one word
-  --> $DIR/attribute.rs:21:5
+error: attribute must have either one or two arguments
+  --> $DIR/attribute.rs:17:1
    |
-LL |     a = "b"
-   |     ^^^^^^^
+LL | #[proc_macro_derive(d3, a, b)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must have either one or two arguments
-  --> $DIR/attribute.rs:28:1
+  --> $DIR/attribute.rs:21:1
    |
-LL | #[proc_macro_derive(b, c, d)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[proc_macro_derive(d4, attributes(a), b)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: not a meta item
+  --> $DIR/attribute.rs:25:21
+   |
+LL | #[proc_macro_derive("a")]
+   |                     ^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:34:21
+  --> $DIR/attribute.rs:29:21
    |
-LL | #[proc_macro_derive(d(e))]
+LL | #[proc_macro_derive(d6 = "")]
+   |                     ^^^^^^^
+
+error: must only be one word
+  --> $DIR/attribute.rs:33:21
+   |
+LL | #[proc_macro_derive(m::d7)]
+   |                     ^^^^^
+
+error: must only be one word
+  --> $DIR/attribute.rs:37:21
+   |
+LL | #[proc_macro_derive(d8(a))]
+   |                     ^^^^^
+
+error: `self` cannot be a name of derive macro
+  --> $DIR/attribute.rs:41:21
+   |
+LL | #[proc_macro_derive(self)]
    |                     ^^^^
 
-error: must only be one word
-  --> $DIR/attribute.rs:40:35
+error: cannot override a built-in derive macro
+  --> $DIR/attribute.rs:45:21
    |
-LL | #[proc_macro_derive(f, attributes(g = "h"))]
-   |                                   ^^^^^^^
+LL | #[proc_macro_derive(PartialEq)]
+   |                     ^^^^^^^^^
+
+error: second argument must be `attributes`
+  --> $DIR/attribute.rs:49:26
+   |
+LL | #[proc_macro_derive(d11, a)]
+   |                          ^
+
+error: attribute must be of form: `attributes(foo, bar)`
+  --> $DIR/attribute.rs:49:26
+   |
+LL | #[proc_macro_derive(d11, a)]
+   |                          ^
+
+error: attribute must be of form: `attributes(foo, bar)`
+  --> $DIR/attribute.rs:54:26
+   |
+LL | #[proc_macro_derive(d12, attributes)]
+   |                          ^^^^^^^^^^
+
+error: not a meta item
+  --> $DIR/attribute.rs:58:37
+   |
+LL | #[proc_macro_derive(d13, attributes("a"))]
+   |                                     ^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:46:35
+  --> $DIR/attribute.rs:62:37
    |
-LL | #[proc_macro_derive(i, attributes(j(k)))]
-   |                                   ^^^^
+LL | #[proc_macro_derive(d14, attributes(a = ""))]
+   |                                     ^^^^^^
 
-error: attribute must have either one or two arguments
-  --> $DIR/attribute.rs:52:1
+error: must only be one word
+  --> $DIR/attribute.rs:66:37
    |
-LL | #[proc_macro_derive(l, attributes(m), n)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[proc_macro_derive(d15, attributes(m::a))]
+   |                                     ^^^^
+
+error: must only be one word
+  --> $DIR/attribute.rs:70:37
+   |
+LL | #[proc_macro_derive(d16, attributes(a(b)))]
+   |                                     ^^^^
+
+error: `self` cannot be a name of derive helper attribute
+  --> $DIR/attribute.rs:74:37
+   |
+LL | #[proc_macro_derive(d17, attributes(self))]
+   |                                     ^^^^
 
 error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
-  --> $DIR/attribute.rs:8:1
+  --> $DIR/attribute.rs:9:1
    |
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
-  --> $DIR/attribute.rs:14:1
+  --> $DIR/attribute.rs:13:1
    |
-LL | #[proc_macro_derive = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[proc_macro_derive = ""]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 18 previous errors
 
