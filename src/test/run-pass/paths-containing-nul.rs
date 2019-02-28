@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 // ignore-cloudabi no files or I/O
 // ignore-wasm32-bare no files or I/O
+// ignore-emscripten no files
 
 use std::fs;
 use std::io;
@@ -22,14 +23,18 @@ fn main() {
     assert_invalid_input("remove_file", fs::remove_file("\0"));
     assert_invalid_input("metadata", fs::metadata("\0"));
     assert_invalid_input("symlink_metadata", fs::symlink_metadata("\0"));
+
+    // If `dummy_file` does not exist, then we might get another unrelated error
+    let dummy_file = std::env::current_exe().unwrap();
+
     assert_invalid_input("rename1", fs::rename("\0", "a"));
-    assert_invalid_input("rename2", fs::rename("a", "\0"));
+    assert_invalid_input("rename2", fs::rename(&dummy_file, "\0"));
     assert_invalid_input("copy1", fs::copy("\0", "a"));
-    assert_invalid_input("copy2", fs::copy("a", "\0"));
+    assert_invalid_input("copy2", fs::copy(&dummy_file, "\0"));
     assert_invalid_input("hard_link1", fs::hard_link("\0", "a"));
-    assert_invalid_input("hard_link2", fs::hard_link("a", "\0"));
+    assert_invalid_input("hard_link2", fs::hard_link(&dummy_file, "\0"));
     assert_invalid_input("soft_link1", fs::soft_link("\0", "a"));
-    assert_invalid_input("soft_link2", fs::soft_link("a", "\0"));
+    assert_invalid_input("soft_link2", fs::soft_link(&dummy_file, "\0"));
     assert_invalid_input("read_link", fs::read_link("\0"));
     assert_invalid_input("canonicalize", fs::canonicalize("\0"));
     assert_invalid_input("create_dir", fs::create_dir("\0"));
