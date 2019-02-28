@@ -20,7 +20,7 @@ pub struct SomeStruct;
 
 /// ...and slap this trait on it?
 impl ThisTrait for SomeStruct {
-    /// what we get is a perfect combo!
+    /// nothing! trait impls are totally ignored in this calculation, sorry.
     fn right_here(&self) {}
 
     type SomeType = String;
