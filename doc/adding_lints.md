@@ -260,9 +260,12 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 }
 ```
 
-Now you'll want to also run the full test suite with `cargo test`. Apart from
-running all other UI tests, this ensures that our lint implementation is not
-violating any Clippy lints itself.
+Now you'll want to also run the full test suite with `cargo test`. At this point
+running `cargo test` should produce the expected output. Remember to run
+`tests/ui/update-all-references.sh` to update the `.stderr` file.
+
+`cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
+implementation is not violating any Clippy lints itself.
 
 If you are still following the example, you'll see that the `FooFunctionsPass`
 violates a Clippy lint. So we are going to rename that struct to just `Pass`:
