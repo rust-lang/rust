@@ -1,4 +1,5 @@
 #![allow(unused_must_use)]
+#![feature(unwind_attributes)]
 // Since we mark some ABIs as "nounwind" to LLVM, we must make sure that
 // we never unwind through them.
 
@@ -11,6 +12,7 @@ use std::io::prelude::*;
 use std::io;
 use std::process::{Command, Stdio};
 
+#[unwind(aborts)] // FIXME(#58794)
 extern "C" fn panic_in_ffi() {
     panic!("Test");
 }
