@@ -827,13 +827,14 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+fn open_and_set_permissions(
+    from: &Path,
+    to: &Path,
+) -> io::Result<(crate::fs::File, crate::fs::File, u64)> {
     use crate::fs::{File, OpenOptions};
     use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
-    let mut reader = File::open(from)?;
-
+    let reader = File::open(from)?;
     let (perm, len) = {
         let metadata = reader.metadata()?;
         if !metadata.is_file() {
@@ -844,15 +845,13 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         }
         (metadata.permissions(), metadata.len())
     };
-
-    let mut writer = OpenOptions::new()
+    let writer = OpenOptions::new()
         // create the file with the correct mode right away
         .mode(perm.mode())
         .write(true)
         .create(true)
         .truncate(true)
         .open(to)?;
-
     let writer_metadata = writer.metadata()?;
     if writer_metadata.is_file() {
         // Set the correct file permissions, in case the file already existed.
@@ -860,6 +859,12 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         // pipes/FIFOs or device nodes.
         writer.set_permissions(perm)?;
     }
+    Ok((reader, writer, len))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (mut reader, mut writer, _) = open_and_set_permissions(from, to)?;
 
     io::copy(&mut reader, &mut writer)
 }
@@ -867,7 +872,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::cmp;
-    use crate::fs::File;
     use crate::sync::atomic::{AtomicBool, Ordering};
 
     // Kernel prior to 4.5 don't have copy_file_range
@@ -893,17 +897,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         )
     }
 
-    if !from.is_file() {
-        return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing regular file"))
-    }
-
-    let mut reader = File::open(from)?;
-    let mut writer = File::create(to)?;
-    let (perm, len) = {
-        let metadata = reader.metadata()?;
-        (metadata.permissions(), metadata.size())
-    };
+    let (mut reader, mut writer, len) = open_and_set_permissions(from, to)?;
 
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
@@ -913,13 +907,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(reader.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    writer.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    bytes_to_copy,
-                                    0)
-                    )
+                cvt(copy_file_range(
+                    reader.as_raw_fd(),
+                    ptr::null_mut(),
+                    writer.as_raw_fd(),
+                    ptr::null_mut(),
+                    bytes_to_copy,
+                    0,
+                ))
             };
             if let Err(ref copy_err) = copy_result {
                 match copy_err.raw_os_error() {
@@ -937,23 +932,24 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 match err.raw_os_error() {
-                    Some(os_err) if os_err == libc::ENOSYS
-                                 || os_err == libc::EXDEV
-                                 || os_err == libc::EPERM => {
-                        // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
-                        // - Files are mounted on different fs (EXDEV)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
-                        assert_eq!(written, 0);
-                        let ret = io::copy(&mut reader, &mut writer)?;
-                        writer.set_permissions(perm)?;
-                        return Ok(ret)
-                    },
+                    Some(os_err)
+                    if os_err == libc::ENOSYS
+                        || os_err == libc::EXDEV
+                        || os_err == libc::EINVAL
+                        || os_err == libc::EPERM =>
+                        {
+                            // Try fallback io::copy if either:
+                            // - Kernel version is < 4.5 (ENOSYS)
+                            // - Files are mounted on different fs (EXDEV)
+                            // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                            // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
+                            assert_eq!(written, 0);
+                            return io::copy(&mut reader, &mut writer);
+                        }
                     _ => return Err(err),
                 }
             }
         }
     }
-    writer.set_permissions(perm)?;
     Ok(written)
 }
