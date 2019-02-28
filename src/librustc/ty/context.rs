@@ -2453,7 +2453,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.mk_fn_sig(
                 params_iter,
                 s.output(),
-                s.variadic,
+                s.c_variadic,
                 hir::Unsafety::Normal,
                 abi::Abi::Rust,
             )
@@ -2779,7 +2779,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_fn_sig<I>(self,
                         inputs: I,
                         output: I::Item,
-                        variadic: bool,
+                        c_variadic: bool,
                         unsafety: hir::Unsafety,
                         abi: abi::Abi)
         -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
@@ -2788,7 +2788,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
-            variadic, unsafety, abi
+            c_variadic, unsafety, abi
         })
     }
 

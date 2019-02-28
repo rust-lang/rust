@@ -1752,7 +1752,6 @@ impl Clean<Item> for doctree::Function {
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
-    pub variadic: bool,
     pub attrs: Attributes,
 }
 
@@ -1831,7 +1830,6 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
         FnDecl {
             inputs: (&self.0.inputs[..], self.1).clean(cx),
             output: self.0.output.clean(cx),
-            variadic: self.0.variadic,
             attrs: Attributes::default()
         }
     }
@@ -1849,7 +1847,6 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
             attrs: Attributes::default(),
-            variadic: sig.skip_binder().variadic,
             inputs: Arguments {
                 values: sig.skip_binder().inputs().iter().map(|t| {
                     Argument {
@@ -2252,6 +2249,7 @@ pub enum Type {
     Slice(Box<Type>),
     Array(Box<Type>, String),
     Never,
+    CVarArgs,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
@@ -2290,6 +2288,7 @@ pub enum PrimitiveType {
     Reference,
     Fn,
     Never,
+    CVarArgs,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -2469,6 +2468,7 @@ impl PrimitiveType {
             Reference => "reference",
             Fn => "fn",
             Never => "never",
+            CVarArgs => "...",
         }
     }
 
@@ -2518,6 +2518,7 @@ impl Clean<Type> for hir::Ty {
 
         match self.node {
             TyKind::Never => Never,
+            TyKind::CVarArgs(_) => CVarArgs,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 let lifetime = if l.is_elided() {
@@ -3654,6 +3655,7 @@ fn build_deref_target_impls(cx: &DocContext<'_, '_, '_>,
             Reference => None,
             Fn => None,
             Never => None,
+            CVarArgs => tcx.lang_items().va_list(),
         };
         if let Some(did) = did {
             if !did.is_local() {

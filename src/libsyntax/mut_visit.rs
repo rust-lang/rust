@@ -409,7 +409,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
     let Ty { id, node, span } = ty.deref_mut();
     vis.visit_id(id);
     match node {
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err |
+            TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Rptr(lt, mt) => {
@@ -680,7 +681,7 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 }
 
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
-    let FnDecl { inputs, output, variadic: _ } = decl.deref_mut();
+    let FnDecl { inputs, output, c_variadic: _ } = decl.deref_mut();
     visit_vec(inputs, |input| vis.visit_arg(input));
     match output {
         FunctionRetTy::Default(span) => vis.visit_span(span),

@@ -130,7 +130,7 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
 
-use crate::require_c_abi_if_variadic;
+use crate::require_c_abi_if_c_variadic;
 use crate::session::{CompileIncomplete, Session};
 use crate::session::config::EntryFnType;
 use crate::TypeAndSubsts;
@@ -1072,7 +1072,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
         revealed_ret_ty,
-        fn_sig.variadic,
+        fn_sig.c_variadic,
         fn_sig.unsafety,
         fn_sig.abi
     );
@@ -1426,7 +1426,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
                     }
 
                     if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
-                        require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
+                        require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
                     }
                 }
             }
@@ -2783,7 +2783,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             &method.sig.inputs()[1..]
         );
         self.check_argument_types(sp, expr_sp, &method.sig.inputs()[1..], &expected_arg_tys[..],
-                                  args_no_rcvr, method.sig.variadic, tuple_arguments,
+                                  args_no_rcvr, method.sig.c_variadic, tuple_arguments,
                                   self.tcx.hir().span_if_local(method.def_id));
         method.sig.output()
     }
@@ -2862,7 +2862,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             fn_inputs: &[Ty<'tcx>],
                             mut expected_arg_tys: &[Ty<'tcx>],
                             args: &'gcx [hir::Expr],
-                            variadic: bool,
+                            c_variadic: bool,
                             tuple_arguments: TupleArgumentsFlag,
                             def_span: Option<Span>) {
         let tcx = self.tcx;
@@ -2886,11 +2886,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let param_count_error = |expected_count: usize,
                                  arg_count: usize,
                                  error_code: &str,
-                                 variadic: bool,
+                                 c_variadic: bool,
                                  sugg_unit: bool| {
             let mut err = tcx.sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} but {} {} supplied",
-                    if variadic {"at least "} else {""},
+                    if c_variadic { "at least " } else { "" },
                     potentially_plural_count(expected_count, "parameter"),
                     potentially_plural_count(arg_count, "parameter"),
                     if arg_count == 1 {"was"} else {"were"}),
@@ -2910,7 +2910,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Applicability::MachineApplicable);
             } else {
                 err.span_label(sp, format!("expected {}{}",
-                                           if variadic {"at least "} else {""},
+                                           if c_variadic { "at least " } else { "" },
                                            potentially_plural_count(expected_count, "parameter")));
             }
             err.emit();
@@ -2944,7 +2944,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         } else if expected_arg_count == supplied_arg_count {
             fn_inputs.to_vec()
-        } else if variadic {
+        } else if c_variadic {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
@@ -2991,10 +2991,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.select_obligations_where_possible(false);
             }
 
-            // For variadic functions, we don't have a declared type for all of
+            // For C-variadic functions, we don't have a declared type for all of
             // the arguments hence we only do our usual type checking with
             // the arguments who's types we do know.
-            let t = if variadic {
+            let t = if c_variadic {
                 expected_arg_count
             } else if tuple_arguments == TupleArguments {
                 args.len()
@@ -3043,7 +3043,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // We also need to make sure we at least write the ty of the other
         // arguments which we skipped above.
-        if variadic {
+        if c_variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
                 use crate::structured_errors::{VariadicError, StructuredDiagnostic};
                 VariadicError::new(s, span, t, cast_ty).diagnostic().emit();

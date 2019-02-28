@@ -24,9 +24,17 @@ mod x86_win64;
 mod wasm32;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IgnoreMode {
+    /// C-variadic arguments.
+    CVarArgs,
+    /// A zero-sized type.
+    Zst,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {
-    /// Ignore the argument (useful for empty struct).
-    Ignore,
+    /// Ignore the argument (useful for empty structs and C-variadic args).
+    Ignore(IgnoreMode),
     /// Pass the argument directly.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
@@ -481,7 +489,10 @@ impl<'a, Ty> ArgType<'a, Ty> {
     }
 
     pub fn is_ignore(&self) -> bool {
-        self.mode == PassMode::Ignore
+        match self.mode {
+            PassMode::Ignore(_) => true,
+            _ => false
+        }
     }
 }
 
@@ -520,7 +531,7 @@ pub struct FnType<'a, Ty> {
     /// LLVM return type.
     pub ret: ArgType<'a, Ty>,
 
-    pub variadic: bool,
+    pub c_variadic: bool,
 
     pub conv: Conv,
 }

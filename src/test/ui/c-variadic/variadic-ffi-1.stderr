@@ -1,8 +1,8 @@
-error[E0045]: variadic function must have C or cdecl calling convention
-  --> $DIR/variadic-ffi.rs:5:5
+error[E0045]: C-variadic function must have C or cdecl calling convention
+  --> $DIR/variadic-ffi-1.rs:5:5
    |
 LL |     fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C or cdecl calling
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ variadics require C or cdecl calling convention
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadics require C or cdecl calling convention
 
 error: aborting due to previous error
 

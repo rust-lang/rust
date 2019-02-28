@@ -434,6 +434,9 @@ impl<'a> State<'a> {
                 self.s.word("/*ERROR*/")?;
                 self.pclose()?;
             }
+            hir::TyKind::CVarArgs(_) => {
+                self.s.word("...")?;
+            }
         }
         self.end()
     }
@@ -2004,7 +2007,7 @@ impl<'a> State<'a> {
             s.print_type(ty)?;
             s.end()
         })?;
-        if decl.variadic {
+        if decl.c_variadic {
             self.s.word(", ...")?;
         }
         self.pclose()?;

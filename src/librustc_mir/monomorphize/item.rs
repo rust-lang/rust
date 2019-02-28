@@ -353,7 +353,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     output.pop();
                 }
 
-                if sig.variadic {
+                if sig.c_variadic {
                     if !sig.inputs().is_empty() {
                         output.push_str(", ...");
                     } else {

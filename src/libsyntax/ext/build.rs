@@ -985,7 +985,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         P(ast::FnDecl {
             inputs,
             output,
-            variadic: false
+            c_variadic: false
         })
     }
 

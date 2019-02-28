@@ -74,7 +74,7 @@ const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
 
-    // Used to assign ids to HIR nodes that do not directly correspond to an AST node.
+    /// Used to assign ids to HIR nodes that do not directly correspond to an AST node.
     sess: &'a Session,
 
     cstore: &'a dyn CrateStore,
@@ -107,25 +107,25 @@ pub struct LoweringContext<'a> {
     /// written at all (e.g., `&T` or `std::cell::Ref<T>`).
     anonymous_lifetime_mode: AnonymousLifetimeMode,
 
-    // Used to create lifetime definitions from in-band lifetime usages.
-    // e.g., `fn foo(x: &'x u8) -> &'x u8` to `fn foo<'x>(x: &'x u8) -> &'x u8`
-    // When a named lifetime is encountered in a function or impl header and
-    // has not been defined
-    // (i.e., it doesn't appear in the in_scope_lifetimes list), it is added
-    // to this list. The results of this list are then added to the list of
-    // lifetime definitions in the corresponding impl or function generics.
+    /// Used to create lifetime definitions from in-band lifetime usages.
+    /// e.g., `fn foo(x: &'x u8) -> &'x u8` to `fn foo<'x>(x: &'x u8) -> &'x u8`
+    /// When a named lifetime is encountered in a function or impl header and
+    /// has not been defined
+    /// (i.e., it doesn't appear in the in_scope_lifetimes list), it is added
+    /// to this list. The results of this list are then added to the list of
+    /// lifetime definitions in the corresponding impl or function generics.
     lifetimes_to_define: Vec<(Span, ParamName)>,
 
-    // Whether or not in-band lifetimes are being collected. This is used to
-    // indicate whether or not we're in a place where new lifetimes will result
-    // in in-band lifetime definitions, such a function or an impl header,
-    // including implicit lifetimes from `impl_header_lifetime_elision`.
+    /// Whether or not in-band lifetimes are being collected. This is used to
+    /// indicate whether or not we're in a place where new lifetimes will result
+    /// in in-band lifetime definitions, such a function or an impl header,
+    /// including implicit lifetimes from `impl_header_lifetime_elision`.
     is_collecting_in_band_lifetimes: bool,
 
-    // Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
-    // When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
-    // against this list to see if it is already in-scope, or if a definition
-    // needs to be created for it.
+    /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
+    /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
+    /// against this list to see if it is already in-scope, or if a definition
+    /// needs to be created for it.
     in_scope_lifetimes: Vec<Ident>,
 
     current_module: NodeId,
@@ -954,7 +954,7 @@ impl<'a> LoweringContext<'a> {
         let decl = FnDecl {
             inputs: vec![],
             output,
-            variadic: false
+            c_variadic: false
         };
         let body_id = self.record_body(body_expr, Some(&decl));
         self.is_generator = prev_is_generator;
@@ -1345,6 +1345,12 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
+            TyKind::CVarArgs => {
+                // Create the implicit lifetime of the "spoofed" `VaList`.
+                let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
+                let lt = self.new_implicit_lifetime(span);
+                hir::TyKind::CVarArgs(lt)
+            },
         };
 
         let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(t.id);
@@ -2112,7 +2118,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::FnDecl {
             inputs,
             output,
-            variadic: decl.variadic,
+            c_variadic: decl.c_variadic,
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {
@@ -3967,7 +3973,7 @@ impl<'a> LoweringContext<'a> {
                     let outer_decl = FnDecl {
                         inputs: decl.inputs.clone(),
                         output: FunctionRetTy::Default(fn_decl_span),
-                        variadic: false,
+                        c_variadic: false,
                     };
                     // We need to lower the declaration outside the new scope, because we
                     // have to conserve the state of being inside a loop condition for the

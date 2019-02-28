@@ -136,14 +136,14 @@ fn check_type_alias_enum_variants_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 
     }
 }
 
-fn require_c_abi_if_variadic(tcx: TyCtxt<'_, '_, '_>,
-                             decl: &hir::FnDecl,
-                             abi: Abi,
-                             span: Span) {
-    if decl.variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
+fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_, '_>,
+                               decl: &hir::FnDecl,
+                               abi: Abi,
+                               span: Span) {
+    if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
-            "variadic function must have C or cdecl calling convention");
-        err.span_label(span, "variadics require C or cdecl calling convention").emit();
+            "C-variadic function must have C or cdecl calling convention");
+        err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
     }
 }
 

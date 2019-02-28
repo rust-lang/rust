@@ -471,6 +471,9 @@ declare_features! (
 
     // #[repr(align(X))] on enums
     (active, repr_align_enum, "1.34.0", Some(57996), None),
+
+    // Allows the use of C-variadics
+    (active, c_variadic, "1.34.0", Some(44930), None),
 );
 
 declare_features! (
@@ -1901,6 +1904,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if header.asyncness.node.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
                 }
+
+                if fn_decl.c_variadic {
+                    gate_feature_post!(&self, c_variadic, span,
+                                       "C-varaidic functions are unstable");
+                }
                 // Stability of const fn methods are covered in
                 // `visit_trait_item` and `visit_impl_item` below; this is
                 // because default methods don't pass through this point.
@@ -1928,6 +1936,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
+                }
+                if sig.decl.c_variadic {
+                    gate_feature_post!(&self, c_variadic, ti.span,
+                                       "C-varaidic functions are unstable");
                 }
                 if sig.header.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");

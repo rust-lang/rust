@@ -5,7 +5,7 @@ use rustc::mir::{self, Mir};
 use rustc::ty::subst::SubstsRef;
 use rustc::session::config::DebugInfo;
 use rustc_mir::monomorphize::Instance;
-use rustc_target::abi::call::{FnType, PassMode};
+use rustc_target::abi::call::{FnType, PassMode, IgnoreMode};
 use crate::base;
 use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use crate::traits::*;
@@ -86,6 +86,10 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// If this function is being monomorphized, this contains the type substitutions used.
     param_substs: SubstsRef<'tcx>,
+
+    /// If this function is a C-variadic function, this contains the `PlaceRef` of the
+    /// "spoofed" `VaList`.
+    va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -246,13 +250,18 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             assert!(!instance.substs.needs_infer());
             instance.substs
         },
+        va_list_ref: None,
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals);
+        // FIXME(dlrobertson): This is ugly. Find a better way of getting the `PlaceRef` or
+        // `LocalRef` from `arg_local_refs`
+        let mut va_list_ref = None;
+        let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals, &mut va_list_ref);
+        fx.va_list_ref = va_list_ref;
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -433,6 +442,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         debuginfo::MirDebugScope<Bx::DIScope>
     >,
     memory_locals: &BitSet<mir::Local>,
+    va_list_ref: &mut Option<PlaceRef<'tcx, Bx::Value>>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let tcx = fx.cx.tcx();
@@ -445,6 +455,15 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         arg_scope.scope_metadata
     } else {
         None
+    };
+
+    // Store the index of the last argument. This is used to
+    // call va_start on the va_list instead of attempting
+    // to store_fn_arg.
+    let last_arg_idx = if fx.fn_ty.args.is_empty() {
+        None
+    } else {
+        Some(fx.fn_ty.args.len() - 1)
     };
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
@@ -510,8 +529,15 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // of putting everything in allocas just so we can use llvm.dbg.declare.
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
-                PassMode::Ignore => {
+                PassMode::Ignore(IgnoreMode::Zst) => {
                     return local(OperandRef::new_zst(bx.cx(), arg.layout));
+                }
+                PassMode::Ignore(IgnoreMode::CVarArgs) => {
+                    let backend_type = bx.cx().immediate_backend_type(arg.layout);
+                    return local(OperandRef {
+                        val: OperandValue::Immediate(bx.cx().const_undef(backend_type)),
+                        layout: arg.layout,
+                    });
                 }
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
@@ -559,9 +585,35 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             indirect_operand.store(bx, tmp);
             tmp
         } else {
-            let tmp = PlaceRef::alloca(bx, arg.layout, &name);
-            bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-            tmp
+            if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
+                let va_list_impl = match arg_decl.ty.ty_adt_def() {
+                    Some(adt) => adt.non_enum_variant(),
+                    None => bug!("`va_list` language item improperly constructed")
+                };
+                match tcx.type_of(va_list_impl.fields[0].did).sty {
+                    ty::Ref(_, ty, _) => {
+                        // If the underlying structure the `VaList` contains is a structure,
+                        // we need to allocate it (e.g., X86_64 on Linux).
+                        let tmp = PlaceRef::alloca(bx, arg.layout, &name);
+                        if let ty::Adt(..) = ty.sty {
+                            let layout = bx.layout_of(ty);
+                            // Create an unnamed allocation for the backing structure
+                            // and store it in the the spoofed `VaList`.
+                            let backing = PlaceRef::alloca(bx, layout, "");
+                            bx.store(backing.llval, tmp.llval, layout.align.abi);
+                        }
+                        // Call `va_start` on the spoofed `VaList`.
+                        bx.va_start(tmp.llval);
+                        *va_list_ref = Some(tmp);
+                        tmp
+                    }
+                    _ => bug!("improperly constructed `va_list` lang item"),
+                }
+            } else {
+                let tmp = PlaceRef::alloca(bx, arg.layout, &name);
+                bx.store_fn_arg(arg, &mut llarg_idx, tmp);
+                tmp
+            }
         };
         arg_scope.map(|scope| {
             // Is this a regular argument?
