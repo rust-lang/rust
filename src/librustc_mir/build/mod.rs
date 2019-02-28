@@ -502,7 +502,7 @@ fn should_abort_on_panic<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: DefId, abi: Abi) ->
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
     match unwind_attr {
-        None => true,
+        None => false, // FIXME(#58794)
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
     }
