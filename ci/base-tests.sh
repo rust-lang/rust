@@ -59,7 +59,7 @@ rustup override set nightly
 # avoid loop spam and allow cmds with exit status != 0
 set +ex
 
-for file in `find tests -not -path "tests/ui/double_parens.rs" -not -path "tests/ui/doc.rs" -not -path "tests/ui/unused_unit.rs" | grep "\.rs$"` ; do
+for file in `find tests -not -path "tests/ui/doc.rs" -not -path "tests/ui/unused_unit.rs" | grep "\.rs$"` ; do
   rustfmt ${file} --check
   if [ $? -ne 0 ]; then
     echo "${file} needs reformatting!"
