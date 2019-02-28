@@ -1,7 +1,7 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::hir::{Expr, ExprKind, PatKind, Path, QPath, Ty, TyKind};
+use crate::hir::{HirId, Path, QPath, Ty, TyKind};
 use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
@@ -81,56 +81,34 @@ impl LintPass for TyKindUsage {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'tcx Expr) {
-        let qpaths = match &expr.node {
-            ExprKind::Match(_, arms, _) => {
-                let mut qpaths = vec![];
-                for arm in arms {
-                    for pat in &arm.pats {
-                        match &pat.node {
-                            PatKind::Path(qpath) | PatKind::TupleStruct(qpath, ..) => {
-                                qpaths.push(qpath)
-                            }
-                            _ => (),
-                        }
-                    }
-                }
-                qpaths
-            }
-            ExprKind::Path(qpath) => vec![qpath],
-            _ => vec![],
-        };
-        for qpath in qpaths {
-            if let QPath::Resolved(_, path) = qpath {
-                let segments_iter = path.segments.iter().rev().skip(1).rev();
+    fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path, _: HirId) {
+        let segments_iter = path.segments.iter().rev().skip(1).rev();
 
-                if let Some(last) = segments_iter.clone().last() {
-                    if last.ident.as_str() == "TyKind" {
-                        let path = Path {
-                            span: path.span.with_hi(last.ident.span.hi()),
-                            def: path.def,
-                            segments: segments_iter.cloned().collect(),
-                        };
+        if let Some(last) = segments_iter.clone().last() {
+            if last.ident.as_str() == "TyKind" {
+                let path = Path {
+                    span: path.span.with_hi(last.ident.span.hi()),
+                    def: path.def,
+                    segments: segments_iter.cloned().collect(),
+                };
 
-                        if let Some(def) = last.def {
-                            if def
-                                .def_id()
-                                .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"])
-                            {
-                                cx.struct_span_lint(
-                                    USAGE_OF_TY_TYKIND,
-                                    path.span,
-                                    "usage of `ty::TyKind::<kind>`",
-                                )
-                                .span_suggestion(
-                                    path.span,
-                                    "try using ty::<kind> directly",
-                                    "ty".to_string(),
-                                    Applicability::MaybeIncorrect, // ty maybe needs an import
-                                )
-                                .emit();
-                            }
-                        }
+                if let Some(def) = last.def {
+                    if def
+                        .def_id()
+                        .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"])
+                    {
+                        cx.struct_span_lint(
+                            USAGE_OF_TY_TYKIND,
+                            path.span,
+                            "usage of `ty::TyKind::<kind>`",
+                        )
+                        .span_suggestion(
+                            path.span,
+                            "try using ty::<kind> directly",
+                            "ty".to_string(),
+                            Applicability::MaybeIncorrect, // ty maybe needs an import
+                        )
+                        .emit();
                     }
                 }
             }
