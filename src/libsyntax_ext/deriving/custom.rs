@@ -17,9 +17,11 @@ struct MarkAttrs<'a>(&'a [ast::Name]);
 
 impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        if self.0.contains(&attr.name()) {
-            mark_used(attr);
-            mark_known(attr);
+        if let Some(ident) = attr.ident() {
+            if self.0.contains(&ident.name) {
+                mark_used(attr);
+                mark_known(attr);
+            }
         }
     }
 

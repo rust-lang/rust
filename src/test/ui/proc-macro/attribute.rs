@@ -31,7 +31,7 @@ pub fn foo5(input: TokenStream) -> TokenStream { input }
 pub fn foo6(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(m::d7)]
-//FIXME ERROR: must only be one word
+//~^ ERROR: must only be one word
 pub fn foo7(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d8(a))]
@@ -64,7 +64,7 @@ pub fn foo13(input: TokenStream) -> TokenStream { input }
 pub fn foo14(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d15, attributes(m::a))]
-//FIXME ERROR: must only be one word
+//~^ ERROR: must only be one word
 pub fn foo15(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d16, attributes(a(b)))]
