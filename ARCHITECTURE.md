@@ -7,6 +7,9 @@ in the right place!
 See also the [guide](./guide.md), which walks through a particular snapshot of
 rust-analyzer code base.
 
+For syntax-trees specifically, there's a [video walk
+through](https://youtu.be/DGAuLWdCCAI) as well.
+
 ## The Big Picture
 
 ![](https://user-images.githubusercontent.com/1711539/50114578-e8a34280-0255-11e9-902c-7cfc70747966.png)
