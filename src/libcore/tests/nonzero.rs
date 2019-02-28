@@ -1,6 +1,5 @@
-use core::num::{NonZeroU32, NonZeroI32};
-use core::option::Option;
-use core::option::Option::{Some, None};
+use core::num::{IntErrorKind, NonZeroU8, NonZeroU32, NonZeroI32, ParseIntError};
+use core::option::Option::{self, Some, None};
 use std::mem::size_of;
 
 #[test]
@@ -143,7 +142,7 @@ fn test_from_str() {
         })
     );
     assert_eq!(
-        "129".parse::<NonZeroU8>(),
+        "257".parse::<NonZeroU8>(),
         Err(ParseIntError {
             kind: IntErrorKind::Overflow
         })
