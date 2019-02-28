@@ -1968,7 +1968,7 @@ impl<T> [T] {
         assert_eq!(self.len(), src.len(),
                    "destination and source slices have different lengths");
         unsafe {
-            ptr::copy_nonoverlapping(
+            ptr::copy(
                 src.as_ptr(), self.as_mut_ptr(), self.len());
         }
     }
