@@ -1,1 +1,2 @@
+/// Foo
 pub struct Foo;
