@@ -521,8 +521,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
                 let diag = ctxt.sess().diagnostic();
 
-                let name = attr.name().map(|s| s.as_str());
-                let name = name.as_ref().map(|s| &s[..]);
+                let name = attr.ident_str();
                 if attr.is_word() {
                     if name == Some("no_default_passes") {
                         report_deprecated_attr("no_default_passes", diag);
