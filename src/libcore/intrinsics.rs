@@ -1496,11 +1496,6 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned pointer");
     debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned pointer");
-    let src_usize = src as usize;
-    let dst_usize = dst as usize;
-    let size = mem::size_of::<T>() * count;
-    debug_assert!(dst_usize < src_usize || dst_usize + size >= src_usize,
-                  "attempt to copy to a destination overlapping with the source");
     real_intrinsics::copy(src, dst, count)
 }
 
