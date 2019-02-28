@@ -15,19 +15,19 @@ mod libc {
     pub struct sockaddr_un;
 }
 
-use ascii;
-use ffi::OsStr;
-use fmt;
-use io::{self, Initializer, IoVec, IoVecMut};
-use mem;
-use net::{self, Shutdown};
-use os::unix::ffi::OsStrExt;
-use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
-use path::Path;
-use time::Duration;
-use sys::{self, cvt};
-use sys::net::Socket;
-use sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::ascii;
+use crate::ffi::OsStr;
+use crate::fmt;
+use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::mem;
+use crate::net::{self, Shutdown};
+use crate::os::unix::ffi::OsStrExt;
+use crate::os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
+use crate::path::Path;
+use crate::time::Duration;
+use crate::sys::{self, cvt};
+use crate::sys::net::Socket;
+use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 
 #[cfg(any(target_os = "linux", target_os = "android",
           target_os = "dragonfly", target_os = "freebsd",
@@ -1481,11 +1481,11 @@ impl IntoRawFd for UnixDatagram {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
-    use thread;
-    use io::{self, ErrorKind};
-    use io::prelude::*;
-    use time::Duration;
-    use sys_common::io::test::tmpdir;
+    use crate::thread;
+    use crate::io::{self, ErrorKind};
+    use crate::io::prelude::*;
+    use crate::time::Duration;
+    use crate::sys_common::io::test::tmpdir;
 
     use super::*;
 

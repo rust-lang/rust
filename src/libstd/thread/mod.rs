@@ -156,25 +156,25 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use any::Any;
-use boxed::FnBox;
-use cell::UnsafeCell;
-use ffi::{CStr, CString};
-use fmt;
-use io;
-use mem;
-use panic;
-use panicking;
-use str;
-use sync::{Mutex, Condvar, Arc};
-use sync::atomic::AtomicUsize;
-use sync::atomic::Ordering::SeqCst;
-use sys::thread as imp;
-use sys_common::mutex;
-use sys_common::thread_info;
-use sys_common::thread;
-use sys_common::{AsInner, IntoInner};
-use time::Duration;
+use crate::any::Any;
+use crate::boxed::FnBox;
+use crate::cell::UnsafeCell;
+use crate::ffi::{CStr, CString};
+use crate::fmt;
+use crate::io;
+use crate::mem;
+use crate::panic;
+use crate::panicking;
+use crate::str;
+use crate::sync::{Mutex, Condvar, Arc};
+use crate::sync::atomic::AtomicUsize;
+use crate::sync::atomic::Ordering::SeqCst;
+use crate::sys::thread as imp;
+use crate::sys_common::mutex;
+use crate::sys_common::thread_info;
+use crate::sys_common::thread;
+use crate::sys_common::{AsInner, IntoInner};
+use crate::time::Duration;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -466,7 +466,7 @@ impl Builder {
             thread_info::set(imp::guard::current(), their_thread);
             #[cfg(feature = "backtrace")]
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                ::sys_common::backtrace::__rust_begin_short_backtrace(f)
+                crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
             #[cfg(not(feature = "backtrace"))]
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
@@ -1051,7 +1051,7 @@ impl ThreadId {
 
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
-            if COUNTER == ::u64::MAX {
+            if COUNTER == crate::u64::MAX {
                 panic!("failed to generate unique thread ID: bitspace exhausted");
             }
 
@@ -1290,7 +1290,7 @@ impl fmt::Debug for Thread {
 ///
 /// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<dyn Any + Send + 'static>>;
+pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the child thread
 // and the parent thread. Memory is shared through the `Arc` within and there's
@@ -1482,13 +1482,13 @@ fn _assert_sync_and_send() {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use any::Any;
-    use sync::mpsc::{channel, Sender};
-    use result;
-    use super::{Builder};
-    use thread;
-    use time::Duration;
-    use u32;
+    use super::Builder;
+    use crate::any::Any;
+    use crate::sync::mpsc::{channel, Sender};
+    use crate::result;
+    use crate::thread;
+    use crate::time::Duration;
+    use crate::u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!

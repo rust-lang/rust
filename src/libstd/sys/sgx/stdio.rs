@@ -1,7 +1,7 @@
 use fortanix_sgx_abi as abi;
 
-use io;
-use sys::fd::FileDesc;
+use crate::io;
+use crate::sys::fd::FileDesc;
 
 pub struct Stdin(());
 pub struct Stdout(());
@@ -52,7 +52,7 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
     // FIXME: Rust normally maps Unix EBADF to `Other`

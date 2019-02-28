@@ -1,7 +1,7 @@
 use super::usercalls::{alloc::UserRef, self};
-use cmp;
-use io::{self, Write};
-use mem;
+use crate::cmp;
+use crate::io::{self, Write};
+use crate::mem;
 
 extern "C" {
     fn take_debug_panic_buf_ptr() -> *mut u8;

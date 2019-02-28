@@ -1,20 +1,21 @@
-use env::{split_paths};
-use ffi::{CStr, OsStr};
-use fmt;
-use fs::File;
-use io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
+use crate::env::{self, split_paths};
+use crate::ffi::{CStr, OsStr};
+use crate::fmt;
+use crate::fs::File;
+use crate::io::{self, prelude::*, BufReader, Error, ErrorKind, SeekFrom};
+use crate::os::unix::ffi::OsStrExt;
+use crate::path::{Path, PathBuf};
+use crate::ptr;
+use crate::sys::ext::fs::MetadataExt;
+use crate::sys::ext::io::AsRawFd;
+use crate::sys::fd::FileDesc;
+use crate::sys::fs::{File as SysFile, OpenOptions};
+use crate::sys::os::{ENV_LOCK, environ};
+use crate::sys::pipe::{self, AnonPipe};
+use crate::sys::{cvt, syscall};
+use crate::sys_common::process::{CommandEnv, DefaultEnvKey};
+
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
-use os::unix::ffi::OsStrExt;
-use path::{Path, PathBuf};
-use ptr;
-use sys::ext::fs::MetadataExt;
-use sys::ext::io::AsRawFd;
-use sys::fd::FileDesc;
-use sys::fs::{File as SysFile, OpenOptions};
-use sys::os::{ENV_LOCK, environ};
-use sys::pipe::{self, AnonPipe};
-use sys::{cvt, syscall};
-use sys_common::process::{CommandEnv, DefaultEnvKey};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -297,7 +298,7 @@ impl Command {
 
         let program = if self.program.contains(':') || self.program.contains('/') {
             Some(PathBuf::from(&self.program))
-        } else if let Ok(path_env) = ::env::var("PATH") {
+        } else if let Ok(path_env) = env::var("PATH") {
             let mut program = None;
             for mut path in split_paths(&path_env) {
                 path.push(&self.program);

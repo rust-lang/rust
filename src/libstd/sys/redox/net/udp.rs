@@ -1,13 +1,13 @@
-use cell::UnsafeCell;
-use cmp;
-use io::{self, Error, ErrorKind, Result};
-use mem;
-use net::{SocketAddr, Ipv4Addr, Ipv6Addr};
-use path::Path;
-use sys::fs::{File, OpenOptions};
-use sys::syscall::TimeSpec;
-use sys_common::{AsInner, FromInner, IntoInner};
-use time::Duration;
+use crate::cell::UnsafeCell;
+use crate::cmp;
+use crate::io::{self, Error, ErrorKind, Result};
+use crate::mem;
+use crate::net::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use crate::path::Path;
+use crate::sys::fs::{File, OpenOptions};
+use crate::sys::syscall::TimeSpec;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::time::Duration;
 
 use super::{path_to_peer_addr, path_to_local_addr};
 

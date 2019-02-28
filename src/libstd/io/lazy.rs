@@ -1,8 +1,8 @@
-use cell::Cell;
-use ptr;
-use sync::Arc;
-use sys_common;
-use sys_common::mutex::Mutex;
+use crate::cell::Cell;
+use crate::ptr;
+use crate::sync::Arc;
+use crate::sys_common;
+use crate::sys_common::mutex::Mutex;
 
 pub struct Lazy<T> {
     // We never call `lock.init()`, so it is UB to attempt to acquire this mutex reentrantly!

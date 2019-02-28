@@ -4,7 +4,7 @@
 //! Software Developer's Manual, Volume 3, Chapter 40.
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
-use mem::MaybeUninit;
+use crate::mem::MaybeUninit;
 
 /// Wrapper struct to force 16-byte alignment.
 #[repr(align(16))]

@@ -2,13 +2,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fs::{self, Permissions, OpenOptions};
-use io;
-use libc;
-use path::Path;
-use sys;
-use sys_common::{FromInner, AsInner, AsInnerMut};
-use sys::platform::fs::MetadataExt as UnixMetadataExt;
+use crate::fs::{self, Permissions, OpenOptions};
+use crate::io;
+use crate::path::Path;
+use crate::sys;
+use crate::sys_common::{FromInner, AsInner, AsInnerMut};
+use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 
 /// Unix-specific extensions to [`File`].
 ///

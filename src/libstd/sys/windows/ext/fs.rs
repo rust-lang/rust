@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fs::{self, OpenOptions, Metadata};
-use io;
-use path::Path;
-use sys;
-use sys_common::{AsInnerMut, AsInner};
+use crate::fs::{self, OpenOptions, Metadata};
+use crate::io;
+use crate::path::Path;
+use crate::sys;
+use crate::sys_common::{AsInnerMut, AsInner};
 
 /// Windows-specific extensions to [`File`].
 ///

@@ -209,6 +209,10 @@
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+#![allow(elided_lifetimes_in_paths)]
+
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 
@@ -313,28 +317,24 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
-#[cfg(test)] extern crate rand;
 
 // Re-export a few macros from core
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, try};
+pub use core::{unreachable, unimplemented, write, writeln, r#try};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
 #[doc(masked)]
+#[allow(unused_extern_crates)]
 extern crate libc;
-extern crate rustc_demangle;
 
 // We always need an unwinder currently for backtraces
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
-
-#[cfg(feature = "backtrace")]
-extern crate backtrace_sys;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
@@ -343,9 +343,6 @@ extern crate backtrace_sys;
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
 #[cfg(test)] extern crate std as realstd;
-
-#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-extern crate fortanix_sgx_abi;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]

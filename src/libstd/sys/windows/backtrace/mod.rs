@@ -14,13 +14,14 @@
 
 #![allow(deprecated)] // dynamic_lib
 
-use io;
+use crate::io;
+use crate::mem;
+use crate::ptr;
+use crate::sys::c;
+use crate::sys::dynamic_lib::DynamicLibrary;
+use crate::sys_common::backtrace::Frame;
+
 use libc::c_void;
-use mem;
-use ptr;
-use sys::c;
-use sys::dynamic_lib::DynamicLibrary;
-use sys_common::backtrace::Frame;
 
 macro_rules! sym {
     ($lib:expr, $e:expr, $t:ident) => (

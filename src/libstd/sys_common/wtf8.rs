@@ -17,18 +17,18 @@
 
 use core::str::next_code_point;
 
-use borrow::Cow;
-use char;
-use fmt;
-use hash::{Hash, Hasher};
-use iter::FromIterator;
-use mem;
-use ops;
-use rc::Rc;
-use slice;
-use str;
-use sync::Arc;
-use sys_common::AsInner;
+use crate::borrow::Cow;
+use crate::char;
+use crate::fmt;
+use crate::hash::{Hash, Hasher};
+use crate::iter::FromIterator;
+use crate::mem;
+use crate::ops;
+use crate::rc::Rc;
+use crate::slice;
+use crate::str;
+use crate::sync::Arc;
+use crate::sys_common::AsInner;
 
 const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
@@ -413,7 +413,7 @@ impl AsInner<[u8]> for Wtf8 {
 impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fn write_str_escaped(f: &mut fmt::Formatter, s: &str) -> fmt::Result {
-            use fmt::Write;
+            use crate::fmt::Write;
             for c in s.chars().flat_map(|c| c.escape_debug()) {
                 f.write_char(c)?
             }
@@ -871,7 +871,7 @@ impl Wtf8 {
 
 #[cfg(test)]
 mod tests {
-    use borrow::Cow;
+    use crate::borrow::Cow;
     use super::*;
 
     #[test]

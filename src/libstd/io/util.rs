@@ -1,8 +1,8 @@
 #![allow(missing_copy_implementations)]
 
-use fmt;
-use io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoVec, IoVecMut};
-use mem;
+use crate::fmt;
+use crate::io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoVec, IoVecMut};
+use crate::mem;
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -224,8 +224,8 @@ impl fmt::Debug for Sink {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use io::{copy, sink, empty, repeat};
+    use crate::io::prelude::*;
+    use crate::io::{copy, sink, empty, repeat};
 
     #[test]
     fn copy_copies() {

@@ -1,8 +1,8 @@
-use cmp;
-use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
+use crate::cmp;
+use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
          IoVec};
-use fmt;
-use mem;
+use crate::fmt;
+use crate::mem;
 
 // =============================================================================
 // Forwarding implementations
@@ -323,8 +323,7 @@ impl Write for Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use test;
+    use crate::io::prelude::*;
 
     #[bench]
     fn bench_read_slice(b: &mut test::Bencher) {

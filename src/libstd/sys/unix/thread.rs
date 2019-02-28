@@ -1,14 +1,13 @@
-use boxed::FnBox;
-use cmp;
-use ffi::CStr;
-use io;
-use libc;
-use mem;
-use ptr;
-use sys::os;
-use time::Duration;
+use crate::boxed::FnBox;
+use crate::cmp;
+use crate::ffi::CStr;
+use crate::io;
+use crate::mem;
+use crate::ptr;
+use crate::sys::os;
+use crate::time::Duration;
 
-use sys_common::thread::*;
+use crate::sys_common::thread::*;
 
 #[cfg(not(target_os = "l4re"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -118,7 +117,7 @@ impl Thread {
 
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
-        use ffi::CString;
+        use crate::ffi::CString;
         let cname = CString::new(&b"%s"[..]).unwrap();
         unsafe {
             libc::pthread_setname_np(libc::pthread_self(), cname.as_ptr(),
@@ -197,7 +196,7 @@ impl Drop for Thread {
           not(target_os = "solaris")))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    use ops::Range;
+    use crate::ops::Range;
     pub type Guard = Range<usize>;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
@@ -213,11 +212,11 @@ pub mod guard {
           target_os = "solaris"))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    use libc;
     use libc::{mmap, mprotect};
     use libc::{PROT_NONE, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANON, MAP_FAILED, MAP_FIXED};
-    use ops::Range;
-    use sys::os;
+
+    use crate::ops::Range;
+    use crate::sys::os;
 
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: usize = 0;
@@ -226,7 +225,7 @@ pub mod guard {
 
     #[cfg(target_os = "solaris")]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
-        let mut current_stack: libc::stack_t = ::mem::zeroed();
+        let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);
         Some(current_stack.ss_sp)
     }
@@ -240,7 +239,7 @@ pub mod guard {
 
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
-        let mut current_stack: libc::stack_t = ::mem::zeroed();
+        let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::pthread_stackseg_np(libc::pthread_self(),
                                              &mut current_stack), 0);
 
@@ -259,14 +258,14 @@ pub mod guard {
               target_os = "linux", target_os = "netbsd", target_os = "l4re"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
+        let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
             let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
         #[cfg(not(target_os = "freebsd"))]
             let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
         if e == 0 {
-            let mut stackaddr = ::ptr::null_mut();
+            let mut stackaddr = crate::ptr::null_mut();
             let mut stacksize = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut stacksize), 0);
@@ -357,7 +356,7 @@ pub mod guard {
               target_os = "linux", target_os = "netbsd", target_os = "l4re"))]
     pub unsafe fn current() -> Option<Guard> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
+        let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
             let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -369,7 +368,7 @@ pub mod guard {
             if guardsize == 0 {
                 panic!("there is no guard page");
             }
-            let mut stackaddr = ::ptr::null_mut();
+            let mut stackaddr = crate::ptr::null_mut();
             let mut size = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut size), 0);

@@ -1,17 +1,18 @@
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 
-use env;
-use io::prelude::*;
-use io;
-use path::{self, Path};
-use ptr;
-use rustc_demangle::demangle;
-use str;
-use sync::atomic::{self, Ordering};
-use sys::mutex::Mutex;
+use crate::env;
+use crate::io::prelude::*;
+use crate::io;
+use crate::path::{self, Path};
+use crate::ptr;
+use crate::str;
+use crate::sync::atomic::{self, Ordering};
+use crate::sys::mutex::Mutex;
 
-pub use sys::backtrace::{
+use rustc_demangle::demangle;
+
+pub use crate::sys::backtrace::{
     unwind_backtrace,
     resolve_symname,
     foreach_symbol_fileline,

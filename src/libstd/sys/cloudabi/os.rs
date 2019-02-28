@@ -1,8 +1,9 @@
-use ffi::CStr;
-use libc::{self, c_int};
-use str;
+use crate::ffi::CStr;
+use crate::str;
 
-pub use sys::cloudabi::shims::os::*;
+use libc::c_int;
+
+pub use crate::sys::cloudabi::shims::os::*;
 
 pub fn errno() -> i32 {
     extern "C" {

@@ -1,7 +1,7 @@
-use cell::UnsafeCell;
-use mem;
-use sync::atomic::{AtomicU32, Ordering};
-use sys::cloudabi::abi;
+use crate::cell::UnsafeCell;
+use crate::mem;
+use crate::sync::atomic::{AtomicU32, Ordering};
+use crate::sys::cloudabi::abi;
 
 extern "C" {
     #[thread_local]

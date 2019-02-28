@@ -67,22 +67,22 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use borrow::{Borrow, Cow};
-use cmp;
-use error::Error;
-use fmt;
-use fs;
-use hash::{Hash, Hasher};
-use io;
-use iter::{self, FusedIterator};
-use ops::{self, Deref};
-use rc::Rc;
-use str::FromStr;
-use sync::Arc;
+use crate::borrow::{Borrow, Cow};
+use crate::cmp;
+use crate::error::Error;
+use crate::fmt;
+use crate::fs;
+use crate::hash::{Hash, Hasher};
+use crate::io;
+use crate::iter::{self, FusedIterator};
+use crate::ops::{self, Deref};
+use crate::rc::Rc;
+use crate::str::FromStr;
+use crate::sync::Arc;
 
-use ffi::{OsStr, OsString};
+use crate::ffi::{OsStr, OsString};
 
-use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
+use crate::sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -279,7 +279,7 @@ pub fn is_separator(c: char) -> bool {
 ///
 /// For example, `/` on Unix and `\` on Windows.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAIN_SEPARATOR: char = ::sys::path::MAIN_SEP;
+pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
@@ -2819,8 +2819,8 @@ impl Error for StripPrefixError {
 mod tests {
     use super::*;
 
-    use rc::Rc;
-    use sync::Arc;
+    use crate::rc::Rc;
+    use crate::sync::Arc;
 
     macro_rules! t(
         ($path:expr, iter: $iter:expr) => (
@@ -2907,7 +2907,7 @@ mod tests {
 
     #[test]
     fn into() {
-        use borrow::Cow;
+        use crate::borrow::Cow;
 
         let static_path = Path::new("/home/foo");
         let static_cow_path: Cow<'static, Path> = static_path.into();
@@ -4007,7 +4007,7 @@ mod tests {
 
     #[test]
     fn test_eq_receivers() {
-        use borrow::Cow;
+        use crate::borrow::Cow;
 
         let borrowed: &Path = Path::new("foo/bar");
         let mut owned: PathBuf = PathBuf::new();
@@ -4032,8 +4032,8 @@ mod tests {
 
     #[test]
     pub fn test_compare() {
-        use hash::{Hash, Hasher};
-        use collections::hash_map::DefaultHasher;
+        use crate::hash::{Hash, Hasher};
+        use crate::collections::hash_map::DefaultHasher;
 
         fn hash<T: Hash>(t: T) -> u64 {
             let mut s = DefaultHasher::new();

@@ -10,7 +10,7 @@
                               definitions")]
 #![allow(deprecated)]
 
-use os::raw::{c_long, c_short, c_uint, c_ulong};
+use crate::os::raw::{c_long, c_short, c_uint, c_ulong};
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;

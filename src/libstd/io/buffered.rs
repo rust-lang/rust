@@ -1,12 +1,12 @@
 //! Buffering wrappers for I/O traits
 
-use io::prelude::*;
+use crate::io::prelude::*;
 
-use cmp;
-use error;
-use fmt;
-use io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom, IoVec, IoVecMut};
-use memchr;
+use crate::cmp;
+use crate::error;
+use crate::fmt;
+use crate::io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom, IoVec, IoVecMut};
+use crate::memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
@@ -977,11 +977,10 @@ impl<W: Write> fmt::Debug for LineWriter<W> where W: fmt::Debug {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
-    use sync::atomic::{AtomicUsize, Ordering};
-    use thread;
-    use test;
+    use crate::io::prelude::*;
+    use crate::io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
+    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::thread;
 
     /// A dummy reader intended at testing short-reads propagation.
     pub struct ShortReader {

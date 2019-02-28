@@ -1,6 +1,6 @@
-use io;
-use sys::unsupported;
-use sys_common::backtrace::Frame;
+use crate::io;
+use crate::sys::unsupported;
+use crate::sys_common::backtrace::Frame;
 
 pub struct BacktraceContext;
 

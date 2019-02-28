@@ -1,7 +1,6 @@
-use cell::UnsafeCell;
-use libc;
-use sys::mutex::{self, Mutex};
-use time::Duration;
+use crate::cell::UnsafeCell;
+use crate::sys::mutex::{self, Mutex};
+use crate::time::Duration;
 
 pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
 
@@ -41,7 +40,7 @@ impl Condvar {
                   target_os = "android",
                   target_os = "hermit")))]
     pub unsafe fn init(&mut self) {
-        use mem;
+        use crate::mem;
         let mut attr: libc::pthread_condattr_t = mem::uninitialized();
         let r = libc::pthread_condattr_init(&mut attr);
         assert_eq!(r, 0);
@@ -80,7 +79,7 @@ impl Condvar {
                   target_os = "android",
                   target_os = "hermit")))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        use mem;
+        use crate::mem;
 
         let mut now: libc::timespec = mem::zeroed();
         let r = libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut now);
@@ -110,8 +109,8 @@ impl Condvar {
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "hermit"))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
-        use ptr;
-        use time::Instant;
+        use crate::ptr;
+        use crate::time::Instant;
 
         // 1000 years
         let max_dur = Duration::from_secs(1000 * 365 * 86400);

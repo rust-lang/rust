@@ -1,9 +1,9 @@
 #![allow(non_camel_case_types, unused)]
 
-use convert::TryInto;
-use io;
-use os::raw::c_char;
-use u64;
+use crate::convert::TryInto;
+use crate::io;
+use crate::os::raw::c_char;
+use crate::u64;
 
 use libc::{c_int, c_void, size_t};
 

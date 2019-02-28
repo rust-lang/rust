@@ -12,17 +12,18 @@ pub use self::UpgradeResult::*;
 pub use self::SelectionResult::*;
 use self::Message::*;
 
-use cell::UnsafeCell;
 use core::cmp;
 use core::isize;
-use ptr;
-use thread;
-use time::Instant;
 
-use sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
-use sync::mpsc::Receiver;
-use sync::mpsc::blocking::{self, SignalToken};
-use sync::mpsc::spsc_queue as spsc;
+use crate::cell::UnsafeCell;
+use crate::ptr;
+use crate::thread;
+use crate::time::Instant;
+
+use crate::sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
+use crate::sync::mpsc::Receiver;
+use crate::sync::mpsc::blocking::{self, SignalToken};
+use crate::sync::mpsc::spsc_queue as spsc;
 
 const DISCONNECTED: isize = isize::MIN;
 #[cfg(test)]

@@ -1,7 +1,7 @@
 #![cfg_attr(test, allow(dead_code))]
 
-use sys_common::util::report_overflow;
-use sys::c;
+use crate::sys_common::util::report_overflow;
+use crate::sys::c;
 
 pub struct Handler;
 

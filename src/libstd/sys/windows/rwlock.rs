@@ -1,5 +1,5 @@
-use cell::UnsafeCell;
-use sys::c;
+use crate::cell::UnsafeCell;
+use crate::sys::c;
 
 pub struct RWLock { inner: UnsafeCell<c::SRWLOCK> }
 

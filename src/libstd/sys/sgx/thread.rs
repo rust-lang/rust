@@ -1,7 +1,7 @@
-use boxed::FnBox;
-use ffi::CStr;
-use io;
-use time::Duration;
+use crate::boxed::FnBox;
+use crate::ffi::CStr;
+use crate::io;
+use crate::time::Duration;
 
 use super::abi::usercalls;
 
@@ -10,9 +10,9 @@ pub struct Thread(task_queue::JoinHandle);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 mod task_queue {
-    use sync::{Mutex, MutexGuard, Once};
-    use sync::mpsc;
-    use boxed::FnBox;
+    use crate::sync::{Mutex, MutexGuard, Once};
+    use crate::sync::mpsc;
+    use crate::boxed::FnBox;
 
     pub type JoinHandle = mpsc::Receiver<()>;
 

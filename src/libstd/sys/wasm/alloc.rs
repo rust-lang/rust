@@ -16,9 +16,7 @@
 //! The crate itself provides a global allocator which on wasm has no
 //! synchronization as there are no threads!
 
-extern crate dlmalloc;
-
-use alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout, System};
 
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
 
@@ -51,8 +49,8 @@ unsafe impl GlobalAlloc for System {
 
 #[cfg(target_feature = "atomics")]
 mod lock {
-    use arch::wasm32;
-    use sync::atomic::{AtomicI32, Ordering::SeqCst};
+    use crate::arch::wasm32;
+    use crate::sync::atomic::{AtomicI32, Ordering::SeqCst};
 
     static LOCKED: AtomicI32 = AtomicI32::new(0);
 

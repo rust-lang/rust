@@ -1,13 +1,13 @@
 #![unstable(issue = "0", feature = "windows_stdio")]
 
-use char::decode_utf16;
-use cmp;
-use io;
-use ptr;
-use str;
-use sys::c;
-use sys::cvt;
-use sys::handle::Handle;
+use crate::char::decode_utf16;
+use crate::cmp;
+use crate::io;
+use crate::ptr;
+use crate::str;
+use crate::sys::c;
+use crate::sys::cvt;
+use crate::sys::handle::Handle;
 
 // Don't cache handles but get them fresh for every read/write. This allows us to track changes to
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
@@ -201,7 +201,7 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
     const CTRL_Z: u16 = 0x1A;
     const CTRL_Z_MASK: c::ULONG = 1 << CTRL_Z;
     let mut input_control = c::CONSOLE_READCONSOLE_CONTROL {
-        nLength: ::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
+        nLength: crate::mem::size_of::<c::CONSOLE_READCONSOLE_CONTROL>() as c::ULONG,
         nInitialChars: 0,
         dwCtrlWakeupMask: CTRL_Z_MASK,
         dwControlKeyState: 0,

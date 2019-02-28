@@ -1,6 +1,6 @@
-use mem;
-use sys::cloudabi::abi;
-use time::Duration;
+use crate::mem;
+use crate::sys::cloudabi::abi;
+use crate::time::Duration;
 
 const NSEC_PER_SEC: abi::timestamp = 1_000_000_000;
 
