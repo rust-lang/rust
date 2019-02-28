@@ -240,7 +240,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
                         let op =
-                            self.codegen_consume(&mut bx, &mir::Place::Local(mir::RETURN_PLACE));
+                            self.codegen_consume(
+                                &mut bx,
+                                &mir::Place::RETURN_PLACE,
+                            );
                         if let Ref(llval, _, align) = op.val {
                             bx.load(llval, align)
                         } else {
@@ -589,8 +592,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // The shuffle array argument is usually not an explicit constant,
                                 // but specified directly in the code. This means it gets promoted
                                 // and we can then extract the value by evaluating the promoted.
-                                mir::Operand::Copy(mir::Place::Promoted(box(index, ty))) |
-                                mir::Operand::Move(mir::Place::Promoted(box(index, ty))) => {
+                                mir::Operand::Copy(
+                                    mir::Place::Base(mir::PlaceBase::Promoted(box(index, ty)))
+                                ) |
+                                mir::Operand::Move(
+                                    mir::Place::Base(mir::PlaceBase::Promoted(box(index, ty)))
+                                ) => {
                                     let param_env = ty::ParamEnv::reveal_all();
                                     let cid = mir::interpret::GlobalId {
                                         instance: self.instance,
@@ -964,7 +971,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let mir::Place::Local(index) = *dest {
+        let dest = if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
@@ -1019,7 +1026,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         src: &mir::Operand<'tcx>,
         dst: &mir::Place<'tcx>
     ) {
-        if let mir::Place::Local(index) = *dst {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),

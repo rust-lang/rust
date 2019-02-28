@@ -1,8 +1,8 @@
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, Constant, ClearCrossCrate, Local, Location, Mir};
-use rustc::mir::{Mutability, Operand, Place, Projection, ProjectionElem, Static, Terminator};
-use rustc::mir::TerminatorKind;
+use rustc::mir::{Mutability, Operand, Place, PlaceBase, Projection, ProjectionElem, Static};
+use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::{self, Const, DefIdTree, TyS, TyKind, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
@@ -45,9 +45,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
-            Place::Local(local) => {
+            Place::Base(PlaceBase::Local(local)) => {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if let Place::Local(_) = access_place {
+                if let Place::Base(PlaceBase::Local(_)) = access_place {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.mir.local_decls[*local]
@@ -78,7 +78,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 base,
                 elem: ProjectionElem::Deref,
             }) => {
-                if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() {
+                if *base == Place::Base(PlaceBase::Local(Local::new(1))) &&
+                    !self.mir.upvar_decls.is_empty() {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
@@ -92,7 +93,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
                     }
                 } else if {
-                    if let Place::Local(local) = *base {
+                    if let Place::Base(PlaceBase::Local(local)) = *base {
                         if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
                             = self.mir.local_decls[local].is_user_variable {
                                 true
@@ -128,10 +129,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Place::Promoted(_) => unreachable!(),
+            Place::Base(PlaceBase::Promoted(_)) => unreachable!(),
 
-            Place::Static(box Static { def_id, ty: _ }) => {
-                if let Place::Static(_) = access_place {
+            Place::Base(PlaceBase::Static(box Static { def_id, ty: _ })) => {
+                if let Place::Base(PlaceBase::Static(_)) = access_place {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
                     reason = String::new();
                 } else {
@@ -241,7 +242,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             },
 
             // Suggest removing a `&mut` from the use of a mutable reference.
-            Place::Local(local)
+            Place::Base(PlaceBase::Local(local))
                 if {
                     self.mir.local_decls.get(*local).map(|local_decl| {
                         if let ClearCrossCrate::Set(
@@ -276,7 +277,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
-            Place::Local(local) if self.mir.local_decls[*local].can_be_made_mutable() => {
+            Place::Base(PlaceBase::Local(local))
+                if self.mir.local_decls[*local].can_be_made_mutable() => {
                 // ... but it doesn't make sense to suggest it on
                 // variables that are `ref x`, `ref mut x`, `&self`,
                 // or `&mut self` (such variables are simply not
@@ -330,7 +332,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // complete hack to approximate old AST-borrowck
             // diagnostic: if the span starts with a mutable borrow of
             // a local variable, then just suggest the user remove it.
-            Place::Local(_)
+            Place::Base(PlaceBase::Local(_))
                 if {
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         snippet.starts_with("&mut ")
@@ -344,7 +346,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
 
             Place::Projection(box Projection {
-                base: Place::Local(local),
+                base: Place::Base(PlaceBase::Local(local)),
                 elem: ProjectionElem::Deref,
             }) if {
                 if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
@@ -368,7 +370,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // FIXME: can this case be generalized to work for an
             // arbitrary base for the projection?
             Place::Projection(box Projection {
-                base: Place::Local(local),
+                base: Place::Base(PlaceBase::Local(local)),
                 elem: ProjectionElem::Deref,
             }) if self.mir.local_decls[*local].is_user_variable.is_some() =>
             {
@@ -447,7 +449,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             Place::Projection(box Projection {
                 base,
                 elem: ProjectionElem::Deref,
-            }) if *base == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty() =>
+            }) if *base == Place::Base(PlaceBase::Local(Local::new(1))) &&
+                  !self.mir.upvar_decls.is_empty() =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_help(
@@ -457,7 +460,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
 
             Place::Projection(box Projection {
-                base: Place::Local(local),
+                base: Place::Base(PlaceBase::Local(local)),
                 elem: ProjectionElem::Deref,
             })  if error_access == AccessKind::MutableBorrow => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));

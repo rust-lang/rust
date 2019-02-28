@@ -1,7 +1,7 @@
 use crate::borrow_check::borrow_set::{BorrowSet, BorrowData};
 use crate::borrow_check::place_ext::PlaceExt;
 
-use rustc::mir::{self, Location, Place, Mir};
+use rustc::mir::{self, Location, Place, PlaceBase, Mir};
 use rustc::ty::TyCtxt;
 use rustc::ty::RegionVid;
 
@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
         // Handle the `Place::Local(..)` case first and exit early.
-        if let Place::Local(local) = place {
+        if let Place::Base(PlaceBase::Local(local)) = place {
             if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
                 debug!("kill_borrows_on_place: borrow_indices={:?}", borrow_indices);
                 sets.kill_all(borrow_indices);
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(sets, &Place::Local(local));
+                self.kill_borrows_on_place(sets, &Place::Base(PlaceBase::Local(local)));
             }
 
             mir::StatementKind::InlineAsm { ref outputs, ref asm, .. } => {
