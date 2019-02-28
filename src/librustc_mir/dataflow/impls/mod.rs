@@ -493,7 +493,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
                 // storagedeads after everything ends, so if we don't regard the
                 // storagelive as killing storage, we would have a multiple assignment
                 // to immutable data error.
-                if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Place::Local(local)) {
+                if let LookupResult::Exact(mpi) =
+                    rev_lookup.find(&mir::Place::Base(mir::PlaceBase::Local(local))) {
                     debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                            stmt, location, &init_path_map[mpi]);
                     sets.kill_all(&init_path_map[mpi]);

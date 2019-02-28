@@ -8,7 +8,7 @@ use rustc::middle::region::ScopeTree;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant,
     ConstraintCategory, Field, Local, LocalDecl, LocalKind, Location, Operand,
-    Place, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
+    Place, PlaceBase, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
     TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
@@ -220,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         );
                     }
                 }
-                if let Place::Local(local) = place {
+                if let Place::Base(PlaceBase::Local(local)) = place {
                     let decl = &self.mir.local_decls[*local];
                     err.span_label(
                         decl.source_info.span,
@@ -679,7 +679,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let borrow_span = borrow_spans.var_or_use();
 
         let proper_span = match *root_place {
-            Place::Local(local) => self.mir.local_decls[local].source_info.span,
+            Place::Base(PlaceBase::Local(local)) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 
@@ -1061,7 +1061,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
             let local_kind = match borrow.borrowed_place {
-                Place::Local(local) => {
+                Place::Base(PlaceBase::Local(local)) => {
                     match self.mir.local_kind(local) {
                         LocalKind::ReturnPointer
                         | LocalKind::Temp => bug!("temporary or return pointer with a name"),
@@ -1086,7 +1086,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
                 .last()
                 .unwrap();
-            let local = if let Place::Local(local) = *root_place {
+            let local = if let Place::Base(PlaceBase::Local(local)) = *root_place {
                 local
             } else {
                 bug!("report_cannot_return_reference_to_local: not a local")
@@ -1385,7 +1385,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         assigned_span: Span,
         err_place: &Place<'tcx>,
     ) {
-        let (from_arg, local_decl) = if let Place::Local(local) = *err_place {
+        let (from_arg, local_decl) = if let Place::Base(PlaceBase::Local(local)) = *err_place {
             if let LocalKind::Arg = self.mir.local_kind(local) {
                 (true, Some(&self.mir.local_decls[local]))
             } else {
@@ -1600,13 +1600,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match *place {
-            Place::Promoted(_) => {
+            Place::Base(PlaceBase::Promoted(_)) => {
                 buf.push_str("promoted");
             }
-            Place::Local(local) => {
+            Place::Base(PlaceBase::Local(local)) => {
                 self.append_local_to_string(local, buf)?;
             }
-            Place::Static(ref static_) => {
+            Place::Base(PlaceBase::Static(ref static_)) => {
                 buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
             }
             Place::Projection(ref proj) => {
@@ -1630,7 +1630,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     autoderef,
                                     &including_downcast,
                                 )?;
-                            } else if let Place::Local(local) = proj.base {
+                            } else if let Place::Base(PlaceBase::Local(local)) = proj.base {
                                 if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
                                     self.mir.local_decls[local].is_user_variable
                                 {
@@ -1742,12 +1742,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, base: &Place<'_>, field: Field) -> String {
         match *base {
-            Place::Local(local) => {
+            Place::Base(PlaceBase::Local(local)) => {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
-            Place::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
-            Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
+            Place::Base(PlaceBase::Promoted(ref prom)) =>
+                self.describe_field_from_ty(&prom.1, field),
+            Place::Base(PlaceBase::Static(ref static_)) =>
+                self.describe_field_from_ty(&static_.ty, field),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
                 ProjectionElem::Downcast(def, variant_index) =>
@@ -1809,7 +1811,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Checks if a place is a thread-local static.
     pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
-        if let Place::Static(statik) = place {
+        if let Place::Base(PlaceBase::Static(statik)) = place {
             let attrs = self.infcx.tcx.get_attrs(statik.def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
 
@@ -1827,7 +1829,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn classify_drop_access_kind(&self, place: &Place<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place {
-            Place::Local(_) | Place::Static(_) | Place::Promoted(_) => {
+            Place::Base(PlaceBase::Local(_)) |
+            Place::Base(PlaceBase::Static(_)) |
+            Place::Base(PlaceBase::Promoted(_)) => {
                 StorageDeadOrDrop::LocalStorageDead
             }
             Place::Projection(box PlaceProjection { base, elem }) => {
@@ -1912,7 +1916,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
             // Check that the initial assignment of the reserve location is into a temporary.
             let mut target = *match reservation {
-                Place::Local(local) if self.mir.local_kind(*local) == LocalKind::Temp => local,
+                Place::Base(PlaceBase::Local(local))
+                    if self.mir.local_kind(*local) == LocalKind::Temp => local,
                 _ => return None,
             };
 
@@ -1924,8 +1929,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
                 );
-                if let StatementKind::Assign(Place::Local(assigned_to), box rvalue) = &stmt.kind
-                {
+                if let StatementKind::Assign(
+                    Place::Base(PlaceBase::Local(assigned_to)),
+                    box rvalue
+                ) = &stmt.kind {
                     debug!(
                         "annotate_argument_and_return_for_borrow: assigned_to={:?} \
                          rvalue={:?}",
@@ -2048,7 +2055,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 target, terminator
             );
             if let TerminatorKind::Call {
-                destination: Some((Place::Local(assigned_to), _)),
+                destination: Some((Place::Base(PlaceBase::Local(assigned_to)), _)),
                 args,
                 ..
             } = &terminator.kind
@@ -2496,7 +2503,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place::Local(local), _),
+                kind: StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _),
                 ..
             }) => local,
             _ => return OtherUse(use_span),
@@ -2522,7 +2529,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     def_id, is_generator, places
                 );
                 if let Some((args_span, var_span)) = self.closure_span(
-                    *def_id, &Place::Local(target), places
+                    *def_id, &Place::Base(PlaceBase::Local(target)), places
                 ) {
                     return ClosureUse {
                         is_generator,

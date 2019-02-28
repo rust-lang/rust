@@ -1,5 +1,7 @@
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{BasicBlock, Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc::mir::{
+    BasicBlock, Local, Location, Place, PlaceBase, Statement, StatementKind, TerminatorKind
+};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -114,7 +116,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
                     "assignment of {:?} to {:?}, adding {:?} to used mutable set",
                     path.place, local, path.place
                 );
-                if let Place::Local(user_local) = path.place {
+                if let Place::Base(PlaceBase::Local(user_local)) = path.place {
                     self.mbcx.used_mut.insert(user_local);
                 }
             }

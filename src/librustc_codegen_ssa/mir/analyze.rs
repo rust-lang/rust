@@ -103,7 +103,7 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     location: Location) {
         debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
 
-        if let mir::Place::Local(index) = *place {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             self.assign(index, location);
             if !self.fx.rvalue_creates_operand(rvalue) {
                 self.not_ssa(index);
@@ -245,7 +245,8 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx());
+                let ty = mir::Place::Base(mir::PlaceBase::Local(local)).ty(self.fx.mir,
+                                                                           self.fx.cx.tcx());
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx()));
 
                 // Only need the place if we're actually dropping it.

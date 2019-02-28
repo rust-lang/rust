@@ -378,7 +378,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if let mir::Place::Local(index) = *place {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             match self.locals[index] {
                 LocalRef::Operand(Some(o)) => {
                     return Some(o);
