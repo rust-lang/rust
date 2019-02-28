@@ -3965,7 +3965,7 @@ impl str {
         me.make_ascii_lowercase()
     }
 
-    /// Return an iterator that escapes each char in `s` with [`char::escape_debug`].
+    /// Return an iterator that escapes each char in `self` with [`char::escape_debug`].
     ///
     /// Note: only extended grapheme codepoints that begin the string will be
     /// escaped.
@@ -4013,7 +4013,7 @@ impl str {
         }
     }
 
-    /// Return an iterator that escapes each char in `s` with [`char::escape_default`].
+    /// Return an iterator that escapes each char in `self` with [`char::escape_default`].
     ///
     /// [`char::escape_default`]: ../std/primitive.char.html#method.escape_default
     ///
@@ -4051,7 +4051,7 @@ impl str {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
 
-    /// Return an iterator that escapes each char in `s` with [`char::escape_unicode`].
+    /// Return an iterator that escapes each char in `self` with [`char::escape_unicode`].
     ///
     /// [`char::escape_unicode`]: ../std/primitive.char.html#method.escape_unicode
     ///
