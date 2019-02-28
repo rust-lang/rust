@@ -1289,9 +1289,8 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.name().as_str();
         GATED_CFGS.iter()
-                  .position(|info| info.0 == name)
+                  .position(|info| cfg.check_name(info.0))
                   .map(|idx| {
                       GatedCfg {
                           span: cfg.span,
@@ -1342,16 +1341,16 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = attr.name().as_str();
+        let name = attr.ident_str();
         for &(n, ty, _template, ref gateage) in BUILTIN_ATTRIBUTES {
-            if name == n {
+            if name == Some(n) {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
                     if !attr.span.allows_unstable(name) {
                         gate_feature_fn!(
                             self, has_feature, attr.span, name, desc, GateStrength::Hard
                         );
                     }
-                } else if name == "doc" {
+                } else if n == "doc" {
                     if let Some(content) = attr.meta_item_list() {
                         if content.iter().any(|c| c.check_name("include")) {
                             gate_feature!(self, external_doc, attr.span,
@@ -1374,7 +1373,7 @@ impl<'a> Context<'a> {
             }
         }
         if !attr::is_known(attr) {
-            if name.starts_with("rustc_") {
+            if name.map_or(false, |name| name.starts_with("rustc_")) {
                 let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics";
                 gate_feature!(self, rustc_attrs, attr.span, msg);
@@ -2055,13 +2054,12 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         };
 
         for mi in list {
-            let name = if let Some(word) = mi.word() {
-                word.name()
-            } else {
-                continue
+            let name = match mi.ident_str() {
+                Some(name) if mi.is_word() => name,
+                _ => continue,
             };
 
-            if incomplete_features.iter().any(|f| *f == name.as_str()) {
+            if incomplete_features.iter().any(|f| *f == name) {
                 span_handler.struct_span_warn(
                     mi.span,
                     &format!(
@@ -2101,12 +2099,13 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         };
 
         for mi in list {
-            let name = if let Some(word) = mi.word() {
-                word.name()
-            } else {
-                span_err!(span_handler, mi.span, E0556,
-                          "malformed feature, expected just one word");
-                continue
+            let name = match mi.ident() {
+                Some(ident) if mi.is_word() => ident.name,
+                _ => {
+                    span_err!(span_handler, mi.span, E0556,
+                            "malformed feature, expected just one word");
+                    continue
+                }
             };
 
             if let Some(edition) = edition_enabled_features.get(&name) {

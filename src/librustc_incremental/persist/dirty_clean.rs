@@ -576,7 +576,7 @@ fn expect_associated_value(tcx: TyCtxt<'_, '_, '_>, item: &NestedMetaItem) -> as
     if let Some(value) = item.value_str() {
         value
     } else {
-        let msg = if let Some(name) = item.name() {
+        let msg = if let Some(name) = item.ident_str() {
             format!("associated value expected for `{}`", name)
         } else {
             "expected an associated value".to_string()

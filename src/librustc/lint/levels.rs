@@ -194,7 +194,7 @@ impl<'a> LintLevelsBuilder<'a> {
             struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
-            let level = match Level::from_str(&attr.name().as_str()) {
+            let level = match attr.ident_str().and_then(|name| Level::from_str(name)) {
                 None => continue,
                 Some(lvl) => lvl,
             };
@@ -255,9 +255,9 @@ impl<'a> LintLevelsBuilder<'a> {
             }
 
             for li in metas {
-                let word = match li.word() {
-                    Some(word) => word,
-                    None => {
+                let meta_item = match li.meta_item() {
+                    Some(meta_item) if meta_item.is_word() => meta_item,
+                    _ => {
                         let mut err = bad_attr(li.span);
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
@@ -270,23 +270,24 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue;
                     }
                 };
-                let tool_name = if let Some(lint_tool) = word.is_scoped() {
-                    if !attr::is_known_lint_tool(lint_tool) {
+                let tool_name = if meta_item.ident.segments.len() > 1 {
+                    let tool_ident = meta_item.ident.segments[0].ident;
+                    if !attr::is_known_lint_tool(tool_ident) {
                         span_err!(
                             sess,
-                            lint_tool.span,
+                            tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            word.ident
+                            meta_item.ident
                         );
                         continue;
                     }
 
-                    Some(lint_tool.as_str())
+                    Some(tool_ident.as_str())
                 } else {
                     None
                 };
-                let name = word.name();
+                let name = meta_item.ident.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span, reason);

@@ -90,10 +90,12 @@ impl NestedMetaItem {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
-    /// Returns the name of the meta item, e.g., `foo` in `#[foo]`,
-    /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
-    pub fn name(&self) -> Option<Name> {
-        self.meta_item().and_then(|meta_item| Some(meta_item.name()))
+    /// For a single-segment meta-item returns its name, otherwise returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        self.meta_item().and_then(|meta_item| meta_item.ident())
+    }
+    pub fn ident_str(&self) -> Option<&str> {
+        self.ident().map(|name| name.as_str().get())
     }
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
@@ -108,25 +110,14 @@ impl NestedMetaItem {
             |meta_item| meta_item.meta_item_list().and_then(
                 |meta_item_list| {
                     if meta_item_list.len() == 1 {
-                        let nested_item = &meta_item_list[0];
-                        if nested_item.is_literal() {
-                            Some((meta_item.name(), nested_item.literal().unwrap()))
-                        } else {
-                            None
+                        if let Some(ident) = meta_item.ident() {
+                            if let Some(lit) = meta_item_list[0].literal() {
+                                return Some((ident.name, lit));
+                            }
                         }
                     }
-                    else {
-                        None
-                    }}))
-    }
-
-    /// Returns a MetaItem if self is a MetaItem with Kind Word.
-    pub fn word(&self) -> Option<&MetaItem> {
-        self.meta_item().and_then(|meta_item| if meta_item.is_word() {
-            Some(meta_item)
-        } else {
-            None
-        })
+                    None
+                }))
     }
 
     /// Gets a list of inner meta items from a list MetaItem type.
@@ -146,7 +137,7 @@ impl NestedMetaItem {
 
     /// Returns `true` if self is a MetaItem and the meta item is a word.
     pub fn is_word(&self) -> bool {
-        self.word().is_some()
+        self.meta_item().map_or(false, |meta_item| meta_item.is_word())
     }
 
     /// Returns `true` if self is a MetaItem and the meta item is a ValueString.
@@ -158,10 +149,6 @@ impl NestedMetaItem {
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
-}
-
-fn name_from_path(path: &Path) -> Name {
-    path.segments.last().expect("empty path in attribute").ident.name
 }
 
 impl Attribute {
@@ -177,10 +164,16 @@ impl Attribute {
         matches
     }
 
-    /// Returns the **last** segment of the name of this attribute.
-    /// e.g., `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
-    pub fn name(&self) -> Name {
-        name_from_path(&self.path)
+    /// For a single-segment attribute returns its name, otherwise returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if self.path.segments.len() == 1 {
+            Some(self.path.segments[0].ident)
+        } else {
+            None
+        }
+    }
+    pub fn ident_str(&self) -> Option<&str> {
+        self.ident().map(|name| name.as_str().get())
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
@@ -195,7 +188,7 @@ impl Attribute {
     }
 
     pub fn is_word(&self) -> bool {
-        self.path.segments.len() == 1 && self.tokens.is_empty()
+        self.tokens.is_empty()
     }
 
     pub fn span(&self) -> Span {
@@ -213,8 +206,16 @@ impl Attribute {
 }
 
 impl MetaItem {
-    pub fn name(&self) -> Name {
-        name_from_path(&self.ident)
+    /// For a single-segment meta-item returns its name, otherwise returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if self.ident.segments.len() == 1 {
+            Some(self.ident.segments[0].ident)
+        } else {
+            None
+        }
+    }
+    pub fn ident_str(&self) -> Option<&str> {
+        self.ident().map(|name| name.as_str().get())
     }
 
     // #[attribute(name = "value")]
@@ -255,7 +256,7 @@ impl MetaItem {
     pub fn span(&self) -> Span { self.span }
 
     pub fn check_name(&self, name: &str) -> bool {
-        self.name() == name
+        self.ident == name
     }
 
     pub fn is_value_str(&self) -> bool {
@@ -264,14 +265,6 @@ impl MetaItem {
 
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
-    }
-
-    pub fn is_scoped(&self) -> Option<Ident> {
-        if self.ident.segments.len() > 1 {
-            Some(self.ident.segments[0].ident)
-        } else {
-            None
-        }
     }
 }
 

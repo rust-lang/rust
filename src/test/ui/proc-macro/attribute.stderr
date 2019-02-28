@@ -23,6 +23,12 @@ LL | #[proc_macro_derive(d6 = "")]
    |                     ^^^^^^^
 
 error: must only be one word
+  --> $DIR/attribute.rs:33:21
+   |
+LL | #[proc_macro_derive(m::d7)]
+   |                     ^^^^^
+
+error: must only be one word
   --> $DIR/attribute.rs:37:21
    |
 LL | #[proc_macro_derive(d8(a))]
@@ -65,6 +71,12 @@ LL | #[proc_macro_derive(d14, attributes(a = ""))]
    |                                     ^^^^^^
 
 error: must only be one word
+  --> $DIR/attribute.rs:66:37
+   |
+LL | #[proc_macro_derive(d15, attributes(m::a))]
+   |                                     ^^^^
+
+error: must only be one word
   --> $DIR/attribute.rs:70:37
    |
 LL | #[proc_macro_derive(d16, attributes(a(b)))]
@@ -82,5 +94,5 @@ error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ att
 LL | #[proc_macro_derive = ""]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 16 previous errors
 
