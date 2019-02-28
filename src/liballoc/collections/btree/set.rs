@@ -341,57 +341,47 @@ impl<T: Ord> BTreeSet<T> {
         };
         if a_set.len() <= 1 {
             // At least one set is empty or a singleton, so determining
-            // a common range doesn't work or is wasteful.
+            // a common range is either impossible or wasteful.
             Intersection {
                 a: a_set.range(..),
                 b: IntersectionOther::Search(b_set),
                 max_size: a_set.len(),
             }
-        } else if a_set.len() < b_set.len() / 16 {
-            // Large set is much larger, so it's faster to iterate the small set
-            // and find matches in the large set.
-            Self::intersection_search(a_set, b_set)
-        } else {
-            // Both sets are roughly of similar size, so it's efficient
-            // to iterate both over the common range.
+        } else if a_set.len() >= b_set.len() / 16 {
+            // Both sets are roughly of similar size, iterate both.
             Self::intersection_stitch(a_set, b_set)
+        } else {
+            // Iterate small set only and find matches in large set.
+            Self::intersection_search(a_set, b_set)
         }
     }
     #[doc(hidden)]
-    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
-    pub fn intersection_search<'a>(
-        a_set: &'a BTreeSet<T>,
-        b_set: &'a BTreeSet<T>,
-    ) -> Intersection<'a, T> {
-        let a_min = a_set.iter().next().unwrap();
-        let b_min = b_set.iter().next().unwrap();
-        let a_range = match Ord::cmp(a_min, b_min) {
-            Less => a_set.range(b_min..),
-            Equal => a_set.range(..),
-            Greater => a_set.range(..),
-        };
-        Intersection {
-            a: a_range,
-            b: IntersectionOther::Search(b_set),
-            max_size: a_set.len(),
-        }
-    }
-    #[doc(hidden)]
-    #[unstable(feature = "benches_btree_set", reason = "benchmarking for pull #58577", issue = "0")]
+    #[unstable(feature = "benches_btree_set", reason = "benchmarks for pull #58577", issue = "0")]
     pub fn intersection_stitch<'a>(
         a_set: &'a BTreeSet<T>,
         b_set: &'a BTreeSet<T>,
     ) -> Intersection<'a, T> {
         let a_min = a_set.iter().next().unwrap();
         let b_min = b_set.iter().next().unwrap();
-        let (a_range, b_range) = match Ord::cmp(a_min, b_min) {
-            Less => (a_set.range(b_min..), b_set.range(..)),
-            Equal => (a_set.range(..), b_set.range(..)),
-            Greater => (a_set.range(..), b_set.range(a_min..)),
-        };
+        let a_range = a_set.range(b_min..);
+        let b_range = b_set.range(a_min..);
         Intersection {
             a: a_range,
             b: IntersectionOther::Stitch(b_range),
+            max_size: a_set.len(),
+        }
+    }
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "benchmarks for pull #58577", issue = "0")]
+    pub fn intersection_search<'a>(
+        a_set: &'a BTreeSet<T>,
+        b_set: &'a BTreeSet<T>,
+    ) -> Intersection<'a, T> {
+        let b_min = b_set.iter().next().unwrap();
+        let a_range = a_set.range(b_min..);
+        Intersection {
+            a: a_range,
+            b: IntersectionOther::Search(b_set),
             max_size: a_set.len(),
         }
     }
