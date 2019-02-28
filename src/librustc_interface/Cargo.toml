@@ -1,0 +1,35 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_interface"
+version = "0.0.0"
+
+[lib]
+name = "rustc_interface"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+log = "0.4"
+rustc-rayon = "0.1.1"
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
+syntax = { path = "../libsyntax" }
+syntax_ext = { path = "../libsyntax_ext" }
+syntax_pos = { path = "../libsyntax_pos" }
+serialize = { path = "../libserialize" }
+rustc = { path = "../librustc" }
+rustc_allocator = { path = "../librustc_allocator" }
+rustc_borrowck = { path = "../librustc_borrowck" }
+rustc_incremental = { path = "../librustc_incremental" }
+rustc_traits = { path = "../librustc_traits" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_metadata = { path = "../librustc_metadata" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_passes = { path = "../librustc_passes" }
+rustc_typeck = { path = "../librustc_typeck" }
+rustc_lint = { path = "../librustc_lint" }
+rustc_errors = { path = "../librustc_errors" }
+rustc_plugin = { path = "../librustc_plugin" }
+rustc_privacy = { path = "../librustc_privacy" }
+rustc_resolve = { path = "../librustc_resolve" }

@@ -2,42 +2,39 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
 use rustc::hir::map as hir_map;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
-use rustc::session::{CompileResult, CrateDisambiguator, Session};
+use rustc::session::{CompileResult, Session};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_mir as mir;
-use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion, layout_test};
+use rustc_passes::{self, ast_validation, hir_stats};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::{self, ast, attr, diagnostics, visit};
+use syntax::{self, ast, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::symbol::Symbol;
-use syntax_pos::{FileName, hygiene};
+use syntax_pos::hygiene;
 use syntax_ext;
 
 use serialize::json;
@@ -46,14 +43,11 @@ use std::any::Any;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
-use pretty::ReplaceBodyWithLoop;
-use proc_macro_decls;
-use profile;
+use rustc_interface::{util, profile, passes};
 use super::Compilation;
 
 #[cfg(not(parallel_compiler))]
@@ -78,7 +72,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     let gcx_ptr = &Lock::new(0);
 
     let config = ThreadPoolBuilder::new()
-        .num_threads(Session::threads_from_opts(&opts))
+        .num_threads(Session::threads_from_count(opts.debugging_opts.threads))
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
         .stack_size(::STACK_SIZE);
 
@@ -160,7 +154,7 @@ pub fn compile_input(
             (compile_state.krate.unwrap(), compile_state.registry)
         };
 
-        let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
+        let outputs = util::build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name =
             ::rustc_codegen_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         install_panic_hook();
@@ -194,12 +188,17 @@ pub fn compile_input(
             )?
         };
 
-        let output_paths = generated_output_paths(sess, &outputs, output.is_some(), &crate_name);
+        let output_paths = passes::generated_output_paths(
+            sess,
+            &outputs,
+            output.is_some(),
+            &crate_name
+        );
 
         // Ensure the source file isn't accidentally overwritten during compilation.
         if let Some(ref input_path) = *input_path {
             if sess.opts.will_create_output_file() {
-                if output_contains_path(&output_paths, input_path) {
+                if passes::output_contains_path(&output_paths, input_path) {
                     sess.err(&format!(
                         "the input file \"{}\" would be overwritten by the generated \
                          executable",
@@ -207,7 +206,7 @@ pub fn compile_input(
                     ));
                     return Err(CompileIncomplete::Stopped);
                 }
-                if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
+                if let Some(dir_path) = passes::output_conflicts_with_dir(&output_paths) {
                     sess.err(&format!(
                         "the generated executable for the input file \"{}\" conflicts with the \
                          existing directory \"{}\"",
@@ -219,7 +218,7 @@ pub fn compile_input(
             }
         }
 
-        write_out_deps(sess, &outputs, &output_paths);
+        passes::write_out_deps(sess, &outputs, &output_paths);
         if sess.opts.output_types.contains_key(&OutputType::DepInfo)
             && sess.opts.output_types.len() == 1
         {
@@ -333,7 +332,7 @@ pub fn compile_input(
 
                 Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
-        )??
+        )?
     };
 
     if sess.opts.debugging_opts.print_type_sizes {
@@ -362,13 +361,6 @@ pub fn compile_input(
     );
 
     Ok(())
-}
-
-pub fn source_name(input: &Input) -> FileName {
-    match *input {
-        Input::File(ref ifile) => ifile.clone().into(),
-        Input::Str { ref name, .. } => name.clone(),
-    }
 }
 
 /// CompileController is used to customize compilation, it allows compilation to
@@ -806,10 +798,10 @@ where
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
-    let crate_types = collect_crate_types(sess, &krate.attrs);
+    let crate_types = util::collect_crate_types(sess, &krate.attrs);
     sess.crate_types.set(crate_types);
 
-    let disambiguator = compute_crate_disambiguator(sess);
+    let disambiguator = util::compute_crate_disambiguator(sess);
     sess.crate_disambiguator.set(disambiguator);
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
@@ -1019,7 +1011,7 @@ where
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     if sess.opts.actually_rustdoc {
-        ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
+        util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
     let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
@@ -1145,7 +1137,7 @@ where
 }
 
 pub fn default_provide(providers: &mut ty::query::Providers) {
-    proc_macro_decls::provide(providers);
+    rustc_interface::passes::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
     borrowck::provide(providers);
@@ -1186,7 +1178,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     name: &str,
     output_filenames: &OutputFilenames,
     f: F,
-) -> Result<R, CompileIncomplete>
+) -> R
 where
     F: for<'a> FnOnce(
         TyCtxt<'a, 'tcx, 'tcx>,
@@ -1227,114 +1219,9 @@ where
             // tcx available.
             time(sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
 
-            parallel!({
-                time(sess, "looking for entry point", || {
-                    middle::entry::find_entry_point(tcx)
-                });
+            tcx.analysis(LOCAL_CRATE).ok();
 
-                time(sess, "looking for plugin registrar", || {
-                    plugin::build::find_plugin_registrar(tcx)
-                });
-
-                time(sess, "looking for derive registrar", || {
-                    proc_macro_decls::find(tcx)
-                });
-            }, {
-                time(sess, "loop checking", || loops::check_crate(tcx));
-            }, {
-                time(sess, "attribute checking", || {
-                    hir::check_attr::check_crate(tcx)
-                });
-            }, {
-                time(sess, "stability checking", || {
-                    stability::check_unstable_api_usage(tcx)
-                });
-            });
-
-            // passes are timed inside typeck
-            match typeck::check_crate(tcx) {
-                Ok(x) => x,
-                Err(x) => {
-                    f(tcx, rx, Err(x));
-                    return Err(x);
-                }
-            }
-
-            time(sess, "misc checking", || {
-                parallel!({
-                    time(sess, "rvalue promotion", || {
-                        rvalue_promotion::check_crate(tcx)
-                    });
-                }, {
-                    time(sess, "intrinsic checking", || {
-                        middle::intrinsicck::check_crate(tcx)
-                    });
-                }, {
-                    time(sess, "match checking", || mir::matchck_crate(tcx));
-                }, {
-                    // this must run before MIR dump, because
-                    // "not all control paths return a value" is reported here.
-                    //
-                    // maybe move the check to a MIR pass?
-                    time(sess, "liveness checking", || {
-                        middle::liveness::check_crate(tcx)
-                    });
-                });
-            });
-
-            // Abort so we don't try to construct MIR with liveness errors.
-            // We also won't want to continue with errors from rvalue promotion
-            tcx.sess.abort_if_errors();
-
-            time(sess, "borrow checking", || {
-                if tcx.use_ast_borrowck() {
-                    borrowck::check_crate(tcx);
-                }
-            });
-
-            time(sess,
-                 "MIR borrow checking",
-                 || tcx.par_body_owners(|def_id| { tcx.ensure().mir_borrowck(def_id); }));
-
-            time(sess, "dumping chalk-like clauses", || {
-                rustc_traits::lowering::dump_program_clauses(tcx);
-            });
-
-            time(sess, "MIR effect checking", || {
-                for def_id in tcx.body_owners() {
-                    mir::transform::check_unsafety::check_unsafety(tcx, def_id)
-                }
-            });
-
-            time(sess, "layout testing", || layout_test::test_layout(tcx));
-
-            // Avoid overwhelming user with errors if borrow checking failed.
-            // I'm not sure how helpful this is, to be honest, but it avoids
-            // a
-            // lot of annoying errors in the compile-fail tests (basically,
-            // lint warnings and so on -- kindck used to do this abort, but
-            // kindck is gone now). -nmatsakis
-            if sess.err_count() > 0 {
-                return Ok(f(tcx, rx, sess.compile_status()));
-            }
-
-            time(sess, "misc checking", || {
-                parallel!({
-                    time(sess, "privacy checking", || {
-                        rustc_privacy::check_crate(tcx)
-                    });
-                }, {
-                    time(sess, "death checking", || middle::dead::check_crate(tcx));
-                },  {
-                    time(sess, "unused lib feature checking", || {
-                        stability::check_unused_or_stable_features(tcx)
-                    });
-                }, {
-                    time(sess, "lint checking", || lint::check_crate(tcx));
-                });
-            });
-
-            return Ok(f(tcx, rx, tcx.sess.compile_status()));
+            f(tcx, rx, tcx.sess.compile_status())
         },
     )
 }
@@ -1358,329 +1245,4 @@ pub fn phase_4_codegen<'a, 'tcx>(
     }
 
     codegen
-}
-
-fn escape_dep_filename(filename: &FileName) -> String {
-    // Apparently clang and gcc *only* escape spaces:
-    // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.to_string().replace(" ", "\\ ")
-}
-
-// Returns all the paths that correspond to generated files.
-fn generated_output_paths(
-    sess: &Session,
-    outputs: &OutputFilenames,
-    exact_name: bool,
-    crate_name: &str,
-) -> Vec<PathBuf> {
-    let mut out_filenames = Vec::new();
-    for output_type in sess.opts.output_types.keys() {
-        let file = outputs.path(*output_type);
-        match *output_type {
-            // If the filename has been overridden using `-o`, it will not be modified
-            // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
-            OutputType::Exe if !exact_name => for crate_type in sess.crate_types.borrow().iter() {
-                let p = ::rustc_codegen_utils::link::filename_for_input(
-                    sess,
-                    *crate_type,
-                    crate_name,
-                    outputs,
-                );
-                out_filenames.push(p);
-            },
-            OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
-                // Don't add the dep-info output when omitting it from dep-info targets
-            }
-            _ => {
-                out_filenames.push(file);
-            }
-        }
-    }
-    out_filenames
-}
-
-// Runs `f` on every output file path and returns the first non-None result, or None if `f`
-// returns None for every file path.
-fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
-where
-    F: Fn(&PathBuf) -> Option<T>,
-{
-    for output_path in output_paths {
-        if let Some(result) = f(output_path) {
-            return Some(result);
-        }
-    }
-    None
-}
-
-pub fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
-    let input_path = input_path.canonicalize().ok();
-    if input_path.is_none() {
-        return false;
-    }
-    let check = |output_path: &PathBuf| {
-        if output_path.canonicalize().ok() == input_path {
-            Some(())
-        } else {
-            None
-        }
-    };
-    check_output(output_paths, check).is_some()
-}
-
-pub fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| {
-        if output_path.is_dir() {
-            Some(output_path.clone())
-        } else {
-            None
-        }
-    };
-    check_output(output_paths, check)
-}
-
-fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
-    // Write out dependency rules to the dep-info file if requested
-    if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
-        return;
-    }
-    let deps_filename = outputs.path(OutputType::DepInfo);
-
-    let result = (|| -> io::Result<()> {
-        // Build a list of files used to compile the output and
-        // write Makefile-compatible dependency rules
-        let files: Vec<String> = sess.source_map()
-            .files()
-            .iter()
-            .filter(|fmap| fmap.is_real_file())
-            .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.name))
-            .collect();
-        let mut file = fs::File::create(&deps_filename)?;
-        for path in out_filenames {
-            writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
-        }
-
-        // Emit a fake target for each input file to the compilation. This
-        // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
-        for path in files {
-            writeln!(file, "{}:", path)?;
-        }
-        Ok(())
-    })();
-
-    if let Err(e) = result {
-        sess.fatal(&format!(
-            "error writing dependencies to `{}`: {}",
-            deps_filename.display(),
-            e
-        ));
-    }
-}
-
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
-    // Unconditionally collect crate types from attributes to make them used
-    let attr_types: Vec<config::CrateType> = attrs
-        .iter()
-        .filter_map(|a| {
-            if a.check_name("crate_type") {
-                match a.value_str() {
-                    Some(ref n) if *n == "rlib" => Some(config::CrateType::Rlib),
-                    Some(ref n) if *n == "dylib" => Some(config::CrateType::Dylib),
-                    Some(ref n) if *n == "cdylib" => Some(config::CrateType::Cdylib),
-                    Some(ref n) if *n == "lib" => Some(config::default_lib_output()),
-                    Some(ref n) if *n == "staticlib" => Some(config::CrateType::Staticlib),
-                    Some(ref n) if *n == "proc-macro" => Some(config::CrateType::ProcMacro),
-                    Some(ref n) if *n == "bin" => Some(config::CrateType::Executable),
-                    Some(ref n) => {
-                        let crate_types = vec![
-                            Symbol::intern("rlib"),
-                            Symbol::intern("dylib"),
-                            Symbol::intern("cdylib"),
-                            Symbol::intern("lib"),
-                            Symbol::intern("staticlib"),
-                            Symbol::intern("proc-macro"),
-                            Symbol::intern("bin")
-                        ];
-
-                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
-                            let span = spanned.span;
-                            let lev_candidate = find_best_match_for_name(
-                                crate_types.iter(),
-                                &n.as_str(),
-                                None
-                            );
-                            if let Some(candidate) = lev_candidate {
-                                session.buffer_lint_with_diagnostic(
-                                    lint::builtin::UNKNOWN_CRATE_TYPES,
-                                    ast::CRATE_NODE_ID,
-                                    span,
-                                    "invalid `crate_type` value",
-                                    lint::builtin::BuiltinLintDiagnostics::
-                                        UnknownCrateTypes(
-                                            span,
-                                            "did you mean".to_string(),
-                                            format!("\"{}\"", candidate)
-                                        )
-                                );
-                            } else {
-                                session.buffer_lint(
-                                    lint::builtin::UNKNOWN_CRATE_TYPES,
-                                    ast::CRATE_NODE_ID,
-                                    span,
-                                    "invalid `crate_type` value"
-                                );
-                            }
-                        }
-                        None
-                    }
-                    None => None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // If we're generating a test executable, then ignore all other output
-    // styles at all other locations
-    if session.opts.test {
-        return vec![config::CrateType::Executable];
-    }
-
-    // Only check command line flags if present. If no types are specified by
-    // command line, then reuse the empty `base` Vec to hold the types that
-    // will be found in crate attributes.
-    let mut base = session.opts.crate_types.clone();
-    if base.is_empty() {
-        base.extend(attr_types);
-        if base.is_empty() {
-            base.push(::rustc_codegen_utils::link::default_output_for_target(
-                session,
-            ));
-        } else {
-            base.sort();
-            base.dedup();
-        }
-    }
-
-    base.retain(|crate_type| {
-        let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
-
-        if !res {
-            session.warn(&format!(
-                "dropping unsupported crate type `{}` for target `{}`",
-                *crate_type, session.opts.target_triple
-            ));
-        }
-
-        res
-    });
-
-    base
-}
-
-pub fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {
-    use std::hash::Hasher;
-
-    // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
-    // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
-    // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
-    // should still be safe enough to avoid collisions in practice.
-    let mut hasher = StableHasher::<Fingerprint>::new();
-
-    let mut metadata = session.opts.cg.metadata.clone();
-    // We don't want the crate_disambiguator to dependent on the order
-    // -C metadata arguments, so sort them:
-    metadata.sort();
-    // Every distinct -C metadata value is only incorporated once:
-    metadata.dedup();
-
-    hasher.write(b"metadata");
-    for s in &metadata {
-        // Also incorporate the length of a metadata string, so that we generate
-        // different values for `-Cmetadata=ab -Cmetadata=c` and
-        // `-Cmetadata=a -Cmetadata=bc`
-        hasher.write_usize(s.len());
-        hasher.write(s.as_bytes());
-    }
-
-    // Also incorporate crate type, so that we don't get symbol conflicts when
-    // linking against a library of the same name, if this is an executable.
-    let is_exe = session
-        .crate_types
-        .borrow()
-        .contains(&config::CrateType::Executable);
-    hasher.write(if is_exe { b"exe" } else { b"lib" });
-
-    CrateDisambiguator::from(hasher.finish())
-}
-
-pub fn build_output_filenames(
-    input: &Input,
-    odir: &Option<PathBuf>,
-    ofile: &Option<PathBuf>,
-    attrs: &[ast::Attribute],
-    sess: &Session,
-) -> OutputFilenames {
-    match *ofile {
-        None => {
-            // "-" as input file will cause the parser to read from stdin so we
-            // have to make up a name
-            // We want to toss everything after the final '.'
-            let dirpath = (*odir).as_ref().cloned().unwrap_or_default();
-
-            // If a crate name is present, we use it as the link name
-            let stem = sess.opts
-                .crate_name
-                .clone()
-                .or_else(|| attr::find_crate_name(attrs).map(|n| n.to_string()))
-                .unwrap_or_else(|| input.filestem().to_owned());
-
-            OutputFilenames {
-                out_directory: dirpath,
-                out_filestem: stem,
-                single_output_file: None,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
-        }
-
-        Some(ref out_file) => {
-            let unnamed_output_types = sess.opts
-                .output_types
-                .values()
-                .filter(|a| a.is_none())
-                .count();
-            let ofile = if unnamed_output_types > 1 {
-                sess.warn(
-                    "due to multiple output types requested, the explicitly specified \
-                     output file name will be adapted for each output type",
-                );
-                None
-            } else {
-                Some(out_file.clone())
-            };
-            if *odir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag");
-            }
-            if !sess.opts.cg.extra_filename.is_empty() {
-                sess.warn("ignoring -C extra-filename flag due to -o flag");
-            }
-
-            OutputFilenames {
-                out_directory: out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
-                out_filestem: out_file
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-                single_output_file: ofile,
-                extra: sess.opts.cg.extra_filename.clone(),
-                outputs: sess.opts.output_types.clone(),
-            }
-        }
-    }
 }
