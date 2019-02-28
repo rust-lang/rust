@@ -27,7 +27,7 @@ use crate::ast::{VariantData, StructField};
 use crate::ast::StrStyle;
 use crate::ast::SelfKind;
 use crate::ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use crate::ast::{Ty, TyKind, TypeBinding, GenericBounds};
+use crate::ast::{Ty, TyKind, AssocTyConstraint, AssocTyConstraintKind, GenericBounds};
 use crate::ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use crate::ast::{UseTree, UseTreeKind};
 use crate::ast::{BinOpKind, UnOp};
@@ -1791,11 +1791,11 @@ impl<'a> Parser<'a> {
             let lo = self.span;
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (args, bindings) =
+                let (args, constraints) =
                     self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
-                AngleBracketedArgs { args, bindings, span }.into()
+                AngleBracketedArgs { args, constraints, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -5076,7 +5076,7 @@ impl<'a> Parser<'a> {
         &mut self,
         style: PathStyle,
         lo: Span,
-    ) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+    ) -> PResult<'a, (Vec<GenericArg>, Vec<AssocTyConstraint>)> {
         // We need to detect whether there are extra leading left angle brackets and produce an
         // appropriate error and suggestion. This cannot be implemented by looking ahead at
         // upcoming tokens for a matching `>` character - if there are unmatched `<` tokens
@@ -5211,11 +5211,11 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<AssocTyConstraint>)> {
         let mut args = Vec::new();
-        let mut bindings = Vec::new();
-        let mut misplaced_assoc_ty_bindings: Vec<Span> = Vec::new();
-        let mut assoc_ty_bindings: Vec<Span> = Vec::new();
+        let mut constraints = Vec::new();
+        let mut misplaced_assoc_ty_constraints: Vec<Span> = Vec::new();
+        let mut assoc_ty_constraints: Vec<Span> = Vec::new();
 
         let args_lo = self.span;
 
@@ -5223,21 +5223,31 @@ impl<'a> Parser<'a> {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
-            } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
-                // Parse associated type binding.
+                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
+            } else if self.check_ident() && self.look_ahead(1,
+                    |t| t == &token::Eq || t == &token::Colon) {
+                // Parse associated type constraint.
                 let lo = self.span;
                 let ident = self.parse_ident()?;
-                self.bump();
-                let ty = self.parse_ty()?;
+                let kind = if self.eat(&token::Eq) {
+                    AssocTyConstraintKind::Equality {
+                        ty: self.parse_ty()?,
+                    }
+                } else if self.eat(&token::Colon) {
+                    AssocTyConstraintKind::Bound {
+                        bounds: self.parse_generic_bounds(Some(self.prev_span))?,
+                    }
+                } else {
+                    unreachable!();
+                };
                 let span = lo.to(self.prev_span);
-                bindings.push(TypeBinding {
+                constraints.push(AssocTyConstraint {
                     id: ast::DUMMY_NODE_ID,
                     ident,
-                    ty,
+                    kind,
                     span,
                 });
-                assoc_ty_bindings.push(span);
+                assoc_ty_constraints.push(span);
             } else if self.check_const_arg() {
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token {
@@ -5261,11 +5271,11 @@ impl<'a> Parser<'a> {
                     value: expr,
                 };
                 args.push(GenericArg::Const(value));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
+                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
             } else if self.check_type() {
                 // Parse type argument.
                 args.push(GenericArg::Type(self.parse_ty()?));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
+                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
             } else {
                 break
             }
@@ -5278,12 +5288,12 @@ impl<'a> Parser<'a> {
         // FIXME: we would like to report this in ast_validation instead, but we currently do not
         // preserve ordering of generic parameters with respect to associated type binding, so we
         // lose that information after parsing.
-        if misplaced_assoc_ty_bindings.len() > 0 {
+        if misplaced_assoc_ty_constraints.len() > 0 {
             let mut err = self.struct_span_err(
                 args_lo.to(self.prev_span),
                 "associated type bindings must be declared after generic parameters",
             );
-            for span in misplaced_assoc_ty_bindings {
+            for span in misplaced_assoc_ty_constraints {
                 err.span_label(
                     span,
                     "this associated type binding should be moved after the generic parameters",
@@ -5292,7 +5302,7 @@ impl<'a> Parser<'a> {
             err.emit();
         }
 
-        Ok((args, bindings))
+        Ok((args, constraints))
     }
 
     /// Parses an optional where-clause and places it in `generics`.

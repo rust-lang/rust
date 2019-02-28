@@ -93,14 +93,16 @@ impl<'a> AstValidator<'a> {
         self.outer_impl_trait = old;
     }
 
-    fn visit_assoc_type_binding_from_generic_args(&mut self, type_binding: &'a TypeBinding) {
-        // rust-lang/rust#57979: bug in old `visit_generic_args` called
-        // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
-        // if it happened to occur at `type_binding.ty`.
-        if let TyKind::ImplTrait(..) = type_binding.ty.node {
-            self.warning_period_57979_didnt_record_next_impl_trait = true;
+    fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
+        if let AssocTyConstraintKind::Equality { ref ty } = constraint.kind {
+            // rust-lang/rust#57979: bug in old `visit_generic_args` called
+            // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
+            // if it happened to occur at `ty`.
+            if let TyKind::ImplTrait(..) = ty.node {
+                self.warning_period_57979_didnt_record_next_impl_trait = true;
+            }
         }
-        self.visit_assoc_type_binding(type_binding);
+        self.visit_assoc_ty_constraint(constraint);
     }
 
     fn visit_ty_from_generic_args(&mut self, ty: &'a Ty) {
@@ -724,7 +726,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
-                    walk_list!(this, visit_assoc_type_binding_from_generic_args, &data.bindings);
+                    walk_list!(this, visit_assoc_ty_constraint_from_generic_args, &data.constraints);
                 });
             }
             GenericArgs::Parenthesized(ref data) => {

@@ -716,8 +716,22 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                                     ast::GenericArg::Type(ty) => Some(ty),
                                     _ => None,
                                 });
+                                let any_assoc_ty_bounds = data.constraints.iter().any(|c| {
+                                    if let ast::AssocTyConstraintKind::Bound { .. } = c.kind {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                });
+                                any_assoc_ty_bounds ||
                                 any_involves_impl_trait(types.into_iter()) ||
-                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty))
+                                any_involves_impl_trait(data.constraints.iter().filter_map(|c| {
+                                    if let ast::AssocTyConstraintKind::Equality { ref ty } = c.kind {
+                                        Some(ty)
+                                    } else {
+                                        None
+                                    }
+                                }))
                             },
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||

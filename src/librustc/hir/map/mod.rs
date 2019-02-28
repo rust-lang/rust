@@ -288,7 +288,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn def_index_to_node_id(&self, def_index: DefIndex) -> NodeId {
-        self.definitions.as_local_node_id(DefId::local(def_index)).unwrap()
+        self.definitions.def_index_to_node_id(def_index)
     }
 
     #[inline]
@@ -649,16 +649,16 @@ impl<'hir> Map<'hir> {
         result
     }
 
-    /// Similar to `get_parent`; returns the parent node-id, or own `id` if there is
-    /// no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
-    /// present in the map -- so passing the return value of get_parent_node to
-    /// get may actually panic.
-    /// This function returns the immediate parent in the AST, whereas get_parent
+    /// Similar to `get_parent`; returns the parent node-ID, or just `hir_id` if there
+    /// is no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
+    /// present in the map, so passing the return value of `get_parent_node` to
+    /// `get` may in fact panic.
+    /// This function returns the immediate parent in the AST, whereas `get_parent`
     /// returns the enclosing item. Note that this might not be the actual parent
-    /// node in the AST - some kinds of nodes are not in the map and these will
-    /// never appear as the parent_node. So you can always walk the `parent_nodes`
-    /// from a node to the root of the ast (unless you get the same ID back here
-    /// that can happen if the ID is not in the map itself or is just weird).
+    /// node in the AST -- some kinds of nodes are not in the map and these will
+    /// never appear as the parent node. Thus, you can always walk the parent nodes
+    /// from a node to the root of the AST (unless you get back the same ID here,
+    /// which can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
         let hir_id = self.node_to_hir_id(id);
         let parent_hir_id = self.get_parent_node_by_hir_id(hir_id);
@@ -841,19 +841,64 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Returns the nearest enclosing scope. A scope is an item or block.
-    /// FIXME: it is not clear to me that all items qualify as scopes -- statics
-    /// and associated types probably shouldn't, for example. Behavior in this
-    /// regard should be expected to be highly unstable.
-    pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
+    /// Returns the nearest enclosing scope. A scope is roughly an item or block.
+    pub fn get_enclosing_scope(&self, id: HirId) -> Option<HirId> {
         self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(_) |
-            Node::ForeignItem(_) |
-            Node::TraitItem(_) |
-            Node::ImplItem(_) |
+            Node::Item(i) => {
+                match i.node {
+                    ItemKind::Fn(..)
+                    | ItemKind::Mod(..)
+                    | ItemKind::Enum(..)
+                    | ItemKind::Struct(..)
+                    | ItemKind::Union(..)
+                    | ItemKind::Trait(..)
+                    | ItemKind::Impl(..) => true,
+                    _ => false,
+                }
+            },
+            Node::ForeignItem(fi) => {
+                match fi.node {
+                    ForeignItemKind::Fn(..) => true,
+                    _ => false,
+                }
+            },
+            Node::TraitItem(ti) => {
+                match ti.node {
+                    TraitItemKind::Method(..) => true,
+                    _ => false,
+                }
+            },
+            Node::ImplItem(ii) => {
+                match ii.node {
+                    ImplItemKind::Method(..) => true,
+                    _ => false,
+                }
+            },
             Node::Block(_) => true,
             _ => false,
         }, |_| false).ok()
+    }
+
+    /// Returns the defining scope for an existential type definition.
+    pub fn get_defining_scope(&self, id: NodeId) -> Option<NodeId> {
+        let mut scope = id;
+        loop {
+            scope = self.get_enclosing_scope(scope)?;
+            if scope == CRATE_NODE_ID {
+                return Some(CRATE_NODE_ID);
+            }
+            match self.get(scope) {
+                Node::Item(i) => {
+                    match i.node {
+                        ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}
+                        _ => break,
+                    }
+                }
+                Node::Block(_) => {}
+                _ => break,
+            }
+        }
+        Some(scope)
     }
 
     pub fn get_parent_did(&self, id: NodeId) -> DefId {

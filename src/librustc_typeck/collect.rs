@@ -1488,10 +1488,13 @@ fn find_existential_constraints<'a, 'tcx>(
 
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
         fn check(&mut self, def_id: DefId) {
-            trace!("checking {:?}", def_id);
-            // don't try to check items that cannot possibly constrain the type
+            // Don't try to check items that cannot possibly constrain the type.
             if !self.tcx.has_typeck_tables(def_id) {
-                trace!("no typeck tables for {:?}", def_id);
+                debug!(
+                    "find_existential_constraints: no constraint for `{:?}` at `{:?}`: no tables",
+                    self.def_id,
+                    def_id,
+                );
                 return;
             }
             let ty = self
@@ -1500,7 +1503,14 @@ fn find_existential_constraints<'a, 'tcx>(
                 .concrete_existential_types
                 .get(&self.def_id);
             if let Some(ty::ResolvedOpaqueTy { concrete_type, substs }) = ty {
-                // FIXME(oli-obk): trace the actual span from inference to improve errors
+                debug!(
+                    "find_existential_constraints: found constraint for `{:?}` at `{:?}`: {:?}",
+                    self.def_id,
+                    def_id,
+                    ty,
+                );
+
+                // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
                 // used to quickly look up the position of a generic parameter
                 let mut index_map: FxHashMap<ty::ParamTy, usize> = FxHashMap::default();
@@ -1555,14 +1565,15 @@ fn find_existential_constraints<'a, 'tcx>(
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
                     let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.sty, &p.sty) {
-                        // type parameters are equal to any other type parameter for the purpose of
+                        // Type parameters are equal to any other type parameter for the purpose of
                         // concrete type equality, as it is possible to obtain the same type just
                         // by passing matching parameters to a function.
                         (ty::Param(_), ty::Param(_)) => true,
                         _ => t == p,
                     });
                     if !iter_eq || ty.next().is_some() || p_ty.next().is_some() {
-                        // found different concrete types for the existential type
+                        debug!("find_existential_constraints: span={:?}", span);
+                        // Found different concrete types for the existential type.
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
                             "concrete type differs from previous defining existential type use",
@@ -1574,7 +1585,7 @@ fn find_existential_constraints<'a, 'tcx>(
                         err.span_note(prev_span, "previous use here");
                         err.emit();
                     } else if indices != *prev_indices {
-                        // found "same" concrete types, but the generic parameter order differs
+                        // Found "same" concrete types, but the generic parameter order differs.
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
                             "concrete type's generic parameters differ from previous defining use",
@@ -1602,6 +1613,12 @@ fn find_existential_constraints<'a, 'tcx>(
                 } else {
                     self.found = Some((span, concrete_type, indices));
                 }
+            } else {
+                debug!(
+                    "find_existential_constraints: no constraint for `{:?}` at `{:?}`",
+                    self.def_id,
+                    def_id,
+                );
             }
         }
     }
@@ -1633,26 +1650,27 @@ fn find_existential_constraints<'a, 'tcx>(
         }
     }
 
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let scope_id = tcx.hir().get_defining_scope(hir_id)
+                            .expect("could not get defining scope");
     let mut locator = ConstraintLocator {
         def_id,
         tcx,
         found: None,
     };
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let parent = tcx.hir().get_parent_item(hir_id);
 
-    trace!("parent_id: {:?}", parent);
+    debug!("find_existential_constraints: scope_id={:?}", scope_id);
 
-    if parent == hir::CRATE_HIR_ID {
+    if scope_id == ast::CRATE_HIR_ID {
         intravisit::walk_crate(&mut locator, tcx.hir().krate());
     } else {
-        trace!("parent: {:?}", tcx.hir().get_by_hir_id(parent));
-        match tcx.hir().get_by_hir_id(parent) {
+        debug!("find_existential_constraints: scope={:?}", tcx.hir().get_by_hir_id(scope_id));
+        match tcx.hir().get_by_hir_id(scope_id) {
             Node::Item(ref it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),
             other => bug!(
-                "{:?} is not a valid parent of an existential type item",
+                "{:?} is not a valid scope for an existential type item",
                 other
             ),
         }

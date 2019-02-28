@@ -69,7 +69,7 @@ use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{edition, Span};
+use syntax_pos::{DUMMY_SP, edition, Span};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -191,9 +191,9 @@ enum ImplTraitContext<'a> {
     /// equivalent to a fresh existential parameter like `existential type T; fn foo() -> T`.
     ///
     /// We optionally store a `DefId` for the parent item here so we can look up necessary
-    /// information later. It is `None` when no information about the context should be stored,
-    /// e.g., for consts and statics.
-    Existential(Option<DefId>),
+    /// information later. It is `None` when no information about the context should be stored
+    /// (e.g., for consts and statics).
+    Existential(Option<DefId> /* fn def-ID */),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
@@ -216,7 +216,7 @@ impl<'a> ImplTraitContext<'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(params) => Universal(params),
-            Existential(did) => Existential(*did),
+            Existential(fn_def_id) => Existential(*fn_def_id),
             Disallowed(pos) => Disallowed(*pos),
         }
     }
@@ -1342,13 +1342,36 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_binding(&mut self, b: &TypeBinding,
-                        itctx: ImplTraitContext<'_>) -> hir::TypeBinding {
+    fn lower_assoc_ty_constraint(&mut self,
+                                 c: &AssocTyConstraint,
+                                 itctx: ImplTraitContext<'_>)
+                                 -> hir::TypeBinding {
+        let ty = match c.kind {
+            AssocTyConstraintKind::Equality { ref ty } => self.lower_ty(ty, itctx),
+            AssocTyConstraintKind::Bound { ref bounds } => {
+                // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`.
+                let impl_ty_node_id = self.sess.next_node_id();
+                let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
+                self.resolver.definitions().create_def_with_parent(
+                    parent_def_index,
+                    impl_ty_node_id,
+                    DefPathData::Misc,
+                    DefIndexAddressSpace::High,
+                    Mark::root(),
+                    DUMMY_SP);
+                self.lower_ty(&Ty {
+                    id: self.sess.next_node_id(),
+                    node: TyKind::ImplTrait(impl_ty_node_id, bounds.clone()),
+                    span: DUMMY_SP,
+                }, itctx)
+            }
+        };
+
         hir::TypeBinding {
-            hir_id: self.lower_node_id(b.id),
-            ident: b.ident,
-            ty: self.lower_ty(&b.ty, itctx),
-            span: b.span,
+            hir_id: self.lower_node_id(c.id),
+            ident: c.ident,
+            ty
+            span: c.span,
         }
     }
 
@@ -1604,7 +1627,7 @@ impl<'a> LoweringContext<'a> {
                 origin: hir::ExistTyOrigin::ReturnImplTrait,
             };
 
-            trace!("exist ty from impl trait def index: {:#?}", exist_ty_def_index);
+            trace!("exist ty from impl trait def-index: {:#?}", exist_ty_def_index);
             let exist_ty_id = lctx.generate_existential_type(
                 exist_ty_node_id,
                 exist_ty_item,
@@ -1617,7 +1640,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    /// Registers a new existential type with the proper NodeIds and
+    /// Registers a new existential type with the proper `NodeId`ss and
     /// returns the lowered node ID for the existential type.
     fn generate_existential_type(
         &mut self,
@@ -2195,7 +2218,7 @@ impl<'a> LoweringContext<'a> {
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_>,
     ) -> (hir::GenericArgs, bool) {
-        let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
+        let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
         let has_types = args.iter().any(|arg| match arg {
             ast::GenericArg::Type(_) => true,
             _ => false,
@@ -2203,7 +2226,8 @@ impl<'a> LoweringContext<'a> {
         (
             hir::GenericArgs {
                 args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-                bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx.reborrow())).collect(),
+                bindings: constraints.iter().map(
+                    |b| self.lower_assoc_ty_constraint(b, itctx.reborrow())).collect(),
                 parenthesized: false,
             },
             !has_types && param_mode == ParamMode::Optional
@@ -3236,12 +3260,14 @@ impl<'a> LoweringContext<'a> {
                 self.lower_ty(t, ImplTraitContext::disallowed()),
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
             ),
-            ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(hir::ExistTy {
-                generics: self.lower_generics(generics, ImplTraitContext::disallowed()),
-                bounds: self.lower_param_bounds(b, ImplTraitContext::disallowed()),
-                impl_trait_fn: None,
-                origin: hir::ExistTyOrigin::ExistentialType,
-            }),
+            ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(
+                hir::ExistTy {
+                    generics: self.lower_generics(generics, ImplTraitContext::disallowed()),
+                    bounds: self.lower_param_bounds(b, ImplTraitContext::Existential(None)),
+                    impl_trait_fn: None,
+                    origin: hir::ExistTyOrigin::ExistentialType,
+                },
+            ),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
                     variants: enum_definition

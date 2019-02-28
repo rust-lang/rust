@@ -1848,8 +1848,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .iter()
             .filter_map(|o| o.to_opt_poly_trait_ref());
 
-        // micro-optimization: filter out predicates relating to different
-        // traits.
+        // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
             all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 

@@ -2450,14 +2450,21 @@ impl<'a> State<'a> {
 
                 let mut comma = data.args.len() != 0;
 
-                for binding in data.bindings.iter() {
+                for constraint in data.constraints.iter() {
                     if comma {
                         self.word_space(",")?
                     }
-                    self.print_ident(binding.ident)?;
+                    self.print_ident(constraint.ident)?;
                     self.s.space()?;
-                    self.word_space("=")?;
-                    self.print_type(&binding.ty)?;
+                    match constraint.kind {
+                        ast::AssocTyConstraintKind::Equality { ref ty } => {
+                            self.word_space("=")?;
+                            self.print_type(ty)?;
+                        }
+                        ast::AssocTyConstraintKind::Bound { ref bounds } => {
+                            self.print_type_bounds(":", &*bounds)?;
+                        }
+                    }
                     comma = true;
                 }
 

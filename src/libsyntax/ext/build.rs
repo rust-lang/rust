@@ -18,7 +18,7 @@ pub trait AstBuilder {
                 global: bool,
                 idents: Vec<ast::Ident>,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
+                constraints: Vec<ast::AssocTyConstraint>)
         -> ast::Path;
 
     fn qpath(&self, self_type: P<ast::Ty>,
@@ -29,7 +29,7 @@ pub trait AstBuilder {
                 trait_path: ast::Path,
                 ident: ast::Ident,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
+                constraints: Vec<ast::AssocTyConstraint>)
                 -> (ast::QSelf, ast::Path);
 
     // types and consts
@@ -302,7 +302,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding> )
+                constraints: Vec<ast::AssocTyConstraint> )
                 -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
@@ -314,8 +314,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span }.into()
+        let args = if !args.is_empty() || !constraints.is_empty() {
+            ast::AngleBracketedArgs { args, constraints, span }.into()
         } else {
             None
         };
@@ -346,11 +346,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  trait_path: ast::Path,
                  ident: ast::Ident,
                  args: Vec<ast::GenericArg>,
-                 bindings: Vec<ast::TypeBinding>)
+                 constraints: Vec<ast::AssocTyConstraint>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span: ident.span }.into()
+        let args = if !args.is_empty() || !constraints.is_empty() {
+            ast::AngleBracketedArgs { args, constraints, span: ident.span }.into()
         } else {
             None
         };
