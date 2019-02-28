@@ -57,7 +57,8 @@ impl<T: 'static> P<T> {
     {
         f(*self.ptr)
     }
-    /// Equivalent to and_then(|x| x)
+
+    /// Equivalent to `and_then(|x| x)`.
     pub fn into_inner(self) -> T {
         *self.ptr
     }

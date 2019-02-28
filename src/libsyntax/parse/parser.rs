@@ -191,24 +191,24 @@ enum PrevTokenKind {
     Other,
 }
 
-/* ident is handled by common.rs */
+// NOTE: `Ident`s are handled by `common.rs`.
 
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
-    /// the current token:
+    /// The current token.
     pub token: token::Token,
-    /// the span of the current token:
+    /// The span of the current token.
     pub span: Span,
-    /// the span of the previous token:
     meta_var_span: Option<Span>,
+    /// The span of the previous token.
     pub prev_span: Span,
-    /// the previous token kind
+    /// The kind of the previous troken.
     prev_token_kind: PrevTokenKind,
     restrictions: Restrictions,
-    /// Used to determine the path to externally loaded source files
+    /// Used to determine the path to externally loaded source files.
     crate directory: Directory<'a>,
-    /// Whether to parse sub-modules in other files.
+    /// `true` to parse sub-modules in other files.
     pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
@@ -217,7 +217,7 @@ pub struct Parser<'a> {
     crate expected_tokens: Vec<TokenType>,
     crate token_cursor: TokenCursor,
     desugar_doc_comments: bool,
-    /// Whether we should configure out of line modules as we parse.
+    /// `true` we should configure out of line modules as we parse.
     pub cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
@@ -2680,8 +2680,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // parse a stream of tokens into a list of TokenTree's,
-    // up to EOF.
+    /// Parses a stream of tokens into a list of `TokenTree`s, up to EOF.
     pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
@@ -5344,9 +5343,10 @@ impl<'a> Parser<'a> {
                 // Parse optional `for<'a, 'b>`.
                 // This `for` is parsed greedily and applies to the whole predicate,
                 // the bounded type can have its own `for` applying only to it.
-                // Example 1: for<'a> Trait1<'a>: Trait2<'a /*ok*/>
-                // Example 2: (for<'a> Trait1<'a>): Trait2<'a /*not ok*/>
-                // Example 3: for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /*ok*/, 'b /*not ok*/>
+                // Examples:
+                // * `for<'a> Trait1<'a>: Trait2<'a /* ok */>`
+                // * `(for<'a> Trait1<'a>): Trait2<'a /* not ok */>`
+                // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
                 let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
 
                 // Parse type with mandatory colon and (possibly empty) bounds,
@@ -5478,17 +5478,17 @@ impl<'a> Parser<'a> {
             this.look_ahead(n + 1, |t| t != &token::ModSep)
         };
 
-        // Parse optional self parameter of a method.
-        // Only a limited set of initial token sequences is considered self parameters, anything
+        // Parse optional `self` parameter of a method.
+        // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.span;
         let (eself, eself_ident, eself_hi) = match self.token {
             token::BinOp(token::And) => {
-                // &self
-                // &mut self
-                // &'lt self
-                // &'lt mut self
-                // &not_self
+                // `&self`
+                // `&mut self`
+                // `&'lt self`
+                // `&'lt mut self`
+                // `&not_self`
                 (if isolated_self(self, 1) {
                     self.bump();
                     SelfKind::Region(None, Mutability::Immutable)
@@ -5514,10 +5514,10 @@ impl<'a> Parser<'a> {
                 }, expect_ident(self), self.prev_span)
             }
             token::BinOp(token::Star) => {
-                // *self
-                // *const self
-                // *mut self
-                // *not_self
+                // `*self`
+                // `*const self`
+                // `*mut self`
+                // `*not_self`
                 // Emit special error for `self` cases.
                 let msg = "cannot pass `self` by raw pointer";
                 (if isolated_self(self, 1) {
@@ -5540,8 +5540,8 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) => {
                 if isolated_self(self, 0) {
-                    // self
-                    // self: TYPE
+                    // `self`
+                    // `self: TYPE`
                     let eself_ident = expect_ident(self);
                     let eself_hi = self.prev_span;
                     (if self.eat(&token::Colon) {
@@ -5552,8 +5552,8 @@ impl<'a> Parser<'a> {
                     }, eself_ident, eself_hi)
                 } else if self.token.is_keyword(kw::Mut) &&
                           isolated_self(self, 1) {
-                    // mut self
-                    // mut self: TYPE
+                    // `mut self`
+                    // `mut self: TYPE`
                     self.bump();
                     let eself_ident = expect_ident(self);
                     let eself_hi = self.prev_span;
@@ -5580,7 +5580,7 @@ impl<'a> Parser<'a> {
     {
         self.expect(&token::OpenDelim(token::Paren))?;
 
-        // Parse optional self argument
+        // Parse optional self argument.
         let self_arg = self.parse_self_arg()?;
 
         // Parse the rest of the function parameter list.

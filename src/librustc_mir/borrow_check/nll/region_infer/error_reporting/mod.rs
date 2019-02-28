@@ -576,7 +576,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Adds a suggestion to errors where a `impl Trait` is returned.
     ///
     /// ```text
-    /// help: to allow this impl Trait to capture borrowed data with lifetime `'1`, add `'_` as
+    /// help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as
     ///       a constraint
     ///    |
     /// LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + 'a {
@@ -652,7 +652,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         diag.span_suggestion(
                             span,
                             &format!(
-                                "to allow this impl Trait to capture borrowed data with lifetime \
+                                "to allow this `impl Trait` to capture borrowed data with lifetime \
                                  `{}`, add `{}` as a constraint",
                                 fr_name, suggestable_fr_name,
                             ),

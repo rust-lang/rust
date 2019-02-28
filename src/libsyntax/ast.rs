@@ -213,7 +213,7 @@ pub struct ParenthesizedArgs {
     /// Overall span
     pub span: Span,
 
-    /// `(A,B)`
+    /// `(A, B)`
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
@@ -1840,7 +1840,7 @@ impl Arg {
     }
 }
 
-/// Header (not the body) of a function declaration.
+/// A header (not the body) of a function declaration.
 ///
 /// E.g., `fn foo(bar: baz)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

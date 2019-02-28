@@ -1,6 +1,6 @@
 //! Name resolution for lifetimes.
 //!
-//! Name resolution for lifetimes follows MUCH simpler rules than the
+//! Name resolution for lifetimes follows *much* simpler rules than the
 //! full resolve. For example, lifetime names are never exported or
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         trait_ref: &'tcx hir::PolyTraitRef,
         _modifier: hir::TraitBoundModifier,
     ) {
-        debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
+        debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
         if !self.trait_ref_hack || trait_ref.bound_generic_params.iter().any(|param| {
             match param.kind {

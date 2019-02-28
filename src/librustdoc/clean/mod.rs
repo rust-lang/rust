@@ -2443,12 +2443,12 @@ pub struct PolyTrait {
     pub generic_params: Vec<GenericParamDef>,
 }
 
-/// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
-/// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
-/// it does not preserve mutability or boxes.
+/// A representation of a type suitable for hyperlinking purposes. Ideally, one can get the original
+/// type out of the AST/`TyCtxt` given one of these, if more information is needed. Most
+/// importantly, it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
-    /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
+    /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
         param_names: Option<Vec<GenericBound>>,
@@ -2462,7 +2462,7 @@ pub enum Type {
     /// Primitives are the fixed-size numeric types (plus int/usize/float), char,
     /// arrays, slices, and tuples.
     Primitive(PrimitiveType),
-    /// extern "ABI" fn
+    /// `extern "ABI" fn`
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
@@ -2477,17 +2477,17 @@ pub enum Type {
         type_: Box<Type>,
     },
 
-    // <Type as Trait>::Name
+    // `<Type as Trait>::Name`
     QPath {
         name: String,
         self_type: Box<Type>,
         trait_: Box<Type>
     },
 
-    // _
+    // `_`
     Infer,
 
-    // impl TraitA+TraitB
+    // `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
 }
 
@@ -2747,7 +2747,6 @@ impl Clean<Type> for hir::Ty {
 
         match self.node {
             TyKind::Never => Never,
-            TyKind::CVarArgs(_) => CVarArgs,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 let lifetime = if l.is_elided() {
@@ -2933,12 +2932,13 @@ impl Clean<Type> for hir::Ty {
                         }
                         ResolvedPath { path, param_names: Some(bounds), did, is_generic, }
                     }
-                    _ => Infer // shouldn't happen
+                    _ => Infer, // shouldn't happen
                 }
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("Unimplemented type {:?}", self.node),
+            TyKind::CVarArgs(_) => CVarArgs,
         }
     }
 }

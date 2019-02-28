@@ -1,6 +1,6 @@
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
-//! with *interprocedural* things -- for example, for a function
+//! with *inter-procedural* things -- for example, for a function
 //! definition, collection will figure out the type and signature of the
 //! function, but it will not visit the *body* of the function in any way,
 //! nor examine type annotations on local variables (that's the job of
@@ -233,7 +233,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn set_tainted_by_errors(&self) {
-        // no obvious place to track this, just let it go
+        // no obvious place to track this, so just let it go
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
@@ -447,7 +447,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: hir::HirId) {
             }
         }
 
-        // Desugared from `impl Trait` -> visited by the function's return type
+        // Desugared from `impl Trait`, so visited by the function's return type.
         hir::ItemKind::Existential(hir::ExistTy {
             impl_trait_fn: Some(_),
             ..
@@ -1218,7 +1218,7 @@ pub fn checked_type_of<'a, 'tcx>(
                     impl_trait_fn: None,
                     ..
                 }) => find_existential_constraints(tcx, def_id),
-                // existential types desugared from impl Trait
+                // Existential types desugared from `impl Trait`.
                 ItemKind::Existential(hir::ExistTy {
                     impl_trait_fn: Some(owner),
                     ..
@@ -1472,11 +1472,13 @@ fn find_existential_constraints<'a, 'tcx>(
 ) -> Ty<'tcx> {
     use rustc::hir::{ImplItem, Item, TraitItem};
 
+    debug!("find_existential_constraints({:?})", def_id);
+
     struct ConstraintLocator<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-        // First found type span, actual type, mapping from the existential type's generic
-        // parameters to the concrete type's generic parameters
+        // (first found type span, actual type, mapping from the existential type's generic
+        // parameters to the concrete type's generic parameters)
         //
         // The mapping is an index for each use site of a generic parameter in the concrete type
         //
@@ -1502,18 +1504,21 @@ fn find_existential_constraints<'a, 'tcx>(
                 let span = self.tcx.def_span(def_id);
                 // used to quickly look up the position of a generic parameter
                 let mut index_map: FxHashMap<ty::ParamTy, usize> = FxHashMap::default();
-                // skip binder is ok, since we only use this to find generic parameters and their
-                // positions.
+                // Skipping binder is ok, since we only use this to find generic parameters and
+                // their positions.
                 for (idx, subst) in substs.iter().enumerate() {
                     if let UnpackedKind::Type(ty) = subst.unpack() {
                         if let ty::Param(p) = ty.sty {
                             if index_map.insert(p, idx).is_some() {
-                                // there was already an entry for `p`, meaning a generic parameter
-                                // was used twice
+                                // There was already an entry for `p`, meaning a generic parameter
+                                // was used twice.
                                 self.tcx.sess.span_err(
                                     span,
-                                    &format!("defining existential type use restricts existential \
-                                    type by using the generic parameter `{}` twice", p.name),
+                                    &format!(
+                                        "defining existential type use restricts existential \
+                                         type by using the generic parameter `{}` twice",
+                                        p.name
+                                    ),
                                 );
                                 return;
                             }
@@ -1528,8 +1533,8 @@ fn find_existential_constraints<'a, 'tcx>(
                         }
                     }
                 }
-                // compute the index within the existential type for each generic parameter used in
-                // the concrete type
+                // Compute the index within the existential type for each generic parameter used in
+                // the concrete type.
                 let indices = concrete_type
                     .subst(self.tcx, substs)
                     .walk()
@@ -1607,7 +1612,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_item(&mut self, it: &'tcx Item) {
             let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_item(self, it);
@@ -1615,7 +1620,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
             let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_impl_item(self, it);
@@ -1960,7 +1965,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.
+                // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
                 let bounds = compute_bounds(
                     &icx,
                     opaque_ty,
@@ -2006,7 +2011,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                    // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.
+                    // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
                     let bounds = compute_bounds(
                         &icx,
                         opaque_ty,
@@ -2016,7 +2021,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     );
 
                     if impl_trait_fn.is_some() {
-                        // impl Trait
+                        // opaque types
                         return tcx.arena.alloc(ty::GenericPredicates {
                             parent: None,
                             predicates: bounds.predicates(tcx, opaque_ty),
@@ -2093,7 +2098,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     }
 
     // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T:Foo>`).
+    // type parameter (e.g., `<T: Foo>`).
     for param in &ast_generics.params {
         if let GenericParamKind::Type { .. } = param.kind {
             let name = param.name.ident().as_interned_str();
@@ -2106,7 +2111,7 @@ fn explicit_predicates_of<'a, 'tcx>(
         }
     }
 
-    // Add in the bounds that appear in the where-clause
+    // Add in the bounds that appear in the where-clause.
     let where_clause = &ast_generics.where_clause;
     for predicate in &where_clause.predicates {
         match predicate {
@@ -2422,7 +2427,7 @@ fn from_target_feature(
             continue;
         }
 
-        // Must be of the form `enable = "..."` ( a string)
+        // Must be of the form `enable = "..."` (a string).
         let value = match item.value_str() {
             Some(value) => value,
             None => {
@@ -2545,7 +2550,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             if tcx.is_foreign_item(id) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
             } else {
-                // `#[ffi_returns_twice]` is only allowed `extern fn`s
+                // `#[ffi_returns_twice]` is only allowed `extern fn`s.
                 struct_span_err!(
                     tcx.sess,
                     attr.span,

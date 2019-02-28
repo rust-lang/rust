@@ -379,8 +379,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
 pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
-    // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
+    // In case there are any projections, etc., find the "environment"
+    // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id_from_hir_id(env_node_id);
@@ -391,8 +391,8 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
 
 pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
         -> (ty::PolyTraitRef<'tcx>, Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>) {
-    // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
+    // In case there are any projections, etc., find the "environment"
+    // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
     let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let env_def_id = tcx.hir().local_def_id_from_hir_id(env_hir_id);

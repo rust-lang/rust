@@ -239,7 +239,7 @@ impl DefPath {
                        "{}[{}]",
                        component.data.as_interned_str(),
                        component.disambiguator)
-                    .unwrap();
+                       .unwrap();
             }
         }
 
@@ -263,7 +263,7 @@ impl DefPath {
                        "{}[{}]",
                        component.data.as_interned_str(),
                        component.disambiguator)
-                    .unwrap();
+                       .unwrap();
             }
         }
         s
@@ -442,7 +442,7 @@ impl Definitions {
         root_index
     }
 
-    /// Add a definition with a parent definition.
+    /// Adds a definition with a parent definition.
     pub fn create_def_with_parent(&mut self,
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
@@ -559,7 +559,7 @@ impl DefPathData {
             GlobalMetaData(name) => {
                 return name
             }
-            // note that this does not show up in user printouts
+            // Note that this does not show up in user print-outs.
             CrateRoot => sym::double_braced_crate,
             Impl => sym::double_braced_impl,
             Misc => sym::double_braced_misc,

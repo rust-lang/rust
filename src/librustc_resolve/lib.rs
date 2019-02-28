@@ -2134,7 +2134,7 @@ impl<'a> Resolver<'a> {
                                       record_used_id: Option<NodeId>,
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
-        assert!(ns == TypeNS  || ns == ValueNS);
+        assert!(ns == TypeNS || ns == ValueNS);
         if ident.name == kw::Invalid {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
@@ -2530,10 +2530,12 @@ impl<'a> Resolver<'a> {
 
         match item.node {
             ItemKind::Ty(_, ref generics) |
-            ItemKind::Fn(_, _, ref generics, _) |
-            ItemKind::Existential(_, ref generics) => {
-                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
+            ItemKind::Existential(_, ref generics) |
+            ItemKind::Fn(_, _, ref generics, _) => {
+                self.with_generic_param_rib(
+                    HasGenericParams(generics, ItemRibKind),
+                    |this| visit::walk_item(this, item)
+                );
             }
 
             ItemKind::Enum(_, ref generics) |
@@ -2967,7 +2969,7 @@ impl<'a> Resolver<'a> {
         binding_map
     }
 
-    // check that all of the arms in an or-pattern have exactly the
+    // Checks that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
         if pats.is_empty() {
@@ -2987,7 +2989,7 @@ impl<'a> Resolver<'a> {
                 let map_j = self.binding_mode_map(&q);
                 for (&key, &binding_i) in &map_i {
                     if map_j.is_empty() {                   // Account for missing bindings when
-                        let binding_error = missing_vars    // map_j has none.
+                        let binding_error = missing_vars    // `map_j` has none.
                             .entry(key.name)
                             .or_insert(BindingError {
                                 name: key.name,

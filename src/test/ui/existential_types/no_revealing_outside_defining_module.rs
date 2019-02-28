@@ -9,7 +9,7 @@ mod boo {
     }
 }
 
-// don't actually know the type here
+// We don't actually know the type here.
 
 fn bomp2() {
     let _: &str = bomp(); //~ ERROR mismatched types

@@ -286,7 +286,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
 
         inner_span.hash_stable(hcx, hasher);
 
-        // Combining the DefPathHashes directly is faster than feeding them
+        // Combining the `DefPathHash`s directly is faster than feeding them
         // into the hasher. Because we use a commutative combine, we also don't
         // have to sort the array.
         let item_ids_hash = item_ids

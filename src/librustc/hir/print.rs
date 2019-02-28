@@ -1679,8 +1679,8 @@ impl<'a> State<'a> {
                 })?;
             }
 
-            // FIXME(eddyb) This would leak into error messages, e.g.:
-            // "non-exhaustive patterns: `Some::<..>(_)` not covered".
+            // FIXME(eddyb): this would leak into error messages (e.g.,
+            // "non-exhaustive patterns: `Some::<..>(_)` not covered").
             if infer_types && false {
                 start_or_comma(self)?;
                 self.s.word("..")?;

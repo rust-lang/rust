@@ -19,7 +19,6 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::hir::print as pprust;
 
-
 #[derive(Copy, Clone, Debug)]
 pub enum EntryOrExit {
     Entry,
@@ -92,7 +91,7 @@ fn get_cfg_indices<'a>(id: hir::ItemLocalId,
     index.get(&id).map_or(&[], |v| &v[..])
 }
 
-impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
+impl<'a, 'tcx, O: DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     fn has_bitset_for_local_id(&self, n: hir::ItemLocalId) -> bool {
         assert!(n != hir::DUMMY_ITEM_LOCAL_ID);
         self.local_id_to_index.contains_key(&n)
@@ -225,7 +224,7 @@ pub enum KillFrom {
     Execution,
 }
 
-impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
+impl<'a, 'tcx, O: DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                analysis_name: &'static str,
                body: Option<&hir::Body>,
@@ -500,8 +499,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     }
 }
 
-impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
-//                                ^^^^^^^^^^^^^ only needed for pretty printing
+// N.B. `Clone + 'static` only needed for pretty printing.
+impl<'a, 'tcx, O: DataFlowOperator + Clone + 'static> DataFlowContext<'a, 'tcx, O> {
     pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Body) {
         //! Performs the data flow analysis.
 
@@ -538,7 +537,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
     }
 }
 
-impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
+impl<'a, 'b, 'tcx, O: DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
     fn walk_cfg(&mut self,
                 cfg: &cfg::CFG,
                 nodes_po: &[CFGIndex],
@@ -547,7 +546,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
                bits_to_string(in_out), self.dfcx.analysis_name);
         assert!(self.dfcx.bits_per_id > 0);
 
-        // Iterate over nodes in reverse postorder
+        // Iterate over nodes in reverse post-order.
         for &node_index in nodes_po.iter().rev() {
             let node = cfg.graph.node(node_index);
             debug!("DataFlowContext::walk_cfg idx={:?} id={:?} begin in_out={}",
@@ -631,9 +630,9 @@ fn bits_to_string(words: &[usize]) -> String {
 }
 
 #[inline]
-fn bitwise<Op:BitwiseOperator>(out_vec: &mut [usize],
-                               in_vec: &[usize],
-                               op: &Op) -> bool {
+fn bitwise<Op: BitwiseOperator>(out_vec: &mut [usize],
+                                in_vec: &[usize],
+                                op: &Op) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
     for (out_elt, in_elt) in out_vec.iter_mut().zip(in_vec) {

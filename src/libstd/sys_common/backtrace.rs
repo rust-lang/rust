@@ -173,7 +173,7 @@ impl<'a, 'b> Printer<'a, 'b> {
             Some(symbol) => {
                 match self.format {
                     PrintFormat::Full => write!(self.out, "{}", symbol)?,
-                    // strip the trailing hash if short mode
+                    // Strip the trailing hash if short mode.
                     PrintFormat::Short => write!(self.out, "{:#}", symbol)?,
                 }
             }

@@ -858,7 +858,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             def_id, substs
         );
 
-        // Use the same type variable if the exact same Opaque appears more
+        // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
             return opaque_defn.concrete_ty;
@@ -880,9 +880,9 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             required_region_bounds
         );
 
-        // make sure that we are in fact defining the *entire* type
-        // e.g., `existential type Foo<T: Bound>: Bar;` needs to be
-        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
+        // Make sure that we are in fact defining the *entire* type
+        // (e.g., `existential type Foo<T: Bound>: Bar;` needs to be
+        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
         debug!(
             "instantiate_opaque_types: param_env: {:#?}",
             self.param_env,
@@ -945,18 +945,15 @@ pub fn may_define_existential_type(
     def_id: DefId,
     opaque_hir_id: hir::HirId,
 ) -> bool {
-    let mut hir_id = tcx
-        .hir()
-        .as_local_hir_id(def_id)
-        .unwrap();
-    // named existential types can be defined by any siblings or
-    // children of siblings
+    let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    // Named existential types can be defined by any siblings or
+    // children of siblings.
     let mod_id = tcx.hir().get_parent_item(opaque_hir_id);
-    // so we walk up the node tree until we hit the root or the parent
-    // of the opaque type
-    while hir_id != mod_id && hir_id != hir::CRATE_HIR_ID {
+    // We walk up the node tree until we hit the root or the parent
+    // of the opaque type.
+    while hir_id != mod_id && node_id != ast::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);
     }
-    // syntactically we are allowed to define the concrete type
+    // Syntactically we are allowed to define the concrete type.
     hir_id == mod_id
 }

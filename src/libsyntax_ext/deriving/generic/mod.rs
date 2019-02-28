@@ -922,8 +922,7 @@ impl<'a> MethodDef<'a> {
                      arg_types: Vec<(Ident, P<ast::Ty>)>,
                      body: P<Expr>)
                      -> ast::ImplItem {
-
-        // create the generics that aren't for Self
+        // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
         let args = {

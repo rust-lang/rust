@@ -47,14 +47,14 @@ pub trait AstConv<'gcx, 'tcx> {
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
                                  -> &'tcx ty::GenericPredicates<'tcx>;
 
-    /// What lifetime should we use when a lifetime is omitted (and not elided)?
+    /// Returns the lifetime to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>>;
 
-    /// What type should we use when a type is omitted?
+    /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
 
-    /// Same as ty_infer, but with a known type parameter definition.
+    /// Same as `ty_infer`, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
                         _def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
@@ -376,8 +376,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             err.emit();
 
-            (provided > required, // `suppress_error`
-             potential_assoc_types)
+            (
+                provided > required, // `suppress_error`
+                potential_assoc_types,
+            )
         };
 
         if reported_late_bound_region_err.is_none()
@@ -556,7 +558,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Given the type/lifetime/const arguments provided to some path (along with
-    /// an implicit `Self`, if this is a trait reference) returns the complete
+    /// an implicit `Self`, if this is a trait reference), returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
@@ -708,8 +710,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
-        self_ty: Ty<'tcx>)
-        -> ty::TraitRef<'tcx>
+        self_ty: Ty<'tcx>
+    ) -> ty::TraitRef<'tcx>
     {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
@@ -724,8 +726,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
-        speculative: bool)
-        -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
+        speculative: bool,
+    ) -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
     {
         let trait_def_id = trait_ref.trait_def_id();
 
@@ -851,13 +853,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // trait SubTrait: SuperTrait<int> { }
             // trait SuperTrait<A> { type T; }
             //
-            // ... B : SubTrait<T=foo> ...
+            // ... B: SubTrait<T = foo> ...
             // ```
             //
             // We want to produce `<B as SuperTrait<int>>::T == foo`.
 
             // Find any late-bound regions declared in `ty` that are not
-            // declared in the trait-ref. These are not wellformed.
+            // declared in the trait-ref. These are not well-formed.
             //
             // Example:
             //
@@ -1716,7 +1718,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let span = path.span;
         match path.res {
             Res::Def(DefKind::Existential, did) => {
-                // Check for desugared impl trait.
+                // Check for desugared `impl Trait`.
                 assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1);
@@ -1767,18 +1769,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     &tcx.hir().local_def_id_from_hir_id(hir_id)];
                 tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
             }
-            Res::SelfTy(_, Some(def_id)) => {
-                // `Self` in impl (we know the concrete type).
-                assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(&path.segments);
-                // Try to evaluate any array length constants
-                self.normalize_ty(span, tcx.at(span).type_of(def_id))
-            }
             Res::SelfTy(Some(_), None) => {
                 // `Self` in trait.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
                 tcx.mk_self_type()
+            }
+            Res::SelfTy(_, Some(def_id)) => {
+                // `Self` in impl (we know the concrete type).
+                assert_eq!(opt_self_ty, None);
+                self.prohibit_generics(&path.segments);
+                // Try to evaluate any array length constants.
+                self.normalize_ty(span, tcx.at(span).type_of(def_id))
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
@@ -1829,7 +1831,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             hir::TyKind::Rptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
-                debug!("Ref r={:?}", r);
+                debug!("ast_ty_to_ty: r={:?}", r);
                 let t = self.ast_ty_to_ty(&mt.ty);
                 tcx.mk_ref(r, ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
@@ -1856,7 +1858,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             hir::TyKind::Def(item_id, ref lifetimes) => {
                 let did = tcx.hir().local_def_id_from_hir_id(item_id.id);
                 self.impl_trait_ty_to_ty(did, lifetimes)
-            },
+            }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
                 let ty = self.ast_ty_to_ty(qself);
@@ -1889,9 +1891,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(ast_ty.span)
             }
-            hir::TyKind::Err => {
-                tcx.types.err
-            }
             hir::TyKind::CVarArgs(lt) => {
                 let va_list_did = match tcx.lang_items().va_list() {
                     Some(did) => did,
@@ -1900,6 +1899,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 };
                 let region = self.ast_region_to_region(&lt, None);
                 tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+            }
+            hir::TyKind::Err => {
+                tcx.types.err
             }
         };
 
@@ -1979,7 +1981,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     _ => bug!()
                 }
             } else {
-                // Replace all parent lifetimes with 'static.
+                // Replace all parent lifetimes with `'static`.
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         tcx.lifetimes.re_static.into()
