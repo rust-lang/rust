@@ -1,5 +1,8 @@
 #![warn(clippy::double_parens)]
 #![allow(dead_code)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
+
 fn dummy_fn<T>(_: T) {}
 
 struct DummyStruct;
