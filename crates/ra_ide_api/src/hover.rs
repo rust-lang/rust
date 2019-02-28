@@ -50,7 +50,7 @@ impl HoverResult {
     /// for displaying in a UI
     pub fn to_markup(&self) -> String {
         let mut markup = if !self.exact {
-            let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support glob imports or traits.");
+            let mut msg = String::from("Failed to exactly resolve the symbol. This is probably because rust_analyzer does not yet support traits.");
             if !self.results.is_empty() {
                 msg.push_str("  \nThese items were found instead:");
             }
