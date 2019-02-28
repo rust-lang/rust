@@ -107,7 +107,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             leaf.ancestors().find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
         })?;
         let frange = FileRange { file_id: position.file_id, range: node.range() };
-        res.extend(type_of(db, frange).map(Into::into));
+        res.extend(type_of(db, frange).map(rust_code_markup));
         range = Some(node.range());
     }
 
@@ -142,12 +142,27 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     }
 }
 
+fn rust_code_markup<CODE: AsRef<str>>(val: CODE) -> String {
+    rust_code_markup_with_doc::<_, &str>(val, None)
+}
+
+fn rust_code_markup_with_doc<CODE, DOC>(val: CODE, doc: Option<DOC>) -> String
+where
+    CODE: AsRef<str>,
+    DOC: AsRef<str>,
+{
+    if let Some(doc) = doc {
+        format!("```rust\n{}\n```\n\n{}", val.as_ref(), doc.as_ref())
+    } else {
+        format!("```rust\n{}\n```", val.as_ref())
+    }
+}
+
 // FIXME: this should not really use navigation target. Rather, approximately
 // resolved symbol should return a `DefId`.
 fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Option<String> {
     match (nav.description(db), nav.docs(db)) {
-        (Some(desc), Some(docs)) => Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs),
-        (Some(desc), None) => Some("```rust\n".to_string() + &*desc + "\n```"),
+        (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
         (None, Some(docs)) => Some(docs),
         _ => None,
     }
@@ -238,6 +253,10 @@ mod tests {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")
     }
 
+    fn trim_markup_opt(s: Option<&str>) -> Option<&str> {
+        s.map(trim_markup)
+    }
+
     fn check_hover_result(fixture: &str, expected: &[&str]) {
         let (analysis, position) = analysis_and_position(fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
@@ -264,7 +283,7 @@ mod tests {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::from_to(95.into(), 100.into()));
-        assert_eq!(hover.info.first(), Some("u32"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
     }
 
     #[test]
@@ -410,21 +429,21 @@ mod tests {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         // not the nicest way to show it currently
-        assert_eq!(hover.info.first(), Some("Some<i32>(T) -> Option<T>"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Some<i32>(T) -> Option<T>"));
     }
 
     #[test]
     fn hover_for_local_variable() {
         let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info.first(), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = single_file_with_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info.first(), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }
 
     #[test]
@@ -491,6 +510,6 @@ mod tests {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info.first(), Some("Thing"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
     }
 }
