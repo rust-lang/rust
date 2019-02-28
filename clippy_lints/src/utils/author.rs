@@ -5,7 +5,8 @@ use crate::utils::get_attr;
 use rustc::hir;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::session::Session;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Attribute, LitKind};
@@ -71,8 +72,8 @@ fn done() {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_item(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
-        if !has_attr(&item.attrs) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         prelude();
@@ -80,8 +81,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_impl_item(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
-        if !has_attr(&item.attrs) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         prelude();
@@ -89,8 +90,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_trait_item(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
-        if !has_attr(&item.attrs) {
+    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         prelude();
@@ -98,8 +99,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_variant(&mut self, _cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, generics: &hir::Generics) {
-        if !has_attr(&var.node.attrs) {
+    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, generics: &hir::Generics) {
+        if !has_attr(cx.sess(), &var.node.attrs) {
             return;
         }
         prelude();
@@ -107,8 +108,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_struct_field(&mut self, _cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
-        if !has_attr(&field.attrs) {
+    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
+        if !has_attr(cx.sess(), &field.attrs) {
             return;
         }
         prelude();
@@ -116,8 +117,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_expr(&mut self, _cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if !has_attr(&expr.attrs) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+        if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
         prelude();
@@ -125,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_arm(&mut self, _cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
-        if !has_attr(&arm.attrs) {
+    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
+        if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
         prelude();
@@ -134,8 +135,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_stmt(&mut self, _cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-        if !has_attr(stmt.node.attrs()) {
+    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
+        if !has_attr(cx.sess(), stmt.node.attrs()) {
             return;
         }
         prelude();
@@ -143,8 +144,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         done();
     }
 
-    fn check_foreign_item(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
-        if !has_attr(&item.attrs) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         prelude();
@@ -673,8 +674,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 }
 
-fn has_attr(attrs: &[Attribute]) -> bool {
-    get_attr(attrs, "author").count() > 0
+fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
+    get_attr(sess, attrs, "author").count() > 0
 }
 
 fn desugaring_name(des: hir::MatchSource) -> String {

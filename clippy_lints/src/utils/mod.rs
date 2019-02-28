@@ -8,7 +8,6 @@ use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
-use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{
     self,
@@ -20,20 +19,20 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use std::mem;
-use std::str::FromStr;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol;
 use syntax::symbol::{keywords, Symbol};
 
-pub mod camel_case;
-
+pub mod attrs;
 pub mod author;
+pub mod camel_case;
 pub mod comparisons;
 pub mod conf;
 pub mod constants;
 mod diagnostics;
+pub mod higher;
 mod hir_utils;
 pub mod inspector;
 pub mod internal_lints;
@@ -41,10 +40,9 @@ pub mod paths;
 pub mod ptr;
 pub mod sugg;
 pub mod usage;
+pub use self::attrs::*;
 pub use self::diagnostics::*;
 pub use self::hir_utils::{SpanlessEq, SpanlessHash};
-
-pub mod higher;
 
 /// Returns true if the two spans come from differing expansions (i.e. one is
 /// from a macro and one
@@ -660,55 +658,6 @@ pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
 /// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
-}
-
-pub struct LimitStack {
-    stack: Vec<u64>,
-}
-
-impl Drop for LimitStack {
-    fn drop(&mut self) {
-        assert_eq!(self.stack.len(), 1);
-    }
-}
-
-impl LimitStack {
-    pub fn new(limit: u64) -> Self {
-        Self { stack: vec![limit] }
-    }
-    pub fn limit(&self) -> u64 {
-        *self.stack.last().expect("there should always be a value in the stack")
-    }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
-        let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| stack.push(val));
-    }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
-        let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| assert_eq!(stack.pop(), Some(val)));
-    }
-}
-
-pub fn get_attr<'a>(attrs: &'a [ast::Attribute], name: &'static str) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.iter().filter(move |attr| {
-        attr.path.segments.len() == 2
-            && attr.path.segments[0].ident.to_string() == "clippy"
-            && attr.path.segments[1].ident.to_string() == name
-    })
-}
-
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
-    for attr in get_attr(attrs, name) {
-        if let Some(ref value) = attr.value_str() {
-            if let Ok(value) = FromStr::from_str(&value.as_str()) {
-                f(value)
-            } else {
-                sess.span_err(attr.span, "not a number");
-            }
-        } else {
-            sess.span_err(attr.span, "bad clippy attribute");
-        }
-    }
 }
 
 /// Return the pre-expansion span if is this comes from an expansion of the
