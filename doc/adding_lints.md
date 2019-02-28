@@ -328,10 +328,12 @@ TODO: Prose
 
 Here are some pointers to things you are likely going to need for every lint:
 
+* [Clippy utils][utils] - Various helper functions. Maybe the function you need
+  is already in here. (`implements_trait`, `match_path`, `snippet`, etc)
+* [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`in_macro`][in_macro] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
-* [Clippy diagnostics][diagnostics]
 * [`Applicability`][applicability]
 
 For `EarlyLintPass` lints:
@@ -360,6 +362,7 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.LateLintPass.html
 [fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/enum.FnKind.html
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
+[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/symbol/struct.Ident.html
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html
 [applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
