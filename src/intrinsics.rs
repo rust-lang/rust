@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use rustc::ty::subst::SubstsRef;
+
 macro_rules! intrinsic_pat {
     (_) => {
         _
@@ -88,7 +90,7 @@ macro_rules! atomic_minmax {
 pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     def_id: DefId,
-    substs: &'tcx Substs,
+    substs: SubstsRef<'tcx>,
     args: Vec<CValue<'tcx>>,
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
