@@ -24,7 +24,7 @@
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 
-use back::write::create_target_machine;
+use back::write::create_informational_target_machine;
 use syntax_pos::symbol::Symbol;
 
 extern crate flate2;
@@ -114,8 +114,9 @@ pub struct LlvmCodegenBackend(());
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
     fn new_metadata(&self, tcx: TyCtxt<'_, '_, '_>, mod_name: &str) -> ModuleLlvm {
-        ModuleLlvm::new(tcx, mod_name)
+        ModuleLlvm::new_metadata(tcx, mod_name)
     }
+
     fn write_metadata<'b, 'gcx>(
         &self,
         tcx: TyCtxt<'b, 'gcx, 'gcx>,
@@ -366,15 +367,14 @@ unsafe impl Send for ModuleLlvm { }
 unsafe impl Sync for ModuleLlvm { }
 
 impl ModuleLlvm {
-    fn new(tcx: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self {
+    fn new_metadata(tcx: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-
             ModuleLlvm {
                 llmod_raw,
                 llcx,
-                tm: create_target_machine(tcx, false),
+                tm: create_informational_target_machine(&tcx.sess, false),
             }
         }
     }
