@@ -228,14 +228,15 @@ With that we can expand our `check_fn` method to:
 ```rust
 impl EarlyLintPass for Pass {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
-        if !is_foo_fn(fn_kind) { return; }
-        span_help_and_lint(
-            cx,
-            FOO_FUNCTIONS,
-            span,
-            "function named `foo`",
-            "consider using a more meaningful name"
-        );
+        if is_foo_fn(fn_kind) {
+            span_help_and_lint(
+                cx,
+                FOO_FUNCTIONS,
+                span,
+                "function named `foo`",
+                "consider using a more meaningful name"
+            );
+        }
     }
 }
 ```
