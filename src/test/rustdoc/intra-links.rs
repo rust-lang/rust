@@ -22,6 +22,7 @@
 //! * [`ThisType::this_method`](ThisType::this_method)
 //! * [`ThisEnum`](ThisEnum)
 //! * [`ThisEnum::ThisVariant`](ThisEnum::ThisVariant)
+//! * [`ThisEnum::ThisVariantCtor`](ThisEnum::ThisVariantCtor)
 //! * [`ThisTrait`](ThisTrait)
 //! * [`ThisTrait::this_associated_method`](ThisTrait::this_associated_method)
 //! * [`ThisTrait::ThisAssociatedType`](ThisTrait::ThisAssociatedType)
@@ -50,7 +51,7 @@ pub struct ThisType;
 impl ThisType {
     pub fn this_method() {}
 }
-pub enum ThisEnum { ThisVariant, }
+pub enum ThisEnum { ThisVariant, ThisVariantCtor(u32), }
 pub trait ThisTrait {
     type ThisAssociatedType;
     const THIS_ASSOCIATED_CONST: u8;

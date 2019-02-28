@@ -1,7 +1,8 @@
-use rustc::lint as lint;
-use rustc::hir;
+use errors::Applicability;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir;
+use rustc::lint as lint;
 use rustc::ty;
 use syntax;
 use syntax::ast::{self, Ident};
@@ -51,6 +52,13 @@ struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     mod_ids: Vec<ast::NodeId>,
     is_nightly_build: bool,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Namespace {
+    Type,
+    Value,
+    Macro,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -345,56 +353,51 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     PathKind::Unknown => {
                         // Try everything!
+                        let mut candidates = vec![];
+
                         if let Some(macro_def) = macro_resolve(cx, path_str) {
-                            if let Ok(type_def) =
-                                self.resolve(path_str, false, &current_item, parent_node)
-                            {
-                                let (type_kind, article, type_disambig)
-                                    = type_ns_kind(type_def.0, path_str);
-                                ambiguity_error(cx, &item.attrs, path_str,
-                                                article, type_kind, &type_disambig,
-                                                "a", "macro", &format!("macro@{}", path_str));
-                                continue;
-                            } else if let Ok(value_def) =
-                                self.resolve(path_str, true, &current_item, parent_node)
-                            {
-                                let (value_kind, value_disambig)
-                                    = value_ns_kind(value_def.0, path_str)
-                                        .expect("struct and mod cases should have been \
-                                                 caught in previous branch");
-                                ambiguity_error(cx, &item.attrs, path_str,
-                                                "a", value_kind, &value_disambig,
-                                                "a", "macro", &format!("macro@{}", path_str));
-                            }
-                            (macro_def, None)
-                        } else if let Ok(type_def) =
+                            candidates.push(((macro_def, None), Namespace::Macro));
+                        }
+
+                        if let Ok(type_def) =
                             self.resolve(path_str, false, &current_item, parent_node)
                         {
-                            // It is imperative we search for not-a-value first
-                            // Otherwise we will find struct ctors for when we are looking
-                            // for structs, and the link won't work if there is something in
-                            // both namespaces.
-                            if let Ok(value_def) =
-                                self.resolve(path_str, true, &current_item, parent_node)
-                            {
-                                let kind = value_ns_kind(value_def.0, path_str);
-                                if let Some((value_kind, value_disambig)) = kind {
-                                    let (type_kind, article, type_disambig)
-                                        = type_ns_kind(type_def.0, path_str);
-                                    ambiguity_error(cx, &item.attrs, path_str,
-                                                    article, type_kind, &type_disambig,
-                                                    "a", value_kind, &value_disambig);
-                                    continue;
-                                }
-                            }
-                            type_def
-                        } else if let Ok(value_def) =
+                            candidates.push((type_def, Namespace::Type));
+                        }
+
+                        if let Ok(value_def) =
                             self.resolve(path_str, true, &current_item, parent_node)
                         {
-                            value_def
-                        } else {
+                            // Structs, variants, and mods exist in both namespaces, skip them.
+                            match value_def.0 {
+                                Def::StructCtor(..)
+                                | Def::Mod(..)
+                                | Def::Variant(..)
+                                | Def::VariantCtor(..)
+                                | Def::SelfCtor(..) => (),
+                                _ => candidates.push((value_def, Namespace::Value)),
+                            }
+                        }
+
+                        if candidates.len() == 1 {
+                            candidates.remove(0).0
+                        } else if candidates.is_empty() {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
                             // this could just be a normal link
+                            continue;
+                        } else {
+                            let candidates = candidates.into_iter().map(|((def, _), ns)| {
+                                (def, ns)
+                            }).collect::<Vec<_>>();
+
+                            ambiguity_error(
+                                cx,
+                                &item.attrs,
+                                path_str,
+                                &dox,
+                                link_range,
+                                &candidates,
+                            );
                             continue;
                         }
                     }
@@ -505,59 +508,108 @@ fn resolution_failure(
     diag.emit();
 }
 
-fn ambiguity_error(cx: &DocContext<'_>, attrs: &Attributes,
-                   path_str: &str,
-                   article1: &str, kind1: &str, disambig1: &str,
-                   article2: &str, kind2: &str, disambig2: &str) {
+fn ambiguity_error(
+    cx: &DocContext<'_>,
+    attrs: &Attributes,
+    path_str: &str,
+    dox: &str,
+    link_range: Option<Range<usize>>,
+    candidates: &[(Def, Namespace)],
+) {
     let sp = span_of_attrs(attrs);
-    cx.sess()
-      .struct_span_warn(sp,
-                        &format!("`{}` is both {} {} and {} {}",
-                                 path_str, article1, kind1,
-                                 article2, kind2))
-      .help(&format!("try `{}` if you want to select the {}, \
-                      or `{}` if you want to \
-                      select the {}",
-                      disambig1, kind1, disambig2,
-                      kind2))
-      .emit();
-}
 
-/// Given a def, returns its name and disambiguator
-/// for a value namespace.
-///
-/// Returns `None` for things which cannot be ambiguous since
-/// they exist in both namespaces (structs and modules).
-fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
-    match def {
-        // Structs, variants, and mods exist in both namespaces; skip them.
-        Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) |
-        Def::VariantCtor(..) | Def::SelfCtor(..)
-            => None,
-        Def::Fn(..)
-            => Some(("function", format!("{}()", path_str))),
-        Def::Method(..)
-            => Some(("method", format!("{}()", path_str))),
-        Def::Const(..)
-            => Some(("const", format!("const@{}", path_str))),
-        Def::Static(..)
-            => Some(("static", format!("static@{}", path_str))),
-        _ => Some(("value", format!("value@{}", path_str))),
+    let mut msg = format!("`{}` is ", path_str);
+
+    match candidates {
+        [(first_def, _), (second_def, _)] => {
+            msg += &format!(
+                "both {} {} and {} {}",
+                first_def.article(),
+                first_def.kind_name(),
+                second_def.article(),
+                second_def.kind_name(),
+            );
+        }
+        _ => {
+            let mut candidates = candidates.iter().peekable();
+            while let Some((def, _)) = candidates.next() {
+                if candidates.peek().is_some() {
+                    msg += &format!("{} {}, ", def.article(), def.kind_name());
+                } else {
+                    msg += &format!("and {} {}", def.article(), def.kind_name());
+                }
+            }
+        }
     }
-}
 
-/// Given a def, returns its name, the article to be used, and a disambiguator
-/// for the type namespace.
-fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String) {
-    let (kind, article) = match def {
-        // We can still have non-tuple structs.
-        Def::Struct(..) => ("struct", "a"),
-        Def::Enum(..) => ("enum", "an"),
-        Def::Trait(..) => ("trait", "a"),
-        Def::Union(..) => ("union", "a"),
-        _ => ("type", "a"),
-    };
-    (kind, article, format!("{}@{}", kind, path_str))
+    let mut diag = cx.tcx.struct_span_lint_hir(
+        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        hir::CRATE_HIR_ID,
+        sp,
+        &msg,
+    );
+
+    if let Some(link_range) = link_range {
+        if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs) {
+            diag.set_span(sp);
+            diag.span_label(sp, "ambiguous link");
+
+            for (def, ns) in candidates {
+                let (action, mut suggestion) = match def {
+                    Def::Method(..) | Def::Fn(..) => {
+                        ("add parentheses", format!("{}()", path_str))
+                    }
+                    _ => {
+                        let type_ = match (def, ns) {
+                            (Def::Const(..), _) => "const",
+                            (Def::Static(..), _) => "static",
+                            (Def::Struct(..), _) => "struct",
+                            (Def::Enum(..), _) => "enum",
+                            (Def::Union(..), _) => "union",
+                            (Def::Trait(..), _) => "trait",
+                            (Def::Mod(..), _) => "module",
+                            (_, Namespace::Type) => "type",
+                            (_, Namespace::Value) => "value",
+                            (_, Namespace::Macro) => "macro",
+                        };
+
+                        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+                        ("prefix with the item type", format!("{}@{}", type_, path_str))
+                    }
+                };
+
+                if dox.bytes().nth(link_range.start) == Some(b'`') {
+                    suggestion = format!("`{}`", suggestion);
+                }
+
+                diag.span_suggestion(
+                    sp,
+                    &format!("to link to the {}, {}", def.kind_name(), action),
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        } else {
+            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+            //                       ^     ~~~~
+            //                       |     link_range
+            //                       last_new_line_offset
+            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+
+            // Print the line containing the `link_range` and manually mark it with '^'s.
+            diag.note(&format!(
+                "the link appears in this line:\n\n{line}\n\
+                 {indicator: <before$}{indicator:^<found$}",
+                line=line,
+                indicator="",
+                before=link_range.start - last_new_line_offset,
+                found=link_range.len(),
+            ));
+        }
+    }
+
+    diag.emit();
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment.
