@@ -3,7 +3,8 @@
 use crate::utils::get_attr;
 use rustc::hir;
 use rustc::hir::print;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::session::Session;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::Attribute;
 
@@ -43,14 +44,14 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
-        if !has_attr(&item.attrs) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
-        if !has_attr(&item.attrs) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         println!("impl item `{}`", item.ident.name);
@@ -100,14 +101,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     //
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if !has_attr(&expr.attrs) {
+        if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
     fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
-        if !has_attr(&arm.attrs) {
+        if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
         for pat in &arm.pats {
@@ -122,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-        if !has_attr(stmt.node.attrs()) {
+        if !has_attr(cx.sess(), stmt.node.attrs()) {
             return;
         }
         match stmt.node {
@@ -148,8 +149,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     //
 }
 
-fn has_attr(attrs: &[Attribute]) -> bool {
-    get_attr(attrs, "dump").count() > 0
+fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
+    get_attr(sess, attrs, "dump").count() > 0
 }
 
 #[allow(clippy::similar_names)]
