@@ -134,7 +134,11 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w, "{:?}: {}", Place::Local(arg), escape(&mir.local_decls[arg].ty))?;
+        write!(w,
+               "{:?}: {}",
+               Place::Base(PlaceBase::Local(arg)),
+               escape(&mir.local_decls[arg].ty)
+        )?;
     }
 
     write!(w, ") -&gt; {}", escape(mir.return_ty()))?;
@@ -150,10 +154,10 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty), name)?;
+                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
         } else {
             write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty))?;
+                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
         }
     }
 

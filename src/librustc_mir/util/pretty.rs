@@ -625,7 +625,7 @@ fn write_mir_sig(
             if i != 0 {
                 write!(w, ", ")?;
             }
-            write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
+            write!(w, "{:?}: {}", Place::Base(PlaceBase::Local(arg)), mir.local_decls[arg].ty)?;
         }
 
         write!(w, ") -> {}", mir.return_ty())?;

@@ -33,13 +33,13 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
                 rev_lookup: MovePathLookup {
-                    locals: mir.local_decls.indices().map(Place::Local).map(|v| {
+                    locals: mir.local_decls.indices().map(PlaceBase::Local).map(|v| {
                         Self::new_move_path(
                             &mut move_paths,
                             &mut path_map,
                             &mut init_path_map,
                             None,
-                            v,
+                            Place::Base(v),
                         )
                     }).collect(),
                     projections: Default::default(),
@@ -96,9 +96,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     {
         debug!("lookup({:?})", place);
         match *place {
-            Place::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
-            Place::Promoted(..) |
-            Place::Static(..) => {
+            Place::Base(PlaceBase::Local(local)) => Ok(self.builder.data.rev_lookup.locals[local]),
+            Place::Base(PlaceBase::Promoted(..)) |
+            Place::Base(PlaceBase::Static(..)) => {
                 Err(MoveError::cannot_move_out_of(self.loc, Static))
             }
             Place::Projection(ref proj) => {
@@ -285,7 +285,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(&Place::Local(local));
+                self.gather_move(&Place::Base(PlaceBase::Local(local)));
             }
             StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span,
@@ -345,7 +345,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
-                self.gather_move(&Place::Local(RETURN_PLACE));
+                self.gather_move(&Place::RETURN_PLACE);
             }
 
             TerminatorKind::Assert { ref cond, .. } => {

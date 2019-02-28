@@ -6,8 +6,8 @@ use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{Context, MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
-    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand, Place, Projection,
-    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
+    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand, Place, PlaceBase,
+    Projection, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -245,7 +245,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(Cause::LiveVar(local, location)) => {
                 let span = mir.source_info(location).span;
                 let spans = self
-                    .move_spans(&Place::Local(local), location)
+                    .move_spans(&Place::Base(PlaceBase::Local(local)), location)
                     .or_else(|| self.borrow_spans(span, location));
 
                 let borrow_location = context.loc;
@@ -265,7 +265,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let mut should_note_order = false;
                 if mir.local_decls[local].name.is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Place::Local(borrowed_local) = place {
+                        if let Place::Base(PlaceBase::Local(borrowed_local)) = place {
                             let dropped_local_scope = mir.local_decls[local].visibility_scope;
                             let borrowed_local_scope =
                                 mir.local_decls[*borrowed_local].visibility_scope;
@@ -481,7 +481,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
                             Operand::Constant(c) => c.span,
-                            Operand::Copy(Place::Local(l)) | Operand::Move(Place::Local(l)) => {
+                            Operand::Copy(Place::Base(PlaceBase::Local(l))) |
+                            Operand::Move(Place::Base(PlaceBase::Local(l))) => {
                                 let local_decl = &self.mir.local_decls[*l];
                                 if local_decl.name.is_none() {
                                     local_decl.source_info.span
@@ -522,7 +523,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(Place::Local(local), _),
+            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _),
             ..
         }) = stmt
         {
@@ -547,9 +548,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // The only kind of statement that we care about is assignments...
                 if let StatementKind::Assign(place, box rvalue) = &stmt.kind {
                     let into = match place {
-                        Place::Local(into) => into,
+                        Place::Base(PlaceBase::Local(into)) => into,
                         Place::Projection(box Projection {
-                            base: Place::Local(into),
+                            base: Place::Base(PlaceBase::Local(into)),
                             elem: ProjectionElem::Deref,
                         }) => into,
                         _ => {
@@ -563,8 +564,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
                         Rvalue::Use(operand) => match operand {
-                            Operand::Copy(Place::Local(from))
-                            | Operand::Move(Place::Local(from))
+                            Operand::Copy(Place::Base(PlaceBase::Local(from)))
+                            | Operand::Move(Place::Base(PlaceBase::Local(from)))
                                 if *from == target =>
                             {
                                 target = *into;
@@ -574,8 +575,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // If we see a unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(CastKind::Unsize, operand, ty) => match operand {
-                            Operand::Copy(Place::Local(from))
-                            | Operand::Move(Place::Local(from))
+                            Operand::Copy(Place::Base(PlaceBase::Local(from)))
+                            | Operand::Move(Place::Base(PlaceBase::Local(from)))
                                 if *from == target =>
                             {
                                 debug!("was_captured_by_trait_object: ty={:?}", ty);
@@ -605,7 +606,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
                 if let TerminatorKind::Call {
-                    destination: Some((Place::Local(dest), block)),
+                    destination: Some((Place::Base(PlaceBase::Local(dest)), block)),
                     args,
                     ..
                 } = &terminator.kind
@@ -616,7 +617,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                     // Check if one of the arguments to this function is the target place.
                     let found_target = args.iter().any(|arg| {
-                        if let Operand::Move(Place::Local(potential)) = arg {
+                        if let Operand::Move(Place::Base(PlaceBase::Local(potential))) = arg {
                             *potential == target
                         } else {
                             false

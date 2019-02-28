@@ -3,7 +3,7 @@
 
 
 use rustc::hir::def::Def;
-use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
@@ -267,7 +267,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *place {
-            Place::Local(loc) => self.places[loc].clone(),
+            Place::Base(PlaceBase::Local(loc)) => self.places[loc].clone(),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
@@ -282,7 +282,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 // an `Index` projection would throw us off-track.
                 _ => None,
             },
-            Place::Promoted(ref promoted) => {
+            Place::Base(PlaceBase::Promoted(ref promoted)) => {
                 let generics = self.tcx.generics_of(self.source.def_id());
                 if generics.requires_monomorphization(self.tcx) {
                     // FIXME: can't handle code with generics
@@ -556,7 +556,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                 .to_ty(self.tcx);
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place::Local(local) = *place {
+                    if let Place::Base(PlaceBase::Local(local)) = *place {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
@@ -591,7 +591,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             while let Place::Projection(ref proj) = *place {
                                 place = &proj.base;
                             }
-                            if let Place::Local(local) = *place {
+                            if let Place::Base(PlaceBase::Local(local)) = *place {
                                 self.places[local] = None;
                             }
                         },
