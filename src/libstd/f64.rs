@@ -32,11 +32,13 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = 3.99_f64;
+    /// let f = 3.7_f64;
     /// let g = 3.0_f64;
+    /// let h = -3.7_f64;
     ///
     /// assert_eq!(f.floor(), 3.0);
     /// assert_eq!(g.floor(), 3.0);
+    /// assert_eq!(h.floor(), -4.0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -84,11 +86,13 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = 3.3_f64;
-    /// let g = -3.7_f64;
+    /// let f = 3.7_f64;
+    /// let g = 3.0_f64;
+    /// let h = -3.7_f64;
     ///
     /// assert_eq!(f.trunc(), 3.0);
-    /// assert_eq!(g.trunc(), -3.0);
+    /// assert_eq!(g.trunc(), 3.0);
+    /// assert_eq!(h.trunc(), -3.0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
