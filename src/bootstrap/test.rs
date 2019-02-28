@@ -4,7 +4,7 @@
 //! our CI.
 
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::iter;
@@ -638,52 +638,15 @@ impl Step for RustdocJSNotStd {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if let Some(ref nodejs) = builder.config.nodejs {
-            builder.ensure(crate::doc::Std {
+        if builder.config.nodejs.is_some() {
+            builder.ensure(Compiletest {
+                compiler: self.compiler,
                 target: self.target,
-                stage: builder.top_stage,
+                mode: "js-doc-test",
+                suite: "rustdoc-js",
+                path: None,
+                compare_mode: None,
             });
-
-            let mut tests_to_run = Vec::new();
-            let out = Path::new("build").join(&*self.host)
-                                        .join(&format!("stage{}",
-                                                       builder.top_stage.to_string().as_str()))
-                                        .join("tests")
-                                        .join("rustdoc-js");
-
-            if let Ok(it) = fs::read_dir("src/test/rustdoc-js/") {
-                for entry in it {
-                    if let Ok(entry) = entry {
-                        let path = entry.path();
-                        if path.extension() != Some(&OsStr::new("rs")) || !path.is_file() {
-                            continue
-                        }
-                        let path_clone = path.clone();
-                        let file_stem = path_clone.file_stem().expect("cannot get file stem");
-                        let out = out.join(file_stem);
-                        let mut cmd = builder.rustdoc_cmd(self.host);
-                        cmd.arg("-o");
-                        cmd.arg(out);
-                        cmd.arg(path);
-                        if if builder.config.verbose_tests {
-                            try_run(builder, &mut cmd)
-                        } else {
-                            try_run_quiet(builder, &mut cmd)
-                        } {
-                            tests_to_run.push(file_stem.to_os_string());
-                        }
-                    }
-                }
-            }
-            assert!(!tests_to_run.is_empty(), "no rustdoc-js test generated...");
-
-            tests_to_run.insert(0, "src/tools/rustdoc-js/tester.js".into());
-            tests_to_run.insert(1, out.into());
-
-            let mut command = Command::new(nodejs);
-            command.args(&tests_to_run);
-
-            builder.run(&mut command);
         } else {
             builder.info(
                 "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
@@ -1070,12 +1033,13 @@ impl Step for Compiletest {
             .arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
-        let is_rustdoc_ui = suite.ends_with("rustdoc-ui");
+        let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
             || (mode == "run-make" && suite.ends_with("fulldeps"))
-            || (mode == "ui" && is_rustdoc_ui)
+            || (mode == "ui" && is_rustdoc)
+            || mode == "js-doc-test"
         {
             cmd.arg("--rustdoc-path")
                 .arg(builder.rustdoc(compiler.host));
@@ -1109,12 +1073,12 @@ impl Step for Compiletest {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        let mut flags = if is_rustdoc_ui {
+        let mut flags = if is_rustdoc {
             Vec::new()
         } else {
             vec!["-Crpath".to_string()]
         };
-        if !is_rustdoc_ui {
+        if !is_rustdoc {
             if builder.config.rust_optimize_tests {
                 flags.push("-O".to_string());
             }
