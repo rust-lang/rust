@@ -178,16 +178,16 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
-    fn new_operand<Cx: CodegenMethods<'tcx, Value = V>>(
-        cx: &Cx,
+impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
+    fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
         layout: TyLayout<'tcx>,
     ) -> LocalRef<'tcx, V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(Some(OperandRef::new_zst(cx, layout)))
+            LocalRef::Operand(Some(OperandRef::new_zst(bx, layout)))
         } else {
             LocalRef::Operand(None)
         }
@@ -275,7 +275,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bx.cx(), layout);
+                    return LocalRef::new_operand(&mut bx, layout);
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
@@ -320,7 +320,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bx.cx(), layout)
+                    LocalRef::new_operand(&mut bx, layout)
                 }
             }
         };
@@ -529,7 +529,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
                 PassMode::Ignore(IgnoreMode::Zst) => {
-                    return local(OperandRef::new_zst(bx.cx(), arg.layout));
+                    return local(OperandRef::new_zst(bx, arg.layout));
                 }
                 PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {

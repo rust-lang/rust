@@ -523,8 +523,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
-                (bx, OperandRef::new_zst(self.cx,
-                    self.cx.layout_of(self.monomorphize(&ty))))
+                let operand = OperandRef::new_zst(
+                    &mut bx,
+                    self.cx.layout_of(self.monomorphize(&ty)),
+                );
+                (bx, operand)
             }
         }
     }
