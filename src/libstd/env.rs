@@ -156,7 +156,7 @@ impl Iterator for Vars {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Vars { .. }")
     }
 }
@@ -170,7 +170,7 @@ impl Iterator for VarsOs {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("VarsOs { .. }")
     }
 }
@@ -253,7 +253,7 @@ pub enum VarError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for VarError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             VarError::NotPresent => write!(f, "environment variable not found"),
             VarError::NotUnicode(ref s) => {
@@ -387,7 +387,7 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths {
+pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
 }
 
@@ -400,7 +400,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for SplitPaths<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("SplitPaths { .. }")
     }
 }
@@ -488,7 +488,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 
 #[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
@@ -757,7 +757,7 @@ impl DoubleEndedIterator for Args {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Args")
             .field("inner", &self.inner.inner.inner_debug())
             .finish()
@@ -790,7 +790,7 @@ impl DoubleEndedIterator for ArgsOs {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ArgsOs")
             .field("inner", &self.inner.inner_debug())
             .finish()

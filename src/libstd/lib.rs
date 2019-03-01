@@ -211,7 +211,6 @@
 
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
-#![allow(elided_lifetimes_in_paths)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]

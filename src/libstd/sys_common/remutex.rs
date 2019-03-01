@@ -72,7 +72,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(&self) -> LockResult<ReentrantMutexGuard<T>> {
+    pub fn lock(&self) -> LockResult<ReentrantMutexGuard<'_, T>> {
         unsafe { self.inner.lock() }
         ReentrantMutexGuard::new(&self)
     }
@@ -89,7 +89,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(&self) -> TryLockResult<ReentrantMutexGuard<T>> {
+    pub fn try_lock(&self) -> TryLockResult<ReentrantMutexGuard<'_, T>> {
         if unsafe { self.inner.try_lock() } {
             Ok(ReentrantMutexGuard::new(&self)?)
         } else {
@@ -108,7 +108,7 @@ impl<T> Drop for ReentrantMutex<T> {
 }
 
 impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.try_lock() {
             Ok(guard) => f.debug_struct("ReentrantMutex").field("data", &*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
@@ -117,7 +117,9 @@ impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
                 impl fmt::Debug for LockedPlaceholder {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.write_str("<locked>")
+                    }
                 }
 
                 f.debug_struct("ReentrantMutex").field("data", &LockedPlaceholder).finish()

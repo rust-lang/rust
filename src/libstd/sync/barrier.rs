@@ -59,7 +59,7 @@ pub struct BarrierWaitResult(bool);
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Barrier {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Barrier { .. }")
     }
 }
@@ -151,7 +151,7 @@ impl Barrier {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for BarrierWaitResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BarrierWaitResult")
             .field("is_leader", &self.is_leader())
             .finish()

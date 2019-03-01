@@ -597,7 +597,7 @@ impl IntoInner<fs_imp::File> for File {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for File {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
@@ -1087,7 +1087,7 @@ impl Metadata {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Metadata")
             .field("file_type", &self.file_type())
             .field("is_dir", &self.is_dir())
@@ -1394,7 +1394,7 @@ impl DirEntry {
 
 #[stable(feature = "dir_entry_debug", since = "1.13.0")]
 impl fmt::Debug for DirEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DirEntry")
             .field(&self.path())
             .finish()

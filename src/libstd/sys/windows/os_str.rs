@@ -33,13 +33,13 @@ impl AsInner<Wtf8> for Buf {
 }
 
 impl fmt::Debug for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.as_slice(), formatter)
     }
 }
 
 impl fmt::Display for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_slice(), formatter)
     }
 }
@@ -49,13 +49,13 @@ pub struct Slice {
 }
 
 impl fmt::Debug for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, formatter)
     }
 }
 
 impl fmt::Display for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, formatter)
     }
 }
@@ -139,7 +139,7 @@ impl Slice {
         self.inner.as_str()
     }
 
-    pub fn to_string_lossy(&self) -> Cow<str> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
         self.inner.to_string_lossy()
     }
 

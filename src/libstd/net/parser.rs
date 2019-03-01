@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
     // Commit only if parser returns Some
     fn read_atomically<T, F>(&mut self, cb: F) -> Option<T> where
-        F: FnOnce(&mut Parser) -> Option<T>,
+        F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
         let pos = self.pos;
         let r = cb(self);
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
 
     // Commit only if parser read till EOF
     fn read_till_eof<T, F>(&mut self, cb: F) -> Option<T> where
-        F: FnOnce(&mut Parser) -> Option<T>,
+        F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
         self.read_atomically(move |p| {
             cb(p).filter(|_| p.is_eof())
@@ -48,10 +48,10 @@ impl<'a> Parser<'a> {
     }
 
     // Return result of first successful parser
-    fn read_or<T>(&mut self, parsers: &mut [Box<dyn FnMut(&mut Parser) -> Option<T> + 'static>])
+    fn read_or<T>(&mut self, parsers: &mut [Box<dyn FnMut(&mut Parser<'_>) -> Option<T> + 'static>])
                -> Option<T> {
         for pf in parsers {
-            if let Some(r) = self.read_atomically(|p: &mut Parser| pf(p)) {
+            if let Some(r) = self.read_atomically(|p: &mut Parser<'_>| pf(p)) {
                 return Some(r);
             }
         }
@@ -64,9 +64,9 @@ impl<'a> Parser<'a> {
                                        pb: PB,
                                        pc: PC)
                                        -> Option<(A, B, C)> where
-        PA: FnOnce(&mut Parser) -> Option<A>,
-        PB: FnOnce(&mut Parser) -> Option<B>,
-        PC: FnOnce(&mut Parser) -> Option<C>,
+        PA: FnOnce(&mut Parser<'_>) -> Option<A>,
+        PB: FnOnce(&mut Parser<'_>) -> Option<B>,
+        PC: FnOnce(&mut Parser<'_>) -> Option<C>,
     {
         self.read_atomically(move |p| {
             let a = pa(p);
@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
             Ipv6Addr::new(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 
-        fn read_groups(p: &mut Parser, groups: &mut [u16; 8], limit: usize)
+        fn read_groups(p: &mut Parser<'_>, groups: &mut [u16; 8], limit: usize)
                        -> (usize, bool) {
             let mut i = 0;
             while i < limit {
@@ -244,15 +244,15 @@ impl<'a> Parser<'a> {
     }
 
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
-        let ipv4_addr = |p: &mut Parser| p.read_ipv4_addr().map(IpAddr::V4);
-        let ipv6_addr = |p: &mut Parser| p.read_ipv6_addr().map(IpAddr::V6);
+        let ipv4_addr = |p: &mut Parser<'_>| p.read_ipv4_addr().map(IpAddr::V4);
+        let ipv6_addr = |p: &mut Parser<'_>| p.read_ipv6_addr().map(IpAddr::V6);
         self.read_or(&mut [Box::new(ipv4_addr), Box::new(ipv6_addr)])
     }
 
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
-        let ip_addr = |p: &mut Parser| p.read_ipv4_addr();
-        let colon = |p: &mut Parser| p.read_given_char(':');
-        let port = |p: &mut Parser| {
+        let ip_addr = |p: &mut Parser<'_>| p.read_ipv4_addr();
+        let colon = |p: &mut Parser<'_>| p.read_given_char(':');
+        let port = |p: &mut Parser<'_>| {
             p.read_number(10, 5, 0x10000).map(|n| n as u16)
         };
 
@@ -263,14 +263,14 @@ impl<'a> Parser<'a> {
     }
 
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
-        let ip_addr = |p: &mut Parser| {
-            let open_br = |p: &mut Parser| p.read_given_char('[');
-            let ip_addr = |p: &mut Parser| p.read_ipv6_addr();
-            let clos_br = |p: &mut Parser| p.read_given_char(']');
+        let ip_addr = |p: &mut Parser<'_>| {
+            let open_br = |p: &mut Parser<'_>| p.read_given_char('[');
+            let ip_addr = |p: &mut Parser<'_>| p.read_ipv6_addr();
+            let clos_br = |p: &mut Parser<'_>| p.read_given_char(']');
             p.read_seq_3(open_br, ip_addr, clos_br).map(|t| t.1)
         };
-        let colon = |p: &mut Parser| p.read_given_char(':');
-        let port = |p: &mut Parser| {
+        let colon = |p: &mut Parser<'_>| p.read_given_char(':');
+        let port = |p: &mut Parser<'_>| {
             p.read_number(10, 5, 0x10000).map(|n| n as u16)
         };
 
@@ -281,8 +281,8 @@ impl<'a> Parser<'a> {
     }
 
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
-        let v4 = |p: &mut Parser| p.read_socket_addr_v4().map(SocketAddr::V4);
-        let v6 = |p: &mut Parser| p.read_socket_addr_v6().map(SocketAddr::V6);
+        let v4 = |p: &mut Parser<'_>| p.read_socket_addr_v4().map(SocketAddr::V4);
+        let v6 = |p: &mut Parser<'_>| p.read_socket_addr_v6().map(SocketAddr::V6);
         self.read_or(&mut [Box::new(v4), Box::new(v6)])
     }
 }
@@ -391,7 +391,7 @@ pub struct AddrParseError(());
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str(self.description())
     }
 }

@@ -90,7 +90,7 @@ impl SocketAddr {
 }
 #[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for SocketAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "SocketAddr")
     }
 }
@@ -114,7 +114,7 @@ pub struct UnixStream(FileDesc);
 
 #[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for UnixStream {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
         builder.field("fd", &self.0.raw());
         if let Ok(addr) = self.local_addr() {
@@ -503,7 +503,7 @@ pub struct UnixListener(FileDesc);
 
 #[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for UnixListener {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
         builder.field("fd", &self.0.raw());
         if let Ok(addr) = self.local_addr() {
