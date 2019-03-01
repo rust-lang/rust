@@ -5,6 +5,7 @@ use crate::ty::{self, InferConst};
 
 use std::cmp;
 use std::marker::PhantomData;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
@@ -22,6 +23,8 @@ pub enum ConstVariableOrigin {
     ConstParameterDefinition(Span, InternedString),
     SubstitutionPlaceholder(Span),
 }
+
+pub type ConstVariableMap<'tcx> = FxHashMap<ty::ConstVid<'tcx>, ConstVariableOrigin>;
 
 struct ConstVariableData {
     origin: ConstVariableOrigin,
@@ -183,6 +186,32 @@ impl<'tcx> ConstVariableTable<'tcx> {
         let Snapshot { snapshot, relation_snapshot } = s;
         self.values.commit(snapshot);
         self.relations.commit(relation_snapshot);
+    }
+
+    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
+    /// const-variables created during the snapshot, and the values
+    /// `{V2}` are the root variables that they were unified with,
+    /// along with their origin.
+    pub fn consts_created_since_snapshot(
+        &mut self,
+        s: &Snapshot<'tcx>
+    ) -> ConstVariableMap<'tcx> {
+        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
+
+        actions_since_snapshot
+            .iter()
+            .filter_map(|action| match action {
+                &sv::UndoLog::NewElem(index) => Some(ty::ConstVid {
+                    index: index as u32,
+                    phantom: PhantomData,
+                }),
+                _ => None,
+            })
+            .map(|vid| {
+                let origin = self.values.get(vid.index as usize).origin.clone();
+                (vid, origin)
+            })
+            .collect()
     }
 }
 
