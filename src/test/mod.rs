@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::str::Chars;
 
 use crate::config::{Color, Config, EmitMode, FileName, ReportTactic};
-use crate::formatting::{ModifiedChunk, SourceFile};
+use crate::formatting::{ModifiedChunk, ReportedErrors, SourceFile};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
 use crate::source_file;
 use crate::{FormatReport, Input, Session};
@@ -288,6 +288,30 @@ fn stdin_parser_panic_caught() {
 
         assert!(session.has_parsing_errors());
     }
+}
+
+/// Ensures that `EmitMode::ModifiedLines` works with input from `stdin`. Useful
+/// when embedding Rustfmt (e.g. inside RLS).
+#[test]
+fn stdin_works_with_modified_lines() {
+    let input = "\nfn\n some( )\n{\n}\nfn main () {}\n";
+    let output = "1 6 2\nfn some() {}\nfn main() {}\n";
+
+    let input = Input::Text(input.to_owned());
+    let mut config = Config::default();
+    config.set().emit_mode(EmitMode::ModifiedLines);
+    let mut buf: Vec<u8> = vec![];
+    {
+        let mut session = Session::new(config, Some(&mut buf));
+        session.format(input).unwrap();
+        let errors = ReportedErrors {
+            has_diff: true,
+            ..Default::default()
+        };
+        assert_eq!(session.errors, errors);
+    }
+    let newline = if cfg!(windows) { "\r\n" } else { "\n" };
+    assert_eq!(buf, output.replace('\n', newline).as_bytes());
 }
 
 #[test]

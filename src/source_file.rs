@@ -1,5 +1,8 @@
 use std::fs;
 use std::io::{self, Write};
+use std::path::Path;
+
+use syntax::source_map::SourceMap;
 
 use crate::checkstyle::output_checkstyle_file;
 use crate::config::{Config, EmitMode, FileName, Verbosity};
@@ -26,7 +29,7 @@ where
         write!(out, "{}", crate::checkstyle::header())?;
     }
     for &(ref filename, ref text) in source_file {
-        write_file(text, filename, out, config)?;
+        write_file(None, filename, text, out, config)?;
     }
     if config.emit_mode() == EmitMode::Checkstyle {
         write!(out, "{}", crate::checkstyle::footer())?;
@@ -36,24 +39,46 @@ where
 }
 
 pub fn write_file<T>(
-    formatted_text: &str,
+    source_map: Option<&SourceMap>,
     filename: &FileName,
+    formatted_text: &str,
     out: &mut T,
     config: &Config,
 ) -> Result<bool, io::Error>
 where
     T: Write,
 {
-    let filename_to_path = || match *filename {
-        FileName::Real(ref path) => path,
-        _ => panic!("cannot format `{}` and emit to files", filename),
+    fn ensure_real_path(filename: &FileName) -> &Path {
+        match *filename {
+            FileName::Real(ref path) => path,
+            _ => panic!("cannot format `{}` and emit to files", filename),
+        }
+    }
+
+    impl From<&FileName> for syntax_pos::FileName {
+        fn from(filename: &FileName) -> syntax_pos::FileName {
+            match filename {
+                FileName::Real(path) => syntax_pos::FileName::Real(path.to_owned()),
+                FileName::Stdin => syntax_pos::FileName::Custom("stdin".to_owned()),
+            }
+        }
+    }
+
+    // If parse session is around (cfg(not(test))) then try getting source from
+    // there instead of hitting the file system. This also supports getting
+    // original text for `FileName::Stdin`.
+    let original_text = source_map
+        .and_then(|x| x.get_source_file(&filename.into()))
+        .and_then(|x| x.src.as_ref().map(|x| x.to_string()));
+    let original_text = match original_text {
+        Some(ori) => ori,
+        None => fs::read_to_string(ensure_real_path(filename))?,
     };
 
     match config.emit_mode() {
         EmitMode::Files if config.make_backup() => {
-            let filename = filename_to_path();
-            let ori = fs::read_to_string(filename)?;
-            if ori != formatted_text {
+            let filename = ensure_real_path(filename);
+            if original_text != formatted_text {
                 // Do a little dance to make writing safer - write to a temp file
                 // rename the original to a .bk, then rename the temp file to the
                 // original.
@@ -67,9 +92,9 @@ where
         }
         EmitMode::Files => {
             // Write text directly over original file if there is a diff.
-            let filename = filename_to_path();
-            let ori = fs::read_to_string(filename)?;
-            if ori != formatted_text {
+            let filename = ensure_real_path(filename);
+
+            if original_text != formatted_text {
                 fs::write(filename, formatted_text)?;
             }
         }
@@ -80,27 +105,23 @@ where
             write!(out, "{}", formatted_text)?;
         }
         EmitMode::ModifiedLines => {
-            let filename = filename_to_path();
-            let ori = fs::read_to_string(filename)?;
-            let mismatch = make_diff(&ori, formatted_text, 0);
+            let mismatch = make_diff(&original_text, formatted_text, 0);
             let has_diff = !mismatch.is_empty();
             output_modified(out, mismatch);
             return Ok(has_diff);
         }
         EmitMode::Checkstyle => {
-            let filename = filename_to_path();
-            let ori = fs::read_to_string(filename)?;
-            let diff = make_diff(&ori, formatted_text, 3);
+            let filename = ensure_real_path(filename);
+
+            let diff = make_diff(&original_text, formatted_text, 3);
             output_checkstyle_file(out, filename, diff)?;
         }
         EmitMode::Diff => {
-            let filename = filename_to_path();
-            let ori = fs::read_to_string(filename)?;
-            let mismatch = make_diff(&ori, formatted_text, 3);
+            let mismatch = make_diff(&original_text, formatted_text, 3);
             let has_diff = !mismatch.is_empty();
             print_diff(
                 mismatch,
-                |line_num| format!("Diff in {} at line {}:", filename.display(), line_num),
+                |line_num| format!("Diff in {} at line {}:", filename, line_num),
                 config,
             );
             return Ok(has_diff);

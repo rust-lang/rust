@@ -181,8 +181,12 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         self.report
             .add_non_formatted_ranges(visitor.skipped_range.clone());
 
-        self.handler
-            .handle_formatted_file(path, visitor.buffer.to_owned(), &mut self.report)
+        self.handler.handle_formatted_file(
+            self.parse_session.source_map(),
+            path,
+            visitor.buffer.to_owned(),
+            &mut self.report,
+        )
     }
 }
 
@@ -190,6 +194,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
 trait FormatHandler {
     fn handle_formatted_file(
         &mut self,
+        source_map: &SourceMap,
         path: FileName,
         result: String,
         report: &mut FormatReport,
@@ -200,13 +205,14 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
     // Called for each formatted file.
     fn handle_formatted_file(
         &mut self,
+        source_map: &SourceMap,
         path: FileName,
         result: String,
         report: &mut FormatReport,
     ) -> Result<(), ErrorKind> {
         if let Some(ref mut out) = self.out {
-            match source_file::write_file(&result, &path, out, &self.config) {
-                Ok(b) if b => report.add_diff(),
+            match source_file::write_file(Some(source_map), &path, &result, out, &self.config) {
+                Ok(has_diff) if has_diff => report.add_diff(),
                 Err(e) => {
                     // Create a new error with path_str to help users see which files failed
                     let err_msg = format!("{}: {}", path, e);
@@ -299,7 +305,7 @@ impl FormattingError {
 
 pub(crate) type FormatErrorMap = HashMap<FileName, Vec<FormattingError>>;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 pub(crate) struct ReportedErrors {
     // Encountered e.g., an IO error.
     pub(crate) has_operational_errors: bool,
