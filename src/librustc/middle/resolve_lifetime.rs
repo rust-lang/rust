@@ -671,13 +671,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // In the future, this should be fixed and this error should be removed.
                         let def = self.map.defs.get(&lifetime.hir_id).cloned();
                         if let Some(Region::LateBound(_, def_id, _)) = def {
-                            if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
+                            if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
                                 // Ensure that the parent of the def is an item, not HRTB
-                                let parent_id = self.tcx.hir().get_parent_node(node_id);
-                                let parent_impl_id = hir::ImplItemId { node_id: parent_id };
-                                let parent_trait_id = hir::TraitItemId { node_id: parent_id };
+                                let parent_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+                                let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
+                                let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
                                 let krate = self.tcx.hir().forest.krate();
-                                if !(krate.items.contains_key(&parent_id)
+                                let parent_node_id = self.tcx.hir().hir_to_node_id(parent_id);
+                                if !(krate.items.contains_key(&parent_node_id)
                                     || krate.impl_items.contains_key(&parent_impl_id)
                                     || krate.trait_items.contains_key(&parent_trait_id))
                                 {
@@ -2072,10 +2073,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .expect_item_by_hir_id(self.tcx.hir().get_parent_item(parent))
                     .node
                 {
-                    let parent_node_id = self.tcx.hir().hir_to_node_id(parent);
                     assoc_item_kind = trait_items
                         .iter()
-                        .find(|ti| ti.id.node_id == parent_node_id)
+                        .find(|ti| ti.id.hir_id == parent)
                         .map(|ti| ti.kind);
                 }
                 match *m {
@@ -2094,10 +2094,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .node
                 {
                     impl_self = Some(self_ty);
-                    let parent_node_id = self.tcx.hir().hir_to_node_id(parent);
                     assoc_item_kind = impl_items
                         .iter()
-                        .find(|ii| ii.id.node_id == parent_node_id)
+                        .find(|ii| ii.id.hir_id == parent)
                         .map(|ii| ii.kind);
                 }
                 Some(body)

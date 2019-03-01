@@ -355,11 +355,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
         if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             let node_id = self.tcx.hir().hir_to_node_id(item.hir_id);
             if !self.access_levels.is_reachable(node_id) {
-                // FIXME(@ljedrz): rework back to a nice extend when item Ids contain HirId
-                for impl_item_ref in impl_item_refs {
-                    let hir_id = self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id);
-                    self.worklist.push(hir_id);
-                }
+                self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
 
                 let trait_def_id = match trait_ref.path.def {
                     Def::Trait(def_id) => def_id,

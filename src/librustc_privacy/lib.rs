@@ -515,15 +515,13 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Impl(.., ref trait_ref, _, ref impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     if trait_ref.is_some() || impl_item_ref.vis.node.is_pub() {
-                        let hir_id = self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id);
-                        self.update(hir_id, item_level);
+                        self.update(impl_item_ref.id.hir_id, item_level);
                     }
                 }
             }
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
-                    let hir_id = self.tcx.hir().node_to_hir_id(trait_item_ref.id.node_id);
-                    self.update(hir_id, item_level);
+                    self.update(trait_item_ref.id.hir_id, item_level);
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
@@ -590,8 +588,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates();
 
                     for trait_item_ref in trait_item_refs {
-                        let hir_id = self.tcx.hir().node_to_hir_id(trait_item_ref.id.node_id);
-                        let mut reach = self.reach(hir_id, item_level);
+                        let mut reach = self.reach(trait_item_ref.id.hir_id, item_level);
                         reach.generics().predicates();
 
                         if trait_item_ref.kind == AssociatedItemKind::Type &&
@@ -614,10 +611,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_item_refs {
-                        let hir_id = self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id);
-                        let impl_item_level = self.get(hir_id);
+                        let impl_item_level = self.get(impl_item_ref.id.hir_id);
                         if impl_item_level.is_some() {
-                            self.reach(hir_id, impl_item_level)
+                            self.reach(impl_item_ref.id.hir_id, impl_item_level)
                                 .generics().predicates().ty();
                         }
                     }
@@ -1326,7 +1322,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                          hir::ImplItemKind::Const(..) |
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(
-                                                impl_item_ref.id.node_id)
+                                                self.tcx.hir().hir_to_node_id(
+                                                    impl_item_ref.id.hir_id))
                                          }
                                          hir::ImplItemKind::Existential(..) |
                                          hir::ImplItemKind::Type(_) => false,
@@ -1392,8 +1389,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_item_refs {
-                        let hir_id = self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id);
-                        if self.item_is_public(&hir_id, &impl_item_ref.vis) {
+                        if self.item_is_public(&impl_item_ref.id.hir_id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
                                 AssociatedItemKind::Const => {
@@ -1704,8 +1700,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
                 for trait_item_ref in trait_item_refs {
-                    let hir_id = tcx.hir().node_to_hir_id(trait_item_ref.id.node_id);
-                    self.check_trait_or_impl_item(hir_id, trait_item_ref.kind,
+                    self.check_trait_or_impl_item(trait_item_ref.id.hir_id, trait_item_ref.kind,
                                                   trait_item_ref.defaultness, item_visibility);
                 }
             }
@@ -1754,8 +1749,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     } else {
                         impl_vis
                     };
-                    let hir_id = tcx.hir().node_to_hir_id(impl_item_ref.id.node_id);
-                    self.check_trait_or_impl_item(hir_id, impl_item_ref.kind,
+                    self.check_trait_or_impl_item(impl_item_ref.id.hir_id, impl_item_ref.kind,
                                                   impl_item_ref.defaultness, impl_item_vis);
                 }
             }

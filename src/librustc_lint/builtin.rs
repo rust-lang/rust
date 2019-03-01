@@ -447,8 +447,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.hir_id);
                     for trait_item_ref in trait_item_refs {
-                        let hir_id = cx.tcx.hir().node_to_hir_id(trait_item_ref.id.node_id);
-                        self.private_traits.insert(hir_id);
+                        self.private_traits.insert(trait_item_ref.id.hir_id);
                     }
                     return;
                 }
@@ -464,9 +463,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
-                                    let hir_id = cx.tcx.hir().node_to_hir_id(
-                                        impl_item_ref.id.node_id);
-                                    self.private_traits.insert(hir_id);
+                                    self.private_traits.insert(impl_item_ref.id.hir_id);
                                 }
                             }
                         }

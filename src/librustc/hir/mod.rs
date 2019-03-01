@@ -1657,7 +1657,7 @@ pub struct MethodSig {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1702,7 +1702,7 @@ pub enum TraitItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents anything within an `impl` block

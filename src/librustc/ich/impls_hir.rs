@@ -116,11 +116,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItemId {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItemId {
-            node_id
+            hir_id
         } = * self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            node_id.hash_stable(hcx, hasher);
+            hir_id.hash_stable(hcx, hasher);
         })
     }
 }
@@ -130,11 +130,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItemId {
-            node_id
+            hir_id
         } = * self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            node_id.hash_stable(hcx, hasher);
+            hir_id.hash_stable(hcx, hasher);
         })
     }
 }

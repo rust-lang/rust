@@ -469,8 +469,8 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
-                    let id = hir::TraitItemId { node_id: item.id };
                     let hir_item = lctx.lower_trait_item(item);
+                    let id = hir::TraitItemId { hir_id: hir_item.hir_id };
                     lctx.trait_items.insert(id, hir_item);
                     lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
                 });
@@ -480,8 +480,8 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
-                    let id = hir::ImplItemId { node_id: item.id };
                     let hir_item = lctx.lower_impl_item(item);
+                    let id = hir::ImplItemId { hir_id: hir_item.hir_id };
                     lctx.impl_items.insert(id, hir_item);
                     lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
                 });
@@ -3363,7 +3363,7 @@ impl<'a> LoweringContext<'a> {
             TraitItemKind::Macro(..) => unimplemented!(),
         };
         hir::TraitItemRef {
-            id: hir::TraitItemId { node_id: i.id },
+            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id).hir_id },
             ident: i.ident,
             span: i.span,
             defaultness: self.lower_defaultness(Defaultness::Default, has_default),
@@ -3427,7 +3427,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
-            id: hir::ImplItemId { node_id: i.id },
+            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id).hir_id },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),

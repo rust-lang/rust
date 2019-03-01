@@ -760,11 +760,11 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .source_map()
                             .span_to_snippet(trait_span)
                             .ok()?;
-                        let trait_m = tcx.hir().as_local_node_id(trait_m.def_id)?;
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { node_id: trait_m });
+                        let trait_m = tcx.hir().as_local_hir_id(trait_m.def_id)?;
+                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { hir_id: trait_m });
 
-                        let impl_m = tcx.hir().as_local_node_id(impl_m.def_id)?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { node_id: impl_m });
+                        let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
@@ -805,8 +805,8 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
-                        let impl_m = tcx.hir().as_local_node_id(impl_m.def_id)?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { node_id: impl_m });
+                        let impl_m = tcx.hir().as_local_hir_id(impl_m.def_id)?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
                         let input_tys = match impl_m.node {
                             hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
                             _ => unreachable!(),

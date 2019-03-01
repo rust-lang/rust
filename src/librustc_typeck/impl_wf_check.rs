@@ -108,7 +108,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
-        .map(|item_ref| tcx.hir().local_def_id(item_ref.id.node_id))
+        .map(|item_ref| tcx.hir().local_def_id_from_hir_id(item_ref.id.hir_id))
         .filter(|&def_id| {
             let item = tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()

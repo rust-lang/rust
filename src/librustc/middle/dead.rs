@@ -376,7 +376,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                             has_allow_dead_code_or_lang_attr(self.tcx,
                                                              impl_item.hir_id,
                                                              &impl_item.attrs) {
-                        self.worklist.push(self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id));
+                        self.worklist.push(impl_item_ref.id.hir_id);
                     }
                 }
             }
