@@ -318,7 +318,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         (place, _span): (&Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) {
+    ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
         let borrow_spans = self.retrieve_borrow_spans(borrow);
@@ -347,7 +347,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         self.explain_why_borrow_contains_point(context, borrow, None)
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
-        err.buffer(&mut self.errors_buffer);
+        err
     }
 
     pub(super) fn report_conflicting_borrow(
@@ -356,7 +356,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) {
+    ) -> DiagnosticBuilder<'cx> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -460,9 +460,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         "borrow occurs due to use of `{}`{}", desc_place, borrow_spans.describe()
                     ),
                 );
-                err.buffer(&mut self.errors_buffer);
 
-                return;
+                return err;
             }
 
             (BorrowKind::Unique, _, _, _, _, _) => {
@@ -563,7 +562,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             None,
         );
 
-        err.buffer(&mut self.errors_buffer);
+        err
     }
 
     /// Returns the description of the root place for a conflicting borrow and the full
