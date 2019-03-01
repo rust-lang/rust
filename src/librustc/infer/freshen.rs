@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
             Entry::Vacant(entry) => {
                 let index = self.freshen_count;
                 self.freshen_count += 1;
-                let t = self.infcx.tcx.mk_infer(freshener(index));
+                let t = self.infcx.tcx.mk_ty_infer(freshener(index));
                 entry.insert(t);
                 t
             }

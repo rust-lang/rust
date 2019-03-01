@@ -2652,7 +2652,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
-        self.mk_infer(TyVar(v))
+        self.mk_ty_infer(TyVar(v))
     }
 
     #[inline]
@@ -2665,16 +2665,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
-        self.mk_infer(IntVar(v))
+        self.mk_ty_infer(IntVar(v))
     }
 
     #[inline]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
-        self.mk_infer(FloatVar(v))
+        self.mk_ty_infer(FloatVar(v))
     }
 
     #[inline]
-    pub fn mk_infer(self, it: InferTy) -> Ty<'tcx> {
+    pub fn mk_ty_infer(self, it: InferTy) -> Ty<'tcx> {
         self.mk_ty(Infer(it))
     }
 
