@@ -2059,83 +2059,81 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
-    /// Recursively "iterates" over place components, generating a `PlaceComponents` list,
-    /// invoking `op` with a `PlaceComponentsIter`.
+    /// Recursively "iterates" over place components, generating a `PlaceBase` and
+    /// `PlaceProjections` list and invoking `op` with a `PlaceProjectionsIter`.
     pub fn iterate<R>(
         &self,
-        op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
+        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        self.iterate2(None, op)
+        self.iterate2(&PlaceProjections::Empty, op)
     }
 
     fn iterate2<R>(
         &self,
-        next: Option<&PlaceComponents<'_, 'tcx>>,
-        op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
+        next: &PlaceProjections<'_, 'tcx>,
+        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
         match self {
             Place::Projection(interior) => interior.base.iterate2(
-                Some(&PlaceComponents {
-                    component: self,
+                &PlaceProjections::List {
+                    projection: interior,
                     next,
-                }),
+                },
                 op,
             ),
 
-            Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
-                let list = PlaceComponents {
-                    component: self,
-                    next,
-                };
-                op(list.iter())
-            }
+            Place::Base(base) => op(base, next.iter()),
         }
     }
 }
 
-/// A linked list of places running up the stack; begins with the
-/// innermost place and extends to projections (e.g., `a.b` would have
-/// the place `a` with a "next" pointer to `a.b`). Created by
-/// `Place::iterate`.
+/// A linked list of projections running up the stack; begins with the
+/// innermost projection and extends to the outermost (e.g., `a.b.c`
+/// would have the place `b` with a "next" pointer to `b.c`).
+/// Created by `Place::iterate`.
 ///
 /// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-pub struct PlaceComponents<'p, 'tcx: 'p> {
-    pub component: &'p Place<'tcx>,
-    pub next: Option<&'p PlaceComponents<'p, 'tcx>>,
+pub enum PlaceProjections<'p, 'tcx: 'p> {
+    Empty,
+
+    List {
+        projection: &'p PlaceProjection<'tcx>,
+        next: &'p PlaceProjections<'p, 'tcx>,
+    }
 }
 
-impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
-    /// Converts a list of `Place` components into an iterator; this
-    /// iterator yields up a never-ending stream of `Option<&Place>`.
-    /// These begin with the "innermost" place and then with each
+impl<'p, 'tcx> PlaceProjections<'p, 'tcx> {
+    /// Converts a list of `PlaceProjection` components into an iterator;
+    /// this iterator yields up a never-ending stream of `Option<&Place>`.
+    /// These begin with the "innermost" projection and then with each
     /// projection therefrom. So given a place like `a.b.c` it would
     /// yield up:
     ///
     /// ```notrust
     /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
     /// ```
-    fn iter(&self) -> PlaceComponentsIter<'_, 'tcx> {
-        PlaceComponentsIter { value: Some(self) }
+    fn iter(&self) -> PlaceProjectionsIter<'_, 'tcx> {
+        PlaceProjectionsIter { value: self }
     }
 }
 
-/// Iterator over components; see `PlaceComponents::iter` for more
+/// Iterator over components; see `PlaceProjections::iter` for more
 /// information.
 ///
 /// N.B., this is not a *true* Rust iterator -- the code above just
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
-pub struct PlaceComponentsIter<'p, 'tcx: 'p> {
-    pub value: Option<&'p PlaceComponents<'p, 'tcx>>,
+pub struct PlaceProjectionsIter<'p, 'tcx: 'p> {
+    pub value: &'p PlaceProjections<'p, 'tcx>,
 }
 
-impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
-    pub fn next(&mut self) -> Option<&'p Place<'tcx>> {
-        if let Some(&PlaceComponents { component, next }) = self.value {
+impl<'p, 'tcx> PlaceProjectionsIter<'p, 'tcx> {
+    pub fn next(&mut self) -> Option<&'p PlaceProjection<'tcx>> {
+        if let &PlaceProjections::List { projection, next } = self.value {
             self.value = next;
-            Some(component)
+            Some(projection)
         } else {
             None
         }
