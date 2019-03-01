@@ -209,13 +209,13 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Place::Local(ref local) => {
+            mir::Place::Base(mir::PlaceBase::Local(ref local)) => {
                 local.hash_stable(hcx, hasher);
             }
-            mir::Place::Static(ref statik) => {
+            mir::Place::Base(mir::PlaceBase::Static(ref statik)) => {
                 statik.hash_stable(hcx, hasher);
             }
-            mir::Place::Promoted(ref promoted) => {
+            mir::Place::Base(mir::PlaceBase::Promoted(ref promoted)) => {
                 promoted.hash_stable(hcx, hasher);
             }
             mir::Place::Projection(ref place_projection) => {

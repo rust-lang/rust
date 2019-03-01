@@ -186,9 +186,9 @@ trait Qualif {
 
     fn in_place(cx: &ConstCx<'_, 'tcx>, place: &Place<'tcx>) -> bool {
         match *place {
-            Place::Local(local) => Self::in_local(cx, local),
-            Place::Promoted(_) => bug!("qualifying already promoted MIR"),
-            Place::Static(ref static_) => Self::in_static(cx, static_),
+            Place::Base(PlaceBase::Local(local)) => Self::in_local(cx, local),
+            Place::Base(PlaceBase::Promoted(_)) => bug!("qualifying already promoted MIR"),
+            Place::Base(PlaceBase::Static(ref static_)) => Self::in_static(cx, static_),
             Place::Projection(ref proj) => Self::in_projection(cx, proj),
         }
     }
@@ -730,7 +730,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     place = &proj.base;
                 }
                 debug!("qualify_consts: promotion candidate: place={:?}", place);
-                if let Place::Local(local) = *place {
+                if let Place::Base(PlaceBase::Local(local)) = *place {
                     if self.mir.local_kind(local) == LocalKind::Temp {
                         debug!("qualify_consts: promotion candidate: local={:?}", local);
                         // The borrowed place doesn't have `HasMutInterior`
@@ -754,7 +754,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let index = loop {
             match dest {
                 // We treat all locals equal in constants
-                Place::Local(index) => break *index,
+                Place::Base(PlaceBase::Local(index)) => break *index,
                 // projections are transparent for assignments
                 // we qualify the entire destination at once, even if just a field would have
                 // stricter qualification
@@ -768,8 +768,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     );
                     dest = &proj.base;
                 },
-                Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
-                Place::Static(..) => {
+                Place::Base(PlaceBase::Promoted(..)) =>
+                    bug!("promoteds don't exist yet during promotion"),
+                Place::Base(PlaceBase::Static(..)) => {
                     // Catch more errors in the destination. `visit_place` also checks that we
                     // do not try to access statics from constants or try to mutate statics
                     self.visit_place(
@@ -878,7 +879,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index))) => {
+                        StatementKind::Assign(
+                            _,
+                            box Rvalue::Ref(_, _, Place::Base(PlaceBase::Local(index)))
+                        ) => {
                             promoted_temps.insert(index);
                         }
                         _ => {}
@@ -915,9 +919,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
         self.super_place(place, context, location);
         match *place {
-            Place::Local(_) |
-            Place::Promoted(_) => {}
-            Place::Static(ref global) => {
+            Place::Base(PlaceBase::Local(_)) |
+            Place::Base(PlaceBase::Promoted(_)) => {}
+            Place::Base(PlaceBase::Static(ref global)) => {
                 if self.tcx
                        .get_attrs(global.def_id)
                        .iter()
@@ -1032,7 +1036,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *operand {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Place::Local(local) = *place {
+                if let Place::Base(PlaceBase::Local(local)) = *place {
                     self.cx.per_local[NeedsDrop].remove(local);
                 }
             }
@@ -1335,7 +1339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Place::Local(local) = *place {
+                let needs_drop = if let Place::Base(PlaceBase::Local(local)) = *place {
                     if NeedsDrop::in_local(self, local) {
                         Some(self.mir.local_decls[local].source_info.span)
                     } else {
@@ -1565,7 +1569,11 @@ impl MirPass for QualifyAndPromoteConstants {
                 });
                 let terminator = block.terminator_mut();
                 match terminator.kind {
-                    TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
+                    TerminatorKind::Drop {
+                        location: Place::Base(PlaceBase::Local(index)),
+                        target,
+                        ..
+                    } => {
                         if promoted_temps.contains(index) {
                             terminator.kind = TerminatorKind::Goto {
                                 target,

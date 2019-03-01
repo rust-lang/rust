@@ -581,8 +581,9 @@ where
         mir_place: &mir::Place<'tcx>
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
+        use rustc::mir::PlaceBase;
         Ok(match *mir_place {
-            Promoted(ref promoted) => {
+            Base(PlaceBase::Promoted(ref promoted)) => {
                 let instance = self.frame().instance;
                 self.const_eval_raw(GlobalId {
                     instance,
@@ -590,7 +591,7 @@ where
                 })?
             }
 
-            Static(ref static_) => {
+            Base(PlaceBase::Static(ref static_)) => {
                 assert!(!static_.ty.needs_subst());
                 let layout = self.layout_of(static_.ty)?;
                 let instance = ty::Instance::mono(*self.tcx, static_.def_id);
@@ -624,8 +625,9 @@ where
         mir_place: &mir::Place<'tcx>
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
+        use rustc::mir::PlaceBase;
         let place = match *mir_place {
-            Local(mir::RETURN_PLACE) => match self.frame().return_place {
+            Base(PlaceBase::Local(mir::RETURN_PLACE)) => match self.frame().return_place {
                 Some(return_place) =>
                     // We use our layout to verify our assumption; caller will validate
                     // their layout on return.
@@ -635,7 +637,7 @@ where
                     },
                 None => return err!(InvalidNullPointerUsage),
             },
-            Local(local) => PlaceTy {
+            Base(PlaceBase::Local(local)) => PlaceTy {
                 place: Place::Local {
                     frame: self.cur_frame(),
                     local,
