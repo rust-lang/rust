@@ -58,7 +58,7 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 
     #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
 }
@@ -137,7 +137,7 @@ impl<W: Write + ?Sized> Write for Box<W> {
     }
 
     #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
 }

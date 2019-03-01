@@ -84,7 +84,7 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl fmt::Display for SuperError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "SuperError is here!")
     ///     }
     /// }
@@ -103,7 +103,7 @@ pub trait Error: Debug + Display {
     /// struct SuperErrorSideKick;
     ///
     /// impl fmt::Display for SuperErrorSideKick {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "SuperErrorSideKick is here!")
     ///     }
     /// }
@@ -149,7 +149,7 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl fmt::Display for SuperError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "SuperError is here!")
     ///     }
     /// }
@@ -168,7 +168,7 @@ pub trait Error: Debug + Display {
     /// struct SuperErrorSideKick;
     ///
     /// impl fmt::Display for SuperErrorSideKick {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "SuperErrorSideKick is here!")
     ///     }
     /// }
@@ -219,7 +219,7 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// struct AnError;
     ///
     /// impl fmt::Display for AnError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f , "An error")
     ///     }
     /// }
@@ -256,7 +256,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     /// struct AnError;
     ///
     /// impl fmt::Display for AnError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f , "An error")
     ///     }
     /// }
@@ -306,7 +306,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
         }
 
         impl Display for StringError {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 Display::fmt(&self.0, f)
             }
         }
@@ -686,13 +686,13 @@ impl dyn Error {
     /// struct B(Option<Box<dyn Error + 'static>>);
     ///
     /// impl fmt::Display for A {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "A")
     ///     }
     /// }
     ///
     /// impl fmt::Display for B {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "B")
     ///     }
     /// }
@@ -721,7 +721,7 @@ impl dyn Error {
     /// [`source`]: trait.Error.html#method.source
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
-    pub fn iter_chain(&self) -> ErrorIter {
+    pub fn iter_chain(&self) -> ErrorIter<'_> {
         ErrorIter {
             current: Some(self),
         }
@@ -747,19 +747,19 @@ impl dyn Error {
     /// struct C(Option<Box<dyn Error + 'static>>);
     ///
     /// impl fmt::Display for A {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "A")
     ///     }
     /// }
     ///
     /// impl fmt::Display for B {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "B")
     ///     }
     /// }
     ///
     /// impl fmt::Display for C {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "C")
     ///     }
     /// }
@@ -795,7 +795,7 @@ impl dyn Error {
     /// [`source`]: trait.Error.html#method.source
     #[inline]
     #[unstable(feature = "error_iter", issue = "58520")]
-    pub fn iter_sources(&self) -> ErrorIter {
+    pub fn iter_sources(&self) -> ErrorIter<'_> {
         ErrorIter {
             current: self.source(),
         }
@@ -861,12 +861,12 @@ mod tests {
     struct B;
 
     impl fmt::Display for A {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "A")
         }
     }
     impl fmt::Display for B {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "B")
         }
     }

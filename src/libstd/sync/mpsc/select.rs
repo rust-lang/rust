@@ -340,13 +340,13 @@ impl Iterator for Packets {
 }
 
 impl fmt::Debug for Select {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Select").finish()
     }
 }
 
 impl<T: Send> fmt::Debug for Handle<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Handle").finish()
     }
 }

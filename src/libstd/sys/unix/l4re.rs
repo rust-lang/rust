@@ -212,7 +212,7 @@ pub mod net {
     }
 
     impl fmt::Debug for TcpStream {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support available on L4Re")
         }
     }
@@ -274,7 +274,7 @@ pub mod net {
     }
 
     impl fmt::Debug for TcpListener {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support available on L4Re.")
         }
     }
@@ -424,7 +424,7 @@ pub mod net {
     }
 
     impl fmt::Debug for UdpSocket {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support on L4Re available.")
         }
     }

@@ -37,7 +37,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
 
 pub struct SplitPaths<'a>(&'a Void);
 
-pub fn split_paths(_unparsed: &OsStr) -> SplitPaths {
+pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
 }
 
@@ -58,7 +58,7 @@ pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
 }
 
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "not supported in SGX yet".fmt(f)
     }
 }

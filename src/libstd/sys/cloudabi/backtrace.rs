@@ -24,7 +24,7 @@ impl Error for UnwindError {
 }
 
 impl fmt::Display for UnwindError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}: {:?}", self.description(), self.0)
     }
 }
@@ -54,7 +54,7 @@ extern "C" fn trace_fn(
     ctx: *mut uw::_Unwind_Context,
     arg: *mut libc::c_void,
 ) -> uw::_Unwind_Reason_Code {
-    let cx = unsafe { &mut *(arg as *mut Context) };
+    let cx = unsafe { &mut *(arg as *mut Context<'_>) };
     if cx.idx >= cx.frames.len() {
         return uw::_URC_NORMAL_STOP;
     }

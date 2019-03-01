@@ -394,7 +394,7 @@ impl Default for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for OsString {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
@@ -563,7 +563,7 @@ impl OsStr {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_string_lossy(&self) -> Cow<str> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
         self.inner.to_string_lossy()
     }
 
@@ -891,13 +891,13 @@ impl Hash for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for OsStr {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, formatter)
     }
 }
 
 impl OsStr {
-    pub(crate) fn display(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, formatter)
     }
 }
