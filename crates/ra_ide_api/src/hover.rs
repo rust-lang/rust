@@ -512,4 +512,26 @@ mod tests {
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
     }
+
+    #[test]
+    fn test_hover_infer_associated_method_exact() {
+        let (analysis, position) = single_file_with_position(
+            "
+            struct Thing { x: u32 }
+
+            impl Thing {
+                fn new() -> Thing {
+                    Thing { x: 0 }
+                }
+            }
+
+            fn main() {
+                let foo_test = Thing::new<|>();
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(hover.info.first(), Some("```rust\nfn new() -> Thing\n```"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
 }

@@ -54,6 +54,24 @@ pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     Arc::new(ctx.resolve_all())
 }
 
+#[derive(Debug, Copy, Clone)]
+enum ExprOrPatId {
+    Expr(ExprId),
+    Pat(PatId),
+}
+
+impl From<ExprId> for ExprOrPatId {
+    fn from(id: ExprId) -> Self {
+        ExprOrPatId::Expr(id)
+    }
+}
+
+impl From<PatId> for ExprOrPatId {
+    fn from(id: PatId) -> Self {
+        ExprOrPatId::Pat(id)
+    }
+}
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
@@ -61,6 +79,8 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, Function>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, StructField>,
+    /// For each associated function call expr, records the function it resolves to
+    assoc_fn_resolutions: FxHashMap<ExprId, Function>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
 }
@@ -71,6 +91,9 @@ impl InferenceResult {
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).map(|it| *it)
+    }
+    pub fn assoc_fn_resolutions(&self, expr: ExprId) -> Option<Function> {
+        self.assoc_fn_resolutions.get(&expr).map(|it| *it)
     }
 }
 
@@ -99,6 +122,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
+    assoc_fn_resolutions: FxHashMap<ExprId, Function>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
@@ -110,6 +134,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceContext {
             method_resolutions: FxHashMap::default(),
             field_resolutions: FxHashMap::default(),
+            assoc_fn_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
@@ -135,6 +160,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceResult {
             method_resolutions: self.method_resolutions,
             field_resolutions: self.field_resolutions,
+            assoc_fn_resolutions: self.assoc_fn_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
         }
@@ -150,6 +176,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
         self.field_resolutions.insert(expr, field);
+    }
+
+    fn write_assoc_fn_resolution(&mut self, expr: ExprId, func: Function) {
+        self.assoc_fn_resolutions.insert(expr, func);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -341,7 +371,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
+    fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let resolved = resolver.resolve_path_segments(self.db, &path);
 
         let (def, remaining_index) = resolved.into_inner();
@@ -420,6 +450,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
+
+                if let ExprOrPatId::Expr(expr) = id {
+                    match typable {
+                        TypableDef::Function(func) => self.write_assoc_fn_resolution(expr, func),
+                        _ => {}
+                    };
+                }
 
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
                 let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
@@ -572,7 +609,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::Path(path) => {
                 // TODO use correct resolver for the surrounding expression
                 let resolver = self.resolver.clone();
-                self.infer_path_expr(&resolver, &path).unwrap_or(Ty::Unknown)
+                self.infer_path_expr(&resolver, &path, pat.into()).unwrap_or(Ty::Unknown)
             }
             Pat::Bind { mode, name: _name, subpat } => {
                 let inner_ty = if let Some(subpat) = subpat {
@@ -782,7 +819,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Path(p) => {
                 // TODO this could be more efficient...
                 let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
-                self.infer_path_expr(&resolver, p).unwrap_or(Ty::Unknown)
+                self.infer_path_expr(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::Never,
             Expr::Break { expr } => {

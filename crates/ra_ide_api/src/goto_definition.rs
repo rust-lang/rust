@@ -47,9 +47,10 @@ pub(crate) fn reference_definition(
     name_ref: &ast::NameRef,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
-    if let Some(function) =
-        hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax())
-    {
+
+    let function = hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax());
+
+    if let Some(function) = function {
         // Check if it is a method
         if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
             tested_by!(goto_definition_works_for_methods);
@@ -122,9 +123,29 @@ pub(crate) fn reference_definition(
             Some(Resolution::SelfType(_impl_block)) => {
                 // TODO: go to the implemented type
             }
-            None => {}
+            None => {
+                // If we failed to resolve then check associated items
+                if let Some(function) = function {
+                    // Should we do this above and then grab path from the PathExpr?
+                    if let Some(path_expr) =
+                        name_ref.syntax().ancestors().find_map(ast::PathExpr::cast)
+                    {
+                        let infer_result = function.infer(db);
+                        let syntax_mapping = function.body_syntax_mapping(db);
+                        let expr = ast::Expr::cast(path_expr.syntax()).unwrap();
+
+                        if let Some(func) = syntax_mapping
+                            .node_expr(expr)
+                            .and_then(|it| infer_result.assoc_fn_resolutions(it))
+                        {
+                            return Exact(NavigationTarget::from_function(db, func));
+                        }
+                    }
+                }
+            }
         }
     }
+
     // If that fails try the index based approach.
     let navs = crate::symbol_index::index_resolve(db, name_ref)
         .into_iter()
