@@ -32,6 +32,7 @@
 //! looking for, and does not need to visit anything else.
 
 use crate::hir::def_id::DefId;
+use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags, flags::FlagComputation};
 
 use std::collections::BTreeMap;
@@ -839,6 +840,17 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // of outer index, then it escapes the binders we have
         // visited.
         r.bound_at_or_above_binder(self.outer_index)
+    }
+
+    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
+            ..
+        }) = *c {
+            debruijn >= self.outer_index
+        } else {
+            false
+        }
     }
 }
 
