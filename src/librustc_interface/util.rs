@@ -266,9 +266,6 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
         let codegen_name = sess.opts.debugging_opts.codegen_backend.as_ref()
             .unwrap_or(&sess.target.target.options.codegen_backend);
         let backend = match &codegen_name[..] {
-            "metadata_only" => {
-                rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::boxed
-            }
             filename if filename.contains(".") => {
                 load_backend_from_dylib(filename.as_ref())
             }
