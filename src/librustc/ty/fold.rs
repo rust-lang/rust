@@ -222,9 +222,9 @@ impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx
         (self.lt_op)(r)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        let c = c.super_fold_with(self);
-        (self.ct_op)(c)
+    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        let ct = ct.super_fold_with(self);
+        (self.ct_op)(ct)
     }
 }
 
@@ -747,7 +747,25 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        ct // FIXME(const_generics)
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
+            ty,
+        }) = *ct {
+            if self.amount == 0 || debruijn < self.current_index {
+                ct
+            } else {
+                let debruijn = match self.direction {
+                    Direction::In => debruijn.shifted_in(self.amount),
+                    Direction::Out => {
+                        assert!(debruijn.as_u32() >= self.amount);
+                        debruijn.shifted_out(self.amount)
+                    }
+                };
+                self.tcx.mk_const_infer(ty::InferConst::Canonical(debruijn, bound_const), ty)
+            }
+        } else {
+            ct.super_fold_with(self)
+        }
     }
 }
 
@@ -842,11 +860,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         r.bound_at_or_above_binder(self.outer_index)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
+    fn visit_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> bool {
         if let ty::LazyConst::Evaluated(ty::Const {
             val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
             ..
-        }) = *c {
+        }) = *ct {
             debruijn >= self.outer_index
         } else {
             false
