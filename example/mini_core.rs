@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -386,3 +386,11 @@ impl<T> Index<usize> for [T] {
         &self[index]
     }
 }
+
+extern {
+    type VaListImpl;
+}
+
+#[lang = "va_list"]
+#[repr(transparent)]
+pub struct VaList<'a>(&'a mut VaListImpl);

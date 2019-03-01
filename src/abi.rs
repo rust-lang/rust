@@ -152,7 +152,7 @@ pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnS
             sig.map_bound(|sig| tcx.mk_fn_sig(
                 iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
                 sig.output(),
-                sig.variadic,
+                sig.c_variadic,
                 sig.unsafety,
                 sig.abi
             ))
@@ -193,7 +193,7 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
     let fn_sig = ty_fn_sig(tcx, fn_ty);
-    if fn_sig.variadic && !support_vararg {
+    if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
     let sig = clif_sig_from_fn_sig(tcx, fn_sig);
@@ -717,7 +717,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     };
 
     // FIXME find a cleaner way to support varargs
-    if fn_sig.variadic {
+    if fn_sig.c_variadic {
         if fn_sig.abi != Abi::C {
             unimpl!("Variadic call for non-C abi {:?}", fn_sig.abi);
         }

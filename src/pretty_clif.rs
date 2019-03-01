@@ -20,7 +20,7 @@ use crate::prelude::*;
 /// function u0:0(i64, i64, i64) system_v {
 /// ; symbol _ZN119_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$u27$a$u20$$RF$$u27$b$u20$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17he85059d5e6a760a0E
 /// ; instance Instance { def: Item(DefId(0/0:29 ~ example[8787]::{{impl}}[0]::call_once[0])), substs: [ReErased, ReErased] }
-/// ; sig ([IsNotEmpty, (&&[u16],)]; variadic: false)->(u8, u8)
+/// ; sig ([IsNotEmpty, (&&[u16],)]; c_variadic: false)->(u8, u8)
 ///
 /// ; ssa {_2: NOT_SSA, _4: NOT_SSA, _0: NOT_SSA, _3: (empty), _1: NOT_SSA}
 /// ; msg   loc.idx    param    pass mode            ssa flags  ty

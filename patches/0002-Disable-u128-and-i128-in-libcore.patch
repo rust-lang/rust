@@ -1,6 +1,6 @@
-From 61a7d6cc7809c89a8d2d046946dd0cb7cb1cd1b5 Mon Sep 17 00:00:00 2001
+From e87977477e8507a5749e64ea49ee503e706d7178 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sun, 24 Feb 2019 11:27:11 +0100
+Date: Fri, 1 Mar 2019 18:36:21 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -215,10 +215,10 @@ index dfe1d2a..06cc578 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index cdb42c1..75743ee 100644
+index 9516c02..9d91885 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -149,14 +149,12 @@ mod uint_macros;
+@@ -148,14 +148,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -249,7 +249,7 @@ index 29606cb..160cca1 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 43afc9a..fc5366b 100644
+index f41d293..71b5e09 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -164,12 +164,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
@@ -266,7 +266,7 @@ index 43afc9a..fc5366b 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 5b7d5f4..0cfb96c 100644
+index 6708a19..4066b0c 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
 @@ -102,13 +102,11 @@ nonzero_integers! {
@@ -283,7 +283,7 @@ index 5b7d5f4..0cfb96c 100644
      #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
  }
  
-@@ -2120,18 +2118,6 @@ impl i64 {
+@@ -2117,18 +2115,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -302,7 +302,7 @@ index 5b7d5f4..0cfb96c 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4407,17 +4393,6 @@ impl u64 {
+@@ -4401,17 +4387,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -320,7 +320,7 @@ index 5b7d5f4..0cfb96c 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4376,7 +4376,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4495,7 +4470,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -329,7 +329,7 @@ index 5b7d5f4..0cfb96c 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[stable(feature = "try_from", since = "1.34.0")]
-@@ -4617,30 +4592,25 @@ macro_rules! rev {
+@@ -4621,30 +4596,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -364,7 +364,7 @@ index 5b7d5f4..0cfb96c 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4652,21 +4622,21 @@ mod ptr_try_from_impls {
+@@ -4656,21 +4626,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -394,7 +394,7 @@ index 5b7d5f4..0cfb96c 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4675,24 +4645,24 @@ mod ptr_try_from_impls {
+@@ -4679,24 +4649,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -427,7 +427,7 @@ index 5b7d5f4..0cfb96c 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4701,24 +4671,20 @@ mod ptr_try_from_impls {
+@@ -4705,24 +4675,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -456,7 +456,7 @@ index 5b7d5f4..0cfb96c 100644
  }
  
  #[doc(hidden)]
-@@ -4753,7 +4719,7 @@ macro_rules! doit {
+@@ -4757,7 +4723,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -465,7 +465,7 @@ index 5b7d5f4..0cfb96c 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4944,52 +4910,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4948,52 +4914,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -519,7 +519,7 @@ index 5b7d5f4..0cfb96c 100644
  // The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
  // which imply that pointer-sized integers must be at least 16 bits:
 diff --git a/src/libcore/num/wrapping.rs b/src/libcore/num/wrapping.rs
-index 50e189c..2da3b35 100644
+index 9cd5108..26c8abc 100644
 --- a/src/libcore/num/wrapping.rs
 +++ b/src/libcore/num/wrapping.rs
 @@ -102,19 +102,17 @@ macro_rules! sh_impl_all {
@@ -552,7 +552,7 @@ index 50e189c..2da3b35 100644
  
  macro_rules! wrapping_int_impl {
      ($($t:ty)*) => ($(
-@@ -675,7 +673,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
+@@ -677,7 +675,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
      )*)
  }
  
@@ -561,7 +561,7 @@ index 50e189c..2da3b35 100644
  
  macro_rules! wrapping_int_impl_signed {
      ($($t:ty)*) => ($(
-@@ -804,7 +802,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
+@@ -806,7 +804,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
      )*)
  }
  
@@ -570,7 +570,7 @@ index 50e189c..2da3b35 100644
  
  macro_rules! wrapping_int_impl_unsigned {
      ($($t:ty)*) => ($(
-@@ -881,7 +879,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
+@@ -883,7 +881,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
      )*)
  }
  
@@ -579,7 +579,7 @@ index 50e189c..2da3b35 100644
  
  mod shift_max {
      #![allow(non_upper_case_globals)]
-@@ -908,13 +906,11 @@ mod shift_max {
+@@ -910,13 +908,11 @@ mod shift_max {
      pub const i16: u32 = (1 << 4) - 1;
      pub const i32: u32 = (1 << 5) - 1;
      pub const i64: u32 = (1 << 6) - 1;
@@ -1033,10 +1033,10 @@ index 91161ca..759497f 100644
      ///
      /// # Examples
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index c7401e2..3dff42a 100644
+index 2b62b5b..c6515bc 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -396,8 +396,6 @@ pub use core::i16;
+@@ -393,8 +393,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -1045,7 +1045,7 @@ index c7401e2..3dff42a 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -430,8 +428,6 @@ pub use alloc_crate::string;
+@@ -427,8 +425,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
@@ -1055,7 +1055,7 @@ index c7401e2..3dff42a 100644
  pub use core::hint;
  
 diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
-index c856129..2bfe9cb 100644
+index fa256ce..42b0aa2 100644
 --- a/src/libstd/net/ip.rs
 +++ b/src/libstd/net/ip.rs
 @@ -1391,48 +1391,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
@@ -1108,7 +1108,7 @@ index c856129..2bfe9cb 100644
  impl From<[u8; 16]> for Ipv6Addr {
      fn from(octets: [u8; 16]) -> Ipv6Addr {
 diff --git a/src/libstd/num.rs b/src/libstd/num.rs
-index c80b9a5..e32a6b3 100644
+index 828d572..bc04fb1 100644
 --- a/src/libstd/num.rs
 +++ b/src/libstd/num.rs
 @@ -12,7 +12,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
@@ -1118,10 +1118,10 @@ index c80b9a5..e32a6b3 100644
 -pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 +pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
  
- #[cfg(test)] use fmt;
- #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+ #[cfg(test)] use crate::fmt;
+ #[cfg(test)] use crate::ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
-index daeac71..717ee82 100644
+index 6a16414..f027102 100644
 --- a/src/libstd/panic.rs
 +++ b/src/libstd/panic.rs
 @@ -254,9 +254,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
