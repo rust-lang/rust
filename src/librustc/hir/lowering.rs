@@ -3740,12 +3740,11 @@ impl<'a> LoweringContext<'a> {
                 let fs = fields
                     .iter()
                     .map(|f| {
-                        let LoweredNodeId { node_id, hir_id } = self.next_id();
+                        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
                         Spanned {
                             span: f.span,
                             node: hir::FieldPat {
-                                id: node_id,
                                 hir_id,
                                 ident: f.node.ident,
                                 pat: self.lower_pat(&f.node.pat),
@@ -3777,9 +3776,8 @@ impl<'a> LoweringContext<'a> {
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(p.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(p.id);
         P(hir::Pat {
-            id: node_id,
             hir_id,
             node,
             span: p.span,
@@ -4353,7 +4351,7 @@ impl<'a> LoweringContext<'a> {
                 let iter = self.str_to_ident("iter");
 
                 let next_ident = self.str_to_ident("__next");
-                let next_pat = self.pat_ident_binding_mode(
+                let (next_pat, next_pat_nid) = self.pat_ident_binding_mode(
                     desugared_span,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
@@ -4362,9 +4360,9 @@ impl<'a> LoweringContext<'a> {
                 // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
                     let val_ident = self.str_to_ident("val");
-                    let val_pat = self.pat_ident(pat.span, val_ident);
-                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat.id));
-                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat.id));
+                    let (val_pat, val_pat_nid) = self.pat_ident(pat.span, val_ident);
+                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_nid));
+                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_nid));
                     let assign = P(self.expr(
                         pat.span,
                         hir::ExprKind::Assign(next_expr, val_expr),
@@ -4383,7 +4381,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // `mut iter`
-                let iter_pat = self.pat_ident_binding_mode(
+                let (iter_pat, iter_pat_nid) = self.pat_ident_binding_mode(
                     desugared_span,
                     iter,
                     hir::BindingAnnotation::Mutable
@@ -4391,7 +4389,7 @@ impl<'a> LoweringContext<'a> {
 
                 // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                 let match_expr = {
-                    let iter = P(self.expr_ident(head_sp, iter, iter_pat.id));
+                    let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
                     let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
                     let next_path = &["iter", "Iterator", "next"];
                     let next_path = P(self.expr_std_path(head_sp, next_path, None, ThinVec::new()));
@@ -4415,7 +4413,7 @@ impl<'a> LoweringContext<'a> {
                     span: head_sp,
                 };
 
-                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat.id));
+                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_nid));
 
                 // `let mut __next`
                 let next_let = self.stmt_let_pat(
@@ -4542,11 +4540,11 @@ impl<'a> LoweringContext<'a> {
                 // `Ok(val) => #[allow(unreachable_code)] val,`
                 let ok_arm = {
                     let val_ident = self.str_to_ident("val");
-                    let val_pat = self.pat_ident(e.span, val_ident);
+                    let (val_pat, val_pat_nid) = self.pat_ident(e.span, val_ident);
                     let val_expr = P(self.expr_ident_with_attrs(
                         e.span,
                         val_ident,
-                        val_pat.id,
+                        val_pat_nid,
                         ThinVec::from(attrs.clone()),
                     ));
                     let ok_pat = self.pat_ok(e.span, val_pat);
@@ -4558,12 +4556,12 @@ impl<'a> LoweringContext<'a> {
                 //              return Try::from_error(From::from(err)),`
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
-                    let err_local = self.pat_ident(e.span, err_ident);
+                    let (err_local, err_local_nid) = self.pat_ident(e.span, err_ident);
                     let from_expr = {
                         let path = &["convert", "From", "from"];
                         let from = P(self.expr_std_path(
                                 e.span, path, None, ThinVec::new()));
-                        let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
+                        let err_expr = self.expr_ident(e.span, err_ident, err_local_nid);
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
                     };
@@ -4911,15 +4909,15 @@ impl<'a> LoweringContext<'a> {
         ident: Ident,
         ex: P<hir::Expr>,
     ) -> (hir::Stmt, NodeId) {
-        let pat = if mutbl {
+        let (pat, pat_nid) = if mutbl {
             self.pat_ident_binding_mode(sp, ident, hir::BindingAnnotation::Mutable)
         } else {
             self.pat_ident(sp, ident)
         };
-        let pat_id = pat.id;
+
         (
             self.stmt_let_pat(sp, Some(ex), pat, hir::LocalSource::Normal),
-            pat_id,
+            pat_nid,
         )
     }
 
@@ -4977,7 +4975,7 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> P<hir::Pat> {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, NodeId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
@@ -4986,15 +4984,17 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> P<hir::Pat> {
+    ) -> (P<hir::Pat>, NodeId) {
         let LoweredNodeId { node_id, hir_id } = self.next_id();
 
-        P(hir::Pat {
-            id: node_id,
-            hir_id,
-            node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
-            span,
-        })
+        (
+            P(hir::Pat {
+                hir_id,
+                node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
+                span,
+            }),
+            node_id
+        )
     }
 
     fn pat_wild(&mut self, span: Span) -> P<hir::Pat> {
@@ -5002,9 +5002,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn pat(&mut self, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         P(hir::Pat {
-            id: node_id,
             hir_id,
             node: pat,
             span,

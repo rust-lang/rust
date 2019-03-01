@@ -428,8 +428,8 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             }
             pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space()?;
-                s.synth_comment(format!("pat node_id: {} hir local_id: {}",
-                                        pat.id, pat.hir_id.local_id.as_u32()))
+                s.synth_comment(format!("pat hir_id: {} hir local_id: {}",
+                                        pat.hir_id, pat.hir_id.local_id.as_u32()))
             }
         }
     }

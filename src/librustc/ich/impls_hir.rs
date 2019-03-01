@@ -421,7 +421,6 @@ impl_stable_hash_for!(struct hir::Block {
 });
 
 impl_stable_hash_for!(struct hir::Pat {
-    id -> _,
     hir_id -> _,
     node,
     span,
@@ -430,7 +429,6 @@ impl_stable_hash_for!(struct hir::Pat {
 impl_stable_hash_for_spanned!(hir::FieldPat);
 
 impl_stable_hash_for!(struct hir::FieldPat {
-    id -> _,
     hir_id -> _,
     ident -> (ident.name),
     pat,

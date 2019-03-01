@@ -26,7 +26,6 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use log::debug;
 use Promotability::*;
@@ -677,7 +676,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) {}
+    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) {}
     fn mutate(&mut self,
               _assignment_id: hir::HirId,
               _assignment_span: Span,

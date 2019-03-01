@@ -335,7 +335,7 @@ impl<'tcx> Hash for LoanPath<'tcx> {
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathKind<'tcx> {
-    LpVar(ast::NodeId),                         // `x` in README.md
+    LpVar(hir::HirId),                          // `x` in README.md
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
     LpDowncast(Rc<LoanPath<'tcx>>, DefId), // `x` downcast to particular enum variant
     LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem<'tcx>)
@@ -417,8 +417,7 @@ fn closure_to_block(closure_id: LocalDefId,
 impl<'a, 'tcx> LoanPath<'tcx> {
     pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::Scope {
         match self.kind {
-            LpVar(local_id) => {
-                let hir_id = bccx.tcx.hir().node_to_hir_id(local_id);
+            LpVar(hir_id) => {
                 bccx.region_scope_tree.var_scope(hir_id.local_id)
             }
             LpUpvar(upvar_id) => {
@@ -919,7 +918,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 self.note_immutability_blame(
                     &mut db,
                     err.cmt.immutability_blame(),
-                    self.tcx.hir().hir_to_node_id(err.cmt.hir_id)
+                    err.cmt.hir_id
                 );
                 db.emit();
                 self.signal_error();
@@ -1135,7 +1134,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.note_immutability_blame(
             &mut err,
             blame,
-            self.tcx.hir().hir_to_node_id(cmt.hir_id)
+            cmt.hir_id
         );
 
         if is_closure {
@@ -1175,8 +1174,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn local_binding_mode(&self, node_id: ast::NodeId) -> ty::BindingMode {
-        let pat = match self.tcx.hir().get(node_id) {
+    fn local_binding_mode(&self, hir_id: hir::HirId) -> ty::BindingMode {
+        let pat = match self.tcx.hir().get_by_hir_id(hir_id) {
             Node::Binding(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
@@ -1192,16 +1191,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn local_ty(&self, node_id: ast::NodeId) -> (Option<&hir::Ty>, bool) {
-        let parent = self.tcx.hir().get_parent_node(node_id);
-        let parent_node = self.tcx.hir().get(parent);
+    fn local_ty(&self, hir_id: hir::HirId) -> (Option<&hir::Ty>, bool) {
+        let parent = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let parent_node = self.tcx.hir().get_by_hir_id(parent);
 
         // The parent node is like a fn
         if let Some(fn_like) = FnLikeNode::from_node(parent_node) {
             // `nid`'s parent's `Body`
             let fn_body = self.tcx.hir().body(fn_like.body());
             // Get the position of `node_id` in the arguments list
-            let arg_pos = fn_body.arguments.iter().position(|arg| arg.pat.id == node_id);
+            let arg_pos = fn_body.arguments.iter().position(|arg| arg.pat.hir_id == hir_id);
             if let Some(i) = arg_pos {
                 // The argument's `Ty`
                 (Some(&fn_like.decl().inputs[i]),
@@ -1217,17 +1216,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn note_immutability_blame(&self,
                                db: &mut DiagnosticBuilder<'_>,
                                blame: Option<ImmutabilityBlame<'_>>,
-                               error_node_id: ast::NodeId) {
+                               error_hir_id: hir::HirId) {
         match blame {
             None => {}
             Some(ImmutabilityBlame::ClosureEnv(_)) => {}
-            Some(ImmutabilityBlame::ImmLocal(node_id)) => {
-                self.note_immutable_local(db, error_node_id, node_id)
+            Some(ImmutabilityBlame::ImmLocal(hir_id)) => {
+                self.note_immutable_local(db, error_hir_id, hir_id)
             }
-            Some(ImmutabilityBlame::LocalDeref(node_id)) => {
-                match self.local_binding_mode(node_id) {
+            Some(ImmutabilityBlame::LocalDeref(hir_id)) => {
+                match self.local_binding_mode(hir_id) {
                     ty::BindByReference(..) => {
-                        let let_span = self.tcx.hir().span(node_id);
+                        let let_span = self.tcx.hir().span_by_hir_id(hir_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
                         if let Some(replace_str) = suggestion {
                             db.span_suggestion(
@@ -1244,7 +1243,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                     }
                     ty::BindByValue(..) => {
-                        if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
+                        if let (Some(local_ty), is_implicit_self) = self.local_ty(hir_id) {
                             if let Some(msg) =
                                  self.suggest_mut_for_immutable(local_ty, is_implicit_self) {
                                 db.span_label(local_ty.span, msg);
@@ -1273,12 +1272,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
      // not a mutable reference) or to avoid borrowing altogether
     fn note_immutable_local(&self,
                             db: &mut DiagnosticBuilder<'_>,
-                            borrowed_node_id: ast::NodeId,
-                            binding_node_id: ast::NodeId) {
-        let let_span = self.tcx.hir().span(binding_node_id);
-        if let ty::BindByValue(..) = self.local_binding_mode(binding_node_id) {
+                            borrowed_hir_id: hir::HirId,
+                            binding_hir_id: hir::HirId) {
+        let let_span = self.tcx.hir().span_by_hir_id(binding_hir_id);
+        if let ty::BindByValue(..) = self.local_binding_mode(binding_hir_id) {
             if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(let_span) {
-                let (ty, is_implicit_self) = self.local_ty(binding_node_id);
+                let (ty, is_implicit_self) = self.local_ty(binding_hir_id);
                 if is_implicit_self && snippet != "self" {
                     // avoid suggesting `mut &self`.
                     return
@@ -1291,9 +1290,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     },
                 )) = ty.map(|t| &t.node)
                 {
-                    let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_node_id);
+                    let borrow_expr_id = self.tcx.hir().get_parent_node_by_hir_id(borrowed_hir_id);
                     db.span_suggestion(
-                        self.tcx.hir().span(borrow_expr_id),
+                        self.tcx.hir().span_by_hir_id(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
                         snippet,
@@ -1373,7 +1372,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 if let Categorization::Deref(..) = err.cmt.cat {
                     db.span_label(*error_span, "cannot borrow as mutable");
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
-                    let span = self.tcx.hir().span(local_id);
+                    let span = self.tcx.hir().span_by_hir_id(local_id);
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
                             db.span_label(*error_span, "cannot reborrow mutably");
@@ -1401,7 +1400,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push_str(&self.tcx.hir().name_by_hir_id(id).as_str());
             }
             LpVar(id) => {
-                out.push_str(&self.tcx.hir().name(id).as_str());
+                out.push_str(&self.tcx.hir().name_by_hir_id(id).as_str());
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {
@@ -1512,7 +1511,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().node_to_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().hir_to_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath {hir_id: var_id}, closure_expr_id }) => {
@@ -1547,7 +1546,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().node_to_user_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().hir_to_user_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath { hir_id }, closure_expr_id: _ }) => {

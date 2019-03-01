@@ -635,7 +635,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) {}
+    fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) {}
 
     fn mutate(
         &mut self,

@@ -834,7 +834,6 @@ pub struct Block {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
@@ -842,7 +841,7 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id,
+        write!(f, "pat({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_pat(self)))
     }
 }
@@ -897,7 +896,6 @@ impl Pat {
 /// except `is_shorthand` is true.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FieldPat {
-    pub id: NodeId,
     pub hir_id: HirId,
     /// The identifier for the field.
     pub ident: Ident,
