@@ -2679,6 +2679,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
+    pub fn mk_const_infer(
+        self,
+        ic: InferConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> &'tcx LazyConst<'tcx> {
+        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(ic),
+            ty,
+        }))
+    }
+
+    #[inline]
     pub fn mk_ty_param(self,
                        index: u32,
                        name: InternedString) -> Ty<'tcx> {
