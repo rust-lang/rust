@@ -298,7 +298,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// See `UniversalRegionIndices::to_region_vid`.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> Result<RegionVid, ()> {
         self.indices.to_region_vid(r)
     }
 
@@ -325,8 +325,10 @@ impl<'tcx> UniversalRegions<'tcx> {
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
                     err.note(&format!(
-                        "late-bound region is {:?}",
-                        self.to_region_vid(r),
+                        "late-bound region is {}",
+                        self.to_region_vid(r)
+                            .map(|rv| format!("{:?}", rv))
+                            .unwrap_or_else(|_| format!("{:?}", r))
                     ));
                 });
             }
@@ -736,13 +738,14 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// reference those regions from the `ParamEnv`. It is also used
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> Result<RegionVid, ()> {
         if let ty::ReVar(..) = r {
-            r.to_region_vid()
+            Ok(r.to_region_vid())
         } else {
-            *self.indices
+            self.indices
                 .get(&r)
-                .unwrap_or_else(|| bug!("cannot convert `{:?}` to a region vid", r))
+                .map(|p|*p)
+                .ok_or(())
         }
     }
 
@@ -753,7 +756,10 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         tcx.fold_regions(value, &mut false, |region, _| {
-            tcx.mk_region(ty::ReVar(self.to_region_vid(region)))
+            tcx.mk_region(ty::ReVar(self.to_region_vid(region)
+                                    .unwrap_or_else(|_| {
+                                        bug!("cannot convert {:?} to region_vid", region)
+                                    })))
         })
     }
 }

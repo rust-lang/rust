@@ -366,6 +366,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// (Panics if `r` is not a registered universal region.)
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions.to_region_vid(r)
+            .unwrap_or_else(|_| {
+                bug!("cannot convert to region_vid: {:?}", r)
+            })
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.

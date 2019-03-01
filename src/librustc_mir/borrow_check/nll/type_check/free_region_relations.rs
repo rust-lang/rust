@@ -335,8 +335,14 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
-                    let r1 = self.universal_regions.to_region_vid(r1);
-                    let r2 = self.universal_regions.to_region_vid(r2);
+                    let r1 = self.universal_regions.to_region_vid(r1)
+                        .unwrap_or_else(|_| {
+                            bug!("cannot convert to region_vid r1: {:?}", r1)
+                        });
+                    let r2 = self.universal_regions.to_region_vid(r2)
+                        .unwrap_or_else(|_| {
+                            bug!("cannot convert to region_vid r2: {:?}", r2)
+                        });
                     self.relations.relate_universal_regions(r2, r1);
                 }
 

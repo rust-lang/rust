@@ -1471,7 +1471,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if let Some(ref mut borrowck_context) = self.borrowck_context {
                         let region_vid = borrowck_context
                             .universal_regions
-                            .to_region_vid(late_bound_region);
+                            .to_region_vid(late_bound_region)
+                            .unwrap_or_else(|_| {
+                                bug!("cannot convert to region_vid late_bound_region: {:?}",
+                                     late_bound_region);
+                            });
                         borrowck_context
                             .constraints
                             .liveness_constraints
@@ -2281,8 +2285,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         match k1.unpack() {
                             UnpackedKind::Lifetime(r1) => {
                                 // constraint is r1: r2
-                                let r1_vid = borrowck_context.universal_regions.to_region_vid(r1);
-                                let r2_vid = borrowck_context.universal_regions.to_region_vid(r2);
+                                let r1_vid = borrowck_context.universal_regions.to_region_vid(r1)
+                                    .unwrap_or_else(|_| {
+                                        bug!("cannot convert to region_vid r1: {:?}", r1);
+                                    });
+                                let r2_vid = borrowck_context.universal_regions.to_region_vid(r2)
+                                    .unwrap_or_else(|_| {
+                                        bug!("cannot convert to region_vid r2: {:?}", r2);
+                                    });
                                 let outlives_requirements =
                                     &closure_region_requirements.outlives_requirements[idx];
                                 Some((

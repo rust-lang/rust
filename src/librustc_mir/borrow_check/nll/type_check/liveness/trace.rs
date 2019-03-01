@@ -534,7 +534,10 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
             let borrowck_context = typeck.borrowck_context.as_mut().unwrap();
             let live_region_vid = borrowck_context
                 .universal_regions
-                .to_region_vid(live_region);
+                .to_region_vid(live_region)
+                .unwrap_or_else(|_| {
+                    bug!("cannot convert to region_vid live_region: {:?}", live_region)
+                });
             borrowck_context
                 .constraints
                 .liveness_constraints

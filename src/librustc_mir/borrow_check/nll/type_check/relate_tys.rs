@@ -93,8 +93,14 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
 
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
         if let Some(borrowck_context) = &mut self.borrowck_context {
-            let sub = borrowck_context.universal_regions.to_region_vid(sub);
-            let sup = borrowck_context.universal_regions.to_region_vid(sup);
+            let sub = borrowck_context.universal_regions.to_region_vid(sub)
+                .unwrap_or_else(|_| {
+                    bug!("cannot convert to region_vid sub: {:?}", sub)
+                });
+            let sup = borrowck_context.universal_regions.to_region_vid(sup)
+                .unwrap_or_else(|_| {
+                    bug!("cannot convert to region_vid sup: {:?}", sup)
+                });
             borrowck_context
                 .constraints
                 .outlives_constraints

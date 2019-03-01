@@ -125,6 +125,13 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
                 .to_region_vid()
         } else {
             self.universal_regions.to_region_vid(r)
+                .unwrap_or_else(|_| {
+                    // (Generally unsound to approximate with 'static,
+                    // so force eventual ICE via delay_span_bug.)
+                    self.tcx.sess.delay_span_bug(
+                        DUMMY_SP, &format!("cannot convert to region_vid: {:?}", r));
+                    self.universal_regions.fr_static
+                })
         }
     }
 
