@@ -378,7 +378,7 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
         // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
         // under control.
 
-        // "cargo", // FIXME(#53005)
+        "cargo",
         "rustc-ap-syntax",
     ];
     let mut name_to_id: HashMap<_, Vec<_>> = HashMap::new();
