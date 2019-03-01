@@ -6,7 +6,7 @@ use syntax::source_map::SourceMap;
 
 use crate::checkstyle::output_checkstyle_file;
 use crate::config::{Config, EmitMode, FileName, Verbosity};
-use crate::rustfmt_diff::{make_diff, output_modified, print_diff};
+use crate::rustfmt_diff::{make_diff, print_diff, ModifiedLines};
 
 #[cfg(test)]
 use crate::formatting::FileRecord;
@@ -107,7 +107,7 @@ where
         EmitMode::ModifiedLines => {
             let mismatch = make_diff(&original_text, formatted_text, 0);
             let has_diff = !mismatch.is_empty();
-            output_modified(out, mismatch);
+            write!(out, "{}", ModifiedLines::from(mismatch))?;
             return Ok(has_diff);
         }
         EmitMode::Checkstyle => {

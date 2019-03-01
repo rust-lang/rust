@@ -338,25 +338,6 @@ impl ReportedErrors {
     }
 }
 
-/// A single span of changed lines, with 0 or more removed lines
-/// and a vector of 0 or more inserted lines.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ModifiedChunk {
-    /// The first to be removed from the original text
-    pub line_number_orig: u32,
-    /// The number of lines which have been replaced
-    pub lines_removed: u32,
-    /// The new lines
-    pub lines: Vec<String>,
-}
-
-/// Set of changed sections of a file.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ModifiedLines {
-    /// The set of changed chunks.
-    pub chunks: Vec<ModifiedChunk>,
-}
-
 #[derive(Clone, Copy, Debug)]
 enum Timer {
     Disabled,

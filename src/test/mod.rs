@@ -9,8 +9,8 @@ use std::process::{Command, Stdio};
 use std::str::Chars;
 
 use crate::config::{Color, Config, EmitMode, FileName, ReportTactic};
-use crate::formatting::{ModifiedChunk, ReportedErrors, SourceFile};
-use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
+use crate::formatting::{ReportedErrors, SourceFile};
+use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
 use crate::{FormatReport, Input, Session};
 

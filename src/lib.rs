@@ -33,7 +33,7 @@ pub use crate::config::{
     Range, Verbosity,
 };
 
-pub use crate::rustfmt_diff::make_diff;
+pub use crate::rustfmt_diff::{ModifiedChunk, ModifiedLines};
 
 #[macro_use]
 mod utils;
