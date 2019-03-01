@@ -499,6 +499,8 @@ impl Qualif for IsNotConst {
 
 // Refers to temporaries which cannot be promoted as
 // promote_consts decided they weren't simple enough.
+// FIXME(oli-obk,eddyb): Remove this flag entirely and
+// solely process this information via `IsNotConst`.
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
