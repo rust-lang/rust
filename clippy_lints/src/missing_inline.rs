@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.id) {
+        if !cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(it.hir_id)) {
             return;
         }
         match it.node {
@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir().expect_trait_item(tit.id.node_id);
+                                let item = cx.tcx.hir().expect_trait_item_by_hir_id(tit.id.hir_id);
                                 check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
                             }
                         },

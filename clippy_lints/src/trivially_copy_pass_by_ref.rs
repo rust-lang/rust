@@ -72,11 +72,11 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
     }
 
     fn check_trait_method(&mut self, cx: &LateContext<'_, 'tcx>, item: &TraitItemRef) {
-        let method_def_id = cx.tcx.hir().local_def_id(item.id.node_id);
+        let method_def_id = cx.tcx.hir().local_def_id_from_hir_id(item.id.hir_id);
         let method_sig = cx.tcx.fn_sig(method_def_id);
         let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
 
-        let decl = match cx.tcx.hir().fn_decl(item.id.node_id) {
+        let decl = match cx.tcx.hir().fn_decl_by_hir_id(item.id.hir_id) {
             Some(b) => b,
             None => return,
         };

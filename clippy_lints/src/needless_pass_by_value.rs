@@ -17,7 +17,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use std::borrow::Cow;
-use syntax::ast::NodeId;
 use syntax::errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -210,7 +209,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
-                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node;
+                if let PatKind::Binding(mode, _, canonical_id, ..) = arg.pat.node;
                 if !moved_vars.contains(&canonical_id);
                 then {
                     if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
@@ -326,10 +325,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    moved_vars: FxHashSet<NodeId>,
+    moved_vars: FxHashSet<HirId>,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional reference.
-    spans_need_deref: FxHashMap<NodeId, FxHashSet<Span>>,
+    spans_need_deref: FxHashMap<HirId, FxHashSet<Span>>,
 }
 
 impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
@@ -353,16 +352,16 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
-            let mut id = matched_pat.id;
+            let mut id = matched_pat.hir_id;
             loop {
-                let parent = self.cx.tcx.hir().get_parent_node(id);
+                let parent = self.cx.tcx.hir().get_parent_node_by_hir_id(id);
                 if id == parent {
                     // no parent
                     return;
                 }
                 id = parent;
 
-                if let Some(node) = self.cx.tcx.hir().find(id) {
+                if let Some(node) = self.cx.tcx.hir().find_by_hir_id(id) {
                     match node {
                         Node::Expr(e) => {
                             // `match` and `if let`
@@ -432,7 +431,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 
     fn mutate(&mut self, _: HirId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }
 
 fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {

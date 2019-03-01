@@ -1562,8 +1562,8 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
 }
 
 struct MutatePairDelegate {
-    node_id_low: Option<NodeId>,
-    node_id_high: Option<NodeId>,
+    hir_id_low: Option<HirId>,
+    hir_id_high: Option<HirId>,
     span_low: Option<Span>,
     span_high: Option<Span>,
 }
@@ -1578,10 +1578,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
     fn borrow(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
-                if Some(id) == self.node_id_low {
+                if Some(id) == self.hir_id_low {
                     self.span_low = Some(sp)
                 }
-                if Some(id) == self.node_id_high {
+                if Some(id) == self.hir_id_high {
                     self.span_high = Some(sp)
                 }
             }
@@ -1590,16 +1590,16 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
 
     fn mutate(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         if let Categorization::Local(id) = cmt.cat {
-            if Some(id) == self.node_id_low {
+            if Some(id) == self.hir_id_low {
                 self.span_low = Some(sp)
             }
-            if Some(id) == self.node_id_high {
+            if Some(id) == self.hir_id_high {
                 self.span_high = Some(sp)
             }
         }
     }
 
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }
 
 impl<'tcx> MutatePairDelegate {
@@ -1635,7 +1635,7 @@ fn mut_warn_with_span(cx: &LateContext<'_, '_>, span: Option<Span>) {
     }
 }
 
-fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId> {
+fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId> {
     if_chain! {
         if let ExprKind::Path(ref qpath) = bound.node;
         if let QPath::Resolved(None, _) = *qpath;
@@ -1648,7 +1648,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
                     if let PatKind::Binding(bind_ann, ..) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
-                        return Some(node_id);
+                        return Some(cx.tcx.hir().node_to_hir_id(node_id));
                     }
                 }
             }
@@ -1660,11 +1660,11 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
 fn check_for_mutation(
     cx: &LateContext<'_, '_>,
     body: &Expr,
-    bound_ids: &[Option<NodeId>],
+    bound_ids: &[Option<HirId>],
 ) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
-        node_id_low: bound_ids[0],
-        node_id_high: bound_ids[1],
+        hir_id_low: bound_ids[0],
+        hir_id_high: bound_ids[1],
         span_low: None,
         span_high: None,
     };
@@ -1938,8 +1938,7 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
         past_while_let: false,
         var_used_after_while_let: false,
     };
-    let def_hir_id = cx.tcx.hir().node_to_hir_id(def_id);
-    if let Some(enclosing_block) = get_enclosing_block(cx, def_hir_id) {
+    if let Some(enclosing_block) = get_enclosing_block(cx, def_id) {
         walk_block(&mut visitor, enclosing_block);
     }
     visitor.var_used_after_while_let
@@ -1947,7 +1946,7 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
 
 struct VarUsedAfterLoopVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    def_id: NodeId,
+    def_id: HirId,
     iter_expr_id: HirId,
     past_while_let: bool,
     var_used_after_while_let: bool,
@@ -2053,7 +2052,7 @@ enum VarState {
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,       // context reference
-    states: FxHashMap<NodeId, VarState>, // incremented variables
+    states: FxHashMap<HirId, VarState>,  // incremented variables
     depth: u32,                          // depth of conditional expressions
     done: bool,
 }
@@ -2108,7 +2107,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 struct InitializeVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     end_expr: &'tcx Expr,          // the for loop. Stop scanning here.
-    var_id: NodeId,
+    var_id: HirId,
     state: VarState,
     name: Option<Name>,
     depth: u32, // depth of conditional expressions
@@ -2119,7 +2118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
         // Look for declarations of the variable
         if let StmtKind::Local(ref local) = stmt.node {
-            if local.pat.id == self.var_id {
+            if local.pat.hir_id == self.var_id {
                 if let PatKind::Binding(.., ident, _) = local.pat.node {
                     self.name = Some(ident.name);
 
@@ -2191,11 +2190,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     }
 }
 
-fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<NodeId> {
+fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
         if let Def::Local(node_id) = path_res {
-            return Some(node_id);
+            return Some(cx.tcx.hir().node_to_hir_id(node_id));
         }
     }
     None
@@ -2376,7 +2375,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
 /// All variables definition IDs are collected
 struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ids: FxHashSet<NodeId>,
+    ids: FxHashSet<HirId>,
     def_ids: FxHashMap<def_id::DefId, bool>,
     skip: bool,
 }
@@ -2390,7 +2389,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             then {
                 match def {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                        self.ids.insert(node_id);
+                        self.ids.insert(self.cx.tcx.hir().node_to_hir_id(node_id));
                     },
                     Def::Static(def_id, mutable) => {
                         self.def_ids.insert(def_id, mutable);

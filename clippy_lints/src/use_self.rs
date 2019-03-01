@@ -192,7 +192,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                         item_path,
                         cx,
                     };
-                    let impl_def_id = cx.tcx.hir().local_def_id(item.id);
+                    let impl_def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                     let impl_trait_ref = cx.tcx.impl_trait_ref(impl_def_id);
 
                     if let Some(impl_trait_ref) = impl_trait_ref {

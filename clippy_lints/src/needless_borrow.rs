@@ -4,13 +4,12 @@
 
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::hir::{BindingAnnotation, Expr, ExprKind, Item, MutImmutable, Pat, PatKind};
+use rustc::hir::{BindingAnnotation, Expr, ExprKind, HirId, Item, MutImmutable, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast::NodeId;
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.
@@ -32,7 +31,7 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct NeedlessBorrow {
-    derived_item: Option<NodeId>,
+    derived_item: Option<HirId>,
 }
 
 impl LintPass for NeedlessBorrow {
@@ -119,13 +118,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if item.attrs.iter().any(|a| a.check_name("automatically_derived")) {
             debug_assert!(self.derived_item.is_none());
-            self.derived_item = Some(item.id);
+            self.derived_item = Some(item.hir_id);
         }
     }
 
     fn check_item_post(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let Some(id) = self.derived_item {
-            if item.id == id {
+            if item.hir_id == id {
                 self.derived_item = None;
             }
         }
