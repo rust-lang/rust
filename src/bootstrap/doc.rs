@@ -60,7 +60,7 @@ macro_rules! book {
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook1;
+    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook2;
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
     Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
