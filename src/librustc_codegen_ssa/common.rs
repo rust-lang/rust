@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::{DUMMY_SP, Span};
+use rustc::ty::{Ty, TyCtxt};
+use syntax_pos::Span;
 
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
@@ -10,18 +10,6 @@ use crate::traits::*;
 
 use rustc::hir;
 use crate::traits::BuilderMethods;
-
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
-}
 
 pub enum IntPredicate {
     IntEQ,

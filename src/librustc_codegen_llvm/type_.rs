@@ -11,8 +11,9 @@ use rustc_codegen_ssa::traits::*;
 use crate::common;
 use crate::type_of::LayoutLlvmExt;
 use crate::abi::{LlvmType, FnTypeExt};
+use syntax::ast;
 use rustc::ty::Ty;
-use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::common::TypeKind;
@@ -50,21 +51,99 @@ impl CodegenCx<'ll, 'tcx> {
                                     els.len() as c_uint, packed as Bool)
         }
     }
-}
 
-impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn type_void(&self) -> &'ll Type {
+    crate fn type_void(&self) -> &'ll Type {
         unsafe {
             llvm::LLVMVoidTypeInContext(self.llcx)
         }
     }
 
-    fn type_metadata(&self) -> &'ll Type {
+    crate fn type_metadata(&self) -> &'ll Type {
         unsafe {
             llvm::LLVMRustMetadataTypeInContext(self.llcx)
         }
     }
 
+    ///x Creates an integer type with the given number of bits, e.g., i24
+    crate fn type_ix(&self, num_bits: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint)
+        }
+    }
+
+    crate fn type_x86_mmx(&self) -> &'ll Type {
+        unsafe {
+            llvm::LLVMX86MMXTypeInContext(self.llcx)
+        }
+    }
+
+    crate fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMVectorType(ty, len as c_uint)
+        }
+    }
+
+    crate fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+        unsafe {
+            let n_args = llvm::LLVMCountParamTypes(ty) as usize;
+            let mut args = Vec::with_capacity(n_args);
+            llvm::LLVMGetParamTypes(ty, args.as_mut_ptr());
+            args.set_len(n_args);
+            args
+        }
+    }
+
+    crate fn type_bool(&self) -> &'ll Type {
+        self.type_i8()
+    }
+
+    crate fn type_int_from_ty(&self, t: ast::IntTy) -> &'ll Type {
+        match t {
+            ast::IntTy::Isize => self.type_isize(),
+            ast::IntTy::I8 => self.type_i8(),
+            ast::IntTy::I16 => self.type_i16(),
+            ast::IntTy::I32 => self.type_i32(),
+            ast::IntTy::I64 => self.type_i64(),
+            ast::IntTy::I128 => self.type_i128(),
+        }
+    }
+
+    crate fn type_uint_from_ty(&self, t: ast::UintTy) -> &'ll Type {
+        match t {
+            ast::UintTy::Usize => self.type_isize(),
+            ast::UintTy::U8 => self.type_i8(),
+            ast::UintTy::U16 => self.type_i16(),
+            ast::UintTy::U32 => self.type_i32(),
+            ast::UintTy::U64 => self.type_i64(),
+            ast::UintTy::U128 => self.type_i128(),
+        }
+    }
+
+    crate fn type_float_from_ty(&self, t: ast::FloatTy) -> &'ll Type {
+        match t {
+            ast::FloatTy::F32 => self.type_f32(),
+            ast::FloatTy::F64 => self.type_f64(),
+        }
+    }
+
+    crate fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
+        // FIXME(eddyb) We could find a better approximation if ity.align < align.
+        let ity = layout::Integer::approximate_align(self, align);
+        self.type_from_integer(ity)
+    }
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// and exactly the required size, as a best-effort padding array.
+    crate fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
+        let unit = layout::Integer::approximate_align(self, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        self.type_array(self.type_from_integer(unit), size / unit_size)
+    }
+}
+
+impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_i1(&self) -> &'ll Type {
         unsafe {
             llvm::LLVMInt1TypeInContext(self.llcx)
@@ -102,12 +181,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn type_ix(&self, num_bits: u64) -> &'ll Type {
-        unsafe {
-            llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint)
-        }
-    }
-
     fn type_isize(&self) -> &'ll Type {
         self.isize_ty
     }
@@ -121,12 +194,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_f64(&self) -> &'ll Type {
         unsafe {
             llvm::LLVMDoubleTypeInContext(self.llcx)
-        }
-    }
-
-    fn type_x86_mmx(&self) -> &'ll Type {
-        unsafe {
-            llvm::LLVMX86MMXTypeInContext(self.llcx)
         }
     }
 
@@ -171,12 +238,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe {
-            llvm::LLVMVectorType(ty, len as c_uint)
-        }
-    }
-
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {
         unsafe {
             llvm::LLVMRustGetTypeKind(ty).to_generic()
@@ -198,16 +259,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vector_length(&self, ty: &'ll Type) -> usize {
         unsafe {
             llvm::LLVMGetVectorSize(ty) as usize
-        }
-    }
-
-    fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
-        unsafe {
-            let n_args = llvm::LLVMCountParamTypes(ty) as usize;
-            let mut args = Vec::with_capacity(n_args);
-            llvm::LLVMGetParamTypes(ty, args.as_mut_ptr());
-            args.set_len(n_args);
-            args
         }
     }
 
@@ -286,9 +337,6 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         layout.scalar_pair_element_llvm_type(self, index, immediate)
     }
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
-        ty.llvm_type(self)
-    }
-    fn fn_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
         ty.llvm_type(self)
     }
     fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
