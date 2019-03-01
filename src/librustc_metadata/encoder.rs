@@ -1069,7 +1069,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 // for methods, write all the stuff get_trait_method
                 // needs to know
                 let struct_ctor = if !struct_def.is_struct() {
-                    Some(tcx.hir().local_def_id(struct_def.id()).index)
+                    Some(tcx.hir().local_def_id_from_hir_id(struct_def.hir_id()).index)
                 } else {
                     None
                 };
@@ -1772,7 +1772,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
                 // If the struct has a constructor, encode it.
                 if !struct_def.is_struct() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(struct_def.id());
+                    let ctor_def_id = self.tcx.hir().local_def_id_from_hir_id(struct_def.hir_id());
                     self.record(ctor_def_id,
                                 IsolatedEncoder::encode_struct_ctor,
                                 (def_id, ctor_def_id));

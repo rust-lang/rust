@@ -842,9 +842,9 @@ impl_stable_hash_for!(struct hir::StructField {
 });
 
 impl_stable_hash_for!(enum hir::VariantData {
-    Struct(fields, id, hir_id),
-    Tuple(fields, id, hir_id),
-    Unit(id, hir_id)
+    Struct(fields, hir_id),
+    Tuple(fields, hir_id),
+    Unit(hir_id)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {

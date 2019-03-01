@@ -2156,9 +2156,9 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, NodeId, HirId),
-    Tuple(HirVec<StructField>, NodeId, HirId),
-    Unit(NodeId, HirId),
+    Struct(HirVec<StructField>, HirId),
+    Tuple(HirVec<StructField>, HirId),
+    Unit(HirId),
 }
 
 impl VariantData {
@@ -2168,18 +2168,11 @@ impl VariantData {
             _ => &[],
         }
     }
-    pub fn id(&self) -> NodeId {
-        match *self {
-            VariantData::Struct(_, id, ..)
-            | VariantData::Tuple(_, id, ..)
-            | VariantData::Unit(id, ..) => id,
-        }
-    }
     pub fn hir_id(&self) -> HirId {
         match *self {
-            VariantData::Struct(_, _, hir_id)
-            | VariantData::Tuple(_, _, hir_id)
-            | VariantData::Unit(_, hir_id) => hir_id,
+            VariantData::Struct(_, hir_id)
+            | VariantData::Tuple(_, hir_id)
+            | VariantData::Unit(hir_id) => hir_id,
         }
     }
     pub fn is_struct(&self) -> bool {

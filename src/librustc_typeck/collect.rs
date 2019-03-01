@@ -454,7 +454,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: hir::HirId) {
             }
 
             if !struct_def.is_struct() {
-                convert_variant_ctor(tcx, struct_def.id());
+                convert_variant_ctor(tcx, struct_def.hir_id());
             }
         }
 
@@ -510,8 +510,8 @@ fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: hir::H
     }
 }
 
-fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ctor_id: ast::NodeId) {
-    let def_id = tcx.hir().local_def_id(ctor_id);
+fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ctor_id: hir::HirId) {
+    let def_id = tcx.hir().local_def_id_from_hir_id(ctor_id);
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
@@ -563,7 +563,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
-        convert_variant_ctor(tcx, variant.node.data.id());
+        convert_variant_ctor(tcx, variant.node.data.hir_id());
     }
 }
 
@@ -634,7 +634,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                 def.variants
                     .iter()
                     .map(|v| {
-                        let did = tcx.hir().local_def_id(v.node.data.id());
+                        let did = tcx.hir().local_def_id_from_hir_id(v.node.data.hir_id());
                         let discr = if let Some(ref e) = v.node.disr_expr {
                             distance_from_explicit = 0;
                             ty::VariantDiscr::Explicit(tcx.hir().local_def_id_from_hir_id(e.hir_id))
@@ -652,7 +652,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
         ItemKind::Struct(ref def, _) => {
             // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
             let ctor_id = if !def.is_struct() {
-                Some(tcx.hir().local_def_id(def.id()))
+                Some(tcx.hir().local_def_id_from_hir_id(def.hir_id()))
             } else {
                 None
             };

@@ -366,11 +366,11 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::Variant(variant) => {
-                let def_id = self.local_def_id(variant.node.data.id());
+                let def_id = self.local_def_id_from_hir_id(variant.node.data.hir_id());
                 Some(Def::Variant(def_id))
             }
             Node::StructCtor(variant) => {
-                let def_id = self.local_def_id(variant.id());
+                let def_id = self.local_def_id_from_hir_id(variant.hir_id());
                 Some(Def::StructCtor(def_id, def::CtorKind::from_hir(variant)))
             }
             Node::AnonConst(_) |

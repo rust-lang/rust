@@ -2674,7 +2674,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData {
         match *vdata {
             VariantData::Struct(ref fields, id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
                 hir::VariantData::Struct(
                     fields
@@ -2682,12 +2682,11 @@ impl<'a> LoweringContext<'a> {
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
                         .collect(),
-                    node_id,
                     hir_id,
                 )
             },
             VariantData::Tuple(ref fields, id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
                 hir::VariantData::Tuple(
                     fields
@@ -2695,14 +2694,13 @@ impl<'a> LoweringContext<'a> {
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
                         .collect(),
-                    node_id,
                     hir_id,
                 )
             },
             VariantData::Unit(id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
-                hir::VariantData::Unit(node_id, hir_id)
+                hir::VariantData::Unit(hir_id)
             },
         }
     }

@@ -3088,7 +3088,7 @@ impl Clean<Item> for doctree::Variant {
             visibility: None,
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.def.id()),
+            def_id: cx.tcx.hir().local_def_id_from_hir_id(self.def.hir_id()),
             inner: VariantItem(Variant {
                 kind: self.def.clean(cx),
             }),

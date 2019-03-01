@@ -229,7 +229,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      -> Mir<'tcx>
 {
     let span = tcx.hir().span(ctor_id);
-    if let hir::VariantData::Tuple(ref fields, ctor_id, _) = *v {
+    if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
@@ -245,7 +245,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             mir_util::dump_mir(tcx, None, "mir_map", &0,
-                               MirSource::item(tcx.hir().local_def_id(ctor_id)),
+                               MirSource::item(tcx.hir().local_def_id_from_hir_id(ctor_id)),
                                &mir, |_, _| Ok(()) );
 
             mir

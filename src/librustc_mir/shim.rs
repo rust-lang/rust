@@ -10,7 +10,6 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
@@ -855,14 +854,14 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
-                                      ctor_id: ast::NodeId,
+                                      ctor_id: hir::HirId,
                                       fields: &[hir::StructField],
                                       span: Span)
                                       -> Mir<'tcx>
 {
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
-    let def_id = tcx.hir().local_def_id(ctor_id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(ctor_id);
     let param_env = gcx.param_env(def_id);
 
     // Normalize the sig.
