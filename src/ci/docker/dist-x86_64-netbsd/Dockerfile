@@ -33,5 +33,6 @@ ENV \
 
 ENV HOSTS=x86_64-unknown-netbsd
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs \
+  --set llvm.allow-old-toolchain
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

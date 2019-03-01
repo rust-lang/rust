@@ -104,6 +104,8 @@
 # The value specified here will be passed as `-DLLVM_USE_LINKER` to CMake.
 #use-linker = "lld"
 
+# Whether or not to specify `-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=YES`
+#allow-old-toolchain = false
 
 # =============================================================================
 # General build configuration options
