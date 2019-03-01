@@ -1,0 +1,14 @@
+error[E0373]: closure may outlive the current function, but it borrows `local`, which is owned by the current function
+  --> $DIR/issue-57464-avoid-eager-conversion-to-region-vid.rs:46:13
+   |
+LL |     let m = |_: ()| poll_fn(|| { local; });
+   |             ^^^^^^^              ----- `local` is borrowed here
+   |             |
+   |             may outlive borrowed value `local`
+help: to force the closure to take ownership of `local` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let m = move |_: ()| poll_fn(|| { local; });
+   |             ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
