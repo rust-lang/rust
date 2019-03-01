@@ -1,0 +1,8 @@
+error: negative trait bounds are not supported
+  --> $DIR/issue-58857.rs:4:7
+   |
+LL | impl<A: !Valid> Conj<A>{}
+   |       ^^^^^^^^ help: remove the trait bound
+
+error: aborting due to previous error
+
