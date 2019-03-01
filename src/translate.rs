@@ -8,7 +8,7 @@ use rustc::{
     infer::InferCtxt,
     ty::{
         fold::{BottomUpFolder, TypeFoldable, TypeFolder},
-        subst::{Kind, Substs},
+        subst::{InternalSubsts, Kind, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
     },
 };
@@ -101,8 +101,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         &self,
         index_map: &HashMap<u32, DefId>,
         orig_def_id: DefId,
-        orig_substs: &Substs<'tcx>,
-    ) -> Option<(DefId, &'tcx Substs<'tcx>)> {
+        orig_substs: SubstsRef<'tcx>,
+    ) -> Option<(DefId, SubstsRef<'tcx>)> {
         use rustc::ty::subst::UnpackedKind;
         use rustc::ty::ReEarlyBound;
         use std::cell::Cell;
@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             let success = Cell::new(true);
 
             let target_substs =
-                Substs::for_item(self.tcx, target_def_id, |def, _| match def.kind {
+                InternalSubsts::for_item(self.tcx, target_def_id, |def, _| match def.kind {
                     GenericParamDefKind::Lifetime => Kind::from(if !success.get() {
                         self.tcx
                             .mk_region(ReEarlyBound(def.to_early_bound_region_data()))

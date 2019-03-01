@@ -16,7 +16,7 @@ use rustc::{
     ty::{
         error::TypeError,
         fold::TypeFoldable,
-        subst::{Kind, Substs},
+        subst::{InternalSubsts, Kind, SubstsRef},
         GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
     },
 };
@@ -42,7 +42,7 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
     }
 
     /// Register the bounds of an item.
-    pub fn register(&mut self, checked_def_id: DefId, substs: &Substs<'tcx>) {
+    pub fn register(&mut self, checked_def_id: DefId, substs: SubstsRef<'tcx>) {
         use rustc::traits::{normalize, Normalized, SelectionContext};
 
         let cause = ObligationCause::dummy();
@@ -161,12 +161,12 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
     /// Construct a set of subsitutions for an item, which replaces all region and type variables
     /// with inference variables, with the exception of `Self`.
-    pub fn compute_target_infer_substs(&self, target_def_id: DefId) -> &Substs<'tcx> {
+    pub fn compute_target_infer_substs(&self, target_def_id: DefId) -> SubstsRef<'tcx> {
         use syntax_pos::DUMMY_SP;
 
         let has_self = self.infcx.tcx.generics_of(target_def_id).has_self;
 
-        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
+        InternalSubsts::for_item(self.infcx.tcx, target_def_id, |def, _| {
             if def.index == 0 && has_self {
                 // `Self` is special
                 self.infcx.tcx.mk_param_from_def(def)
@@ -177,10 +177,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     }
 
     /// Construct a set of subsitutions for an item, which normalizes defaults.
-    pub fn compute_target_default_substs(&self, target_def_id: DefId) -> &Substs<'tcx> {
+    pub fn compute_target_default_substs(&self, target_def_id: DefId) -> SubstsRef<'tcx> {
         use rustc::ty::ReEarlyBound;
 
-        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| match def.kind {
+        InternalSubsts::for_item(self.infcx.tcx, target_def_id, |def, _| match def.kind {
             GenericParamDefKind::Lifetime => Kind::from(
                 self.infcx
                     .tcx
@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
         orig_param_env: ParamEnv<'tcx>,
         target_def_id: DefId,
-        target_substs: &Substs<'tcx>,
+        target_substs: SubstsRef<'tcx>,
     ) -> Option<Vec<Predicate<'tcx2>>> {
         use rustc::ty::Lift;
         debug!(
@@ -294,8 +294,8 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
         orig_def_id: DefId,
         target_def_id: DefId,
-        orig_substs: &Substs<'tcx>,
-        target_substs: &Substs<'tcx>,
+        orig_substs: SubstsRef<'tcx>,
+        target_substs: SubstsRef<'tcx>,
     ) {
         use crate::changes::ChangeType::{BoundsLoosened, BoundsTightened};
 

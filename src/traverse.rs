@@ -23,7 +23,7 @@ use rustc::{
         def_id::DefId,
     },
     ty::{
-        subst::{Subst, Substs},
+        subst::{InternalSubsts, Subst},
         AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt, Visibility,
         Visibility::Public,
     },
@@ -869,7 +869,7 @@ fn cmp_types<'a, 'tcx>(
     tcx.infer_ctxt().enter(|infcx| {
         let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, false);
 
-        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let orig_substs = InternalSubsts::identity_for_item(infcx.tcx, target_def_id);
         let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
         // let orig = orig.subst(infcx.tcx, orig_substs);
 
@@ -920,7 +920,7 @@ fn cmp_bounds<'a, 'tcx>(
     tcx.infer_ctxt().enter(|infcx| {
         let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, true);
 
-        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let orig_substs = InternalSubsts::identity_for_item(infcx.tcx, target_def_id);
         let target_substs = compcx.compute_target_default_substs(target_def_id);
 
         compcx.check_bounds_bidirectional(
@@ -1120,7 +1120,7 @@ fn match_inherent_impl<'a, 'tcx>(
             )
         };
 
-        let orig_substs = Substs::identity_for_item(infcx.tcx, target_item_def_id);
+        let orig_substs = InternalSubsts::identity_for_item(infcx.tcx, target_item_def_id);
         let orig_self = compcx
             .forward_trans
             .translate_item_type(orig_impl_def_id, infcx.tcx.type_of(orig_impl_def_id));

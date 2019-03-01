@@ -11,7 +11,7 @@ use rustc::{
     ty::{
         self,
         relate::{Relate, RelateResult, TypeRelation},
-        subst::Substs,
+        subst::SubstsRef,
         Ty, TyCtxt,
         Visibility::Public,
     },
@@ -71,8 +71,8 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Ensure that the pair of given `Substs` is suitable to be related.
-    fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>) -> bool {
+    /// Ensure that the pair of given `SubstsRef`s is suitable to be related.
+    fn check_substs(&self, a_substs: SubstsRef<'tcx>, b_substs: SubstsRef<'tcx>) -> bool {
         use rustc::ty::subst::UnpackedKind::*;
 
         for (a, b) in a_substs.iter().zip(b_substs) {
