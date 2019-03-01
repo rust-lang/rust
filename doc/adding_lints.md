@@ -7,15 +7,24 @@ creating an example lint from scratch.
 To get started, we will create a lint that detects functions called `foo`,
 because that's clearly a non-descriptive name.
 
+* [Setup](#Setup)
 * [Testing](#Testing)
+* [Rustfix tests](#Rustfix-tests)
 * [Lint declaration](#Lint-declaration)
 * [Lint passes](#Lint-passes)
 * [Emitting a lint](#Emitting-a-lint)
 * [Adding the lint logic](#Adding-the-lint-logic)
 * [Documentation](#Documentation)
+* [Running rustfmt](#Running-rustfmt)
 * [Debugging](#Debugging)
 * [PR Checklist](#PR-Checklist)
 * [Cheatsheet](#Cheatsheet)
+
+### Setup
+
+Clippy depends on the current git master version of rustc, which can change rapidly. Make sure you're
+working near rust-clippy's master, and use the `setup-toolchain.sh` script to configure the appropriate
+toolchain for this directory.
 
 ### Testing
 
@@ -75,7 +84,25 @@ Once you are satisfied with the output, you need to run
 Running `TESTNAME=ui/foo_functions cargo uitest` should pass then. When you
 commit your lint, be sure to commit the `*.stderr` files, too.
 
-Let's have a look at implementing our lint now.
+### Rustfix tests
+
+If the lint you are working on is making use of structured suggestions, the
+test file should include a `// run-rustfix` comment at the top. This will
+additionally run [rustfix](https://github.com/rust-lang-nursery/rustfix) for
+that test. Rustfix will apply the suggestions from the lint to the code of the
+test file and compare that to the contents of a `.fixed` file.
+
+Use `tests/ui/update-all-references.sh` to automatically generate the
+`.fixed` file after running `cargo test`.
+
+With tests in place, let's have a look at implementing our lint now.
+
+### Testing manually
+
+Manually testing against an example file is useful if you have added some
+`println!`s and test suite output becomes unreadable.  To try Clippy with your
+local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
+from the working copy root.
 
 ### Lint declaration
 
@@ -278,7 +305,44 @@ impl LintPass for Pass { /* .. */ }
 ```
 
 That should be it for the lint implementation. Running `cargo test` should now
-pass and we can finish up our work by adding some documentation.
+pass.
+
+### Author lint
+
+If you have trouble implementing your lint, there is also the internal `author`
+lint to generate Clippy code that detects the offending pattern. It does not
+work for all of the Rust syntax, but can give a good starting point.
+
+First, create a new UI test file in the `tests/ui/` directory with the pattern
+you want to match:
+
+```rust
+// ./tests/ui/my_lint.rs
+fn main() {
+    #[clippy::author]
+    let arr: [i32; 1] = [7]; // Replace line with the code you want to match
+}
+```
+
+Now you run `TESTNAME=ui/my_lint cargo uitest` to produce a `.stdout` file with
+the generated code:
+
+```rust
+// ./tests/ui/my_lint.stdout
+
+if_chain! {
+    if let ExprKind::Array(ref elements) = stmt.node;
+    if elements.len() == 1;
+    if let ExprKind::Lit(ref lit) = elements[0].node;
+    if let LitKind::Int(7, _) = lit.node;
+    then {
+        // report your lint here
+    }
+}
+```
+
+If the command was executed successfully, you can copy the code over to where
+you are implementing your lint.
 
 ### Documentation
 
@@ -309,6 +373,19 @@ declare_clippy_lint! { /* ... */ }
 Once your lint is merged, this documentation will show up in the [lint
 list][lint_list].
 
+### Running rustfmt
+
+[Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust code according
+to style guidelines. Your code has to be formatted by `rustfmt` before a PR can be merged.
+
+It can be installed via `rustup`:
+
+```bash
+rustup component add rustfmt
+```
+
+Use `cargo fmt --all` to format the whole codebase.
+
 ### Debugging
 
 If you want to debug parts of your lint implementation, you can use the `dbg!`
@@ -317,7 +394,7 @@ output in the `stdout` part.
 
 ### PR Checklist
 
-TODO: Prose
+Before submitting your PR make sure you followed all of the basic requirements:
 
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
@@ -329,7 +406,7 @@ TODO: Prose
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here. (`implements_trait`, `match_path`, `snippet`, etc)
+  is already in here (`implements_trait`, `match_path`, `snippet`, etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`in_macro`][in_macro] and [`in_external_macro`][in_external_macro]
