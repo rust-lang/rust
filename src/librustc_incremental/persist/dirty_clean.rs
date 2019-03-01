@@ -241,7 +241,7 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
 
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: ast::NodeId, attr: &Attribute)
+    fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute)
         -> Option<Assertion>
     {
         let is_clean = if attr.check_name(ATTR_DIRTY) {
@@ -269,7 +269,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(&mut self, item_id: ast::NodeId, attr: &Attribute, is_clean: bool)
+    fn assertion_auto(&mut self, item_id: hir::HirId, attr: &Attribute, is_clean: bool)
         -> Assertion
     {
         let (name, mut auto) = self.auto_labels(item_id, attr);
@@ -321,8 +321,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: ast::NodeId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir().get(item_id);
+    fn auto_labels(&mut self, item_id: hir::HirId, attr: &Attribute) -> (&'static str, Labels) {
+        let node = self.tcx.hir().get_by_hir_id(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.node {
@@ -499,8 +499,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: ast::NodeId, item_span: Span) {
-        let def_id = self.tcx.hir().local_def_id(item_id);
+    fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
@@ -519,15 +519,15 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.check_item(item.id, item.span);
+        self.check_item(item.hir_id, item.span);
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem) {
-        self.check_item(item.id, item.span);
+        self.check_item(item.hir_id, item.span);
     }
 
     fn visit_impl_item(&mut self, item: &hir::ImplItem) {
-        self.check_item(item.id, item.span);
+        self.check_item(item.hir_id, item.span);
     }
 }
 

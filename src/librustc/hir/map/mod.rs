@@ -349,7 +349,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::TraitItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     TraitItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     TraitItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -357,7 +357,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ImplItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -387,7 +387,7 @@ impl<'hir> Map<'hir> {
             Node::Block(_) |
             Node::Crate => None,
             Node::Local(local) => {
-                Some(Def::Local(local.id))
+                Some(Def::Local(self.hir_to_node_id(local.hir_id)))
             }
             Node::MacroDef(macro_def) => {
                 Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),

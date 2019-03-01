@@ -386,8 +386,8 @@ pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait:
     // In case there are any projections etc, find the "environment"
     // def-id that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
-    let env_node_id = tcx.hir().get_parent(hir_trait.ref_id);
-    let env_def_id = tcx.hir().local_def_id(env_node_id);
+    let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
+    let env_def_id = tcx.hir().local_def_id_from_hir_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
     let mut projections = Vec::new();
     let (principal, _) = astconv::AstConv::instantiate_poly_trait_ref_inner(

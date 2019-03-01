@@ -386,7 +386,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
         debug_assert_eq!(ti.hir_id.owner,
-                         self.definitions.opt_def_index(ti.id).unwrap());
+                         self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
             this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
 
@@ -398,7 +398,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
         debug_assert_eq!(ii.hir_id.owner,
-                         self.definitions.opt_def_index(ii.id).unwrap());
+                         self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
             this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
 

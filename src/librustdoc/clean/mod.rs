@@ -2022,14 +2022,15 @@ impl Clean<Item> for hir::TraitItem {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
+        let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id: local_did,
             visibility: None,
-            stability: get_stability(cx, cx.tcx.hir().local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.hir().local_def_id(self.id)),
+            stability: get_stability(cx, local_did),
+            deprecation: get_deprecation(cx, local_did),
             inner,
         }
     }
@@ -2054,14 +2055,15 @@ impl Clean<Item> for hir::ImplItem {
                 generics: Generics::default(),
             }, true),
         };
+        let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id: local_did,
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, cx.tcx.hir().local_def_id(self.id)),
-            deprecation: get_deprecation(cx, cx.tcx.hir().local_def_id(self.id)),
+            stability: get_stability(cx, local_did),
+            deprecation: get_deprecation(cx, local_did),
             inner,
         }
     }
@@ -2531,7 +2533,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
-                let def_id = cx.tcx.hir().local_def_id(length.id);
+                let def_id = cx.tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 let param_env = cx.tcx.param_env(def_id);
                 let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
                 let cid = GlobalId {

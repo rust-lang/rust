@@ -1006,7 +1006,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
-                let def_id = self.tcx.hir().local_def_id(ii.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
             _ => { /* Nothing to do here */ }

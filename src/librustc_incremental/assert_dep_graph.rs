@@ -69,7 +69,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             let mut visitor = IfThisChanged { tcx,
                                             if_this_changed: vec![],
                                             then_this_would_need: vec![] };
-            visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir().krate().attrs);
+            visitor.process_attrs(hir::CRATE_HIR_ID, &tcx.hir().krate().attrs);
             tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
@@ -87,7 +87,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 type Sources = Vec<(Span, DefId, DepNode)>;
-type Targets = Vec<(Span, ast::Name, ast::NodeId, DepNode)>;
+type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -110,8 +110,8 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
         value
     }
 
-    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id(node_id);
+    fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
@@ -151,7 +151,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 };
                 self.then_this_would_need.push((attr.span,
                                                 dep_node_interned.unwrap(),
-                                                node_id,
+                                                hir_id,
                                                 dep_node));
             }
         }
@@ -164,22 +164,22 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.process_attrs(item.id, &item.attrs);
+        self.process_attrs(item.hir_id, &item.attrs);
         intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        self.process_attrs(trait_item.id, &trait_item.attrs);
+        self.process_attrs(trait_item.hir_id, &trait_item.attrs);
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        self.process_attrs(impl_item.id, &impl_item.attrs);
+        self.process_attrs(impl_item.hir_id, &impl_item.attrs);
         intravisit::walk_impl_item(self, impl_item);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
-        self.process_attrs(s.id, &s.attrs);
+        self.process_attrs(s.hir_id, &s.attrs);
         intravisit::walk_struct_field(self, s);
     }
 }

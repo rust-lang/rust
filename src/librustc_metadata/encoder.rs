@@ -1667,7 +1667,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         intravisit::walk_variant(self, v, g, id);
 
         if let Some(ref discr) = v.node.disr_expr {
-            let def_id = self.index.tcx.hir().local_def_id(discr.id);
+            let def_id = self.index.tcx.hir().local_def_id_from_hir_id(discr.hir_id);
             self.index.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
         }
     }
@@ -1719,7 +1719,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
             hir::TyKind::Array(_, ref length) => {
-                let def_id = self.tcx.hir().local_def_id(length.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
             }
             _ => {}

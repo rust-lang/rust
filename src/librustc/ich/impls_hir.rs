@@ -294,7 +294,6 @@ impl_stable_hash_for!(struct hir::MethodSig {
 });
 
 impl_stable_hash_for!(struct hir::TypeBinding {
-    id,
     hir_id,
     ident -> (ident.name),
     ty,
@@ -386,8 +385,7 @@ impl_stable_hash_for!(enum hir::ImplicitSelfKind {
 });
 
 impl_stable_hash_for!(struct hir::TraitRef {
-    // Don't hash the ref_id. It is tracked via the thing it is used to access
-    ref_id -> _,
+    // Don't hash the hir_ref_id. It is tracked via the thing it is used to access
     hir_ref_id -> _,
     path,
 });
@@ -495,7 +493,6 @@ impl_stable_hash_for!(enum hir::UnOp {
 });
 
 impl_stable_hash_for!(struct hir::Stmt {
-    id,
     hir_id,
     node,
     span,
@@ -506,7 +503,6 @@ impl_stable_hash_for!(struct hir::Local {
     pat,
     ty,
     init,
-    id,
     hir_id,
     span,
     attrs,
@@ -525,7 +521,6 @@ impl_stable_hash_for!(enum hir::Guard {
 });
 
 impl_stable_hash_for!(struct hir::Field {
-    id -> _,
     hir_id -> _,
     ident,
     expr,
@@ -549,7 +544,6 @@ impl_stable_hash_for!(enum hir::UnsafeSource {
 });
 
 impl_stable_hash_for!(struct hir::AnonConst {
-    id,
     hir_id,
     body
 });
@@ -673,7 +667,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
-            id: _,
             hir_id: _,
             ident,
             ref attrs,
@@ -708,7 +701,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
-            id: _,
             hir_id: _,
             ident,
             ref vis,
@@ -756,9 +748,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
             hir::VisibilityKind::Crate(sugar) => {
                 sugar.hash_stable(hcx, hasher);
             }
-            hir::VisibilityKind::Restricted { ref path, id, hir_id } => {
+            hir::VisibilityKind::Restricted { ref path, hir_id } => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    id.hash_stable(hcx, hasher);
                     hir_id.hash_stable(hcx, hasher);
                 });
                 path.hash_stable(hcx, hasher);
@@ -962,7 +953,6 @@ impl_stable_hash_for!(enum hir::StmtKind {
 
 impl_stable_hash_for!(struct hir::Arg {
     pat,
-    id,
     hir_id
 });
 

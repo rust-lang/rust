@@ -34,7 +34,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
             return;
         }
         if let hir::ItemKind::Use(ref path, _) = item.node {
-            self.check_import(item.id, path.span);
+            self.check_import(item.hir_id, path.span);
         }
     }
 
@@ -51,14 +51,13 @@ struct CheckVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
-    fn check_import(&self, id: ast::NodeId, span: Span) {
-        let def_id = self.tcx.hir().local_def_id(id);
+    fn check_import(&self, id: hir::HirId, span: Span) {
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
         if !self.tcx.maybe_unused_trait_import(def_id) {
             return;
         }
 
-        let import_def_id = self.tcx.hir().local_def_id(id);
-        if self.used_trait_imports.contains(&import_def_id) {
+        if self.used_trait_imports.contains(&def_id) {
             return;
         }
 
@@ -67,7 +66,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
         } else {
             "unused import".to_owned()
         };
-        self.tcx.lint_node(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
+        self.tcx.lint_hir(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
     }
 }
 
@@ -121,8 +120,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
     });
 
     for extern_crate in &crates_to_lint {
-        let id = tcx.hir().as_local_node_id(extern_crate.def_id).unwrap();
-        let item = tcx.hir().expect_item(id);
+        let id = tcx.hir().as_local_hir_id(extern_crate.def_id).unwrap();
+        let item = tcx.hir().expect_item_by_hir_id(id);
 
         // If the crate is fully unused, we suggest removing it altogether.
         // We do this in any edition.
@@ -135,7 +134,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
                     .map(|attr| attr.span)
                     .fold(span, |acc, attr_span| acc.to(attr_span));
 
-                tcx.struct_span_lint_node(lint, id, span, msg)
+                tcx.struct_span_lint_hir(lint, id, span, msg)
                     .span_suggestion_short(
                         span_with_attrs,
                         "remove it",
@@ -177,7 +176,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             None => format!("use {};", item.ident.name),
         };
         let replacement = visibility_qualified(&item.vis, base_replacement);
-        tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
+        tcx.struct_span_lint_hir(lint, id, extern_crate.span, msg)
             .span_suggestion_short(
                 extern_crate.span,
                 &help,

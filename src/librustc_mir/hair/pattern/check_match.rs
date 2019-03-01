@@ -346,9 +346,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {
-                            cx.tcx.lint_node(
+                            cx.tcx.lint_hir(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "irrefutable if-let pattern",
                             );
@@ -359,16 +359,16 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
-                                    cx.tcx.lint_node(
+                                    cx.tcx.lint_hir(
                                         lint::builtin::UNREACHABLE_PATTERNS,
-                                        hir_pat.id, pat.span,
+                                        hir_pat.hir_id, pat.span,
                                         "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
-                                    cx.tcx.lint_node(
+                                    cx.tcx.lint_hir(
                                         lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                        hir_pat.id,
+                                        hir_pat.hir_id,
                                         pat.span,
                                         "irrefutable while-let pattern",
                                     );
@@ -379,9 +379,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            let mut err = cx.tcx.struct_span_lint_node(
+                            let mut err = cx.tcx.struct_span_lint_hir(
                                 lint::builtin::UNREACHABLE_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "unreachable pattern",
                             );

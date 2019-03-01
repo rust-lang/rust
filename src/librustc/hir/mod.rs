@@ -1162,7 +1162,6 @@ impl UnOp {
 /// A statement.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: StmtKind,
     pub span: Span,
@@ -1170,7 +1169,7 @@ pub struct Stmt {
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "stmt({}: {})", self.id,
+        write!(f, "stmt({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_stmt(self)))
     }
 }
@@ -1208,7 +1207,6 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
@@ -1231,7 +1229,6 @@ pub enum Guard {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: P<Expr>,
@@ -1325,7 +1322,6 @@ impl BodyOwnerKind {
 /// explicit discriminant values for enum variants.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub body: BodyId,
 }
@@ -1672,7 +1668,6 @@ pub struct TraitItemId {
 /// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
@@ -1715,7 +1710,6 @@ pub struct ImplItemId {
 /// Represents anything within an `impl` block
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub vis: Visibility,
@@ -1743,7 +1737,6 @@ pub enum ImplItemKind {
 // Bind a type to an associated type: `A=Foo`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub ty: P<Ty>,
@@ -1859,7 +1852,6 @@ pub struct InlineAsm {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
     pub pat: P<Pat>,
-    pub id: NodeId,
     pub hir_id: HirId,
 }
 
@@ -2070,7 +2062,6 @@ pub enum UseKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,
-    pub ref_id: NodeId,
     pub hir_ref_id: HirId,
 }
 
@@ -2105,7 +2096,7 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
+    Restricted { path: P<Path>, hir_id: HirId },
     Inherited,
 }
 

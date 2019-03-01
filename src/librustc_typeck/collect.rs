@@ -152,12 +152,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        convert_trait_item(self.tcx, trait_item.id);
+        convert_trait_item(self.tcx, trait_item.hir_id);
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        convert_impl_item(self.tcx, impl_item.id);
+        convert_impl_item(self.tcx, impl_item.hir_id);
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -479,9 +479,9 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     }
 }
 
-fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: ast::NodeId) {
-    let trait_item = tcx.hir().expect_trait_item(trait_item_id);
-    let def_id = tcx.hir().local_def_id(trait_item.id);
+fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: hir::HirId) {
+    let trait_item = tcx.hir().expect_trait_item_by_hir_id(trait_item_id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(trait_item.hir_id);
     tcx.generics_of(def_id);
 
     match trait_item.node {
@@ -500,12 +500,12 @@ fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: ast:
     tcx.predicates_of(def_id);
 }
 
-fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: ast::NodeId) {
-    let def_id = tcx.hir().local_def_id(impl_item_id);
+fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: hir::HirId) {
+    let def_id = tcx.hir().local_def_id_from_hir_id(impl_item_id);
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
-    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item(impl_item_id).node {
+    if let hir::ImplItemKind::Method(..) = tcx.hir().expect_impl_item_by_hir_id(impl_item_id).node {
         tcx.fn_sig(def_id);
     }
 }
@@ -532,7 +532,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(
             if let Some(ref e) = variant.node.disr_expr {
-                let expr_did = tcx.hir().local_def_id(e.id);
+                let expr_did = tcx.hir().local_def_id_from_hir_id(e.hir_id);
                 def.eval_explicit_discr(tcx, expr_did)
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
@@ -637,7 +637,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         let did = tcx.hir().local_def_id(v.node.data.id());
                         let discr = if let Some(ref e) = v.node.disr_expr {
                             distance_from_explicit = 0;
-                            ty::VariantDiscr::Explicit(tcx.hir().local_def_id(e.id))
+                            ty::VariantDiscr::Explicit(tcx.hir().local_def_id_from_hir_id(e.hir_id))
                         } else {
                             ty::VariantDiscr::Relative(distance_from_explicit)
                         };
@@ -1142,11 +1142,11 @@ fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span:
 fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     use rustc::hir::*;
 
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    match tcx.hir().get(node_id) {
+    match tcx.hir().get_by_hir_id(hir_id) {
         Node::TraitItem(item) => match item.node {
             TraitItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1166,7 +1166,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
             ImplItemKind::Existential(_) => {
                 if tcx
-                    .impl_trait_ref(tcx.hir().get_parent_did(node_id))
+                    .impl_trait_ref(tcx.hir().get_parent_did_by_hir_id(hir_id))
                     .is_none()
                 {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
@@ -1176,7 +1176,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             }
             ImplItemKind::Type(ref ty) => {
                 if tcx
-                    .impl_trait_ref(tcx.hir().get_parent_did(node_id))
+                    .impl_trait_ref(tcx.hir().get_parent_did_by_hir_id(hir_id))
                     .is_none()
                 {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
@@ -1259,7 +1259,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             ..
         }) => match *def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_did(node_id))
+                tcx.type_of(tcx.hir().get_parent_did_by_hir_id(hir_id))
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1274,7 +1274,6 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             ..
         }) => {
             if gen.is_some() {
-                let hir_id = tcx.hir().node_to_hir_id(node_id);
                 return tcx.typeck_tables_of(def_id).node_type(hir_id);
             }
 
@@ -1285,7 +1284,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             tcx.mk_closure(def_id, substs)
         }
 
-        Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(node_id)) {
+        Node::AnonConst(_) => match tcx.hir().get_by_hir_id(
+            tcx.hir().get_parent_node_by_hir_id(hir_id))
+        {
             Node::Ty(&hir::Ty {
                 node: hir::TyKind::Array(_, ref constant),
                 ..
@@ -1297,7 +1298,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             | Node::Expr(&hir::Expr {
                 node: ExprKind::Repeat(_, ref constant),
                 ..
-            }) if constant.id == node_id =>
+            }) if constant.hir_id == hir_id =>
             {
                 tcx.types.usize
             }
@@ -1309,9 +1310,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                         ..
                     },
                 ..
-            }) if e.id == node_id =>
+            }) if e.hir_id == hir_id =>
             {
-                tcx.adt_def(tcx.hir().get_parent_did(node_id))
+                tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id))
                     .repr
                     .discr_type()
                     .to_ty(tcx)
@@ -1484,7 +1485,7 @@ fn find_existential_constraints<'a, 'tcx>(
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
-            let def_id = self.tcx.hir().local_def_id(it.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             // the existential type itself or its children are not within its reveal scope
             if def_id != self.def_id {
                 self.check(def_id);
@@ -1492,7 +1493,7 @@ fn find_existential_constraints<'a, 'tcx>(
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
-            let def_id = self.tcx.hir().local_def_id(it.id);
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             self.check(def_id);
             intravisit::walk_trait_item(self, it);
         }
@@ -2062,7 +2063,8 @@ fn explicit_predicates_of<'a, 'tcx>(
             };
 
             let assoc_ty =
-                tcx.mk_projection(tcx.hir().local_def_id(trait_item.id), self_trait_ref.substs);
+                tcx.mk_projection(tcx.hir().local_def_id_from_hir_id(trait_item.hir_id),
+                    self_trait_ref.substs);
 
             let bounds = compute_bounds(
                 &ItemCtxt::new(tcx, def_id),

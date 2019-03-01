@@ -878,7 +878,6 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
     // N.B., deliberately force a compilation error if/when new fields are added.
     let ImplItem {
-        id: _,
         hir_id: _,
         ident,
         ref vis,
@@ -1106,7 +1105,7 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
 }
 
 pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
-    if let VisibilityKind::Restricted { ref path, id: _, hir_id } = vis.node {
+    if let VisibilityKind::Restricted { ref path, hir_id } = vis.node {
         visitor.visit_id(hir_id);
         visitor.visit_path(path, hir_id)
     }

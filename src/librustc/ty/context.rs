@@ -65,7 +65,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
@@ -2836,14 +2836,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
     }
 
-    pub fn lint_node<S: Into<MultiSpan>>(self,
-                                         lint: &'static Lint,
-                                         id: NodeId,
-                                         span: S,
-                                         msg: &str) {
-        self.struct_span_lint_node(lint, id, span.into(), msg).emit()
-    }
-
     pub fn lint_hir_note<S: Into<MultiSpan>>(self,
                                              lint: &'static Lint,
                                              hir_id: HirId,
@@ -2866,7 +2858,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit()
     }
 
-    pub fn lint_level_at_node(self, lint: &'static Lint, mut id: NodeId)
+    pub fn lint_level_at_node(self, lint: &'static Lint, mut id: hir::HirId)
         -> (lint::Level, lint::LintSource)
     {
         // Right now we insert a `with_ignore` node in the dep graph here to
@@ -2880,11 +2872,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             let sets = self.lint_levels(LOCAL_CRATE);
             loop {
-                let hir_id = self.hir().definitions().node_to_hir_id(id);
-                if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
+                if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                     return pair
                 }
-                let next = self.hir().get_parent_node(id);
+                let next = self.hir().get_parent_node_by_hir_id(id);
                 if next == id {
                     bug!("lint traversal reached the root of the crate");
                 }
@@ -2900,23 +2891,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        let node_id = self.hir().hir_to_node_id(hir_id);
-        let (level, src) = self.lint_level_at_node(lint, node_id);
+        let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
-    pub fn struct_span_lint_node<S: Into<MultiSpan>>(self,
-                                                     lint: &'static Lint,
-                                                     id: NodeId,
-                                                     span: S,
-                                                     msg: &str)
-        -> DiagnosticBuilder<'tcx>
-    {
-        let (level, src) = self.lint_level_at_node(lint, id);
-        lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
-    }
-
-    pub fn struct_lint_node(self, lint: &'static Lint, id: NodeId, msg: &str)
+    pub fn struct_lint_node(self, lint: &'static Lint, id: HirId, msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
         let (level, src) = self.lint_level_at_node(lint, id);

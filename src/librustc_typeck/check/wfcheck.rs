@@ -108,14 +108,14 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             check_item_fn(tcx, item);
         }
         hir::ItemKind::Static(ref ty, ..) => {
-            check_item_type(tcx, item.id, ty.span, false);
+            check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::Const(ref ty, ..) => {
-            check_item_type(tcx, item.id, ty.span, false);
+            check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
             if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
-                check_item_type(tcx, it.id, ty.span, true);
+                check_item_type(tcx, it.hir_id, ty.span, true);
             }
         },
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
@@ -157,7 +157,7 @@ pub fn check_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
-    check_associated_item(tcx, trait_item.id, trait_item.span, method_sig);
+    check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 }
 
 pub fn check_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
@@ -168,18 +168,18 @@ pub fn check_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
-    check_associated_item(tcx, impl_item.id, impl_item.span, method_sig);
+    check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
 }
 
 fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   item_id: ast::NodeId,
+                                   item_id: hir::HirId,
                                    span: Span,
                                    sig_if_method: Option<&hir::MethodSig>) {
     debug!("check_associated_item: {:?}", item_id);
 
     let code = ObligationCauseCode::MiscObligation;
     for_id(tcx, item_id, span).with_fcx(|fcx, tcx| {
-        let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id(item_id));
+        let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id_from_hir_id(item_id));
 
         let (mut implied_bounds, self_ty) = match item.container {
             ty::TraitContainer(_) => (vec![], fcx.tcx.mk_self_type()),
@@ -220,16 +220,15 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn for_item<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, item: &hir::Item)
                             -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
-    for_id(tcx, item.id, item.span)
+    for_id(tcx, item.hir_id, item.span)
 }
 
-fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId, span: Span)
+fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: hir::HirId, span: Span)
                           -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
-    let def_id = tcx.hir().local_def_id(id);
-    let hir_id = tcx.hir().node_to_hir_id(id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
-        id: hir_id,
+        id,
         span,
         param_env: tcx.param_env(def_id),
     }
@@ -339,14 +338,14 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
 
 fn check_item_type<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    item_id: ast::NodeId,
+    item_id: hir::HirId,
     ty_span: Span,
     allow_foreign_ty: bool,
 ) {
     debug!("check_item_type: {:?}", item_id);
 
     for_id(tcx, item_id, ty_span).with_fcx(|fcx, gcx| {
-        let ty = gcx.type_of(gcx.hir().local_def_id(item_id));
+        let ty = gcx.type_of(gcx.hir().local_def_id_from_hir_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
         let mut forbid_unsized = true;
@@ -1025,13 +1024,13 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
-        let def_id = self.tcx.hir().local_def_id(trait_item.id);
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(trait_item.hir_id);
         self.tcx.ensure().check_trait_item_well_formed(def_id);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
-        let def_id = self.tcx.hir().local_def_id(impl_item.id);
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
         self.tcx.ensure().check_impl_item_well_formed(def_id);
     }
 }
