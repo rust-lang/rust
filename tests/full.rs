@@ -6,9 +6,7 @@ mod full {
         process::{Command, Stdio},
     };
 
-    fn test_full(crate_name: &str, old_version: &str, new_version: &str) {
-        let mut success = true;
-
+    fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
         let prog = format!(
             r#"
     # wait for the actual output
@@ -48,7 +46,11 @@ mod full {
         };
 
         let out_file: PathBuf = format!("{}.{}", out_file.display(), file_ext).into();
-        assert!(out_file.exists());
+        assert!(
+            out_file.exists(),
+            "file `{}` does not exist",
+            out_file.display()
+        );
 
         if let Some(path) = env::var_os("PATH") {
             let mut paths = env::split_paths(&path).collect::<Vec<_>>();
@@ -90,7 +92,7 @@ mod full {
         let old_version = format!("{}:{}", crate_name, old_version);
         let new_version = format!("{}:{}", crate_name, new_version);
 
-        success &= {
+        let cargo_semver_result = {
             let mut cmd = Command::new("./target/debug/cargo-semver");
             cmd.args(&["-S", &old_version, "-C", &new_version])
                 .env("RUST_BACKTRACE", "full")
@@ -105,36 +107,42 @@ mod full {
             cmd.status().expect("could not run cargo semver").success()
         };
 
-        assert!(success, "cargo semver");
+        assert_eq!(
+            cargo_semver_result, expected_result,
+            "cargo semver returned an unexpected exit status"
+        );
 
-        success &= awk_child
+        let awk_result = awk_child
             .wait()
             .expect("could not wait for awk child")
             .success();
 
-        assert!(success, "awk");
+        assert!(awk_result, "awk");
 
-        success &= Command::new("git")
+        let git_result = Command::new("git")
             .args(&["diff", "--ignore-space-at-eol", "--exit-code", out_file])
             .env("PAGER", "")
             .status()
             .expect("could not run git diff")
             .success();
 
-        assert!(success, "git");
+        assert!(git_result, "git reports unexpected diff");
     }
 
     macro_rules! full_test {
-        ($name:ident, $crate_name:expr, $old_version:expr, $new_version:expr) => {
+        ($name:ident, $crate_name:expr,
+         $old_version:expr, $new_version:expr,
+         $result:literal) => {
             #[test]
             fn $name() {
-                test_full($crate_name, $old_version, $new_version);
+                test_full($crate_name, $old_version, $new_version, $result);
             }
         };
     }
 
-    full_test!(log, "log", "0.3.4", "0.3.8");
-    full_test!(libc, "libc", "0.2.28", "0.2.31");
+    full_test!(log, "log", "0.3.4", "0.3.8", true);
+    full_test!(libc0, "libc", "0.2.28", "0.2.31", false);
+    full_test!(libc1, "libc", "0.2.47", "0.2.48", true);
     // full_test!(mozjs, "mozjs", "0.2.0", "0.3.0");
     // full_test!(rand, "rand", "0.3.10", "0.3.16");
     // full_test!(serde_pre, "serde", "0.7.0", "1.0.0");

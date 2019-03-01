@@ -5,9 +5,7 @@ mod features {
         process::{Command, Stdio},
     };
 
-    fn test_example(path: &Path, out_file: &Path) {
-        let mut success = true;
-
+    fn test_example(path: &Path, out_file: &Path, expected_result: bool) {
         let old_rlib = path.join("libold.rlib").to_str().unwrap().to_owned();
         let new_rlib = path.join("libnew.rlib").to_str().unwrap().to_owned();
 
@@ -29,8 +27,8 @@ mod features {
                 cmd.args(target_args);
             }
 
-            success &= cmd.status().expect("could not run rustc").success();
-            assert!(success, "couldn't compile old");
+            let rustc_old_result = cmd.status().expect("could not run rustc on old").success();
+            assert!(rustc_old_result, "couldn't compile old");
 
             let mut cmd = Command::new("rustc");
             cmd.args(&["--crate-type=lib", "-o", &new_rlib])
@@ -42,9 +40,8 @@ mod features {
                 cmd.args(target_args);
             }
 
-            success &= cmd.status().expect("could not run rustc").success();
-
-            assert!(success, "couldn't compile new");
+            let rustc_new_result = cmd.status().expect("could not run rustc on new").success();
+            assert!(rustc_new_result, "couldn't compile new");
 
             let mut cmd = Command::new(
                 Path::new(".")
@@ -81,12 +78,14 @@ mod features {
                 cmd.env("RUST_SEMVER_API_GUIDELINES", "true");
             }
 
-            success &= cmd
+            let rustsemverver_result = cmd
                 .status()
                 .expect("could not run rust-semverver")
                 .success();
-
-            assert!(success, "rust-semverver");
+            assert_eq!(
+                rustsemverver_result, expected_result,
+                "rust-semverver returned an unexpected exit status"
+            );
 
             {
                 // replace root path with with $REPO_PATH
@@ -122,7 +121,7 @@ mod features {
             }
         }
 
-        success &= Command::new("git")
+        let git_result = Command::new("git")
             .args(&[
                 "diff",
                 "--ignore-space-at-eol",
@@ -134,7 +133,7 @@ mod features {
             .expect("could not run git diff")
             .success();
 
-        assert!(success, "git");
+        assert!(git_result, "git reports unexpected diff");
 
         Command::new("rm")
             .args(&[&old_rlib, &new_rlib])
@@ -143,54 +142,57 @@ mod features {
     }
 
     macro_rules! test {
-        ($name:ident) => {
+        ($name:ident => $result:literal) => {
             #[test]
             fn $name() {
                 let path = Path::new("tests").join("cases").join(stringify!($name));
-                test_example(&path, &path.join("stdout"));
+                test_example(&path, &path.join("stdout"), $result);
 
                 if path.join("stdout_api_guidelines").exists() {
                     eprintln!("api-guidelines");
-                    test_example(&path, &path.join("stdout_api_guidelines"));
+                    test_example(&path, &path.join("stdout_api_guidelines"), $result);
                 }
             }
         };
-        ($($name:ident),*) => {
-            $(test!($name);)*
-        }
+        ($($name:ident => $result:literal),*) => {
+            $(test!($name => $result);)*
+        };
+        ($($name:ident => $result:literal,)*) => {
+            $(test!($name => $result);)*
+        };
     }
 
     test! {
-        addition,
-        addition_path,
-        addition_use,
-        bounds,
-        circular,
-        consts,
-        enums,
-        func,
-        func_local_items,
-        infer,
-        infer_regress,
-        inherent_impls,
-        issue_34,
-        issue_50,
-        kind_change,
-        macros,
-        max_priv,
-        mix,
-        pathologic_paths,
-        pub_use,
-        regions,
-        removal,
-        removal_path,
-        removal_use,
-        sealed_traits,
-        structs,
-        swap,
-        traits,
-        trait_impls,
-        trait_objects,
-        ty_alias
+        addition => true,
+        addition_path => true,
+        addition_use => false,
+        bounds => false,
+        circular => true,
+        consts => false,
+        enums => false,
+        func => false,
+        func_local_items => true,
+        infer => true,
+        infer_regress => false,
+        inherent_impls => false,
+        issue_34 => true,
+        issue_50 => true,
+        kind_change => false,
+        macros => false,
+        max_priv => true,
+        mix => false,
+        pathologic_paths => true,
+        pub_use => true,
+        regions => false,
+        removal => false,
+        removal_path => false,
+        removal_use => false,
+        sealed_traits => true,
+        structs => false,
+        swap => true,
+        traits => false,
+        trait_impls => false,
+        trait_objects => true,
+        ty_alias => false,
     }
 }

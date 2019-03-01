@@ -11,9 +11,9 @@ use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, W
 use log::debug;
 use std::{
     env,
+    fs::File,
     io::BufReader,
     io::Write,
-    fs::File,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -23,6 +23,7 @@ pub type Result<T> = cargo::util::CargoResult<T>;
 #[derive(Debug, Deserialize)]
 struct Invocation {
     package_name: String,
+    target_kind: Vec<String>,
     outputs: Vec<PathBuf>,
 }
 
@@ -120,8 +121,10 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         (work_info, stable_crate.max_version.clone())
     };
 
-    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name, true)?;
-    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name, false)?;
+    let (current_rlib, current_deps_output) =
+        current.rlib_and_dep_output(config, &name, true, matches)?;
+    let (stable_rlib, stable_deps_output) =
+        stable.rlib_and_dep_output(config, &name, false, matches)?;
 
     println!("current_rlib: {:?}", current_rlib);
     println!("stable_rlib: {:?}", stable_rlib);
@@ -149,6 +152,10 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
 
     if let Some(target) = matches.opt_str("target") {
         child.args(&["--target", &target]);
+    }
+
+    if !matches.opt_present("no-default-features") {
+        child.args(&["--cfg", "feature=\"default\""]);
     }
 
     let child = child
@@ -179,14 +186,20 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
              extern crate new;"
         ))?;
     } else {
-        return Err(failure::err_msg("could not pipe to rustc (wtf?)".to_owned()).into());
+        return Err(failure::err_msg(
+            "could not pipe to rustc (wtf?)".to_owned(),
+        ));
     }
 
-    child
+    let exit_status = child
         .wait()
         .map_err(|e| failure::err_msg(format!("failed to wait for rustc: {}", e)))?;
 
-    Ok(())
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(failure::err_msg("rustc-semverver errored".to_owned()))
+    }
 }
 
 /// CLI utils
@@ -206,6 +219,11 @@ mod cli {
             "a",
             "api-guidelines",
             "report only changes that are breaking according to the API-guidelines",
+        );
+        opts.optflag(
+            "",
+            "no-default-features",
+            "Do not activate the `default` feature",
         );
         opts.optopt(
             "s",
@@ -379,15 +397,24 @@ impl<'a> WorkInfo<'a> {
         config: &'a cargo::Config,
         name: &str,
         current: bool,
+        matches: &getopts::Matches,
     ) -> Result<(PathBuf, PathBuf)> {
         let mut opts =
             cargo::ops::CompileOptions::new(config, cargo::core::compiler::CompileMode::Build)?;
         // we need the build plan to find our build artifacts
         opts.build_config.build_plan = true;
+
+        if let Some(target) = matches.opt_str("target") {
+            opts.build_config.requested_target = Some(target);
+        }
+        opts.no_default_features = matches.opt_present("no-default-features");
+
         // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
 
-        env::set_var("RUSTFLAGS",
-                     format!("-C metadata={}", if current { "new" } else { "old" }));
+        env::set_var(
+            "RUSTFLAGS",
+            format!("-C metadata={}", if current { "new" } else { "old" }),
+        );
 
         let mut outdir = env::temp_dir();
         outdir.push(&format!("cargo_semver_{}_{}", name, current));
@@ -406,13 +433,14 @@ impl<'a> WorkInfo<'a> {
         let compilation = cargo::ops::compile(&self.workspace, &opts)?;
         env::remove_var("RUSTFLAGS");
 
-        let build_plan: BuildPlan =
-            serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
+        let build_plan: BuildPlan = serde_json::from_reader(BufReader::new(File::open(&outdir)?))?;
 
         // TODO: handle multiple outputs gracefully
         for i in &build_plan.invocations {
-            if i.package_name == name {
-                return Ok((i.outputs[0].clone(), compilation.deps_output));
+            if let Some(kind) = i.target_kind.get(0) {
+                if kind.contains("lib") && i.package_name == name {
+                    return Ok((i.outputs[0].clone(), compilation.deps_output));
+                }
             }
         }
 
@@ -433,7 +461,6 @@ pub fn find_on_crates_io(crate_name: &str) -> Result<crates_io::Crate> {
                 "failed to retrieve search results from the registry: {}",
                 e
             ))
-            .into()
         })
         .and_then(|(mut crates, _)| {
             crates
@@ -441,7 +468,6 @@ pub fn find_on_crates_io(crate_name: &str) -> Result<crates_io::Crate> {
                 .find(|krate| krate.name == crate_name)
                 .ok_or_else(|| {
                     failure::err_msg(format!("failed to find a matching crate `{}`", crate_name))
-                        .into()
                 })
         })
 }
