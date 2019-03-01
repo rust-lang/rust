@@ -206,7 +206,7 @@ impl FromInner<u32> for FilePermissions {
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
         // Thus the result will be e g 'ReadDir("/home")'
         fmt::Debug::fmt(&*self.inner.root, f)
@@ -627,7 +627,7 @@ impl FromInner<c_int> for File {
 }
 
 impl fmt::Debug for File {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[cfg(target_os = "linux")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut p = PathBuf::from("/proc/self/fd");

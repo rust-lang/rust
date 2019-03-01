@@ -74,7 +74,7 @@ pub struct FilePermissions { attrs: c::DWORD }
 pub struct DirBuilder;
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
         // Thus the result will be e g 'ReadDir("C:\")'
         fmt::Debug::fmt(&*self.root, f)
@@ -435,7 +435,7 @@ impl FromInner<c::HANDLE> for File {
 }
 
 impl fmt::Debug for File {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.raw());

@@ -1256,7 +1256,7 @@ impl Thread {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Thread")
             .field("id", &self.id())
             .field("name", &self.name())
@@ -1469,7 +1469,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("JoinHandle { .. }")
     }
 }

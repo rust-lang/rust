@@ -11,7 +11,7 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'/'
 }
 
-pub fn parse_prefix(path: &OsStr) -> Option<Prefix> {
+pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     if let Some(path_str) = path.to_str() {
         if let Some(_i) = path_str.find(':') {
             // FIXME: Redox specific prefix

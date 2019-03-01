@@ -534,7 +534,7 @@ fn search_hashed_nonempty_mut<K, V, M, F>(table: M, hash: SafeHash, mut is_match
     }
 }
 
-fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
+fn pop_internal<K, V>(starting_bucket: FullBucketMut<'_, K, V>)
     -> (K, V, &mut RawTable<K, V>)
 {
     let (empty, retkey, retval) = starting_bucket.take();
@@ -759,7 +759,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys(&self) -> Keys<K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
     }
 
@@ -781,7 +781,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values(&self) -> Values<K, V> {
+    pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
     }
 
@@ -808,7 +808,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
     }
 
@@ -830,7 +830,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V> {
         Iter { inner: self.table.iter() }
     }
 
@@ -858,7 +858,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         IterMut { inner: self.table.iter_mut() }
     }
 
@@ -918,7 +918,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<K, V> {
+    pub fn drain(&mut self) -> Drain<'_, K, V> {
         Drain { inner: self.table.drain() }
     }
 
@@ -1270,7 +1270,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         // Gotta resize now.
         self.reserve(1);
         let hash = self.make_hash(&key);
@@ -1571,7 +1571,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline(always)]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
-    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
         self.reserve(1);
         RawEntryBuilderMut { map: self }
     }
@@ -1592,7 +1592,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
-    pub fn raw_entry(&self) -> RawEntryBuilder<K, V, S> {
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
     }
 }
@@ -1626,7 +1626,7 @@ impl<K, V, S> Debug for HashMap<K, V, S>
           V: Debug,
           S: BuildHasher
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
@@ -1683,7 +1683,7 @@ impl<K, V> Clone for Iter<'_, K, V> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
             .finish()
@@ -1736,7 +1736,7 @@ impl<K, V> Clone for Keys<'_, K, V> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
             .finish()
@@ -1765,7 +1765,7 @@ impl<K, V> Clone for Values<'_, K, V> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
             .finish()
@@ -2244,7 +2244,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
     }
@@ -2252,7 +2252,7 @@ impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RawEntryMut::Vacant(ref v) => {
                 f.debug_tuple("RawEntry")
@@ -2270,7 +2270,7 @@ impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
          .field("key", self.key())
          .field("value", self.get())
@@ -2280,7 +2280,7 @@ impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut")
          .finish()
     }
@@ -2288,7 +2288,7 @@ impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder")
          .finish()
     }
@@ -2315,7 +2315,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for Entry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
                 f.debug_tuple("Entry")
@@ -2348,7 +2348,7 @@ unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for OccupiedEntry<'a, K, V> {}
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
             .field("value", self.get())
@@ -2374,7 +2374,7 @@ unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for VacantEntry<'a, K, V> {}
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(self.key())
             .finish()
@@ -2489,7 +2489,7 @@ impl<K, V> fmt::Debug for IterMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.inner.iter())
             .finish()
@@ -2521,7 +2521,7 @@ impl<K, V> FusedIterator for IntoIter<K, V> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.inner.iter())
             .finish()
@@ -2602,7 +2602,7 @@ impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.inner.inner.iter())
             .finish()
@@ -2637,7 +2637,7 @@ impl<K, V> fmt::Debug for Drain<'_, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.inner.iter())
             .finish()
@@ -3257,7 +3257,7 @@ impl Default for RandomState {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for RandomState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("RandomState { .. }")
     }
 }

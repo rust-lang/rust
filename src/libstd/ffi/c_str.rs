@@ -628,7 +628,7 @@ impl ops::Deref for CString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for CString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
@@ -649,7 +649,7 @@ impl From<CString> for Vec<u8> {
 
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"")?;
         for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
             f.write_char(byte as char)?;
@@ -847,7 +847,7 @@ impl Error for NulError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for NulError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "nul byte found in provided data at position: {}", self.0)
     }
 }
@@ -878,7 +878,7 @@ impl Error for FromBytesWithNulError {
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl fmt::Display for FromBytesWithNulError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
         if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
             write!(f, " at byte pos {}", pos)?;
@@ -917,7 +917,7 @@ impl Error for IntoStringError {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl fmt::Display for IntoStringError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.description().fmt(f)
     }
 }
@@ -1208,11 +1208,11 @@ impl CStr {
     ///                  .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
     ///     c_str.to_string_lossy(),
-    ///     Cow::Owned(String::from("Hello �World")) as Cow<str>
+    ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_string_lossy(&self) -> Cow<str> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(self.to_bytes())
     }
 
