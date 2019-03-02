@@ -46,7 +46,7 @@ use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{Symbol, keywords};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, MultiSpan, BytePos, FileName};
 use log::{debug, trace};
@@ -256,6 +256,7 @@ pub struct Parser<'a> {
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
+    last_unexpected_token_span: Option<Span>,
 }
 
 
@@ -582,6 +583,7 @@ impl<'a> Parser<'a> {
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
+            last_unexpected_token_span: None,
         };
 
         let tok = parser.next_tok();
@@ -775,6 +777,8 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
             Ok(false)
+        } else if self.last_unexpected_token_span == Some(self.span) {
+            FatalError.raise();
         } else {
             let mut expected = edible.iter()
                 .map(|x| TokenType::Token(x.clone()))
@@ -802,6 +806,7 @@ impl<'a> Parser<'a> {
                  (self.sess.source_map().next_point(self.prev_span),
                   format!("expected {} here", expect)))
             };
+            self.last_unexpected_token_span = Some(self.span);
             let mut err = self.fatal(&msg_exp);
             if self.token.is_ident_named("and") {
                 err.span_suggestion_short(
@@ -6332,10 +6337,11 @@ impl<'a> Parser<'a> {
                     &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
-            } else if let Err(err) = self.expect_one_of(&[], &[]) {
-                return Err(err);
             } else {
-                (vec![self_arg], true)
+                match self.expect_one_of(&[], &[]) {
+                    Err(err) => return Err(err),
+                    Ok(recovered) => (vec![self_arg], recovered),
+                }
             }
         } else {
             self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
