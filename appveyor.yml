@@ -5,11 +5,6 @@ environment:
   # server goes down presumably. See #43333 for more info
   CARGO_HTTP_CHECK_REVOKE: false
 
-  # Execute the builds on GCE instead of Hyper-V. Those builders have a 3-4
-  # minute startup overhead, but AppVeyor support recommended this as a
-  # possible solution for #58160 (spurious 259 exit codes)
-  appveyor_build_worker_cloud: gce
-
   matrix:
   # 32/64 bit MSVC tests
   - MSYS_BITS: 64
