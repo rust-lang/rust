@@ -64,7 +64,6 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
-    pub llvm_enabled: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -244,7 +243,6 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
-    enabled: Option<bool>,
     ccache: Option<StringOrBool>,
     ninja: Option<bool>,
     assertions: Option<bool>,
@@ -360,7 +358,6 @@ impl Config {
 
     pub fn default_opts() -> Config {
         let mut config = Config::default();
-        config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;
         config.backtrace = true;
@@ -512,7 +509,6 @@ impl Config {
                 Some(StringOrBool::Bool(false)) | None => {}
             }
             set(&mut config.ninja, llvm.ninja);
-            set(&mut config.llvm_enabled, llvm.enabled);
             llvm_assertions = llvm.assertions;
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
@@ -670,6 +666,11 @@ impl Config {
 
     pub fn very_verbose(&self) -> bool {
         self.verbose > 1
+    }
+
+    pub fn llvm_enabled(&self) -> bool {
+        self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+        || self.rust_codegen_backends.contains(&INTERNER.intern_str("emscripten"))
     }
 }
 
