@@ -778,6 +778,7 @@ impl<'a> Parser<'a> {
             // leave it in the input
             Ok(false)
         } else if self.last_unexpected_token_span == Some(self.span) {
+            emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
             FatalError.raise();
         } else {
             let mut expected = edible.iter()
