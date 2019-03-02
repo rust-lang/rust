@@ -771,8 +771,20 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> Result<(), V::Error> {
-        self.predicate.visit_with(visitor)?;
-        self.param_env.visit_with(visitor)
+        let traits::Obligation {
+            cause: _,
+            recursion_depth: _,
+            predicate,
+            /* HACK: visiting the param-env is a serious performance footgun because
+             * it can be very large and cause scalability problems. So just don't
+             * visit it. The code had never visited it, so I suppose it still hadn't
+             * bit anyone in a serious enough way, but it probably will one day.
+             *
+             * Maybe the permafix will be to have `Obligation` not be `TypeFoldable`?
+             */
+            param_env: _,
+        } = self;
+        predicate.visit_with(visitor)
     }
 }
 
