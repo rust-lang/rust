@@ -77,10 +77,6 @@ impl Body {
     pub fn pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
         self.pats.iter()
     }
-
-    pub fn source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.owner).1
-    }
 }
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?

@@ -109,7 +109,7 @@ pub(crate) fn reference_definition(
             Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
             Some(Resolution::LocalBinding(pat)) => {
                 let body = resolver.body().expect("no body for local binding");
-                let source_map = body.source_map(db);
+                let source_map = body.owner().body_source_map(db);
                 let ptr = source_map.pat_syntax(pat).expect("pattern not found in syntax mapping");
                 let name =
                     path.as_ident().cloned().expect("local binding from a multi-segment path");
