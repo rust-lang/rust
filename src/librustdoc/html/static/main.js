@@ -2077,16 +2077,22 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     var toggle = createSimpleToggle(false);
+    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") !== "false";
+    var pageId = getPageId();
 
     var func = function(e) {
         var next = e.nextElementSibling;
         if (!next) {
             return;
         }
-        if (hasClass(next, "docblock") ||
-            (hasClass(next, "stability") &&
-             hasClass(next.nextElementSibling, "docblock"))) {
-            insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+        if (hasClass(next, "docblock") === true ||
+            (hasClass(next, "stability") === true &&
+             hasClass(next.nextElementSibling, "docblock") === true)) {
+            var newToggle = toggle.cloneNode(true);
+            insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+            if (hideMethodDocs === true && hasClass(e, "method") === true) {
+                collapseDocs(newToggle, "hide", pageId);
+            }
         }
     };
 
@@ -2107,17 +2113,16 @@ if (!DOMTokenList.prototype.remove) {
     onEachLazy(document.getElementsByClassName("associatedconstant"), func);
     onEachLazy(document.getElementsByClassName("impl"), funcImpl);
     var impl_call = function() {};
-    if (getCurrentValue("rustdoc-method-docs") !== "false") {
+    if (hideMethodDocs === true) {
         impl_call = function(e, newToggle, pageId) {
             if (e.id.match(/^impl(?:-\d+)?$/) === null) {
                 // Automatically minimize all non-inherent impls
-                if (hasClass(e, "impl")) {
+                if (hasClass(e, "impl") === true) {
                     collapseDocs(newToggle, "hide", pageId);
                 }
             }
         };
     }
-    var pageId = getPageId();
     var newToggle = document.createElement("a");
     newToggle.href = "javascript:void(0)";
     newToggle.className = "collapse-toggle hidden-default collapsed";
@@ -2163,7 +2168,7 @@ if (!DOMTokenList.prototype.remove) {
             var inner_toggle = newToggle.cloneNode(true);
             inner_toggle.onclick = toggleClicked;
             e.insertBefore(inner_toggle, e.firstChild);
-            impl_call(e, inner_toggle, pageId);
+            impl_call(e.previousSibling, inner_toggle, pageId);
         }
     });
 
@@ -2265,30 +2270,6 @@ if (!DOMTokenList.prototype.remove) {
     onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
     onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
 
-    // In the search display, allows to switch between tabs.
-    function printTab(nb) {
-        if (nb === 0 || nb === 1 || nb === 2) {
-            currentTab = nb;
-        }
-        var nb_copy = nb;
-        onEachLazy(document.getElementById("titles").childNodes, function(elem) {
-            if (nb_copy === 0) {
-                addClass(elem, "selected");
-            } else {
-                removeClass(elem, "selected");
-            }
-            nb_copy -= 1;
-        });
-        onEachLazy(document.getElementById("results").childNodes, function(elem) {
-            if (nb === 0) {
-                elem.style.display = "";
-            } else {
-                elem.style.display = "none";
-            }
-            nb -= 1;
-        });
-    }
-
     function createToggleWrapper(tog) {
         var span = document.createElement("span");
         span.className = "toggle-label";
@@ -2373,6 +2354,30 @@ if (!DOMTokenList.prototype.remove) {
             showModal(e.lastElementChild.innerHTML);
         };
     });
+
+    // In the search display, allows to switch between tabs.
+    function printTab(nb) {
+        if (nb === 0 || nb === 1 || nb === 2) {
+            currentTab = nb;
+        }
+        var nb_copy = nb;
+        onEachLazy(document.getElementById("titles").childNodes, function(elem) {
+            if (nb_copy === 0) {
+                addClass(elem, "selected");
+            } else {
+                removeClass(elem, "selected");
+            }
+            nb_copy -= 1;
+        });
+        onEachLazy(document.getElementById("results").childNodes, function(elem) {
+            if (nb === 0) {
+                elem.style.display = "";
+            } else {
+                elem.style.display = "none";
+            }
+            nb -= 1;
+        });
+    }
 
     function putBackSearch(search_input) {
         if (search_input.value !== "") {
