@@ -1,8 +1,8 @@
 ---
-created: "2019-01-28T14:51:16.185273502+00:00"
-creator: insta@0.5.2
-expression: "&result"
+created: "2019-03-02T19:54:58.571163594Z"
+creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
 ---
 [27; 28) 'x': SomeType
 [40; 272) '{     ...lo"; }': ()
@@ -37,12 +37,12 @@ source: crates/ra_hir/src/ty/tests.rs
 [213; 217) '3.14': f64
 [223; 225) '!3': i32
 [224; 225) '3': i32
-[231; 233) '-x': [unknown]
+[231; 233) '-x': {unknown}
 [232; 233) 'x': SomeType
-[239; 241) '!x': [unknown]
+[239; 241) '!x': {unknown}
 [240; 241) 'x': SomeType
-[247; 255) '-"hello"': [unknown]
+[247; 255) '-"hello"': {unknown}
 [248; 255) '"hello"': &str
-[261; 269) '!"hello"': [unknown]
+[261; 269) '!"hello"': {unknown}
 [262; 269) '"hello"': &str
 

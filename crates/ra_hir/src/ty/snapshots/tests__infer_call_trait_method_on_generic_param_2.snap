@@ -1,5 +1,5 @@
 ---
-created: "2019-03-02T13:49:53.477633667Z"
+created: "2019-03-02T19:54:58.495889098Z"
 creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
@@ -7,5 +7,5 @@ expression: "&result"
 [66; 67) 't': T
 [72; 91) '{     ...d(); }': ()
 [78; 79) 't': T
-[78; 88) 't.method()': [unknown]
+[78; 88) 't.method()': {unknown}
 

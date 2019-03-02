@@ -339,7 +339,7 @@ impl fmt::Display for Ty {
                 Ok(())
             }
             Ty::Param { name, .. } => write!(f, "{}", name),
-            Ty::Unknown => write!(f, "[unknown]"),
+            Ty::Unknown => write!(f, "{{unknown}}"),
             Ty::Infer(..) => write!(f, "_"),
         }
     }

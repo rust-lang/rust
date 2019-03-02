@@ -1,16 +1,16 @@
 ---
-created: "2019-02-09T19:55:39.712470520Z"
-creator: insta@0.6.1
+created: "2019-03-02T19:54:58.539815103Z"
+creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
 [25; 110) '{     ...   } }': ()
 [31; 108) 'match ...     }': ()
-[37; 42) '*self': [unknown]
-[38; 42) 'self': [unknown]
-[53; 95) 'Borrow...), ..}': [unknown]
-[74; 77) 'box': [unknown]
-[78; 87) 'Primitive': [unknown]
-[88; 89) 'p': [unknown]
+[37; 42) '*self': {unknown}
+[38; 42) 'self': {unknown}
+[53; 95) 'Borrow...), ..}': {unknown}
+[74; 77) 'box': {unknown}
+[78; 87) 'Primitive': {unknown}
+[88; 89) 'p': {unknown}
 [99; 101) '{}': ()
 

@@ -1,13 +1,13 @@
 ---
-created: "2019-03-02T13:49:53.765202736Z"
+created: "2019-03-02T19:54:58.555503703Z"
 creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
-[33; 37) 'self': &[unknown]
+[33; 37) 'self': &{unknown}
 [102; 127) '{     ...d(); }': ()
 [108; 109) 'S': S<u32>(T) -> S<T>
 [108; 115) 'S(1u32)': S<u32>
-[108; 124) 'S(1u32...thod()': [unknown]
+[108; 124) 'S(1u32...thod()': {unknown}
 [110; 114) '1u32': u32
 

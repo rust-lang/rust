@@ -1,25 +1,25 @@
 ---
-created: "2019-01-26T17:46:03.842478456+00:00"
-creator: insta@0.5.2
-expression: "&result"
+created: "2019-03-02T19:54:58.494864698Z"
+creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
 ---
 [14; 15) 'x': u32
 [22; 24) '{}': ()
 [78; 231) '{     ...t &c }': &mut &f64
 [88; 89) 'a': u32
-[92; 108) 'unknow...nction': [unknown]
+[92; 108) 'unknow...nction': {unknown}
 [92; 110) 'unknow...tion()': u32
 [116; 125) 'takes_u32': fn takes_u32(u32) -> ()
 [116; 128) 'takes_u32(a)': ()
 [126; 127) 'a': u32
 [138; 139) 'b': i32
-[142; 158) 'unknow...nction': [unknown]
+[142; 158) 'unknow...nction': {unknown}
 [142; 160) 'unknow...tion()': i32
 [166; 184) 'S { i3...d: b }': S
 [181; 182) 'b': i32
 [194; 195) 'c': f64
-[198; 214) 'unknow...nction': [unknown]
+[198; 214) 'unknow...nction': {unknown}
 [198; 216) 'unknow...tion()': f64
 [222; 229) '&mut &c': &mut &f64
 [227; 229) '&c': &f64

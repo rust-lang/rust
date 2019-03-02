@@ -1,8 +1,8 @@
 ---
-created: "2019-01-22T14:45:00.037734500+00:00"
-creator: insta@0.4.0
+created: "2019-03-02T19:54:58.538812297Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
 ---
 [9; 10) 'x': &i32
 [18; 369) '{     ...o_x; }': ()
@@ -20,21 +20,21 @@ source: "crates\\ra_hir\\src\\ty\\tests.rs"
 [84; 85) '1': i32
 [87; 94) '"hello"': &str
 [102; 152) 'for (e...     }': ()
-[106; 112) '(e, f)': ([unknown], [unknown])
-[107; 108) 'e': [unknown]
-[110; 111) 'f': [unknown]
-[116; 125) 'some_iter': [unknown]
+[106; 112) '(e, f)': ({unknown}, {unknown})
+[107; 108) 'e': {unknown}
+[110; 111) 'f': {unknown}
+[116; 125) 'some_iter': {unknown}
 [126; 152) '{     ...     }': ()
-[140; 141) 'g': [unknown]
-[144; 145) 'e': [unknown]
+[140; 141) 'g': {unknown}
+[144; 145) 'e': {unknown}
 [158; 205) 'if let...     }': ()
-[165; 170) '[val]': [unknown]
-[173; 176) 'opt': [unknown]
+[165; 170) '[val]': {unknown}
+[173; 176) 'opt': {unknown}
 [177; 205) '{     ...     }': ()
-[191; 192) 'h': [unknown]
-[195; 198) 'val': [unknown]
-[215; 221) 'lambda': [unknown]
-[224; 256) '|a: u6...b; c }': [unknown]
+[191; 192) 'h': {unknown}
+[195; 198) 'val': {unknown}
+[215; 221) 'lambda': {unknown}
+[224; 256) '|a: u6...b; c }': {unknown}
 [225; 226) 'a': u64
 [233; 234) 'b': u64
 [236; 237) 'c': i32

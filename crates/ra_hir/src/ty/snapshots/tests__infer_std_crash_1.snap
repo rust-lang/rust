@@ -1,13 +1,13 @@
 ---
-created: "2019-02-09T16:56:24.803326529Z"
-creator: insta@0.6.1
+created: "2019-03-02T19:54:58.539061212Z"
+creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
 [54; 139) '{     ...   } }': ()
 [60; 137) 'match ...     }': ()
-[66; 83) 'someth...nknown': Maybe<[unknown]>
-[94; 124) 'Maybe:...thing)': Maybe<[unknown]>
-[106; 123) 'ref mu...ething': &mut [unknown]
+[66; 83) 'someth...nknown': Maybe<{unknown}>
+[94; 124) 'Maybe:...thing)': Maybe<{unknown}>
+[106; 123) 'ref mu...ething': &mut {unknown}
 [128; 130) '()': ()
 

@@ -1,6 +1,6 @@
 ---
-created: "2019-02-18T07:03:52.524808301Z"
-creator: insta@0.6.2
+created: "2019-03-02T19:54:58.498001346Z"
+creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
 ---
@@ -39,8 +39,8 @@ expression: "&result"
 [232; 238) 'z || y': bool
 [237; 238) 'y': bool
 [242; 243) '5': i32
-[253; 254) 'd': [unknown]
-[257; 258) 'b': [unknown]
+[253; 254) 'd': {unknown}
+[257; 258) 'b': {unknown}
 [268; 269) 'g': ()
 [272; 283) 'minus_forty': isize
 [272; 288) 'minus_...y ^= i': ()

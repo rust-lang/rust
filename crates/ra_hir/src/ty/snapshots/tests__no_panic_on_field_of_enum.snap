@@ -1,11 +1,11 @@
 ---
-created: "2019-01-22T14:45:00.058678600+00:00"
-creator: insta@0.4.0
+created: "2019-03-02T19:54:58.571647281Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
-source: "crates\\ra_hir\\src\\ty\\tests.rs"
 ---
 [20; 21) 'x': X
 [26; 47) '{     ...eld; }': ()
 [32; 33) 'x': X
-[32; 44) 'x.some_field': [unknown]
+[32; 44) 'x.some_field': {unknown}
 

@@ -1,5 +1,5 @@
 ---
-created: "2019-03-02T13:49:53.680954394Z"
+created: "2019-03-02T19:54:58.534200832Z"
 creator: insta@0.6.3
 source: crates/ra_hir/src/ty/tests.rs
 expression: "&result"
@@ -7,6 +7,6 @@ expression: "&result"
 [108; 181) '{     ...ter; }': ()
 [118; 119) 'x': i32
 [145; 146) '1': i32
-[156; 157) 'y': [unknown]
-[169; 178) 'no_matter': [unknown]
+[156; 157) 'y': {unknown}
+[169; 178) 'no_matter': {unknown}
 

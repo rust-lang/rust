@@ -474,7 +474,7 @@ mod tests {
         );
 
         let type_name = analysis.type_of(range).unwrap().unwrap();
-        assert_eq!("[unknown]", &type_name);
+        assert_eq!("{unknown}", &type_name);
     }
 
     #[test]
