@@ -23,8 +23,8 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let function =
         source_binder::function_from_child_node(ctx.db, ctx.frange.file_id, expr.syntax())?;
     let infer_result = function.infer(ctx.db);
-    let syntax_mapping = function.body_source_map(ctx.db);
-    let node_expr = syntax_mapping.node_expr(expr)?;
+    let source_map = function.body_source_map(ctx.db);
+    let node_expr = source_map.node_expr(expr)?;
     let match_expr_ty = infer_result[node_expr].clone();
     let enum_def = match match_expr_ty {
         Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,

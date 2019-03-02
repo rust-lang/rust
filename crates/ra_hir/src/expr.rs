@@ -78,7 +78,7 @@ impl Body {
         self.pats.iter()
     }
 
-    pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub fn source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map(self.owner).1
     }
 }
