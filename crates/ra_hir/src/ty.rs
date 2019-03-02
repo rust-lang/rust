@@ -54,7 +54,7 @@ pub enum Ty {
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(Arc<Ty>),
 
-    // An array with the given length. Written as `[T; n]`.
+    /// An array with the given length. Written as `[T; n]`.
     Array(Arc<Ty>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
@@ -97,36 +97,12 @@ pub enum Ty {
     /// ```
     FnPtr(Arc<FnSig>),
 
-    // rustc has a separate type for each function, which just coerces to the
-    // above function pointer type. Once we implement generics, we will probably
-    // need this as well.
-
-    // A trait, defined with `dyn Trait`.
-    // Dynamic(),
-
-    // The anonymous type of a closure. Used to represent the type of
-    // `|a| a`.
-    // Closure(DefId, ClosureSubsts<'tcx>),
-
-    // The anonymous type of a generator. Used to represent the type of
-    // `|a| yield a`.
-    // Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
-
-    // A type representing the types stored inside a generator.
-    // This should only appear in GeneratorInteriors.
-    // GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
     /// The never type `!`.
     Never,
 
     /// A tuple type.  For example, `(i32, bool)`.
     Tuple(Arc<[Ty]>),
 
-    // The projection of an associated type.  For example,
-    // `<T as Trait<..>>::N`.pub
-    // Projection(ProjectionTy),
-
-    // Opaque (`impl Trait`) type found in a return type.
-    // Opaque(DefId, Substs),
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
         /// The index of the parameter (starting with parameters from the
@@ -304,9 +280,6 @@ impl Ty {
                 if (idx as usize) < substs.0.len() {
                     substs.0[idx as usize].clone()
                 } else {
-                    // TODO: does this indicate a bug? i.e. should we always
-                    // have substs for all type params? (they might contain the
-                    // params themselves again...)
                     Ty::Param { idx, name }
                 }
             }
