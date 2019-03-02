@@ -900,9 +900,15 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     }
 }
 
+// FIXME: Reference `MaybeUninit` from these docs, once that is stable.
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
 ///
 /// This wrapper is 0-cost.
+///
+/// `ManuallyDrop<T>` is subject to the same layout optimizations as `T`.
+/// As a consequence, it has *no effect* on the assumptions that the compiler makes
+/// about all values being initialized at their type.  In particular, initializing
+/// a `ManuallyDrop<&mut T>` with [`mem::zeroed`] is undefined behavior.
 ///
 /// # Examples
 ///
@@ -935,6 +941,8 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 ///     }
 /// }
 /// ```
+///
+/// [`mem::zeroed`]: fn.zeroed.html
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
