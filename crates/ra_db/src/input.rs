@@ -124,6 +124,10 @@ impl CrateGraph {
         self.arena.is_empty()
     }
 
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = CrateId> + 'a {
+        self.arena.keys().map(|it| *it)
+    }
+
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.arena[&crate_id].file_id
     }

@@ -200,8 +200,14 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl PersistentHirDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
-        let raw =
-            SourceItemId { file_id: ctx.file_id, item_id: items.id_of(ctx.file_id, ast.syntax()) };
+        let item_id = items.id_of(ctx.file_id, ast.syntax());
+        Self::from_source_item_id_unchecked(ctx, item_id)
+    }
+    fn from_source_item_id_unchecked(
+        ctx: LocationCtx<&impl PersistentHirDatabase>,
+        item_id: SourceFileItemId,
+    ) -> Self {
+        let raw = SourceItemId { file_id: ctx.file_id, item_id };
         let loc = ItemLoc { module: ctx.module, raw, _ty: PhantomData };
 
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
@@ -309,9 +315,7 @@ impl SourceFileItems {
         file_id: HirFileId,
     ) -> Arc<SourceFileItems> {
         let source_file = db.hir_parse(file_id);
-        let mut res = SourceFileItems { file_id, arena: Arena::default() };
-        res.init(&source_file);
-        Arc::new(res)
+        Arc::new(SourceFileItems::from_source_file(&source_file, file_id))
     }
 
     pub(crate) fn file_item_query(
@@ -324,18 +328,23 @@ impl SourceFileItems {
             .to_owned()
     }
 
-    fn init(&mut self, source_file: &SourceFile) {
+    pub(crate) fn from_source_file(
+        source_file: &SourceFile,
+        file_id: HirFileId,
+    ) -> SourceFileItems {
+        let mut res = SourceFileItems { file_id, arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
         bfs(source_file.syntax(), |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
-                self.alloc(module_item.syntax());
+                res.alloc(module_item.syntax());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
-                self.alloc(macro_call.syntax());
+                res.alloc(macro_call.syntax());
             }
-        })
+        });
+        res
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {

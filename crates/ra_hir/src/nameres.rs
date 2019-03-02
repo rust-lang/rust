@@ -15,6 +15,7 @@
 //! so that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
 pub(crate) mod lower;
+mod crate_def_map;
 
 use std::{time, sync::Arc};
 

@@ -64,6 +64,7 @@ impl Name {
             "str" => KnownName::Str,
             "Self" => KnownName::SelfType,
             "self" => KnownName::SelfParam,
+            "macro_rules" => KnownName::MacroRules,
             _ => return None,
         };
         Some(name)
@@ -122,4 +123,6 @@ pub(crate) enum KnownName {
 
     SelfType,
     SelfParam,
+
+    MacroRules,
 }

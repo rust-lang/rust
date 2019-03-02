@@ -289,6 +289,15 @@ impl LinkId {
     }
 }
 
+pub(crate) fn resolve_module_declaration(
+    db: &impl PersistentHirDatabase,
+    file_id: HirFileId,
+    name: &Name,
+    is_root: bool,
+) -> Option<FileId> {
+    resolve_submodule(db, file_id, name, is_root).0.first().map(|it| *it)
+}
+
 fn resolve_submodule(
     db: &impl PersistentHirDatabase,
     file_id: HirFileId,
