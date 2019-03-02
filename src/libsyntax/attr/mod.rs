@@ -208,8 +208,8 @@ impl Attribute {
 impl MetaItem {
     /// For a single-segment meta-item returns its name, otherwise returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if self.ident.segments.len() == 1 {
-            Some(self.ident.segments[0].ident)
+        if self.path.segments.len() == 1 {
+            Some(self.path.segments[0].ident)
         } else {
             None
         }
@@ -256,7 +256,7 @@ impl MetaItem {
     pub fn span(&self) -> Span { self.span }
 
     pub fn check_name(&self, name: &str) -> bool {
-        self.ident == name
+        self.path == name
     }
 
     pub fn is_value_str(&self) -> bool {
@@ -273,7 +273,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
-            ident: self.path.clone(),
+            path: self.path.clone(),
             node: if let Some(node) = MetaItemKind::from_tokens(&mut tokens) {
                 if tokens.peek().is_some() {
                     return None;
@@ -319,7 +319,7 @@ impl Attribute {
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
-            ident: self.path.clone(),
+            path: self.path.clone(),
             node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })
@@ -357,15 +357,15 @@ pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem 
 }
 
 pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
+    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { ident: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
+    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
@@ -393,7 +393,7 @@ pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     Attribute {
         id,
         style: ast::AttrStyle::Inner,
-        path: item.ident,
+        path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -410,7 +410,7 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     Attribute {
         id,
         style: ast::AttrStyle::Outer,
-        path: item.ident,
+        path: item.path,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -461,7 +461,7 @@ impl MetaItem {
     fn tokens(&self) -> TokenStream {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
-        for (i, segment) in self.ident.segments.iter().enumerate() {
+        for (i, segment) in self.path.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
                 let mod_sep_span = Span::new(last_pos,
@@ -481,7 +481,7 @@ impl MetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let ident = match tokens.next() {
+        let path = match tokens.next() {
             Some(TokenTree::Token(span, token @ Token::Ident(..))) |
             Some(TokenTree::Token(span, token @ Token::ModSep)) => 'arm: {
                 let mut segments = if let Token::Ident(ident, _) = token {
@@ -522,11 +522,11 @@ impl MetaItem {
         let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(ident.span.hi()),
-            _ => ident.span.hi(),
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span.hi()),
+            _ => path.span.hi(),
         };
-        let span = ident.span.with_hi(hi);
-        Some(MetaItem { ident, node, span })
+        let span = path.span.with_hi(hi);
+        Some(MetaItem { path, node, span })
     }
 }
 

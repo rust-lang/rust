@@ -3713,7 +3713,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let path = attr.ident.to_string();
+    let path = attr.path.to_string();
 
     if attr.is_word() {
         Some(path)

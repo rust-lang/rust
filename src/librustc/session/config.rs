@@ -1839,7 +1839,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 
             match &mut parser.parse_meta_item() {
                 Ok(meta_item) if parser.token == token::Eof => {
-                    if meta_item.ident.segments.len() != 1 {
+                    if meta_item.path.segments.len() != 1 {
                         error!("argument key must be an identifier");
                     }
                     match &meta_item.node {

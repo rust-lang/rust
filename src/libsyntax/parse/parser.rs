@@ -2333,7 +2333,7 @@ impl<'a> Parser<'a> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.ident.clone()),
+                    ast::MetaItemKind::Word => Some(meta.path.clone()),
                     _ => None,
                 },
                 _ => None,

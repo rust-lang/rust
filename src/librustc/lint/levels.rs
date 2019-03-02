@@ -221,7 +221,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 match item.node {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.ident == "reason" {
+                        if item.path == "reason" {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
@@ -261,7 +261,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(li.span);
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
-                                if item.ident == "reason" {
+                                if item.path == "reason" {
                                     err.help("reason in lint attribute must come last");
                                 }
                             }
@@ -270,15 +270,15 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue;
                     }
                 };
-                let tool_name = if meta_item.ident.segments.len() > 1 {
-                    let tool_ident = meta_item.ident.segments[0].ident;
+                let tool_name = if meta_item.path.segments.len() > 1 {
+                    let tool_ident = meta_item.path.segments[0].ident;
                     if !attr::is_known_lint_tool(tool_ident) {
                         span_err!(
                             sess,
                             tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            meta_item.ident
+                            meta_item.path
                         );
                         continue;
                     }
@@ -287,7 +287,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 } else {
                     None
                 };
-                let name = meta_item.ident.segments.last().expect("empty lint name").ident.name;
+                let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span, reason);
