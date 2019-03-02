@@ -34,6 +34,8 @@ Let's write some tests first that we can execute while we iterate on our lint.
 Clippy uses UI tests for testing. UI tests check that the output of Clippy is
 exactly as expected. Each test is just a plain Rust file that contains the code
 we want to check. The output of Clippy is compared against a `.stderr` file.
+Note that you don't have to create this file yourself, we'll get to
+generating the `.stderr` files further down.
 
 Let's create the test file at `tests/ui/foo_functions.rs`. It doesn't really
 matter what the file is called, but it's a good convention to name it after the
@@ -81,9 +83,9 @@ While you are working on implementing your lint, you can keep running the UI
 test. That allows you to check if the output is turning into what you want.
 
 Once you are satisfied with the output, you need to run
-`tests/ui/update-all-references.sh` to update the `stderr` file for your lint.
+`tests/ui/update-all-references.sh` to update the `.stderr` file for your lint.
 Running `TESTNAME=ui/foo_functions cargo uitest` should pass then. When you
-commit your lint, be sure to commit the `*.stderr` files, too.
+commit your lint, be sure to commit the `.stderr` files, too.
 
 ### Rustfix tests
 
