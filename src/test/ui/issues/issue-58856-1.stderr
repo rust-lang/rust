@@ -7,5 +7,13 @@ LL |     fn b(self> {}
    |         |    help: `)` may belong here
    |         unclosed delimiter
 
-error: aborting due to previous error
+error: incorrect close delimiter: `]`
+  --> $DIR/issue-58856-1.rs:9:8
+   |
+LL | fn foo(] {}
+   |       -^ incorrect close delimiter
+   |       |
+   |       un-closed delimiter
+
+error: aborting due to 2 previous errors
 
