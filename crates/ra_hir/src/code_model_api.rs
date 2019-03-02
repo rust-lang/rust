@@ -9,7 +9,7 @@ use crate::{
     HirDatabase, PersistentHirDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, lower::ImportId},
-    expr::{Body, BodySyntaxMapping},
+    expr::{Body, BodySourceMap},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
@@ -483,8 +483,8 @@ impl Function {
         self.signature(db).name.clone()
     }
 
-    pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(*self)
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_source_map(*self)
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
@@ -497,7 +497,7 @@ impl Function {
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
-        let syntax_mapping = db.body_syntax_mapping(*self);
+        let syntax_mapping = db.body_source_map(*self);
         ScopesWithSyntaxMapping { scopes, syntax_mapping }
     }
 

@@ -54,7 +54,7 @@ pub(crate) fn reference_definition(
         if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
             tested_by!(goto_definition_works_for_methods);
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let syntax_mapping = function.body_source_map(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
             if let Some(func) =
                 syntax_mapping.node_expr(expr).and_then(|it| infer_result.method_resolution(it))
@@ -66,7 +66,7 @@ pub(crate) fn reference_definition(
         if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
             tested_by!(goto_definition_works_for_fields);
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let syntax_mapping = function.body_source_map(db);
             let expr = ast::Expr::cast(field_expr.syntax()).unwrap();
             if let Some(field) =
                 syntax_mapping.node_expr(expr).and_then(|it| infer_result.field_resolution(it))
@@ -80,7 +80,7 @@ pub(crate) fn reference_definition(
             tested_by!(goto_definition_works_for_named_fields);
 
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let syntax_mapping = function.body_source_map(db);
 
             let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
 

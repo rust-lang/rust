@@ -225,6 +225,6 @@ impl RootDatabase {
 
         self.query(hir::db::LowerModuleQuery).sweep(sweep);
         self.query(hir::db::LowerModuleSourceMapQuery).sweep(sweep);
-        self.query(hir::db::BodySyntaxMappingQuery).sweep(sweep);
+        self.query(hir::db::BodySourceMapQuery).sweep(sweep);
     }
 }

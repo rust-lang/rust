@@ -9,7 +9,7 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
         _ => return,
     };
     let infer_result = function.infer(ctx.db);
-    let syntax_mapping = function.body_syntax_mapping(ctx.db);
+    let syntax_mapping = function.body_source_map(ctx.db);
     let expr = match syntax_mapping.node_expr(struct_lit.into()) {
         Some(expr) => expr,
         None => return,

@@ -132,7 +132,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     let parent_fn = node.ancestors().find_map(ast::FnDef::cast)?;
     let function = hir::source_binder::function_from_source(db, frange.file_id, parent_fn)?;
     let infer = function.infer(db);
-    let syntax_mapping = function.body_syntax_mapping(db);
+    let syntax_mapping = function.body_source_map(db);
     if let Some(expr) = ast::Expr::cast(node).and_then(|e| syntax_mapping.node_expr(e)) {
         Some(infer[expr].to_string())
     } else if let Some(pat) = ast::Pat::cast(node).and_then(|p| syntax_mapping.node_pat(p)) {

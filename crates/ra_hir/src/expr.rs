@@ -49,7 +49,7 @@ pub struct Body {
 /// a structure that is agnostic to the actual positions of expressions in the
 /// file, so that we don't recompute types whenever some whitespace is typed.
 #[derive(Debug, Eq, PartialEq)]
-pub struct BodySyntaxMapping {
+pub struct BodySourceMap {
     body: Arc<Body>,
     expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
     expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
@@ -78,8 +78,8 @@ impl Body {
         self.pats.iter()
     }
 
-    pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(self.owner)
+    pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_source_map(self.owner)
     }
 }
 
@@ -119,7 +119,7 @@ impl Index<PatId> for Body {
     }
 }
 
-impl BodySyntaxMapping {
+impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
         self.expr_syntax_mapping_back.get(expr).cloned()
     }
@@ -468,7 +468,7 @@ impl Pat {
 // Queries
 
 pub(crate) fn body_hir(db: &impl HirDatabase, func: Function) -> Arc<Body> {
-    Arc::clone(&body_syntax_mapping(db, func).body)
+    Arc::clone(&body_source_map(db, func).body)
 }
 
 struct ExprCollector {
@@ -910,7 +910,7 @@ impl ExprCollector {
         self.body_expr = Some(body);
     }
 
-    fn into_body_syntax_mapping(self) -> BodySyntaxMapping {
+    fn into_body_source_map(self) -> BodySourceMap {
         let body = Body {
             owner: self.owner,
             exprs: self.exprs,
@@ -918,7 +918,7 @@ impl ExprCollector {
             params: self.params,
             body_expr: self.body_expr.expect("A body should have been collected"),
         };
-        BodySyntaxMapping {
+        BodySourceMap {
             body: Arc::new(body),
             expr_syntax_mapping: self.expr_syntax_mapping,
             expr_syntax_mapping_back: self.expr_syntax_mapping_back,
@@ -928,18 +928,18 @@ impl ExprCollector {
     }
 }
 
-pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, func: Function) -> Arc<BodySyntaxMapping> {
+pub(crate) fn body_source_map(db: &impl HirDatabase, func: Function) -> Arc<BodySourceMap> {
     let mut collector = ExprCollector::new(func);
 
     // TODO: consts, etc.
     collector.collect_fn_body(&func.source(db).1);
 
-    Arc::new(collector.into_body_syntax_mapping())
+    Arc::new(collector.into_body_source_map())
 }
 
 #[cfg(test)]
-pub(crate) fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> BodySyntaxMapping {
+pub(crate) fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> BodySourceMap {
     let mut collector = ExprCollector::new(function);
     collector.collect_fn_body(node);
-    collector.into_body_syntax_mapping()
+    collector.into_body_source_map()
 }

@@ -11,7 +11,7 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
     Name, AsName, Function,
-    expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySyntaxMapping},
+    expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
     HirDatabase,
 };
 
@@ -109,7 +109,7 @@ impl ExprScopes {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopesWithSyntaxMapping {
-    pub syntax_mapping: Arc<BodySyntaxMapping>,
+    pub syntax_mapping: Arc<BodySourceMap>,
     pub scopes: Arc<ExprScopes>,
 }
 
