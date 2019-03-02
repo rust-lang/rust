@@ -34,7 +34,8 @@ use crate::util::profiling::SelfProfiler;
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
-use jobserver::Client;
+use rustc_data_structures::jobserver;
+use ::jobserver::Client;
 
 use std;
 use std::cell::{self, Cell, RefCell};
@@ -1230,32 +1231,7 @@ pub fn build_session_(
         optimization_fuel,
         print_fuel_crate,
         print_fuel,
-        // Note that this is unsafe because it may misinterpret file descriptors
-        // on Unix as jobserver file descriptors. We hopefully execute this near
-        // the beginning of the process though to ensure we don't get false
-        // positives, or in other words we try to execute this before we open
-        // any file descriptors ourselves.
-        //
-        // Pick a "reasonable maximum" if we don't otherwise have
-        // a jobserver in our environment, capping out at 32 so we
-        // don't take everything down by hogging the process run queue.
-        // The fixed number is used to have deterministic compilation
-        // across machines.
-        //
-        // Also note that we stick this in a global because there could be
-        // multiple `Session` instances in this process, and the jobserver is
-        // per-process.
-        jobserver: unsafe {
-            static mut GLOBAL_JOBSERVER: *mut Client = 0 as *mut _;
-            static INIT: std::sync::Once = std::sync::ONCE_INIT;
-            INIT.call_once(|| {
-                let client = Client::from_env().unwrap_or_else(|| {
-                    Client::new(32).expect("failed to create jobserver")
-                });
-                GLOBAL_JOBSERVER = Box::into_raw(Box::new(client));
-            });
-            (*GLOBAL_JOBSERVER).clone()
-        },
+        jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
         driver_lint_caps,

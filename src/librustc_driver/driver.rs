@@ -17,6 +17,8 @@ use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::{self, Lock};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::jobserver;
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -72,6 +74,8 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     let gcx_ptr = &Lock::new(0);
 
     let config = ThreadPoolBuilder::new()
+        .acquire_thread_handler(jobserver::acquire_thread)
+        .release_thread_handler(jobserver::release_thread)
         .num_threads(Session::threads_from_count(opts.debugging_opts.threads))
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
         .stack_size(::STACK_SIZE);
