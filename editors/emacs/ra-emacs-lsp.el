@@ -138,7 +138,7 @@
   (add-hook 'rust-mode-hook 'rust-analyzer--add-er-expansion))
 
 ;; runnables
-(defvar rust-analyzer--last-runnable)
+(defvar rust-analyzer--last-runnable nil)
 
 (defun rust-analyzer--runnables-params ()
   (list :textDocument (lsp--text-document-identifier)
