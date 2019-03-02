@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
-    pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
+    pub fn lookup_item(&self, names: &[String]) -> hir::HirId {
         return match search_mod(self, &self.infcx.tcx.hir().krate().module, 0, names) {
             Some(id) => id,
             None => {
@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             m: &hir::Mod,
             idx: usize,
             names: &[String],
-        ) -> Option<ast::NodeId> {
+        ) -> Option<hir::HirId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
                 let item = this.infcx.tcx.hir().expect_item(item.id);
@@ -273,9 +273,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        fn search(this: &Env, it: &hir::Item, idx: usize, names: &[String]) -> Option<ast::NodeId> {
+        fn search(this: &Env, it: &hir::Item, idx: usize, names: &[String]) -> Option<hir::HirId> {
             if idx == names.len() {
-                return Some(it.id);
+                return Some(it.hir_id);
             }
 
             return match it.node {

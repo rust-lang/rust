@@ -29,7 +29,7 @@ use std::hash::Hash;
 use std::path::Path;
 use rustc_data_structures::sync::Lrc;
 use std::u32;
-use syntax::ast::{self, CRATE_NODE_ID};
+use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::keywords;
@@ -314,7 +314,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
         index.record(DefId::local(CRATE_DEF_INDEX),
                      IsolatedEncoder::encode_info_for_mod,
-                     FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &vis)));
+                     FromId(hir::CRATE_HIR_ID, (&krate.module, &krate.attrs, &vis)));
         let mut visitor = EncodeVisitor { index };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {
@@ -588,8 +588,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
         };
 
-        let enum_id = tcx.hir().as_local_node_id(enum_did).unwrap();
-        let enum_vis = &tcx.hir().expect_item(enum_id).vis;
+        let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
+        let enum_vis = &tcx.hir().expect_item_by_hir_id(enum_id).vis;
 
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
@@ -624,7 +624,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                                                                  &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(id);
+        let def_id = tcx.hir().local_def_id_from_hir_id(id);
         debug!("IsolatedEncoder::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
@@ -714,8 +714,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
         };
 
-        let struct_id = tcx.hir().as_local_node_id(adt_def_id).unwrap();
-        let struct_vis = &tcx.hir().expect_item(struct_id).vis;
+        let struct_id = tcx.hir().as_local_hir_id(adt_def_id).unwrap();
+        let struct_vis = &tcx.hir().expect_item_by_hir_id(struct_id).vis;
         let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
         for field in &variant.fields {
             if ctor_vis.is_at_least(field.vis, tcx) {
@@ -1055,7 +1055,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 EntryKind::Fn(self.lazy(&data))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, &item.vis)));
+                return self.encode_info_for_mod(FromId(item.hir_id, (m, &item.attrs, &item.vis)));
             }
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1069,7 +1069,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 // for methods, write all the stuff get_trait_method
                 // needs to know
                 let struct_ctor = if !struct_def.is_struct() {
-                    Some(tcx.hir().local_def_id(struct_def.id()).index)
+                    Some(tcx.hir().local_def_id_from_hir_id(struct_def.hir_id()).index)
                 } else {
                     None
                 };
@@ -1154,14 +1154,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         Entry {
             kind,
-            visibility: self.lazy(&ty::Visibility::from_hir(&item.vis, item.id, tcx)),
+            visibility: self.lazy(&ty::Visibility::from_hir(&item.vis, item.hir_id, tcx)),
             span: self.lazy(&item.span),
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
                 hir::ItemKind::ForeignMod(ref fm) => {
                     self.lazy_seq(fm.items
                         .iter()
-                        .map(|foreign_item| tcx.hir().local_def_id(foreign_item.id).index))
+                        .map(|foreign_item| tcx.hir().local_def_id_from_hir_id(
+                            foreign_item.hir_id).index))
                 }
                 hir::ItemKind::Enum(..) => {
                     let def = self.tcx.adt_def(def_id);
@@ -1609,7 +1610,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         Entry {
             kind,
-            visibility: self.lazy(&ty::Visibility::from_hir(&nitem.vis, nitem.id, tcx)),
+            visibility: self.lazy(&ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, tcx)),
             span: self.lazy(&nitem.span),
             attributes: self.encode_attributes(&nitem.attrs),
             children: LazySeq::empty(),
@@ -1645,7 +1646,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     }
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
-        let def_id = self.index.tcx.hir().local_def_id(item.id);
+        let def_id = self.index.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         match item.node {
             hir::ItemKind::ExternCrate(_) |
             hir::ItemKind::Use(..) => (), // ignore these
@@ -1655,7 +1656,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
-        let def_id = self.index.tcx.hir().local_def_id(ni.id);
+        let def_id = self.index.tcx.hir().local_def_id_from_hir_id(ni.hir_id);
         self.index.record(def_id,
                           IsolatedEncoder::encode_info_for_foreign_item,
                           (def_id, ni));
@@ -1741,7 +1742,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
     fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
-        let def_id = self.tcx.hir().local_def_id(item.id);
+        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         match item.node {
             hir::ItemKind::Static(..) |
             hir::ItemKind::Const(..) |
@@ -1771,7 +1772,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
                 // If the struct has a constructor, encode it.
                 if !struct_def.is_struct() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(struct_def.id());
+                    let ctor_def_id = self.tcx.hir().local_def_id_from_hir_id(struct_def.hir_id());
                     self.record(ctor_def_id,
                                 IsolatedEncoder::encode_struct_ctor,
                                 (def_id, ctor_def_id));
@@ -1806,7 +1807,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::Impl(..) = item.node {
-            let impl_id = self.tcx.hir().local_def_id(item.id);
+            let impl_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
                 self.impls
                     .entry(trait_ref.def_id)

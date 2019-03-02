@@ -834,7 +834,6 @@ pub struct Block {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
@@ -842,7 +841,7 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id,
+        write!(f, "pat({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_pat(self)))
     }
 }
@@ -897,7 +896,6 @@ impl Pat {
 /// except `is_shorthand` is true.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FieldPat {
-    pub id: NodeId,
     pub hir_id: HirId,
     /// The identifier for the field.
     pub ident: Ident,
@@ -1659,7 +1657,7 @@ pub struct MethodSig {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1704,7 +1702,7 @@ pub enum TraitItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents anything within an `impl` block
@@ -2132,7 +2130,6 @@ pub struct StructField {
     pub span: Span,
     pub ident: Ident,
     pub vis: Visibility,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
@@ -2159,9 +2156,9 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, NodeId, HirId),
-    Tuple(HirVec<StructField>, NodeId, HirId),
-    Unit(NodeId, HirId),
+    Struct(HirVec<StructField>, HirId),
+    Tuple(HirVec<StructField>, HirId),
+    Unit(HirId),
 }
 
 impl VariantData {
@@ -2171,18 +2168,11 @@ impl VariantData {
             _ => &[],
         }
     }
-    pub fn id(&self) -> NodeId {
-        match *self {
-            VariantData::Struct(_, id, ..)
-            | VariantData::Tuple(_, id, ..)
-            | VariantData::Unit(id, ..) => id,
-        }
-    }
     pub fn hir_id(&self) -> HirId {
         match *self {
-            VariantData::Struct(_, _, hir_id)
-            | VariantData::Tuple(_, _, hir_id)
-            | VariantData::Unit(_, hir_id) => hir_id,
+            VariantData::Struct(_, hir_id)
+            | VariantData::Tuple(_, hir_id)
+            | VariantData::Unit(hir_id) => hir_id,
         }
     }
     pub fn is_struct(&self) -> bool {
@@ -2222,7 +2212,6 @@ pub struct ItemId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
     pub ident: Ident,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: ItemKind,
@@ -2379,7 +2368,6 @@ pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> DefIdTree for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: TyCtxt<'_, '_, '_>) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility, id: hir::HirId, tcx: TyCtxt<'_, '_, '_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
@@ -271,7 +271,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.hir().get_module_parent(id))
+                Visibility::Restricted(tcx.hir().get_module_parent_by_hir_id(id))
             }
         }
     }
@@ -2727,7 +2727,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            parent_vis: &hir::Visibility,
                                            trait_item_ref: &hir::TraitItemRef)
                                            -> AssociatedItem {
-        let def_id = self.hir().local_def_id(trait_item_ref.id.node_id);
+        let def_id = self.hir().local_def_id_from_hir_id(trait_item_ref.id.hir_id);
         let (kind, has_self) = match trait_item_ref.kind {
             hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
             hir::AssociatedItemKind::Method { has_self } => {
@@ -2741,7 +2741,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ident: trait_item_ref.ident,
             kind,
             // Visibility of trait items is inherited from their traits.
-            vis: Visibility::from_hir(parent_vis, trait_item_ref.id.node_id, self),
+            vis: Visibility::from_hir(parent_vis, trait_item_ref.id.hir_id, self),
             defaultness: trait_item_ref.defaultness,
             def_id,
             container: TraitContainer(parent_def_id),
@@ -2753,7 +2753,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           parent_def_id: DefId,
                                           impl_item_ref: &hir::ImplItemRef)
                                           -> AssociatedItem {
-        let def_id = self.hir().local_def_id(impl_item_ref.id.node_id);
+        let def_id = self.hir().local_def_id_from_hir_id(impl_item_ref.id.hir_id);
         let (kind, has_self) = match impl_item_ref.kind {
             hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
             hir::AssociatedItemKind::Method { has_self } => {
@@ -2767,7 +2767,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ident: impl_item_ref.ident,
             kind,
             // Visibility of trait impl items doesn't matter.
-            vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.node_id, self),
+            vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.hir_id, self),
             defaultness: impl_item_ref.defaultness,
             def_id,
             container: ImplContainer(parent_def_id),
@@ -3037,13 +3037,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> AssociatedItem {
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let parent_id = tcx.hir().get_parent(id);
-    let parent_def_id = tcx.hir().local_def_id(parent_id);
-    let parent_item = tcx.hir().expect_item(parent_id);
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let parent_id = tcx.hir().get_parent_item(id);
+    let parent_def_id = tcx.hir().local_def_id_from_hir_id(parent_id);
+    let parent_item = tcx.hir().expect_item_by_hir_id(parent_id);
     match parent_item.node {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
-            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.node_id == id) {
+            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.hir_id == id) {
                 let assoc_item = tcx.associated_item_from_impl_item_ref(parent_def_id,
                                                                         impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -3052,7 +3052,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Asso
         }
 
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.node_id == id) {
+            if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.hir_id == id) {
                 let assoc_item = tcx.associated_item_from_trait_item_ref(parent_def_id,
                                                                          &parent_item.vis,
                                                                          trait_item_ref);
@@ -3106,13 +3106,13 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             trait_item_refs.iter()
                            .map(|trait_item_ref| trait_item_ref.id)
-                           .map(|id| tcx.hir().local_def_id(id.node_id))
+                           .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
                            .collect()
         }
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             impl_item_refs.iter()
                           .map(|impl_item_ref| impl_item_ref.id)
-                          .map(|id| tcx.hir().local_def_id(id.node_id))
+                          .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
                           .collect()
         }
         hir::ItemKind::TraitAlias(..) => vec![],

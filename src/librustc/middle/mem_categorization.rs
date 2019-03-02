@@ -88,7 +88,7 @@ pub enum Categorization<'tcx> {
     ThreadLocal(ty::Region<'tcx>),       // value that cannot move, but still restricted in scope
     StaticItem,
     Upvar(Upvar),                        // upvar referenced by closure env
-    Local(ast::NodeId),                  // local variable
+    Local(hir::HirId),                   // local variable
     Deref(cmt<'tcx>, PointerKind<'tcx>), // deref of a ptr
     Interior(cmt<'tcx>, InteriorKind),   // something interior: field, tuple, etc
     Downcast(cmt<'tcx>, DefId),          // selects a particular enum variant (*1)
@@ -198,9 +198,9 @@ pub struct cmt_<'tcx> {
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
-    ImmLocal(ast::NodeId),
+    ImmLocal(hir::HirId),
     ClosureEnv(LocalDefId),
-    LocalDeref(ast::NodeId),
+    LocalDeref(hir::HirId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
 
@@ -230,8 +230,8 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Deref(ref base_cmt, BorrowedPtr(ty::ImmBorrow, _)) => {
                 // try to figure out where the immutable reference came from
                 match base_cmt.cat {
-                    Categorization::Local(node_id) =>
-                        Some(ImmutabilityBlame::LocalDeref(node_id)),
+                    Categorization::Local(hir_id) =>
+                        Some(ImmutabilityBlame::LocalDeref(hir_id)),
                     Categorization::Interior(ref base_cmt, InteriorField(field_index)) => {
                         base_cmt.resolve_field(field_index.0).map(|(adt_def, field_def)| {
                             ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
@@ -247,8 +247,8 @@ impl<'tcx> cmt_<'tcx> {
                     _ => None
                 }
             }
-            Categorization::Local(node_id) => {
-                Some(ImmutabilityBlame::ImmLocal(node_id))
+            Categorization::Local(hir_id) => {
+                Some(ImmutabilityBlame::ImmLocal(hir_id))
             }
             Categorization::Rvalue(..) |
             Categorization::Upvar(..) |
@@ -741,7 +741,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(cmt_ {
                     hir_id,
                     span,
-                    cat: Categorization::Local(vid),
+                    cat: Categorization::Local(self.tcx.hir().node_to_hir_id(vid)),
                     mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vid),
                     ty: expr_ty,
                     note: NoteNone
@@ -1495,7 +1495,7 @@ impl<'tcx> cmt_<'tcx> {
                 "non-place".into()
             }
             Categorization::Local(vid) => {
-                if tcx.hir().is_argument(vid) {
+                if tcx.hir().is_argument(tcx.hir().hir_to_node_id(vid)) {
                     "argument"
                 } else {
                     "local variable"

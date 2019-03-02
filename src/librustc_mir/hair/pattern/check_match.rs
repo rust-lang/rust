@@ -24,7 +24,6 @@ use rustc::hir::{self, Pat, PatKind};
 use smallvec::smallvec;
 use std::slice;
 
-use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
@@ -241,7 +240,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent(pat.id);
+        let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
@@ -586,7 +585,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
             ty::ImmBorrow | ty::UniqueImmBorrow => {}
         }
     }
-    fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: hir::HirId, _: Span) {}
     fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {

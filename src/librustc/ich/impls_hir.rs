@@ -116,11 +116,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItemId {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItemId {
-            node_id
+            hir_id
         } = * self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            node_id.hash_stable(hcx, hasher);
+            hir_id.hash_stable(hcx, hasher);
         })
     }
 }
@@ -130,11 +130,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItemId {
-            node_id
+            hir_id
         } = * self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            node_id.hash_stable(hcx, hasher);
+            hir_id.hash_stable(hcx, hasher);
         })
     }
 }
@@ -421,7 +421,6 @@ impl_stable_hash_for!(struct hir::Block {
 });
 
 impl_stable_hash_for!(struct hir::Pat {
-    id -> _,
     hir_id -> _,
     node,
     span,
@@ -430,7 +429,6 @@ impl_stable_hash_for!(struct hir::Pat {
 impl_stable_hash_for_spanned!(hir::FieldPat);
 
 impl_stable_hash_for!(struct hir::FieldPat {
-    id -> _,
     hir_id -> _,
     ident -> (ident.name),
     pat,
@@ -838,16 +836,15 @@ impl_stable_hash_for!(struct hir::StructField {
     span,
     ident -> (ident.name),
     vis,
-    id,
     hir_id,
     ty,
     attrs
 });
 
 impl_stable_hash_for!(enum hir::VariantData {
-    Struct(fields, id, hir_id),
-    Tuple(fields, id, hir_id),
-    Unit(id, hir_id)
+    Struct(fields, hir_id),
+    Tuple(fields, hir_id),
+    Unit(hir_id)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
@@ -857,7 +854,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
         let hir::Item {
             ident,
             ref attrs,
-            id: _,
             hir_id: _,
             ref node,
             ref vis,
@@ -932,7 +928,6 @@ impl_stable_hash_for!(struct hir::ForeignItem {
     ident -> (ident.name),
     attrs,
     node,
-    id,
     hir_id,
     span,
     vis

@@ -469,8 +469,8 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
-                    let id = hir::TraitItemId { node_id: item.id };
                     let hir_item = lctx.lower_trait_item(item);
+                    let id = hir::TraitItemId { hir_id: hir_item.hir_id };
                     lctx.trait_items.insert(id, hir_item);
                     lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
                 });
@@ -480,8 +480,8 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
-                    let id = hir::ImplItemId { node_id: item.id };
                     let hir_item = lctx.lower_impl_item(item);
+                    let id = hir::ImplItemId { hir_id: hir_item.hir_id };
                     lctx.impl_items.insert(id, hir_item);
                     lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
                 });
@@ -1414,7 +1414,6 @@ impl<'a> LoweringContext<'a> {
 
             trace!("exist ty def index: {:#?}", exist_ty_def_index);
             let exist_ty_item = hir::Item {
-                id: exist_ty_id.node_id,
                 hir_id: exist_ty_id.hir_id,
                 ident: keywords::Invalid.ident(),
                 attrs: Default::default(),
@@ -2675,7 +2674,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData {
         match *vdata {
             VariantData::Struct(ref fields, id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
                 hir::VariantData::Struct(
                     fields
@@ -2683,12 +2682,11 @@ impl<'a> LoweringContext<'a> {
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
                         .collect(),
-                    node_id,
                     hir_id,
                 )
             },
             VariantData::Tuple(ref fields, id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
                 hir::VariantData::Tuple(
                     fields
@@ -2696,14 +2694,13 @@ impl<'a> LoweringContext<'a> {
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
                         .collect(),
-                    node_id,
                     hir_id,
                 )
             },
             VariantData::Unit(id) => {
-                let LoweredNodeId { node_id, hir_id } = self.lower_node_id(id);
+                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
 
-                hir::VariantData::Unit(node_id, hir_id)
+                hir::VariantData::Unit(hir_id)
             },
         }
     }
@@ -2743,11 +2740,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(f.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(f.id);
 
         hir::StructField {
             span: f.span,
-            id: node_id,
             hir_id,
             ident: match f.ident {
                 Some(ident) => ident,
@@ -3129,7 +3125,6 @@ impl<'a> LoweringContext<'a> {
                         this.insert_item(
                             new_id.node_id,
                             hir::Item {
-                                id: new_id.node_id,
                                 hir_id: new_id.hir_id,
                                 ident,
                                 attrs: attrs.clone(),
@@ -3235,7 +3230,6 @@ impl<'a> LoweringContext<'a> {
                         this.insert_item(
                             new_id,
                             hir::Item {
-                                id: new_id,
                                 hir_id: new_hir_id,
                                 ident,
                                 attrs: attrs.clone(),
@@ -3369,7 +3363,7 @@ impl<'a> LoweringContext<'a> {
             TraitItemKind::Macro(..) => unimplemented!(),
         };
         hir::TraitItemRef {
-            id: hir::TraitItemId { node_id: i.id },
+            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id).hir_id },
             ident: i.ident,
             span: i.span,
             defaultness: self.lower_defaultness(Defaultness::Default, has_default),
@@ -3433,7 +3427,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
-            id: hir::ImplItemId { node_id: i.id },
+            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id).hir_id },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
@@ -3535,10 +3529,9 @@ impl<'a> LoweringContext<'a> {
 
         let node = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.node);
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(i.id);
 
         Some(hir::Item {
-            id: node_id,
             hir_id,
             ident,
             attrs,
@@ -3552,7 +3545,6 @@ impl<'a> LoweringContext<'a> {
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
         let def_id = self.resolver.definitions().local_def_id(node_id);
         hir::ForeignItem {
-            id: node_id,
             hir_id,
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
@@ -3746,12 +3738,11 @@ impl<'a> LoweringContext<'a> {
                 let fs = fields
                     .iter()
                     .map(|f| {
-                        let LoweredNodeId { node_id, hir_id } = self.next_id();
+                        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
                         Spanned {
                             span: f.span,
                             node: hir::FieldPat {
-                                id: node_id,
                                 hir_id,
                                 ident: f.node.ident,
                                 pat: self.lower_pat(&f.node.pat),
@@ -3783,9 +3774,8 @@ impl<'a> LoweringContext<'a> {
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(p.id);
+        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(p.id);
         P(hir::Pat {
-            id: node_id,
             hir_id,
             node,
             span: p.span,
@@ -4359,7 +4349,7 @@ impl<'a> LoweringContext<'a> {
                 let iter = self.str_to_ident("iter");
 
                 let next_ident = self.str_to_ident("__next");
-                let next_pat = self.pat_ident_binding_mode(
+                let (next_pat, next_pat_nid) = self.pat_ident_binding_mode(
                     desugared_span,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
@@ -4368,9 +4358,9 @@ impl<'a> LoweringContext<'a> {
                 // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
                     let val_ident = self.str_to_ident("val");
-                    let val_pat = self.pat_ident(pat.span, val_ident);
-                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat.id));
-                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat.id));
+                    let (val_pat, val_pat_nid) = self.pat_ident(pat.span, val_ident);
+                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_nid));
+                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_nid));
                     let assign = P(self.expr(
                         pat.span,
                         hir::ExprKind::Assign(next_expr, val_expr),
@@ -4389,7 +4379,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // `mut iter`
-                let iter_pat = self.pat_ident_binding_mode(
+                let (iter_pat, iter_pat_nid) = self.pat_ident_binding_mode(
                     desugared_span,
                     iter,
                     hir::BindingAnnotation::Mutable
@@ -4397,7 +4387,7 @@ impl<'a> LoweringContext<'a> {
 
                 // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                 let match_expr = {
-                    let iter = P(self.expr_ident(head_sp, iter, iter_pat.id));
+                    let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
                     let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
                     let next_path = &["iter", "Iterator", "next"];
                     let next_path = P(self.expr_std_path(head_sp, next_path, None, ThinVec::new()));
@@ -4421,7 +4411,7 @@ impl<'a> LoweringContext<'a> {
                     span: head_sp,
                 };
 
-                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat.id));
+                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_nid));
 
                 // `let mut __next`
                 let next_let = self.stmt_let_pat(
@@ -4548,11 +4538,11 @@ impl<'a> LoweringContext<'a> {
                 // `Ok(val) => #[allow(unreachable_code)] val,`
                 let ok_arm = {
                     let val_ident = self.str_to_ident("val");
-                    let val_pat = self.pat_ident(e.span, val_ident);
+                    let (val_pat, val_pat_nid) = self.pat_ident(e.span, val_ident);
                     let val_expr = P(self.expr_ident_with_attrs(
                         e.span,
                         val_ident,
-                        val_pat.id,
+                        val_pat_nid,
                         ThinVec::from(attrs.clone()),
                     ));
                     let ok_pat = self.pat_ok(e.span, val_pat);
@@ -4564,12 +4554,12 @@ impl<'a> LoweringContext<'a> {
                 //              return Try::from_error(From::from(err)),`
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
-                    let err_local = self.pat_ident(e.span, err_ident);
+                    let (err_local, err_local_nid) = self.pat_ident(e.span, err_ident);
                     let from_expr = {
                         let path = &["convert", "From", "from"];
                         let from = P(self.expr_std_path(
                                 e.span, path, None, ThinVec::new()));
-                        let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
+                        let err_expr = self.expr_ident(e.span, err_ident, err_local_nid);
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
                     };
@@ -4917,15 +4907,15 @@ impl<'a> LoweringContext<'a> {
         ident: Ident,
         ex: P<hir::Expr>,
     ) -> (hir::Stmt, NodeId) {
-        let pat = if mutbl {
+        let (pat, pat_nid) = if mutbl {
             self.pat_ident_binding_mode(sp, ident, hir::BindingAnnotation::Mutable)
         } else {
             self.pat_ident(sp, ident)
         };
-        let pat_id = pat.id;
+
         (
             self.stmt_let_pat(sp, Some(ex), pat, hir::LocalSource::Normal),
-            pat_id,
+            pat_nid,
         )
     }
 
@@ -4983,7 +4973,7 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> P<hir::Pat> {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, NodeId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
@@ -4992,15 +4982,17 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> P<hir::Pat> {
+    ) -> (P<hir::Pat>, NodeId) {
         let LoweredNodeId { node_id, hir_id } = self.next_id();
 
-        P(hir::Pat {
-            id: node_id,
-            hir_id,
-            node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
-            span,
-        })
+        (
+            P(hir::Pat {
+                hir_id,
+                node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
+                span,
+            }),
+            node_id
+        )
     }
 
     fn pat_wild(&mut self, span: Span) -> P<hir::Pat> {
@@ -5008,9 +5000,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn pat(&mut self, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         P(hir::Pat {
-            id: node_id,
             hir_id,
             node: pat,
             span,

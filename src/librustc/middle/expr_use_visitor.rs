@@ -19,7 +19,6 @@ use crate::ty::{self, TyCtxt, adjustment};
 use crate::hir::{self, PatKind};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
-use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use crate::util::nodemap::ItemLocalSet;
@@ -74,7 +73,7 @@ pub trait Delegate<'tcx> {
 
     // The local variable `id` is declared but not initialized.
     fn decl_without_init(&mut self,
-                         id: ast::NodeId,
+                         id: hir::HirId,
                          span: Span);
 
     // The path at `cmt` is being assigned to.
@@ -609,8 +608,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match local.init {
             None => {
                 local.pat.each_binding(|_, hir_id, span, _| {
-                    let node_id = self.mc.tcx.hir().hir_to_node_id(hir_id);
-                    self.delegate.decl_without_init(node_id, span);
+                    self.delegate.decl_without_init(hir_id, span);
                 })
             }
 

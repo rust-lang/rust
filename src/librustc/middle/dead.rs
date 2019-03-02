@@ -152,7 +152,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                        let def_id = self.tcx.hir().local_def_id(item.id);
+                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                         let def = self.tcx.adt_def(def_id);
                         self.repr_has_repr_c = def.repr.c();
 
@@ -376,7 +376,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                             has_allow_dead_code_or_lang_attr(self.tcx,
                                                              impl_item.hir_id,
                                                              &impl_item.attrs) {
-                        self.worklist.push(self.tcx.hir().node_to_hir_id(impl_item_ref.id.node_id));
+                        self.worklist.push(impl_item_ref.id.hir_id);
                     }
                 }
             }
@@ -465,7 +465,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.id));
+        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id_from_hir_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
             && !field_type.is_phantom_data()
