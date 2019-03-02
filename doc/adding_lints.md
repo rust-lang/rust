@@ -14,6 +14,7 @@ because that's clearly a non-descriptive name.
 * [Lint passes](#Lint-passes)
 * [Emitting a lint](#Emitting-a-lint)
 * [Adding the lint logic](#Adding-the-lint-logic)
+* [Author lint](#Author-lint)
 * [Documentation](#Documentation)
 * [Running rustfmt](#Running-rustfmt)
 * [Debugging](#Debugging)
@@ -165,7 +166,7 @@ lint pass it should be fine.
 Next you should run `util/dev update_lints` to register the lint in various
 places, mainly in `clippy_lints/src/lib.rs`.
 
-While `update_lints` automates some things, it doesn't automate everything. We
+While `update_lints` automates some things, it doesn't automate everything. You
 will have to register our lint pass manually in the `register_plugins` function
 in `clippy_lints/src/lib.rs`:
 
@@ -179,7 +180,7 @@ pass our lint is going to need.
 
 ### Lint passes
 
-Writing a lint that just checks for the name of a function means that we just
+Writing a lint that only checks for the name of a function means that we only
 have to deal with the AST and don't have to deal with the type system at all.
 This is good, because it makes writing this particular lint less complicated.
 
@@ -204,7 +205,9 @@ use rustc::{declare_tool_lint, lint_array};
 
 ### Emitting a lint
 
-With UI tests in place, we can start working on the implementation of the lint logic. We can keep executing the tests until we make them pass.
+With UI tests and the lint declaration in place, we can start working on the
+implementation of the lint logic. We can keep executing the tests until we make
+them pass.
 
 Let's start by implementing the `EarlyLintPass` for our `FooFunctionsPass`:
 
@@ -270,7 +273,7 @@ impl EarlyLintPass for Pass {
 
 We separate the lint conditional from the lint emissions because it makes the
 code a bit easier to read. In some cases this separation would also allow to
-write some unit tests (as opposed to UI tests) for the separate function.
+write some unit tests (as opposed to only UI tests) for the separate function.
 
 In our example, `is_foo_fn` looks like:
 
@@ -294,7 +297,7 @@ running `cargo test` should produce the expected output. Remember to run
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
 
-If you are still following the example, you'll see that the `FooFunctionsPass`
+If you are still following the example, you will see that `FooFunctionsPass`
 violates a Clippy lint. So we are going to rename that struct to just `Pass`:
 
 ```rust
@@ -313,33 +316,12 @@ If you have trouble implementing your lint, there is also the internal `author`
 lint to generate Clippy code that detects the offending pattern. It does not
 work for all of the Rust syntax, but can give a good starting point.
 
-First, create a new UI test file in the `tests/ui/` directory with the pattern
-you want to match:
+The quickest way to use it, is the [Rust playground][play].rust-lang.org).
+Put the code you want to lint into the editor and add the `#[clippy::author]`
+attribute above the item. Then run Clippy via `Tools -> Clippy` and you should
+see the generated code in the output below.
 
-```rust
-// ./tests/ui/my_lint.rs
-fn main() {
-    #[clippy::author]
-    let arr: [i32; 1] = [7]; // Replace line with the code you want to match
-}
-```
-
-Now you run `TESTNAME=ui/my_lint cargo uitest` to produce a `.stdout` file with
-the generated code:
-
-```rust
-// ./tests/ui/my_lint.stdout
-
-if_chain! {
-    if let ExprKind::Array(ref elements) = stmt.node;
-    if elements.len() == 1;
-    if let ExprKind::Lit(ref lit) = elements[0].node;
-    if let LitKind::Int(7, _) = lit.node;
-    then {
-        // report your lint here
-    }
-}
-```
+[Here][author_example] is an example on the playground.
 
 If the command was executed successfully, you can copy the code over to where
 you are implementing your lint.
@@ -448,3 +430,5 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
 [in_macro]: https://github.com/rust-lang/rust-clippy/blob/d0717d1f9531a03d154aaeb0cad94c243915a146/clippy_lints/src/utils/mod.rs#L94
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/fn.in_external_macro.html
+[play]: https://play.rust-lang.org
+[author_example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f093b986e80ad62f3b67a1f24f5e66e2
