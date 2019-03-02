@@ -220,13 +220,27 @@ pub trait OpenOptionsExt {
     /// the specified value (or combines it with `custom_flags` and `attributes`
     /// to set the `dwFlagsAndAttributes` for [`CreateFile`]).
     ///
-    /// By default, `security_qos_flags` is set to `SECURITY_ANONYMOUS`. For
-    /// information about possible values, see [Impersonation Levels] on the
-    /// Windows Dev Center site.
+    /// By default `security_qos_flags` is not set. It should be specified when
+    /// opening a named pipe, to control to which degree a server process can
+    /// act on behalf of a client process (security impersonation level).
     ///
+    /// When `security_qos_flags` is not set a malicious program can gain the
+    /// elevated privileges of a privileged Rust process when it allows opening
+    /// user-specified paths, by tricking it into opening a named pipe. So
+    /// arguably `security_qos_flags` should also be set when opening arbitrary
+    /// paths. However the bits can then conflict with other flags, specifically
+    /// `FILE_FLAG_OPEN_NO_RECALL`.
+    ///
+    /// For information about possible values, see [Impersonation Levels] on the
+    /// Windows Dev Center site. The `SECURITY_SQOS_PRESENT` flag is set
+    /// automatically when using this method.
+
     /// # Examples
     ///
     /// ```no_run
+    /// # #[cfg(for_demonstration_only)]
+    /// extern crate winapi;
+    /// # mod winapi { pub const SECURITY_IDENTIFICATION: u32 = 0; }
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
     ///
@@ -235,9 +249,9 @@ pub trait OpenOptionsExt {
     ///     .create(true)
     ///
     ///     // Sets the flag value to `SecurityIdentification`.
-    ///     .security_qos_flags(1)
+    ///     .security_qos_flags(winapi::SECURITY_IDENTIFICATION)
     ///
-    ///     .open("foo.txt");
+    ///     .open(r"\\.\pipe\MyPipe");
     /// ```
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
