@@ -1,0 +1,15 @@
+---
+created: "2019-03-02T15:41:07.568155273Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[63; 67) 'self': &[unknown]
+[169; 173) 'self': &[unknown]
+[300; 337) '{     ...     }': ()
+[310; 311) 'S': S
+[310; 320) 'S.method()': [unknown]
+[416; 454) '{     ...     }': ()
+[426; 427) 'S': S
+[426; 436) 'S.method()': [unknown]
+

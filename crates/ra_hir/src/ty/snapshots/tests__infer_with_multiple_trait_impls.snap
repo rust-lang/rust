@@ -1,0 +1,19 @@
+---
+created: "2019-03-02T13:49:53.860659428Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[29; 33) 'self': [unknown]
+[107; 198) '{     ...(S); }': ()
+[117; 118) 'x': u32
+[126; 127) 'S': S
+[126; 134) 'S.into()': u32
+[144; 145) 'y': u64
+[153; 154) 'S': S
+[153; 161) 'S.into()': u64
+[171; 172) 'z': [unknown]
+[175; 192) 'Into::...::into': [unknown]
+[175; 195) 'Into::...nto(S)': [unknown]
+[193; 194) 'S': S
+

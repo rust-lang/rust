@@ -1,0 +1,14 @@
+---
+created: "2019-03-02T15:41:07.562949721Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[31; 35) 'self': &[unknown]
+[110; 114) 'self': &[unknown]
+[170; 228) '{     ...i128 }': ()
+[176; 178) 'S1': S1
+[176; 187) 'S1.method()': [unknown]
+[203; 205) 'S2': S2
+[203; 214) 'S2.method()': [unknown]
+

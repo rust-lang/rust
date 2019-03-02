@@ -1,0 +1,11 @@
+---
+created: "2019-03-02T13:49:53.509955706Z"
+creator: insta@0.6.3
+source: crates/ra_hir/src/ty/tests.rs
+expression: "&result"
+---
+[59; 60) 't': T
+[65; 84) '{     ...d(); }': ()
+[71; 72) 't': T
+[71; 81) 't.method()': [unknown]
+

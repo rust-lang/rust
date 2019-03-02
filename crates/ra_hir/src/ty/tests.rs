@@ -1043,6 +1043,241 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_trait_method_simple() {
+    // the trait implementation is intentionally incomplete -- it shouldn't matter
+    check_inference(
+        "infer_trait_method_simple",
+        r#"
+trait Trait1 {
+    fn method(&self) -> u32;
+}
+struct S1;
+impl Trait1 for S1 {}
+trait Trait2 {
+    fn method(&self) -> i128;
+}
+struct S2;
+impl Trait2 for S2 {}
+fn test() {
+    S1.method(); // -> u32
+    S2.method(); // -> i128
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_trait_method_scoped() {
+    // the trait implementation is intentionally incomplete -- it shouldn't matter
+    check_inference(
+        "infer_trait_method_scoped",
+        r#"
+struct S;
+mod foo {
+    pub trait Trait1 {
+        fn method(&self) -> u32;
+    }
+    impl Trait1 for super::S {}
+}
+mod bar {
+    pub trait Trait2 {
+        fn method(&self) -> i128;
+    }
+    impl Trait2 for super::S {}
+}
+
+mod foo_test {
+    use super::S;
+    use super::foo::Trait1;
+    fn test() {
+        S.method(); // -> u32
+    }
+}
+
+mod bar_test {
+    use super::S;
+    use super::bar::Trait2;
+    fn test() {
+        S.method(); // -> i128
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_trait_method_generic_1() {
+    // the trait implementation is intentionally incomplete -- it shouldn't matter
+    check_inference(
+        "infer_trait_method_generic_1",
+        r#"
+trait Trait<T> {
+    fn method(&self) -> T;
+}
+struct S;
+impl Trait<u32> for S {}
+fn test() {
+    S.method();
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_trait_method_generic_2() {
+    // the trait implementation is intentionally incomplete -- it shouldn't matter
+    check_inference(
+        "infer_trait_method_generic_2",
+        r#"
+trait Trait<T> {
+    fn method(&self) -> T;
+}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn test() {
+    S(1u32).method();
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method() {
+    check_inference(
+        "infer_trait_assoc_method",
+        r#"
+trait Default {
+    fn default() -> Self;
+}
+struct S;
+impl Default for S {}
+fn test() {
+    let s1: S = Default::default();
+    let s2 = S::default();
+    let s3 = <S as Default>::default();
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_from_bound_1() {
+    check_inference(
+        "infer_from_bound_1",
+        r#"
+trait Trait<T> {}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn foo<T: Trait<u32>>(t: T) {}
+fn test() {
+    let s = S(unknown);
+    foo(s);
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_from_bound_2() {
+    check_inference(
+        "infer_from_bound_2",
+        r#"
+trait Trait<T> {}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn foo<U, T: Trait<U>>(t: T) -> U {}
+fn test() {
+    let s = S(unknown);
+    let x: u32 = foo(s);
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_call_trait_method_on_generic_param_1() {
+    check_inference(
+        "infer_call_trait_method_on_generic_param_1",
+        r#"
+trait Trait {
+    fn method() -> u32;
+}
+fn test<T: Trait>(t: T) {
+    t.method();
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_call_trait_method_on_generic_param_2() {
+    check_inference(
+        "infer_call_trait_method_on_generic_param_2",
+        r#"
+trait Trait<T> {
+    fn method() -> T;
+}
+fn test<U, T: Trait<U>>(t: T) {
+    t.method();
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_with_multiple_trait_impls() {
+    check_inference(
+        "infer_with_multiple_trait_impls",
+        r#"
+trait Into<T> {
+    fn into(self) -> T;
+}
+struct S;
+impl Into<u32> for S;
+impl Into<u64> for S;
+fn test() {
+    let x: u32 = S.into();
+    let y: u64 = S.into();
+    let z = Into::<u64>::into(S);
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_project_associated_type() {
+    check_inference(
+        "infer_project_associated_type",
+        r#"
+trait Iterable {
+   type Item;
+}
+struct S;
+impl Iterable for S { type Item = u32; }
+fn test<T: Iterable>() {
+    let x: <S as Iterable>::Item = 1;
+    let y: T::Item = no_matter;
+}
+"#,
+    );
+}
+
+#[test]
+fn infer_associated_type_bound() {
+    check_inference(
+        "infer_associated_type_bound",
+        r#"
+trait Iterable {
+   type Item;
+}
+fn test<T: Iterable<Item=u32>>() {
+    let y: T::Item = unknown;
+}
+"#,
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let func = source_binder::function_from_position(db, pos).unwrap();
     let body_source_map = func.body_source_map(db);
