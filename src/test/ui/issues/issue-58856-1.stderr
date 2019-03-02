@@ -1,30 +1,11 @@
 error: expected one of `)`, `,`, or `:`, found `>`
-  --> $DIR/issue-58856-1.rs:3:14
+  --> $DIR/issue-58856-1.rs:4:14
    |
-LL |     fn b(self>
+LL |     fn b(self> {}
    |         -    ^
    |         |    |
    |         |    help: `)` may belong here
    |         unclosed delimiter
 
-error: expected one of `->`, `where`, or `{`, found `>`
-  --> $DIR/issue-58856-1.rs:3:14
-   |
-LL |     fn b(self>
-   |              ^ expected one of `->`, `where`, or `{` here
+error: aborting due to previous error
 
-error: expected one of `->`, `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, `unsafe`, `where`, or `}`, found `>`
-  --> $DIR/issue-58856-1.rs:3:14
-   |
-LL |     fn b(self>
-   |              ^ expected one of 13 possible tokens here
-
-error[E0412]: cannot find type `A` in this scope
-  --> $DIR/issue-58856-1.rs:1:6
-   |
-LL | impl A {
-   |      ^ not found in this scope
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0412`.
