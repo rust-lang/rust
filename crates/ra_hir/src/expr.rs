@@ -50,7 +50,6 @@ pub struct Body {
 /// file, so that we don't recompute types whenever some whitespace is typed.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    // body: Arc<Body>,
     expr_map: FxHashMap<SyntaxNodePtr, ExprId>,
     expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
     pat_map: FxHashMap<SyntaxNodePtr, PatId>,
