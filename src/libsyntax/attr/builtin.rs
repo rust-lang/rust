@@ -217,7 +217,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.ident.to_string()));
+                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.path.to_string()));
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -246,7 +246,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         mi.span,
-                                        AttrError::UnknownMetaItem(mi.ident.to_string(), expected),
+                                        AttrError::UnknownMetaItem(mi.path.to_string(), expected),
                                     );
                                     continue 'outer
                                 }
@@ -329,7 +329,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                         sess,
                                         meta.span,
                                         AttrError::UnknownMetaItem(
-                                            mi.ident.to_string(),
+                                            mi.path.to_string(),
                                             &["feature", "reason", "issue"]
                                         ),
                                     );
@@ -401,7 +401,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                             sess,
                                             meta.span,
                                             AttrError::UnknownMetaItem(
-                                                mi.ident.to_string(), &["since", "note"],
+                                                mi.path.to_string(), &["since", "note"],
                                             ),
                                         );
                                         continue 'outer
@@ -496,8 +496,8 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             gated_cfg.check_and_emit(sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
-        if cfg.ident.segments.len() != 1 {
-            return error(cfg.ident.span, "`cfg` predicate key must be an identifier");
+        if cfg.path.segments.len() != 1 {
+            return error(cfg.path.span, "`cfg` predicate key must be an identifier");
         }
         match &cfg.node {
             MetaItemKind::List(..) => {
@@ -563,7 +563,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                 },
                 _ => {
                     span_err!(sess.span_diagnostic, cfg.span, E0537,
-                              "invalid predicate `{}`", cfg.ident);
+                              "invalid predicate `{}`", cfg.path);
                     false
                 }
             }
@@ -618,7 +618,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
                         handle_errors(
-                            sess, meta.span, AttrError::MultipleItem(meta.ident.to_string())
+                            sess, meta.span, AttrError::MultipleItem(meta.path.to_string())
                         );
                         return false
                     }
@@ -656,7 +656,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         meta.span(),
-                                        AttrError::UnknownMetaItem(mi.ident.to_string(),
+                                        AttrError::UnknownMetaItem(mi.path.to_string(),
                                                                    &["since", "note"]),
                                     );
                                     continue 'outer
