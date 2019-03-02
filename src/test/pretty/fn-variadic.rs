@@ -1,6 +1,6 @@
 // Check that `fn foo(x: i32, ...)` does not print as `fn foo(x: i32, ..., ...)`.
 // See issue #58853.
-//
+
 // pp-exact
 #![feature(c_variadic)]
 
