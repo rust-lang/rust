@@ -66,16 +66,13 @@
 use stdsimd_test::assert_instr;
 
 use crate::mem::transmute;
+use core_arch::acle::dsp::int16x2_t;
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
     pub struct int8x4_t(i8, i8, i8, i8);
     /// ARM-specific 32-bit wide vector of four packed `u8`.
     pub struct uint8x4_t(u8, u8, u8, u8);
-    /// ARM-specific 32-bit wide vector of two packed `i16`.
-    pub struct int16x2_t(i16, i16);
-    /// ARM-specific 32-bit wide vector of two packed `u16`.
-    pub struct uint16x2_t(u16, u16);
 }
 
 macro_rules! dsp_call {

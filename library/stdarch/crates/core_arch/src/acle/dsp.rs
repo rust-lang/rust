@@ -24,7 +24,13 @@
 use stdsimd_test::assert_instr;
 
 use crate::mem::transmute;
-use core_arch::acle::simd32::int16x2_t;
+
+types! {
+    /// ARM-specific 32-bit wide vector of two packed `i16`.
+    pub struct int16x2_t(i16, i16);
+    /// ARM-specific 32-bit wide vector of two packed `u16`.
+    pub struct uint16x2_t(u16, u16);
+}
 
 extern "C" {
     #[link_name = "llvm.arm.smulbb"]
