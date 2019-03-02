@@ -659,15 +659,42 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             };
             let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
 
-            for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
-                let byte_offset_of_var_in_env = closure_layout.fields.offset(i).bytes();
+            let extra_locals = {
+                let upvars = mir.upvar_decls
+                    .iter()
+                    .zip(upvar_tys)
+                    .enumerate()
+                    .map(|(i, (decl, ty))| (i, decl.debug_name, decl.by_ref, ty));
+
+                let generator_fields = mir.generator_layout.as_ref().map(|generator_layout| {
+                    let (def_id, gen_substs) = match closure_layout.ty.sty {
+                        ty::Generator(def_id, substs, _) => (def_id, substs),
+                        _ => bug!("generator layout without generator substs"),
+                    };
+                    let state_tys = gen_substs.state_tys(def_id, tcx);
+
+                    let upvar_count = mir.upvar_decls.len();
+                    generator_layout.fields
+                        .iter()
+                        .zip(state_tys)
+                        .enumerate()
+                        .filter_map(move |(i, (decl, ty))| {
+                            decl.name.map(|name| (i + upvar_count + 1, name, false, ty))
+                        })
+                }).into_iter().flatten();
+
+                upvars.chain(generator_fields)
+            };
+
+            for (field, name, by_ref, ty) in extra_locals {
+                let byte_offset_of_var_in_env = closure_layout.fields.offset(field).bytes();
 
                 let ops = bx.debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
                 let mut ops = if env_ref { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::Ref(_, ty, _)) = (decl.by_ref, &ty.sty) {
+                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.sty) {
                     ty
                 } else {
                     ops = &ops[..ops.len() - 1];
@@ -680,7 +707,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 };
                 bx.declare_local(
                     &fx.debug_context,
-                    decl.debug_name,
+                    name,
                     ty,
                     scope,
                     variable_access,
