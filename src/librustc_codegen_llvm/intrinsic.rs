@@ -19,7 +19,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use syntax::ast::{self, FloatTy};
+use syntax::ast::{self, FloatTy, AsmDialect};
 use syntax::symbol::Symbol;
 
 use rustc_codegen_ssa::traits::*;
@@ -28,6 +28,7 @@ use rustc::session::Session;
 use syntax_pos::Span;
 
 use std::cmp::Ordering;
+use std::ffi::CStr;
 use std::{iter, i128, u128};
 
 fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
@@ -686,6 +687,27 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "nontemporal_store" => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.nontemporal_store(self, dst);
+                return;
+            }
+
+            "spin_loop_hint" => {
+                let asm = match &*self.tcx().sess.target.target.arch {
+                    "x86" | "x86_64" => b"pause\0",
+                    "aarch64" => b"yield\0",
+                    _ => return,
+                };
+                let r = self.inline_asm_call(
+                    CStr::from_bytes_with_nul(asm).unwrap(),
+                    CStr::from_bytes_with_nul(b"r,~{memory}\0").unwrap(),
+                    &[],
+                    self.type_void(),
+                    true,
+                    false,
+                    AsmDialect::Att,
+                );
+                if r.is_none() {
+                    bug!("broken spin_loop_hint");
+                }
                 return;
             }
 

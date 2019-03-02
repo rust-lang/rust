@@ -1308,6 +1308,9 @@ extern "rust-intrinsic" {
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+
+    #[cfg(not(stage0))]
+    pub fn spin_loop_hint();
 }
 
 mod real_intrinsics {

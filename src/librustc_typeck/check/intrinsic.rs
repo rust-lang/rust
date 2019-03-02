@@ -70,7 +70,8 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
-        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse"
+        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
+        "spin_loop_hint"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
@@ -378,6 +379,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "nontemporal_store" => {
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit())
             }
+
+            "spin_loop_hint" => (0, vec![], tcx.mk_unit()),
 
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
