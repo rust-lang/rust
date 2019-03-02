@@ -1,0 +1,55 @@
+error: expected one of `)` or `,`, found `->`
+  --> $DIR/issue-58856-2.rs:3:26
+   |
+LL |     fn how_are_you(&self -> Empty {
+   |                   -     -^^
+   |                   |     |
+   |                   |     help: `)` may belong here
+   |                   unclosed delimiter
+
+error: expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `)`
+  --> $DIR/issue-58856-2.rs:10:1
+   |
+LL |     }
+   |      - expected one of 11 possible tokens here
+LL | }
+   | ^ unexpected token
+
+error[E0407]: method `how_are_you` is not a member of trait `Howness`
+  --> $DIR/issue-58856-2.rs:3:5
+   |
+LL | /     fn how_are_you(&self -> Empty {
+LL | |     //~^ ERROR expected one of `)` or `,`, found `->`
+LL | |     //~| ERROR method `how_are_you` is not a member of trait `Howness`
+LL | |     //~| ERROR cannot find type `Empty` in this scope
+LL | |         Empty
+LL | |         //~^ ERROR cannot find value `Empty` in this scope
+LL | |     }
+   | |_____^ not a member of trait `Howness`
+
+error[E0412]: cannot find type `Empty` in this scope
+  --> $DIR/issue-58856-2.rs:3:29
+   |
+LL |     fn how_are_you(&self -> Empty {
+   |                             ^^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::io::Empty;
+   |
+LL | use std::iter::Empty;
+   |
+
+error[E0425]: cannot find value `Empty` in this scope
+  --> $DIR/issue-58856-2.rs:7:9
+   |
+LL |         Empty
+   |         ^^^^^ not found in this scope
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use std::sync::mpsc::TryRecvError::Empty;
+   |
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0407, E0412, E0425.
+For more information about an error, try `rustc --explain E0407`.

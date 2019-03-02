@@ -6332,8 +6332,10 @@ impl<'a> Parser<'a> {
                     &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
+            } else if let Err(err) = self.expect_one_of(&[], &[]) {
+                return Err(err);
             } else {
-                return self.unexpected();
+                (vec![self_arg], true)
             }
         } else {
             self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
