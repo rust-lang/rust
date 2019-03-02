@@ -1,5 +1,5 @@
 error: couldn't allocate input reg for constraint 'a'
-  --> $DIR/invalid-inline-asm.rs:7:14
+  --> $DIR/invalid-inline-asm.rs:10:14
    |
 LL |     unsafe { asm!("out %al, %dx" :: "a" (byte), "d" (port) :: "volatile"); }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
