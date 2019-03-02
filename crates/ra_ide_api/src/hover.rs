@@ -531,7 +531,7 @@ mod tests {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.info.first(), Some("```rust\nfn new() -> Thing\n```"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("fn new() -> Thing"));
         assert_eq!(hover.info.is_exact(), true);
     }
 }
