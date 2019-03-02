@@ -151,7 +151,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             let arg_local = this.frame().mir.args_iter().next().ok_or_else(
                 || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
-            let dest = this.eval_place(&mir::Place::Local(arg_local))?;
+            let dest = this.eval_place(&mir::Place::Base(mir::PlaceBase::Local(arg_local)))?;
             this.write_scalar(ptr, dest)?;
 
             // step until out of stackframes

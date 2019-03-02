@@ -121,11 +121,11 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // First argument: pointer to `main()`.
     let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
-    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
     // Second argument (argc): `1`.
-    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
     // Store argc for macOS's `_NSGetArgc`.
@@ -137,7 +137,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // FIXME: extract main source file path.
     // Third argument (`argv`): created from `config.args`.
-    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     // For Windows, construct a command string with all the aguments.
     let mut cmd = String::new();
     for arg in config.args.iter() {
@@ -437,12 +437,12 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
         // First argument: `size`.
         // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let arg = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
         let size = layout.size.bytes();
         ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
 
         // Second argument: `align`.
-        let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let arg = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
         let align = layout.align.abi.bytes();
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 

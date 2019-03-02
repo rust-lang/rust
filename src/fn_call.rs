@@ -275,7 +275,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                             .to_owned(),
                     ),
                 )?;
-                let arg_dest = this.eval_place(&mir::Place::Local(arg_local))?;
+                let arg_dest = this.eval_place(&mir::Place::Base(mir::PlaceBase::Local(arg_local)))?;
                 this.write_scalar(data, arg_dest)?;
 
                 assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
