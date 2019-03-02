@@ -316,11 +316,11 @@ mod tests {
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
-        let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
+        let (body, syntax_mapping) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let scopes = ExprScopes::new(Arc::new(body));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
-            syntax_mapping: Arc::new(body_hir),
+            syntax_mapping: Arc::new(syntax_mapping),
         };
         let actual = scopes
             .scope_chain(marker.syntax())
@@ -417,11 +417,11 @@ mod tests {
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let body_hir = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
-        let scopes = ExprScopes::new(Arc::clone(body_hir.body()));
+        let (body, syntax_mapping) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let scopes = ExprScopes::new(Arc::new(body));
         let scopes = ScopesWithSyntaxMapping {
             scopes: Arc::new(scopes),
-            syntax_mapping: Arc::new(body_hir),
+            syntax_mapping: Arc::new(syntax_mapping),
         };
         let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr();

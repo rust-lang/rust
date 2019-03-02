@@ -484,7 +484,7 @@ impl Function {
     }
 
     pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_source_map(*self)
+        db.body_with_source_map(*self).1
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
@@ -497,7 +497,7 @@ impl Function {
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
-        let syntax_mapping = db.body_source_map(*self);
+        let syntax_mapping = db.body_with_source_map(*self).1;
         ScopesWithSyntaxMapping { scopes, syntax_mapping }
     }
 

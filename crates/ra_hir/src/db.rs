@@ -105,11 +105,14 @@ pub trait HirDatabase: PersistentHirDatabase {
     #[salsa::invoke(crate::ty::type_for_field)]
     fn type_for_field(&self, field: StructField) -> Ty;
 
-    #[salsa::invoke(crate::expr::body_hir)]
-    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
+    #[salsa::invoke(crate::expr::body_with_source_map_query)]
+    fn body_with_source_map(
+        &self,
+        func: Function,
+    ) -> (Arc<crate::expr::Body>, Arc<crate::expr::BodySourceMap>);
 
-    #[salsa::invoke(crate::expr::body_source_map)]
-    fn body_source_map(&self, func: Function) -> Arc<crate::expr::BodySourceMap>;
+    #[salsa::invoke(crate::expr::body_hir_query)]
+    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
