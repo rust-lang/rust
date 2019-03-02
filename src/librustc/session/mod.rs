@@ -44,7 +44,9 @@ use std::fmt;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
+
+use parking_lot::Mutex as PlMutex;
 
 mod code_stats;
 pub mod config;
@@ -127,11 +129,8 @@ pub struct Session {
     /// Used by `-Z profile-queries` in `util::common`.
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
-    /// Used by `-Z self-profile`.
-    pub self_profiling_active: bool,
-
-    /// Used by `-Z self-profile`.
-    pub self_profiling: Lock<SelfProfiler>,
+    /// Used by -Z self-profile
+    pub self_profiling: Option<Arc<PlMutex<SelfProfiler>>>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -834,25 +833,21 @@ impl Session {
     #[inline(never)]
     #[cold]
     fn profiler_active<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        let mut profiler = self.self_profiling.borrow_mut();
-        f(&mut profiler);
+        match &self.self_profiling {
+            None => bug!("profiler_active() called but there was no profiler active"),
+            Some(profiler) => {
+                let mut p = profiler.lock();
+
+                f(&mut p);
+            }
+        }
     }
 
     #[inline(always)]
     pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        if unlikely!(self.self_profiling_active) {
+        if unlikely!(self.self_profiling.is_some()) {
             self.profiler_active(f)
         }
-    }
-
-    pub fn print_profiler_results(&self) {
-        let mut profiler = self.self_profiling.borrow_mut();
-        profiler.print_results(&self.opts);
-    }
-
-    pub fn save_json_results(&self) {
-        let profiler = self.self_profiling.borrow();
-        profiler.save_results(&self.opts);
     }
 
     pub fn print_perf_stats(&self) {
@@ -1136,6 +1131,10 @@ pub fn build_session_(
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
+    let self_profiler =
+        if sopts.debugging_opts.self_profile { Some(Arc::new(PlMutex::new(SelfProfiler::new()))) }
+        else { None };
+
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e|
         span_diagnostic
@@ -1185,9 +1184,6 @@ pub fn build_session_(
         CguReuseTracker::new_disabled()
     };
 
-    let self_profiling_active = sopts.debugging_opts.self_profile ||
-                                sopts.debugging_opts.profile_json;
-
     let sess = Session {
         target: target_cfg,
         host,
@@ -1216,8 +1212,7 @@ pub fn build_session_(
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
-        self_profiling_active,
-        self_profiling: Lock::new(SelfProfiler::new()),
+        self_profiling: self_profiler,
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),

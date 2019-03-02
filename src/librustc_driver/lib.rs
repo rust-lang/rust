@@ -276,6 +276,10 @@ fn run_compiler_with_pool<'a>(
                               &control)
     };
 
+    if sess.opts.debugging_opts.self_profile {
+        sess.profiler(|p| p.dump_raw_events(&sess.opts));
+    }
+
     (result, Some(sess))
 }
 

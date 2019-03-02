@@ -2,9 +2,11 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(core_intrinsics)]
 #![feature(custom_attribute)]
 #![feature(libc)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(stmt_expr_attributes)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![allow(unused_attributes)]
@@ -20,6 +22,7 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
+#[macro_use] extern crate rustc_data_structures;
 #[macro_use] extern crate syntax;
 
 use std::path::PathBuf;
