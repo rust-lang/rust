@@ -48,14 +48,14 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
         delc_id: Option<SourceFileItemId>,
     ) -> Arc<Vec<crate::module_tree::Submodule>>;
 
+    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_with_source_map_query)]
+    fn lower_module_with_source_map(
+        &self,
+        module: Module,
+    ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
+
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
-    fn lower_module(&self, module: Module) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
-
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_module_query)]
-    fn lower_module_module(&self, module: Module) -> Arc<LoweredModule>;
-
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
-    fn lower_module_source_map(&self, module: Module) -> Arc<ImportSourceMap>;
+    fn lower_module(&self, module: Module) -> Arc<LoweredModule>;
 
     #[salsa::invoke(crate::nameres::ItemMap::item_map_query)]
     fn item_map(&self, krate: Crate) -> Arc<ItemMap>;
@@ -105,11 +105,14 @@ pub trait HirDatabase: PersistentHirDatabase {
     #[salsa::invoke(crate::ty::type_for_field)]
     fn type_for_field(&self, field: StructField) -> Ty;
 
-    #[salsa::invoke(crate::expr::body_hir)]
-    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
+    #[salsa::invoke(crate::expr::body_with_source_map_query)]
+    fn body_with_source_map(
+        &self,
+        func: Function,
+    ) -> (Arc<crate::expr::Body>, Arc<crate::expr::BodySourceMap>);
 
-    #[salsa::invoke(crate::expr::body_syntax_mapping)]
-    fn body_syntax_mapping(&self, func: Function) -> Arc<crate::expr::BodySyntaxMapping>;
+    #[salsa::invoke(crate::expr::body_hir_query)]
+    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;

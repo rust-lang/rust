@@ -47,7 +47,7 @@ impl Module {
         db: &impl HirDatabase,
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
-        let source_map = db.lower_module_source_map(*self);
+        let (_, source_map) = db.lower_module_with_source_map(*self);
         let (_, source) = self.definition_source(db);
         source_map.get(&source, import)
     }

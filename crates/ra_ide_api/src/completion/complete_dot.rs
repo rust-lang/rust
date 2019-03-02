@@ -9,8 +9,8 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
     let infer_result = function.infer(ctx.db);
-    let syntax_mapping = function.body_syntax_mapping(ctx.db);
-    let expr = match syntax_mapping.node_expr(receiver) {
+    let source_map = function.body_source_map(ctx.db);
+    let expr = match source_map.node_expr(receiver) {
         Some(expr) => expr,
         None => return,
     };

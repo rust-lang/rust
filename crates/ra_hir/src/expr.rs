@@ -16,7 +16,7 @@ use crate::{
 };
 use crate::{ path::GenericArgs, ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy}};
 
-pub use self::scope::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
+pub use self::scope::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax};
 
 pub(crate) mod scope;
 
@@ -48,13 +48,12 @@ pub struct Body {
 /// expression containing it; but for type inference etc., we want to operate on
 /// a structure that is agnostic to the actual positions of expressions in the
 /// file, so that we don't recompute types whenever some whitespace is typed.
-#[derive(Debug, Eq, PartialEq)]
-pub struct BodySyntaxMapping {
-    body: Arc<Body>,
-    expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
-    expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
-    pat_syntax_mapping: FxHashMap<SyntaxNodePtr, PatId>,
-    pat_syntax_mapping_back: ArenaMap<PatId, SyntaxNodePtr>,
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct BodySourceMap {
+    expr_map: FxHashMap<SyntaxNodePtr, ExprId>,
+    expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
+    pat_map: FxHashMap<SyntaxNodePtr, PatId>,
+    pat_map_back: ArenaMap<PatId, SyntaxNodePtr>,
 }
 
 impl Body {
@@ -76,10 +75,6 @@ impl Body {
 
     pub fn pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
         self.pats.iter()
-    }
-
-    pub fn syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(self.owner)
     }
 }
 
@@ -119,33 +114,29 @@ impl Index<PatId> for Body {
     }
 }
 
-impl BodySyntaxMapping {
+impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
-        self.expr_syntax_mapping_back.get(expr).cloned()
+        self.expr_map_back.get(expr).cloned()
     }
 
     pub fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
-        self.expr_syntax_mapping.get(&ptr).cloned()
+        self.expr_map.get(&ptr).cloned()
     }
 
     pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
-        self.expr_syntax_mapping.get(&SyntaxNodePtr::new(node.syntax())).cloned()
+        self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Option<SyntaxNodePtr> {
-        self.pat_syntax_mapping_back.get(pat).cloned()
+        self.pat_map_back.get(pat).cloned()
     }
 
     pub fn syntax_pat(&self, ptr: SyntaxNodePtr) -> Option<PatId> {
-        self.pat_syntax_mapping.get(&ptr).cloned()
+        self.pat_map.get(&ptr).cloned()
     }
 
     pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
-        self.pat_syntax_mapping.get(&SyntaxNodePtr::new(node.syntax())).cloned()
-    }
-
-    pub fn body(&self) -> &Arc<Body> {
-        &self.body
+        self.pat_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 }
 
@@ -467,18 +458,11 @@ impl Pat {
 
 // Queries
 
-pub(crate) fn body_hir(db: &impl HirDatabase, func: Function) -> Arc<Body> {
-    Arc::clone(&body_syntax_mapping(db, func).body)
-}
-
 struct ExprCollector {
     owner: Function,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
-    expr_syntax_mapping: FxHashMap<SyntaxNodePtr, ExprId>,
-    expr_syntax_mapping_back: ArenaMap<ExprId, SyntaxNodePtr>,
-    pat_syntax_mapping: FxHashMap<SyntaxNodePtr, PatId>,
-    pat_syntax_mapping_back: ArenaMap<PatId, SyntaxNodePtr>,
+    source_map: BodySourceMap,
     params: Vec<PatId>,
     body_expr: Option<ExprId>,
 }
@@ -489,10 +473,7 @@ impl ExprCollector {
             owner,
             exprs: Arena::default(),
             pats: Arena::default(),
-            expr_syntax_mapping: FxHashMap::default(),
-            expr_syntax_mapping_back: ArenaMap::default(),
-            pat_syntax_mapping: FxHashMap::default(),
-            pat_syntax_mapping_back: ArenaMap::default(),
+            source_map: BodySourceMap::default(),
             params: Vec::new(),
             body_expr: None,
         }
@@ -500,15 +481,15 @@ impl ExprCollector {
 
     fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
         let id = self.exprs.alloc(expr);
-        self.expr_syntax_mapping.insert(syntax_ptr, id);
-        self.expr_syntax_mapping_back.insert(id, syntax_ptr);
+        self.source_map.expr_map.insert(syntax_ptr, id);
+        self.source_map.expr_map_back.insert(id, syntax_ptr);
         id
     }
 
     fn alloc_pat(&mut self, pat: Pat, syntax_ptr: SyntaxNodePtr) -> PatId {
         let id = self.pats.alloc(pat);
-        self.pat_syntax_mapping.insert(syntax_ptr, id);
-        self.pat_syntax_mapping_back.insert(id, syntax_ptr);
+        self.source_map.pat_map.insert(syntax_ptr, id);
+        self.source_map.pat_map_back.insert(id, syntax_ptr);
         id
     }
 
@@ -639,7 +620,7 @@ impl ExprCollector {
             ast::ExprKind::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                self.expr_syntax_mapping.insert(syntax_ptr, inner);
+                self.source_map.expr_map.insert(syntax_ptr, inner);
                 inner
             }
             ast::ExprKind::ReturnExpr(e) => {
@@ -660,9 +641,11 @@ impl ExprCollector {
                             } else if let Some(nr) = field.name_ref() {
                                 // field shorthand
                                 let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(nr)));
-                                self.expr_syntax_mapping
+                                self.source_map
+                                    .expr_map
                                     .insert(SyntaxNodePtr::new(nr.syntax()), id);
-                                self.expr_syntax_mapping_back
+                                self.source_map
+                                    .expr_map_back
                                     .insert(id, SyntaxNodePtr::new(nr.syntax()));
                                 id
                             } else {
@@ -910,7 +893,7 @@ impl ExprCollector {
         self.body_expr = Some(body);
     }
 
-    fn into_body_syntax_mapping(self) -> BodySyntaxMapping {
+    fn finish(self) -> (Body, BodySourceMap) {
         let body = Body {
             owner: self.owner,
             exprs: self.exprs,
@@ -918,28 +901,30 @@ impl ExprCollector {
             params: self.params,
             body_expr: self.body_expr.expect("A body should have been collected"),
         };
-        BodySyntaxMapping {
-            body: Arc::new(body),
-            expr_syntax_mapping: self.expr_syntax_mapping,
-            expr_syntax_mapping_back: self.expr_syntax_mapping_back,
-            pat_syntax_mapping: self.pat_syntax_mapping,
-            pat_syntax_mapping_back: self.pat_syntax_mapping_back,
-        }
+        (body, self.source_map)
     }
 }
 
-pub(crate) fn body_syntax_mapping(db: &impl HirDatabase, func: Function) -> Arc<BodySyntaxMapping> {
+pub(crate) fn body_with_source_map_query(
+    db: &impl HirDatabase,
+    func: Function,
+) -> (Arc<Body>, Arc<BodySourceMap>) {
     let mut collector = ExprCollector::new(func);
 
     // TODO: consts, etc.
     collector.collect_fn_body(&func.source(db).1);
 
-    Arc::new(collector.into_body_syntax_mapping())
+    let (body, source_map) = collector.finish();
+    (Arc::new(body), Arc::new(source_map))
+}
+
+pub(crate) fn body_hir_query(db: &impl HirDatabase, func: Function) -> Arc<Body> {
+    db.body_with_source_map(func).0
 }
 
 #[cfg(test)]
-pub(crate) fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> BodySyntaxMapping {
+fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
     let mut collector = ExprCollector::new(function);
     collector.collect_fn_body(node);
-    collector.into_body_syntax_mapping()
+    collector.finish()
 }

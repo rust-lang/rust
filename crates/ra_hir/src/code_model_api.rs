@@ -5,11 +5,11 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, ScopesWithSourceMap, Ty, HirFileId,
     HirDatabase, PersistentHirDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, lower::ImportId},
-    expr::{Body, BodySyntaxMapping},
+    expr::{Body, BodySourceMap},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
@@ -191,7 +191,7 @@ impl Module {
     }
 
     pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
-        let (lowered_module, _) = db.lower_module(self);
+        let lowered_module = db.lower_module(self);
         lowered_module
             .declarations
             .values()
@@ -483,8 +483,8 @@ impl Function {
         self.signature(db).name.clone()
     }
 
-    pub fn body_syntax_mapping(&self, db: &impl HirDatabase) -> Arc<BodySyntaxMapping> {
-        db.body_syntax_mapping(*self)
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(*self).1
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
@@ -495,10 +495,10 @@ impl Function {
         db.type_for_def((*self).into(), Namespace::Values)
     }
 
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
+    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
         let scopes = db.expr_scopes(*self);
-        let syntax_mapping = db.body_syntax_mapping(*self);
-        ScopesWithSyntaxMapping { scopes, syntax_mapping }
+        let source_map = db.body_with_source_map(*self).1;
+        ScopesWithSourceMap { scopes, source_map }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {

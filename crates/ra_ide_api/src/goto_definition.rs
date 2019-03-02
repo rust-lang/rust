@@ -54,10 +54,10 @@ pub(crate) fn reference_definition(
         if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
             tested_by!(goto_definition_works_for_methods);
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let source_map = function.body_source_map(db);
             let expr = ast::Expr::cast(method_call.syntax()).unwrap();
             if let Some(func) =
-                syntax_mapping.node_expr(expr).and_then(|it| infer_result.method_resolution(it))
+                source_map.node_expr(expr).and_then(|it| infer_result.method_resolution(it))
             {
                 return Exact(NavigationTarget::from_function(db, func));
             };
@@ -66,10 +66,10 @@ pub(crate) fn reference_definition(
         if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
             tested_by!(goto_definition_works_for_fields);
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let source_map = function.body_source_map(db);
             let expr = ast::Expr::cast(field_expr.syntax()).unwrap();
             if let Some(field) =
-                syntax_mapping.node_expr(expr).and_then(|it| infer_result.field_resolution(it))
+                source_map.node_expr(expr).and_then(|it| infer_result.field_resolution(it))
             {
                 return Exact(NavigationTarget::from_field(db, field));
             };
@@ -80,11 +80,11 @@ pub(crate) fn reference_definition(
             tested_by!(goto_definition_works_for_named_fields);
 
             let infer_result = function.infer(db);
-            let syntax_mapping = function.body_syntax_mapping(db);
+            let source_map = function.body_source_map(db);
 
             let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
 
-            if let Some(expr) = struct_lit.and_then(|lit| syntax_mapping.node_expr(lit.into())) {
+            if let Some(expr) = struct_lit.and_then(|lit| source_map.node_expr(lit.into())) {
                 let ty = infer_result[expr].clone();
                 if let hir::Ty::Adt { def_id, .. } = ty {
                     if let hir::AdtDef::Struct(s) = def_id {
@@ -109,9 +109,8 @@ pub(crate) fn reference_definition(
             Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
             Some(Resolution::LocalBinding(pat)) => {
                 let body = resolver.body().expect("no body for local binding");
-                let syntax_mapping = body.syntax_mapping(db);
-                let ptr =
-                    syntax_mapping.pat_syntax(pat).expect("pattern not found in syntax mapping");
+                let source_map = body.owner().body_source_map(db);
+                let ptr = source_map.pat_syntax(pat).expect("pattern not found in syntax mapping");
                 let name =
                     path.as_ident().cloned().expect("local binding from a multi-segment path");
                 let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);

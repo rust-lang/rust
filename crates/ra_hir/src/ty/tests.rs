@@ -1045,11 +1045,11 @@ fn test() {
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let func = source_binder::function_from_position(db, pos).unwrap();
-    let body_syntax_mapping = func.body_syntax_mapping(db);
+    let body_source_map = func.body_source_map(db);
     let inference_result = func.infer(db);
     let (_, syntax) = func.source(db);
     let node = algo::find_node_at_offset::<ast::Expr>(syntax.syntax(), pos.offset).unwrap();
-    let expr = body_syntax_mapping.node_expr(node).unwrap();
+    let expr = body_source_map.node_expr(node).unwrap();
     let ty = &inference_result[expr];
     ty.to_string()
 }
@@ -1061,17 +1061,17 @@ fn infer(content: &str) -> String {
     for fn_def in source_file.syntax().descendants().filter_map(ast::FnDef::cast) {
         let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
         let inference_result = func.infer(&db);
-        let body_syntax_mapping = func.body_syntax_mapping(&db);
+        let body_source_map = func.body_source_map(&db);
         let mut types = Vec::new();
         for (pat, ty) in inference_result.type_of_pat.iter() {
-            let syntax_ptr = match body_syntax_mapping.pat_syntax(pat) {
+            let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Some(sp) => sp,
                 None => continue,
             };
             types.push((syntax_ptr, ty));
         }
         for (expr, ty) in inference_result.type_of_expr.iter() {
-            let syntax_ptr = match body_syntax_mapping.expr_syntax(expr) {
+            let syntax_ptr = match body_source_map.expr_syntax(expr) {
                 Some(sp) => sp,
                 None => continue,
             };
