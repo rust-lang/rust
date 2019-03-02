@@ -9,7 +9,10 @@ use crate::{MacroRulesError, Result};
 use crate::tt_cursor::TtCursor;
 
 pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> Result<tt::Subtree> {
-    rules.rules.iter().find_map(|it| expand_rule(it, input).ok())
+    rules
+        .rules
+        .iter()
+        .find_map(|it| expand_rule(it, input).ok())
         .ok_or(MacroRulesError::NoMatchingRule)
 }
 
@@ -80,21 +83,24 @@ enum Binding {
 
 impl Bindings {
     fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree> {
-        let mut b = self.inner.get(name).ok_or(MacroRulesError::BindingError(
-            format!("could not find binding {}", name)
-        ))?;
+        let mut b = self
+            .inner
+            .get(name)
+            .ok_or(MacroRulesError::BindingError(format!("could not find binding {}", name)))?;
         for &idx in nesting.iter() {
             b = match b {
                 Binding::Simple(_) => break,
                 Binding::Nested(bs) => bs.get(idx).ok_or(MacroRulesError::BindingError(
-                    format!("could not find nested binding {}", name))
-                )?,
+                    format!("could not find nested binding {}", name),
+                ))?,
             };
         }
         match b {
             Binding::Simple(it) => Ok(it),
-            Binding::Nested(_) => Err(MacroRulesError::BindingError(
-                    format!("expected simple binding, found nested binding {}", name))),
+            Binding::Nested(_) => Err(MacroRulesError::BindingError(format!(
+                "expected simple binding, found nested binding {}",
+                name
+            ))),
         }
     }
 
@@ -105,8 +111,12 @@ impl Bindings {
             }
             match self.inner.get_mut(&key) {
                 Some(Binding::Nested(it)) => it.push(value),
-                _ => return Err(MacroRulesError::BindingError(
-                    format!("nested binding for {} not found", key))),
+                _ => {
+                    return Err(MacroRulesError::BindingError(format!(
+                        "nested binding for {} not found",
+                        key
+                    )))
+                }
             }
         }
         Ok(())
