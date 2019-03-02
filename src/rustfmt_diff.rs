@@ -122,13 +122,11 @@ impl std::str::FromStr for ModifiedLines {
                 (Some(orig), Some(removed), Some(added)) => (orig, removed, added),
                 _ => return Err(()),
             };
-            eprintln!("{} {} {}", orig, rem, new_lines);
             let (orig, rem, new_lines): (u32, u32, usize) =
                 match (orig.parse(), rem.parse(), new_lines.parse()) {
                     (Ok(a), Ok(b), Ok(c)) => (a, b, c),
                     _ => return Err(()),
                 };
-            eprintln!("{} {} {}", orig, rem, new_lines);
             let lines = lines.by_ref().take(new_lines);
             let lines: Vec<_> = lines.map(ToOwned::to_owned).collect();
             if lines.len() != new_lines {
