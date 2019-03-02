@@ -191,7 +191,7 @@ impl Module {
     }
 
     pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
-        let (lowered_module, _) = db.lower_module(self);
+        let lowered_module = db.lower_module(self);
         lowered_module
             .declarations
             .values()

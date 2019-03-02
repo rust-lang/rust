@@ -481,7 +481,7 @@ impl ItemMap {
         let module_tree = db.module_tree(krate);
         let input = module_tree
             .modules()
-            .map(|module_id| (module_id, db.lower_module_module(Module { krate, module_id })))
+            .map(|module_id| (module_id, db.lower_module(Module { krate, module_id })))
             .collect::<FxHashMap<_, _>>();
 
         let resolver = Resolver::new(db, &input, krate);

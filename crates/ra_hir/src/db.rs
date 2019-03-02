@@ -48,14 +48,14 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
         delc_id: Option<SourceFileItemId>,
     ) -> Arc<Vec<crate::module_tree::Submodule>>;
 
+    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_with_source_map_query)]
+    fn lower_module_with_source_map(
+        &self,
+        module: Module,
+    ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
+
     #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
-    fn lower_module(&self, module: Module) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
-
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_module_query)]
-    fn lower_module_module(&self, module: Module) -> Arc<LoweredModule>;
-
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_source_map_query)]
-    fn lower_module_source_map(&self, module: Module) -> Arc<ImportSourceMap>;
+    fn lower_module(&self, module: Module) -> Arc<LoweredModule>;
 
     #[salsa::invoke(crate::nameres::ItemMap::item_map_query)]
     fn item_map(&self, krate: Crate) -> Arc<ItemMap>;

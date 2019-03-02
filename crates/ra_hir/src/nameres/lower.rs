@@ -60,21 +60,14 @@ impl ImportSourceMap {
 }
 
 impl LoweredModule {
-    pub(crate) fn lower_module_module_query(
+    pub(crate) fn lower_module_query(
         db: &impl PersistentHirDatabase,
         module: Module,
     ) -> Arc<LoweredModule> {
-        db.lower_module(module).0
+        db.lower_module_with_source_map(module).0
     }
 
-    pub(crate) fn lower_module_source_map_query(
-        db: &impl PersistentHirDatabase,
-        module: Module,
-    ) -> Arc<ImportSourceMap> {
-        db.lower_module(module).1
-    }
-
-    pub(crate) fn lower_module_query(
+    pub(crate) fn lower_module_with_source_map_query(
         db: &impl PersistentHirDatabase,
         module: Module,
     ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>) {
