@@ -464,7 +464,7 @@ pub enum NestedMetaItemKind {
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MetaItem {
-    pub ident: Path,
+    pub path: Path,
     pub node: MetaItemKind,
     pub span: Span,
 }
