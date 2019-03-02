@@ -16,7 +16,7 @@ use crate::{
 };
 use crate::{ path::GenericArgs, ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy}};
 
-pub use self::scope::{ExprScopes, ScopesWithSyntaxMapping, ScopeEntryWithSyntax};
+pub use self::scope::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax};
 
 pub(crate) mod scope;
 

@@ -108,7 +108,7 @@ impl ExprScopes {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScopesWithSyntaxMapping {
+pub struct ScopesWithSourceMap {
     pub source_map: Arc<BodySourceMap>,
     pub scopes: Arc<ExprScopes>,
 }
@@ -129,7 +129,7 @@ impl ScopeEntryWithSyntax {
     }
 }
 
-impl ScopesWithSyntaxMapping {
+impl ScopesWithSourceMap {
     fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(node), move |&scope| self.scopes.scopes[scope].parent)
     }
@@ -319,7 +319,7 @@ mod tests {
         let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =
-            ScopesWithSyntaxMapping { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
+            ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
         let actual = scopes
             .scope_chain(marker.syntax())
             .flat_map(|scope| scopes.scopes.entries(scope))
@@ -418,7 +418,7 @@ mod tests {
         let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =
-            ScopesWithSyntaxMapping { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
+            ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
         let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr();
         assert_eq!(local_name.range(), expected_name.syntax().range());

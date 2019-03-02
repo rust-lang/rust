@@ -5,7 +5,7 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
-    Name, ScopesWithSyntaxMapping, Ty, HirFileId,
+    Name, ScopesWithSourceMap, Ty, HirFileId,
     HirDatabase, PersistentHirDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, lower::ImportId},
@@ -495,10 +495,10 @@ impl Function {
         db.type_for_def((*self).into(), Namespace::Values)
     }
 
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
+    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
         let scopes = db.expr_scopes(*self);
         let source_map = db.body_with_source_map(*self).1;
-        ScopesWithSyntaxMapping { scopes, source_map }
+        ScopesWithSourceMap { scopes, source_map }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
