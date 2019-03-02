@@ -24,6 +24,15 @@ use ra_syntax::SmolStr;
 
 pub use tt::{Delimiter, Punct};
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum MacroRulesError {
+    NoMatchingRule,
+    UnexpectedToken,
+    BindingError(String),
+    ParseError,
+}
+
+pub type Result<T> = ::std::result::Result<T, MacroRulesError>;
 pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
@@ -36,11 +45,11 @@ pub struct MacroRules {
 }
 
 impl MacroRules {
-    pub fn parse(tt: &tt::Subtree) -> Option<MacroRules> {
+    pub fn parse(tt: &tt::Subtree) -> Result<MacroRules> {
         mbe_parser::parse(tt)
     }
-    pub fn expand(&self, tt: &tt::Subtree) -> Option<tt::Subtree> {
-        mbe_expander::exapnd(self, tt)
+    pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree> {
+        mbe_expander::expand(self, tt)
     }
 }
 
