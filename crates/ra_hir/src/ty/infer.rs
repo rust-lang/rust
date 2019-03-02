@@ -456,15 +456,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             })?;
 
-            /*
-            if let ExprOrPatId::Expr(expr) = id {
-                match typable {
-                    TypableDef::Function(func) => self.write_assoc_fn_resolution(expr, func),
-                    _ => {}
-                };
-            }
-            */
-
             resolved = Resolution::Def(item.into());
         }
 
