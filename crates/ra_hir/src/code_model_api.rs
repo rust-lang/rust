@@ -497,8 +497,8 @@ impl Function {
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSyntaxMapping {
         let scopes = db.expr_scopes(*self);
-        let syntax_mapping = db.body_with_source_map(*self).1;
-        ScopesWithSyntaxMapping { scopes, syntax_mapping }
+        let source_map = db.body_with_source_map(*self).1;
+        ScopesWithSyntaxMapping { scopes, source_map }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {

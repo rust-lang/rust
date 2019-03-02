@@ -109,7 +109,7 @@ impl ExprScopes {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopesWithSyntaxMapping {
-    pub syntax_mapping: Arc<BodySourceMap>,
+    pub source_map: Arc<BodySourceMap>,
     pub scopes: Arc<ExprScopes>,
 }
 
@@ -138,7 +138,7 @@ impl ScopesWithSyntaxMapping {
         self.scopes
             .scope_for
             .iter()
-            .filter_map(|(id, scope)| Some((self.syntax_mapping.expr_syntax(*id)?, scope)))
+            .filter_map(|(id, scope)| Some((self.source_map.expr_syntax(*id)?, scope)))
             // find containing scope
             .min_by_key(|(ptr, _scope)| {
                 (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
@@ -155,7 +155,7 @@ impl ScopesWithSyntaxMapping {
             .scopes
             .scope_for
             .iter()
-            .filter_map(|(id, scope)| Some((self.syntax_mapping.expr_syntax(*id)?, scope)))
+            .filter_map(|(id, scope)| Some((self.source_map.expr_syntax(*id)?, scope)))
             .map(|(ptr, scope)| (ptr.range(), scope))
             .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
 
@@ -185,7 +185,7 @@ impl ScopesWithSyntaxMapping {
         ret.and_then(|entry| {
             Some(ScopeEntryWithSyntax {
                 name: entry.name().clone(),
-                ptr: self.syntax_mapping.pat_syntax(entry.pat())?,
+                ptr: self.source_map.pat_syntax(entry.pat())?,
             })
         })
     }
@@ -211,7 +211,7 @@ impl ScopesWithSyntaxMapping {
     pub fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
             .map(SyntaxNodePtr::new)
-            .filter_map(|ptr| self.syntax_mapping.syntax_expr(ptr))
+            .filter_map(|ptr| self.source_map.syntax_expr(ptr))
             .find_map(|it| self.scopes.scope_for(it))
     }
 }
@@ -316,12 +316,10 @@ mod tests {
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let (body, syntax_mapping) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
-        let scopes = ScopesWithSyntaxMapping {
-            scopes: Arc::new(scopes),
-            syntax_mapping: Arc::new(syntax_mapping),
-        };
+        let scopes =
+            ScopesWithSyntaxMapping { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
         let actual = scopes
             .scope_chain(marker.syntax())
             .flat_map(|scope| scopes.scopes.entries(scope))
@@ -417,12 +415,10 @@ mod tests {
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let (body, syntax_mapping) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
-        let scopes = ScopesWithSyntaxMapping {
-            scopes: Arc::new(scopes),
-            syntax_mapping: Arc::new(syntax_mapping),
-        };
+        let scopes =
+            ScopesWithSyntaxMapping { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
         let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr();
         assert_eq!(local_name.range(), expected_name.syntax().range());
