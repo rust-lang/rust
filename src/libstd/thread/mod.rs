@@ -165,8 +165,9 @@ use crate::mem;
 use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
+use crate::parking_lot::{Condvar, Mutex};
 use crate::str;
-use crate::sync::{Mutex, Condvar, Arc, RawMutex};
+use crate::sync::{Arc, RawMutex};
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sys::thread as imp;
@@ -889,7 +890,7 @@ pub fn park() {
     }
 
     // Otherwise we need to coordinate going to sleep
-    let mut m = thread.inner.lock.lock().unwrap();
+    let mut m = thread.inner.lock.lock();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
@@ -906,7 +907,7 @@ pub fn park() {
         Err(_) => panic!("inconsistent park state"),
     }
     loop {
-        m = thread.inner.cvar.wait(m).unwrap();
+        thread.inner.cvar.wait(&mut m);
         match thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst) {
             Ok(_) => return, // got a notification
             Err(_) => {} // spurious wakeup, go back to sleep
@@ -985,7 +986,7 @@ pub fn park_timeout(dur: Duration) {
     if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
         return
     }
-    let m = thread.inner.lock.lock().unwrap();
+    let mut m = thread.inner.lock.lock();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
         Err(NOTIFIED) => {
@@ -1001,7 +1002,7 @@ pub fn park_timeout(dur: Duration) {
     // from a notification we just want to unconditionally set the state back to
     // empty, either consuming a notification or un-flagging ourselves as
     // parked.
-    let (_m, _result) = thread.inner.cvar.wait_timeout(m, dur).unwrap();
+    let _result = thread.inner.cvar.wait_for(&mut m, dur);
     match thread.inner.state.swap(EMPTY, SeqCst) {
         NOTIFIED => {} // got a notification, hurray!
         PARKED => {} // no notification, alas
@@ -1181,8 +1182,8 @@ impl Thread {
         // Releasing `lock` before the call to `notify_one` means that when the
         // parked thread wakes it doesn't get woken only to have to wait for us
         // to release `lock`.
-        drop(self.inner.lock.lock().unwrap());
-        self.inner.cvar.notify_one()
+        drop(self.inner.lock.lock());
+        self.inner.cvar.notify_one();
     }
 
     /// Gets the thread's unique identifier.
