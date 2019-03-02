@@ -156,7 +156,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         size_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let size = if layout.is_unsized() {
-                let (_ptr, info) = ptr.load_value_pair(fx);
+                let (_ptr, info) = ptr.load_scalar_pair(fx);
                 let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
                 size
             } else {
@@ -175,7 +175,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         min_align_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let align = if layout.is_unsized() {
-                let (_ptr, info) = ptr.load_value_pair(fx);
+                let (_ptr, info) = ptr.load_scalar_pair(fx);
                 let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
                 align
             } else {

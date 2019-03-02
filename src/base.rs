@@ -537,7 +537,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         } else {
                             // fat-ptr -> thin-ptr
-                            let (ptr, _extra) = operand.load_value_pair(fx);
+                            let (ptr, _extra) = operand.load_scalar_pair(fx);
                             lval.write_cvalue(fx, CValue::ByVal(ptr, dest_layout))
                         }
                     } else if let ty::Adt(adt_def, _substs) = from_ty.sty {
@@ -1101,8 +1101,8 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
             Offset (_) bug; // Handled above
         }
     } else {
-        let (lhs_ptr, lhs_extra) = lhs.load_value_pair(fx);
-        let (rhs_ptr, rhs_extra) = rhs.load_value_pair(fx);
+        let (lhs_ptr, lhs_extra) = lhs.load_scalar_pair(fx);
+        let (rhs_ptr, rhs_extra) = rhs.load_scalar_pair(fx);
         let res = match bin_op {
             BinOp::Eq => {
                 let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);

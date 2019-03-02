@@ -27,6 +27,7 @@ impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut 
 impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
 #[lang = "receiver"]
 pub trait Receiver {}
@@ -216,6 +217,15 @@ impl PartialEq for usize {
     }
 }
 
+impl PartialEq for i32 {
+    fn eq(&self, other: &i32) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &i32) -> bool {
+        (*self) != (*other)
+    }
+}
+
 impl PartialEq for isize {
     fn eq(&self, other: &isize) -> bool {
         (*self) == (*other)
@@ -306,6 +316,13 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
+#[lang = "deref"]
+pub trait Deref {
+    type Target: ?Sized;
+
+    fn deref(&self) -> &Self::Target;
+}
+
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized>(*mut T);
 
@@ -314,6 +331,14 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 impl<T: ?Sized> Drop for Box<T> {
     fn drop(&mut self) {
         // drop is currently performed by compiler.
+    }
+}
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &**self
     }
 }
 

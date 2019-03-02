@@ -17,6 +17,10 @@ echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin
 ./target/out/mini_core_hello_world abc bcd
 
+echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
+$RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin
+./target/out/arbitrary_self_types_pointers_and_wrappers
+
 echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh
 

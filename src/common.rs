@@ -166,33 +166,33 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
-            CValue::ByValPair(_, _, _layout) => bug!("Please use load_value_pair for ByValPair"),
+            CValue::ByValPair(_, _, _layout) => bug!("Please use load_scalar_pair for ByValPair"),
         }
     }
 
-    pub fn load_value_pair<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> (Value, Value)
+    /// Load a value pair with layout.abi of scalar pair
+    pub fn load_scalar_pair<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> (Value, Value)
     where
         'tcx: 'a,
     {
         match self {
             CValue::ByRef(addr, layout) => {
-                assert_eq!(
-                    layout.size.bytes(),
-                    fx.tcx.data_layout.pointer_size.bytes() * 2
+                let (a, b) = match &layout.abi {
+                    layout::Abi::ScalarPair(a, b) => (a.clone(), b.clone()),
+                    _ => unreachable!(),
+                };
+                let clif_ty1 = crate::abi::scalar_to_clif_type(fx.tcx, a.clone());
+                let clif_ty2 = crate::abi::scalar_to_clif_type(fx.tcx, b);
+                let val1 = fx.bcx.ins().load(clif_ty1, MemFlags::new(), addr, 0);
+                let val2 = fx.bcx.ins().load(
+                    clif_ty2,
+                    MemFlags::new(),
+                    addr,
+                    a.value.size(&fx.tcx).bytes() as i32,
                 );
-                let val1_offset = layout.fields.offset(0).bytes() as i32;
-                let val2_offset = layout.fields.offset(1).bytes() as i32;
-                let val1 = fx
-                    .bcx
-                    .ins()
-                    .load(fx.pointer_type, MemFlags::new(), addr, val1_offset);
-                let val2 = fx
-                    .bcx
-                    .ins()
-                    .load(fx.pointer_type, MemFlags::new(), addr, val2_offset);
                 (val1, val2)
             }
-            CValue::ByVal(_, _layout) => bug!("Please use load_value for ByVal"),
+            CValue::ByVal(_, _layout) => bug!("Please use load_scalar for ByVal"),
             CValue::ByValPair(val1, val2, _layout) => (val1, val2),
         }
     }
