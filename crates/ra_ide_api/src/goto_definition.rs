@@ -5,7 +5,7 @@ use ra_syntax::{
     SyntaxNode,
 };
 use test_utils::tested_by;
-use hir::{ImplItem, Resolution};
+use hir::Resolution;
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
@@ -138,18 +138,7 @@ pub(crate) fn reference_definition(
                             .node_expr(expr)
                             .and_then(|it| infer_result.assoc_resolutions(it.into()))
                         {
-                            match res {
-                                ImplItem::Method(f) => {
-                                    return Exact(NavigationTarget::from_function(db, f));
-                                }
-                                ImplItem::Const(c) => {
-                                    let (file, node) = c.source(db);
-                                    let file = file.original_file(db);
-                                    let node = &*node;
-                                    return Exact(NavigationTarget::from_named(file, node));
-                                }
-                                _ => {}
-                            }
+                            return Exact(NavigationTarget::from_impl_item(db, res));
                         }
                     }
                 }
