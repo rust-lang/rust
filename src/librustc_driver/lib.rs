@@ -91,9 +91,6 @@ use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
-#[cfg(test)]
-mod test;
-
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
