@@ -1,4 +1,4 @@
-use crate::{MacroRulesError, Result};
+use crate::ParseError;
 
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
@@ -19,24 +19,24 @@ impl<'a> TtCursor<'a> {
         self.subtree.token_trees.get(self.pos)
     }
 
-    pub(crate) fn at_punct(&self) -> Result<&'a tt::Punct> {
+    pub(crate) fn at_punct(&self) -> Option<&'a tt::Punct> {
         match self.current() {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(it))) => Ok(it),
-            _ => Err(MacroRulesError::ParseError),
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(it))) => Some(it),
+            _ => None,
         }
     }
 
     pub(crate) fn at_char(&self, char: char) -> bool {
         match self.at_punct() {
-            Ok(tt::Punct { char: c, .. }) if *c == char => true,
+            Some(tt::Punct { char: c, .. }) if *c == char => true,
             _ => false,
         }
     }
 
-    pub(crate) fn at_ident(&mut self) -> Result<&'a tt::Ident> {
+    pub(crate) fn at_ident(&mut self) -> Option<&'a tt::Ident> {
         match self.current() {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Ident(i))) => Ok(i),
-            _ => Err(MacroRulesError::ParseError),
+            Some(tt::TokenTree::Leaf(tt::Leaf::Ident(i))) => Some(i),
+            _ => None,
         }
     }
 
@@ -47,45 +47,43 @@ impl<'a> TtCursor<'a> {
         self.pos -= 1;
     }
 
-    pub(crate) fn eat(&mut self) -> Result<&'a tt::TokenTree> {
-        match self.current() {
-            Some(it) => {
-                self.bump();
-                Ok(it)
-            }
-            None => Err(MacroRulesError::ParseError),
-        }
+    pub(crate) fn eat(&mut self) -> Option<&'a tt::TokenTree> {
+        self.current().map(|it| {
+            self.bump();
+            it
+        })
     }
 
-    pub(crate) fn eat_subtree(&mut self) -> Result<&'a tt::Subtree> {
+    pub(crate) fn eat_subtree(&mut self) -> Result<&'a tt::Subtree, ParseError> {
         match self.current() {
             Some(tt::TokenTree::Subtree(sub)) => {
                 self.bump();
                 Ok(sub)
             }
-            _ => Err(MacroRulesError::ParseError),
+            _ => Err(ParseError::ParseError),
         }
     }
 
-    pub(crate) fn eat_punct(&mut self) -> Result<&'a tt::Punct> {
+    pub(crate) fn eat_punct(&mut self) -> Option<&'a tt::Punct> {
         self.at_punct().map(|it| {
             self.bump();
             it
         })
     }
 
-    pub(crate) fn eat_ident(&mut self) -> Result<&'a tt::Ident> {
+    pub(crate) fn eat_ident(&mut self) -> Option<&'a tt::Ident> {
         self.at_ident().map(|i| {
             self.bump();
             i
         })
     }
 
-    pub(crate) fn expect_char(&mut self, char: char) -> Result<()> {
+    pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
             self.bump();
-            return Ok(());
+            Ok(())
+        } else {
+            Err(ParseError::ParseError)
         }
-        Err(MacroRulesError::ParseError)
     }
 }

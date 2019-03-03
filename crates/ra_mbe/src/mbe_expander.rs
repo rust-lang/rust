@@ -5,22 +5,21 @@ use rustc_hash::FxHashMap;
 use ra_syntax::SmolStr;
 use tt::TokenId;
 
-use crate::{MacroRulesError, Result};
+use crate::ExpandError;
 use crate::tt_cursor::TtCursor;
 
-pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> Result<tt::Subtree> {
-    rules
-        .rules
-        .iter()
-        .find_map(|it| expand_rule(it, input).ok())
-        .ok_or(MacroRulesError::NoMatchingRule)
+pub(crate) fn expand(
+    rules: &crate::MacroRules,
+    input: &tt::Subtree,
+) -> Result<tt::Subtree, ExpandError> {
+    rules.rules.iter().find_map(|it| expand_rule(it, input).ok()).ok_or(ExpandError::NoMatchingRule)
 }
 
-fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Result<tt::Subtree> {
+fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
     let mut input = TtCursor::new(input);
     let bindings = match_lhs(&rule.lhs, &mut input)?;
     if !input.is_eof() {
-        return Err(MacroRulesError::UnexpectedToken);
+        return Err(ExpandError::UnexpectedToken);
     }
     expand_subtree(&rule.rhs, &bindings, &mut Vec::new())
 }
@@ -82,29 +81,30 @@ enum Binding {
 }
 
 impl Bindings {
-    fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree> {
+    fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree, ExpandError> {
         let mut b = self
             .inner
             .get(name)
-            .ok_or(MacroRulesError::BindingError(format!("could not find binding {}", name)))?;
+            .ok_or(ExpandError::BindingError(format!("could not find binding {}", name)))?;
         for &idx in nesting.iter() {
             b = match b {
                 Binding::Simple(_) => break,
-                Binding::Nested(bs) => bs.get(idx).ok_or(MacroRulesError::BindingError(
-                    format!("could not find nested binding {}", name),
-                ))?,
+                Binding::Nested(bs) => bs.get(idx).ok_or(ExpandError::BindingError(format!(
+                    "could not find nested binding {}",
+                    name
+                )))?,
             };
         }
         match b {
             Binding::Simple(it) => Ok(it),
-            Binding::Nested(_) => Err(MacroRulesError::BindingError(format!(
+            Binding::Nested(_) => Err(ExpandError::BindingError(format!(
                 "expected simple binding, found nested binding {}",
                 name
             ))),
         }
     }
 
-    fn push_nested(&mut self, nested: Bindings) -> Result<()> {
+    fn push_nested(&mut self, nested: Bindings) -> Result<(), ExpandError> {
         for (key, value) in nested.inner {
             if !self.inner.contains_key(&key) {
                 self.inner.insert(key.clone(), Binding::Nested(Vec::new()));
@@ -112,10 +112,10 @@ impl Bindings {
             match self.inner.get_mut(&key) {
                 Some(Binding::Nested(it)) => it.push(value),
                 _ => {
-                    return Err(MacroRulesError::BindingError(format!(
+                    return Err(ExpandError::BindingError(format!(
                         "nested binding for {} not found",
                         key
-                    )))
+                    )));
                 }
             }
         }
@@ -123,43 +123,44 @@ impl Bindings {
     }
 }
 
-fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings> {
+fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings, ExpandError> {
     let mut res = Bindings::default();
     for pat in pattern.token_trees.iter() {
         match pat {
             crate::TokenTree::Leaf(leaf) => match leaf {
                 crate::Leaf::Var(crate::Var { text, kind }) => {
-                    let kind = kind.clone().ok_or(MacroRulesError::ParseError)?;
+                    let kind = kind.clone().ok_or(ExpandError::UnexpectedToken)?;
                     match kind.as_str() {
                         "ident" => {
-                            let ident = input.eat_ident()?.clone();
+                            let ident =
+                                input.eat_ident().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(
                                 text.clone(),
                                 Binding::Simple(tt::Leaf::from(ident).into()),
                             );
                         }
-                        _ => return Err(MacroRulesError::UnexpectedToken),
+                        _ => return Err(ExpandError::UnexpectedToken),
                     }
                 }
                 crate::Leaf::Punct(punct) => {
-                    if input.eat_punct()? != punct {
-                        return Err(MacroRulesError::UnexpectedToken);
+                    if input.eat_punct() != Some(punct) {
+                        return Err(ExpandError::UnexpectedToken);
                     }
                 }
                 crate::Leaf::Ident(ident) => {
-                    if input.eat_ident()?.text != ident.text {
-                        return Err(MacroRulesError::UnexpectedToken);
+                    if input.eat_ident().map(|i| &i.text) != Some(&ident.text) {
+                        return Err(ExpandError::UnexpectedToken);
                     }
                 }
-                _ => return Err(MacroRulesError::UnexpectedToken),
+                _ => return Err(ExpandError::UnexpectedToken),
             },
             crate::TokenTree::Repeat(crate::Repeat { subtree, kind: _, separator }) => {
                 while let Ok(nested) = match_lhs(subtree, input) {
                     res.push_nested(nested)?;
                     if let Some(separator) = *separator {
                         if !input.is_eof() {
-                            if input.eat_punct()?.char != separator {
-                                return Err(MacroRulesError::UnexpectedToken);
+                            if input.eat_punct().map(|p| p.char) != Some(separator) {
+                                return Err(ExpandError::UnexpectedToken);
                             }
                         }
                     }
@@ -175,12 +176,12 @@ fn expand_subtree(
     template: &crate::Subtree,
     bindings: &Bindings,
     nesting: &mut Vec<usize>,
-) -> Result<tt::Subtree> {
+) -> Result<tt::Subtree, ExpandError> {
     let token_trees = template
         .token_trees
         .iter()
         .map(|it| expand_tt(it, bindings, nesting))
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>, ExpandError>>()?;
 
     Ok(tt::Subtree { token_trees, delimiter: template.delimiter })
 }
@@ -189,7 +190,7 @@ fn expand_tt(
     template: &crate::TokenTree,
     bindings: &Bindings,
     nesting: &mut Vec<usize>,
-) -> Result<tt::TokenTree> {
+) -> Result<tt::TokenTree, ExpandError> {
     let res: tt::TokenTree = match template {
         crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, bindings, nesting)?.into(),
         crate::TokenTree::Repeat(repeat) => {
