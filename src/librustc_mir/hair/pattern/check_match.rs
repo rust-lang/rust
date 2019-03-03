@@ -217,7 +217,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                             if def.variants.len() < 4 && !def.variants.is_empty() {
                                 // keep around to point at the definition of non-covered variants
                                 missing_variants = def.variants.iter()
-                                    .map(|variant| variant.ident.span)
+                                    .map(|variant| variant.ident)
                                     .collect();
                             }
                             def.variants.is_empty()
@@ -227,10 +227,19 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 };
                 if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
-                    let mut err = create_e0004(self.tcx.sess, scrut.span, format!(
-                        "non-exhaustive patterns: type `{}` is non-empty",
-                        pat_ty,
-                    ));
+                    let mut err = create_e0004(
+                        self.tcx.sess,
+                        scrut.span,
+                        format!("non-exhaustive patterns: {}", match missing_variants.len() {
+                            0 => format!("type `{}` is non-empty", pat_ty),
+                            1 => format!(
+                                "pattern `{}` of type `{}` is not handled",
+                                missing_variants[0].name,
+                                pat_ty,
+                            ),
+                            _ => format!("multiple patterns of type `{}` are not handled", pat_ty),
+                        }),
+                    );
                     err.help("ensure that all possible cases are being handled, \
                               possibly by adding wildcards or more match arms");
                     if let Some(sp) = def_span {
@@ -238,7 +247,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     }
                     // point at the definition of non-covered enum variants
                     for variant in &missing_variants {
-                        err.span_label(*variant, "variant not covered");
+                        err.span_label(variant.span, "variant not covered");
                     }
                     err.emit();
                 }
@@ -508,7 +517,8 @@ fn maybe_point_at_variant(
 ) -> Vec<Span> {
     let mut covered = vec![];
     if let ty::Adt(def, _) = sty {
-        // Don't point at the variants if they are too many to avoid visual clutter
+        // Don't point at variants that have already been covered due to other patterns to avoid
+        // visual clutter
         for pattern in patterns {
             let pk: &PatternKind<'_> = &pattern.kind;
             if let PatternKind::Variant { adt_def, variant_index, subpatterns, .. } = pk {
@@ -526,7 +536,7 @@ fn maybe_point_at_variant(
                     );
                 }
             }
-            if let PatternKind::Leaf{ subpatterns } = pk {
+            if let PatternKind::Leaf { subpatterns } = pk {
                 let subpatterns = subpatterns.iter()
                     .map(|field_pattern| field_pattern.pattern.clone())
                     .collect::<Vec<_>>();
