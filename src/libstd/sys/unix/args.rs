@@ -65,13 +65,11 @@ mod imp {
     use crate::marker::PhantomData;
     use super::Args;
 
-    use crate::sys_common::mutex::Mutex;
+    use crate::sync::RawMutex;
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static LOCK: Mutex = Mutex::new();
+    static LOCK: RawMutex = RawMutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();
