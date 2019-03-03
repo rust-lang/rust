@@ -38,7 +38,7 @@ impl Drop for S {
 //         (*_2) = const S::new() -> [return: bb2, unwind: bb3];
 //     }
 //
-//     bb1: {
+//     bb1 (cleanup): {
 //         resume;
 //     }
 //
@@ -47,7 +47,7 @@ impl Drop for S {
 //         drop(_2) -> bb4;
 //     }
 //
-//     bb3: {
+//     bb3 (cleanup): {
 //         drop(_2) -> bb1;
 //     }
 //
@@ -62,11 +62,11 @@ impl Drop for S {
 //         drop(_4) -> [return: bb8, unwind: bb6];
 //     }
 //
-//     bb6: {
+//     bb6 (cleanup): {
 //         drop(_1) -> bb1;
 //     }
 //
-//     bb7: {
+//     bb7 (cleanup): {
 //         drop(_4) -> bb6;
 //     }
 //

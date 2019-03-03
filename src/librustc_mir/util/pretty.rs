@@ -317,9 +317,8 @@ where
     let data = &mir[block];
 
     // Basic block label at the top.
-    let cleanup_text = if data.is_cleanup { " // cleanup" } else { "" };
-    let lbl = format!("{}{:?}: {{", INDENT, block);
-    writeln!(w, "{0:1$}{2}", lbl, ALIGN, cleanup_text)?;
+    let cleanup_text = if data.is_cleanup { " (cleanup)" } else { "" };
+    writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
 
     // List of statements in the middle.
     let mut current_location = Location {

@@ -18,7 +18,7 @@ fn main() {
 // END RUST SOURCE
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //    ...
-//    bb1: { // The cleanup block
+//    bb1 (cleanup): {
 //        resume;
 //    }
 //    ...

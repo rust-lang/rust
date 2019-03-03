@@ -43,7 +43,7 @@ fn main() {
 //         FakeRead(ForMatchedPlace, _3);
 //         switchInt(_3) -> [false: bb9, otherwise: bb8];
 //     }
-//     bb4: {
+//     bb4 (cleanup): {
 //         resume;
 //     }
 //     bb5: {

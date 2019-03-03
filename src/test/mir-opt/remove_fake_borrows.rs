@@ -63,7 +63,7 @@ fn main() {
 //     StorageDead(_8);
 //     return;
 // }
-// bb10: {
+// bb10 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.before.mir
@@ -114,7 +114,7 @@ fn main() {
 //     StorageDead(_8);
 //     return;
 // }
-// bb10: {
+// bb10 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.after.mir

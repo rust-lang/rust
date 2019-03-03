@@ -18,7 +18,7 @@ fn main() {
 //         FakeRead(ForLet, _1);
 //         goto -> bb2;
 //     }
-//     bb1: {
+//     bb1 (cleanup): {
 //         resume;
 //     }
 //     bb2: {

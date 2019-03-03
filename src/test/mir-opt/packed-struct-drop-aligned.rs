@@ -38,14 +38,14 @@ impl Drop for Droppy {
 //         _6 = move (_1.0: Aligned);
 //         drop(_6) -> [return: bb4, unwind: bb3];
 //     }
-//     bb1: {
+//     bb1 (cleanup): {
 //         resume;
 //     }
 //     bb2: {
 //         StorageDead(_1);
 //         return;
 //     }
-//     bb3: {
+//     bb3 (cleanup): {
 //         (_1.0: Aligned) = move _4;
 //         drop(_1) -> bb1;
 //     }
