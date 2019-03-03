@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::lock_api::RawMutex as _;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::parking_lot;
@@ -446,6 +447,37 @@ pub fn guard_lock<'a, 'b, T: ?Sized>(guard: &'b mut MutexGuard<'a, T>)
 
 pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.__lock.poison
+}
+
+
+/// A parking_lot low level mutex without data in it.
+/// This type is not exposed from the standard library, only used inside it.
+pub struct RawMutex(parking_lot::RawMutex);
+
+unsafe impl Sync for RawMutex {}
+
+impl RawMutex {
+    /// Creates a new mutex for use.
+    pub const fn new() -> Self { Self(parking_lot::RawMutex::INIT) }
+
+    /// Locks the mutex and then returns an RAII guard to guarantee the mutex
+    /// will be unlocked.
+    #[inline]
+    pub fn lock(&self) -> RawMutexGuard<'_> {
+        self.0.lock();
+        RawMutexGuard(&self.0)
+    }
+}
+
+#[must_use]
+/// A simple RAII utility for the above Mutex without the poisoning semantics.
+pub struct RawMutexGuard<'a>(&'a parking_lot::RawMutex);
+
+impl Drop for RawMutexGuard<'_> {
+    #[inline]
+    fn drop(&mut self) {
+        self.0.unlock();
+    }
 }
 
 #[cfg(all(test, not(target_os = "emscripten")))]

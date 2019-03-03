@@ -169,6 +169,9 @@ pub use crate::sys_common::poison::{PoisonError, TryLockError, TryLockResult, Lo
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+#[allow(unused_imports)]
+pub(crate) use self::mutex::{RawMutex, RawMutexGuard};
+
 pub mod mpsc;
 
 mod barrier;
