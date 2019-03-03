@@ -78,7 +78,7 @@ fn main() {
 
 Now we can run the test with `TESTNAME=ui/foo_functions cargo uitest`.
 Currently this test will fail. If you go through the output you will see that we
-have to add some missing imports to our lint file.
+are told that `clippy::foo_functions` is an unknown lint, which is expected.
 
 While you are working on implementing your lint, you can keep running the UI
 test. That allows you to check if the output is turning into what you want.
@@ -97,16 +97,16 @@ that test. Rustfix will apply the suggestions from the lint to the code of the
 test file and compare that to the contents of a `.fixed` file.
 
 Use `tests/ui/update-all-references.sh` to automatically generate the
-`.fixed` file after running `cargo test`.
+`.fixed` file after running the tests.
 
 With tests in place, let's have a look at implementing our lint now.
 
 ### Testing manually
 
-Manually testing against an example file is useful if you have added some
-`println!`s and test suite output becomes unreadable.  To try Clippy with your
-local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
-from the working copy root.
+Manually testing against an example file can be useful if you have added some
+`println!`s and the test suite output becomes unreadable. To try Clippy with
+your local modifications, run `env CLIPPY_TESTS=true cargo run --bin
+clippy-driver -- -L ./target/debug input.rs` from the working copy root.
 
 ### Lint declaration
 
@@ -177,9 +177,9 @@ in `clippy_lints/src/lib.rs`:
 reg.register_early_lint_pass(box foo_functions::FooFunctionsPass);
 ```
 
-Without that, running the UI tests would produce an error like `unknown clippy
-lint: clippy::foo_functions`.  The next decision we have to make is which lint
-pass our lint is going to need.
+This should fix the `unknown clippy lint: clippy::foo_functions` error that we
+saw when we executed our tests the first time. The next decision we have to make
+is which lint pass our lint is going to need.
 
 ### Lint passes
 
@@ -189,8 +189,6 @@ This is good, because it makes writing this particular lint less complicated.
 
 We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
-This is a result of Rust's compilation process. You can read more about it [in
-the rustc guide][compilation_stages].
 
 In short, the `LateLintPass` has access to type information while the
 `EarlyLintPass` doesn't. If you don't need access to type information, use the
@@ -209,8 +207,7 @@ use rustc::{declare_tool_lint, lint_array};
 ### Emitting a lint
 
 With UI tests and the lint declaration in place, we can start working on the
-implementation of the lint logic. We can keep executing the tests until we make
-them pass.
+implementation of the lint logic.
 
 Let's start by implementing the `EarlyLintPass` for our `FooFunctionsPass`:
 
@@ -229,9 +226,12 @@ the next section. Let's worry about the details later and emit our lint for
 *every* function definition first.
 
 Depending on how complex we want our lint message to be, we can choose from a
-variety of lint emission functions.  They can all be found in
+variety of lint emission functions. They can all be found in
 [`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
 
+`span_help_and_lint` seems most appropriate in this case. It allows us to
+provide an extra help message and we can't really suggest a better name
+automatically. This is how it looks:
 
 ```rust
 impl EarlyLintPass for Pass {
@@ -247,9 +247,11 @@ impl EarlyLintPass for Pass {
 }
 ```
 
+Running our UI test should now produce output that contains the lint message.
+
 ### Adding the lint logic
 
-Writing the logic for your lint will most likely be different from this example,
+Writing the logic for our lint will most likely be different from this example,
 so this section is kept rather short.
 
 Using the [`check_fn`][check_fn] method gives us access to [`FnKind`][fn_kind]
