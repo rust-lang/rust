@@ -27,6 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
@@ -2074,7 +2075,118 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     }
 
-                    CastKind::Misc => {}
+                    CastKind::MutToConstPointer => {
+                        let ty_from = match op.ty(mir, tcx).sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_from,
+                                mutbl: hir::MutMutable,
+                            }) => ty_from,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected base type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        let ty_to = match ty.sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl: hir::MutImmutable,
+                            }) => ty_to,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected target type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        if let Err(terr) = self.sub_types(
+                            ty_from,
+                            ty_to,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "relating {:?} with {:?} yields {:?}",
+                                ty_from,
+                                ty_to,
+                                terr
+                            )
+                        }
+                    }
+
+                    CastKind::Misc => {
+                        if let ty::Ref(_, mut ty_from, _) = op.ty(mir, tcx).sty {
+                            let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl,
+                            }) = ty.sty {
+                                (ty_to, mutbl)
+                            } else {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "invalid cast types {:?} -> {:?}",
+                                    op.ty(mir, tcx),
+                                    ty,
+                                );
+                                return;
+                            };
+
+                            // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
+                            // any array we find.
+                            while let ty::Array(ty_elem_from, _) = ty_from.sty {
+                                ty_from = ty_elem_from;
+                                if let ty::Array(ty_elem_to, _) = ty_to.sty {
+                                    ty_to = ty_elem_to;
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if let hir::MutMutable = mutability {
+                                if let Err(terr) = self.eq_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "equating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            } else {
+                                if let Err(terr) = self.sub_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "relating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2082,7 +2194,44 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.add_reborrow_constraint(mir, location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
+            Rvalue::BinaryOp(BinOp::Eq, left, right)
+            | Rvalue::BinaryOp(BinOp::Ne, left, right)
+            | Rvalue::BinaryOp(BinOp::Lt, left, right)
+            | Rvalue::BinaryOp(BinOp::Le, left, right)
+            | Rvalue::BinaryOp(BinOp::Gt, left, right)
+            | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
+                let ty_left = left.ty(mir, tcx);
+                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.sty {
+                    let ty_right = right.ty(mir, tcx);
+                    let common_ty = self.infcx.next_ty_var(
+                        TypeVariableOrigin::MiscVariable(mir.source_info(location).span),
+                    );
+                    self.sub_types(
+                        common_ty,
+                        ty_left,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ).unwrap_or_else(|err| {
+                        bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
+                    });
+                    if let Err(terr) = self.sub_types(
+                        common_ty,
+                        ty_right,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "unexpected comparison types {:?} and {:?} yields {:?}",
+                            ty_left,
+                            ty_right,
+                            terr
+                        )
+                    }
+                }
+            }
+
             Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)

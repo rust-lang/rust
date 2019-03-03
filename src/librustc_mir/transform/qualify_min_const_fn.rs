@@ -152,6 +152,9 @@ fn check_rvalue(
                 _ => check_operand(tcx, mir, operand, span),
             }
         }
+        Rvalue::Cast(CastKind::MutToConstPointer, operand, _) => {
+            check_operand(tcx, mir, operand, span)
+        }
         Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
         Rvalue::Cast(CastKind::ClosureFnPointer, _, _) |
         Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((

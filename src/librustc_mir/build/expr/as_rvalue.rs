@@ -147,8 +147,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Use(Operand::Move(Place::Base(PlaceBase::Local(result)))))
             }
             ExprKind::Cast { source } => {
-                let source = this.hir.mirror(source);
-
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
@@ -167,6 +165,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::ClosureFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::ClosureFnPointer, source, expr.ty))
+            }
+            ExprKind::MutToConstPointer { source } => {
+                let source = unpack!(block = this.as_operand(block, scope, source));
+                block.and(Rvalue::Cast(CastKind::MutToConstPointer, source, expr.ty))
             }
             ExprKind::Unsize { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));

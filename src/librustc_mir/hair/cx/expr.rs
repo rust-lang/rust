@@ -89,7 +89,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::NeverToAny { source: expr.to_ref() }
         }
         Adjust::MutToConstPointer => {
-            ExprKind::Cast { source: expr.to_ref() }
+            ExprKind::MutToConstPointer { source: expr.to_ref() }
         }
         Adjust::Deref(None) => {
             // Adjust the span from the block, to the last expression of the

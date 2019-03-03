@@ -59,7 +59,6 @@ use std::hash::{Hash, Hasher};
 use std::fmt;
 use std::mem;
 use std::ops::{Deref, Bound};
-use std::ptr;
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -171,7 +170,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
 
                 // Make sure we don't end up with inference
                 // types/regions in the global interner
-                if ptr::eq(local, global) {
+                if ptr_eq(local, global) {
                     bug!("Attempted to intern `{:?}` which contains \
                         inference types/regions in the global type context",
                         &ty_struct);
@@ -1163,7 +1162,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns `true` if self is the same as self.global_tcx().
     fn is_global(self) -> bool {
-        ptr::eq(self.interners, &self.global_interners)
+        ptr_eq(self.interners, &self.global_interners)
     }
 
     /// Creates a type context and call the closure with a `TyCtxt` reference
@@ -1817,12 +1816,11 @@ impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
 }
 
 pub mod tls {
-    use super::{GlobalCtxt, TyCtxt};
+    use super::{GlobalCtxt, TyCtxt, ptr_eq};
 
     use std::fmt;
     use std::mem;
     use std::marker::PhantomData;
-    use std::ptr;
     use syntax_pos;
     use crate::ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
@@ -2065,7 +2063,7 @@ pub mod tls {
     {
         with_context(|context| {
             unsafe {
-                assert!(ptr::eq(context.tcx.gcx, tcx.gcx));
+                assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
                 let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
@@ -2083,8 +2081,8 @@ pub mod tls {
     {
         with_context(|context| {
             unsafe {
-                assert!(ptr::eq(context.tcx.gcx, tcx.gcx));
-                assert!(ptr::eq(context.tcx.interners, tcx.interners));
+                assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
+                assert!(ptr_eq(context.tcx.interners, tcx.interners));
                 let context: &ImplicitCtxt<'_, '_, '_> = mem::transmute(context);
                 f(context)
             }
@@ -2968,6 +2966,12 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         Ok(f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?))
     }
+}
+
+// We are comparing types with different invariant lifetimes, so `ptr::eq`
+// won't work for us.
+fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
+    t as *const () == u as *const ()
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
