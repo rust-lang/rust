@@ -85,12 +85,12 @@ impl Bindings {
         let mut b = self
             .inner
             .get(name)
-            .ok_or(ExpandError::BindingError(format!("could not find binding {}", name)))?;
+            .ok_or(ExpandError::BindingError(format!("could not find binding `{}`", name)))?;
         for &idx in nesting.iter() {
             b = match b {
                 Binding::Simple(_) => break,
                 Binding::Nested(bs) => bs.get(idx).ok_or(ExpandError::BindingError(format!(
-                    "could not find nested binding {}",
+                    "could not find nested binding `{}`",
                     name
                 )))?,
             };
@@ -98,7 +98,7 @@ impl Bindings {
         match b {
             Binding::Simple(it) => Ok(it),
             Binding::Nested(_) => Err(ExpandError::BindingError(format!(
-                "expected simple binding, found nested binding {}",
+                "expected simple binding, found nested binding `{}`",
                 name
             ))),
         }
@@ -113,7 +113,7 @@ impl Bindings {
                 Some(Binding::Nested(it)) => it.push(value),
                 _ => {
                     return Err(ExpandError::BindingError(format!(
-                        "nested binding for {} not found",
+                        "could not find binding `{}`",
                         key
                     )));
                 }
@@ -215,4 +215,69 @@ fn expand_tt(
         },
     };
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use ra_syntax::{ast, AstNode};
+
+    use super::*;
+    use crate::ast_to_token_tree;
+
+    #[test]
+    fn test_expand_rule() {
+        assert_err(
+            "($i:ident) => ($j)",
+            "foo!{a}",
+            ExpandError::BindingError(String::from("could not find binding `j`")),
+        );
+
+        assert_err(
+            "($($i:ident);*) => ($i)",
+            "foo!{a}",
+            ExpandError::BindingError(String::from(
+                "expected simple binding, found nested binding `i`",
+            )),
+        );
+
+        assert_err("($i) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
+        assert_err("($i:) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
+    }
+
+    fn assert_err(macro_body: &str, invocation: &str, err: ExpandError) {
+        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation), Err(err));
+    }
+
+    fn format_macro(macro_body: &str) -> String {
+        format!(
+            "
+        macro_rules! foo {{
+            {}
+        }}
+",
+            macro_body
+        )
+    }
+
+    fn create_rules(macro_definition: &str) -> crate::MacroRules {
+        let source_file = ast::SourceFile::parse(macro_definition);
+        let macro_definition =
+            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+        let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        crate::MacroRules::parse(&definition_tt).unwrap()
+    }
+
+    fn expand_first(
+        rules: &crate::MacroRules,
+        invocation: &str,
+    ) -> Result<tt::Subtree, ExpandError> {
+        let source_file = ast::SourceFile::parse(invocation);
+        let macro_invocation =
+            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+        let (invocation_tt, _) = ast_to_token_tree(macro_invocation.token_tree().unwrap()).unwrap();
+
+        expand_rule(&rules.rules[0], &invocation_tt)
+    }
 }
