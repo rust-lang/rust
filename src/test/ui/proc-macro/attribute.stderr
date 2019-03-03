@@ -34,7 +34,13 @@ error: must only be one word
 LL | #[proc_macro_derive(d8(a))]
    |                     ^^^^^
 
-error: cannot override a built-in #[derive] mode
+error: `self` cannot be a name of derive macro
+  --> $DIR/attribute.rs:41:21
+   |
+LL | #[proc_macro_derive(self)]
+   |                     ^^^^
+
+error: cannot override a built-in derive macro
   --> $DIR/attribute.rs:45:21
    |
 LL | #[proc_macro_derive(PartialEq)]
@@ -82,6 +88,12 @@ error: must only be one word
 LL | #[proc_macro_derive(d16, attributes(a(b)))]
    |                                     ^^^^
 
+error: `self` cannot be a name of derive helper attribute
+  --> $DIR/attribute.rs:74:37
+   |
+LL | #[proc_macro_derive(d17, attributes(self))]
+   |                                     ^^^^
+
 error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
   --> $DIR/attribute.rs:9:1
    |
@@ -94,5 +106,5 @@ error: attribute must be of the form `#[proc_macro_derive(TraitName, /*opt*/ att
 LL | #[proc_macro_derive = ""]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 18 previous errors
 
