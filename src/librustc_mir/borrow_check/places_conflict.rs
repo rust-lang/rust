@@ -2,8 +2,7 @@ use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
-use rustc::mir::{BorrowKind, Mir, Place};
-use rustc::mir::{Projection, ProjectionElem};
+use rustc::mir::{BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
 
@@ -60,8 +59,8 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
 
     // This Local/Local case is handled by the more general code below, but
     // it's so common that it's a speed win to check for it first.
-    if let Place::Local(l1) = borrow_place {
-        if let Place::Local(l2) = access_place {
+    if let Place::Base(PlaceBase::Local(l1)) = borrow_place {
+        if let Place::Base(PlaceBase::Local(l2)) = access_place {
             return l1 == l2;
         }
     }
@@ -339,8 +338,8 @@ fn unroll_place<'tcx, R>(
             op,
         ),
 
-        Place::Promoted(_) |
-        Place::Local(_) | Place::Static(_) => {
+        Place::Base(PlaceBase::Promoted(_)) |
+        Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
             let list = PlaceComponents {
                 component: place,
                 next,
@@ -361,7 +360,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
     bias: PlaceConflictBias,
 ) -> Overlap {
     match (elem1, elem2) {
-        (Place::Local(l1), Place::Local(l2)) => {
+        (Place::Base(PlaceBase::Local(l1)), Place::Base(PlaceBase::Local(l2))) => {
             if l1 == l2 {
                 // the same local - base case, equal
                 debug!("place_element_conflict: DISJOINT-OR-EQ-LOCAL");
@@ -372,7 +371,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 Overlap::Disjoint
             }
         }
-        (Place::Static(static1), Place::Static(static2)) => {
+        (Place::Base(PlaceBase::Static(static1)), Place::Base(PlaceBase::Static(static2))) => {
             if static1.def_id != static2.def_id {
                 debug!("place_element_conflict: DISJOINT-STATIC");
                 Overlap::Disjoint
@@ -385,7 +384,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 Overlap::EqualOrDisjoint
             }
         }
-        (Place::Promoted(p1), Place::Promoted(p2)) => {
+        (Place::Base(PlaceBase::Promoted(p1)), Place::Base(PlaceBase::Promoted(p2))) => {
             if p1.0 == p2.0 {
                 if let ty::Array(_, size) = p1.1.sty {
                     if size.unwrap_usize(tcx) == 0 {
@@ -403,9 +402,12 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 Overlap::Disjoint
             }
         }
-        (Place::Local(_), Place::Promoted(_)) | (Place::Promoted(_), Place::Local(_)) |
-        (Place::Promoted(_), Place::Static(_)) | (Place::Static(_), Place::Promoted(_)) |
-        (Place::Local(_), Place::Static(_)) | (Place::Static(_), Place::Local(_)) => {
+        (Place::Base(PlaceBase::Local(_)), Place::Base(PlaceBase::Promoted(_))) |
+        (Place::Base(PlaceBase::Promoted(_)), Place::Base(PlaceBase::Local(_))) |
+        (Place::Base(PlaceBase::Promoted(_)), Place::Base(PlaceBase::Static(_))) |
+        (Place::Base(PlaceBase::Static(_)), Place::Base(PlaceBase::Promoted(_))) |
+        (Place::Base(PlaceBase::Local(_)), Place::Base(PlaceBase::Static(_))) |
+        (Place::Base(PlaceBase::Static(_)), Place::Base(PlaceBase::Local(_))) => {
             debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");
             Overlap::Disjoint
         }

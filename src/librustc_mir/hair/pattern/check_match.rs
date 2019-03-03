@@ -24,7 +24,6 @@ use rustc::hir::{self, Pat, PatKind};
 use smallvec::smallvec;
 use std::slice;
 
-use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
@@ -241,7 +240,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent(pat.id);
+        let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
@@ -346,9 +345,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {
-                            cx.tcx.lint_node(
+                            cx.tcx.lint_hir(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "irrefutable if-let pattern",
                             );
@@ -359,16 +358,16 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
-                                    cx.tcx.lint_node(
+                                    cx.tcx.lint_hir(
                                         lint::builtin::UNREACHABLE_PATTERNS,
-                                        hir_pat.id, pat.span,
+                                        hir_pat.hir_id, pat.span,
                                         "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
-                                    cx.tcx.lint_node(
+                                    cx.tcx.lint_hir(
                                         lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                        hir_pat.id,
+                                        hir_pat.hir_id,
                                         pat.span,
                                         "irrefutable while-let pattern",
                                     );
@@ -379,9 +378,9 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            let mut err = cx.tcx.struct_span_lint_node(
+                            let mut err = cx.tcx.struct_span_lint_hir(
                                 lint::builtin::UNREACHABLE_PATTERNS,
-                                hir_pat.id,
+                                hir_pat.hir_id,
                                 pat.span,
                                 "unreachable pattern",
                             );
@@ -586,7 +585,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
             ty::ImmBorrow | ty::UniqueImmBorrow => {}
         }
     }
-    fn decl_without_init(&mut self, _: ast::NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: hir::HirId, _: Span) {}
     fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {

@@ -319,7 +319,7 @@ impl<'hir> Map<'hir> {
 
         match node {
             Node::Item(item) => {
-                let def_id = || self.local_def_id(item.id);
+                let def_id = || self.local_def_id_from_hir_id(item.hir_id);
 
                 match item.node {
                     ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),
@@ -341,7 +341,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ForeignItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
                     ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
@@ -349,7 +349,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::TraitItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     TraitItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     TraitItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -357,7 +357,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::ImplItem(item) => {
-                let def_id = self.local_def_id(item.id);
+                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
@@ -366,11 +366,11 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::Variant(variant) => {
-                let def_id = self.local_def_id(variant.node.data.id());
+                let def_id = self.local_def_id_from_hir_id(variant.node.data.hir_id());
                 Some(Def::Variant(def_id))
             }
             Node::StructCtor(variant) => {
-                let def_id = self.local_def_id(variant.id());
+                let def_id = self.local_def_id_from_hir_id(variant.hir_id());
                 Some(Def::StructCtor(def_id, def::CtorKind::from_hir(variant)))
             }
             Node::AnonConst(_) |
@@ -387,7 +387,7 @@ impl<'hir> Map<'hir> {
             Node::Block(_) |
             Node::Crate => None,
             Node::Local(local) => {
-                Some(Def::Local(local.id))
+                Some(Def::Local(self.hir_to_node_id(local.hir_id)))
             }
             Node::MacroDef(macro_def) => {
                 Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),
@@ -427,7 +427,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
-        self.read(id.node_id);
+        self.read_by_hir_id(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -435,7 +435,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
-        self.read(id.node_id);
+        self.read_by_hir_id(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -618,11 +618,11 @@ impl<'hir> Map<'hir> {
         }
 
         for id in &module.trait_items {
-            visitor.visit_trait_item(self.expect_trait_item(id.node_id));
+            visitor.visit_trait_item(self.expect_trait_item_by_hir_id(id.hir_id));
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item(id.node_id));
+            visitor.visit_impl_item(self.expect_impl_item_by_hir_id(id.hir_id));
         }
     }
 

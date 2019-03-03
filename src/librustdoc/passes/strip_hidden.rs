@@ -7,9 +7,11 @@ use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::passes::{ImplStripper, Pass};
 
-pub const STRIP_HIDDEN: Pass =
-    Pass::early("strip-hidden", strip_hidden,
-                "strips all doc(hidden) items from the output");
+pub const STRIP_HIDDEN: Pass = Pass {
+    name: "strip-hidden",
+    pass: strip_hidden,
+    description: "strips all doc(hidden) items from the output",
+};
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {

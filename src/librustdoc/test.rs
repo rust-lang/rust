@@ -2,9 +2,10 @@ use errors::{self, FatalError};
 use errors::emitter::ColorConfig;
 use rustc_data_structures::sync::Lrc;
 use rustc_lint;
-use rustc_driver::{self, driver, target_features, Compilation};
+use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
+use rustc_interface::util;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
@@ -70,15 +71,15 @@ pub fn run(mut options: Options) -> isize {
                                             Some(source_map.clone()));
 
         let mut sess = session::build_session_(
-            sessopts, Some(options.input), handler, source_map.clone(),
+            sessopts, Some(options.input), handler, source_map.clone(), Default::default(),
         );
-        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let codegen_backend = util::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let mut cfg = config::build_configuration(&sess,
                                                   config::parse_cfgspecs(options.cfgs.clone()));
-        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
+        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let krate =
@@ -274,9 +275,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
         let mut sess = session::build_session_(
-            sessopts, None, diagnostic_handler, source_map,
+            sessopts, None, diagnostic_handler, source_map, Default::default(),
         );
-        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let codegen_backend = util::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
@@ -305,7 +306,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let mut control = driver::CompileController::basic();
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
+        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let out = Some(outdir.lock().unwrap().path().join("rust_out"));

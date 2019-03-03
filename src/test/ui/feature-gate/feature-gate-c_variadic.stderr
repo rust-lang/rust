@@ -1,0 +1,11 @@
+error[E0658]: C-varaidic functions are unstable (see issue #44930)
+  --> $DIR/feature-gate-c_variadic.rs:3:1
+   |
+LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(c_variadic)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

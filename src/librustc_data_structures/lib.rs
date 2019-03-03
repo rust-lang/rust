@@ -77,6 +77,7 @@ pub mod fx;
 pub mod graph;
 pub mod indexed_vec;
 pub mod interner;
+pub mod jobserver;
 pub mod obligation_forest;
 pub mod owning_ref;
 pub mod ptr_key;

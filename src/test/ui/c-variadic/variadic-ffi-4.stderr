@@ -1,0 +1,198 @@
+error[E0621]: explicit lifetime required in the type of `ap`
+  --> $DIR/variadic-ffi-4.rs:8:5
+   |
+LL | pub unsafe extern "C" fn no_escape0<'a>(_: usize, ap: ...) -> VaList<'a> {
+   |                                                       --- help: add explicit lifetime `'a` to the type of `ap`: `core::ffi::VaList<'a>`
+LL |     ap //~ ERROR: explicit lifetime required
+   |     ^^ lifetime `'a` required
+
+error[E0621]: explicit lifetime required in the type of `ap`
+  --> $DIR/variadic-ffi-4.rs:12:5
+   |
+LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
+   |                                                   --- help: add explicit lifetime `'static` to the type of `ap`: `core::ffi::VaList<'static>`
+LL |     ap //~ ERROR: explicit lifetime required
+   |     ^^ lifetime `'static` required
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/variadic-ffi-4.rs:16:28
+   |
+LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+   |                            ^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 16:21...
+  --> $DIR/variadic-ffi-4.rs:16:21
+   |
+LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+   |                     ^^^^^^^^^^^
+   = note: ...so that the expression is assignable:
+           expected core::ffi::VaList<'_>
+              found core::ffi::VaList<'_>
+note: but, the lifetime must be valid for the method call at 16:13...
+  --> $DIR/variadic-ffi-4.rs:16:13
+   |
+LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+   |             ^^^^^^^^^^^^^^^^^^^^
+note: ...so type `core::ffi::VaList<'_>` of expression is valid during the expression
+  --> $DIR/variadic-ffi-4.rs:16:13
+   |
+LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-4.rs:20:12
+   |
+LL |     *ap0 = ap1; //~ ERROR: mismatched types
+   |            ^^^ lifetime mismatch
+   |
+   = note: expected type `core::ffi::VaList<'_>`
+              found type `core::ffi::VaList<'_>`
+note: the anonymous lifetime #3 defined on the function body at 19:1...
+  --> $DIR/variadic-ffi-4.rs:19:1
+   |
+LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+LL | |     *ap0 = ap1; //~ ERROR: mismatched types
+LL | | }
+   | |_^
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 19:1
+  --> $DIR/variadic-ffi-4.rs:19:1
+   |
+LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+LL | |     *ap0 = ap1; //~ ERROR: mismatched types
+LL | | }
+   | |_^
+
+error[E0490]: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^
+   |
+note: the type is valid for the anonymous lifetime #1 defined on the function body at 23:1
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+note: but the borrow lasts for the anonymous lifetime #3 defined on the function body at 23:1
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&mut core::ffi::VaList<'_>`
+              found type `&mut core::ffi::VaList<'_>`
+note: the anonymous lifetime #3 defined on the function body at 23:1...
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 23:1
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&mut core::ffi::VaList<'_>`
+              found type `&mut core::ffi::VaList<'_>`
+note: the anonymous lifetime #2 defined on the function body at 23:1...
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 23:1
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+
+error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #3 defined on the function body at 23:1...
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+note: ...so that the type `core::ffi::VaList<'_>` is not borrowed for too long
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^
+note: but, the lifetime must be valid for the anonymous lifetime #1 defined on the function body at 23:1...
+  --> $DIR/variadic-ffi-4.rs:23:1
+   |
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | |     ap0 = &mut ap1;
+LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+LL | |     //~^^ ERROR: mismatched types
+LL | |     //~^^^ ERROR: mismatched types
+LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | | }
+   | |_^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/variadic-ffi-4.rs:24:11
+   |
+LL |     ap0 = &mut ap1;
+   |           ^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0308, E0490, E0495, E0621.
+For more information about an error, try `rustc --explain E0308`.

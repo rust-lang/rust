@@ -1,10 +1,10 @@
-use boxed::FnBox;
-use ffi::CStr;
-use io;
-use mem;
-use sys_common::thread::start_thread;
-use sys::{cvt, syscall};
-use time::Duration;
+use crate::boxed::FnBox;
+use crate::ffi::CStr;
+use crate::io;
+use crate::mem;
+use crate::sys_common::thread::start_thread;
+use crate::sys::{cvt, syscall};
+use crate::time::Duration;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 

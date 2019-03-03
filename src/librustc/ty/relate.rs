@@ -147,9 +147,9 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     {
         let tcx = relation.tcx();
 
-        if a.variadic != b.variadic {
+        if a.c_variadic != b.c_variadic {
             return Err(TypeError::VariadicMismatch(
-                expected_found(relation, &a.variadic, &b.variadic)));
+                expected_found(relation, &a.c_variadic, &b.c_variadic)));
         }
         let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
         let abi = relation.relate(&a.abi, &b.abi)?;
@@ -171,7 +171,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             });
         Ok(ty::FnSig {
             inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
-            variadic: a.variadic,
+            c_variadic: a.c_variadic,
             unsafety,
             abi,
         })

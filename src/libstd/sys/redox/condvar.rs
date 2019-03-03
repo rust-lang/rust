@@ -1,10 +1,10 @@
-use cell::UnsafeCell;
-use intrinsics::{atomic_cxchg, atomic_load, atomic_xadd, atomic_xchg};
-use ptr;
-use time::Duration;
+use crate::cell::UnsafeCell;
+use crate::intrinsics::{atomic_cxchg, atomic_load, atomic_xadd, atomic_xchg};
+use crate::ptr;
+use crate::time::Duration;
 
-use sys::mutex::{mutex_unlock, Mutex};
-use sys::syscall::{futex, TimeSpec, FUTEX_WAIT, FUTEX_WAKE, FUTEX_REQUEUE};
+use crate::sys::mutex::{mutex_unlock, Mutex};
+use crate::sys::syscall::{futex, TimeSpec, FUTEX_WAIT, FUTEX_WAKE, FUTEX_REQUEUE};
 
 pub struct Condvar {
     lock: UnsafeCell<*mut i32>,
@@ -48,7 +48,7 @@ impl Condvar {
 
             atomic_xadd(seq, 1);
 
-            let _ = futex(seq, FUTEX_REQUEUE, 1, ::usize::MAX, *lock);
+            let _ = futex(seq, FUTEX_REQUEUE, 1, crate::usize::MAX, *lock);
         }
     }
 

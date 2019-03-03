@@ -233,8 +233,8 @@ declare_features! (
 
     // Allows `#[unwind(..)]`.
     //
-    // rustc internal for rust runtime
-    (active, unwind_attributes, "1.4.0", None, None),
+    // Permits specifying whether a function should permit unwinding or abort on unwind.
+    (active, unwind_attributes, "1.4.0", Some(58760), None),
 
     // Allows the use of `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
@@ -471,6 +471,9 @@ declare_features! (
 
     // #[repr(align(X))] on enums
     (active, repr_align_enum, "1.34.0", Some(57996), None),
+
+    // Allows the use of C-variadics
+    (active, c_variadic, "1.34.0", Some(44930), None),
 );
 
 declare_features! (
@@ -1898,8 +1901,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match fn_kind {
             FnKind::ItemFn(_, header, _, _) => {
                 // Check for const fn and async fn declarations.
-                if header.asyncness.is_async() {
+                if header.asyncness.node.is_async() {
                     gate_feature_post!(&self, async_await, span, "async fn is unstable");
+                }
+
+                if fn_decl.c_variadic {
+                    gate_feature_post!(&self, c_variadic, span,
+                                       "C-varaidic functions are unstable");
                 }
                 // Stability of const fn methods are covered in
                 // `visit_trait_item` and `visit_impl_item` below; this is
@@ -1928,6 +1936,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
+                }
+                if sig.decl.c_variadic {
+                    gate_feature_post!(&self, c_variadic, ti.span,
+                                       "C-varaidic functions are unstable");
                 }
                 if sig.header.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");

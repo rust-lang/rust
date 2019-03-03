@@ -1,13 +1,13 @@
-use fs::File;
-use io::{Error, Read, self};
-use iter::Iterator;
-use net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use str::FromStr;
-use string::{String, ToString};
-use sys::syscall::EINVAL;
-use time::{self, Duration};
-use vec::{IntoIter, Vec};
-use convert::{TryFrom, TryInto};
+use crate::fs::File;
+use crate::io::{Error, Read, self};
+use crate::iter::Iterator;
+use crate::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use crate::str::FromStr;
+use crate::string::{String, ToString};
+use crate::sys::syscall::EINVAL;
+use crate::time::{self, Duration};
+use crate::vec::{IntoIter, Vec};
+use crate::convert::{TryFrom, TryInto};
 
 use self::dns::{Dns, DnsQuery};
 

@@ -30,6 +30,7 @@ extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
+extern crate rustc_interface;
 extern crate serialize;
 extern crate syntax;
 extern crate syntax_pos;
@@ -440,28 +441,6 @@ where R: 'static + Send,
         }
 
         krate.version = crate_version;
-
-        info!("Executing passes");
-
-        for pass in &passes {
-            // determine if we know about this pass
-            let pass = match passes::find_pass(pass) {
-                Some(pass) => if let Some(pass) = pass.late_fn() {
-                    pass
-                } else {
-                    // not a late pass, but still valid so don't report the error
-                    continue
-                }
-                None => {
-                    error!("unknown pass {}, skipping", *pass);
-
-                    continue
-                },
-            };
-
-            // run it
-            krate = pass(krate);
-        }
 
         tx.send(f(Output {
             krate: krate,

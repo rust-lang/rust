@@ -16,6 +16,7 @@ use rustc::ty::query::OnDiskCache;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::{self, Lrc};
+use rustc_interface::util;
 use rustc_lint;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::abi::Abi;
@@ -91,6 +92,13 @@ where
         options.debugging_opts.verbose = true;
         options.unstable_features = UnstableFeatures::Allow;
 
+        // When we're compiling this library with `--test` it'll run as a binary but
+        // not actually exercise much functionality.
+        // As a result most of the logic loading the codegen backend is defunkt
+        // (it assumes we're a dynamic library in a sysroot)
+        // so let's just use the metadata only backend which doesn't need to load any libraries.
+        options.debugging_opts.codegen_backend = Some("metadata_only".to_owned());
+
         driver::spawn_thread_pool(options, |options| {
             test_env_with_pool(options, source_string, args, body)
         })
@@ -111,8 +119,9 @@ fn test_env_with_pool<F>(
         None,
         diagnostic_handler,
         Lrc::new(SourceMap::new(FilePathMapping::empty())),
+        Default::default(),
     );
-    let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
+    let cstore = CStore::new(util::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::anon_source_code(&source_string),
@@ -240,7 +249,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
-    pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
+    pub fn lookup_item(&self, names: &[String]) -> hir::HirId {
         return match search_mod(self, &self.infcx.tcx.hir().krate().module, 0, names) {
             Some(id) => id,
             None => {
@@ -253,7 +262,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             m: &hir::Mod,
             idx: usize,
             names: &[String],
-        ) -> Option<ast::NodeId> {
+        ) -> Option<hir::HirId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
                 let item = this.infcx.tcx.hir().expect_item(item.id);
@@ -264,9 +273,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        fn search(this: &Env, it: &hir::Item, idx: usize, names: &[String]) -> Option<ast::NodeId> {
+        fn search(this: &Env, it: &hir::Item, idx: usize, names: &[String]) -> Option<hir::HirId> {
             if idx == names.len() {
-                return Some(it.id);
+                return Some(it.hir_id);
             }
 
             return match it.node {

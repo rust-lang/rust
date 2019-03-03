@@ -266,12 +266,12 @@
 // And now that you've seen all the races that I found and attempted to fix,
 // here's the code for you to find some more!
 
-use sync::Arc;
-use error;
-use fmt;
-use mem;
-use cell::UnsafeCell;
-use time::{Duration, Instant};
+use crate::sync::Arc;
+use crate::error;
+use crate::fmt;
+use crate::mem;
+use crate::cell::UnsafeCell;
+use crate::time::{Duration, Instant};
 
 #[unstable(feature = "mpsc_select", issue = "27800")]
 pub use self::select::{Select, Handle};
@@ -1822,10 +1822,10 @@ impl From<RecvError> for RecvTimeoutError {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use env;
     use super::*;
-    use thread;
-    use time::{Duration, Instant};
+    use crate::env;
+    use crate::thread;
+    use crate::time::{Duration, Instant};
 
     pub fn stress_factor() -> usize {
         match env::var("RUST_TEST_STRESS") {
@@ -2514,10 +2514,10 @@ mod tests {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod sync_tests {
-    use env;
-    use thread;
     use super::*;
-    use time::Duration;
+    use crate::env;
+    use crate::thread;
+    use crate::time::Duration;
 
     pub fn stress_factor() -> usize {
         match env::var("RUST_TEST_STRESS") {

@@ -1282,13 +1282,11 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_add` method. For example,
     /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
-    #[cfg(not(stage0))]
     pub fn saturating_add<T>(a: T, b: T) -> T;
     /// Computes `a - b`, while saturating at numeric bounds.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
     /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
-    #[cfg(not(stage0))]
     pub fn saturating_sub<T>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',

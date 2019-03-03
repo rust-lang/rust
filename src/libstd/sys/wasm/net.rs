@@ -1,9 +1,9 @@
-use fmt;
-use io::{self, IoVec, IoVecMut};
-use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
-use time::Duration;
-use sys::{unsupported, Void};
-use convert::TryFrom;
+use crate::fmt;
+use crate::io::{self, IoVec, IoVecMut};
+use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
+use crate::time::Duration;
+use crate::sys::{unsupported, Void};
+use crate::convert::TryFrom;
 
 pub struct TcpStream(Void);
 

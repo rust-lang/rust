@@ -5,9 +5,9 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use ffi::OsString;
-use marker::PhantomData;
-use vec;
+use crate::ffi::OsString;
+use crate::marker::PhantomData;
+use crate::vec;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) { imp::init(argc, argv) }
@@ -59,14 +59,13 @@ impl DoubleEndedIterator for Args {
           target_os = "fuchsia",
           target_os = "hermit"))]
 mod imp {
-    use os::unix::prelude::*;
-    use ptr;
-    use ffi::{CStr, OsString};
-    use marker::PhantomData;
-    use libc;
+    use crate::os::unix::prelude::*;
+    use crate::ptr;
+    use crate::ffi::{CStr, OsString};
+    use crate::marker::PhantomData;
     use super::Args;
 
-    use sys_common::mutex::Mutex;
+    use crate::sys_common::mutex::Mutex;
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
@@ -107,9 +106,8 @@ mod imp {
 #[cfg(any(target_os = "macos",
           target_os = "ios"))]
 mod imp {
-    use ffi::CStr;
-    use marker::PhantomData;
-    use libc;
+    use crate::ffi::CStr;
+    use crate::marker::PhantomData;
     use super::Args;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
@@ -120,7 +118,7 @@ mod imp {
 
     #[cfg(target_os = "macos")]
     pub fn args() -> Args {
-        use os::unix::prelude::*;
+        use crate::os::unix::prelude::*;
         extern {
             // These functions are in crt_externs.h.
             fn _NSGetArgc() -> *mut libc::c_int;
@@ -155,9 +153,9 @@ mod imp {
     // res
     #[cfg(target_os = "ios")]
     pub fn args() -> Args {
-        use ffi::OsString;
-        use mem;
-        use str;
+        use crate::ffi::OsString;
+        use crate::mem;
+        use crate::str;
 
         extern {
             fn sel_registerName(name: *const libc::c_uchar) -> Sel;

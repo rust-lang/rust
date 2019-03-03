@@ -2,10 +2,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ffi::{OsStr, OsString};
-use mem;
-use sys::os_str::Buf;
-use sys_common::{FromInner, IntoInner, AsInner};
+use crate::ffi::{OsStr, OsString};
+use crate::mem;
+use crate::sys::os_str::Buf;
+use crate::sys_common::{FromInner, IntoInner, AsInner};
 
 /// Unix-specific extensions to [`OsString`].
 ///

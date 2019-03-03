@@ -3,11 +3,11 @@
                                       be to be stable",
             issue = "27709")]
 
-use cmp::Ordering;
-use fmt;
-use hash;
-use sys::net::netc as c;
-use sys_common::{AsInner, FromInner};
+use crate::cmp::Ordering;
+use crate::fmt;
+use crate::hash;
+use crate::sys::net::netc as c;
+use crate::sys_common::{AsInner, FromInner};
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -1509,9 +1509,9 @@ impl From<[u16; 8]> for IpAddr {
 // Tests for this module
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use net::*;
-    use net::Ipv6MulticastScope::*;
-    use net::test::{tsa, sa6, sa4};
+    use crate::net::*;
+    use crate::net::Ipv6MulticastScope::*;
+    use crate::net::test::{tsa, sa6, sa4};
 
     #[test]
     fn test_from_str_ipv4() {

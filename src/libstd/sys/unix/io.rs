@@ -1,6 +1,7 @@
-use marker::PhantomData;
+use crate::marker::PhantomData;
+use crate::slice;
+
 use libc::{iovec, c_void};
-use slice;
 
 #[repr(transparent)]
 pub struct IoVec<'a> {

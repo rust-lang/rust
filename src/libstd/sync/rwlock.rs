@@ -1,10 +1,10 @@
-use cell::UnsafeCell;
-use fmt;
-use mem;
-use ops::{Deref, DerefMut};
-use ptr;
-use sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
-use sys_common::rwlock as sys;
+use crate::cell::UnsafeCell;
+use crate::fmt;
+use crate::mem;
+use crate::ops::{Deref, DerefMut};
+use crate::ptr;
+use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
+use crate::sys_common::rwlock as sys;
 
 /// A reader-writer lock
 ///
@@ -554,10 +554,10 @@ impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use rand::{self, Rng};
-    use sync::mpsc::channel;
-    use thread;
-    use sync::{Arc, RwLock, TryLockError};
-    use sync::atomic::{AtomicUsize, Ordering};
+    use crate::sync::mpsc::channel;
+    use crate::thread;
+    use crate::sync::{Arc, RwLock, TryLockError};
+    use crate::sync::atomic::{AtomicUsize, Ordering};
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);

@@ -13,7 +13,7 @@ mod bar {
     }
     fn f() {
         ::foo::m!();
-        println!(); // OK on 2015 edition (at least for now)
+        println!(); //~ ERROR cannot find macro `print!` in this scope
     }
 }
 

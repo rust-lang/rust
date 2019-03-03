@@ -49,13 +49,13 @@ const EXCEPTIONS: &[&str] = &[
 ];
 
 /// Which crates to check against the whitelist?
-const WHITELIST_CRATES: &[CrateVersion] = &[
+const WHITELIST_CRATES: &[CrateVersion<'_>] = &[
     CrateVersion("rustc", "0.0.0"),
     CrateVersion("rustc_codegen_llvm", "0.0.0"),
 ];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
-const WHITELIST: &[Crate] = &[
+const WHITELIST: &[Crate<'_>] = &[
     Crate("adler32"),
     Crate("aho-corasick"),
     Crate("arrayvec"),
@@ -183,7 +183,7 @@ struct Crate<'a>(&'a str); // (name)
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 struct CrateVersion<'a>(&'a str, &'a str); // (name, version)
 
-impl<'a> Crate<'a> {
+impl Crate<'_> {
     pub fn id_str(&self) -> String {
         format!("{} ", self.0)
     }
@@ -330,10 +330,10 @@ fn get_deps(path: &Path, cargo: &Path) -> Resolve {
 
 /// Checks the dependencies of the given crate from the given cargo metadata to see if they are on
 /// the whitelist. Returns a list of illegal dependencies.
-fn check_crate_whitelist<'a, 'b>(
-    whitelist: &'a HashSet<Crate>,
+fn check_crate_whitelist<'a>(
+    whitelist: &'a HashSet<Crate<'_>>,
     resolve: &'a Resolve,
-    visited: &'b mut BTreeSet<CrateVersion<'a>>,
+    visited: &mut BTreeSet<CrateVersion<'a>>,
     krate: CrateVersion<'a>,
     must_be_on_whitelist: bool,
 ) -> BTreeSet<Crate<'a>> {
@@ -378,7 +378,7 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
         // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
         // under control.
 
-        // "cargo", // FIXME(#53005)
+        "cargo",
         "rustc-ap-syntax",
     ];
     let mut name_to_id: HashMap<_, Vec<_>> = HashMap::new();

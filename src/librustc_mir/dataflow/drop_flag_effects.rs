@@ -163,7 +163,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
 {
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
-        let place = mir::Place::Local(arg);
+        let place = mir::Place::Base(mir::PlaceBase::Local(arg));
         let lookup_result = move_data.rev_lookup.find(&place);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,

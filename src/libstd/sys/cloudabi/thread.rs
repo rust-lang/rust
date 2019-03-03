@@ -1,14 +1,13 @@
-use boxed::FnBox;
-use cmp;
-use ffi::CStr;
-use io;
-use libc;
-use mem;
-use ptr;
-use sys::cloudabi::abi;
-use sys::time::checked_dur2intervals;
-use sys_common::thread::*;
-use time::Duration;
+use crate::boxed::FnBox;
+use crate::cmp;
+use crate::ffi::CStr;
+use crate::io;
+use crate::mem;
+use crate::ptr;
+use crate::sys::cloudabi::abi;
+use crate::sys::time::checked_dur2intervals;
+use crate::sys_common::thread::*;
+use crate::time::Duration;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 

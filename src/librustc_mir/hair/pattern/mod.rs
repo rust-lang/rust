@@ -955,8 +955,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
         let kind = match cv.ty.sty {
             ty::Float(_) => {
-                let id = self.tcx.hir().hir_to_node_id(id);
-                self.tcx.lint_node(
+                self.tcx.lint_hir(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
                     span,

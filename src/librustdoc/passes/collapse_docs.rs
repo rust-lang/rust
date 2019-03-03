@@ -1,13 +1,16 @@
 use crate::clean::{self, DocFragment, Item};
+use crate::core::DocContext;
 use crate::fold;
 use crate::fold::{DocFolder};
 use crate::passes::Pass;
 
 use std::mem::replace;
 
-pub const COLLAPSE_DOCS: Pass =
-    Pass::late("collapse-docs", collapse_docs,
-        "concatenates all document attributes into one document attribute");
+pub const COLLAPSE_DOCS: Pass = Pass {
+    name: "collapse-docs",
+    pass: collapse_docs,
+    description: "concatenates all document attributes into one document attribute",
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum DocFragmentKind {
@@ -26,7 +29,7 @@ impl DocFragment {
     }
 }
 
-pub fn collapse_docs(krate: clean::Crate) -> clean::Crate {
+pub fn collapse_docs(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {
     Collapser.fold_crate(krate)
 }
 

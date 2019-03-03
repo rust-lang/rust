@@ -31,11 +31,11 @@ use core::isize;
 use core::mem;
 use core::ptr;
 
-use sync::atomic::{Ordering, AtomicUsize};
-use sync::mpsc::blocking::{self, WaitToken, SignalToken};
-use sync::mpsc::select::StartResult::{self, Installed, Abort};
-use sync::{Mutex, MutexGuard};
-use time::Instant;
+use crate::sync::atomic::{Ordering, AtomicUsize};
+use crate::sync::mpsc::blocking::{self, WaitToken, SignalToken};
+use crate::sync::mpsc::select::StartResult::{self, Installed, Abort};
+use crate::sync::{Mutex, MutexGuard};
+use crate::time::Instant;
 
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 

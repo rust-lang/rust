@@ -1,6 +1,4 @@
-extern crate dlmalloc;
-
-use alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout, System};
 
 use super::waitqueue::SpinMutex;
 

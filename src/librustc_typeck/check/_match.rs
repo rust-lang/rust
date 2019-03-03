@@ -227,7 +227,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype_pat(pat.span, expected, rhs_ty, match_discrim_span);
                 common_type
             }
-            PatKind::Binding(ba, var_id, _, _, ref sub) => {
+            PatKind::Binding(ba, _, var_id, _, ref sub) => {
                 let bm = if ba == hir::BindingAnnotation::Unannotated {
                     def_bm
                 } else {
@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .pat_binding_modes_mut()
                     .insert(pat.hir_id, bm);
                 debug!("check_pat_walk: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
-                let local_ty = self.local_ty(pat.span, pat.id).decl_ty;
+                let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
                 match bm {
                     ty::BindByReference(mutbl) => {
                         // if the binding is like
@@ -265,7 +265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                if var_id != pat.id {
+                if var_id != pat.hir_id {
                     let vt = self.local_ty(pat.span, var_id).decl_ty;
                     self.demand_eqtype_pat(pat.span, vt, local_ty, match_discrim_span);
                 }

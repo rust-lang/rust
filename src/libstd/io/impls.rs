@@ -1,8 +1,8 @@
-use cmp;
-use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
+use crate::cmp;
+use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
          IoVec};
-use fmt;
-use mem;
+use crate::fmt;
+use crate::mem;
 
 // =============================================================================
 // Forwarding implementations
@@ -165,6 +165,20 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     }
 }
 
+// Used by panicking::default_hook
+#[cfg(test)]
+/// This impl is only used by printing logic, so any error returned is always
+/// of kind `Other`, and should be ignored.
+impl Write for Box<dyn (::realstd::io::Write) + Send> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (**self).write(buf).map_err(|_| ErrorKind::Other.into())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        (**self).flush().map_err(|_| ErrorKind::Other.into())
+    }
+}
+
 // =============================================================================
 // In-memory buffer implementations
 
@@ -323,8 +337,7 @@ impl Write for Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use test;
+    use crate::io::prelude::*;
 
     #[bench]
     fn bench_read_slice(b: &mut test::Bencher) {

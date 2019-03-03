@@ -13,7 +13,6 @@ use crate::middle::privacy::AccessLevels;
 use crate::session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
-use syntax::ast;
 use syntax::ast::Attribute;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -318,10 +317,9 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, hir_id: HirId, span: Span, name: &str) {
         let stab = self.tcx.stability().local_stability(hir_id);
-        let node_id = self.tcx.hir().hir_to_node_id(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
-                        self.access_levels.is_reachable(node_id);
+                        self.access_levels.is_reachable(self.tcx.hir().hir_to_node_id(hir_id));
         if is_error {
             self.tcx.sess.span_err(
                 span,
@@ -356,7 +354,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        let impl_def_id = self.tcx.hir().local_def_id(self.tcx.hir().get_parent(ii.id));
+        let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(
+            self.tcx.hir().get_parent_item(ii.hir_id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.hir_id, ii.span, "item");
         }
@@ -397,10 +396,14 @@ impl<'a, 'tcx> Index<'tcx> {
             active_features: Default::default(),
         };
 
-        let ref active_lib_features = tcx.features().declared_lib_features;
+        let active_lib_features = &tcx.features().declared_lib_features;
+        let active_lang_features = &tcx.features().declared_lang_features;
 
-        // Put the active features into a map for quick lookup
-        index.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
+        // Put the active features into a map for quick lookup.
+        index.active_features =
+            active_lib_features.iter().map(|&(ref s, ..)| s.clone())
+            .chain(active_lang_features.iter().map(|&(ref s, ..)| s.clone()))
+            .collect();
 
         {
             let krate = tcx.hir().krate();
@@ -758,7 +761,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span.is_dummy() { return }
 
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
                     Some(cnum) => cnum,
                     None => return,
@@ -788,7 +791,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
             hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);
 
@@ -918,8 +921,8 @@ fn unnecessary_stable_feature_lint<'a, 'tcx>(
     feature: Symbol,
     since: Symbol
 ) {
-    tcx.lint_node(lint::builtin::STABLE_FEATURES,
-        ast::CRATE_NODE_ID,
+    tcx.lint_hir(lint::builtin::STABLE_FEATURES,
+        hir::CRATE_HIR_ID,
         span,
         &format!("the feature `{}` has been stable since {} and no longer requires \
                   an attribute to enable", feature, since));

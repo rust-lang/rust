@@ -21,6 +21,7 @@ use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::ops::DerefMut;
+use std::{panic, process, ptr};
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -305,11 +306,18 @@ pub trait MutVisitor: Sized {
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
-/// method.
+/// method. Abort the program if the closure panics.
 //
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_clobber<T, F>(t: &mut T, f: F) where F: FnOnce(T) -> T {
-    unsafe { std::ptr::write(t, f(std::ptr::read(t))); }
+    unsafe {
+        // Safe because `t` is used in a read-only fashion by `read()` before
+        // being overwritten by `write()`.
+        let old_t = ptr::read(t);
+        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| f(old_t)))
+            .unwrap_or_else(|_| process::abort());
+        ptr::write(t, new_t);
+    }
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -401,7 +409,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
     let Ty { id, node, span } = ty.deref_mut();
     vis.visit_id(id);
     match node {
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err |
+            TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Rptr(lt, mt) => {
@@ -672,7 +681,7 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 }
 
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
-    let FnDecl { inputs, output, variadic: _ } = decl.deref_mut();
+    let FnDecl { inputs, output, c_variadic: _ } = decl.deref_mut();
     visit_vec(inputs, |input| vis.visit_arg(input));
     match output {
         FunctionRetTy::Default(span) => vis.visit_span(span),
@@ -926,7 +935,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     let FnHeader { unsafety: _, asyncness, constness: _, abi: _ } = header;
-    vis.visit_asyncness(asyncness);
+    vis.visit_asyncness(&mut asyncness.node);
 }
 
 pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, vis: &mut T) {

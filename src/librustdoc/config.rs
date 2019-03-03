@@ -214,7 +214,7 @@ impl Options {
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
             for pass in passes::PASSES {
-                println!("{:>20} - {}", pass.name(), pass.description());
+                println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
             for &name in passes::DEFAULT_PASSES {

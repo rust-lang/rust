@@ -18,7 +18,7 @@ use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
-use crate::require_c_abi_if_variadic;
+use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -718,7 +718,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
-                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
+                    trait_ref.hir_ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             // okay to ignore Err because of ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
@@ -802,7 +802,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
-        ref_id: ast::NodeId,
+        hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
         speculative: bool,
@@ -874,7 +874,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                           binding.item_name, binding.span)
         }?;
 
-        let hir_ref_id = self.tcx().hir().node_to_hir_id(ref_id);
         let (assoc_ident, def_scope) =
             tcx.adjust_ident(binding.item_name, candidate.def_id(), hir_ref_id);
         let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {
@@ -1700,7 +1699,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
-                tcx.at(span).type_of(def_id)
+                // Try to evaluate any array length constants
+                self.normalize_ty(span, tcx.at(span).type_of(def_id))
             }
             Def::SelfTy(Some(_), None) => {
                 // `Self` in trait.
@@ -1768,7 +1768,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
             }
             hir::TyKind::BareFn(ref bf) => {
-                require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
+                require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
                 tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
@@ -1797,7 +1797,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, def, segment, false).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir().local_def_id(length.id);
+                let length_def_id = tcx.hir().local_def_id_from_hir_id(length.hir_id);
                 let substs = InternalSubsts::identity_for_item(tcx, length_def_id);
                 let length = ty::LazyConst::Unevaluated(length_def_id, substs);
                 let length = tcx.mk_lazy_const(length);
@@ -1821,6 +1821,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             hir::TyKind::Err => {
                 tcx.types.err
+            }
+            hir::TyKind::CVarArgs(lt) => {
+                let va_list_did = match tcx.lang_items().va_list() {
+                    Some(did) => did,
+                    None => span_bug!(ast_ty.span,
+                                      "`va_list` lang item required for variadics"),
+                };
+                let region = self.ast_region_to_region(&lt, None);
+                tcx.type_of(va_list_did).subst(tcx, &[region.into()])
             }
         };
 
@@ -1904,7 +1913,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let bare_fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
             input_tys,
             output_ty,
-            decl.variadic,
+            decl.c_variadic,
             unsafety,
             abi
         ));

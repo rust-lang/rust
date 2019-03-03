@@ -1260,7 +1260,7 @@ impl<T> Vec<T> {
     /// This method uses a closure to create new values on every push. If
     /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
     /// to use the [`Default`] trait to generate values, you can pass
-    /// [`Default::default()`] as the second argument..
+    /// [`Default::default()`] as the second argument.
     ///
     /// # Examples
     ///

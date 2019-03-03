@@ -50,7 +50,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::{TypedArena, SyncDroplessArena};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -65,7 +65,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
@@ -1285,8 +1285,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let gcx = arenas.global_ctxt.as_ref().unwrap();
 
-        sync::assert_send_val(&gcx);
-
         let r = tls::enter_global(gcx, f);
 
         gcx.queries.record_computed_queries(s);
@@ -2453,7 +2451,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.mk_fn_sig(
                 params_iter,
                 s.output(),
-                s.variadic,
+                s.c_variadic,
                 hir::Unsafety::Normal,
                 abi::Abi::Rust,
             )
@@ -2779,7 +2777,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_fn_sig<I>(self,
                         inputs: I,
                         output: I::Item,
-                        variadic: bool,
+                        c_variadic: bool,
                         unsafety: hir::Unsafety,
                         abi: abi::Abi)
         -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
@@ -2788,7 +2786,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
-            variadic, unsafety, abi
+            c_variadic, unsafety, abi
         })
     }
 
@@ -2838,14 +2836,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
     }
 
-    pub fn lint_node<S: Into<MultiSpan>>(self,
-                                         lint: &'static Lint,
-                                         id: NodeId,
-                                         span: S,
-                                         msg: &str) {
-        self.struct_span_lint_node(lint, id, span.into(), msg).emit()
-    }
-
     pub fn lint_hir_note<S: Into<MultiSpan>>(self,
                                              lint: &'static Lint,
                                              hir_id: HirId,
@@ -2868,7 +2858,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit()
     }
 
-    pub fn lint_level_at_node(self, lint: &'static Lint, mut id: NodeId)
+    pub fn lint_level_at_node(self, lint: &'static Lint, mut id: hir::HirId)
         -> (lint::Level, lint::LintSource)
     {
         // Right now we insert a `with_ignore` node in the dep graph here to
@@ -2882,11 +2872,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             let sets = self.lint_levels(LOCAL_CRATE);
             loop {
-                let hir_id = self.hir().definitions().node_to_hir_id(id);
-                if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
+                if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                     return pair
                 }
-                let next = self.hir().get_parent_node(id);
+                let next = self.hir().get_parent_node_by_hir_id(id);
                 if next == id {
                     bug!("lint traversal reached the root of the crate");
                 }
@@ -2902,23 +2891,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        let node_id = self.hir().hir_to_node_id(hir_id);
-        let (level, src) = self.lint_level_at_node(lint, node_id);
+        let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
-    pub fn struct_span_lint_node<S: Into<MultiSpan>>(self,
-                                                     lint: &'static Lint,
-                                                     id: NodeId,
-                                                     span: S,
-                                                     msg: &str)
-        -> DiagnosticBuilder<'tcx>
-    {
-        let (level, src) = self.lint_level_at_node(lint, id);
-        lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
-    }
-
-    pub fn struct_lint_node(self, lint: &'static Lint, id: NodeId, msg: &str)
+    pub fn struct_lint_node(self, lint: &'static Lint, id: HirId, msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
         let (level, src) = self.lint_level_at_node(lint, id);

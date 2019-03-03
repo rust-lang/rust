@@ -1,7 +1,6 @@
 /// Entry point of thread panic. For details, see `std::macros`.
 #[macro_export]
-#[cfg_attr(not(stage0), allow_internal_unstable(core_panic, __rust_unstable_column))]
-#[cfg_attr(stage0, allow_internal_unstable)]
+#[allow_internal_unstable(core_panic, __rust_unstable_column)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -422,8 +421,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(stage0, allow_internal_unstable)]
-#[cfg_attr(not(stage0), allow_internal_unstable(format_args_nl))]
+#[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr) => (
         write!($dst, "\n")

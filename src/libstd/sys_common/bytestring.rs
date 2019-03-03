@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use fmt::{Formatter, Result, Write};
+use crate::fmt::{Formatter, Result, Write};
 use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
 
 pub fn debug_fmt_bytestring(slice: &[u8], f: &mut Formatter) -> Result {
@@ -25,7 +25,7 @@ pub fn debug_fmt_bytestring(slice: &[u8], f: &mut Formatter) -> Result {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fmt::{Formatter, Result, Debug};
+    use crate::fmt::{Formatter, Result, Debug};
 
     #[test]
     fn smoke() {

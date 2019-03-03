@@ -334,9 +334,9 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
                         FutureCompatOverlapErrorKind::Issue33140 =>
                             lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
                     };
-                    tcx.struct_span_lint_node(
+                    tcx.struct_span_lint_hir(
                         lint,
-                        tcx.hir().as_local_node_id(impl_def_id).unwrap(),
+                        tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
                         impl_span,
                         &msg)
                 } else {

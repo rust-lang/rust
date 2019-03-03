@@ -1,3 +1,5 @@
+#![deny(rust_2018_idioms)]
+
 /// This is a small server which is intended to run inside of an emulator or
 /// on a remote test device. This server pairs with the `remote-test-client`
 /// program in this repository. The `remote-test-client` connects to this
@@ -120,7 +122,7 @@ struct RemoveOnDrop<'a> {
     inner: &'a Path,
 }
 
-impl<'a> Drop for RemoveOnDrop<'a> {
+impl Drop for RemoveOnDrop<'_> {
     fn drop(&mut self) {
         t!(fs::remove_dir_all(self.inner));
     }

@@ -834,7 +834,6 @@ pub struct Block {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
@@ -842,7 +841,7 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id,
+        write!(f, "pat({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_pat(self)))
     }
 }
@@ -897,7 +896,6 @@ impl Pat {
 /// except `is_shorthand` is true.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FieldPat {
-    pub id: NodeId,
     pub hir_id: HirId,
     /// The identifier for the field.
     pub ident: Ident,
@@ -1162,7 +1160,6 @@ impl UnOp {
 /// A statement.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub node: StmtKind,
     pub span: Span,
@@ -1170,7 +1167,7 @@ pub struct Stmt {
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "stmt({}: {})", self.id,
+        write!(f, "stmt({}: {})", self.hir_id,
                print::to_string(print::NO_ANN, |s| s.print_stmt(self)))
     }
 }
@@ -1208,7 +1205,6 @@ pub struct Local {
     pub ty: Option<P<Ty>>,
     /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
@@ -1231,7 +1227,6 @@ pub enum Guard {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: P<Expr>,
@@ -1325,7 +1320,6 @@ impl BodyOwnerKind {
 /// explicit discriminant values for enum variants.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub body: BodyId,
 }
@@ -1663,7 +1657,7 @@ pub struct MethodSig {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1672,7 +1666,6 @@ pub struct TraitItemId {
 /// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
@@ -1709,13 +1702,12 @@ pub enum TraitItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItemId {
-    pub node_id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents anything within an `impl` block
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
-    pub id: NodeId,
     pub ident: Ident,
     pub hir_id: HirId,
     pub vis: Visibility,
@@ -1743,7 +1735,6 @@ pub enum ImplItemKind {
 // Bind a type to an associated type: `A=Foo`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ident: Ident,
     pub ty: P<Ty>,
@@ -1829,6 +1820,9 @@ pub enum TyKind {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
+    /// Placeholder for C-variadic arguments. We "spoof" the `VaList` created
+    /// from the variadic arguments. This type is only valid up to typeck.
+    CVarArgs(Lifetime),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1856,7 +1850,6 @@ pub struct InlineAsm {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
     pub pat: P<Pat>,
-    pub id: NodeId,
     pub hir_id: HirId,
 }
 
@@ -1865,7 +1858,7 @@ pub struct Arg {
 pub struct FnDecl {
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
-    pub variadic: bool,
+    pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
 }
@@ -2067,7 +2060,6 @@ pub enum UseKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,
-    pub ref_id: NodeId,
     pub hir_ref_id: HirId,
 }
 
@@ -2102,7 +2094,7 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
+    Restricted { path: P<Path>, hir_id: HirId },
     Inherited,
 }
 
@@ -2138,7 +2130,6 @@ pub struct StructField {
     pub span: Span,
     pub ident: Ident,
     pub vis: Visibility,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
@@ -2165,9 +2156,9 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, NodeId, HirId),
-    Tuple(HirVec<StructField>, NodeId, HirId),
-    Unit(NodeId, HirId),
+    Struct(HirVec<StructField>, HirId),
+    Tuple(HirVec<StructField>, HirId),
+    Unit(HirId),
 }
 
 impl VariantData {
@@ -2177,18 +2168,11 @@ impl VariantData {
             _ => &[],
         }
     }
-    pub fn id(&self) -> NodeId {
-        match *self {
-            VariantData::Struct(_, id, ..)
-            | VariantData::Tuple(_, id, ..)
-            | VariantData::Unit(id, ..) => id,
-        }
-    }
     pub fn hir_id(&self) -> HirId {
         match *self {
-            VariantData::Struct(_, _, hir_id)
-            | VariantData::Tuple(_, _, hir_id)
-            | VariantData::Unit(_, hir_id) => hir_id,
+            VariantData::Struct(_, hir_id)
+            | VariantData::Tuple(_, hir_id)
+            | VariantData::Unit(hir_id) => hir_id,
         }
     }
     pub fn is_struct(&self) -> bool {
@@ -2228,7 +2212,6 @@ pub struct ItemId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
     pub ident: Ident,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: ItemKind,
@@ -2385,7 +2368,6 @@ pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
-    pub id: NodeId,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,

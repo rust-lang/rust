@@ -4,8 +4,8 @@
 
 #![allow(deprecated)]
 
-use os::raw::{c_long};
-use os::unix::raw::{uid_t, gid_t};
+use crate::os::raw::{c_long};
+use crate::os::unix::raw::{uid_t, gid_t};
 
 // Use the direct definition of usize, instead of uintptr_t like in libc
 #[stable(feature = "pthread_t", since = "1.8.0")] pub type pthread_t = usize;

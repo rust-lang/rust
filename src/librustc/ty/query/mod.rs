@@ -19,7 +19,7 @@ use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult};
 use crate::mir::mono::CodegenUnit;
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::session::{CompileResult, CrateDisambiguator};
+use crate::session::CrateDisambiguator;
 use crate::session::config::{EntryFnType, OutputFilenames, OptLevel};
 use crate::traits::{self, Vtable};
 use crate::traits::query::{
@@ -99,6 +99,9 @@ pub use self::on_disk_cache::OnDiskCache;
 // as they will raise an fatal error on query cycles instead.
 define_queries! { <'tcx>
     Other {
+        /// Run analysis passes on the crate
+        [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
+
         /// Records the type of every item.
         [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
@@ -290,7 +293,8 @@ define_queries! { <'tcx>
     },
 
     TypeChecking {
-        [] fn typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
+        [] fn typeck_item_bodies:
+                typeck_item_bodies_dep_node(CrateNum) -> Result<(), ErrorReported>,
 
         [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
     },

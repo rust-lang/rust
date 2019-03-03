@@ -6,6 +6,7 @@ extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
 extern crate rustc_codegen_utils;
+extern crate rustc_interface;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
@@ -14,6 +15,7 @@ use rustc::session::config::{Input, Options,
 use rustc_driver::driver::{self, compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
+use rustc_interface::util;
 use syntax::source_map::FileName;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
@@ -45,7 +47,7 @@ fn main() {
 fn basic_sess(opts: Options) -> (Session, Rc<CStore>, Box<CodegenBackend>) {
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
-    let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+    let codegen_backend = util::get_codegen_backend(&sess);
     let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     (sess, cstore, codegen_backend)

@@ -952,7 +952,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemKind::Union(_, ref generics) => {
                 if generics.params.is_empty() {
                     if self.mode == MonoItemCollectionMode::Eager {
-                        let def_id = self.tcx.hir().local_def_id(item.id);
+                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.tcx, def_id));
 
@@ -964,11 +964,12 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemKind::GlobalAsm(..) => {
                 debug!("RootCollector: ItemKind::GlobalAsm({})",
                        def_id_to_string(self.tcx,
-                                        self.tcx.hir().local_def_id(item.id)));
-                self.output.push(MonoItem::GlobalAsm(item.id));
+                                        self.tcx.hir().local_def_id_from_hir_id(item.hir_id)));
+                let node_id = self.tcx.hir().hir_to_node_id(item.hir_id);
+                self.output.push(MonoItem::GlobalAsm(node_id));
             }
             hir::ItemKind::Static(..) => {
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 debug!("RootCollector: ItemKind::Static({})",
                        def_id_to_string(self.tcx, def_id));
                 self.output.push(MonoItem::Static(def_id));
@@ -978,7 +979,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 // actually used somewhere. Just declaring them is insufficient.
 
                 // but even just declaring them must collect the items they refer to
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
 
                 let instance = Instance::mono(self.tcx, def_id);
                 let cid = GlobalId {
@@ -992,7 +993,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
             hir::ItemKind::Fn(..) => {
-                let def_id = self.tcx.hir().local_def_id(item.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 self.push_if_root(def_id);
             }
         }
@@ -1006,7 +1007,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
-                let def_id = self.tcx.hir().local_def_id(ii.id);
+                let def_id = self.tcx.hir().local_def_id_from_hir_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
             _ => { /* Nothing to do here */ }
@@ -1097,7 +1098,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
 
-            let impl_def_id = tcx.hir().local_def_id(item.id);
+            let impl_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
 
             debug!("create_mono_items_for_default_impls(item={})",
                    def_id_to_string(tcx, impl_def_id));

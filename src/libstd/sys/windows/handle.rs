@@ -1,13 +1,12 @@
 #![unstable(issue = "0", feature = "windows_handle")]
 
-use cmp;
-use io::{ErrorKind, Read};
-use io;
-use mem;
-use ops::Deref;
-use ptr;
-use sys::c;
-use sys::cvt;
+use crate::cmp;
+use crate::io::{self, ErrorKind, Read};
+use crate::mem;
+use crate::ops::Deref;
+use crate::ptr;
+use crate::sys::c;
+use crate::sys::cvt;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///

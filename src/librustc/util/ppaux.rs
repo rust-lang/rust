@@ -360,7 +360,7 @@ impl PrintContext {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
                              inputs: &[Ty<'_>],
-                             variadic: bool,
+                             c_variadic: bool,
                              output: Ty<'_>)
                              -> fmt::Result {
         write!(f, "(")?;
@@ -370,7 +370,7 @@ impl PrintContext {
             for &ty in inputs {
                 print!(f, self, write(", "), print_display(ty))?;
             }
-            if variadic {
+            if c_variadic {
                 write!(f, ", ...")?;
             }
         }
@@ -1074,10 +1074,10 @@ define_print! {
             }
 
             write!(f, "fn")?;
-            cx.fn_sig(f, self.inputs(), self.variadic, self.output())
+            cx.fn_sig(f, self.inputs(), self.c_variadic, self.output())
         }
         debug {
-            write!(f, "({:?}; variadic: {})->{:?}", self.inputs(), self.variadic, self.output())
+            write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
         }
     }
 }

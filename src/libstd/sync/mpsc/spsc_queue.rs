@@ -6,11 +6,11 @@
 
 // http://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
 
-use boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;
 
-use sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use crate::boxed::Box;
+use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 use super::cache_aligned::CacheAligned;
 
@@ -233,10 +233,10 @@ impl<T, ProducerAddition, ConsumerAddition> Drop for Queue<T, ProducerAddition, 
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sync::Arc;
     use super::Queue;
-    use thread;
-    use sync::mpsc::channel;
+    use crate::sync::Arc;
+    use crate::thread;
+    use crate::sync::mpsc::channel;
 
     #[test]
     fn smoke() {

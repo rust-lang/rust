@@ -1,4 +1,4 @@
-pub use sys::cloudabi::shims::args::*;
+pub use crate::sys::cloudabi::shims::args::*;
 
 #[allow(dead_code)]
 pub fn init(_: isize, _: *const *const u8) {}

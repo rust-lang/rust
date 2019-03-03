@@ -99,7 +99,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
     // `extern "aapcs"`, then we must use the VFP registers for homogeneous aggregates.
     let vfp = cx.target_spec().llvm_target.ends_with("hf")
         && fty.conv != Conv::ArmAapcs
-        && !fty.variadic;
+        && !fty.c_variadic;
 
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret, vfp);

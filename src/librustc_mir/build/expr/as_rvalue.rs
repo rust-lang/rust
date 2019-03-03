@@ -127,7 +127,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.schedule_drop_storage_and_value(
                         expr_span,
                         scope,
-                        &Place::Local(result),
+                        &Place::Base(PlaceBase::Local(result)),
                         value.ty,
                     );
                 }
@@ -135,11 +135,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg
-                    .push_assign(block, source_info, &Place::Local(result), box_);
+                    .push_assign(block, source_info, &Place::Base(PlaceBase::Local(result)), box_);
 
                 // initialize the box contents:
-                unpack!(block = this.into(&Place::Local(result).deref(), block, value));
-                block.and(Rvalue::Use(Operand::Move(Place::Local(result))))
+                unpack!(
+                    block = this.into(
+                        &Place::Base(PlaceBase::Local(result)).deref(),
+                        block, value
+                    )
+                );
+                block.and(Rvalue::Use(Operand::Move(Place::Base(PlaceBase::Local(result)))))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);
@@ -522,9 +527,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let arg_place = unpack!(block = this.as_place(block, arg));
 
         let mutability = match arg_place {
-            Place::Local(local) => this.local_decls[local].mutability,
+            Place::Base(PlaceBase::Local(local)) => this.local_decls[local].mutability,
             Place::Projection(box Projection {
-                base: Place::Local(local),
+                base: Place::Base(PlaceBase::Local(local)),
                 elem: ProjectionElem::Deref,
             }) => {
                 debug_assert!(
@@ -554,11 +559,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
                     match *base {
-                        Place::Local(local) => local == Local::new(1),
+                        Place::Base(PlaceBase::Local(local)) => local == Local::new(1),
                         Place::Projection(box Projection {
                             ref base,
                             elem: ProjectionElem::Deref,
-                        }) => *base == Place::Local(Local::new(1)),
+                        }) => *base == Place::Base(PlaceBase::Local(Local::new(1))),
                         _ => false,
                     },
                     "Unexpected capture place"
@@ -583,7 +588,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::Local(temp),
+            &Place::Base(PlaceBase::Local(temp)),
             Rvalue::Ref(this.hir.tcx().types.re_erased, borrow_kind, arg_place),
         );
 
@@ -594,12 +599,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             this.schedule_drop_storage_and_value(
                 upvar_span,
                 temp_lifetime,
-                &Place::Local(temp),
+                &Place::Base(PlaceBase::Local(temp)),
                 upvar_ty,
             );
         }
 
-        block.and(Operand::Move(Place::Local(temp)))
+        block.and(Operand::Move(Place::Base(PlaceBase::Local(temp))))
     }
 
     // Helper to get a `-1` value of the appropriate type

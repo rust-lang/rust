@@ -1,8 +1,8 @@
-use borrow::Borrow;
-use fmt;
-use hash::{Hash, BuildHasher};
-use iter::{Chain, FromIterator, FusedIterator};
-use ops::{BitOr, BitAnd, BitXor, Sub};
+use crate::borrow::Borrow;
+use crate::fmt;
+use crate::hash::{Hash, BuildHasher};
+use crate::iter::{Chain, FromIterator, FusedIterator};
+use crate::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
@@ -1751,7 +1751,7 @@ mod test_set {
 
     #[test]
     fn test_replace() {
-        use hash;
+        use crate::hash;
 
         #[derive(Debug)]
         struct Foo(&'static str, i32);

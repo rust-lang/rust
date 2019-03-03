@@ -1,12 +1,12 @@
-use fmt;
-use io::{self, IoVec, IoVecMut};
-use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
-use time::Duration;
-use sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
-use sys::fd::FileDesc;
-use convert::TryFrom;
-use error;
-use sync::Arc;
+use crate::fmt;
+use crate::io::{self, IoVec, IoVecMut};
+use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use crate::time::Duration;
+use crate::sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
+use crate::sys::fd::FileDesc;
+use crate::convert::TryFrom;
+use crate::error;
+use crate::sync::Arc;
 
 use super::abi::usercalls;
 

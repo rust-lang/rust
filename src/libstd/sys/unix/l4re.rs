@@ -4,15 +4,15 @@ macro_rules! unimpl {
 
 pub mod net {
     #![allow(warnings)]
-    use fmt;
-    use io::{self, IoVec, IoVecMut};
-    use libc;
-    use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
-    use sys_common::{AsInner, FromInner, IntoInner};
-    use sys::fd::FileDesc;
-    use time::Duration;
-    use convert::TryFrom;
+    use crate::fmt;
+    use crate::io::{self, IoVec, IoVecMut};
+    use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
+    use crate::sys_common::{AsInner, FromInner, IntoInner};
+    use crate::sys::fd::FileDesc;
+    use crate::time::Duration;
+    use crate::convert::TryFrom;
 
+    #[allow(unused_extern_crates)]
     pub extern crate libc as netc;
 
     pub struct Socket(FileDesc);

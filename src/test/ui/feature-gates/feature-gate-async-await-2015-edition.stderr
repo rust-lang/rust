@@ -1,11 +1,17 @@
+error[E0670]: `async fn` is not permitted in the 2015 edition
+  --> $DIR/feature-gate-async-await-2015-edition.rs:5:1
+   |
+LL | async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+   | ^^^^^
+
 error[E0422]: cannot find struct, variant or union type `async` in this scope
-  --> $DIR/feature-gate-async-await-2015-edition.rs:8:13
+  --> $DIR/feature-gate-async-await-2015-edition.rs:9:13
    |
 LL |     let _ = async {}; //~ ERROR cannot find struct, variant or union type `async`
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `async` in this scope
-  --> $DIR/feature-gate-async-await-2015-edition.rs:9:13
+  --> $DIR/feature-gate-async-await-2015-edition.rs:10:13
    |
 LL |     let _ = async || { true }; //~ ERROR cannot find value `async` in this scope
    |             ^^^^^ not found in this scope
@@ -13,12 +19,12 @@ LL |     let _ = async || { true }; //~ ERROR cannot find value `async` in this 
 error[E0658]: async fn is unstable (see issue #50547)
   --> $DIR/feature-gate-async-await-2015-edition.rs:5:1
    |
-LL | async fn foo() {} //~ ERROR async fn is unstable
+LL | async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(async_await)] to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
-Some errors occurred: E0422, E0425, E0658.
+Some errors occurred: E0422, E0425, E0658, E0670.
 For more information about an error, try `rustc --explain E0422`.

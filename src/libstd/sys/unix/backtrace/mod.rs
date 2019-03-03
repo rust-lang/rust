@@ -83,8 +83,9 @@ mod printing;
 
 #[cfg(not(target_os = "emscripten"))]
 pub mod gnu {
-    use io;
-    use fs;
+    use crate::io;
+    use crate::fs;
+
     use libc::c_char;
 
     #[cfg(not(any(target_os = "macos", target_os = "ios")))]
@@ -94,8 +95,8 @@ pub mod gnu {
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
-        use env;
-        use os::unix::ffi::OsStrExt;
+        use crate::env;
+        use crate::os::unix::ffi::OsStrExt;
 
         let filename = env::current_exe()?;
         let file = fs::File::open(&filename)?;

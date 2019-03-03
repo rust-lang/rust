@@ -190,6 +190,7 @@ impl Sig for ast::Ty {
                 Ok(replace_text(nested, text))
             }
             ast::TyKind::Never => Ok(text_sig("!".to_owned())),
+            ast::TyKind::CVarArgs => Ok(text_sig("...".to_owned())),
             ast::TyKind::Tup(ref ts) => {
                 let mut text = "(".to_owned();
                 let mut defs = vec![];
@@ -378,7 +379,7 @@ impl Sig for ast::Item {
                 if header.constness.node == ast::Constness::Const {
                     text.push_str("const ");
                 }
-                if header.asyncness.is_async() {
+                if header.asyncness.node.is_async() {
                     text.push_str("async ");
                 }
                 if header.unsafety == ast::Unsafety::Unsafe {
@@ -936,7 +937,7 @@ fn make_method_signature(
     if m.header.constness.node == ast::Constness::Const {
         text.push_str("const ");
     }
-    if m.header.asyncness.is_async() {
+    if m.header.asyncness.node.is_async() {
         text.push_str("async ");
     }
     if m.header.unsafety == ast::Unsafety::Unsafe {

@@ -34,7 +34,8 @@ use crate::util::profiling::SelfProfiler;
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
-use jobserver::Client;
+use rustc_data_structures::jobserver;
+use ::jobserver::Client;
 
 use std;
 use std::cell::{self, Cell, RefCell};
@@ -899,14 +900,14 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
-    pub fn threads_from_opts(opts: &config::Options) -> usize {
-        opts.debugging_opts.threads.unwrap_or(::num_cpus::get())
+    pub fn threads_from_count(query_threads: Option<usize>) -> usize {
+        query_threads.unwrap_or(::num_cpus::get())
     }
 
     /// Returns the number of query threads that should be used for this
     /// compilation
     pub fn threads(&self) -> usize {
-        Self::threads_from_opts(&self.opts)
+        Self::threads_from_count(self.opts.debugging_opts.threads)
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -1023,8 +1024,58 @@ pub fn build_session(
         local_crate_source_file,
         registry,
         Lrc::new(source_map::SourceMap::new(file_path_mapping)),
-        None,
+        DiagnosticOutput::Default,
+        Default::default(),
     )
+}
+
+fn default_emitter(
+    sopts: &config::Options,
+    registry: errors::registry::Registry,
+    source_map: &Lrc<source_map::SourceMap>,
+    emitter_dest: Option<Box<dyn Write + Send>>,
+) -> Box<dyn Emitter + sync::Send> {
+    match (sopts.error_format, emitter_dest) {
+        (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
+            EmitterWriter::stderr(
+                color_config,
+                Some(source_map.clone()),
+                false,
+                sopts.debugging_opts.teach,
+            ).ui_testing(sopts.debugging_opts.ui_testing),
+        ),
+        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
+            EmitterWriter::new(dst, Some(source_map.clone()), false, false)
+                .ui_testing(sopts.debugging_opts.ui_testing),
+        ),
+        (config::ErrorOutputType::Json(pretty), None) => Box::new(
+            JsonEmitter::stderr(
+                Some(registry),
+                source_map.clone(),
+                pretty,
+            ).ui_testing(sopts.debugging_opts.ui_testing),
+        ),
+        (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
+            JsonEmitter::new(
+                dst,
+                Some(registry),
+                source_map.clone(),
+                pretty,
+            ).ui_testing(sopts.debugging_opts.ui_testing),
+        ),
+        (config::ErrorOutputType::Short(color_config), None) => Box::new(
+            EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
+        ),
+        (config::ErrorOutputType::Short(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst, Some(source_map.clone()), true, false))
+        }
+    }
+}
+
+pub enum DiagnosticOutput {
+    Default,
+    Raw(Box<dyn Write + Send>),
+    Emitter(Box<dyn Emitter + Send + sync::Send>)
 }
 
 pub fn build_session_with_source_map(
@@ -1032,7 +1083,8 @@ pub fn build_session_with_source_map(
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
     source_map: Lrc<source_map::SourceMap>,
-    emitter_dest: Option<Box<dyn Write + Send>>,
+    diagnostics_output: DiagnosticOutput,
+    lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1054,42 +1106,13 @@ pub fn build_session_with_source_map(
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter: Box<dyn Emitter + sync::Send> =
-        match (sopts.error_format, emitter_dest) {
-            (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
-                EmitterWriter::stderr(
-                    color_config,
-                    Some(source_map.clone()),
-                    false,
-                    sopts.debugging_opts.teach,
-                ).ui_testing(sopts.debugging_opts.ui_testing),
-            ),
-            (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
-                EmitterWriter::new(dst, Some(source_map.clone()), false, false)
-                    .ui_testing(sopts.debugging_opts.ui_testing),
-            ),
-            (config::ErrorOutputType::Json(pretty), None) => Box::new(
-                JsonEmitter::stderr(
-                    Some(registry),
-                    source_map.clone(),
-                    pretty,
-                ).ui_testing(sopts.debugging_opts.ui_testing),
-            ),
-            (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
-                JsonEmitter::new(
-                    dst,
-                    Some(registry),
-                    source_map.clone(),
-                    pretty,
-                ).ui_testing(sopts.debugging_opts.ui_testing),
-            ),
-            (config::ErrorOutputType::Short(color_config), None) => Box::new(
-                EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
-            ),
-            (config::ErrorOutputType::Short(_), Some(dst)) => {
-                Box::new(EmitterWriter::new(dst, Some(source_map.clone()), true, false))
-            }
-        };
+    let emitter = match diagnostics_output {
+        DiagnosticOutput::Default => default_emitter(&sopts, registry, &source_map, None),
+        DiagnosticOutput::Raw(write) => {
+            default_emitter(&sopts, registry, &source_map, Some(write))
+        }
+        DiagnosticOutput::Emitter(emitter) => emitter,
+    };
 
     let diagnostic_handler = errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1103,7 +1126,7 @@ pub fn build_session_with_source_map(
         },
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map)
+    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
 }
 
 pub fn build_session_(
@@ -1111,6 +1134,7 @@ pub fn build_session_(
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
+    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e|
@@ -1207,35 +1231,10 @@ pub fn build_session_(
         optimization_fuel,
         print_fuel_crate,
         print_fuel,
-        // Note that this is unsafe because it may misinterpret file descriptors
-        // on Unix as jobserver file descriptors. We hopefully execute this near
-        // the beginning of the process though to ensure we don't get false
-        // positives, or in other words we try to execute this before we open
-        // any file descriptors ourselves.
-        //
-        // Pick a "reasonable maximum" if we don't otherwise have
-        // a jobserver in our environment, capping out at 32 so we
-        // don't take everything down by hogging the process run queue.
-        // The fixed number is used to have deterministic compilation
-        // across machines.
-        //
-        // Also note that we stick this in a global because there could be
-        // multiple `Session` instances in this process, and the jobserver is
-        // per-process.
-        jobserver: unsafe {
-            static mut GLOBAL_JOBSERVER: *mut Client = 0 as *mut _;
-            static INIT: std::sync::Once = std::sync::ONCE_INIT;
-            INIT.call_once(|| {
-                let client = Client::from_env().unwrap_or_else(|| {
-                    Client::new(32).expect("failed to create jobserver")
-                });
-                GLOBAL_JOBSERVER = Box::into_raw(Box::new(client));
-            });
-            (*GLOBAL_JOBSERVER).clone()
-        },
+        jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
-        driver_lint_caps: Default::default(),
+        driver_lint_caps,
     };
 
     validate_commandline_args_with_session_available(&sess);

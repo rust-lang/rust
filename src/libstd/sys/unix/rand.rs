@@ -1,5 +1,5 @@
-use mem;
-use slice;
+use crate::mem;
+use crate::slice;
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut v = (0, 0);
@@ -17,10 +17,8 @@ pub fn hashmap_random_keys() -> (u64, u64) {
           not(target_os = "freebsd"),
           not(target_os = "fuchsia")))]
 mod imp {
-    use fs::File;
-    use io::Read;
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    use libc;
+    use crate::fs::File;
+    use crate::io::Read;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
@@ -34,8 +32,8 @@ mod imp {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
-        use sync::atomic::{AtomicBool, Ordering};
-        use sys::os::errno;
+        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sys::os::errno;
 
         static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
         if GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed) {
@@ -86,8 +84,7 @@ mod imp {
 
 #[cfg(target_os = "openbsd")]
 mod imp {
-    use libc;
-    use sys::os::errno;
+    use crate::sys::os::errno;
 
     pub fn fill_bytes(v: &mut [u8]) {
         // getentropy(2) permits a maximum buffer size of 256 bytes
@@ -104,9 +101,9 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
-    use io;
+    use crate::io;
+    use crate::ptr;
     use libc::{c_int, size_t};
-    use ptr;
 
     enum SecRandom {}
 
@@ -134,8 +131,7 @@ mod imp {
 
 #[cfg(target_os = "freebsd")]
 mod imp {
-    use libc;
-    use ptr;
+    use crate::ptr;
 
     pub fn fill_bytes(v: &mut [u8]) {
         let mib = [libc::CTL_KERN, libc::KERN_ARND];

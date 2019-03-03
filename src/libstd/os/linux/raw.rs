@@ -9,7 +9,7 @@
 #![allow(deprecated)]
 #![allow(missing_debug_implementations)]
 
-use os::raw::c_ulong;
+use crate::os::raw::c_ulong;
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
@@ -28,7 +28,7 @@ pub use self::arch::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
           target_arch = "asmjs",
           target_arch = "wasm32"))]
 mod arch {
-    use os::raw::{c_long, c_short, c_uint};
+    use crate::os::raw::{c_long, c_short, c_uint};
 
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u64;
@@ -84,7 +84,7 @@ mod arch {
 
 #[cfg(target_arch = "mips")]
 mod arch {
-    use os::raw::{c_long, c_ulong};
+    use crate::os::raw::{c_long, c_ulong};
 
     #[cfg(target_env = "musl")]
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
@@ -156,7 +156,7 @@ mod arch {
 
 #[cfg(target_arch = "aarch64")]
 mod arch {
-    use os::raw::{c_long, c_int};
+    use crate::os::raw::{c_long, c_int};
 
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u64;
@@ -212,7 +212,7 @@ mod arch {
 
 #[cfg(any(target_arch = "x86_64", target_arch = "powerpc64"))]
 mod arch {
-    use os::raw::{c_long, c_int};
+    use crate::os::raw::{c_long, c_int};
 
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u64;

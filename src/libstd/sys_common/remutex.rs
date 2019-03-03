@@ -1,9 +1,9 @@
-use fmt;
-use marker;
-use ops::Deref;
-use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
-use sys::mutex as sys;
-use panic::{UnwindSafe, RefUnwindSafe};
+use crate::fmt;
+use crate::marker;
+use crate::ops::Deref;
+use crate::sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
+use crate::sys::mutex as sys;
+use crate::panic::{UnwindSafe, RefUnwindSafe};
 
 /// A re-entrant mutual exclusion
 ///
@@ -159,10 +159,10 @@ impl<T> Drop for ReentrantMutexGuard<'_, T> {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-    use cell::RefCell;
-    use sync::Arc;
-    use thread;
+    use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
+    use crate::cell::RefCell;
+    use crate::sync::Arc;
+    use crate::thread;
 
     #[test]
     fn smoke() {

@@ -24,7 +24,7 @@ crate fn raw_ptr(tcx: TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Ty<'tcx> 
 crate fn fn_ptr(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     arity_and_output: usize,
-    variadic: bool,
+    c_variadic: bool,
     unsafety: hir::Unsafety,
     abi: abi::Abi
 ) -> Ty<'tcx> {
@@ -37,7 +37,7 @@ crate fn fn_ptr(
 
     let fn_sig = ty::Binder::bind(ty::FnSig {
         inputs_and_output,
-        variadic,
+        c_variadic,
         unsafety,
         abi,
     });

@@ -241,7 +241,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     );
                 }
                 let old_source_info = self.source_info;
-                if let &Place::Local(local) = base {
+                if let &Place::Base(PlaceBase::Local(local)) = base {
                     if self.mir.local_decls[local].internal {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
@@ -297,13 +297,13 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 self.source_info = old_source_info;
             }
-            &Place::Local(..) => {
+            &Place::Base(PlaceBase::Local(..)) => {
                 // locals are safe
             }
-            &Place::Promoted(_) => {
+            &Place::Base(PlaceBase::Promoted(_)) => {
                 bug!("unsafety checking should happen before promotion")
             }
-            &Place::Static(box Static { def_id, ty: _ }) => {
+            &Place::Base(PlaceBase::Static(box Static { def_id, ty: _ })) => {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing violations \
@@ -553,10 +553,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 }
 
 fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let lint_node_id = match tcx.hir().as_local_node_id(def_id) {
-        Some(node_id) => node_id,
-        None => bug!("checking unsafety for non-local def id {:?}", def_id)
-    };
+    let lint_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap_or_else(||
+        bug!("checking unsafety for non-local def id {:?}", def_id));
 
     // FIXME: when we make this a hard error, this should have its
     // own error code.
@@ -567,10 +565,10 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
         "#[derive] can't be used on a #[repr(packed)] struct that \
          does not derive Copy (error E0133)".to_string()
     };
-    tcx.lint_node(SAFE_PACKED_BORROWS,
-                  lint_node_id,
-                  tcx.def_span(def_id),
-                  &message);
+    tcx.lint_hir(SAFE_PACKED_BORROWS,
+                 lint_hir_id,
+                 tcx.def_span(def_id),
+                 &message);
 }
 
 /// Returns the `HirId` for an enclosing scope that is also `unsafe`.

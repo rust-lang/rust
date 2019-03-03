@@ -130,14 +130,14 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
 
-use crate::require_c_abi_if_variadic;
-use crate::session::{CompileIncomplete, Session};
+use crate::require_c_abi_if_c_variadic;
+use crate::session::Session;
 use crate::session::config::EntryFnType;
 use crate::TypeAndSubsts;
 use crate::lint;
 use crate::util::captures::Captures;
 use crate::util::common::{ErrorReported, indenter};
-use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, HirIdMap, NodeMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, HirIdMap};
 
 pub use self::Expectation::*;
 use self::autoderef::Autoderef;
@@ -194,7 +194,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     tables: MaybeInProgressTables<'a, 'tcx>,
 
-    locals: RefCell<NodeMap<LocalTy<'tcx>>>,
+    locals: RefCell<HirIdMap<LocalTy<'tcx>>>,
 
     fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
@@ -711,12 +711,12 @@ fn check_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId)
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
 }
 
-pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), CompileIncomplete> {
+pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                                -> Result<(), CompileIncomplete>
+                                -> Result<(), ErrorReported>
 {
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
@@ -943,7 +943,7 @@ struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
-    fn assign(&mut self, span: Span, nid: ast::NodeId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
+    fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
@@ -994,29 +994,30 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
             },
             None => None,
         };
-        self.assign(local.span, local.id, local_ty);
+        self.assign(local.span, local.hir_id, local_ty);
 
         debug!("Local variable {:?} is assigned type {}",
                local.pat,
                self.fcx.ty_to_string(
-                   self.fcx.locals.borrow().get(&local.id).unwrap().clone().decl_ty));
+                   self.fcx.locals.borrow().get(&local.hir_id).unwrap().clone().decl_ty));
         intravisit::walk_local(self, local);
     }
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
         if let PatKind::Binding(_, _, _, ident, _) = p.node {
-            let var_ty = self.assign(p.span, p.id, None);
+            let var_ty = self.assign(p.span, p.hir_id, None);
 
+            let node_id = self.fcx.tcx.hir().hir_to_node_id(p.hir_id);
             if !self.fcx.tcx.features().unsized_locals {
                 self.fcx.require_type_is_sized(var_ty, p.span,
-                                               traits::VariableType(p.id));
+                                               traits::VariableType(node_id));
             }
 
             debug!("Pattern binding {} is assigned to {} with type {:?}",
                    ident,
                    self.fcx.ty_to_string(
-                       self.fcx.locals.borrow().get(&p.id).unwrap().clone().decl_ty),
+                       self.fcx.locals.borrow().get(&p.hir_id).unwrap().clone().decl_ty),
                    var_ty);
         }
         intravisit::walk_pat(self, p);
@@ -1072,7 +1073,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
         revealed_ret_ty,
-        fn_sig.variadic,
+        fn_sig.c_variadic,
         fn_sig.unsafety,
         fn_sig.abi
     );
@@ -1289,9 +1290,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 }
 
 fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          id: ast::NodeId,
+                          id: hir::HirId,
                           span: Span) {
-    let def_id = tcx.hir().local_def_id(id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
@@ -1305,9 +1306,9 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         id: ast::NodeId,
+                         id: hir::HirId,
                          span: Span) {
-    let def_id = tcx.hir().local_def_id(id);
+    let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
@@ -1338,28 +1339,28 @@ fn check_opaque<'a, 'tcx>(
 
 pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
     debug!(
-        "check_item_type(it.id={}, it.name={})",
-        it.id,
-        tcx.item_path_str(tcx.hir().local_def_id(it.id))
+        "check_item_type(it.hir_id={}, it.name={})",
+        it.hir_id,
+        tcx.item_path_str(tcx.hir().local_def_id_from_hir_id(it.hir_id))
     );
     let _indenter = indenter();
     match it.node {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
-            let def_id = tcx.hir().local_def_id(it.id);
+            let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
             tcx.typeck_tables_of(def_id);
             maybe_check_static_with_link_section(tcx, def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
-            tcx.typeck_tables_of(tcx.hir().local_def_id(it.id));
+            tcx.typeck_tables_of(tcx.hir().local_def_id_from_hir_id(it.hir_id));
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
-            check_enum(tcx, it.span, &enum_definition.variants, it.id);
+            check_enum(tcx, it.span, &enum_definition.variants, it.hir_id);
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
-            debug!("ItemKind::Impl {} with id {}", it.ident, it.id);
-            let impl_def_id = tcx.hir().local_def_id(it.id);
+            debug!("ItemKind::Impl {} with id {}", it.ident, it.hir_id);
+            let impl_def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
             if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 check_impl_items_against_trait(
                     tcx,
@@ -1373,23 +1374,23 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
             }
         }
         hir::ItemKind::Trait(..) => {
-            let def_id = tcx.hir().local_def_id(it.id);
+            let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
             check_on_unimplemented(tcx, def_id, it);
         }
         hir::ItemKind::Struct(..) => {
-            check_struct(tcx, it.id, it.span);
+            check_struct(tcx, it.hir_id, it.span);
         }
         hir::ItemKind::Union(..) => {
-            check_union(tcx, it.id, it.span);
+            check_union(tcx, it.hir_id, it.span);
         }
         hir::ItemKind::Existential(..) => {
-            let def_id = tcx.hir().local_def_id(it.id);
+            let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
             check_opaque(tcx, def_id, substs, it.span);
         }
         hir::ItemKind::Ty(..) => {
-            let def_id = tcx.hir().local_def_id(it.id);
+            let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);
             check_bounds_are_used(tcx, &generics, pty_ty);
@@ -1407,7 +1408,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
                 }
             } else {
                 for item in &m.items {
-                    let generics = tcx.generics_of(tcx.hir().local_def_id(item.id));
+                    let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(item.hir_id));
                     if generics.params.len() - generics.own_counts().lifetimes != 0 {
                         let mut err = struct_span_err!(
                             tcx.sess,
@@ -1426,7 +1427,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
                     }
 
                     if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
-                        require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
+                        require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
                     }
                 }
             }
@@ -1476,7 +1477,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_, '_, '_>, id: DefId, span
 fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     trait_def_id: DefId,
                                     item: &hir::Item) {
-    let item_def_id = tcx.hir().local_def_id(item.id);
+    let item_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
     // an error would be reported if this fails.
     let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id);
 }
@@ -1554,7 +1555,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items() {
-        let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.id));
+        let ty_impl_item = tcx.associated_item(
+            tcx.hir().local_def_id_from_hir_id(impl_item.hir_id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
             .find(|ac| Namespace::from(&impl_item.node) == Namespace::from(ac.kind) &&
                        tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
@@ -1841,8 +1843,8 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
 pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             sp: Span,
                             vs: &'tcx [hir::Variant],
-                            id: ast::NodeId) {
-    let def_id = tcx.hir().local_def_id(id);
+                            id: hir::HirId) {
+    let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
@@ -1870,7 +1872,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for v in vs {
         if let Some(ref e) = v.node.disr_expr {
-            tcx.typeck_tables_of(tcx.hir().local_def_id(e.id));
+            tcx.typeck_tables_of(tcx.hir().local_def_id_from_hir_id(e.hir_id));
         }
     }
 
@@ -2124,10 +2126,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         format!("{:?}", self_ptr)
     }
 
-    pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> LocalTy<'tcx> {
+    pub fn local_ty(&self, span: Span, nid: hir::HirId) -> LocalTy<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(||
             span_bug!(span, "no type for local variable {}",
-                      self.tcx.hir().node_to_string(nid))
+                      self.tcx.hir().hir_to_string(nid))
         )
     }
 
@@ -2783,7 +2785,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             &method.sig.inputs()[1..]
         );
         self.check_argument_types(sp, expr_sp, &method.sig.inputs()[1..], &expected_arg_tys[..],
-                                  args_no_rcvr, method.sig.variadic, tuple_arguments,
+                                  args_no_rcvr, method.sig.c_variadic, tuple_arguments,
                                   self.tcx.hir().span_if_local(method.def_id));
         method.sig.output()
     }
@@ -2862,7 +2864,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             fn_inputs: &[Ty<'tcx>],
                             mut expected_arg_tys: &[Ty<'tcx>],
                             args: &'gcx [hir::Expr],
-                            variadic: bool,
+                            c_variadic: bool,
                             tuple_arguments: TupleArgumentsFlag,
                             def_span: Option<Span>) {
         let tcx = self.tcx;
@@ -2886,11 +2888,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let param_count_error = |expected_count: usize,
                                  arg_count: usize,
                                  error_code: &str,
-                                 variadic: bool,
+                                 c_variadic: bool,
                                  sugg_unit: bool| {
             let mut err = tcx.sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} but {} {} supplied",
-                    if variadic {"at least "} else {""},
+                    if c_variadic { "at least " } else { "" },
                     potentially_plural_count(expected_count, "parameter"),
                     potentially_plural_count(arg_count, "parameter"),
                     if arg_count == 1 {"was"} else {"were"}),
@@ -2910,7 +2912,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Applicability::MachineApplicable);
             } else {
                 err.span_label(sp, format!("expected {}{}",
-                                           if variadic {"at least "} else {""},
+                                           if c_variadic { "at least " } else { "" },
                                            potentially_plural_count(expected_count, "parameter")));
             }
             err.emit();
@@ -2944,7 +2946,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         } else if expected_arg_count == supplied_arg_count {
             fn_inputs.to_vec()
-        } else if variadic {
+        } else if c_variadic {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
@@ -2991,10 +2993,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.select_obligations_where_possible(false);
             }
 
-            // For variadic functions, we don't have a declared type for all of
+            // For C-variadic functions, we don't have a declared type for all of
             // the arguments hence we only do our usual type checking with
             // the arguments who's types we do know.
-            let t = if variadic {
+            let t = if c_variadic {
                 expected_arg_count
             } else if tuple_arguments == TupleArguments {
                 args.len()
@@ -3043,7 +3045,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // We also need to make sure we at least write the ty of the other
         // arguments which we skipped above.
-        if variadic {
+        if c_variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
                 use crate::structured_errors::{VariadicError, StructuredDiagnostic};
                 VariadicError::new(s, span, t, cast_ty).diagnostic().emit();
@@ -4552,7 +4554,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_array(element_ty, args.len() as u64)
             }
             ExprKind::Repeat(ref element, ref count) => {
-                let count_def_id = tcx.hir().local_def_id(count.id);
+                let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
                 let param_env = ty::ParamEnv::empty();
                 let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
                 let instance = ty::Instance::resolve(
@@ -4805,7 +4807,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // See #44848.
         let ref_bindings = local.pat.contains_explicit_ref_binding();
 
-        let local_ty = self.local_ty(init.span, local.id).revealed_ty;
+        let local_ty = self.local_ty(init.span, local.hir_id).revealed_ty;
         if let Some(m) = ref_bindings {
             // Somewhat subtle: if we have a `ref` binding in the pattern,
             // we want to avoid introducing coercions for the RHS. This is
@@ -4824,7 +4826,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local) {
-        let t = self.local_ty(local.span, local.id).decl_ty;
+        let t = self.local_ty(local.span, local.hir_id).decl_ty;
         self.write_ty(local.hir_id, t);
 
         if let Some(ref init) = local.init {
@@ -5378,7 +5380,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let ty = self.local_ty(span, nid).decl_ty;
+                let hid = self.tcx.hir().node_to_hir_id(nid);
+                let ty = self.local_ty(span, hid).decl_ty;
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(hir_id, ty);
                 return (ty, def);

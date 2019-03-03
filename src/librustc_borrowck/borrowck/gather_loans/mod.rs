@@ -147,10 +147,10 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                                         assignee_cmt);
     }
 
-    fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
+    fn decl_without_init(&mut self, id: hir::HirId, _span: Span) {
         let ty = self.bccx
                      .tables
-                     .node_type(self.bccx.tcx.hir().node_to_hir_id(id));
+                     .node_type(id);
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
@@ -438,9 +438,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
         while let Some(current_path) = wrapped_path {
             wrapped_path = match current_path.kind {
-                LpVar(local_id) => {
+                LpVar(hir_id) => {
                     if !through_borrow {
-                        let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
                         self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                     }
                     None

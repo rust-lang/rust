@@ -449,7 +449,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         }
                         // Static variables need a borrow because the callee
                         // might modify the same static.
-                        Place::Static(_) => true,
+                        Place::Base(PlaceBase::Static(_)) => true,
                         _ => false
                     }
                 }
@@ -466,7 +466,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Place::Local(tmp);
+                    let tmp = Place::Base(PlaceBase::Local(tmp));
 
                     let stmt = Statement {
                         source_info: callsite.location,
@@ -560,7 +560,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             assert!(args.next().is_none());
 
-            let tuple = Place::Local(tuple);
+            let tuple = Place::Base(PlaceBase::Local(tuple));
             let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
                 s
             } else {
@@ -599,7 +599,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place::Local(local)) = arg {
+        if let Operand::Move(Place::Base(PlaceBase::Local(local))) = arg {
             if caller_mir.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;
@@ -617,7 +617,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(arg_tmp), box arg),
+            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(arg_tmp)), box arg),
         };
         caller_mir[callsite.bb].statements.push(stmt);
         arg_tmp
@@ -665,7 +665,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_PLACE {
             match self.destination {
-                Place::Local(l) => {
+                Place::Base(PlaceBase::Local(l)) => {
                     *local = l;
                     return;
                 },
@@ -686,11 +686,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     _location: Location) {
 
         match place {
-            Place::Local(RETURN_PLACE) => {
+            Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            Place::Promoted(ref mut promoted) => {
+            Place::Base(PlaceBase::Promoted(ref mut promoted)) => {
                 if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
                     promoted.0 = p;
                 }

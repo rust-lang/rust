@@ -138,7 +138,6 @@ pub struct CrateInfo {
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates_static: Vec<(CrateNum, LibSource)>,
     pub used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    pub wasm_imports: FxHashMap<String, String>,
     pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
