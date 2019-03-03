@@ -194,7 +194,10 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
-        if cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(is_empty.id.hir_id)) {
+        if cx
+            .access_levels
+            .is_exported(cx.tcx.hir().hir_to_node_id(is_empty.id.hir_id))
+        {
             return;
         } else {
             "a private"

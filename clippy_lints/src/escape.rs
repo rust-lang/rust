@@ -112,9 +112,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         let map = &self.cx.tcx.hir();
         if map.is_argument(map.hir_to_node_id(consume_pat.hir_id)) {
             // Skip closure arguments
-            if let Some(Node::Expr(..)) = map.find_by_hir_id(
-                map.get_parent_node_by_hir_id(consume_pat.hir_id))
-            {
+            if let Some(Node::Expr(..)) = map.find_by_hir_id(map.get_parent_node_by_hir_id(consume_pat.hir_id)) {
                 return;
             }
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {

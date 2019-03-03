@@ -2051,9 +2051,9 @@ enum VarState {
 
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>,       // context reference
-    states: FxHashMap<HirId, VarState>,  // incremented variables
-    depth: u32,                          // depth of conditional expressions
+    cx: &'a LateContext<'a, 'tcx>,      // context reference
+    states: FxHashMap<HirId, VarState>, // incremented variables
+    depth: u32,                         // depth of conditional expressions
     done: bool,
 }
 
