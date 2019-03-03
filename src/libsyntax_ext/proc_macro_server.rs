@@ -410,13 +410,13 @@ impl server::TokenStream for Rustc<'_> {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        let (tokens, errors) = parse::parse_stream_from_source_str(
+        let (tokens, mut errors) = parse::parse_stream_from_source_str(
             FileName::proc_macro_source_code(src.clone()),
             src.to_string(),
             self.sess,
             Some(self.call_site),
         );
-        emit_unclosed_delims(&errors, &self.sess.span_diagnostic);
+        emit_unclosed_delims(&mut errors, &self.sess.span_diagnostic);
         tokens
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {

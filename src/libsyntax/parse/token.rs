@@ -675,9 +675,9 @@ impl Nonterminal {
         // FIXME(#43081): Avoid this pretty-print + reparse hack
         let source = pprust::nonterminal_to_string(self);
         let filename = FileName::macro_expansion_source_code(&source);
-        let (tokens_for_real, errors) =
+        let (tokens_for_real, mut errors) =
             parse_stream_from_source_str(filename, source, sess, Some(span));
-        emit_unclosed_delims(&errors, &sess.span_diagnostic);
+        emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
 
         // During early phases of the compiler the AST could get modified
         // directly (e.g., attributes added or removed) and the internal cache
@@ -740,13 +740,13 @@ fn prepend_attrs(sess: &ParseSess,
         let source = pprust::attr_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
-            let (stream, errors) = parse_stream_from_source_str(
+            let (stream, mut errors) = parse_stream_from_source_str(
                 macro_filename,
                 source,
                 sess,
                 Some(span),
             );
-            emit_unclosed_delims(&errors, &sess.span_diagnostic);
+            emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
             builder.push(stream);
             continue
         }
@@ -763,13 +763,13 @@ fn prepend_attrs(sess: &ParseSess,
         // ... and for more complicated paths, fall back to a reparse hack that
         // should eventually be removed.
         } else {
-            let (stream, errors) = parse_stream_from_source_str(
+            let (stream, mut errors) = parse_stream_from_source_str(
                 macro_filename,
                 source,
                 sess,
                 Some(span),
             );
-            emit_unclosed_delims(&errors, &sess.span_diagnostic);
+            emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
             brackets.push(stream);
         }
 

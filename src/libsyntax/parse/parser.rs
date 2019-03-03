@@ -7798,7 +7798,10 @@ impl<'a> Parser<'a> {
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
         let (ret, tokens) = self.collect_tokens(|this| {
-            this.parse_item_implementation(attrs, macros_allowed, attributes_allowed)
+            let item = this.parse_item_implementation(attrs, macros_allowed, attributes_allowed);
+            let diag = this.diagnostic();
+            emit_unclosed_delims(&mut this.unclosed_delims, diag);
+            item
         })?;
 
         // Once we've parsed an item and recorded the tokens we got while
@@ -8555,8 +8558,8 @@ impl<'a> Parser<'a> {
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
         });
-        emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
-        self.unclosed_delims.clear();
+        let diag = self.diagnostic();
+        emit_unclosed_delims(&mut self.unclosed_delims, diag);
         krate
     }
 
@@ -8587,8 +8590,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors::Handler) {
-    for unmatched in unclosed_delims {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {
+    for unmatched in unclosed_delims.iter() {
         let mut err = handler.struct_span_err(unmatched.found_span, &format!(
             "incorrect close delimiter: `{}`",
             pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
@@ -8602,4 +8605,5 @@ pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors
         }
         err.emit();
     }
+    unclosed_delims.clear();
 }
