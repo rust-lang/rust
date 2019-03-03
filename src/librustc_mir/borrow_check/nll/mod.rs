@@ -2,7 +2,6 @@ use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::{LocationIndex, LocationTable};
 use crate::borrow_check::nll::facts::AllFactsExt;
 use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
-use crate::borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
