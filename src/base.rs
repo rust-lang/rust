@@ -64,7 +64,64 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     // Step 1. Get mir
     let mir = tcx.instance_mir(instance.def);
 
-    // Step 2. Declare function
+    // Step 2. Check fn sig for u128 and i128 and replace those functions with a trap.
+    {
+        // Step 2a. Check sig for u128 and i128
+        let fn_ty = instance.ty(tcx);
+        let fn_sig = crate::abi::ty_fn_sig(tcx, fn_ty);
+
+        struct UI128Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, bool);
+
+        impl<'a, 'tcx: 'a> rustc::ty::fold::TypeVisitor<'tcx> for UI128Visitor<'a, 'tcx> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                if t.sty == self.0.types.u128.sty || t.sty == self.0.types.i128.sty {
+                    self.1 = true;
+                    return false; // stop visiting
+                }
+
+                t.super_visit_with(self)
+            }
+        }
+
+        let mut visitor = UI128Visitor(tcx, false);
+        fn_sig.visit_with(&mut visitor);
+
+        // Step 2b. If found replace function with a trap.
+        if visitor.1 {
+            tcx.sess.warn("u128 and i128 are not yet supported. \
+            Functions using these as args will be replaced with a trap.");
+
+            // Step 2b1. Declare function with fake signature
+            let sig = Signature {
+                params: vec![AbiParam::new(types::INVALID)],
+                returns: vec![],
+                call_conv: CallConv::Fast,
+            };
+            let name = tcx.symbol_name(instance).as_str();
+            let func_id = cx.module.declare_function(&*name, linkage, &sig).unwrap();
+
+            // Step 2b2. Create trapping function
+            let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+            let mut func_ctx = FunctionBuilderContext::new();
+            let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
+            let start_ebb = bcx.create_ebb();
+            bcx.append_ebb_params_for_function_params(start_ebb);
+            bcx.switch_to_block(start_ebb);
+            crate::trap::trap_unreachable(&mut bcx);
+            bcx.seal_all_blocks();
+            bcx.finalize();
+
+            // Step 2b3. Define function
+            cx.caches.context.func = func;
+            cx.module
+                .define_function(func_id, &mut cx.caches.context)
+                .unwrap();
+            cx.caches.context.clear();
+            return;
+        }
+    }
+
+    // Step 3. Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
     let mut debug_context = cx
@@ -72,19 +129,19 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         .as_mut()
         .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, &name, &sig));
 
-    // Step 3. Make FunctionBuilder
+    // Step 4. Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
-    // Step 4. Predefine ebb's
+    // Step 5. Predefine ebb's
     let start_ebb = bcx.create_ebb();
     let mut ebb_map: HashMap<BasicBlock, Ebb> = HashMap::new();
     for (bb, _bb_data) in mir.basic_blocks().iter_enumerated() {
         ebb_map.insert(bb, bcx.create_ebb());
     }
 
-    // Step 5. Make FunctionCx
+    // Step 6. Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
@@ -106,34 +163,34 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         source_info_set: indexmap::IndexSet::new(),
     };
 
-    // Step 6. Codegen function
+    // Step 7. Codegen function
     with_unimpl_span(fx.mir.span, || {
         crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
         codegen_fn_content(&mut fx);
     });
     let source_info_set = fx.source_info_set.clone();
 
-    // Step 7. Write function to file for debugging
+    // Step 8. Write function to file for debugging
     #[cfg(debug_assertions)]
     fx.write_clif_file();
 
-    // Step 8. Verify function
+    // Step 9. Verify function
     verify_func(tcx, fx.clif_comments, &func);
 
-    // Step 9. Define function
+    // Step 10. Define function
     cx.caches.context.func = func;
     cx.module
         .define_function(func_id, &mut cx.caches.context)
         .unwrap();
 
-    // Step 10. Define debuginfo for function
+    // Step 11. Define debuginfo for function
     let context = &cx.caches.context;
     let isa = cx.module.isa();
     debug_context
         .as_mut()
         .map(|x| x.define(tcx, context, isa, &source_info_set));
 
-    // Step 11. Clear context to make it usable for the next function
+    // Step 12. Clear context to make it usable for the next function
     cx.caches.context.clear();
 }
 
