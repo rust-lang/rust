@@ -26,7 +26,7 @@ pub use tt::{Delimiter, Punct};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
-    ParseError,
+    Expected(String),
 }
 
 #[derive(Debug, PartialEq, Eq)]

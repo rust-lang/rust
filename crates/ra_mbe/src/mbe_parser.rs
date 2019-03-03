@@ -77,18 +77,70 @@ fn parse_repeat(p: &mut TtCursor) -> Result<crate::Repeat, ParseError> {
     let subtree = p.eat_subtree().unwrap();
     let mut subtree = parse_subtree(subtree)?;
     subtree.delimiter = crate::Delimiter::None;
-    let sep = p.eat_punct().ok_or(ParseError::ParseError)?;
+    let sep = p.eat_punct().ok_or(ParseError::Expected(String::from("separator")))?;
     let (separator, rep) = match sep.char {
         '*' | '+' | '?' => (None, sep.char),
-        char => (Some(char), p.eat_punct().ok_or(ParseError::ParseError)?.char),
+        char => {
+            (Some(char), p.eat_punct().ok_or(ParseError::Expected(String::from("separator")))?.char)
+        }
     };
 
     let kind = match rep {
         '*' => crate::RepeatKind::ZeroOrMore,
         '+' => crate::RepeatKind::OneOrMore,
         '?' => crate::RepeatKind::ZeroOrOne,
-        _ => return Err(ParseError::ParseError),
+        _ => return Err(ParseError::Expected(String::from("repeat"))),
     };
     p.bump();
     Ok(crate::Repeat { subtree, kind, separator })
+}
+
+#[cfg(test)]
+mod tests {
+    use ra_syntax::{ast, AstNode};
+
+    use super::*;
+    use crate::ast_to_token_tree;
+
+    #[test]
+    fn test_invalid_parse() {
+        expect_err("invalid", "subtree");
+
+        is_valid("($i:ident) => ()");
+        expect_err("$i:ident => ()", "subtree");
+        expect_err("($i:ident) ()", "`=`");
+        expect_err("($($i:ident)_) => ()", "separator");
+    }
+
+    fn expect_err(macro_body: &str, expected: &str) {
+        assert_eq!(
+            create_rules(&format_macro(macro_body)),
+            Err(ParseError::Expected(String::from(expected)))
+        );
+    }
+
+    fn is_valid(macro_body: &str) {
+        assert!(create_rules(&format_macro(macro_body)).is_ok());
+    }
+
+    fn format_macro(macro_body: &str) -> String {
+        format!(
+            "
+        macro_rules! foo {{
+            {}
+        }}
+",
+            macro_body
+        )
+    }
+
+    fn create_rules(macro_definition: &str) -> Result<crate::MacroRules, ParseError> {
+        let source_file = ast::SourceFile::parse(macro_definition);
+        let macro_definition =
+            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+
+        let (definition_tt, _) = ast_to_token_tree(macro_definition.token_tree().unwrap()).unwrap();
+        parse(&definition_tt)
+    }
+
 }

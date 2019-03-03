@@ -60,7 +60,7 @@ impl<'a> TtCursor<'a> {
                 self.bump();
                 Ok(sub)
             }
-            _ => Err(ParseError::ParseError),
+            _ => Err(ParseError::Expected(String::from("subtree"))),
         }
     }
 
@@ -83,7 +83,7 @@ impl<'a> TtCursor<'a> {
             self.bump();
             Ok(())
         } else {
-            Err(ParseError::ParseError)
+            Err(ParseError::Expected(format!("`{}`", char)))
         }
     }
 }
