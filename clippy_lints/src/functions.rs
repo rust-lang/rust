@@ -150,8 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
-        let nodeid = cx.tcx.hir().hir_to_node_id(hir_id);
-        self.check_raw_ptr(cx, unsafety, decl, body, nodeid);
+        self.check_raw_ptr(cx, unsafety, decl, body, hir_id);
         self.check_line_number(cx, span, body);
     }
 
@@ -164,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 
             if let hir::TraitMethod::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
-                self.check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.id);
+                self.check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
             }
         }
     }
@@ -255,10 +254,11 @@ impl<'a, 'tcx> Functions {
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
-        nodeid: ast::NodeId,
+        hir_id: hir::HirId,
     ) {
         let expr = &body.value;
-        if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
+        let node_id = cx.tcx.hir().hir_to_node_id(hir_id);
+        if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(node_id) {
             let raw_ptrs = iter_input_pats(decl, body)
                 .zip(decl.inputs.iter())
                 .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))

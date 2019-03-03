@@ -7,11 +7,10 @@ use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
-use syntax::ast::NodeId;
 use syntax::source_map::Span;
 
 /// Returns a set of mutated local variable ids or None if mutations could not be determined.
-pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<NodeId>> {
+pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
     let mut delegate = MutVarsDelegate {
         used_mutably: FxHashSet::default(),
         skip: false,
@@ -35,11 +34,11 @@ pub fn is_potentially_mutated<'a, 'tcx: 'a>(
         Def::Local(id) | Def::Upvar(id, ..) => id,
         _ => return true,
     };
-    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
+    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&cx.tcx.hir().node_to_hir_id(id)))
 }
 
 struct MutVarsDelegate {
-    used_mutably: FxHashSet<NodeId>,
+    used_mutably: FxHashSet<HirId>,
     skip: bool,
 }
 
@@ -79,5 +78,5 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
         self.update(&cmt.cat)
     }
 
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }

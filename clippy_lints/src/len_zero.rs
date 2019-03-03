@@ -132,7 +132,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
         item.ident.name == name
             && if let AssociatedItemKind::Method { has_self } = item.kind {
                 has_self && {
-                    let did = cx.tcx.hir().local_def_id(item.id.node_id);
+                    let did = cx.tcx.hir().local_def_id_from_hir_id(item.id.hir_id);
                     cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
                 }
             } else {
@@ -149,9 +149,11 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
+    let trait_node_id = cx.tcx.hir().hir_to_node_id(visited_trait.hir_id);
+
+    if cx.access_levels.is_exported(trait_node_id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
         let mut current_and_super_traits = FxHashSet::default();
-        let visited_trait_def_id = cx.tcx.hir().local_def_id(visited_trait.id);
+        let visited_trait_def_id = cx.tcx.hir().local_def_id_from_hir_id(visited_trait.hir_id);
         fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);
 
         let is_empty_method_found = current_and_super_traits
@@ -183,7 +185,7 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
         item.ident.name == name
             && if let AssociatedItemKind::Method { has_self } = item.kind {
                 has_self && {
-                    let did = cx.tcx.hir().local_def_id(item.id.node_id);
+                    let did = cx.tcx.hir().local_def_id_from_hir_id(item.id.hir_id);
                     cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
                 }
             } else {
@@ -192,7 +194,10 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
-        if cx.access_levels.is_exported(is_empty.id.node_id) {
+        if cx
+            .access_levels
+            .is_exported(cx.tcx.hir().hir_to_node_id(is_empty.id.hir_id))
+        {
             return;
         } else {
             "a private"
@@ -202,8 +207,8 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
     };
 
     if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
-        if cx.access_levels.is_exported(i.id.node_id) {
-            let def_id = cx.tcx.hir().local_def_id(item.id);
+        if cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(i.id.hir_id)) {
+            let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             let ty = cx.tcx.type_of(def_id);
 
             span_lint(

@@ -10,7 +10,6 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
-use syntax::ast::NodeId;
 use syntax::source_map::Span;
 use syntax_pos::MultiSpan;
 
@@ -111,18 +110,19 @@ impl LintPass for PointerPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Fn(ref decl, _, _, body_id) = item.node {
-            check_fn(cx, decl, item.id, Some(body_id));
+            check_fn(cx, decl, item.hir_id, Some(body_id));
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, body_id) = item.node {
-            if let Some(Node::Item(it)) = cx.tcx.hir().find(cx.tcx.hir().get_parent(item.id)) {
+            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
+            if let Some(Node::Item(it)) = cx.tcx.hir().find_by_hir_id(parent_item) {
                 if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
         }
     }
 
@@ -133,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
             } else {
                 None
             };
-            check_fn(cx, &sig.decl, item.id, body_id);
+            check_fn(cx, &sig.decl, item.hir_id, body_id);
         }
     }
 
@@ -152,8 +152,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 }
 
 #[allow(clippy::too_many_lines)]
-fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
+fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: Option<BodyId>) {
+    let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
 

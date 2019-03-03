@@ -2034,7 +2034,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.id) {
+        if !cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(item.hir_id)) {
             return;
         }
 

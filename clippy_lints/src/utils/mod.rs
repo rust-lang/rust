@@ -702,8 +702,8 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 }
 
 /// Convenience function to get the return type of a function
-pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
+pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
+    let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
@@ -878,8 +878,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 ///
 /// Useful for skipping long running code when it's unnecessary
 pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: HirId) -> bool {
-    let node_id = cx.tcx.hir().hir_to_node_id(id);
-    cx.tcx.lint_level_at_node(lint, node_id).0 == Level::Allow
+    cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
 pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {

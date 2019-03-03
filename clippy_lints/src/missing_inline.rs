@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.id) {
+        if !cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(it.hir_id)) {
             return;
         }
         match it.node {
@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir().expect_trait_item(tit.id.node_id);
+                                let item = cx.tcx.hir().expect_trait_item_by_hir_id(tit.id.hir_id);
                                 check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
                             }
                         },
@@ -146,7 +146,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.access_levels.is_exported(impl_item.id) {
+        let node_id = cx.tcx.hir().hir_to_node_id(impl_item.hir_id);
+        if !cx.access_levels.is_exported(node_id) {
             return;
         }
 
@@ -155,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(impl_item.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
         let trait_def_id = match cx.tcx.associated_item(def_id).container {
             TraitContainer(cid) => Some(cid),
             ImplContainer(cid) => cx.tcx.impl_trait_ref(cid).map(|t| t.def_id),
