@@ -768,11 +768,11 @@ pub trait PrintState<'a> {
     }
 
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) -> io::Result<()> {
-        match item.node {
-            ast::NestedMetaItemKind::MetaItem(ref mi) => {
+        match item {
+            ast::NestedMetaItem::MetaItem(ref mi) => {
                 self.print_meta_item(mi)
             },
-            ast::NestedMetaItemKind::Literal(ref lit) => {
+            ast::NestedMetaItem::Literal(ref lit) => {
                 self.print_literal(lit)
             }
         }

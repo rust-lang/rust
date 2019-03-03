@@ -2061,7 +2061,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
             if incomplete_features.iter().any(|f| *f == name) {
                 span_handler.struct_span_warn(
-                    mi.span,
+                    mi.span(),
                     &format!(
                         "the feature `{}` is incomplete and may cause the compiler to crash",
                         name
@@ -2102,7 +2102,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             let name = match mi.ident() {
                 Some(ident) if mi.is_word() => ident.name,
                 _ => {
-                    span_err!(span_handler, mi.span, E0556,
+                    span_err!(span_handler, mi.span(), E0556,
                             "malformed feature, expected just one word");
                     continue
                 }
@@ -2111,7 +2111,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             if let Some(edition) = edition_enabled_features.get(&name) {
                 struct_span_warn!(
                     span_handler,
-                    mi.span,
+                    mi.span(),
                     E0705,
                     "the feature `{}` is included in the Rust {} edition",
                     name,
@@ -2128,32 +2128,32 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
                 if let Some(allowed) = allow_features.as_ref() {
                     if allowed.iter().find(|f| *f == name.as_str()).is_none() {
-                        span_err!(span_handler, mi.span, E0725,
+                        span_err!(span_handler, mi.span(), E0725,
                                   "the feature `{}` is not in the list of allowed features",
                                   name);
                         continue;
                     }
                 }
 
-                set(&mut features, mi.span);
-                features.declared_lang_features.push((name, mi.span, None));
+                set(&mut features, mi.span());
+                features.declared_lang_features.push((name, mi.span(), None));
                 continue
             }
 
             let removed = REMOVED_FEATURES.iter().find(|f| name == f.0);
             let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.0);
             if let Some((.., reason)) = removed.or(stable_removed) {
-                feature_removed(span_handler, mi.span, *reason);
+                feature_removed(span_handler, mi.span(), *reason);
                 continue
             }
 
             if let Some((_, since, ..)) = ACCEPTED_FEATURES.iter().find(|f| name == f.0) {
                 let since = Some(Symbol::intern(since));
-                features.declared_lang_features.push((name, mi.span, since));
+                features.declared_lang_features.push((name, mi.span(), since));
                 continue
             }
 
-            features.declared_lib_features.push((name, mi.span));
+            features.declared_lib_features.push((name, mi.span()));
         }
     }
 

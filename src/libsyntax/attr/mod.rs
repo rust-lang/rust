@@ -13,7 +13,7 @@ pub use StabilityLevel::*;
 
 use crate::ast;
 use crate::ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
-use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned, respan, dummy_spanned};
@@ -64,25 +64,20 @@ pub fn is_known_lint_tool(m_item: Ident) -> bool {
 }
 
 impl NestedMetaItem {
-    /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
+    /// Returns the MetaItem if self is a NestedMetaItem::MetaItem.
     pub fn meta_item(&self) -> Option<&MetaItem> {
-        match self.node {
-            NestedMetaItemKind::MetaItem(ref item) => Some(item),
+        match *self {
+            NestedMetaItem::MetaItem(ref item) => Some(item),
             _ => None
         }
     }
 
-    /// Returns the Lit if self is a NestedMetaItemKind::Literal.
+    /// Returns the Lit if self is a NestedMetaItem::Literal.
     pub fn literal(&self) -> Option<&Lit> {
-        match self.node {
-            NestedMetaItemKind::Literal(ref lit) => Some(lit),
+        match *self {
+            NestedMetaItem::Literal(ref lit) => Some(lit),
             _ => None
         }
-    }
-
-    /// Returns the Span for `self`.
-    pub fn span(&self) -> Span {
-        self.span
     }
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
@@ -191,10 +186,6 @@ impl Attribute {
         self.tokens.is_empty()
     }
 
-    pub fn span(&self) -> Span {
-        self.span
-    }
-
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
@@ -252,8 +243,6 @@ impl MetaItem {
             _ => false,
         }
     }
-
-    pub fn span(&self) -> Span { self.span }
 
     pub fn check_name(&self, name: &str) -> bool {
         self.path == name
@@ -369,7 +358,7 @@ pub fn mk_word_item(ident: Ident) -> MetaItem {
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
-    respan(ident.span, NestedMetaItemKind::MetaItem(mk_word_item(ident)))
+    NestedMetaItem::MetaItem(mk_word_item(ident))
 }
 
 pub fn mk_attr_id() -> AttrId {
@@ -545,7 +534,7 @@ impl MetaItemKind {
                     if i > 0 {
                         tokens.push(TokenTree::Token(span, Token::Comma).into());
                     }
-                    item.node.tokens().append_to_tree_and_joint_vec(&mut tokens);
+                    item.tokens().append_to_tree_and_joint_vec(&mut tokens);
                 }
                 TokenTree::Delimited(
                     DelimSpan::from_single(span),
@@ -579,8 +568,8 @@ impl MetaItemKind {
         let mut tokens = delimited.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
-            let item = NestedMetaItemKind::from_tokens(&mut tokens)?;
-            result.push(respan(item.span(), item));
+            let item = NestedMetaItem::from_tokens(&mut tokens)?;
+            result.push(item);
             match tokens.next() {
                 None | Some(TokenTree::Token(_, Token::Comma)) => {}
                 _ => return None,
@@ -590,32 +579,32 @@ impl MetaItemKind {
     }
 }
 
-impl NestedMetaItemKind {
-    fn span(&self) -> Span {
+impl NestedMetaItem {
+    pub fn span(&self) -> Span {
         match *self {
-            NestedMetaItemKind::MetaItem(ref item) => item.span,
-            NestedMetaItemKind::Literal(ref lit) => lit.span,
+            NestedMetaItem::MetaItem(ref item) => item.span,
+            NestedMetaItem::Literal(ref lit) => lit.span,
         }
     }
 
     fn tokens(&self) -> TokenStream {
         match *self {
-            NestedMetaItemKind::MetaItem(ref item) => item.tokens(),
-            NestedMetaItemKind::Literal(ref lit) => lit.tokens(),
+            NestedMetaItem::MetaItem(ref item) => item.tokens(),
+            NestedMetaItem::Literal(ref lit) => lit.tokens(),
         }
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItemKind>
+    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItem>
         where I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
             if let Some(node) = LitKind::from_token(token) {
                 tokens.next();
-                return Some(NestedMetaItemKind::Literal(respan(span, node)));
+                return Some(NestedMetaItem::Literal(respan(span, node)));
             }
         }
 
-        MetaItem::from_tokens(tokens).map(NestedMetaItemKind::MetaItem)
+        MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
     }
 }
 

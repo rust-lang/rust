@@ -104,7 +104,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                     value = Some(ident.name),
                 _ =>
                     // FIXME better-encapsulate meta_item (don't directly access `node`)
-                    span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item.node),
+                    span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item),
             }
         }
         value

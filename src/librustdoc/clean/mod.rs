@@ -777,15 +777,15 @@ pub struct Attributes {
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use syntax::ast::NestedMetaItemKind::MetaItem;
+        use syntax::ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.node {
             if nmis.len() == 1 {
-                if let MetaItem(ref cfg_mi) = nmis[0].node {
+                if let MetaItem(ref cfg_mi) = nmis[0] {
                     if cfg_mi.check_name("cfg") {
                         if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.node {
                             if cfg_nmis.len() == 1 {
-                                if let MetaItem(ref content_mi) = cfg_nmis[0].node {
+                                if let MetaItem(ref content_mi) = cfg_nmis[0] {
                                     return Some(content_mi);
                                 }
                             }

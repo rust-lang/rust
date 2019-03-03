@@ -813,12 +813,12 @@ impl<'a> Resolver<'a> {
                         MetaItemKind::List(nested_metas) => for nested_meta in nested_metas {
                             match nested_meta.ident() {
                                 Some(ident) if nested_meta.is_word() => single_imports.push(ident),
-                                _ => ill_formed(nested_meta.span),
+                                _ => ill_formed(nested_meta.span()),
                             }
                         }
                         MetaItemKind::NameValue(..) => ill_formed(meta.span),
                     }
-                    None => ill_formed(attr.span()),
+                    None => ill_formed(attr.span),
                 }
             }
         }

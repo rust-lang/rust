@@ -258,7 +258,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let meta_item = match li.meta_item() {
                     Some(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
-                        let mut err = bad_attr(li.span);
+                        let mut err = bad_attr(li.span());
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
                                 if item.path == "reason" {
@@ -290,7 +290,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span, reason);
+                        let src = LintSource::Node(name, li.span(), reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -301,7 +301,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintSource::Node(
-                                    Symbol::intern(complete_name), li.span, reason
+                                    Symbol::intern(complete_name), li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -323,18 +323,18 @@ impl<'a> LintLevelsBuilder<'a> {
                                     lint,
                                     lvl,
                                     src,
-                                    Some(li.span.into()),
+                                    Some(li.span().into()),
                                     &msg,
                                 );
                                 err.span_suggestion(
-                                    li.span,
+                                    li.span(),
                                     "change it to",
                                     new_lint_name.to_string(),
                                     Applicability::MachineApplicable,
                                 ).emit();
 
                                 let src = LintSource::Node(
-                                    Symbol::intern(&new_lint_name), li.span, reason
+                                    Symbol::intern(&new_lint_name), li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -361,11 +361,11 @@ impl<'a> LintLevelsBuilder<'a> {
                                                               lint,
                                                               level,
                                                               src,
-                                                              Some(li.span.into()),
+                                                              Some(li.span().into()),
                                                               &msg);
                         if let Some(new_name) = renamed {
                             err.span_suggestion(
-                                li.span,
+                                li.span(),
                                 "use the new name",
                                 new_name,
                                 Applicability::MachineApplicable
@@ -384,12 +384,12 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 lint,
                                                 level,
                                                 src,
-                                                Some(li.span.into()),
+                                                Some(li.span().into()),
                                                 &msg);
 
                         if let Some(suggestion) = suggestion {
                             db.span_suggestion(
-                                li.span,
+                                li.span(),
                                 "did you mean",
                                 suggestion.to_string(),
                                 Applicability::MachineApplicable,

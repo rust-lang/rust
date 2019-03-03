@@ -1520,23 +1520,23 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             self.cx.source_map().new_source_file(filename.into(), src);
 
                             let include_info = vec![
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::from_str("file"),
                                         dummy_spanned(file),
                                     ),
-                                )),
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                ),
+                                ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::from_str("contents"),
                                         dummy_spanned(src_interned),
                                     ),
-                                )),
+                                ),
                             ];
 
                             let include_ident = Ident::from_str("include");
                             let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
-                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
+                            items.push(ast::NestedMetaItem::MetaItem(item));
                         }
                         Err(e) => {
                             let lit = it
@@ -1569,7 +1569,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     }
                 } else {
                     let mut err = self.cx.struct_span_err(
-                        it.span,
+                        it.span(),
                         &format!("expected path to external documentation"),
                     );
 
@@ -1590,7 +1590,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     };
 
                     err.span_suggestion(
-                        it.span,
+                        it.span(),
                         "provide a file path with `=`",
                         format!("include = \"{}\"", path),
                         applicability,
