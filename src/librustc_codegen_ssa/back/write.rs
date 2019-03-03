@@ -19,6 +19,7 @@ use rustc::util::time_graph::{self, TimeGraph, Timeline};
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
+use rustc::util::profiling::SelfProfiler;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
@@ -29,6 +30,7 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use jobserver::{Client, Acquired};
+use parking_lot::Mutex as PlMutex;
 
 use std::any::Any;
 use std::fs;
@@ -201,6 +203,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub backend: B,
     pub time_passes: bool,
+    pub profiler: Option<Arc<PlMutex<SelfProfiler>>>,
     pub lto: Lto,
     pub no_landing_pads: bool,
     pub save_temps: bool,
@@ -252,6 +255,26 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
             ModuleKind::Regular => &self.regular_module_config,
             ModuleKind::Metadata => &self.metadata_module_config,
             ModuleKind::Allocator => &self.allocator_module_config,
+        }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn profiler_active<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+        match &self.profiler {
+            None => bug!("profiler_active() called but there was no profiler active"),
+            Some(profiler) => {
+                let mut p = profiler.lock();
+
+                f(&mut p);
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn profile<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+        if unlikely!(self.profiler.is_some()) {
+            self.profiler_active(f)
         }
     }
 }
@@ -1033,6 +1056,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
         time_passes: sess.time_passes(),
+        profiler: sess.self_profiling.clone(),
         exported_symbols,
         plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
