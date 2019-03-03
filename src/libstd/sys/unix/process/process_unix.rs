@@ -1,4 +1,5 @@
 use crate::io::{self, Error, ErrorKind};
+use crate::mem;
 use crate::ptr;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -35,17 +36,16 @@ impl Command {
         // accessing the `environ` pointer ourselves). Make sure no other thread
         // is accessing the environment when we do the fork itself.
         //
-        // Note that as soon as we're done with the fork there's no need to hold
-        // a lock any more because the parent won't do anything and the child is
-        // in its own process.
-        let result = unsafe {
-            let _env_lock = sys::os::env_lock();
-            cvt(libc::fork())?
-        };
-
+        // Note that as soon as we're done with the fork the parent can stop
+        // holding the lock, because it won't do anything. And the child must
+        // forget it, keeping it locked. This is because parking_lot is
+        // not fork safe and the child process must not lock or unlock any
+        // locks before it gets to libc::execvp.
         let pid = unsafe {
-            match result {
+            let _env_lock = sys::os::env_lock();
+            match cvt(libc::fork())? {
                 0 => {
+                    mem::forget(_env_lock);
                     drop(input);
                     let err = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;

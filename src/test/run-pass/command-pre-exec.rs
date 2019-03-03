@@ -17,8 +17,7 @@ fn main() {
     if let Some(arg) = env::args().nth(1) {
         match &arg[..] {
             "test1" => println!("hello2"),
-            "test2" => assert_eq!(env::var("FOO").unwrap(), "BAR"),
-            "test3" => assert_eq!(env::current_dir().unwrap().to_str().unwrap(), "/"),
+            "test2" => assert_eq!(env::current_dir().unwrap().to_str().unwrap(), "/"),
             "empty" => {}
             _ => panic!("unknown argument: {}", arg),
         }
@@ -44,20 +43,6 @@ fn main() {
     let output = unsafe {
         Command::new(&me)
             .arg("test2")
-            .pre_exec(|| {
-                env::set_var("FOO", "BAR");
-                Ok(())
-            })
-            .output()
-            .unwrap()
-    };
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
-
-    let output = unsafe {
-        Command::new(&me)
-            .arg("test3")
             .pre_exec(|| {
                 env::set_current_dir("/").unwrap();
                 Ok(())
