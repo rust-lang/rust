@@ -66,6 +66,8 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     // Step 2. Check fn sig for u128 and i128 and replace those functions with a trap.
     {
+        // FIXME implement u128 and i128 support
+
         // Step 2a. Check sig for u128 and i128
         let fn_ty = instance.ty(tcx);
         let fn_sig = crate::abi::ty_fn_sig(tcx, fn_ty);
