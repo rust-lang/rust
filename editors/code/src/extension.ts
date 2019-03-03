@@ -52,7 +52,6 @@ export function activate(context: vscode.ExtensionContext) {
     registerCommand('rust-analyzer.collectGarbage', () =>
         Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null)
     );
-    registerCommand('rust-analyzer.syntaxTree', commands.syntaxTree.handle);
     registerCommand(
         'rust-analyzer.extendSelection',
         commands.extendSelection.handle
@@ -107,6 +106,11 @@ export function activate(context: vscode.ExtensionContext) {
             'rust-analyzer',
             textDocumentContentProvider
         )
+    );
+
+    registerCommand(
+        'rust-analyzer.syntaxTree',
+        commands.syntaxTree.createHandle(textDocumentContentProvider)
     );
 
     vscode.workspace.onDidChangeTextDocument(

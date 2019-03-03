@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TextDocumentIdentifier } from 'vscode-languageclient';
+import { Range, TextDocumentIdentifier } from 'vscode-languageclient';
 
 import { Server } from '../server';
 
@@ -17,8 +17,21 @@ export class TextDocumentContentProvider
         if (editor == null) {
             return '';
         }
+
+        let range: Range | undefined;
+
+        // When the range based query is enabled we take the range of the selection
+        if (uri.query === 'range=true') {
+            range = editor.selection.isEmpty
+                ? undefined
+                : Server.client.code2ProtocolConverter.asRange(
+                      editor.selection
+                  );
+        }
+
         const request: SyntaxTreeParams = {
-            textDocument: { uri: editor.document.uri.toString() }
+            textDocument: { uri: editor.document.uri.toString() },
+            range
         };
         return Server.client.sendRequest<SyntaxTreeResult>(
             'rust-analyzer/syntaxTree',
@@ -33,6 +46,7 @@ export class TextDocumentContentProvider
 
 interface SyntaxTreeParams {
     textDocument: TextDocumentIdentifier;
+    range?: Range;
 }
 
 type SyntaxTreeResult = string;
@@ -40,11 +54,23 @@ type SyntaxTreeResult = string;
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export async function handle() {
-    const document = await vscode.workspace.openTextDocument(syntaxTreeUri);
-    return vscode.window.showTextDocument(
-        document,
-        vscode.ViewColumn.Two,
-        true
-    );
+export function createHandle(provider: TextDocumentContentProvider) {
+    return async () => {
+        const editor = vscode.window.activeTextEditor;
+        const rangeEnabled = !!(editor && !editor.selection.isEmpty);
+
+        const uri = rangeEnabled
+            ? vscode.Uri.parse(`${syntaxTreeUri.toString()}?range=true`)
+            : syntaxTreeUri;
+
+        const document = await vscode.workspace.openTextDocument(uri);
+
+        provider.eventEmitter.fire(uri);
+
+        return vscode.window.showTextDocument(
+            document,
+            vscode.ViewColumn.Two,
+            true
+        );
+    };
 }
