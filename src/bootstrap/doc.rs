@@ -883,7 +883,11 @@ impl Step for ErrorIndex {
         builder.info(&format!("Documenting error index ({})", target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let mut index = builder.tool_cmd(Tool::ErrorIndex);
+        let compiler = builder.compiler(2, builder.config.build);
+        let mut index = tool::ErrorIndex::command(
+            builder,
+            compiler,
+        );
         index.arg("html");
         index.arg(out.join("error-index.html"));
 

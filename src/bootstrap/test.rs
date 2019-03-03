@@ -414,7 +414,6 @@ impl Step for Miri {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
-    stage: u32,
     host: Interned<String>,
 }
 
@@ -427,16 +426,14 @@ impl Step for CompiletestTest {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(CompiletestTest {
-            stage: run.builder.top_stage,
             host: run.target,
         });
     }
 
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(0, host);
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
@@ -1426,7 +1423,10 @@ impl Step for ErrorIndex {
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let mut tool = builder.tool_cmd(Tool::ErrorIndex);
+        let mut tool = tool::ErrorIndex::command(
+            builder,
+            builder.compiler(compiler.stage, builder.config.build),
+        );
         tool.arg("markdown")
             .arg(&output)
             .env("CFG_BUILD", &builder.config.build)
