@@ -1510,9 +1510,13 @@ impl<'a> Parser<'a> {
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_trait_item_(at_end, attrs)
+            let item = this.parse_trait_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
@@ -6475,9 +6479,13 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_impl_item_(at_end, attrs)
+            let item = this.parse_impl_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
@@ -7797,12 +7805,13 @@ impl<'a> Parser<'a> {
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
+        let mut unclosed_delims = vec![];
         let (ret, tokens) = self.collect_tokens(|this| {
             let item = this.parse_item_implementation(attrs, macros_allowed, attributes_allowed);
-            let diag = this.diagnostic();
-            emit_unclosed_delims(&mut this.unclosed_delims, diag);
+            unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // Once we've parsed an item and recorded the tokens we got while
         // parsing we may want to store `tokens` into the item we're about to

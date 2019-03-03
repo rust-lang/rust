@@ -14,10 +14,10 @@ pub mod raw {
             //~^ ERROR cannot find function `is_directory`
             callback(path.as_ref();
             //~^ ERROR expected one of
-            //~| ERROR this function takes 1 parameter but 2 parameters were supplied
             fs::create_dir_all(path.as_ref()).map(|()| true)
+            //~^ ERROR mismatched types
         } else {
-            //~^ ERROR incorrect close delimiter: `}`
+            //~^ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
             Ok(false);
         }
 
