@@ -32,7 +32,9 @@ pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
 
 pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
-    let res = world.analysis().syntax_tree(id);
+    let line_index = world.analysis().file_line_index(id);
+    let text_range = params.range.map(|p| p.conv_with(&line_index));
+    let res = world.analysis().syntax_tree(id, text_range);
     Ok(res)
 }
 

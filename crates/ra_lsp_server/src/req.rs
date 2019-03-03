@@ -39,6 +39,7 @@ impl Request for SyntaxTree {
 #[serde(rename_all = "camelCase")]
 pub struct SyntaxTreeParams {
     pub text_document: TextDocumentIdentifier,
+    pub range: Option<Range>,
 }
 
 pub enum ExtendSelection {}

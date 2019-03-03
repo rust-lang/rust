@@ -38,7 +38,7 @@ mod marks;
 
 use std::sync::Arc;
 
-use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit, AstNode};
+use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit, AstNode, algo};
 use ra_text_edit::TextEdit;
 use ra_db::{
     SourceDatabase, CheckCanceled,
@@ -245,8 +245,14 @@ impl Analysis {
 
     /// Returns a syntax tree represented as `String`, for debug purposes.
     // FIXME: use a better name here.
-    pub fn syntax_tree(&self, file_id: FileId) -> String {
-        self.db.parse(file_id).syntax().debug_dump()
+    pub fn syntax_tree(&self, file_id: FileId, text_range: Option<TextRange>) -> String {
+        if let Some(text_range) = text_range {
+            let file = self.db.parse(file_id);
+            let node = algo::find_covering_node(file.syntax(), text_range);
+            node.debug_dump()
+        } else {
+            self.db.parse(file_id).syntax().debug_dump()
+        }
     }
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
