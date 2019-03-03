@@ -166,11 +166,10 @@ use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
-use crate::sync::{Mutex, Condvar, Arc};
+use crate::sync::{Mutex, Condvar, Arc, RawMutex};
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread;
 use crate::sys_common::{AsInner, IntoInner};
@@ -1043,14 +1042,11 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // We never call `GUARD.init()`, so it is UB to attempt to
-        // acquire this mutex reentrantly!
-        static GUARD: mutex::Mutex = mutex::Mutex::new();
+        static GUARD: RawMutex = RawMutex::new();
         static mut COUNTER: u64 = 1;
 
+        let _guard = GUARD.lock();
         unsafe {
-            let _guard = GUARD.lock();
-
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == crate::u64::MAX {
