@@ -14,8 +14,12 @@ thread_local! {
 }
 
 // Just public, because of the unimpl macro
+#[doc(hidden)]
 pub struct NonFatal(pub String);
 
+/// Use when something in the current function is unimplemented.
+///
+/// This will emit an error and continue codegen at a different function.
 pub macro unimpl($($tt:tt)*) {
     panic!(NonFatal(format!($($tt)*)));
 }
