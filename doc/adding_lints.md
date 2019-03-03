@@ -23,9 +23,10 @@ because that's clearly a non-descriptive name.
 
 ### Setup
 
-Clippy depends on the current git master version of rustc, which can change rapidly. Make sure you're
-working near rust-clippy's master, and use the `setup-toolchain.sh` script to configure the appropriate
-toolchain for this directory.
+When working on Clippy, you will need the current git master version of rustc,
+which can change rapidly. Make sure you're working near rust-clippy's master,
+and use the `setup-toolchain.sh` script to configure the appropriate toolchain
+for the Clippy directory.
 
 ### Testing
 
