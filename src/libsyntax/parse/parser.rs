@@ -262,7 +262,8 @@ pub struct Parser<'a> {
 impl<'a> Drop for Parser<'a> {
     fn drop(&mut self) {
         if !self.unclosed_delims.is_empty() {
-            panic!("unclosed delimiter errors not emitted");
+            let diag = self.diagnostic();
+            emit_unclosed_delims(&mut self.unclosed_delims, diag);
         }
     }
 }
@@ -8567,8 +8568,6 @@ impl<'a> Parser<'a> {
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
         });
-        let diag = self.diagnostic();
-        emit_unclosed_delims(&mut self.unclosed_delims, diag);
         krate
     }
 
