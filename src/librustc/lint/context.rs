@@ -39,6 +39,7 @@ use errors::DiagnosticBuilder;
 use crate::hir;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::hir::intravisit as hir_visit;
+use crate::hir::intravisit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 
@@ -1243,6 +1244,11 @@ pub fn lint_mod<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
 
     let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
     cx.process_mod(module, span, hir_id);
+
+    // Visit the crate attributes
+    if hir_id == hir::CRATE_HIR_ID {
+        walk_list!(cx, visit_attribute, cx.tcx.hir().attrs_by_hir_id(hir::CRATE_HIR_ID));
+    }
 
     // Put the lint store levels and passes back in the session.
     let passes = cx.lint_sess.passes;
