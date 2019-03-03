@@ -49,9 +49,8 @@
 #![allow(dead_code)] // sys isn't exported yet
 
 use crate::ptr;
-use crate::sync::atomic::{self, AtomicUsize, Ordering};
+use crate::sync::{RawMutex, atomic::{self, AtomicUsize, Ordering}};
 use crate::sys::thread_local as imp;
-use crate::sys_common::mutex::Mutex;
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -151,9 +150,7 @@ impl StaticKey {
         // Additionally a 0-index of a tls key hasn't been seen on windows, so
         // we just simplify the whole branch.
         if imp::requires_synchronized_create() {
-            // We never call `INIT_LOCK.init()`, so it is UB to attempt to
-            // acquire this mutex reentrantly!
-            static INIT_LOCK: Mutex = Mutex::new();
+            static INIT_LOCK: RawMutex = RawMutex::new();
             let _guard = INIT_LOCK.lock();
             let mut key = self.key.load(Ordering::SeqCst);
             if key == 0 {
