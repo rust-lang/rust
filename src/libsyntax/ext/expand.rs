@@ -601,7 +601,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 res
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
+                self.cx.span_err(attr.span, &format!("`{}` is a derive macro", attr.path));
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(attr.span)
             }
@@ -822,7 +822,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(path.span, &format!("`{}` is a derive mode", path));
+                self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
