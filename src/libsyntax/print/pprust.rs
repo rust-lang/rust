@@ -2814,9 +2814,6 @@ impl<'a> State<'a> {
         -> io::Result<()> {
         self.popen()?;
         self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false))?;
-        if decl.c_variadic {
-            self.s.word(", ...")?;
-        }
         self.pclose()?;
 
         self.print_fn_output(decl)
