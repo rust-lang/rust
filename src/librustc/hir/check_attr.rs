@@ -233,7 +233,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 _ => continue,
             };
             self.emit_repr_error(
-                hint.span,
+                hint.span(),
                 item.span,
                 &format!("attribute should be applied to {}", allowed_targets),
                 &format!("not {} {}", article, allowed_targets),
@@ -242,7 +242,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
         // Just point at all repr hints if there are any incompatibilities.
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
-        let hint_spans = hints.iter().map(|hint| hint.span);
+        let hint_spans = hints.iter().map(|hint| hint.span());
 
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {

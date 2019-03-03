@@ -8,7 +8,7 @@ use std::fmt::{self, Write};
 use std::ops;
 
 use syntax::symbol::Symbol;
-use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, LitKind};
+use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
 use syntax::parse::ParseSess;
 use syntax::feature_gate::Features;
 
@@ -41,9 +41,9 @@ pub struct InvalidCfgError {
 impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
     fn parse_nested(nested_cfg: &NestedMetaItem) -> Result<Cfg, InvalidCfgError> {
-        match nested_cfg.node {
-            NestedMetaItemKind::MetaItem(ref cfg) => Cfg::parse(cfg),
-            NestedMetaItemKind::Literal(ref lit) => Err(InvalidCfgError {
+        match nested_cfg {
+            NestedMetaItem::MetaItem(ref cfg) => Cfg::parse(cfg),
+            NestedMetaItem::Literal(ref lit) => Err(InvalidCfgError {
                 msg: "unexpected literal",
                 span: lit.span,
             }),
@@ -442,9 +442,9 @@ mod test {
                 path: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
-                        dummy_spanned(NestedMetaItemKind::MetaItem(
+                        NestedMetaItem::MetaItem(
                             dummy_meta_item_word(stringify!($list)),
-                        )),
+                        ),
                     )*
                 ]),
                 span: DUMMY_SP,
@@ -456,7 +456,7 @@ mod test {
                 path: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
-                        dummy_spanned(NestedMetaItemKind::MetaItem($list)),
+                        NestedMetaItem::MetaItem($list),
                     )*
                 ]),
                 span: DUMMY_SP,

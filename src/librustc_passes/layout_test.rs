@@ -86,7 +86,7 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
 
                         _ => {
                             self.tcx.sess.span_err(
-                                meta_item.span,
+                                meta_item.span(),
                                 &format!("unrecognized field name `{}`", name),
                             );
                         }

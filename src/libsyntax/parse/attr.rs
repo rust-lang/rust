@@ -1,6 +1,5 @@
 use crate::attr;
 use crate::ast;
-use crate::source_map::respan;
 use crate::parse::{SeqSep, PResult};
 use crate::parse::token::{self, Nonterminal, DelimToken};
 use crate::parse::parser::{Parser, TokenType, PathStyle};
@@ -272,14 +271,14 @@ impl<'a> Parser<'a> {
 
         match self.parse_unsuffixed_lit() {
             Ok(lit) => {
-                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::Literal(lit)))
+                return Ok(ast::NestedMetaItem::Literal(lit))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }
 
         match self.parse_meta_item() {
             Ok(mi) => {
-                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::MetaItem(mi)))
+                return Ok(ast::NestedMetaItem::MetaItem(mi))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }

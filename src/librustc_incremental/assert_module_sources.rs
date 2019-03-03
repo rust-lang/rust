@@ -153,7 +153,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
                     return value;
                 } else {
                     self.tcx.sess.span_fatal(
-                        item.span,
+                        item.span(),
                         &format!("associated value expected for `{}`", name));
                 }
             }
