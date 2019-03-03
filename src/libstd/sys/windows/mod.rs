@@ -27,7 +27,6 @@ pub mod fs;
 pub mod handle;
 pub mod io;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;

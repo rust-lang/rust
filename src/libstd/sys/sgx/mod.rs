@@ -21,7 +21,6 @@ pub mod fd;
 pub mod fs;
 pub mod io;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod path;

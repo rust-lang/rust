@@ -11,7 +11,6 @@ pub mod cmath;
 pub mod io;
 #[path = "../unix/memchr.rs"]
 pub mod memchr;
-pub mod mutex;
 pub mod os;
 pub mod stack_overflow;
 pub mod stdio;

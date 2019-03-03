@@ -44,12 +44,9 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        #[path = "mutex_atomics.rs"]
-        pub mod mutex;
         #[path = "thread_local_atomics.rs"]
         pub mod thread_local;
     } else {
-        pub mod mutex;
         pub mod thread_local;
     }
 }
