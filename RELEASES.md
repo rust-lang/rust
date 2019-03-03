@@ -4,10 +4,10 @@ Version 1.33.0 (2019-02-28)
 Language
 --------
 - [You can now use the `cfg(target_vendor)` attribute.][57465] E.g.
-  `#[cfg(target_vendor="linux")] fn main() { println!("Hello Linux!"); }`
+  `#[cfg(target_vendor="apple")] fn main() { println!("Hello Apple!"); }`
 - [Integer patterns such as in a match expression can now be exhaustive.][56362]
   E.g. You can have match statement on a `u8` that covers `0..=255` and
-  you would no longer be required to have a `_ => unreachable!()` case. 
+  you would no longer be required to have a `_ => unreachable!()` case.
 - [You can now have multiple patterns in `if let` and `while let`
   expressions.][57532] You can do this with the same syntax as a `match`
   expression. E.g.
@@ -51,8 +51,7 @@ Language
   // Allowed as there is only one `Read` in the module.
   pub trait Read {}
   ```
-- [`extern` functions will now abort by default when panicking.][55982]
-  This was previously undefined behaviour.
+- [You may now use `Rc`, `Arc`, and `Pin` as method receivers][56805].
 
 Compiler
 --------
@@ -109,27 +108,30 @@ Compatibility Notes
   are now deprecated in the standard library, and their usage will now produce a warning.
   Please use the `str::{trim_start, trim_end, trim_start_matches, trim_end_matches}`
   methods instead.
+- The `Error::cause` method has been deprecated in favor of `Error::source` which supports
+  downcasting.
 
-[57615]: https://github.com/rust-lang/rust/pull/57615/
-[57465]: https://github.com/rust-lang/rust/pull/57465/
-[57532]: https://github.com/rust-lang/rust/pull/57532/
-[57535]: https://github.com/rust-lang/rust/pull/57535/
-[57566]: https://github.com/rust-lang/rust/pull/57566/
+[55982]: https://github.com/rust-lang/rust/pull/55982/
+[56303]: https://github.com/rust-lang/rust/pull/56303/
+[56351]: https://github.com/rust-lang/rust/pull/56351/
+[56362]: https://github.com/rust-lang/rust/pull/56362
+[56642]: https://github.com/rust-lang/rust/pull/56642/
+[56769]: https://github.com/rust-lang/rust/pull/56769/
+[56805]: https://github.com/rust-lang/rust/pull/56805
+[56947]: https://github.com/rust-lang/rust/pull/56947/
+[57049]: https://github.com/rust-lang/rust/pull/57049/
+[57067]: https://github.com/rust-lang/rust/pull/57067/
+[57105]: https://github.com/rust-lang/rust/pull/57105
 [57130]: https://github.com/rust-lang/rust/pull/57130/
 [57167]: https://github.com/rust-lang/rust/pull/57167/
 [57175]: https://github.com/rust-lang/rust/pull/57175/
 [57234]: https://github.com/rust-lang/rust/pull/57234/
 [57332]: https://github.com/rust-lang/rust/pull/57332/
-[56947]: https://github.com/rust-lang/rust/pull/56947/
-[57049]: https://github.com/rust-lang/rust/pull/57049/
-[57067]: https://github.com/rust-lang/rust/pull/57067/
-[56769]: https://github.com/rust-lang/rust/pull/56769/
-[56642]: https://github.com/rust-lang/rust/pull/56642/
-[56303]: https://github.com/rust-lang/rust/pull/56303/
-[56351]: https://github.com/rust-lang/rust/pull/56351/
-[55982]: https://github.com/rust-lang/rust/pull/55982/
-[56362]: https://github.com/rust-lang/rust/pull/56362
-[57105]: https://github.com/rust-lang/rust/pull/57105
+[57465]: https://github.com/rust-lang/rust/pull/57465/
+[57532]: https://github.com/rust-lang/rust/pull/57532/
+[57535]: https://github.com/rust-lang/rust/pull/57535/
+[57566]: https://github.com/rust-lang/rust/pull/57566/
+[57615]: https://github.com/rust-lang/rust/pull/57615/
 [cargo/6484]: https://github.com/rust-lang/cargo/pull/6484/
 [`unix::FileExt::read_exact_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.read_exact_at
 [`unix::FileExt::write_all_at`]: https://doc.rust-lang.org/std/os/unix/fs/trait.FileExt.html#method.write_all_at
@@ -170,7 +172,7 @@ Language
 - [You can now match against literals in macros with the `literal`
   specifier.][56072] This will match against a literal of any type.
   E.g. `1`, `'A'`, `"Hello World"`
-- [Self can now be used as a constructor and pattern for unit and tuple structs.][56365] E.g. 
+- [Self can now be used as a constructor and pattern for unit and tuple structs.][56365] E.g.
   ```rust
   struct Point(i32, i32);
 
@@ -460,7 +462,7 @@ Version 1.31.0 (2018-12-06)
 
 Language
 --------
-- 🎉 [This version marks the release of the 2018 edition of Rust.][54057] 🎉 
+- 🎉 [This version marks the release of the 2018 edition of Rust.][54057] 🎉
 - [New lifetime elision rules now allow for eliding lifetimes in functions and
   impl headers.][54778] E.g. `impl<'a> Reader for BufReader<'a> {}` can now be
   `impl Reader for BufReader<'_> {}`. Lifetimes are still required to be defined
