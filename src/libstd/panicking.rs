@@ -7,13 +7,9 @@
 //! * Executing a panic up to doing the actual implementation
 //! * Shims around "try"
 
-use core::panic::BoxMeUp;
-use core::panic::{PanicInfo, Location};
-
-use crate::io::prelude::*;
+use core::panic::{BoxMeUp, PanicInfo, Location};
 
 use crate::any::Any;
-use crate::cell::RefCell;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -25,11 +21,12 @@ use crate::sys_common::thread_info;
 use crate::sys_common::util;
 use crate::thread;
 
-thread_local! {
-    pub static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
-        RefCell::new(None)
-    }
-}
+#[cfg(not(test))]
+use crate::io::set_panic;
+// make sure to use the stderr output configured
+// by libtest in the real copy of std
+#[cfg(test)]
+use realstd::io::set_panic;
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -205,12 +202,11 @@ fn default_hook(info: &PanicInfo) {
         }
     };
 
-    if let Some(mut local) = LOCAL_STDERR.with(|s| s.borrow_mut().take()) {
-       write(&mut *local);
-       let mut s = Some(local);
-       LOCAL_STDERR.with(|slot| {
-           *slot.borrow_mut() = s.take();
-       });
+    if let Some(mut local) = set_panic(None) {
+        // NB. In `cfg(test)` this uses the forwarding impl
+        // for `Box<dyn (::realstd::io::Write) + Send>`.
+        write(&mut local);
+        set_panic(Some(local));
     } else if let Some(mut out) = panic_output() {
         write(&mut out);
     }

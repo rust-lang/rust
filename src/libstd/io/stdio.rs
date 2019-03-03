@@ -1,3 +1,5 @@
+#![cfg_attr(test, allow(unused))]
+
 use crate::io::prelude::*;
 
 use crate::cell::RefCell;
@@ -12,6 +14,13 @@ use crate::thread::LocalKey;
 /// Stdout used by print! and println! macros
 thread_local! {
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
+        RefCell::new(None)
+    }
+}
+
+/// Stderr used by eprint! and eprintln! macros, and panics
+thread_local! {
+    static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
@@ -668,7 +677,6 @@ impl fmt::Debug for StderrLock<'_> {
            issue = "0")]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
-    use crate::panicking::LOCAL_STDERR;
     use crate::mem;
     LOCAL_STDERR.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
@@ -740,6 +748,7 @@ where
            reason = "implementation detail which may disappear or be replaced at any time",
            issue = "0")]
 #[doc(hidden)]
+#[cfg(not(test))]
 pub fn _print(args: fmt::Arguments) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
@@ -748,10 +757,13 @@ pub fn _print(args: fmt::Arguments) {
            reason = "implementation detail which may disappear or be replaced at any time",
            issue = "0")]
 #[doc(hidden)]
+#[cfg(not(test))]
 pub fn _eprint(args: fmt::Arguments) {
-    use crate::panicking::LOCAL_STDERR;
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
+
+#[cfg(test)]
+pub use realstd::io::{_eprint, _print};
 
 #[cfg(test)]
 mod tests {
