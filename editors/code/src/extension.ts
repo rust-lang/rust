@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { TextDocumentContentProvider } from './commands/syntaxTree';
+import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
@@ -100,21 +100,21 @@ export function activate(context: vscode.ExtensionContext) {
         events.changeActiveTextEditor.handle
     );
 
-    const textDocumentContentProvider = new TextDocumentContentProvider();
+    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
-            textDocumentContentProvider
+            syntaxTreeContentProvider
         )
     );
 
     registerCommand(
         'rust-analyzer.syntaxTree',
-        commands.syntaxTree.createHandle(textDocumentContentProvider)
+        commands.syntaxTree.createHandle(syntaxTreeContentProvider)
     );
 
     vscode.workspace.onDidChangeTextDocument(
-        events.changeTextDocument.createHandler(textDocumentContentProvider),
+        events.changeTextDocument.createHandler(syntaxTreeContentProvider),
         null,
         context.subscriptions
     );

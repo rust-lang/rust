@@ -5,7 +5,7 @@ import { Server } from '../server';
 
 export const syntaxTreeUri = vscode.Uri.parse('rust-analyzer://syntaxtree');
 
-export class TextDocumentContentProvider
+export class SyntaxTreeContentProvider
     implements vscode.TextDocumentContentProvider {
     public eventEmitter = new vscode.EventEmitter<vscode.Uri>();
     public syntaxTree: string = 'Not available';
@@ -54,7 +54,7 @@ type SyntaxTreeResult = string;
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export function createHandle(provider: TextDocumentContentProvider) {
+export function createHandle(provider: SyntaxTreeContentProvider) {
     return async () => {
         const editor = vscode.window.activeTextEditor;
         const rangeEnabled = !!(editor && !editor.selection.isEmpty);
