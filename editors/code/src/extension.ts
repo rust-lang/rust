@@ -94,13 +94,13 @@ export function activate(context: vscode.ExtensionContext) {
             notifications.publishDecorations.handle
         ]
     ];
+    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.handle
+        events.changeActiveTextEditor.makeHandler(syntaxTreeContentProvider)
     );
 
-    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
