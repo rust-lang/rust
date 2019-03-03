@@ -1,3 +1,9 @@
+error: unexpected token: `;`
+  --> $DIR/parser-recovery-2.rs:12:15
+   |
+LL |     let x = y.;  //~ ERROR unexpected token
+   |               ^
+
 error: incorrect close delimiter: `)`
   --> $DIR/parser-recovery-2.rs:8:5
    |
@@ -6,12 +12,6 @@ LL |     fn bar() {
 LL |         let x = foo(); //~ ERROR cannot find function `foo` in this scope
 LL |     ) //~ ERROR incorrect close delimiter: `)`
    |     ^ incorrect close delimiter
-
-error: unexpected token: `;`
-  --> $DIR/parser-recovery-2.rs:12:15
-   |
-LL |     let x = y.;  //~ ERROR unexpected token
-   |               ^
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/parser-recovery-2.rs:7:17
