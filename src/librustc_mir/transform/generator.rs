@@ -592,8 +592,15 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_env = tcx.param_env(def_id);
     let gen = self_arg();
 
-    for block in mir.basic_blocks().indices() {
-        let (target, unwind, source_info) = match mir.basic_blocks()[block].terminator() {
+    let mut elaborator = DropShimElaborator {
+        mir: mir,
+        patch: MirPatch::new(mir),
+        tcx,
+        param_env
+    };
+
+    for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+        let (target, unwind, source_info) = match block_data.terminator() {
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
@@ -604,31 +611,22 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             } if local == gen => (target, unwind, source_info),
             _ => continue,
         };
-        let unwind = if let Some(unwind) = unwind {
-            Unwind::To(unwind)
-        } else {
+        let unwind = if block_data.is_cleanup {
             Unwind::InCleanup
+        } else {
+            Unwind::To(unwind.unwrap_or_else(|| elaborator.patch.resume_block()))
         };
-        let patch = {
-            let mut elaborator = DropShimElaborator {
-                mir: &mir,
-                patch: MirPatch::new(mir),
-                tcx,
-                param_env
-            };
-            elaborate_drop(
-                &mut elaborator,
-                source_info,
-                &Place::Base(PlaceBase::Local(gen)),
-                (),
-                target,
-                unwind,
-                block
-            );
-            elaborator.patch
-        };
-        patch.apply(mir);
+        elaborate_drop(
+            &mut elaborator,
+            source_info,
+            &Place::Base(PlaceBase::Local(gen)),
+            (),
+            target,
+            unwind,
+            block,
+        );
     }
+    elaborator.patch.apply(mir);
 }
 
 fn create_generator_drop_shim<'a, 'tcx>(
