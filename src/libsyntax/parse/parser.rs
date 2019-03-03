@@ -259,6 +259,13 @@ pub struct Parser<'a> {
     last_unexpected_token_span: Option<Span>,
 }
 
+impl<'a> Drop for Parser<'a> {
+    fn drop(&mut self) {
+        if !self.unclosed_delims.is_empty() {
+            panic!("unclosed delimiter errors not emitted");
+        }
+    }
+}
 
 #[derive(Clone)]
 struct TokenCursor {
