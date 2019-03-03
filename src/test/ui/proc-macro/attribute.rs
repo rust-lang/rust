@@ -39,11 +39,11 @@ pub fn foo7(input: TokenStream) -> TokenStream { input }
 pub fn foo8(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(self)]
-//FIXME ERROR: `self` cannot be a name of derive macro
+//~^ ERROR: `self` cannot be a name of derive macro
 pub fn foo9(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(PartialEq)]
-//~^ ERROR: cannot override a built-in #[derive] mode
+//~^ ERROR: cannot override a built-in derive macro
 pub fn foo10(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d11, a)]
@@ -72,5 +72,5 @@ pub fn foo15(input: TokenStream) -> TokenStream { input }
 pub fn foo16(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d17, attributes(self))]
-//FIXME ERROR: `self` cannot be a name of derive helper attribute
+//~^ ERROR: `self` cannot be a name of derive helper attribute
 pub fn foo17(input: TokenStream) -> TokenStream { input }

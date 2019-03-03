@@ -128,9 +128,13 @@ impl<'a> CollectProcMacros<'a> {
             }
         };
 
+        if trait_ident.is_path_segment_keyword() {
+            self.handler.span_err(trait_attr.span(),
+                                  &format!("`{}` cannot be a name of derive macro", trait_ident));
+        }
         if deriving::is_builtin_trait(trait_ident.name) {
             self.handler.span_err(trait_attr.span,
-                                  "cannot override a built-in #[derive] mode");
+                                  "cannot override a built-in derive macro");
         }
 
         let attributes_attr = list.get(1);
@@ -140,8 +144,7 @@ impl<'a> CollectProcMacros<'a> {
             }
             attr.meta_item_list().unwrap_or_else(|| {
                 self.handler.span_err(attr.span(),
-                                      "attribute must be of form: \
-                                       `attributes(foo, bar)`");
+                                      "attribute must be of form: `attributes(foo, bar)`");
                 &[]
             }).into_iter().filter_map(|attr| {
                 let attr = match attr.meta_item() {
@@ -149,7 +152,7 @@ impl<'a> CollectProcMacros<'a> {
                     _ => {
                         self.handler.span_err(attr.span(), "not a meta item");
                         return None;
-                    },
+                    }
                 };
 
                 let ident = match attr.ident() {
@@ -159,6 +162,13 @@ impl<'a> CollectProcMacros<'a> {
                         return None;
                     }
                 };
+                if ident.is_path_segment_keyword() {
+                    self.handler.span_err(
+                        attr.span(),
+                        &format!("`{}` cannot be a name of derive helper attribute", ident),
+                    );
+                }
+
                 Some(ident.name)
             }).collect()
         } else {
