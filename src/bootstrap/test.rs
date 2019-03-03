@@ -177,7 +177,7 @@ impl Step for Cargotest {
             cmd.arg(&builder.initial_cargo)
                 .arg(&out_dir)
                 .env("RUSTC", builder.rustc(compiler))
-                .env("RUSTDOC", builder.rustdoc(compiler.host)),
+                .env("RUSTDOC", builder.rustdoc(compiler)),
         );
     }
 }
@@ -560,7 +560,7 @@ impl Step for RustdocTheme {
                 builder.sysroot_libdir(self.compiler, self.compiler.host),
             )
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
+            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTDOC_CRATE_VERSION", builder.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(linker) = builder.linker(self.compiler.host) {
@@ -995,7 +995,7 @@ impl Step for Compiletest {
             || (mode == "ui" && is_rustdoc_ui)
         {
             cmd.arg("--rustdoc-path")
-                .arg(builder.rustdoc(compiler.host));
+                .arg(builder.rustdoc(compiler));
         }
 
         cmd.arg("--src-base")
@@ -1451,7 +1451,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     }
 
     builder.info(&format!("doc tests for: {}", markdown.display()));
-    let mut cmd = builder.rustdoc_cmd(compiler.host);
+    let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);

@@ -430,7 +430,9 @@ impl Step for RemoteTestServer {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
-    pub host: Interned<String>,
+    /// This should only ever be 0 or 2.
+    /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
+    pub compiler: Compiler,
 }
 
 impl Step for Rustdoc {
@@ -444,12 +446,12 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
-            host: run.host,
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let target_compiler = builder.compiler(builder.top_stage, self.host);
+        let target_compiler = self.compiler;
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");

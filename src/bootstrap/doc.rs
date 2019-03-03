@@ -335,7 +335,7 @@ fn invoke_rustdoc(
     let footer = builder.src.join("src/doc/footer.inc");
     let version_info = out.join("version_info.html");
 
-    let mut cmd = builder.rustdoc_cmd(compiler.host);
+    let mut cmd = builder.rustdoc_cmd(compiler);
 
     let out = out.join("book");
 
@@ -415,7 +415,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc(compiler.host);
+            let rustdoc = builder.rustdoc(compiler);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -425,7 +425,7 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = builder.rustdoc_cmd(compiler.host);
+            let mut cmd = builder.rustdoc_cmd(compiler);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -824,7 +824,7 @@ impl Step for Rustdoc {
         builder.ensure(Rustc { stage, target });
 
         // Build rustdoc.
-        builder.ensure(tool::Rustdoc { host: compiler.host });
+        builder.ensure(tool::Rustdoc { compiler: compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
         let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
