@@ -320,50 +320,69 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
+        use rustc::hir::Mutability::*;
+
         let from_ty = from.layout().ty;
         let to_ty = self.layout().ty;
-        match (&from_ty.sty, &to_ty.sty) {
-            (ty::Ref(_, t, src_mut), ty::Ref(_, u, dest_mut))
-                if (if *dest_mut != crate::rustc::hir::Mutability::MutImmutable
-                    && src_mut != dest_mut
-                {
-                    false
-                } else if t != u {
-                    false
-                } else {
-                    true
-                }) =>
-            {
-                // &mut T -> &T is allowed
-                // &'a T -> &'b T is allowed
-            }
-            (ty::FnPtr(_), ty::FnPtr(_)) => {
-                let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                    ParamEnv::reveal_all(),
-                    &from_ty.fn_sig(fx.tcx),
-                );
-                let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                    ParamEnv::reveal_all(),
-                    &to_ty.fn_sig(fx.tcx),
-                );
-                assert_eq!(
-                    from_sig, to_sig,
-                    "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
-                    from_sig, to_sig, fx,
-                );
-                // fn(&T) -> for<'l> fn(&'l T) is allowed
-            }
-            _ => {
-                assert_eq!(
-                    from_ty,
-                    to_ty,
-                    "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
-                    from_ty.sty,
-                    to_ty.sty,
-                    fx,
-                );
+
+        fn assert_assignable<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
+            match (&from_ty.sty, &to_ty.sty) {
+                (ty::Ref(_, t, MutImmutable), ty::Ref(_, u, MutImmutable))
+                | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutImmutable))
+                | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutMutable)) => {
+                    assert_assignable(fx, t, u);
+                    // &mut T -> &T is allowed
+                    // &'a T -> &'b T is allowed
+                }
+                (ty::Ref(_, _, MutImmutable), ty::Ref(_, _, MutMutable)) => {
+                    panic!("Cant assign value of type {} to place of type {}", from_ty.sty, to_ty.sty)
+                }
+                (ty::FnPtr(_), ty::FnPtr(_)) => {
+                    let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                        ParamEnv::reveal_all(),
+                        &from_ty.fn_sig(fx.tcx),
+                    );
+                    let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                        ParamEnv::reveal_all(),
+                        &to_ty.fn_sig(fx.tcx),
+                    );
+                    assert_eq!(
+                        from_sig, to_sig,
+                        "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                        from_sig, to_sig, fx,
+                    );
+                    // fn(&T) -> for<'l> fn(&'l T) is allowed
+                }
+                (ty::Dynamic(from_traits, _), ty::Dynamic(to_traits, _)) => {
+                    let from_traits = fx.tcx.normalize_erasing_late_bound_regions(
+                        ParamEnv::reveal_all(),
+                        from_traits,
+                    );
+                    let to_traits = fx.tcx.normalize_erasing_late_bound_regions(
+                        ParamEnv::reveal_all(),
+                        to_traits,
+                    );
+                    assert_eq!(
+                        from_traits, to_traits,
+                        "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
+                        from_traits, to_traits, fx,
+                    );
+                    // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
+                }
+                _ => {
+                    assert_eq!(
+                        from_ty,
+                        to_ty,
+                        "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
+                        from_ty.sty,
+                        to_ty.sty,
+                        fx,
+                    );
+                }
             }
         }
+
+        assert_assignable(fx, from_ty, to_ty);
 
         let (addr, dst_layout) = match self {
             CPlace::Var(var, _) => {
