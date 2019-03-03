@@ -1,6 +1,6 @@
 //! Parsing and validation of builtin attributes
 
-use crate::ast::{self, Attribute, MetaItem, NestedMetaItemKind};
+use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
@@ -254,7 +254,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         } else {
                             handle_errors(
                                 sess,
-                                meta.span,
+                                meta.span(),
                                 AttrError::UnsupportedLiteral(
                                     "unsupported literal",
                                     false,
@@ -285,11 +285,11 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                             })
                         }
                         (None, _) => {
-                            handle_errors(sess, attr.span(), AttrError::MissingSince);
+                            handle_errors(sess, attr.span, AttrError::MissingSince);
                             continue
                         }
                         _ => {
-                            span_err!(diagnostic, attr.span(), E0543, "missing 'reason'");
+                            span_err!(diagnostic, attr.span, E0543, "missing 'reason'");
                             continue
                         }
                     }
@@ -305,13 +305,13 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     if let Some(feature) = feature {
                         rustc_const_unstable = Some(feature);
                     } else {
-                        span_err!(diagnostic, attr.span(), E0629, "missing 'feature'");
+                        span_err!(diagnostic, attr.span, E0629, "missing 'feature'");
                         continue
                     }
                 }
                 "unstable" => {
                     if stab.is_some() {
-                        handle_errors(sess, attr.span(), AttrError::MultipleStabilityLevels);
+                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
                     }
 
@@ -327,7 +327,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                 _ => {
                                     handle_errors(
                                         sess,
-                                        meta.span,
+                                        meta.span(),
                                         AttrError::UnknownMetaItem(
                                             mi.path.to_string(),
                                             &["feature", "reason", "issue"]
@@ -339,7 +339,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         } else {
                             handle_errors(
                                 sess,
-                                meta.span,
+                                meta.span(),
                                 AttrError::UnsupportedLiteral(
                                     "unsupported literal",
                                     false,
@@ -358,7 +358,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                         if let Ok(issue) = issue.as_str().parse() {
                                             issue
                                         } else {
-                                            span_err!(diagnostic, attr.span(), E0545,
+                                            span_err!(diagnostic, attr.span, E0545,
                                                       "incorrect 'issue'");
                                             continue
                                         }
@@ -371,26 +371,26 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                             })
                         }
                         (None, _, _) => {
-                            handle_errors(sess, attr.span(), AttrError::MissingFeature);
+                            handle_errors(sess, attr.span, AttrError::MissingFeature);
                             continue
                         }
                         _ => {
-                            span_err!(diagnostic, attr.span(), E0547, "missing 'issue'");
+                            span_err!(diagnostic, attr.span, E0547, "missing 'issue'");
                             continue
                         }
                     }
                 }
                 "stable" => {
                     if stab.is_some() {
-                        handle_errors(sess, attr.span(), AttrError::MultipleStabilityLevels);
+                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
                     }
 
                     let mut feature = None;
                     let mut since = None;
                     for meta in metas {
-                        match &meta.node {
-                            NestedMetaItemKind::MetaItem(mi) => {
+                        match meta {
+                            NestedMetaItem::MetaItem(mi) => {
                                 match mi.ident_str() {
                                     Some("feature") =>
                                         if !get(mi, &mut feature) { continue 'outer },
@@ -399,7 +399,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                     _ => {
                                         handle_errors(
                                             sess,
-                                            meta.span,
+                                            meta.span(),
                                             AttrError::UnknownMetaItem(
                                                 mi.path.to_string(), &["since", "note"],
                                             ),
@@ -408,7 +408,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                     }
                                 }
                             },
-                            NestedMetaItemKind::Literal(lit) => {
+                            NestedMetaItem::Literal(lit) => {
                                 handle_errors(
                                     sess,
                                     lit.span,
@@ -435,11 +435,11 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                             })
                         }
                         (None, _) => {
-                            handle_errors(sess, attr.span(), AttrError::MissingFeature);
+                            handle_errors(sess, attr.span, AttrError::MissingFeature);
                             continue
                         }
                         _ => {
-                            handle_errors(sess, attr.span(), AttrError::MissingSince);
+                            handle_errors(sess, attr.span, AttrError::MissingSince);
                             continue
                         }
                     }
@@ -534,7 +534,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                 if !mi.is_meta_item() {
                     handle_errors(
                         sess,
-                        mi.span,
+                        mi.span(),
                         AttrError::UnsupportedLiteral(
                             "unsupported literal",
                             false
@@ -647,8 +647,8 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 let mut since = None;
                 let mut note = None;
                 for meta in list {
-                    match &meta.node {
-                        NestedMetaItemKind::MetaItem(mi) => {
+                    match meta {
+                        NestedMetaItem::MetaItem(mi) => {
                             match mi.ident_str() {
                                 Some("since") => if !get(mi, &mut since) { continue 'outer },
                                 Some("note") => if !get(mi, &mut note) { continue 'outer },
@@ -663,7 +663,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                 }
                             }
                         }
-                        NestedMetaItemKind::Literal(lit) => {
+                        NestedMetaItem::Literal(lit) => {
                             handle_errors(
                                 sess,
                                 lit.span,
@@ -732,7 +732,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                 if !item.is_meta_item() {
                     handle_errors(
                         sess,
-                        item.span,
+                        item.span(),
                         AttrError::UnsupportedLiteral(
                             "meta item in `repr` must be an identifier",
                             false,
@@ -789,7 +789,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         };
                     }
                     if let Some(literal_error) = literal_error {
-                        span_err!(diagnostic, item.span, E0589,
+                        span_err!(diagnostic, item.span(), E0589,
                                   "invalid `repr(align)` attribute: {}", literal_error);
                     }
                 } else {
@@ -797,12 +797,12 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         if meta_item.check_name("align") {
                             if let MetaItemKind::NameValue(ref value) = meta_item.node {
                                 recognised = true;
-                                let mut err = struct_span_err!(diagnostic, item.span, E0693,
+                                let mut err = struct_span_err!(diagnostic, item.span(), E0693,
                                     "incorrect `repr(align)` attribute format");
                                 match value.node {
                                     ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                                         err.span_suggestion(
-                                            item.span,
+                                            item.span(),
                                             "use parentheses instead",
                                             format!("align({})", int),
                                             Applicability::MachineApplicable
@@ -810,7 +810,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                                     }
                                     ast::LitKind::Str(s, _) => {
                                         err.span_suggestion(
-                                            item.span,
+                                            item.span(),
                                             "use parentheses instead",
                                             format!("align({})", s),
                                             Applicability::MachineApplicable
@@ -825,7 +825,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                 }
                 if !recognised {
                     // Not a word we recognize
-                    span_err!(diagnostic, item.span, E0552,
+                    span_err!(diagnostic, item.span(), E0552,
                               "unrecognized representation hint");
                 }
             }

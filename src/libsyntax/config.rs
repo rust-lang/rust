@@ -181,13 +181,13 @@ impl<'a> StripUnconfigured<'a> {
             if nested_meta_items.is_empty() {
                 return error(meta_item.span, "`cfg` predicate is not specified", "");
             } else if nested_meta_items.len() > 1 {
-                return error(nested_meta_items.last().unwrap().span,
+                return error(nested_meta_items.last().unwrap().span(),
                              "multiple `cfg` predicates are specified", "");
             }
 
             match nested_meta_items[0].meta_item() {
                 Some(meta_item) => attr::cfg_matches(meta_item, self.sess, self.features),
-                None => error(nested_meta_items[0].span,
+                None => error(nested_meta_items[0].span(),
                               "`cfg` predicate key cannot be a literal", ""),
             }
         })

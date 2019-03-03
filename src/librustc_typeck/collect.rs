@@ -2269,7 +2269,7 @@ fn from_target_feature(
         if !item.check_name("enable") {
             let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
                        currently";
-            tcx.sess.span_err(item.span, &msg);
+            tcx.sess.span_err(item.span(), &msg);
             continue;
         }
 
@@ -2279,7 +2279,7 @@ fn from_target_feature(
             None => {
                 let msg = "#[target_feature] attribute must be of the form \
                            #[target_feature(enable = \"..\")]";
-                tcx.sess.span_err(item.span, &msg);
+                tcx.sess.span_err(item.span(), &msg);
                 continue;
             }
         };
@@ -2295,7 +2295,7 @@ fn from_target_feature(
                          this target",
                         feature
                     );
-                    let mut err = tcx.sess.struct_span_err(item.span, &msg);
+                    let mut err = tcx.sess.struct_span_err(item.span(), &msg);
 
                     if feature.starts_with("+") {
                         let valid = whitelist.contains_key(&feature[1..]);
@@ -2330,7 +2330,7 @@ fn from_target_feature(
                 feature_gate::emit_feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.as_ref().unwrap(),
-                    item.span,
+                    item.span(),
                     feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
                 );
@@ -2492,7 +2492,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 } else {
                     span_err!(
                         tcx.sess.diagnostic(),
-                        items[0].span,
+                        items[0].span(),
                         E0535,
                         "invalid argument"
                     );
@@ -2526,7 +2526,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 } else if list_contains_name(&items[..], "speed") {
                     OptimizeAttr::Speed
                 } else {
-                    err(items[0].span, "invalid argument");
+                    err(items[0].span(), "invalid argument");
                     OptimizeAttr::None
                 }
             }
