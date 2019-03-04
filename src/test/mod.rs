@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::Chars;
 
-use crate::config::{Color, Config, EmitMode, FileName, ReportTactic};
+use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
 use crate::formatting::{ReportedErrors, SourceFile};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
@@ -299,6 +299,7 @@ fn stdin_works_with_modified_lines() {
 
     let input = Input::Text(input.to_owned());
     let mut config = Config::default();
+    config.set().newline_style(NewlineStyle::Unix);
     config.set().emit_mode(EmitMode::ModifiedLines);
     let mut buf: Vec<u8> = vec![];
     {
@@ -310,8 +311,7 @@ fn stdin_works_with_modified_lines() {
         };
         assert_eq!(session.errors, errors);
     }
-    let newline = if cfg!(windows) { "\r\n" } else { "\n" };
-    assert_eq!(buf, output.replace('\n', newline).as_bytes());
+    assert_eq!(buf, output.as_bytes());
 }
 
 #[test]
