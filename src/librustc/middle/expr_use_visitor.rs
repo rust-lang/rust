@@ -918,9 +918,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_node_id = self.tcx().hir().hir_to_node_id(closure_expr.hir_id);
-        let closure_def_id = self.tcx().hir().local_def_id(closure_node_id);
-        self.tcx().with_freevars(closure_node_id, |freevars| {
+        let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
+        self.tcx().with_freevars(closure_expr.hir_id, |freevars| {
             for freevar in freevars {
                 let var_hir_id = self.tcx().hir().node_to_hir_id(freevar.var_id());
                 let upvar_id = ty::UpvarId {

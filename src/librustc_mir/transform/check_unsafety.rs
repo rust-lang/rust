@@ -533,8 +533,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
     let param_env = tcx.param_env(def_id);
 
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let (const_context, min_const_fn) = match tcx.hir().body_owner_kind_by_hir_id(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => (tcx.is_const_fn(def_id), tcx.is_min_const_fn(def_id)),
         hir::BodyOwnerKind::Const |

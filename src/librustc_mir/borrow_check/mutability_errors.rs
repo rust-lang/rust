@@ -635,8 +635,8 @@ fn annotate_struct_field(
         if let ty::TyKind::Adt(def, _) = ty.sty {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
-            let node_id = tcx.hir().as_local_node_id(field.did)?;
-            let node = tcx.hir().find(node_id)?;
+            let hir_id = tcx.hir().as_local_hir_id(field.did)?;
+            let node = tcx.hir().find_by_hir_id(hir_id)?;
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {

@@ -1380,10 +1380,10 @@ define_print! {
                         write!(f, "[static generator")?;
                     }
 
-                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
-                        write!(f, "@{:?}", tcx.hir().span(node_id))?;
+                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+                        write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
                         let mut sep = " ";
-                        tcx.with_freevars(node_id, |freevars| {
+                        tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
@@ -1416,14 +1416,14 @@ define_print! {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     write!(f, "[closure")?;
 
-                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
+                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
                         if tcx.sess.opts.debugging_opts.span_free_formats {
-                            write!(f, "@{:?}", node_id)?;
+                            write!(f, "@{:?}", hir_id)?;
                         } else {
-                            write!(f, "@{:?}", tcx.hir().span(node_id))?;
+                            write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
                         }
                         let mut sep = " ";
-                        tcx.with_freevars(node_id, |freevars| {
+                        tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",

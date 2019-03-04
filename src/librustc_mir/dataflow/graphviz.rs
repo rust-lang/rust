@@ -1,6 +1,6 @@
 //! Hook into libgraphviz for rendering dataflow graphs for MIR.
 
-use syntax::ast::NodeId;
+use rustc::hir::HirId;
 use rustc::mir::{BasicBlock, Mir};
 
 use std::fs;
@@ -14,7 +14,7 @@ use super::DebugFormatted;
 
 pub trait MirWithFlowState<'tcx> {
     type BD: BitDenotation<'tcx>;
-    fn node_id(&self) -> NodeId;
+    fn hir_id(&self) -> HirId;
     fn mir(&self) -> &Mir<'tcx>;
     fn flow_state(&self) -> &DataflowState<'tcx, Self::BD>;
 }
@@ -23,7 +23,7 @@ impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
     where BD: BitDenotation<'tcx>
 {
     type BD = BD;
-    fn node_id(&self) -> NodeId { self.node_id }
+    fn hir_id(&self) -> HirId { self.hir_id }
     fn mir(&self) -> &Mir<'tcx> { self.flow_state.mir() }
     fn flow_state(&self) -> &DataflowState<'tcx, Self::BD> { &self.flow_state.flow_state }
 }
@@ -47,8 +47,8 @@ pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     let g = Graph { mbcx, phantom: PhantomData, render_idx };
     let mut v = Vec::new();
     dot::render(&g, &mut v)?;
-    debug!("print_borrowck_graph_to path: {} node_id: {}",
-           path.display(), mbcx.node_id);
+    debug!("print_borrowck_graph_to path: {} hir_id: {}",
+           path.display(), mbcx.hir_id);
     fs::write(path, v)
 }
 
@@ -70,7 +70,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     type Edge = Edge;
     fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new(format!("graph_for_node_{}",
-                             self.mbcx.node_id()))
+                             self.mbcx.hir_id()))
             .unwrap()
     }
 

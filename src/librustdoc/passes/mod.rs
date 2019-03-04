@@ -291,7 +291,7 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
     item: &Item,
     check_missing_code: bool,
 ) {
-    if cx.as_local_node_id(item.def_id).is_none() {
+    if cx.as_local_hir_id(item.def_id).is_none() {
         // If non-local, no need to check anything.
         return;
     }

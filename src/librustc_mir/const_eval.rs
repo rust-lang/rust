@@ -617,7 +617,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if let Some(id) = tcx.hir().as_local_node_id(def_id) {
+    if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
@@ -625,7 +625,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             return Err(ErrorHandled::Reported)
         }
 
-        if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(id) {
+        if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind_by_hir_id(id) {
             tcx.mir_const_qualif(def_id);
         }
 

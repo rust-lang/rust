@@ -5,7 +5,7 @@ pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
-use crate::hir::Node;
+use crate::hir::{HirId, Node};
 use crate::hir::def::{Def, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir::map::DefPathData;
@@ -2726,8 +2726,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssociatedItem> {
-        let is_associated_item = if let Some(node_id) = self.hir().as_local_node_id(def_id) {
-            match self.hir().get(node_id) {
+        let is_associated_item = if let Some(hir_id) = self.hir().as_local_hir_id(def_id) {
+            match self.hir().get_by_hir_id(hir_id) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -3048,10 +3048,10 @@ impl Iterator for AssociatedItemsIterator<'_, '_, '_> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
+    pub fn with_freevars<T, F>(self, fid: HirId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {
-        let def_id = self.hir().local_def_id(fid);
+        let def_id = self.hir().local_def_id_from_hir_id(fid);
         match self.freevars(def_id) {
             None => f(&[]),
             Some(d) => f(&d),
@@ -3163,8 +3163,8 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 
 /// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefId> {
-    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        if let Node::Item(item) = tcx.hir().get(node_id) {
+    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+        if let Node::Item(item) = tcx.hir().get_by_hir_id(hir_id) {
             if let hir::ItemKind::Existential(ref exist_ty) = item.node {
                 return exist_ty.impl_trait_fn;
             }

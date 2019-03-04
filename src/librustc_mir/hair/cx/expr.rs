@@ -530,8 +530,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let expr_node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
-            let upvars = cx.tcx.with_freevars(expr_node_id, |freevars| {
+            let upvars = cx.tcx.with_freevars(expr.hir_id, |freevars| {
                 freevars.iter()
                     .zip(substs.upvar_tys(def_id, cx.tcx))
                     .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))

@@ -593,8 +593,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
         let hir_id_root = if def_id.is_local() {
-            let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-            let hir_id = tcx.hir().definitions().node_to_hir_id(node_id);
+            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
             DefId::local(hir_id.owner)
         } else {
             def_id
@@ -619,8 +618,8 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
-        let item_id = tcx.hir().as_local_node_id(def_id);
-        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by(id));
+        let item_id = tcx.hir().as_local_hir_id(def_id);
+        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by_by_hir_id(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir().body(body_id);
             tcx.mk_region(ty::ReScope(region::Scope {
@@ -1920,9 +1919,9 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                  -> Lrc<ty::GenericPredicates<'tcx>>
     {
         let tcx = self.tcx;
-        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let item_id = tcx.hir().ty_param_owner(node_id);
-        let item_def_id = tcx.hir().local_def_id(item_id);
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let item_id = tcx.hir().ty_param_owner(hir_id);
+        let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
         Lrc::new(ty::GenericPredicates {

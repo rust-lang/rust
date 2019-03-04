@@ -155,11 +155,11 @@ impl<'a, 'tcx, 'rcx> SyntheticImplCollector<'a, 'tcx, 'rcx> {
 impl<'a, 'tcx, 'rcx> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
-            if let (Some(node_id), Some(name)) =
-                (self.cx.tcx.hir().as_local_node_id(i.def_id), i.name.clone())
+            if let (Some(hir_id), Some(name)) =
+                (self.cx.tcx.hir().as_local_hir_id(i.def_id), i.name.clone())
             {
-                self.impls.extend(get_auto_traits_with_node_id(self.cx, node_id, name.clone()));
-                self.impls.extend(get_blanket_impls_with_node_id(self.cx, node_id, name));
+                self.impls.extend(get_auto_traits_with_hir_id(self.cx, hir_id, name.clone()));
+                self.impls.extend(get_blanket_impls_with_hir_id(self.cx, hir_id, name));
             } else {
                 self.impls.extend(get_auto_traits_with_def_id(self.cx, i.def_id));
                 self.impls.extend(get_blanket_impls_with_def_id(self.cx, i.def_id));

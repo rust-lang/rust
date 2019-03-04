@@ -9,7 +9,7 @@ use crate::core::DocAccessLevels;
 
 use super::*;
 
-use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
+use self::def_ctor::{get_def_from_def_id, get_def_from_hir_id};
 
 pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a> {
     pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
@@ -26,9 +26,9 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
         })
     }
 
-    pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
-        get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
-            let did = self.cx.tcx.hir().local_def_id(id);
+    pub fn get_with_hir_id(&self, id: hir::HirId, name: String) -> Vec<Item> {
+        get_def_from_hir_id(&self.cx, id, name, &|def_ctor, name| {
+            let did = self.cx.tcx.hir().local_def_id_from_hir_id(id);
             self.get_blanket_impls(did, &def_ctor, Some(name))
         })
     }

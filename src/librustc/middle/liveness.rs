@@ -476,8 +476,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let node_id = ir.tcx.hir().hir_to_node_id(expr.hir_id);
-        ir.tcx.with_freevars(node_id, |freevars| {
+        ir.tcx.with_freevars(expr.hir_id, |freevars| {
             call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));

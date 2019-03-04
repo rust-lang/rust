@@ -38,13 +38,13 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     }
 }
 
-pub fn get_def_from_node_id<F>(cx: &DocContext<'_, '_, '_>,
-                               id: ast::NodeId,
-                               name: String,
-                               callback: &F,
+pub fn get_def_from_hir_id<F>(cx: &DocContext<'_, '_, '_>,
+                              id: hir::HirId,
+                              name: String,
+                              callback: &F,
 ) -> Vec<Item>
 where F: Fn(& dyn Fn(DefId) -> Def, String) -> Vec<Item> {
-    let item = &cx.tcx.hir().expect_item(id).node;
+    let item = &cx.tcx.hir().expect_item_by_hir_id(id).node;
 
     callback(&match *item {
         hir::ItemKind::Struct(_, _) => Def::Struct,

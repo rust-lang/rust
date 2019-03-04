@@ -1,5 +1,5 @@
 use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use syntax::ast::NodeId;
+use crate::hir::HirId;
 use syntax::symbol::{Symbol, InternedString};
 use crate::ty::{Instance, TyCtxt};
 use crate::util::nodemap::FxHashMap;
@@ -14,7 +14,7 @@ use std::hash::Hash;
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
-    GlobalAsm(NodeId),
+    GlobalAsm(HirId),
 }
 
 impl<'tcx> MonoItem<'tcx> {

@@ -761,7 +761,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
                         let closure_span = self.tcx.sess.source_map()
                             .def_span(self.tcx.hir().span_if_local(closure_def_id).unwrap());
-                        let node_id = self.tcx.hir().as_local_node_id(closure_def_id).unwrap();
+                        let hir_id = self.tcx.hir().as_local_hir_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
                             "expected a closure that implements the `{}` trait, \
@@ -780,8 +780,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // a particular trait.
                         if let Some(tables) = self.in_progress_tables {
                             let tables = tables.borrow();
-                            let closure_hir_id = self.tcx.hir().node_to_hir_id(node_id);
-                            match (found_kind, tables.closure_kind_origins().get(closure_hir_id)) {
+                            match (found_kind, tables.closure_kind_origins().get(hir_id)) {
                                 (ty::ClosureKind::FnOnce, Some((span, name))) => {
                                     err.span_label(*span, format!(
                                         "closure is `FnOnce` because it moves the \

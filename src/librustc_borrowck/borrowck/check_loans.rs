@@ -188,8 +188,8 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());
 
-    let node_id = bccx.tcx.hir().as_local_node_id(def_id).unwrap();
-    let movable_generator = !match bccx.tcx.hir().get(node_id) {
+    let hir_id = bccx.tcx.hir().as_local_hir_id(def_id).unwrap();
+    let movable_generator = !match bccx.tcx.hir().get_by_hir_id(hir_id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..

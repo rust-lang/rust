@@ -501,10 +501,10 @@ impl<'hir> Map<'hir> {
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(&self, id: NodeId) -> BodyId {
-        self.maybe_body_owned_by(id).unwrap_or_else(|| {
-            span_bug!(self.span(id), "body_owned_by: {} has no associated body",
-                      self.node_to_string(id));
+    pub fn body_owned_by(&self, id: HirId) -> BodyId {
+        self.maybe_body_owned_by_by_hir_id(id).unwrap_or_else(|| {
+            span_bug!(self.span_by_hir_id(id), "body_owned_by: {} has no associated body",
+                      self.hir_to_string(id));
         })
     }
 
@@ -539,19 +539,19 @@ impl<'hir> Map<'hir> {
         self.body_owner_kind(node_id)
     }
 
-    pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
-        match self.get(id) {
+    pub fn ty_param_owner(&self, id: HirId) -> HirId {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => id,
-            Node::GenericParam(_) => self.get_parent_node(id),
-            _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
+            Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
+            _ => bug!("ty_param_owner: {} not a type parameter", self.hir_to_string(id))
         }
     }
 
-    pub fn ty_param_name(&self, id: NodeId) -> Name {
-        match self.get(id) {
+    pub fn ty_param_name(&self, id: HirId) -> Name {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfUpper.name(),
             Node::GenericParam(param) => param.name.ident().name,
-            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
+            _ => bug!("ty_param_name: {} not a type parameter", self.hir_to_string(id)),
         }
     }
 
