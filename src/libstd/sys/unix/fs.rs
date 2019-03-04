@@ -829,19 +829,39 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use crate::fs::File;
-    if !from.is_file() {
-        return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing regular file"))
-    }
+    use crate::fs::{File, OpenOptions};
+    use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
     let mut reader = File::open(from)?;
-    let mut writer = File::create(to)?;
-    let perm = reader.metadata()?.permissions();
 
-    let ret = io::copy(&mut reader, &mut writer)?;
-    writer.set_permissions(perm)?;
-    Ok(ret)
+    let (perm, len) = {
+        let metadata = reader.metadata()?;
+        if !metadata.is_file() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "the source path is not an existing regular file",
+            ));
+        }
+        (metadata.permissions(), metadata.len())
+    };
+
+    let mut writer = OpenOptions::new()
+        // create the file with the correct mode right away
+        .mode(perm.mode())
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(to)?;
+
+    let writer_metadata = writer.metadata()?;
+    if writer_metadata.is_file() {
+        // Set the correct file permissions, in case the file already existed.
+        // Don't set the permissions on already existing non-files like
+        // pipes/FIFOs or device nodes.
+        writer.set_permissions(perm)?;
+    }
+
+    io::copy(&mut reader, &mut writer)
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
