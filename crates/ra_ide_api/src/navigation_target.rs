@@ -174,14 +174,9 @@ impl NavigationTarget {
         )
     }
 
-    pub(crate) fn from_impl_item(
-        db: &RootDatabase,
-        impl_item: hir::ImplItem,
-    ) -> NavigationTarget {
+    pub(crate) fn from_impl_item(db: &RootDatabase, impl_item: hir::ImplItem) -> NavigationTarget {
         match impl_item {
-            ImplItem::Method(f) => {
-                NavigationTarget::from_function(db, f)
-            }
+            ImplItem::Method(f) => NavigationTarget::from_function(db, f),
             ImplItem::Const(c) => {
                 let (file_id, node) = c.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
