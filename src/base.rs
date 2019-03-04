@@ -515,7 +515,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", ty),
                     }
                 }
-                Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
+                Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty)
+                | Rvalue::Cast(CastKind::MutToConstPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));

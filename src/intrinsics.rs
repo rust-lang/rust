@@ -192,6 +192,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, type_id);
         };
         _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
+            // FIXME trap on overflow
             let bin_op = match intrinsic {
                 "unchecked_div" | "exact_div" => BinOp::Div,
                 "unchecked_rem" => BinOp::Rem,
@@ -255,6 +256,36 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "overflowing_add" => BinOp::Add,
                 "overflowing_sub" => BinOp::Sub,
                 "overflowing_mul" => BinOp::Mul,
+                _ => unimplemented!("intrinsic {}", intrinsic),
+            };
+            let res = match T.sty {
+                ty::Uint(_) => crate::base::trans_int_binop(
+                    fx,
+                    bin_op,
+                    x,
+                    y,
+                    ret.layout().ty,
+                    false,
+                ),
+                ty::Int(_) => crate::base::trans_int_binop(
+                    fx,
+                    bin_op,
+                    x,
+                    y,
+                    ret.layout().ty,
+                    true,
+                ),
+                _ => panic!(),
+            };
+            ret.write_cvalue(fx, res);
+        };
+        _ if intrinsic.starts_with("saturating_"), <T> (c x, c y) {
+            // FIXME implement saturating behavior
+            assert_eq!(x.layout().ty, y.layout().ty);
+            let bin_op = match intrinsic {
+                "saturating_add" => BinOp::Add,
+                "saturating_sub" => BinOp::Sub,
+                "saturating_mul" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
             let res = match T.sty {
