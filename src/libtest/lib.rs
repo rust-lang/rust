@@ -17,7 +17,12 @@
 #![feature(test)]
 
 extern crate libtest;
-pub use libtest::{test_main_static, TestDescAndFn, StaticTestFn, StaticBenchFn, Options};
+pub use libtest::{
+    assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
+    Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
+    StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName, TestOpts,
+    TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk,
+};
 
 /// A function that is opaque to the optimizer, to allow benchmarks to
 /// pretend to use outputs to assist in avoiding dead-code
