@@ -33,6 +33,12 @@ pub(crate) fn block(p: &mut Parser) {
     }
     let m = p.start();
     p.bump();
+    expr_block_contents(p);
+    p.expect(R_CURLY);
+    m.complete(p, BLOCK);
+}
+
+pub(crate) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
     attributes::inner_attributes(p);
 
@@ -101,8 +107,6 @@ pub(crate) fn block(p: &mut Parser) {
             }
         }
     }
-    p.expect(R_CURLY);
-    m.complete(p, BLOCK);
 
     // test let_stmt;
     // fn foo() {
