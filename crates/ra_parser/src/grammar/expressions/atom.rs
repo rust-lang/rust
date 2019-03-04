@@ -281,10 +281,20 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 
 // test cond
 // fn foo() { if let Some(_) = None {} }
+// fn bar() {
+//     if let Some(_) | Some(_) = None {}
+//     if let | Some(_) = None {}
+//     while let Some(_) | Some(_) = None {}
+//     while let | Some(_) = None {}
+// }
 fn cond(p: &mut Parser) {
     let m = p.start();
     if p.eat(LET_KW) {
+        p.eat(PIPE);
         patterns::pattern(p);
+        while p.eat(PIPE) {
+            patterns::pattern(p);
+        }
         p.expect(EQ);
     }
     expr_no_struct(p);
