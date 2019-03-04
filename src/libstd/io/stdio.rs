@@ -4,7 +4,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, Initializer, BufReader, LineWriter};
-use crate::sync::{Mutex, MutexGuard};
+use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
@@ -128,7 +128,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: &'static Mutex<BufReader<Maybe<StdinRaw>>>,
+    inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -339,7 +339,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: &'static ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>,
+    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -492,7 +492,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: &'static ReentrantMutex<RefCell<Maybe<StderrRaw>>>,
+    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
