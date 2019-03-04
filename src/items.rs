@@ -2285,6 +2285,17 @@ fn rewrite_args(
     let separator = ",";
     let next_span_start = span.hi();
 
+    if args.len() == 0 {
+        let comment = context
+            .snippet(mk_sp(
+                span.lo(),
+                // to remove ')'
+                span.hi() - BytePos(1),
+            ))
+            .trim();
+        return Some(comment.to_owned());
+    }
+
     let mut arg_item_strs = args
         .iter()
         .map(|arg| {
@@ -2318,10 +2329,6 @@ fn rewrite_args(
         arg_items.push(ListItem::from_str(""));
     }
 
-    // FIXME(#21): if there are no args, there might still be a comment, but
-    // without spans for the comment or parens, there is no chance of
-    // getting it right. You also don't get to put a comment on self, unless
-    // it is explicit.
     if args.len() >= min_args || variadic {
         let comment_span_start = if min_args == 2 {
             let remove_comma_byte_pos = context
