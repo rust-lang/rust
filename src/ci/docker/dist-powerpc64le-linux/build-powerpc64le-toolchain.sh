@@ -4,7 +4,7 @@ set -ex
 
 source shared.sh
 
-BINUTILS=2.25.1
+BINUTILS=2.32
 GCC=5.3.0
 TARGET=powerpc64le-linux-gnu
 SYSROOT=/usr/local/$TARGET/sysroot
