@@ -55,3 +55,7 @@ trait Foo {
         33
     }
 }
+
+// Don't lint in external macros (derive)
+#[derive(PartialEq, Eq)]
+struct Point(isize, isize);
