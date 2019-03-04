@@ -261,10 +261,8 @@ pub struct Parser<'a> {
 
 impl<'a> Drop for Parser<'a> {
     fn drop(&mut self) {
-        if !self.unclosed_delims.is_empty() {
-            let diag = self.diagnostic();
-            emit_unclosed_delims(&mut self.unclosed_delims, diag);
-        }
+        let diag = self.diagnostic();
+        emit_unclosed_delims(&mut self.unclosed_delims, diag);
     }
 }
 
