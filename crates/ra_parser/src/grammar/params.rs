@@ -83,9 +83,10 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 
             // test trait_fn_placeholder_parameter
             // trait Foo {
-            //     fn bar(_: u64);
+            //     fn bar(_: u64, mut x: i32);
             // }
             if (la0 == IDENT || la0 == UNDERSCORE) && la1 == COLON
+                || la0 == MUT_KW && la1 == IDENT && la2 == COLON
                 || la0 == AMP && la1 == IDENT && la2 == COLON
                 || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON
             {
