@@ -38,11 +38,11 @@ we want to check. The output of Clippy is compared against a `.stderr` file.
 Note that you don't have to create this file yourself, we'll get to
 generating the `.stderr` files further down.
 
-Let's create the test file at `tests/ui/foo_functions.rs`. It doesn't really
-matter what the file is called, but it's a good convention to name it after the
-lint it is testing, so `foo_functions.rs` it is.
+We start by creating the test file at `tests/ui/foo_functions.rs`. It doesn't
+really matter what the file is called, but it's a good convention to name it
+after the lint it is testing, so `foo_functions.rs` it is.
 
-Inside we put some examples to get started:
+Inside the file we put some examples to get started:
 
 ```rust
 #![warn(clippy::foo_functions)]
@@ -80,13 +80,13 @@ Now we can run the test with `TESTNAME=ui/foo_functions cargo uitest`.
 Currently this test will fail. If you go through the output you will see that we
 are told that `clippy::foo_functions` is an unknown lint, which is expected.
 
-While you are working on implementing your lint, you can keep running the UI
-test. That allows you to check if the output is turning into what you want.
+While we are working on implementing our lint, we can keep running the UI
+test. That allows us to check if the output is turning into what we want.
 
-Once you are satisfied with the output, you need to run
-`tests/ui/update-all-references.sh` to update the `.stderr` file for your lint.
-Running `TESTNAME=ui/foo_functions cargo uitest` should pass then. When you
-commit your lint, be sure to commit the `.stderr` files, too.
+Once we are satisfied with the output, we need to run
+`tests/ui/update-all-references.sh` to update the `.stderr` file for our lint.
+Running `TESTNAME=ui/foo_functions cargo uitest` should pass then. When we
+commit our lint, we need to commit the generated `.stderr` files, too.
 
 ### Rustfix tests
 
@@ -139,8 +139,8 @@ state the thing that is being checked for and read well when used with
 * The last part should be a text that explains what exactly is wrong with the
   code
 
-With our lint declaration done, we will now make sure that our lint declaration
-is assigned to a lint pass:
+With our lint declaration done, we will now make sure that it is assigned to a
+lint pass:
 
 ```rust
 // clippy_lints/src/foo_functions.rs
@@ -166,10 +166,10 @@ impl LintPass for FooFunctionsPass {
 Don't worry about the `name` method here. As long as it includes the name of the
 lint pass it should be fine.
 
-Next you should run `util/dev update_lints` to register the lint in various
+Next we need to run `util/dev update_lints` to register the lint in various
 places, mainly in `clippy_lints/src/lib.rs`.
 
-While `update_lints` automates some things, it doesn't automate everything. You
+While `update_lints` automates some things, it doesn't automate everything. We
 will have to register our lint pass manually in the `register_plugins` function
 in `clippy_lints/src/lib.rs`:
 
@@ -251,7 +251,7 @@ Running our UI test should now produce output that contains the lint message.
 
 ### Adding the lint logic
 
-Writing the logic for our lint will most likely be different from this example,
+Writing the logic for your lint will most likely be different from our example,
 so this section is kept rather short.
 
 Using the [`check_fn`][check_fn] method gives us access to [`FnKind`][fn_kind]
@@ -295,7 +295,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 }
 ```
 
-Now you'll want to also run the full test suite with `cargo test`. At this point
+Now we should also run the full test suite with `cargo test`. At this point
 running `cargo test` should produce the expected output. Remember to run
 `tests/ui/update-all-references.sh` to update the `.stderr` file.
 
@@ -386,6 +386,7 @@ Before submitting your PR make sure you followed all of the basic requirements:
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
 - [ ] `cargo test` passes locally
+- [ ] Executed `util/dev update_lints`
 - [ ] Added lint documentation
 
 ### Cheatsheet
