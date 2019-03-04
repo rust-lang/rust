@@ -56,7 +56,7 @@ pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum ExprOrPatId {
+enum ExprOrPatId {
     Expr(ExprId),
     Pat(PatId),
 }
@@ -93,8 +93,11 @@ impl InferenceResult {
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).map(|it| *it)
     }
-    pub fn assoc_resolutions(&self, id: ExprOrPatId) -> Option<ImplItem> {
-        self.assoc_resolutions.get(&id).map(|it| *it)
+    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
+        self.assoc_resolutions.get(&id.into()).map(|it| *it)
+    }
+    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
+        self.assoc_resolutions.get(&id.into()).map(|it| *it)
     }
 }
 

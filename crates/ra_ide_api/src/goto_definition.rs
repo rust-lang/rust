@@ -136,7 +136,7 @@ pub(crate) fn reference_definition(
 
                         if let Some(res) = source_map
                             .node_expr(expr)
-                            .and_then(|it| infer_result.assoc_resolutions(it.into()))
+                            .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
                         {
                             return Exact(NavigationTarget::from_impl_item(db, res));
                         }
