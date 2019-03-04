@@ -539,7 +539,6 @@ impl<'tcx> Witness<'tcx> {
         self.apply_constructor(cx, ctor, ty)
     }
 
-
     /// Constructs a partial witness for a pattern given a list of
     /// patterns expanded by the specialization step.
     ///

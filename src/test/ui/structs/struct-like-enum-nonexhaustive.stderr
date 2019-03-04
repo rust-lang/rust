@@ -1,8 +1,17 @@
 error[E0004]: non-exhaustive patterns: `B { x: Some(_) }` not covered
   --> $DIR/struct-like-enum-nonexhaustive.rs:8:11
    |
-LL |     match x {   //~ ERROR non-exhaustive patterns
-   |           ^ pattern `B { x: Some(_) }` not covered
+LL | / enum A {
+LL | |     B { x: Option<isize> },
+   | |     - not covered
+LL | |     C
+LL | | }
+   | |_- `A` defined here
+...
+LL |       match x {   //~ ERROR non-exhaustive patterns
+   |             ^ pattern `B { x: Some(_) }` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 
