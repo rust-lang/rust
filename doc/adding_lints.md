@@ -400,7 +400,9 @@ Here are some pointers to things you are likely going to need for every lint:
 * [`in_macro`][in_macro] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
-* [The rustc guide][rustc_guide] explains a lot of internal compiler concepts.
+* [The rustc guide][rustc_guide] explains a lot of internal compiler concepts
+* [The nightly rustc docs][nightly_docs] which has been linked to throughout
+  this guide
 
 For `EarlyLintPass` lints:
 
@@ -440,3 +442,4 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [play]: https://play.rust-lang.org
 [author_example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f093b986e80ad62f3b67a1f24f5e66e2
 [rustc_guide]: https://rust-lang.github.io/rustc-guide/
+[nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
