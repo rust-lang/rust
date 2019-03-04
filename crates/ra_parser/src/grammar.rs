@@ -182,21 +182,11 @@ fn name_ref(p: &mut Parser) {
 }
 
 fn error_block(p: &mut Parser, message: &str) {
-    go(p, Some(message));
-    fn go(p: &mut Parser, message: Option<&str>) {
-        assert!(p.at(L_CURLY));
-        let m = p.start();
-        if let Some(message) = message {
-            p.error(message);
-        }
-        p.bump();
-        while !p.at(EOF) && !p.at(R_CURLY) {
-            match p.current() {
-                L_CURLY => go(p, None),
-                _ => p.bump(),
-            }
-        }
-        p.eat(R_CURLY);
-        m.complete(p, ERROR);
-    }
+    assert!(p.at(L_CURLY));
+    let m = p.start();
+    p.error(message);
+    p.bump();
+    expressions::expr_block_contents(p);
+    p.eat(R_CURLY);
+    m.complete(p, ERROR);
 }

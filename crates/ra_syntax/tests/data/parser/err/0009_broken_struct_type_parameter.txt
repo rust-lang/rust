@@ -28,10 +28,24 @@ SOURCE_FILE@[0; 43)
   ERROR@[17; 31)
     L_CURLY@[17; 18)
     WHITESPACE@[18; 23)
-    IDENT@[23; 24) "f"
-    COLON@[24; 25)
+    EXPR_STMT@[23; 24)
+      PATH_EXPR@[23; 24)
+        PATH@[23; 24)
+          PATH_SEGMENT@[23; 24)
+            NAME_REF@[23; 24)
+              IDENT@[23; 24) "f"
+              err: `expected SEMI`
+              err: `expected expression`
+    EXPR_STMT@[24; 25)
+      ERROR@[24; 25)
+        COLON@[24; 25)
+        err: `expected SEMI`
     WHITESPACE@[25; 26)
-    IDENT@[26; 29) "u32"
+    PATH_EXPR@[26; 29)
+      PATH@[26; 29)
+        PATH_SEGMENT@[26; 29)
+          NAME_REF@[26; 29)
+            IDENT@[26; 29) "u32"
     WHITESPACE@[29; 30)
     R_CURLY@[30; 31)
   WHITESPACE@[31; 33)
