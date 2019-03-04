@@ -5,3 +5,4 @@ use some::{
  yet::another::path,
  running::out::of::synonyms::for_::different::*
 };
+use Trait as _;
