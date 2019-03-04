@@ -75,7 +75,7 @@
         "commands": [
             {
                 "command": "rust-analyzer.syntaxTree",
-                "title": "Show syntax tree for current file",
+                "title": "Show Syntax Tree",
                 "category": "Rust Analyzer"
             },
             {

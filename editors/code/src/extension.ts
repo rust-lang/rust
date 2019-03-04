@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { TextDocumentContentProvider } from './commands/syntaxTree';
+import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
@@ -52,7 +52,6 @@ export function activate(context: vscode.ExtensionContext) {
     registerCommand('rust-analyzer.collectGarbage', () =>
         Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null)
     );
-    registerCommand('rust-analyzer.syntaxTree', commands.syntaxTree.handle);
     registerCommand(
         'rust-analyzer.extendSelection',
         commands.extendSelection.handle
@@ -95,22 +94,27 @@ export function activate(context: vscode.ExtensionContext) {
             notifications.publishDecorations.handle
         ]
     ];
+    const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
-        events.changeActiveTextEditor.handle
+        events.changeActiveTextEditor.makeHandler(syntaxTreeContentProvider)
     );
 
-    const textDocumentContentProvider = new TextDocumentContentProvider();
     disposeOnDeactivation(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer',
-            textDocumentContentProvider
+            syntaxTreeContentProvider
         )
     );
 
+    registerCommand(
+        'rust-analyzer.syntaxTree',
+        commands.syntaxTree.createHandle(syntaxTreeContentProvider)
+    );
+
     vscode.workspace.onDidChangeTextDocument(
-        events.changeTextDocument.createHandler(textDocumentContentProvider),
+        events.changeTextDocument.createHandler(syntaxTreeContentProvider),
         null,
         context.subscriptions
     );

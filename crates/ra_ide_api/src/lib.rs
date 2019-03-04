@@ -32,13 +32,14 @@ mod references;
 mod impls;
 mod assists;
 mod diagnostics;
+mod syntax_tree;
 
 #[cfg(test)]
 mod marks;
 
 use std::sync::Arc;
 
-use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit, AstNode};
+use ra_syntax::{SourceFile, TreeArc, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 use ra_db::{
     SourceDatabase, CheckCanceled,
@@ -245,8 +246,8 @@ impl Analysis {
 
     /// Returns a syntax tree represented as `String`, for debug purposes.
     // FIXME: use a better name here.
-    pub fn syntax_tree(&self, file_id: FileId) -> String {
-        self.db.parse(file_id).syntax().debug_dump()
+    pub fn syntax_tree(&self, file_id: FileId, text_range: Option<TextRange>) -> String {
+        syntax_tree::syntax_tree(&self.db, file_id, text_range)
     }
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
