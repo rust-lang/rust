@@ -57,21 +57,11 @@ pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum ExprOrPatId {
-    Expr(ExprId),
-    Pat(PatId),
+    ExprId(ExprId),
+    PatId(PatId),
 }
 
-impl From<ExprId> for ExprOrPatId {
-    fn from(id: ExprId) -> Self {
-        ExprOrPatId::Expr(id)
-    }
-}
-
-impl From<PatId> for ExprOrPatId {
-    fn from(id: PatId) -> Self {
-        ExprOrPatId::Pat(id)
-    }
-}
+impl_froms!(ExprOrPatId: ExprId, PatId);
 
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
