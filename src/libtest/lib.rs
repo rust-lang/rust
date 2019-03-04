@@ -12,8 +12,27 @@
 #![unstable(feature = "test", issue = "27812")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
+#![feature(asm)]
 #![feature(staged_api)]
 #![feature(test)]
 
 extern crate libtest;
-pub use libtest::*;
+pub use libtest::{test_main_static, TestDescAndFn, StaticTestFn, StaticBenchFn, Options};
+
+/// A function that is opaque to the optimizer, to allow benchmarks to
+/// pretend to use outputs to assist in avoiding dead-code
+/// elimination.
+///
+/// This function is a no-op, and does not even read from `dummy`.
+#[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))]
+pub fn black_box<T>(dummy: T) -> T {
+    // we need to "use" the argument in some way LLVM can't
+    // introspect.
+    unsafe { asm!("" : : "r"(&dummy)) }
+    dummy
+}
+#[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))]
+#[inline(never)]
+pub fn black_box<T>(dummy: T) -> T {
+    dummy
+}
