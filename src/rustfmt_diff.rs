@@ -56,8 +56,8 @@ pub struct ModifiedLines {
 impl From<Vec<Mismatch>> for ModifiedLines {
     fn from(mismatches: Vec<Mismatch>) -> ModifiedLines {
         let chunks = mismatches.into_iter().map(|mismatch| {
-            let lines = || mismatch.lines.iter();
-            let num_removed = lines()
+            let lines = mismatch.lines.iter();
+            let num_removed = lines
                 .filter(|line| match line {
                     DiffLine::Resulting(_) => true,
                     _ => false,
