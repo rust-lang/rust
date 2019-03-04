@@ -1,3 +1,5 @@
+use crate::ParseError;
+
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
     subtree: &'a tt::Subtree,
@@ -46,46 +48,42 @@ impl<'a> TtCursor<'a> {
     }
 
     pub(crate) fn eat(&mut self) -> Option<&'a tt::TokenTree> {
-        match self.current() {
-            Some(it) => {
-                self.bump();
-                Some(it)
-            }
-            None => None,
-        }
+        self.current().map(|it| {
+            self.bump();
+            it
+        })
     }
 
-    pub(crate) fn eat_subtree(&mut self) -> Option<&'a tt::Subtree> {
-        match self.current()? {
-            tt::TokenTree::Subtree(sub) => {
+    pub(crate) fn eat_subtree(&mut self) -> Result<&'a tt::Subtree, ParseError> {
+        match self.current() {
+            Some(tt::TokenTree::Subtree(sub)) => {
                 self.bump();
-                Some(sub)
+                Ok(sub)
             }
-            _ => return None,
+            _ => Err(ParseError::Expected(String::from("subtree"))),
         }
     }
 
     pub(crate) fn eat_punct(&mut self) -> Option<&'a tt::Punct> {
-        if let Some(it) = self.at_punct() {
+        self.at_punct().map(|it| {
             self.bump();
-            return Some(it);
-        }
-        None
+            it
+        })
     }
 
     pub(crate) fn eat_ident(&mut self) -> Option<&'a tt::Ident> {
-        if let Some(i) = self.at_ident() {
+        self.at_ident().map(|i| {
             self.bump();
-            return Some(i);
-        }
-        None
+            i
+        })
     }
 
-    pub(crate) fn expect_char(&mut self, char: char) -> Option<()> {
+    pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
             self.bump();
-            return Some(());
+            Ok(())
+        } else {
+            Err(ParseError::Expected(format!("`{}`", char)))
         }
-        None
     }
 }
