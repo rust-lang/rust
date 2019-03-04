@@ -71,7 +71,9 @@ fn syntax_tree_for_token<T: AstToken>(node: &T, text_range: TextRange) -> Option
         .trim_start_matches('"')
         .trim_end_matches('#')
         .trim_end_matches('"')
-        .trim();
+        .trim()
+        // Remove custom markers
+        .replace("<|>", "");
 
     let parsed = SourceFile::parse(&text);
 
