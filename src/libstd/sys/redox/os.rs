@@ -18,7 +18,7 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
-use crate::sys_common::mutex::Mutex;
+use crate::sync::RawMutex;
 use crate::sys::{cvt, cvt_libc, fd, syscall};
 use crate::vec;
 
@@ -121,7 +121,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Ok(PathBuf::from(path))
 }
 
-pub static ENV_LOCK: Mutex = Mutex::new();
+pub static ENV_LOCK: RawMutex = RawMutex::new();
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
