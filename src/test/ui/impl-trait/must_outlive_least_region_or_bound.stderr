@@ -2,9 +2,15 @@ error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/must_outlive_least_region_or_bound.rs:3:23
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |              ----     ^^^^^^^^^ lifetime `'static` required
-   |              |
-   |              help: add explicit lifetime `'static` to the type of `x`: `&'static i32`
+   |                       ^^^^^^^^^ `impl Trait` types can only capture lifetimes that they reference
+help: add explicit unnamed lifetime `'_` to the return type to constrain it
+   |
+LL | fn elided(x: &i32) -> impl Copy + '_ { x }
+   |                       ^^^^^^^^^^^^^^
+help: otherwise, add explicit lifetime `'static` to the type of `x`
+   |
+LL | fn elided(x: &'static i32) -> impl Copy { x }
+   |              ^^^^^^^^^^^^
 
 error: cannot infer an appropriate lifetime
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44

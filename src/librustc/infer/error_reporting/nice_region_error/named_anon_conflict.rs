@@ -103,13 +103,43 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             error_var
         );
 
+        let many = if let Ok(snippet) = self.tcx().sess.source_map().span_to_snippet(span) {
+            if "'static" == &named.to_string() && snippet.starts_with("impl ") {
+                diag.span_suggestion(
+                    span,
+                    "add explicit unnamed lifetime `'_` to the return type to constrain it",
+                    format!("{} + '_", snippet),
+                    Applicability::Unspecified,
+                );
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        if many {
+            diag.span_label(
+                span,
+                "`impl Trait` types can only capture lifetimes that they reference"
+            );
+        } else {
+            diag.span_label(span, format!("lifetime `{}` required", named));
+        }
         diag.span_suggestion(
-                new_ty_span,
-                &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-                new_ty.to_string(),
-                Applicability::Unspecified,
-            )
-            .span_label(span, format!("lifetime `{}` required", named));
+            new_ty_span,
+            &format!("{}add explicit lifetime `{}` to {}",
+                if many {
+                    "otherwise, "
+                } else {
+                    ""
+                },
+                named,
+                span_label_var,
+            ),
+            new_ty.to_string(),
+            Applicability::Unspecified,
+        );
 
         Some(diag)
     }
