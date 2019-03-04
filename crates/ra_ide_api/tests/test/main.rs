@@ -272,3 +272,121 @@ EXPR_STMT@[16; 58)
         .trim()
     );
 }
+
+#[test]
+fn test_syntax_tree_inside_string() {
+    let (analysis, range) = single_file_with_range(
+        r#"fn test() {
+    assert!("
+<|>fn foo() {
+}<|>
+fn bar() {
+}
+    ", "");
+}"#
+        .trim(),
+    );
+    let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+    assert_eq!(
+        syn.trim(),
+        r#"
+SOURCE_FILE@[0; 12)
+  FN_DEF@[0; 12)
+    FN_KW@[0; 2)
+    WHITESPACE@[2; 3)
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7)
+      R_PAREN@[7; 8)
+    WHITESPACE@[8; 9)
+    BLOCK@[9; 12)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 11)
+      R_CURLY@[11; 12)
+"#
+        .trim()
+    );
+
+    // With a raw string
+    let (analysis, range) = single_file_with_range(
+        r###"fn test() {
+    assert!(r#"
+<|>fn foo() {
+}<|>
+fn bar() {
+}
+    "#, "");
+}"###
+            .trim(),
+    );
+    let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+    assert_eq!(
+        syn.trim(),
+        r#"
+SOURCE_FILE@[0; 12)
+  FN_DEF@[0; 12)
+    FN_KW@[0; 2)
+    WHITESPACE@[2; 3)
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7)
+      R_PAREN@[7; 8)
+    WHITESPACE@[8; 9)
+    BLOCK@[9; 12)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 11)
+      R_CURLY@[11; 12)
+"#
+        .trim()
+    );
+
+    // With a raw string
+    let (analysis, range) = single_file_with_range(
+        r###"fn test() {
+    assert!(r<|>#"
+fn foo() {
+}
+fn bar() {
+}"<|>#, "");
+}"###
+            .trim(),
+    );
+    let syn = analysis.syntax_tree(range.file_id, Some(range.range));
+    assert_eq!(
+        syn.trim(),
+        r#"
+SOURCE_FILE@[0; 25)
+  FN_DEF@[0; 12)
+    FN_KW@[0; 2)
+    WHITESPACE@[2; 3)
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7)
+      R_PAREN@[7; 8)
+    WHITESPACE@[8; 9)
+    BLOCK@[9; 12)
+      L_CURLY@[9; 10)
+      WHITESPACE@[10; 11)
+      R_CURLY@[11; 12)
+  WHITESPACE@[12; 13)
+  FN_DEF@[13; 25)
+    FN_KW@[13; 15)
+    WHITESPACE@[15; 16)
+    NAME@[16; 19)
+      IDENT@[16; 19) "bar"
+    PARAM_LIST@[19; 21)
+      L_PAREN@[19; 20)
+      R_PAREN@[20; 21)
+    WHITESPACE@[21; 22)
+    BLOCK@[22; 25)
+      L_CURLY@[22; 23)
+      WHITESPACE@[23; 24)
+      R_CURLY@[24; 25)
+
+"#
+        .trim()
+    );
+}
