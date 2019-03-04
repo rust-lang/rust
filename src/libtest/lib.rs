@@ -17,11 +17,14 @@
 #![feature(test)]
 
 extern crate libtest;
+
+// FIXME: we should be more explicit about the exact APIs that we
+// export to users.
 pub use libtest::{
     assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
     Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
     StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName, TestOpts,
-    TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk,
+    TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk, stats::Summary
 };
 
 /// A function that is opaque to the optimizer, to allow benchmarks to
