@@ -2838,6 +2838,26 @@ mod tests {
     }
 
     #[test]
+    fn copy_file_follows_dst_symlink() {
+        let tmp = tmpdir();
+        if !got_symlink_permission(&tmp) { return };
+
+        let in_path = tmp.join("in.txt");
+        let out_path = tmp.join("out.txt");
+        let out_path_symlink = tmp.join("out_symlink.txt");
+
+        check!(fs::write(&in_path, "foo"));
+        check!(fs::write(&out_path, "bar"));
+        check!(symlink_file(&out_path, &out_path_symlink));
+
+        check!(fs::copy(&in_path, &out_path_symlink));
+
+        assert!(check!(out_path_symlink.symlink_metadata()).file_type().is_symlink());
+        assert_eq!(check!(fs::read(&out_path_symlink)), b"foo".to_vec());
+        assert_eq!(check!(fs::read(&out_path)), b"foo".to_vec());
+    }
+
+    #[test]
     fn symlinks_work() {
         let tmpdir = tmpdir();
         if !got_symlink_permission(&tmpdir) { return };
