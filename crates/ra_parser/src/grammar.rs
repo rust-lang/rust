@@ -129,7 +129,9 @@ fn opt_alias(p: &mut Parser) {
     if p.at(AS_KW) {
         let m = p.start();
         p.bump();
-        name(p);
+        if !p.eat(UNDERSCORE) {
+            name(p);
+        }
         m.complete(p, ALIAS);
     }
 }

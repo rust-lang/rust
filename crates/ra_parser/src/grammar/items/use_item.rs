@@ -76,6 +76,7 @@ fn use_tree(p: &mut Parser) {
                     //  yet::another::path,
                     //  running::out::of::synonyms::for_::different::*
                     // };
+                    // use Trait as _;
                     opt_alias(p);
                 }
                 COLONCOLON => {
