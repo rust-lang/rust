@@ -327,7 +327,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Ok(def) = self.resolve(path_str, true, &current_item, parent_node) {
                             def
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // This could just be a normal link or a broken link
                             // we could potentially check if something is
                             // "intra-doc-link-like" and warn in that case.
@@ -338,7 +338,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Ok(def) = self.resolve(path_str, false, &current_item, parent_node) {
                             def
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // This could just be a normal link.
                             continue;
                         }
@@ -393,7 +393,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         {
                             value_def
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // this could just be a normal link
                             continue;
                         }
@@ -402,7 +402,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Some(def) = macro_resolve(cx, path_str) {
                             (def, None)
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             continue
                         }
                     }
@@ -464,11 +464,15 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
 /// line containing the failure as a note as well.
 fn resolution_failure(
     cx: &DocContext<'_>,
-    attrs: &Attributes,
+    item: &Item,
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
 ) {
+    if !item.def_id.is_local() { // We don't span warnings for items outside of the current crate.
+        return;
+    }
+    let attrs = &item.attrs;
     let sp = span_of_attrs(attrs);
 
     let mut diag = cx.tcx.struct_span_lint_hir(

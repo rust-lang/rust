@@ -40,8 +40,7 @@ pub fn try_inline(
     def: Def,
     name: ast::Name,
     visited: &mut FxHashSet<DefId>
-)
-                  -> Option<Vec<clean::Item>> {
+) -> Option<Vec<clean::Item>> {
     let did = if let Some(did) = def.opt_def_id() {
         did
     } else {
