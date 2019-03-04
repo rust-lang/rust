@@ -683,7 +683,7 @@ pub fn get_comment_end(
 
 // Account for extra whitespace between items. This is fiddly
 // because of the way we divide pre- and post- comments.
-fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
+pub fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
     if post_snippet.is_empty() || comment_end == 0 {
         return false;
     }
