@@ -15,8 +15,6 @@ pub struct RawParIter<T> {
     iter: RawIterRange<T>,
 }
 
-unsafe impl<T> Send for RawParIter<T> {}
-
 impl<T> ParallelIterator for RawParIter<T> {
     type Item = Bucket<T>;
 
@@ -34,8 +32,6 @@ impl<T> ParallelIterator for RawParIter<T> {
 struct ParIterProducer<T> {
     iter: RawIterRange<T>,
 }
-
-unsafe impl<T> Send for ParIterProducer<T> {}
 
 impl<T> UnindexedProducer for ParIterProducer<T> {
     type Item = Bucket<T>;
@@ -62,8 +58,6 @@ pub struct RawIntoParIter<T> {
     table: RawTable<T>,
 }
 
-unsafe impl<T> Send for RawIntoParIter<T> {}
-
 impl<T: Send> ParallelIterator for RawIntoParIter<T> {
     type Item = T;
 
@@ -87,8 +81,8 @@ impl<T: Send> ParallelIterator for RawIntoParIter<T> {
 
 /// Parallel iterator which consumes elements without freeing the table storage.
 pub struct RawParDrain<'a, T> {
-    // We don't use a &'a RawTable<T> because we want RawParDrain to be
-    // covariant over 'a.
+    // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
+    // covariant over T.
     table: NonNull<RawTable<T>>,
     _marker: PhantomData<&'a RawTable<T>>,
 }
@@ -125,8 +119,6 @@ impl<'a, T> Drop for RawParDrain<'a, T> {
 struct ParDrainProducer<T> {
     iter: RawIterRange<T>,
 }
-
-unsafe impl<T: Send> Send for ParDrainProducer<T> {}
 
 impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
     type Item = T;

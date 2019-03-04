@@ -26,7 +26,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
-#[cfg_attr(feature = "rayon", macro_use)]
 extern crate std;
 #[cfg(test)]
 extern crate rand;
@@ -45,6 +44,7 @@ extern crate std as alloc;
 #[macro_use]
 mod macros;
 
+mod scopeguard;
 mod external_trait_impls;
 mod fx;
 mod map;

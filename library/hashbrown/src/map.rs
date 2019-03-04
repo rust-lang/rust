@@ -231,8 +231,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
-{
+impl<K, V, S> HashMap<K, V, S> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
     ///
@@ -1090,7 +1089,7 @@ where
 /// [`HashMap`]: struct.HashMap.html
 pub struct Iter<'a, K: 'a, V: 'a> {
     inner: RawIter<(K, V)>,
-    _marker: PhantomData<&'a HashMap<K, V>>,
+    _marker: PhantomData<(&'a K, &'a V)>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -1120,7 +1119,7 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: RawIter<(K, V)>,
     // To ensure invariance with respect to V
-    _marker: PhantomData<&'a mut V>,
+    _marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
 impl<'a, K, V> IterMut<'a, K, V> {
