@@ -32,6 +32,7 @@ matrix:
     - env: INTEGRATION=rust-semverver
     - env: INTEGRATION=stdsimd TARGET=x86_64-unknown-linux-gnu
     - env: INTEGRATION=tempdir
+    - env: INTEGRATION=futures-rs
   allow_failures:
     # Doesn't build - seems to be because of an option
     - env: INTEGRATION=packed_simd
@@ -39,8 +40,6 @@ matrix:
     - env: INTEGRATION=rust-semverver
     # can be moved back to include section after https://github.com/rust-lang-nursery/failure/pull/298 is merged
     - env: INTEGRATION=failure
-    # can be moved back once https://github.com/rust-lang-nursery/futures-rs/pull/1445 is merged
-    - env: INTEGRATION=futures-rs
 
 script:
   - |
