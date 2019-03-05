@@ -1,13 +1,7 @@
 #![feature(proc_macro_hygiene)]
+#![deny(rust_2018_idioms)]
 
-#[macro_use]
-extern crate syn;
-#[macro_use]
-extern crate synstructure;
-#[macro_use]
-extern crate quote;
-extern crate proc_macro;
-extern crate proc_macro2;
+use synstructure::decl_derive;
 
 mod hash_stable;
 

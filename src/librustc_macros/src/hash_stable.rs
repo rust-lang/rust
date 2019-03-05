@@ -1,6 +1,7 @@
 use synstructure;
-use syn::{self, Meta, NestedMeta};
+use syn::{self, Meta, NestedMeta, parse_quote};
 use proc_macro2::{self, Ident};
+use quote::quote;
 
 struct Attributes {
     ignore: bool,
@@ -46,7 +47,7 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
     attrs
 }
 
-pub fn hash_stable_derive(mut s: synstructure::Structure) -> proc_macro2::TokenStream {
+pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!('__ctx);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
