@@ -16,7 +16,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// if { true } ..
+    /// if { true } { /* ... */ }
     /// ```
     pub BLOCK_IN_IF_CONDITION_EXPR,
     style,
@@ -32,10 +32,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// if { let x = somefunc(); x } ..
+    /// ```ignore
+    /// if { let x = somefunc(); x } {}
     /// // or
-    /// if somefunc(|x| { x == 47 }) ..
+    /// if somefunc(|x| { x == 47 }) {}
     /// ```
     pub BLOCK_IN_IF_CONDITION_STMT,
     style,

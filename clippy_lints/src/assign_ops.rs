@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// implementations that differ from the regular `Op` impl.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let mut a = 5;
     /// ...
     /// a = a + b;
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// written as `a = a op a op b` as it's less confusing.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let mut a = 5;
     /// ...
     /// a += a + b;

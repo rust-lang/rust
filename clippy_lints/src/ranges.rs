@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for x in (5..5).step_by(0) {
     ///     ..
     /// }

@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if x.len() == 0 {
     ///     ..
     /// }
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// instead use
-    /// ```rust
+    /// ```ignore
     /// if x.is_empty() {
     ///     ..
     /// }
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl X {
     ///     pub fn len(&self) -> usize {
     ///         ..

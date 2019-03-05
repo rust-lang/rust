@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// Regex::new("|")
     /// ```
     pub INVALID_REGEX,
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// Regex::new("^foobar")
     /// ```
     pub TRIVIAL_REGEX,
@@ -58,7 +58,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// regex!("foo|bar")
     /// ```
     pub REGEX_MACRO,

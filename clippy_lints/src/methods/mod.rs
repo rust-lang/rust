@@ -84,7 +84,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// struct X;
     /// impl X {
     ///     fn add(&self, other: &X) -> X {
@@ -116,7 +116,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl X {
     ///     fn as_str(self) -> &str {
     ///         ..
@@ -160,7 +160,7 @@ declare_clippy_lint! {
     /// **Known problems:** The error type needs to implement `Debug`
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// x.ok().expect("why did I do this again?")
     /// ```
     pub OK_EXPECT,
@@ -228,7 +228,7 @@ declare_clippy_lint! {
     /// **Known problems:** The order of the arguments is not in execution order.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// opt.map_or(None, |a| a + 1)
     /// ```
     pub OPTION_MAP_OR_NONE,
@@ -445,7 +445,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl Foo {
     ///     fn new(..) -> NotAFoo {
     ///     }
@@ -568,13 +568,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let some_vec = vec![0, 1, 2, 3];
+    /// let mut some_vec = vec![0, 1, 2, 3];
     /// let last = some_vec.get(3).unwrap();
     /// *some_vec.get_mut(0).unwrap() = 1;
     /// ```
     /// The correct use would be:
     /// ```rust
-    /// let some_vec = vec![0, 1, 2, 3];
+    /// let mut some_vec = vec![0, 1, 2, 3];
     /// let last = some_vec[3];
     /// some_vec[0] = 1;
     /// ```
@@ -605,7 +605,7 @@ declare_clippy_lint! {
     /// let def = String::from("def");
     /// let mut s = String::new();
     /// s.push_str(abc);
-    /// s.push_str(&def));
+    /// s.push_str(&def);
     /// ```
     pub STRING_EXTEND_CHARS,
     style,
@@ -645,7 +645,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
     /// ```
     pub CHARS_LAST_CMP,

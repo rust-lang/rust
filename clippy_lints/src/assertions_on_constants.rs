@@ -15,13 +15,13 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
-    /// assert!(false)
+    /// ```no_run
+    /// assert!(false);
     /// // or
-    /// assert!(true)
+    /// assert!(true);
     /// // or
     /// const B: bool = false;
-    /// assert!(B)
+    /// assert!(B);
     /// ```
     pub ASSERTIONS_ON_CONSTANTS,
     style,

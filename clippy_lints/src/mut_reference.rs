@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// my_vec.push(&mut value)
     /// ```
     pub UNNECESSARY_MUT_PASSED,

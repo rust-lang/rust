@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// **Known problems:** None?
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let checked_exp = something;
     /// let checked_expr = something_else;
     /// ```
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// **Known problems:** None?
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let (a, b, c, d, e, f, g) = (...);
     /// ```
     pub MANY_SINGLE_CHAR_NAMES,

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// **Known problems:** Hopefully none.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if a == b {
     ///     …
     /// } else if a == b {
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// Note that this lint ignores all conditions with a function call as it could
     /// have side effects:
     ///
-    /// ```rust
+    /// ```ignore
     /// if foo() {
     ///     …
     /// } else if foo() { // not linted
@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// **Known problems:** Hopefully none.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let foo = if … {
     ///     42
     /// } else {

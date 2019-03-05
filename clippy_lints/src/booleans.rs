@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// `&&`. Ignores `|`, `&` and `^`.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if a && true  // should be: if a
     /// if !(a == b)  // should be: if a != b
     /// ```
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// **Known problems:** Ignores short circuiting behavior.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if a && b || a { ... }
     /// ```
     /// The `b` is unnecessary, the expression is equivalent to `if a`.

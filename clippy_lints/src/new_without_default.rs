@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```ignore
     /// struct Foo(Bar);
     ///
     /// impl Foo {
@@ -41,7 +41,7 @@ declare_clippy_lint! {
     ///
     /// Instead, use:
     ///
-    /// ```rust
+    /// ```ignore
     /// struct Foo(Bar);
     ///
     /// impl Default for Foo {

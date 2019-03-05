@@ -16,14 +16,14 @@ declare_clippy_lint! {
     /// default-generated `Hash` implementation with an explicitly defined
     /// `PartialEq`. In particular, the following must hold for any type:
     ///
-    /// ```rust
+    /// ```text
     /// k1 == k2 ⇒ hash(k1) == hash(k2)
     /// ```
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// #[derive(Hash)]
     /// struct Foo;
     ///

@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// 61864918973511
+    /// let x: u64 = 61864918973511;
     /// ```
     pub UNREADABLE_LITERAL,
     style,
@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// 2_32
+    /// 2_32;
     /// ```
     pub MISTYPED_LITERAL_SUFFIXES,
     correctness,
@@ -59,7 +59,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// 618_64_9189_73_511
+    /// let x: u64 = 618_64_9189_73_511;
     /// ```
     pub INCONSISTENT_DIGIT_GROUPING,
     style,
@@ -78,7 +78,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// 6186491_8973511
+    /// let x: u64 = 6186491_8973511;
     /// ```
     pub LARGE_DIGIT_GROUPS,
     pedantic,

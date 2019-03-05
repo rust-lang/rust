@@ -16,7 +16,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// OpenOptions::new().read(true).truncate(true)
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().read(true).truncate(true);
     /// ```
     pub NONSENSICAL_OPEN_OPTIONS,
     correctness,

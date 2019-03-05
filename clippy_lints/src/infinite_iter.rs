@@ -12,8 +12,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// repeat(1_u8).iter().collect::<Vec<_>>()
+    /// ```no_run
+    /// use std::iter;
+    ///
+    /// iter::repeat(1_u8).collect::<Vec<_>>();
     /// ```
     pub INFINITE_ITER,
     correctness,

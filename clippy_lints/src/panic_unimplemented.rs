@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```no_run
     /// panic!("This `panic!` is probably missing a parameter there: {}");
     /// ```
     pub PANIC_PARAMS,
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```no_run
     /// unimplemented!();
     /// ```
     pub UNIMPLEMENTED,

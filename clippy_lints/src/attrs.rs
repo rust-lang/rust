@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// done the measurement.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// #[inline(always)]
     /// fn not_quite_hot_code(..) { ... }
     /// ```
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// // Bad
     /// #[deny(dead_code)]
     /// extern crate foo;
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// #[deprecated(since = "forever")]
-    /// fn something_else(..) { ... }
+    /// fn something_else() { /* ... */ }
     /// ```
     pub DEPRECATED_SEMVER,
     correctness,

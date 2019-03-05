@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// **Known problems:** This only catches integers (for now).
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// x * -1
     /// ```
     pub NEG_MULTIPLY,

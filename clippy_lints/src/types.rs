@@ -509,7 +509,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if {
     ///     foo();
     /// } == {
@@ -519,7 +519,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// is equal to
-    /// ```rust
+    /// ```ignore
     /// {
     ///     foo();
     ///     bar();
@@ -848,7 +848,7 @@ declare_clippy_lint! {
     ///
     /// **Example**
     ///
-    /// ```rust
+    /// ```ignore
     /// // Bad
     /// fn fun() -> i32 {}
     /// let a = fun as i64;
@@ -1536,7 +1536,7 @@ declare_clippy_lint! {
     /// like `#[cfg(target_pointer_width = "64")] ..` instead.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// vec.len() <= 0
     /// 100 > std::i32::MAX
     /// ```
@@ -1961,7 +1961,7 @@ declare_clippy_lint! {
     /// pieces of code, possibly including external crates.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { ... }
     ///
     /// pub foo(map: &mut HashMap<i32, i32>) { .. }
@@ -2302,7 +2302,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// fn x(r: &i32) {
     ///     unsafe {
     ///         *(r as *const _ as *mut _) += 1;
@@ -2312,7 +2312,7 @@ declare_clippy_lint! {
     ///
     /// Instead consider using interior mutability types.
     ///
-    /// ```rust
+    /// ```ignore
     /// fn x(r: &UnsafeCell<i32>) {
     ///     unsafe {
     ///         *r.get() += 1;

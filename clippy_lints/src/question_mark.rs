@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if option.is_none() {
     ///     return None;
     /// }
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```ignore
     /// option?;
     /// ```
     pub QUESTION_MARK,

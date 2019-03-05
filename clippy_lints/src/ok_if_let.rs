@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for result in iter {
     ///     if let Some(bench) = try!(result).parse().ok() {
     ///         vec.push(bench)
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```
     /// Could be written:
     ///
-    /// ```rust
+    /// ```ignore
     /// for result in iter {
     ///     if let Ok(bench) = try!(result).parse() {
     ///         vec.push(bench)

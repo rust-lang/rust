@@ -13,12 +13,12 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
     /// &[...]
     /// ```
     /// This code can be rewritten as
-    /// ```rust
+    /// ```ignore
     ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
     /// ```
     pub CONST_STATIC_LIFETIME,

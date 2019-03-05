@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl Add for Foo {
     ///     type Output = Foo;
     ///
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// impl AddAssign for Foo {
     ///     fn add_assign(&mut self, other: Foo) {
     ///         *self = *self - other;

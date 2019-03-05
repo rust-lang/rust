@@ -35,11 +35,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// print!("Hello {}!\n", name);
     /// ```
     /// use println!() instead
-    /// ```rust
+    /// ```ignore
     /// println!("Hello {}!", name);
     /// ```
     pub PRINT_WITH_NEWLINE,
@@ -113,12 +113,12 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// writeln!("");
+    /// ```ignore
+    /// writeln!(buf, "");
     /// ```
     pub WRITELN_EMPTY_STRING,
     style,
-    "using `writeln!(\"\")` with an empty string"
+    "using `writeln!(buf, \"\")` with an empty string"
 }
 
 declare_clippy_lint! {
@@ -132,7 +132,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// write!(buf, "Hello {}!\n", name);
     /// ```
     pub WRITE_WITH_NEWLINE,
@@ -151,7 +151,7 @@ declare_clippy_lint! {
     /// -- e.g., `writeln!(buf, "{}", env!("FOO"))`.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// writeln!(buf, "{}", "foo");
     /// ```
     pub WRITE_LITERAL,

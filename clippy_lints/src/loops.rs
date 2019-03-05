@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for i in 0..src.len() {
     ///     dst[i + 64] = src[i];
     /// }
@@ -61,7 +61,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for i in 0..vec.len() {
     ///     println!("{}", vec[i]);
     /// }
@@ -81,7 +81,7 @@ declare_clippy_lint! {
     /// types.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// // with `y` a `Vec` or slice:
     /// for x in y.iter() {
     ///     ..
@@ -107,14 +107,14 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// // with `y` a `Vec` or slice:
     /// for x in y.into_iter() {
     ///     ..
     /// }
     /// ```
     /// can be rewritten to
-    /// ```rust
+    /// ```ignore
     /// for x in y {
     ///     ..
     /// }
@@ -137,7 +137,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for x in y.next() {
     ///     ..
     /// }
@@ -156,14 +156,14 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for x in option {
     ///     ..
     /// }
     /// ```
     ///
     /// This should be
-    /// ```rust
+    /// ```ignore
     /// if let Some(x) = option {
     ///     ..
     /// }
@@ -182,14 +182,14 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for x in result {
     ///     ..
     /// }
     /// ```
     ///
     /// This should be
-    /// ```rust
+    /// ```ignore
     /// if let Ok(x) = result {
     ///     ..
     /// }
@@ -237,7 +237,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
     /// ```
     pub UNUSED_COLLECT,
@@ -256,7 +256,7 @@ declare_clippy_lint! {
     /// None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let len = iterator.collect::<Vec<_>>().len();
     /// // should be
     /// let len = iterator.count();
@@ -280,7 +280,7 @@ declare_clippy_lint! {
     /// paths through the program, which would be complex and error-prone.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for x in 5..10 - 5 {
     ///     ..
     /// } // oops, stray `-`
@@ -301,7 +301,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for i in 0..v.len() { foo(v[i]);
     /// for i in 0..v.len() { bar(i, v[i]); }
     /// ```
@@ -320,7 +320,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```no_run
     /// loop {}
     /// ```
     pub EMPTY_LOOP,
@@ -337,7 +337,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// while let Some(val) = iter() {
     ///     ..
     /// }
@@ -357,7 +357,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// for (k, _) in &map {
     ///     ..
     /// }
@@ -365,7 +365,7 @@ declare_clippy_lint! {
     ///
     /// could be replaced by
     ///
-    /// ```rust
+    /// ```ignore
     /// for k in map.keys() {
     ///     ..
     /// }

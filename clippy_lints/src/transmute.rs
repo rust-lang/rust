@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// sized objects in `extradata` arguments to save an allocation.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let ptr: *const T = core::intrinsics::transmute('x')
     /// ```
     pub WRONG_TRANSMUTE,

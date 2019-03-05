@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// min(0, max(100, x))
     /// ```
     /// It will always be equal to `0`. Probably the author meant to clamp the value

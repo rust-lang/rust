@@ -17,6 +17,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// use std::mem;
+    ///
     /// mem::discriminant(&"hello");
     /// mem::discriminant(&&Some(2));
     /// ```

@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// calls. We may introduce a whitelist of known pure functions in the future.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// x + 1 == x + 1
     /// ```
     pub EQ_OP,
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// &x == y
     /// ```
     pub OP_REF,

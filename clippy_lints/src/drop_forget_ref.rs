@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let mut lock_guard = mutex.lock();
     /// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex
     /// // still locked

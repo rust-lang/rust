@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// let { a: _, b: ref b, c: _ } = ..
     /// ```
     pub UNNEEDED_FIELD_PATTERN,
@@ -71,6 +71,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// let mut x = 3;
     /// --x;
     /// ```
     pub DOUBLE_NEG,
@@ -159,7 +160,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```ignore
     /// impl<u32> Foo<u32> {
     ///     fn impl_func(&self) -> u32 {
     ///         42

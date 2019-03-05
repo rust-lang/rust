@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// // lib.rs
     /// mod foo;
     /// // foo.rs

@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// dereferences, e.g. changing `*x` to `x` within the function.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// fn foo(ref x: u8) -> bool {
     ///     ..
     /// }
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// x == NAN
     /// ```
     pub CMP_NAN,
@@ -74,7 +74,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// y == 1.23f64
     /// y != x  // where both are floats
     /// ```
@@ -113,7 +113,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// x % 1
     /// ```
     pub MODULO_ONE,
@@ -130,7 +130,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// match v {
     ///     Some(x) => (),
     ///     y @ _ => (), // easier written as `y`,
@@ -193,7 +193,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```ignore
     /// 0 as *const u32
     /// ```
     pub ZERO_PTR,

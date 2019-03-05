@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// function before applying the lint suggestions in this case.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// fn foo(&Vec<u32>) { .. }
     /// ```
     pub PTR_ARG,
@@ -59,7 +59,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// if x == ptr::null {
     ///     ..
     /// }
@@ -86,7 +86,7 @@ declare_clippy_lint! {
     /// case is unlikely anyway.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```ignore
     /// fn foo(&Foo) -> &mut Bar { .. }
     /// ```
     pub MUT_FROM_REF,

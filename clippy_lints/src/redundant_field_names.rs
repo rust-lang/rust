@@ -21,11 +21,11 @@ declare_clippy_lint! {
     ///     bar: u8,
     /// }
     ///
-    /// let foo = Foo{ bar: bar }
+    /// let foo = Foo { bar: bar };
     /// ```
     /// the last line can be simplified to
-    /// ```rust
-    /// let foo = Foo{ bar }
+    /// ```ignore
+    /// let foo = Foo { bar };
     /// ```
     pub REDUNDANT_FIELD_NAMES,
     style,

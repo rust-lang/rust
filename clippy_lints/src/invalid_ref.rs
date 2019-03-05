@@ -13,8 +13,8 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// let bad_ref: &usize = std::mem::zeroed();
+    /// ```no_run
+    /// let bad_ref: &usize = unsafe { std::mem::zeroed() };
     /// ```
     pub INVALID_REF,
     correctness,

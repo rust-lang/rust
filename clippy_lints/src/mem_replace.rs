@@ -17,6 +17,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// use std::mem;
+    ///
     /// let mut an_option = Some(0);
     /// let replaced = mem::replace(&mut an_option, None);
     /// ```
