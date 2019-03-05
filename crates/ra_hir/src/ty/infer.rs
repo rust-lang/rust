@@ -29,6 +29,7 @@ use crate::{
     Function, StructField, Path, Name,
     FnSignature, AdtDef,
     HirDatabase,
+    ImplItem,
     type_ref::{TypeRef, Mutability},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
     generics::GenericParams,
@@ -54,6 +55,14 @@ pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
     Arc::new(ctx.resolve_all())
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+enum ExprOrPatId {
+    ExprId(ExprId),
+    PatId(PatId),
+}
+
+impl_froms!(ExprOrPatId: ExprId, PatId);
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
@@ -61,6 +70,8 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, Function>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, StructField>,
+    /// For each associated item record what it resolves to
+    assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
 }
@@ -71,6 +82,12 @@ impl InferenceResult {
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).map(|it| *it)
+    }
+    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<ImplItem> {
+        self.assoc_resolutions.get(&id.into()).map(|it| *it)
+    }
+    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
+        self.assoc_resolutions.get(&id.into()).map(|it| *it)
     }
 }
 
@@ -99,6 +116,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
+    assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
     /// The return type of the function being inferred.
@@ -110,6 +128,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceContext {
             method_resolutions: FxHashMap::default(),
             field_resolutions: FxHashMap::default(),
+            assoc_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
@@ -135,6 +154,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceResult {
             method_resolutions: self.method_resolutions,
             field_resolutions: self.field_resolutions,
+            assoc_resolutions: self.assoc_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
         }
@@ -150,6 +170,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
         self.field_resolutions.insert(expr, field);
+    }
+
+    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: ImplItem) {
+        self.assoc_resolutions.insert(id, item);
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {
@@ -341,7 +365,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path) -> Option<Ty> {
+    fn infer_path_expr(&mut self, resolver: &Resolver, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let resolved = resolver.resolve_path_segments(self.db, &path);
 
         let (def, remaining_index) = resolved.into_inner();
@@ -393,26 +417,38 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
-            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| match item {
-                crate::ImplItem::Method(func) => {
-                    let sig = func.signature(self.db);
-                    if segment.name == *sig.name() {
-                        return Some(func.into());
+            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| {
+                let matching_def: Option<crate::ModuleDef> = match item {
+                    crate::ImplItem::Method(func) => {
+                        let sig = func.signature(self.db);
+                        if segment.name == *sig.name() {
+                            Some(func.into())
+                        } else {
+                            None
+                        }
                     }
-                    None
-                }
 
-                crate::ImplItem::Const(konst) => {
-                    let sig = konst.signature(self.db);
-                    if segment.name == *sig.name() {
-                        return Some(konst.into());
+                    crate::ImplItem::Const(konst) => {
+                        let sig = konst.signature(self.db);
+                        if segment.name == *sig.name() {
+                            Some(konst.into())
+                        } else {
+                            None
+                        }
                     }
-                    None
-                }
 
-                // TODO: Resolve associated types
-                crate::ImplItem::TypeAlias(_) => None,
+                    // TODO: Resolve associated types
+                    crate::ImplItem::TypeAlias(_) => None,
+                };
+                match matching_def {
+                    Some(_) => {
+                        self.write_assoc_resolution(id, item);
+                        return matching_def;
+                    }
+                    None => None,
+                }
             })?;
+
             resolved = Resolution::Def(item.into());
         }
 
@@ -420,7 +456,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
-
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
                 let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
                 let ty = self.insert_type_vars(ty);
@@ -572,7 +607,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::Path(path) => {
                 // TODO use correct resolver for the surrounding expression
                 let resolver = self.resolver.clone();
-                self.infer_path_expr(&resolver, &path).unwrap_or(Ty::Unknown)
+                self.infer_path_expr(&resolver, &path, pat.into()).unwrap_or(Ty::Unknown)
             }
             Pat::Bind { mode, name: _name, subpat } => {
                 let inner_ty = if let Some(subpat) = subpat {
@@ -782,7 +817,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Path(p) => {
                 // TODO this could be more efficient...
                 let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
-                self.infer_path_expr(&resolver, p).unwrap_or(Ty::Unknown)
+                self.infer_path_expr(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::Never,
             Expr::Break { expr } => {

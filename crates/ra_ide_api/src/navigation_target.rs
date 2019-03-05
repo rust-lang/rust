@@ -3,7 +3,7 @@ use ra_syntax::{
     SyntaxNode, SyntaxNodePtr, AstNode, SmolStr, TextRange, ast,
     SyntaxKind::{self, NAME},
 };
-use hir::{ModuleSource, FieldSource, Name};
+use hir::{ModuleSource, FieldSource, Name, ImplItem};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -172,6 +172,20 @@ impl NavigationTarget {
             None,
             node.syntax(),
         )
+    }
+
+    pub(crate) fn from_impl_item(db: &RootDatabase, impl_item: hir::ImplItem) -> NavigationTarget {
+        match impl_item {
+            ImplItem::Method(f) => NavigationTarget::from_function(db, f),
+            ImplItem::Const(c) => {
+                let (file_id, node) = c.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            ImplItem::TypeAlias(a) => {
+                let (file_id, node) = a.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+        }
     }
 
     #[cfg(test)]
