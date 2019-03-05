@@ -1,23 +1,24 @@
-/// The underlying OsString/OsStr implementation on Unix systems: just
-/// a `Vec<u8>`/`[u8]`.
+//! The underlying OsString/OsStr implementation on Unix and many other
+//! systems: just a `Vec<u8>`/`[u8]`.
 
 use crate::borrow::Cow;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::str;
 use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys_common::{FromInner, IntoInner, AsInner};
 use crate::sys_common::bytestring::debug_fmt_bytestring;
 
 use core::str::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: Vec<u8>
 }
 
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: [u8]
 }
 
@@ -176,5 +177,69 @@ impl Slice {
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc: Rc<[u8]> = Rc::from(&self.inner);
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
+    }
+}
+
+/// Platform-specific extensions to [`OsString`].
+///
+/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait OsStringExt {
+    /// Creates an [`OsString`] from a byte vector.
+    ///
+    /// See the module docmentation for an example.
+    ///
+    /// [`OsString`]: ../../../ffi/struct.OsString.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn from_vec(vec: Vec<u8>) -> Self;
+
+    /// Yields the underlying byte vector of this [`OsString`].
+    ///
+    /// See the module docmentation for an example.
+    ///
+    /// [`OsString`]: ../../../ffi/struct.OsString.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn into_vec(self) -> Vec<u8>;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl OsStringExt for OsString {
+    fn from_vec(vec: Vec<u8>) -> OsString {
+        FromInner::from_inner(Buf { inner: vec })
+    }
+    fn into_vec(self) -> Vec<u8> {
+        self.into_inner().inner
+    }
+}
+
+/// Platform-specific extensions to [`OsStr`].
+///
+/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait OsStrExt {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    /// Creates an [`OsStr`] from a byte slice.
+    ///
+    /// See the module docmentation for an example.
+    ///
+    /// [`OsStr`]: ../../../ffi/struct.OsStr.html
+    fn from_bytes(slice: &[u8]) -> &Self;
+
+    /// Gets the underlying byte view of the [`OsStr`] slice.
+    ///
+    /// See the module docmentation for an example.
+    ///
+    /// [`OsStr`]: ../../../ffi/struct.OsStr.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn as_bytes(&self) -> &[u8];
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl OsStrExt for OsStr {
+    fn from_bytes(slice: &[u8]) -> &OsStr {
+        unsafe { mem::transmute(slice) }
+    }
+    fn as_bytes(&self) -> &[u8] {
+        &self.as_inner().inner
     }
 }

@@ -35,6 +35,13 @@ pub mod backtrace;
 pub mod condvar;
 pub mod io;
 pub mod mutex;
+#[cfg(any(rustdoc, // see `mod os`, docs are generated for multiple platforms
+          unix,
+          target_os = "redox",
+          target_os = "cloudabi",
+          target_arch = "wasm32",
+          all(target_vendor = "fortanix", target_env = "sgx")))]
+pub mod os_str_bytes;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;

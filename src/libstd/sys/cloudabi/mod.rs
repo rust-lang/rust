@@ -14,8 +14,6 @@ pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
@@ -23,6 +21,8 @@ pub mod thread;
 #[path = "../unix/thread_local.rs"]
 pub mod thread_local;
 pub mod time;
+
+pub use crate::sys_common::os_str_bytes as os_str;
 
 mod abi;
 
