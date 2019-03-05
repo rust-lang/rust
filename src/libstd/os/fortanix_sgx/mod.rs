@@ -43,3 +43,8 @@ pub mod mem {
 }
 
 pub use crate::sys::ext::{io, arch, ffi};
+
+/// Functions for querying thread-related information.
+pub mod thread {
+    pub use crate::sys::abi::thread::current;
+}
