@@ -347,31 +347,31 @@ impl<'a> CrateLoader<'a> {
         mut dep_kind: DepKind,
     ) -> Result<(CrateNum, Lrc<cstore::CrateMetadata>), LoadError<'b>> {
         info!("resolving crate `extern crate {} as {}`", name, ident);
-        let mut locate_ctxt = locator::Context {
-            sess: self.sess,
-            span,
-            ident,
-            crate_name: name,
-            hash: hash.map(|a| &*a),
-            extra_filename: extra_filename,
-            filesearch: self.sess.target_filesearch(path_kind),
-            target: &self.sess.target.target,
-            triple: self.sess.opts.target_triple.clone(),
-            root,
-            rejected_via_hash: vec![],
-            rejected_via_triple: vec![],
-            rejected_via_kind: vec![],
-            rejected_via_version: vec![],
-            rejected_via_filename: vec![],
-            should_match_name: true,
-            is_proc_macro: Some(false),
-            metadata_loader: &*self.cstore.metadata_loader,
-        };
-
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
+            let mut locate_ctxt = locator::Context {
+                sess: self.sess,
+                span,
+                ident,
+                crate_name: name,
+                hash: hash.map(|a| &*a),
+                extra_filename: extra_filename,
+                filesearch: self.sess.target_filesearch(path_kind),
+                target: &self.sess.target.target,
+                triple: self.sess.opts.target_triple.clone(),
+                root,
+                rejected_via_hash: vec![],
+                rejected_via_triple: vec![],
+                rejected_via_kind: vec![],
+                rejected_via_version: vec![],
+                rejected_via_filename: vec![],
+                should_match_name: true,
+                is_proc_macro: Some(false),
+                metadata_loader: &*self.cstore.metadata_loader,
+            };
+
             self.load(&mut locate_ctxt).map(|r| (r, None)).or_else(|| {
                 dep_kind = DepKind::UnexportedMacrosOnly;
                 self.load_proc_macro(&mut locate_ctxt, path_kind)
