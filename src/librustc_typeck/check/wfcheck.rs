@@ -842,7 +842,9 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`",
                 receiver_ty, self_ty);
-            return false
+            // If he receiver already has errors reported due to it, consider it valid to avoid
+            // unecessary errors (#58712).
+            return receiver_ty.references_error();
         }
 
         // without the `arbitrary_self_types` feature, `receiver_ty` must directly deref to
