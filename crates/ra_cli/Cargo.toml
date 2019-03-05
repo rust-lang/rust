@@ -9,7 +9,7 @@ publish = false
 clap = "2.32.0"
 failure = "0.1.4"
 join_to_string = "0.1.1"
-flexi_logger = "0.10.0"
+flexi_logger = "0.11.0"
 indicatif = "0.11.0"
 
 ra_syntax = { path = "../ra_syntax" }

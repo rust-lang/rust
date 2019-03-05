@@ -21,5 +21,5 @@ tt = { path = "../ra_tt", package = "ra_tt" }
 test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
-flexi_logger = "0.10.0"
-insta = "0.6.1"
+flexi_logger = "0.11.0"
+insta = "0.7.0"

@@ -27,7 +27,7 @@ test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 
 [dev-dependencies]
-insta = "0.6.1"
+insta = "0.7.0"
 
 [features]
 jemalloc = [ "jemallocator", "jemalloc-ctl" ]
