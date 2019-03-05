@@ -754,9 +754,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.global_tcx()
                             .object_safety_violations(trait_def_id);
-                        self.tcx.report_object_safety_error(span,
-                                                            trait_def_id,
-                                                            violations)
+                        if let Some(err) = self.tcx.report_object_safety_error(
+                            span,
+                            trait_def_id,
+                            violations,
+                        ) {
+                            err
+                        } else {
+                            return;
+                        }
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
@@ -884,7 +890,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.global_tcx().object_safety_violations(did);
-                self.tcx.report_object_safety_error(span, did, violations)
+                if let Some(err) = self.tcx.report_object_safety_error(span, did, violations) {
+                    err
+                } else {
+                    return;
+                }
             }
 
             // already reported in the query
@@ -1293,12 +1303,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err
     }
 
-    pub fn report_object_safety_error(self,
-                                      span: Span,
-                                      trait_def_id: DefId,
-                                      violations: Vec<ObjectSafetyViolation>)
-                                      -> DiagnosticBuilder<'tcx>
-    {
+    pub fn report_object_safety_error(
+        self,
+        span: Span,
+        trait_def_id: DefId,
+        violations: Vec<ObjectSafetyViolation>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        if self.sess.trait_methods_not_found.borrow().contains(&span) {
+            // Avoid emitting error caused by non-existing method (#58734)
+            return None;
+        }
         let trait_str = self.def_path_str(trait_def_id);
         let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(
@@ -1313,7 +1327,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 err.note(&violation.error_msg());
             }
         }
-        err
+        Some(err)
     }
 }
 
