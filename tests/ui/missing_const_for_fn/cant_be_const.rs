@@ -59,3 +59,12 @@ trait Foo {
 // Don't lint in external macros (derive)
 #[derive(PartialEq, Eq)]
 struct Point(isize, isize);
+
+impl std::ops::Add for Point {
+    type Output = Self;
+
+    // Don't lint in trait impls of derived methods
+    fn add(self, other: Self) -> Self {
+        Point(self.0 + other.0, self.1 + other.1)
+    }
+}
