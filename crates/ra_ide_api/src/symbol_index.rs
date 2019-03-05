@@ -24,6 +24,7 @@ use std::{
     hash::{Hash, Hasher},
     sync::Arc,
     mem,
+    fmt,
 };
 
 use fst::{self, Streamer};
@@ -113,10 +114,16 @@ pub(crate) fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<F
     crate::symbol_index::world_symbols(db, query)
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub(crate) struct SymbolIndex {
     symbols: Vec<FileSymbol>,
     map: fst::Map,
+}
+
+impl fmt::Debug for SymbolIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SymbolIndex").field("n_symbols", &self.symbols.len()).finish()
+    }
 }
 
 impl PartialEq for SymbolIndex {
