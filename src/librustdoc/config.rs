@@ -228,14 +228,18 @@ impl Options {
             for &name in passes::DEFAULT_PRIVATE_PASSES {
                 println!("{:>20}", name);
             }
-            println!("\nPasses run with `--show-coverage`:");
-            for &name in passes::DEFAULT_COVERAGE_PASSES {
-                println!("{:>20}", name);
+
+            if nightly_options::is_nightly_build() {
+                println!("\nPasses run with `--show-coverage`:");
+                for &name in passes::DEFAULT_COVERAGE_PASSES {
+                    println!("{:>20}", name);
+                }
+                println!("\nPasses run with `--show-coverage --document-private-items`:");
+                for &name in passes::PRIVATE_COVERAGE_PASSES {
+                    println!("{:>20}", name);
+                }
             }
-            println!("\nPasses run with `--show-coverage --document-private-items`:");
-            for &name in passes::PRIVATE_COVERAGE_PASSES {
-                println!("{:>20}", name);
-            }
+
             return Err(0);
         }
 
