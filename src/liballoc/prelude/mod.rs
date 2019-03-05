@@ -6,10 +6,11 @@
 //! ```
 //! # #![allow(unused_imports)]
 //! # #![feature(alloc)]
+//! #![feature(alloc_prelude)]
 //! extern crate alloc;
 //! use alloc::prelude::v1::*;
 //! ```
 
-#![unstable(feature = "alloc", issue = "27783")]
+#![unstable(feature = "alloc_prelude", issue = "58935")]
 
 pub mod v1;
