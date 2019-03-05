@@ -25,7 +25,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         let name_and_namespace = |def_id| {
             let item = self.tcx.associated_item(def_id);
-            (item.ident, Namespace::from(item.kind))
+            (item.ident.modern(), Namespace::from(item.kind))
         };
 
         let impl_items1 = self.tcx.associated_item_def_ids(impl1);
