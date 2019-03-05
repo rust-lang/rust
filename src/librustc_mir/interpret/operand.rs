@@ -593,9 +593,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             let ty = self.monomorphize(val.ty)?;
             self.layout_of(ty)
         })?;
-        let op = match val.val {
-            ConstValue::Param(_) => return Err(EvalErrorKind::TooGeneric.into()),
+        let val = match val.val {
+            ConstValue::Param(_) => self.monomorphize(val)?.val,
             ConstValue::Infer(_) => bug!(),
+            val => val,
+        };
+        let op = match val {
+            ConstValue::Param(_) | ConstValue::Infer(_) => unreachable!(),
             ConstValue::ByRef(ptr, alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.

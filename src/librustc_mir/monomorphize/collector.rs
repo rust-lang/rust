@@ -467,14 +467,13 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
     let const_length = instance.substs.consts()
-        .filter_map(|ct| {
-            if let ty::LazyConst::Evaluated(ct) = ct {
-                Some(ct.ty.walk())
-            } else {
-                None
-            }
+        .flat_map(|ct| {
+            let ty = match ct {
+                ty::LazyConst::Evaluated(ct) => ct.ty,
+                ty::LazyConst::Unevaluated(def_id, _) => tcx.type_of(*def_id),
+            };
+            ty.walk()
         })
-        .flatten()
         .count();
     debug!(" => type length={}, const length={}", type_length, const_length);
 
