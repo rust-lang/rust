@@ -16,7 +16,7 @@ impl Foo {
         }
     }
 
-    pub async fn run<'a>(&'a self, data: &'a [u8]) 
+    pub async fn run<'a>(&'a self, data: &'a [u8])
     {
         let _to_pin = self.with(move || println!("{:p}", data));
         loop {
