@@ -281,10 +281,16 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 
 // test cond
 // fn foo() { if let Some(_) = None {} }
+// fn bar() {
+//     if let Some(_) | Some(_) = None {}
+//     if let | Some(_) = None {}
+//     while let Some(_) | Some(_) = None {}
+//     while let | Some(_) = None {}
+// }
 fn cond(p: &mut Parser) {
     let m = p.start();
     if p.eat(LET_KW) {
-        patterns::pattern(p);
+        patterns::pattern_list(p);
         p.expect(EQ);
     }
     expr_no_struct(p);
@@ -376,11 +382,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 // }
 fn match_arm(p: &mut Parser) -> BlockLike {
     let m = p.start();
-    p.eat(PIPE);
-    patterns::pattern_r(p, TokenSet::empty());
-    while p.eat(PIPE) {
-        patterns::pattern(p);
-    }
+    patterns::pattern_list_r(p, TokenSet::empty());
     if p.at(IF_KW) {
         match_guard(p);
     }
