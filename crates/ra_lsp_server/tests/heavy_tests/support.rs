@@ -13,6 +13,7 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{Request, Shutdown},
     DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
+    notification::{Notification, ShowMessage},
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -56,7 +57,7 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(true, path, true, &mut msg_receiver, &mut msg_sender).unwrap()
+                main_loop(path, true, &mut msg_receiver, &mut msg_sender).unwrap()
             },
         );
         let res = Server {
@@ -138,8 +139,9 @@ impl Server {
     }
     pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
-            RawMessage::Notification(n) if n.method == "internalFeedback" => {
-                return n.clone().cast::<req::InternalFeedback>().unwrap() == feedback;
+            RawMessage::Notification(n) if n.method == ShowMessage::METHOD => {
+                let message = n.clone().cast::<req::ShowMessage>().unwrap();
+                message.message == feedback
             }
             _ => false,
         };

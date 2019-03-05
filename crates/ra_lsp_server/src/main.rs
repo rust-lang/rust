@@ -43,7 +43,7 @@ fn main_inner() -> Result<()> {
             .and_then(|v| InitializationOptions::deserialize(v).ok())
             .and_then(|it| it.publish_decorations)
             == Some(true);
-        ra_lsp_server::main_loop(false, root, supports_decorations, r, s)
+        ra_lsp_server::main_loop(root, supports_decorations, r, s)
     })?;
     log::info!("shutting down IO...");
     threads.join()?;
