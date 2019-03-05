@@ -18,4 +18,4 @@ ra_fmt = { path = "../ra_fmt" }
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
 proptest = "0.9.0"
-insta = "0.6.1"
+insta = "0.7.0"
