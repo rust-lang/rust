@@ -7,7 +7,6 @@ use syntax::attr;
 use syntax_pos::FileName;
 
 use std::collections::BTreeMap;
-use std::fmt;
 use std::ops;
 
 pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
@@ -64,12 +63,6 @@ impl ops::AddAssign for ItemCount {
     fn add_assign(&mut self, rhs: Self) {
         self.total += rhs.total;
         self.with_docs += rhs.with_docs;
-    }
-}
-
-impl fmt::Display for ItemCount {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}/{}", self.with_docs, self.total)
     }
 }
 
