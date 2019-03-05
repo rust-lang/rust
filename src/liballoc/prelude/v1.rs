@@ -1,14 +1,6 @@
-//! The alloc Prelude
+//! The first version of the prelude of `alloc` crate.
 //!
-//! The purpose of this module is to alleviate imports of commonly-used
-//! items of the `alloc` crate by adding a glob import to the top of modules:
-//!
-//! ```
-//! # #![allow(unused_imports)]
-//! # #![feature(alloc)]
-//! extern crate alloc;
-//! use alloc::prelude::*;
-//! ```
+//! See the [module-level documentation](../index.html) for more.
 
 #![unstable(feature = "alloc", issue = "27783")]
 
