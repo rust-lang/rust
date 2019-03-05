@@ -8,6 +8,22 @@ pub(super) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET)
 }
 
+/// Parses a pattern list separated by pipes `|`
+pub(super) fn pattern_list(p: &mut Parser) {
+    pattern_list_r(p, PAT_RECOVERY_SET)
+}
+
+/// Parses a pattern list separated by pipes `|`
+/// using the given `recovery_set`
+pub(super) fn pattern_list_r(p: &mut Parser, recovery_set: TokenSet) {
+    p.eat(PIPE);
+    pattern_r(p, recovery_set);
+
+    while p.eat(PIPE) {
+        pattern_r(p, recovery_set);
+    }
+}
+
 pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
     if let Some(lhs) = atom_pat(p, recovery_set) {
         // test range_pat
