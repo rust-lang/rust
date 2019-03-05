@@ -15,6 +15,24 @@ pub enum RawMessage {
     Response(RawResponse),
 }
 
+impl From<RawRequest> for RawMessage {
+    fn from(raw: RawRequest) -> RawMessage {
+        RawMessage::Request(raw)
+    }
+}
+
+impl From<RawNotification> for RawMessage {
+    fn from(raw: RawNotification) -> RawMessage {
+        RawMessage::Notification(raw)
+    }
+}
+
+impl From<RawResponse> for RawMessage {
+    fn from(raw: RawResponse) -> RawMessage {
+        RawMessage::Response(raw)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawRequest {
     pub id: u64,

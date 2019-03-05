@@ -63,6 +63,11 @@ pub fn main_loop(
             Ok(ws) => vec![ws],
             Err(e) => {
                 log::error!("loading workspace failed: {}", e);
+                let msg = RawNotification::new::<req::ShowMessage>(&req::ShowMessageParams {
+                    typ: req::MessageType::Error,
+                    message: format!("rust-analyzer failed to load workspace: {}", e),
+                });
+                msg_sender.send(msg.into()).unwrap();
                 Vec::new()
             }
         }
@@ -199,7 +204,7 @@ fn main_loop_inner(
                         Ok((id, ())) => {
                             state.collect_garbage();
                             let resp = RawResponse::ok::<req::CollectGarbage>(id, &());
-                            msg_sender.send(RawMessage::Response(resp)).unwrap()
+                            msg_sender.send(resp.into()).unwrap()
                         }
                         Err(req) => {
                             match on_request(state, pending_requests, pool, &task_sender, req)? {
@@ -211,7 +216,7 @@ fn main_loop_inner(
                                         ErrorCode::MethodNotFound as i32,
                                         "unknown request".to_string(),
                                     );
-                                    msg_sender.send(RawMessage::Response(resp)).unwrap()
+                                    msg_sender.send(resp.into()).unwrap()
                                 }
                             }
                         }
@@ -260,11 +265,11 @@ fn on_task(task: Task, msg_sender: &Sender<RawMessage>, pending_requests: &mut F
     match task {
         Task::Respond(response) => {
             if pending_requests.remove(&response.id) {
-                msg_sender.send(RawMessage::Response(response)).unwrap();
+                msg_sender.send(response.into()).unwrap();
             }
         }
         Task::Notify(n) => {
-            msg_sender.send(RawMessage::Notification(n)).unwrap();
+            msg_sender.send(n.into()).unwrap();
         }
     }
 }
@@ -336,7 +341,7 @@ fn on_notification(
                     ErrorCode::RequestCanceled as i32,
                     "canceled by client".to_string(),
                 );
-                msg_sender.send(RawMessage::Response(response)).unwrap()
+                msg_sender.send(response.into()).unwrap()
             }
             return Ok(());
         }
@@ -375,7 +380,7 @@ fn on_notification(
             }
             let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
             let not = RawNotification::new::<req::PublishDiagnostics>(&params);
-            msg_sender.send(RawMessage::Notification(not)).unwrap();
+            msg_sender.send(not.into()).unwrap();
             return Ok(());
         }
         Err(not) => not,
@@ -501,7 +506,7 @@ fn feedback(intrnal_mode: bool, msg: &str, sender: &Sender<RawMessage>) {
         return;
     }
     let not = RawNotification::new::<req::InternalFeedback>(&msg.to_string());
-    sender.send(RawMessage::Notification(not)).unwrap();
+    sender.send(not.into()).unwrap();
 }
 
 fn is_canceled(e: &failure::Error) -> bool {
