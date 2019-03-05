@@ -26,9 +26,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
-      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
-      url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
-      echo "Attempting to download $s3url"
+      gsurl="gs://$GCP_CACHE_BUCKET/docker/$cksum"
+      url="https://storage.googleapis.com/$GCP_CACHE_BUCKET/docker/$cksum"
+      echo "Attempting to download $gsurl"
       rm -f /tmp/rustci_docker_cache
       set +e
       retry curl -y 30 -Y 10 --connect-timeout 30 -f -L -C - -o /tmp/rustci_docker_cache "$url"
@@ -51,17 +51,17 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       -f "$dockerfile" \
       "$context"
 
-    if [ "$s3url" != "" ]; then
+    if [ "$gsurl" != "" ]; then
       digest=$(docker inspect rust-ci --format '{{.Id}}')
       echo "Built container $digest"
       if ! grep -q "$digest" <(echo "$loaded_images"); then
-        echo "Uploading finished image to $s3url"
+        echo "Uploading finished image to $gsurl"
         set +e
         docker history -q rust-ci | \
           grep -v missing | \
           xargs docker save | \
           gzip | \
-          aws s3 cp - $s3url
+          ~/google-cloud-sdk/bin/gsutil cp - $gsurl
         set -e
       else
         echo "Looks like docker image is the same as before, not uploading"
