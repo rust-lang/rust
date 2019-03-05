@@ -1,7 +1,7 @@
 // This issue reproduces an ICE on compile (E.g. fails on 2018-12-19 nightly).
 // run-pass
 // edition:2018
-#![feature(async_await,futures_api,await_macro,generators)]
+#![feature(async_await,futures_api,generators)]
 
 pub struct Foo;
 
@@ -16,12 +16,12 @@ impl Foo {
         }
     }
 
-    pub async fn run<'a>(&'a self, data: &'a [u8])
+    pub async fn run<'a>(&'a self, data: &'a [u8]) 
     {
-        await!(self.with(move || {
-            println!("{:p}", data);
-        }))
+        let _to_pin = self.with(move || println!("{:p}", data));
+        loop {
+            yield
+        }
     }
 }
-
 fn main() {}
