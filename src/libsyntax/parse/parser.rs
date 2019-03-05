@@ -6716,8 +6716,16 @@ impl<'a> Parser<'a> {
             ast::ImplPolarity::Positive
         };
 
+        let possible_missing_trait = self.look_ahead(0, |t| t.is_keyword(keywords::For));
+
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let ty_first = self.parse_ty()?;
+        let ty_first = self.parse_ty().map_err(|mut err| {
+            if possible_missing_trait {
+                err.help("did you forget a trait name after `impl`?");
+            }
+
+            err
+        })?;
 
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(keywords::For);

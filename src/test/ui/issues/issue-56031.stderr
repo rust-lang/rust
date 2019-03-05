@@ -1,0 +1,10 @@
+error: expected `<`, found `T`
+  --> $DIR/issue-56031.rs:3:10
+   |
+LL | impl for T {}
+   |          ^ expected `<` here
+   |
+   = help: did you forget a trait name after `impl`?
+
+error: aborting due to previous error
+
