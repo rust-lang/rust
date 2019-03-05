@@ -134,14 +134,14 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_for_feedback(&self, feedback: &str) {
-        self.wait_for_feedback_n(feedback, 1)
+    pub fn wait_for_message(&self, message: &str) {
+        self.wait_for_message_n(message, 1)
     }
-    pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
+    pub fn wait_for_message_n(&self, message: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
             RawMessage::Notification(n) if n.method == ShowMessage::METHOD => {
-                let message = n.clone().cast::<req::ShowMessage>().unwrap();
-                message.message == feedback
+                let msg = n.clone().cast::<req::ShowMessage>().unwrap();
+                msg.message == message
             }
             _ => false,
         };

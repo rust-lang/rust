@@ -63,7 +63,7 @@ pub fn main_loop(
             Err(e) => {
                 log::error!("loading workspace failed: {}", e);
 
-                feedback(
+                show_message(
                     req::MessageType::Error,
                     format!("rust-analyzer failed to load workspace: {}", e),
                     msg_sender,
@@ -247,7 +247,7 @@ fn main_loop_inner(
             && pending_libraries.is_empty()
             && in_flight_libraries == 0
         {
-            feedback(req::MessageType::Info, "workspace loaded", msg_sender);
+            show_message(req::MessageType::Info, "workspace loaded", msg_sender);
             // Only send the notification first time
             send_workspace_notification = false;
         }
@@ -505,7 +505,7 @@ fn update_file_notifications_on_threadpool(
     });
 }
 
-fn feedback<M: Into<String>>(typ: req::MessageType, msg: M, sender: &Sender<RawMessage>) {
+fn show_message<M: Into<String>>(typ: req::MessageType, msg: M, sender: &Sender<RawMessage>) {
     let not = RawNotification::new::<req::ShowMessage>(&req::ShowMessageParams {
         typ,
         message: msg.into(),
