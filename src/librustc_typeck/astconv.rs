@@ -1869,14 +1869,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         ast_const: &hir::AnonConst,
         ty: Ty<'tcx>
     ) -> &'tcx ty::LazyConst<'tcx> {
-        debug!("ast_const_to_const(id={:?}, ast_const={:?})", ast_const.id, ast_const);
+        debug!("ast_const_to_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
 
         let tcx = self.tcx();
-        let def_id = tcx.hir().local_def_id(ast_const.id);
+        let def_id = tcx.hir().local_def_id_from_hir_id(ast_const.hir_id);
 
         let mut lazy_const = ty::LazyConst::Unevaluated(
             def_id,
-            Substs::identity_for_item(tcx, def_id)
+            InternalSubsts::identity_for_item(tcx, def_id),
         );
 
         let expr = &tcx.hir().body(ast_const.body).value;

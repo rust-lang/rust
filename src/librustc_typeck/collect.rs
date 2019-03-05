@@ -1020,7 +1020,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                         if !allow_defaults && default.is_some() {
                             if !tcx.features().default_type_parameter_fallback {
-                                tcx.lint_node(
+                                tcx.lint_hir(
                                     lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                     param.hir_id,
                                     param.span,
@@ -1339,7 +1339,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                                     let args = &generic_args.args;
                                     for arg in args {
                                         if let GenericArg::Const(ct) = arg {
-                                            if ct.value.id == node_id {
+                                            if ct.value.hir_id == hir_id {
                                                 found_const = true;
                                                 break;
                                             }
