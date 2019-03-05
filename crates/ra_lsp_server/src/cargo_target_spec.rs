@@ -1,5 +1,5 @@
 use crate::{
-    project_model::TargetKind,
+    project_model::{self, TargetKind},
     server_world::ServerWorld,
     Result
 };
@@ -65,14 +65,16 @@ impl CargoTargetSpec {
         };
         let file_id = world.analysis().crate_root(crate_id)?;
         let path = world.vfs.read().file2path(ra_vfs::VfsFile(file_id.0.into()));
-        let res = world.workspaces.iter().find_map(|ws| {
-            let tgt = ws.cargo.target_by_root(&path)?;
-            let res = CargoTargetSpec {
-                package: tgt.package(&ws.cargo).name(&ws.cargo).to_string(),
-                target: tgt.name(&ws.cargo).to_string(),
-                target_kind: tgt.kind(&ws.cargo),
-            };
-            Some(res)
+        let res = world.workspaces.iter().find_map(|ws| match ws {
+            project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                let tgt = cargo.target_by_root(&path)?;
+                Some(CargoTargetSpec {
+                    package: tgt.package(&cargo).name(&cargo).to_string(),
+                    target: tgt.name(&cargo).to_string(),
+                    target_kind: tgt.kind(&cargo),
+                })
+            }
+            project_model::ProjectWorkspace::Json { .. } => None,
         });
         Ok(res)
     }

@@ -40,12 +40,7 @@ impl ServerWorldState {
         let mut roots = Vec::new();
         roots.push(root.clone());
         for ws in workspaces.iter() {
-            for pkg in ws.cargo.packages() {
-                roots.push(pkg.root(&ws.cargo).to_path_buf());
-            }
-            for krate in ws.sysroot.crates() {
-                roots.push(krate.root_dir(&ws.sysroot).to_path_buf())
-            }
+            ws.add_roots(&mut roots);
         }
         let (mut vfs, roots) = Vfs::new(roots);
         let roots_to_scan = roots.len();
@@ -185,7 +180,7 @@ impl ServerWorld {
         } else {
             res.push_str("workspaces:\n");
             for w in self.workspaces.iter() {
-                res += &format!("{} packages loaded\n", w.cargo.packages().count());
+                res += &format!("{} packages loaded\n", w.count());
             }
         }
         res.push_str("\nanalysis:\n");
