@@ -9,25 +9,25 @@ use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
 use url::Url;
 
-/// **What it does:** Checks for the presence of `_`, `::` or camel-case words
-/// outside ticks in documentation.
-///
-/// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and
-/// camel-case probably indicates some code which should be included between
-/// ticks. `_` can also be used for emphasis in markdown, this lint tries to
-/// consider that.
-///
-/// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks
-/// for is limited, and there are still false positives.
-///
-/// **Examples:**
-/// ```rust
-/// /// Do something with the foo_bar parameter. See also
-/// /// that::other::module::foo.
-/// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
-/// fn doit(foo_bar) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
+    /// outside ticks in documentation.
+    ///
+    /// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and
+    /// camel-case probably indicates some code which should be included between
+    /// ticks. `_` can also be used for emphasis in markdown, this lint tries to
+    /// consider that.
+    ///
+    /// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks
+    /// for is limited, and there are still false positives.
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// /// Do something with the foo_bar parameter. See also
+    /// /// that::other::module::foo.
+    /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
+    /// fn doit(foo_bar) { .. }
+    /// ```
     pub DOC_MARKDOWN,
     pedantic,
     "presence of `_`, `::` or camel-case outside backticks in documentation"

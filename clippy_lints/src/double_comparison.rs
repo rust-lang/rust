@@ -8,24 +8,24 @@ use syntax::source_map::Span;
 
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 
-/// **What it does:** Checks for double comparions that could be simplified to a single expression.
-///
-///
-/// **Why is this bad?** Readability.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x == y || x < y
-/// ```
-///
-/// Could be written as:
-///
-/// ```rust
-/// x <= y
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for double comparions that could be simplified to a single expression.
+    ///
+    ///
+    /// **Why is this bad?** Readability.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x == y || x < y
+    /// ```
+    ///
+    /// Could be written as:
+    ///
+    /// ```rust
+    /// x <= y
+    /// ```
     pub DOUBLE_COMPARISONS,
     complexity,
     "unnecessary double comparisons that can be simplified"

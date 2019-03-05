@@ -15,39 +15,39 @@ use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::Span;
 
-/// **What it does:** Checks for functions taking arguments by reference, where
-/// the argument type is `Copy` and small enough to be more efficient to always
-/// pass by value.
-///
-/// **Why is this bad?** In many calling conventions instances of structs will
-/// be passed through registers if they fit into two or less general purpose
-/// registers.
-///
-/// **Known problems:** This lint is target register size dependent, it is
-/// limited to 32-bit to try and reduce portability problems between 32 and
-/// 64-bit, but if you are compiling for 8 or 16-bit targets then the limit
-/// will be different.
-///
-/// The configuration option `trivial_copy_size_limit` can be set to override
-/// this limit for a project.
-///
-/// This lint attempts to allow passing arguments by reference if a reference
-/// to that argument is returned. This is implemented by comparing the lifetime
-/// of the argument and return value for equality. However, this can cause
-/// false positives in cases involving multiple lifetimes that are bounded by
-/// each other.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(v: &u32) {
-///     assert_eq!(v, 42);
-/// }
-/// // should be
-/// fn foo(v: u32) {
-///     assert_eq!(v, 42);
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for functions taking arguments by reference, where
+    /// the argument type is `Copy` and small enough to be more efficient to always
+    /// pass by value.
+    ///
+    /// **Why is this bad?** In many calling conventions instances of structs will
+    /// be passed through registers if they fit into two or less general purpose
+    /// registers.
+    ///
+    /// **Known problems:** This lint is target register size dependent, it is
+    /// limited to 32-bit to try and reduce portability problems between 32 and
+    /// 64-bit, but if you are compiling for 8 or 16-bit targets then the limit
+    /// will be different.
+    ///
+    /// The configuration option `trivial_copy_size_limit` can be set to override
+    /// this limit for a project.
+    ///
+    /// This lint attempts to allow passing arguments by reference if a reference
+    /// to that argument is returned. This is implemented by comparing the lifetime
+    /// of the argument and return value for equality. However, this can cause
+    /// false positives in cases involving multiple lifetimes that are bounded by
+    /// each other.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo(v: &u32) {
+    ///     assert_eq!(v, 42);
+    /// }
+    /// // should be
+    /// fn foo(v: u32) {
+    ///     assert_eq!(v, 42);
+    /// }
+    /// ```
     pub TRIVIALLY_COPY_PASS_BY_REF,
     perf,
     "functions taking small copyable arguments by reference"

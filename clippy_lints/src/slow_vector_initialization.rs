@@ -9,22 +9,22 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax_pos::symbol::Symbol;
 
-/// **What it does:** Checks slow zero-filled vector initialization
-///
-/// **Why is this bad?** These structures are non-idiomatic and less efficient than simply using
-/// `vec![0; len]`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let mut vec1 = Vec::with_capacity(len);
-/// vec1.resize(len, 0);
-///
-/// let mut vec2 = Vec::with_capacity(len);
-/// vec2.extend(repeat(0).take(len))
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks slow zero-filled vector initialization
+    ///
+    /// **Why is this bad?** These structures are non-idiomatic and less efficient than simply using
+    /// `vec![0; len]`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut vec1 = Vec::with_capacity(len);
+    /// vec1.resize(len, 0);
+    ///
+    /// let mut vec2 = Vec::with_capacity(len);
+    /// vec2.extend(repeat(0).take(len))
+    /// ```
     pub SLOW_VECTOR_INITIALIZATION,
     perf,
     "slow vector initialization"

@@ -3,27 +3,27 @@ use rustc::hir::{Item, ItemKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for types that implement `Copy` as well as
-/// `Iterator`.
-///
-/// **Why is this bad?** Implicit copies can be confusing when working with
-/// iterator combinators.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// #[derive(Copy, Clone)]
-/// struct Countdown(u8);
-///
-/// impl Iterator for Countdown {
-///     // ...
-/// }
-///
-/// let a: Vec<_> = my_iterator.take(1).collect();
-/// let b: Vec<_> = my_iterator.collect();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for types that implement `Copy` as well as
+    /// `Iterator`.
+    ///
+    /// **Why is this bad?** Implicit copies can be confusing when working with
+    /// iterator combinators.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// #[derive(Copy, Clone)]
+    /// struct Countdown(u8);
+    ///
+    /// impl Iterator for Countdown {
+    ///     // ...
+    /// }
+    ///
+    /// let a: Vec<_> = my_iterator.take(1).collect();
+    /// let b: Vec<_> = my_iterator.collect();
+    /// ```
     pub COPY_ITERATOR,
     pedantic,
     "implementing `Iterator` on a `Copy` type"

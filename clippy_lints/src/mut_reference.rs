@@ -5,19 +5,19 @@ use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Detects giving a mutable reference to a function that only
-/// requires an immutable reference.
-///
-/// **Why is this bad?** The immutable reference rules out all other references
-/// to the value. Also the code misleads about the intent of the call site.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// my_vec.push(&mut value)
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Detects giving a mutable reference to a function that only
+    /// requires an immutable reference.
+    ///
+    /// **Why is this bad?** The immutable reference rules out all other references
+    /// to the value. Also the code misleads about the intent of the call site.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// my_vec.push(&mut value)
+    /// ```
     pub UNNECESSARY_MUT_PASSED,
     style,
     "an argument passed as a mutable reference although the callee only demands an immutable reference"

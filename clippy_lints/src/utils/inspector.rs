@@ -8,23 +8,23 @@ use rustc::session::Session;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::Attribute;
 
-/// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
-/// attribute
-///
-/// **Example:**
-/// ```rust
-/// #[clippy::dump]
-/// extern crate foo;
-/// ```
-///
-/// prints
-///
-/// ```
-/// item `foo`
-/// visibility inherited from outer item
-/// extern crate dylib source: "/path/to/foo.so"
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
+    /// attribute
+    ///
+    /// **Example:**
+    /// ```rust
+    /// #[clippy::dump]
+    /// extern crate foo;
+    /// ```
+    ///
+    /// prints
+    ///
+    /// ```
+    /// item `foo`
+    /// visibility inherited from outer item
+    /// extern crate dylib source: "/path/to/foo.so"
+    /// ```
     pub DEEP_CODE_INSPECTION,
     internal_warn,
     "helper to dump info about code"

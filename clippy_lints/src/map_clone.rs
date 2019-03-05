@@ -14,29 +14,29 @@ use syntax::source_map::Span;
 #[derive(Clone)]
 pub struct Pass;
 
-/// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
-/// `iterator.cloned()` instead
-///
-/// **Why is this bad?** Readability, this can be written more concisely
-///
-/// **Known problems:** None
-///
-/// **Example:**
-///
-/// ```rust
-/// let x = vec![42, 43];
-/// let y = x.iter();
-/// let z = y.map(|i| *i);
-/// ```
-///
-/// The correct use would be:
-///
-/// ```rust
-/// let x = vec![42, 43];
-/// let y = x.iter();
-/// let z = y.cloned();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
+    /// `iterator.cloned()` instead
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = vec![42, 43];
+    /// let y = x.iter();
+    /// let z = y.map(|i| *i);
+    /// ```
+    ///
+    /// The correct use would be:
+    ///
+    /// ```rust
+    /// let x = vec![42, 43];
+    /// let y = x.iter();
+    /// let z = y.cloned();
+    /// ```
     pub MAP_CLONE,
     style,
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"

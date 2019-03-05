@@ -11,38 +11,38 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Attribute, LitKind};
 
-/// **What it does:** Generates clippy code that detects the offending pattern
-///
-/// **Example:**
-/// ```rust
-/// // ./tests/ui/my_lint.rs
-/// fn foo() {
-///     // detect the following pattern
-///     #[clippy::author]
-///     if x == 42 {
-///         // but ignore everything from here on
-///         #![clippy::author = "ignore"]
-///     }
-/// }
-/// ```
-///
-/// Running `TESTNAME=ui/my_lint cargo uitest` will produce
-/// a `./tests/ui/new_lint.stdout` file with the generated code:
-///
-/// ```rust
-/// // ./tests/ui/new_lint.stdout
-/// if_chain! {
-///     if let ExprKind::If(ref cond, ref then, None) = item.node,
-///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.node,
-///     if let ExprKind::Path(ref path) = left.node,
-///     if let ExprKind::Lit(ref lit) = right.node,
-///     if let LitKind::Int(42, _) = lit.node,
-///     then {
-///         // report your lint here
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Generates clippy code that detects the offending pattern
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // ./tests/ui/my_lint.rs
+    /// fn foo() {
+    ///     // detect the following pattern
+    ///     #[clippy::author]
+    ///     if x == 42 {
+    ///         // but ignore everything from here on
+    ///         #![clippy::author = "ignore"]
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Running `TESTNAME=ui/my_lint cargo uitest` will produce
+    /// a `./tests/ui/new_lint.stdout` file with the generated code:
+    ///
+    /// ```rust
+    /// // ./tests/ui/new_lint.stdout
+    /// if_chain! {
+    ///     if let ExprKind::If(ref cond, ref then, None) = item.node,
+    ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.node,
+    ///     if let ExprKind::Path(ref path) = left.node,
+    ///     if let ExprKind::Lit(ref lit) = right.node,
+    ///     if let LitKind::Int(42, _) = lit.node,
+    ///     then {
+    ///         // report your lint here
+    ///     }
+    /// }
+    /// ```
     pub LINT_AUTHOR,
     internal_warn,
     "helper for writing lints"

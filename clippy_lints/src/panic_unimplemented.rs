@@ -7,36 +7,36 @@ use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
-/// **What it does:** Checks for missing parameters in `panic!`.
-///
-/// **Why is this bad?** Contrary to the `format!` family of macros, there are
-/// two forms of `panic!`: if there are no parameters given, the first argument
-/// is not a format string and used literally. So while `format!("{}")` will
-/// fail to compile, `panic!("{}")` will not.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// panic!("This `panic!` is probably missing a parameter there: {}");
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for missing parameters in `panic!`.
+    ///
+    /// **Why is this bad?** Contrary to the `format!` family of macros, there are
+    /// two forms of `panic!`: if there are no parameters given, the first argument
+    /// is not a format string and used literally. So while `format!("{}")` will
+    /// fail to compile, `panic!("{}")` will not.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// panic!("This `panic!` is probably missing a parameter there: {}");
+    /// ```
     pub PANIC_PARAMS,
     style,
     "missing parameters in `panic!` calls"
 }
 
-/// **What it does:** Checks for usage of `unimplemented!`.
-///
-/// **Why is this bad?** This macro should not be present in production code
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// unimplemented!();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `unimplemented!`.
+    ///
+    /// **Why is this bad?** This macro should not be present in production code
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// unimplemented!();
+    /// ```
     pub UNIMPLEMENTED,
     restriction,
     "`unimplemented!` should not be present in production code"

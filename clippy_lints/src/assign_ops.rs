@@ -7,43 +7,43 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
-/// patterns.
-///
-/// **Why is this bad?** These can be written as the shorter `a op= b`.
-///
-/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
-/// implementations that differ from the regular `Op` impl.
-///
-/// **Example:**
-/// ```rust
-/// let mut a = 5;
-/// ...
-/// a = a + b;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
+    /// patterns.
+    ///
+    /// **Why is this bad?** These can be written as the shorter `a op= b`.
+    ///
+    /// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
+    /// implementations that differ from the regular `Op` impl.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut a = 5;
+    /// ...
+    /// a = a + b;
+    /// ```
     pub ASSIGN_OP_PATTERN,
     style,
     "assigning the result of an operation on a variable to that same variable"
 }
 
-/// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
-///
-/// **Why is this bad?** Most likely these are bugs where one meant to write `a
-/// op= b`.
-///
-/// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
-/// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore it suggests both.
-/// If `a op= a op b` is really the correct behaviour it should be
-/// written as `a = a op a op b` as it's less confusing.
-///
-/// **Example:**
-/// ```rust
-/// let mut a = 5;
-/// ...
-/// a += a + b;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
+    ///
+    /// **Why is this bad?** Most likely these are bugs where one meant to write `a
+    /// op= b`.
+    ///
+    /// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
+    /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore it suggests both.
+    /// If `a op= a op b` is really the correct behaviour it should be
+    /// written as `a = a op a op b` as it's less confusing.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut a = 5;
+    /// ...
+    /// a += a + b;
+    /// ```
     pub MISREFACTORED_ASSIGN_OP,
     complexity,
     "having a variable on both sides of an assign op"

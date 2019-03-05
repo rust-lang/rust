@@ -9,77 +9,77 @@ use rustc_errors::Applicability;
 use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for calling `.step_by(0)` on iterators,
-/// which never terminates.
-///
-/// **Why is this bad?** This very much looks like an oversight, since with
-/// `loop { .. }` there is an obvious better way to endlessly loop.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x in (5..5).step_by(0) {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calling `.step_by(0)` on iterators,
+    /// which never terminates.
+    ///
+    /// **Why is this bad?** This very much looks like an oversight, since with
+    /// `loop { .. }` there is an obvious better way to endlessly loop.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// for x in (5..5).step_by(0) {
+    ///     ..
+    /// }
+    /// ```
     pub ITERATOR_STEP_BY_ZERO,
     correctness,
     "using `Iterator::step_by(0)`, which produces an infinite iterator"
 }
 
-/// **What it does:** Checks for zipping a collection with the range of
-/// `0.._.len()`.
-///
-/// **Why is this bad?** The code is better expressed with `.enumerate()`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x.iter().zip(0..x.len())
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for zipping a collection with the range of
+    /// `0.._.len()`.
+    ///
+    /// **Why is this bad?** The code is better expressed with `.enumerate()`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x.iter().zip(0..x.len())
+    /// ```
     pub RANGE_ZIP_WITH_LEN,
     complexity,
     "zipping iterator with a range when `enumerate()` would do"
 }
 
-/// **What it does:** Checks for exclusive ranges where 1 is added to the
-/// upper bound, e.g. `x..(y+1)`.
-///
-/// **Why is this bad?** The code is more readable with an inclusive range
-/// like `x..=y`.
-///
-/// **Known problems:** Will add unnecessary pair of parentheses when the
-/// expression is not wrapped in a pair but starts with a opening parenthesis
-/// and ends with a closing one.
-/// I.e: `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
-///
-/// **Example:**
-/// ```rust
-/// for x..(y+1) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for exclusive ranges where 1 is added to the
+    /// upper bound, e.g. `x..(y+1)`.
+    ///
+    /// **Why is this bad?** The code is more readable with an inclusive range
+    /// like `x..=y`.
+    ///
+    /// **Known problems:** Will add unnecessary pair of parentheses when the
+    /// expression is not wrapped in a pair but starts with a opening parenthesis
+    /// and ends with a closing one.
+    /// I.e: `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// for x..(y+1) { .. }
+    /// ```
     pub RANGE_PLUS_ONE,
     complexity,
     "`x..(y+1)` reads better as `x..=y`"
 }
 
-/// **What it does:** Checks for inclusive ranges where 1 is subtracted from
-/// the upper bound, e.g. `x..=(y-1)`.
-///
-/// **Why is this bad?** The code is more readable with an exclusive range
-/// like `x..y`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x..=(y-1) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for inclusive ranges where 1 is subtracted from
+    /// the upper bound, e.g. `x..=(y-1)`.
+    ///
+    /// **Why is this bad?** The code is more readable with an exclusive range
+    /// like `x..y`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// for x..=(y-1) { .. }
+    /// ```
     pub RANGE_MINUS_ONE,
     complexity,
     "`x..=(y-1)` reads better as `x..y`"

@@ -9,41 +9,41 @@ use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 
-/// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.
-///
-/// **Why is this bad?** Using a mutex just to make access to a plain bool or
-/// reference sequential is shooting flies with cannons.
-/// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and
-/// faster.
-///
-/// **Known problems:** This lint cannot detect if the mutex is actually used
-/// for waiting before a critical section.
-///
-/// **Example:**
-/// ```rust
-/// let x = Mutex::new(&y);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.
+    ///
+    /// **Why is this bad?** Using a mutex just to make access to a plain bool or
+    /// reference sequential is shooting flies with cannons.
+    /// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and
+    /// faster.
+    ///
+    /// **Known problems:** This lint cannot detect if the mutex is actually used
+    /// for waiting before a critical section.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = Mutex::new(&y);
+    /// ```
     pub MUTEX_ATOMIC,
     perf,
     "using a mutex where an atomic value could be used instead"
 }
 
-/// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral
-/// type.
-///
-/// **Why is this bad?** Using a mutex just to make access to a plain integer
-/// sequential is
-/// shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
-///
-/// **Known problems:** This lint cannot detect if the mutex is actually used
-/// for waiting before a critical section.
-///
-/// **Example:**
-/// ```rust
-/// let x = Mutex::new(0usize);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral
+    /// type.
+    ///
+    /// **Why is this bad?** Using a mutex just to make access to a plain integer
+    /// sequential is
+    /// shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
+    ///
+    /// **Known problems:** This lint cannot detect if the mutex is actually used
+    /// for waiting before a critical section.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = Mutex::new(0usize);
+    /// ```
     pub MUTEX_INTEGER,
     nursery,
     "using a mutex for an integer type"

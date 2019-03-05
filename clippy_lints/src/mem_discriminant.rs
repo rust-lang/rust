@@ -7,19 +7,19 @@ use rustc_errors::Applicability;
 
 use std::iter;
 
-/// **What it does:** Checks for calls of `mem::discriminant()` on a non-enum type.
-///
-/// **Why is this bad?** The value of `mem::discriminant()` on non-enum types
-/// is unspecified.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// mem::discriminant(&"hello");
-/// mem::discriminant(&&Some(2));
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls of `mem::discriminant()` on a non-enum type.
+    ///
+    /// **Why is this bad?** The value of `mem::discriminant()` on non-enum types
+    /// is unspecified.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// mem::discriminant(&"hello");
+    /// mem::discriminant(&&Some(2));
+    /// ```
     pub MEM_DISCRIMINANT_NON_ENUM,
     correctness,
     "calling mem::descriminant on non-enum type"

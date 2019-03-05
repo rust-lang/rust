@@ -11,19 +11,19 @@ use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for address of operations (`&`) that are going to
-/// be dereferenced immediately by the compiler.
-///
-/// **Why is this bad?** Suggests that the receiver of the expression borrows
-/// the expression.
-///
-/// **Example:**
-/// ```rust
-/// let x: &i32 = &&&&&&5;
-/// ```
-///
-/// **Known problems:** None.
 declare_clippy_lint! {
+    /// **What it does:** Checks for address of operations (`&`) that are going to
+    /// be dereferenced immediately by the compiler.
+    ///
+    /// **Why is this bad?** Suggests that the receiver of the expression borrows
+    /// the expression.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x: &i32 = &&&&&&5;
+    /// ```
+    ///
+    /// **Known problems:** None.
     pub NEEDLESS_BORROW,
     nursery,
     "taking a reference that is going to be automatically dereferenced"

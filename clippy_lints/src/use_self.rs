@@ -9,36 +9,36 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
 
-/// **What it does:** Checks for unnecessary repetition of structure name when a
-/// replacement with `Self` is applicable.
-///
-/// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
-/// name
-/// feels inconsistent.
-///
-/// **Known problems:**
-/// - False positive when using associated types (#2843)
-/// - False positives in some situations when using generics (#3410)
-///
-/// **Example:**
-/// ```rust
-/// struct Foo {}
-/// impl Foo {
-///     fn new() -> Foo {
-///         Foo {}
-///     }
-/// }
-/// ```
-/// could be
-/// ```rust
-/// struct Foo {}
-/// impl Foo {
-///     fn new() -> Self {
-///         Self {}
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for unnecessary repetition of structure name when a
+    /// replacement with `Self` is applicable.
+    ///
+    /// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
+    /// name
+    /// feels inconsistent.
+    ///
+    /// **Known problems:**
+    /// - False positive when using associated types (#2843)
+    /// - False positives in some situations when using generics (#3410)
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Foo {}
+    /// impl Foo {
+    ///     fn new() -> Foo {
+    ///         Foo {}
+    ///     }
+    /// }
+    /// ```
+    /// could be
+    /// ```rust
+    /// struct Foo {}
+    /// impl Foo {
+    ///     fn new() -> Self {
+    ///         Self {}
+    ///     }
+    /// }
+    /// ```
     pub USE_SELF,
     pedantic,
     "Unnecessary structure name repetition whereas `Self` is applicable"

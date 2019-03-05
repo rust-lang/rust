@@ -5,29 +5,29 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for missing return statements at the end of a block.
-///
-/// **Why is this bad?** Actually omitting the return keyword is idiomatic Rust code. Programmers
-/// coming from other languages might prefer the expressiveness of `return`. It's possible to miss
-/// the last returning statement because the only difference is a missing `;`. Especially in bigger
-/// code with multiple return paths having a `return` keyword makes it easier to find the
-/// corresponding statements.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(x: usize) {
-///     x
-/// }
-/// ```
-/// add return
-/// ```rust
-/// fn foo(x: usize) {
-///     return x;
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for missing return statements at the end of a block.
+    ///
+    /// **Why is this bad?** Actually omitting the return keyword is idiomatic Rust code. Programmers
+    /// coming from other languages might prefer the expressiveness of `return`. It's possible to miss
+    /// the last returning statement because the only difference is a missing `;`. Especially in bigger
+    /// code with multiple return paths having a `return` keyword makes it easier to find the
+    /// corresponding statements.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo(x: usize) {
+    ///     x
+    /// }
+    /// ```
+    /// add return
+    /// ```rust
+    /// fn foo(x: usize) {
+    ///     return x;
+    /// }
+    /// ```
     pub IMPLICIT_RETURN,
     restriction,
     "use a return statement like `return expr` instead of an expression"

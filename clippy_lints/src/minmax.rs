@@ -5,21 +5,21 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use std::cmp::Ordering;
 
-/// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
-/// used to clamp values, but switched so that the result is constant.
-///
-/// **Why is this bad?** This is in all probability not the intended outcome. At
-/// the least it hurts readability of the code.
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// min(0, max(100, x))
-/// ```
-/// It will always be equal to `0`. Probably the author meant to clamp the value
-/// between 0 and 100, but has erroneously swapped `min` and `max`.
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
+    /// used to clamp values, but switched so that the result is constant.
+    ///
+    /// **Why is this bad?** This is in all probability not the intended outcome. At
+    /// the least it hurts readability of the code.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// min(0, max(100, x))
+    /// ```
+    /// It will always be equal to `0`. Probably the author meant to clamp the value
+    /// between 0 and 100, but has erroneously swapped `min` and `max`.
     pub MIN_MAX,
     correctness,
     "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"

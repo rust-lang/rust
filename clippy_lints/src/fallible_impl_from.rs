@@ -7,22 +7,22 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use syntax_pos::Span;
 
-/// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
-///
-/// **Why is this bad?** `TryFrom` should be used if there's a possibility of failure.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// struct Foo(i32);
-/// impl From<String> for Foo {
-///     fn from(s: String) -> Self {
-///         Foo(s.parse().unwrap())
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
+    ///
+    /// **Why is this bad?** `TryFrom` should be used if there's a possibility of failure.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Foo(i32);
+    /// impl From<String> for Foo {
+    ///     fn from(s: String) -> Self {
+    ///         Foo(s.parse().unwrap())
+    ///     }
+    /// }
+    /// ```
     pub FALLIBLE_IMPL_FROM,
     nursery,
     "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`"

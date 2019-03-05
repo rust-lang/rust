@@ -8,18 +8,18 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
-/// be possible.
-///
-/// **Why is this bad?** This is less efficient.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// foo(&vec![1, 2])
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
+    /// be possible.
+    ///
+    /// **Why is this bad?** This is less efficient.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// foo(&vec![1, 2])
+    /// ```
     pub USELESS_VEC,
     perf,
     "useless `vec!`"

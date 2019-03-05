@@ -7,19 +7,19 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for `use Enum::*`.
-///
-/// **Why is this bad?** It is usually better style to use the prefixed name of
-/// an enumeration variant, rather than importing variants.
-///
-/// **Known problems:** Old-style enumerations that prefix the variants are
-/// still around.
-///
-/// **Example:**
-/// ```rust
-/// use std::cmp::Ordering::*;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `use Enum::*`.
+    ///
+    /// **Why is this bad?** It is usually better style to use the prefixed name of
+    /// an enumeration variant, rather than importing variants.
+    ///
+    /// **Known problems:** Old-style enumerations that prefix the variants are
+    /// still around.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// use std::cmp::Ordering::*;
+    /// ```
     pub ENUM_GLOB_USE,
     pedantic,
     "use items that import all variants of an enum"

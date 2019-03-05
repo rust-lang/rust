@@ -4,25 +4,25 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
-///
-/// **Why is this bad?** `PartialEq::ne` is required to always return the
-/// negated result of `PartialEq::eq`, which is exactly what the default
-/// implementation does. Therefore, there should never be any need to
-/// re-implement it.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// struct Foo;
-///
-/// impl PartialEq for Foo {
-///    fn eq(&self, other: &Foo) -> bool { ... }
-///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
+    ///
+    /// **Why is this bad?** `PartialEq::ne` is required to always return the
+    /// negated result of `PartialEq::eq`, which is exactly what the default
+    /// implementation does. Therefore, there should never be any need to
+    /// re-implement it.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Foo;
+    ///
+    /// impl PartialEq for Foo {
+    ///    fn eq(&self, other: &Foo) -> bool { ... }
+    ///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
+    /// }
+    /// ```
     pub PARTIALEQ_NE_IMPL,
     complexity,
     "re-implementing `PartialEq::ne`"

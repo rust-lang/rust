@@ -6,18 +6,18 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for identity operations, e.g. `x + 0`.
-///
-/// **Why is this bad?** This code can be removed without changing the
-/// meaning. So it just obscures what's going on. Delete it mercilessly.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x / 1 + 0 * 1 - 0 | 0
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for identity operations, e.g. `x + 0`.
+    ///
+    /// **Why is this bad?** This code can be removed without changing the
+    /// meaning. So it just obscures what's going on. Delete it mercilessly.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x / 1 + 0 * 1 - 0 | 0
+    /// ```
     pub IDENTITY_OP,
     complexity,
     "using identity operations, e.g. `x + 0` or `y / 1`"

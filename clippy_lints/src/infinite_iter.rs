@@ -3,36 +3,36 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for iteration that is guaranteed to be infinite.
-///
-/// **Why is this bad?** While there may be places where this is acceptable
-/// (e.g. in event streams), in most cases this is simply an error.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// repeat(1_u8).iter().collect::<Vec<_>>()
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for iteration that is guaranteed to be infinite.
+    ///
+    /// **Why is this bad?** While there may be places where this is acceptable
+    /// (e.g. in event streams), in most cases this is simply an error.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// repeat(1_u8).iter().collect::<Vec<_>>()
+    /// ```
     pub INFINITE_ITER,
     correctness,
     "infinite iteration"
 }
 
-/// **What it does:** Checks for iteration that may be infinite.
-///
-/// **Why is this bad?** While there may be places where this is acceptable
-/// (e.g. in event streams), in most cases this is simply an error.
-///
-/// **Known problems:** The code may have a condition to stop iteration, but
-/// this lint is not clever enough to analyze it.
-///
-/// **Example:**
-/// ```rust
-/// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for iteration that may be infinite.
+    ///
+    /// **Why is this bad?** While there may be places where this is acceptable
+    /// (e.g. in event streams), in most cases this is simply an error.
+    ///
+    /// **Known problems:** The code may have a condition to stop iteration, but
+    /// this lint is not clever enough to analyze it.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
+    /// ```
     pub MAYBE_INFINITE_ITER,
     pedantic,
     "possible infinite iteration"

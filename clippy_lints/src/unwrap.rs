@@ -7,48 +7,48 @@ use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
-///
-/// **Why is this bad?** Using `if let` or `match` is more idiomatic.
-///
-/// **Known problems:** Limitations of the borrow checker might make unwrap() necessary sometimes?
-///
-/// **Example:**
-/// ```rust
-/// if option.is_some() {
-///     do_something_with(option.unwrap())
-/// }
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// if let Some(value) = option {
-///     do_something_with(value)
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
+    ///
+    /// **Why is this bad?** Using `if let` or `match` is more idiomatic.
+    ///
+    /// **Known problems:** Limitations of the borrow checker might make unwrap() necessary sometimes?
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if option.is_some() {
+    ///     do_something_with(option.unwrap())
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```rust
+    /// if let Some(value) = option {
+    ///     do_something_with(value)
+    /// }
+    /// ```
     pub UNNECESSARY_UNWRAP,
     nursery,
     "checks for calls of unwrap[_err]() that cannot fail"
 }
 
-/// **What it does:** Checks for calls of `unwrap[_err]()` that will always fail.
-///
-/// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
-///
-/// **Known problems:** This lint only checks `if` conditions not assignments.
-/// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
-///
-/// **Example:**
-/// ```rust
-/// if option.is_none() {
-///     do_something_with(option.unwrap())
-/// }
-/// ```
-///
-/// This code will always panic. The if condition should probably be inverted.
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls of `unwrap[_err]()` that will always fail.
+    ///
+    /// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
+    ///
+    /// **Known problems:** This lint only checks `if` conditions not assignments.
+    /// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if option.is_none() {
+    ///     do_something_with(option.unwrap())
+    /// }
+    /// ```
+    ///
+    /// This code will always panic. The if condition should probably be inverted.
     pub PANICKING_UNWRAP,
     nursery,
     "checks for calls of unwrap[_err]() that will always fail"

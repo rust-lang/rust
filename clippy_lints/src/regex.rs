@@ -10,57 +10,57 @@ use std::convert::TryFrom;
 use syntax::ast::{LitKind, StrStyle};
 use syntax::source_map::{BytePos, Span};
 
-/// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
-/// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
-/// regex syntax.
-///
-/// **Why is this bad?** This will lead to a runtime panic.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// Regex::new("|")
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
+    /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
+    /// regex syntax.
+    ///
+    /// **Why is this bad?** This will lead to a runtime panic.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// Regex::new("|")
+    /// ```
     pub INVALID_REGEX,
     correctness,
     "invalid regular expressions"
 }
 
-/// **What it does:** Checks for trivial [regex](https://crates.io/crates/regex)
-/// creation (with `Regex::new`, `RegexBuilder::new` or `RegexSet::new`).
-///
-/// **Why is this bad?** Matching the regex can likely be replaced by `==` or
-/// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
-/// methods.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// Regex::new("^foobar")
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for trivial [regex](https://crates.io/crates/regex)
+    /// creation (with `Regex::new`, `RegexBuilder::new` or `RegexSet::new`).
+    ///
+    /// **Why is this bad?** Matching the regex can likely be replaced by `==` or
+    /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
+    /// methods.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// Regex::new("^foobar")
+    /// ```
     pub TRIVIAL_REGEX,
     style,
     "trivial regular expressions"
 }
 
-/// **What it does:** Checks for usage of `regex!(_)` which (as of now) is
-/// usually slower than `Regex::new(_)` unless called in a loop (which is a bad
-/// idea anyway).
-///
-/// **Why is this bad?** Performance, at least for now. The macro version is
-/// likely to catch up long-term, but for now the dynamic version is faster.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// regex!("foo|bar")
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `regex!(_)` which (as of now) is
+    /// usually slower than `Regex::new(_)` unless called in a loop (which is a bad
+    /// idea anyway).
+    ///
+    /// **Why is this bad?** Performance, at least for now. The macro version is
+    /// likely to catch up long-term, but for now the dynamic version is faster.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// regex!("foo|bar")
+    /// ```
     pub REGEX_MACRO,
     style,
     "use of `regex!(_)` instead of `Regex::new(_)`"

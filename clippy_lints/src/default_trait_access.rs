@@ -7,22 +7,22 @@ use rustc_errors::Applicability;
 
 use crate::utils::{any_parent_is_automatically_derived, match_def_path, opt_def_id, paths, span_lint_and_sugg};
 
-/// **What it does:** Checks for literal calls to `Default::default()`.
-///
-/// **Why is this bad?** It's more clear to the reader to use the name of the type whose default is
-/// being gotten than the generic `Default`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// // Bad
-/// let s: String = Default::default();
-///
-/// // Good
-/// let s = String::default();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for literal calls to `Default::default()`.
+    ///
+    /// **Why is this bad?** It's more clear to the reader to use the name of the type whose default is
+    /// being gotten than the generic `Default`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // Bad
+    /// let s: String = Default::default();
+    ///
+    /// // Good
+    /// let s = String::default();
+    /// ```
     pub DEFAULT_TRAIT_ACCESS,
     pedantic,
     "checks for literal calls to Default::default()"

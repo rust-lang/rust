@@ -14,16 +14,16 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Span;
 
-/// **What it does:** Warns if there is missing doc for any documentable item
-/// (public or private).
-///
-/// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
-/// allowed-by-default lint for
-/// public members, but has no way to enforce documentation of private items.
-/// This lint fixes that.
-///
-/// **Known problems:** None.
 declare_clippy_lint! {
+    /// **What it does:** Warns if there is missing doc for any documentable item
+    /// (public or private).
+    ///
+    /// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
+    /// allowed-by-default lint for
+    /// public members, but has no way to enforce documentation of private items.
+    /// This lint fixes that.
+    ///
+    /// **Known problems:** None.
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
     "detects missing documentation for public and private members"

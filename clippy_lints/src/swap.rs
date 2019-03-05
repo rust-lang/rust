@@ -10,41 +10,41 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for manual swapping.
-///
-/// **Why is this bad?** The `std::mem::swap` function exposes the intent better
-/// without deinitializing or copying either variable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// let t = b;
-/// b = a;
-/// a = t;
-/// ```
-/// Use std::mem::swap():
-/// ```rust
-/// std::mem::swap(&mut a, &mut b);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for manual swapping.
+    ///
+    /// **Why is this bad?** The `std::mem::swap` function exposes the intent better
+    /// without deinitializing or copying either variable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// let t = b;
+    /// b = a;
+    /// a = t;
+    /// ```
+    /// Use std::mem::swap():
+    /// ```rust
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
     pub MANUAL_SWAP,
     complexity,
     "manual swap of two variables"
 }
 
-/// **What it does:** Checks for `foo = bar; bar = foo` sequences.
-///
-/// **Why is this bad?** This looks like a failed attempt to swap.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// a = b;
-/// b = a;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `foo = bar; bar = foo` sequences.
+    ///
+    /// **Why is this bad?** This looks like a failed attempt to swap.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// a = b;
+    /// b = a;
+    /// ```
     pub ALMOST_SWAPPED,
     correctness,
     "`foo = bar; bar = foo` sequence"

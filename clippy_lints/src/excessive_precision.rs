@@ -11,25 +11,25 @@ use std::fmt;
 use syntax::ast::*;
 use syntax_pos::symbol::Symbol;
 
-/// **What it does:** Checks for float literals with a precision greater
-/// than that supported by the underlying type
-///
-/// **Why is this bad?** Rust will truncate the literal silently.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// // Bad
-/// let v: f32 = 0.123_456_789_9;
-/// println!("{}", v); //  0.123_456_789
-///
-/// // Good
-/// let v: f64 = 0.123_456_789_9;
-/// println!("{}", v); //  0.123_456_789_9
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for float literals with a precision greater
+    /// than that supported by the underlying type
+    ///
+    /// **Why is this bad?** Rust will truncate the literal silently.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let v: f32 = 0.123_456_789_9;
+    /// println!("{}", v); //  0.123_456_789
+    ///
+    /// // Good
+    /// let v: f64 = 0.123_456_789_9;
+    /// println!("{}", v); //  0.123_456_789_9
+    /// ```
     pub EXCESSIVE_PRECISION,
     style,
     "excessive precision for float literal"

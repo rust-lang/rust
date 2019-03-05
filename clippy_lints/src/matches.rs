@@ -18,192 +18,192 @@ use std::ops::Deref;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for matches with a single arm where an `if let`
-/// will usually suffice.
-///
-/// **Why is this bad?** Just readability – `if let` nests less than a `match`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// match x {
-///     Some(ref foo) => bar(foo),
-///     _ => (),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches with a single arm where an `if let`
+    /// will usually suffice.
+    ///
+    /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// match x {
+    ///     Some(ref foo) => bar(foo),
+    ///     _ => (),
+    /// }
+    /// ```
     pub SINGLE_MATCH,
     style,
     "a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`"
 }
 
-/// **What it does:** Checks for matches with a two arms where an `if let else` will
-/// usually suffice.
-///
-/// **Why is this bad?** Just readability – `if let` nests less than a `match`.
-///
-/// **Known problems:** Personal style preferences may differ.
-///
-/// **Example:**
-///
-/// Using `match`:
-///
-/// ```rust
-/// match x {
-///     Some(ref foo) => bar(foo),
-///     _ => bar(other_ref),
-/// }
-/// ```
-///
-/// Using `if let` with `else`:
-///
-/// ```rust
-/// if let Some(ref foo) = x {
-///     bar(foo);
-/// } else {
-///     bar(other_ref);
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches with a two arms where an `if let else` will
+    /// usually suffice.
+    ///
+    /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+    ///
+    /// **Known problems:** Personal style preferences may differ.
+    ///
+    /// **Example:**
+    ///
+    /// Using `match`:
+    ///
+    /// ```rust
+    /// match x {
+    ///     Some(ref foo) => bar(foo),
+    ///     _ => bar(other_ref),
+    /// }
+    /// ```
+    ///
+    /// Using `if let` with `else`:
+    ///
+    /// ```rust
+    /// if let Some(ref foo) = x {
+    ///     bar(foo);
+    /// } else {
+    ///     bar(other_ref);
+    /// }
+    /// ```
     pub SINGLE_MATCH_ELSE,
     pedantic,
     "a match statement with a two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
 }
 
-/// **What it does:** Checks for matches where all arms match a reference,
-/// suggesting to remove the reference and deref the matched expression
-/// instead. It also checks for `if let &foo = bar` blocks.
-///
-/// **Why is this bad?** It just makes the code less readable. That reference
-/// destructuring adds nothing to the code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// match x {
-///     &A(ref y) => foo(y),
-///     &B => bar(),
-///     _ => frob(&x),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches where all arms match a reference,
+    /// suggesting to remove the reference and deref the matched expression
+    /// instead. It also checks for `if let &foo = bar` blocks.
+    ///
+    /// **Why is this bad?** It just makes the code less readable. That reference
+    /// destructuring adds nothing to the code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// match x {
+    ///     &A(ref y) => foo(y),
+    ///     &B => bar(),
+    ///     _ => frob(&x),
+    /// }
+    /// ```
     pub MATCH_REF_PATS,
     style,
     "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
 }
 
-/// **What it does:** Checks for matches where match expression is a `bool`. It
-/// suggests to replace the expression with an `if...else` block.
-///
-/// **Why is this bad?** It makes the code less readable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let condition: bool = true;
-/// match condition {
-///     true => foo(),
-///     false => bar(),
-/// }
-/// ```
-/// Use if/else instead:
-/// ```rust
-/// let condition: bool = true;
-/// if condition {
-///     foo();
-/// } else {
-///     bar();
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches where match expression is a `bool`. It
+    /// suggests to replace the expression with an `if...else` block.
+    ///
+    /// **Why is this bad?** It makes the code less readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let condition: bool = true;
+    /// match condition {
+    ///     true => foo(),
+    ///     false => bar(),
+    /// }
+    /// ```
+    /// Use if/else instead:
+    /// ```rust
+    /// let condition: bool = true;
+    /// if condition {
+    ///     foo();
+    /// } else {
+    ///     bar();
+    /// }
+    /// ```
     pub MATCH_BOOL,
     style,
     "a match on a boolean expression instead of an `if..else` block"
 }
 
-/// **What it does:** Checks for overlapping match arms.
-///
-/// **Why is this bad?** It is likely to be an error and if not, makes the code
-/// less obvious.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x = 5;
-/// match x {
-///     1...10 => println!("1 ... 10"),
-///     5...15 => println!("5 ... 15"),
-///     _ => (),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for overlapping match arms.
+    ///
+    /// **Why is this bad?** It is likely to be an error and if not, makes the code
+    /// less obvious.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = 5;
+    /// match x {
+    ///     1...10 => println!("1 ... 10"),
+    ///     5...15 => println!("5 ... 15"),
+    ///     _ => (),
+    /// }
+    /// ```
     pub MATCH_OVERLAPPING_ARM,
     style,
     "a match with overlapping arms"
 }
 
-/// **What it does:** Checks for arm which matches all errors with `Err(_)`
-/// and take drastic actions like `panic!`.
-///
-/// **Why is this bad?** It is generally a bad practice, just like
-/// catching all exceptions in java with `catch(Exception)`
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x: Result(i32, &str) = Ok(3);
-/// match x {
-///     Ok(_) => println!("ok"),
-///     Err(_) => panic!("err"),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for arm which matches all errors with `Err(_)`
+    /// and take drastic actions like `panic!`.
+    ///
+    /// **Why is this bad?** It is generally a bad practice, just like
+    /// catching all exceptions in java with `catch(Exception)`
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x: Result(i32, &str) = Ok(3);
+    /// match x {
+    ///     Ok(_) => println!("ok"),
+    ///     Err(_) => panic!("err"),
+    /// }
+    /// ```
     pub MATCH_WILD_ERR_ARM,
     style,
     "a match with `Err(_)` arm and take drastic actions"
 }
 
-/// **What it does:** Checks for match which is used to add a reference to an
-/// `Option` value.
-///
-/// **Why is this bad?** Using `as_ref()` or `as_mut()` instead is shorter.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x: Option<()> = None;
-/// let r: Option<&()> = match x {
-///     None => None,
-///     Some(ref v) => Some(v),
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for match which is used to add a reference to an
+    /// `Option` value.
+    ///
+    /// **Why is this bad?** Using `as_ref()` or `as_mut()` instead is shorter.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x: Option<()> = None;
+    /// let r: Option<&()> = match x {
+    ///     None => None,
+    ///     Some(ref v) => Some(v),
+    /// };
+    /// ```
     pub MATCH_AS_REF,
     complexity,
     "a match on an Option value instead of using `as_ref()` or `as_mut`"
 }
 
-/// **What it does:** Checks for wildcard enum matches using `_`.
-///
-/// **Why is this bad?** New enum variants added by library updates can be missed.
-///
-/// **Known problems:** Suggested replacements may be incorrect if guards exhaustively cover some
-/// variants, and also may not use correct path to enum if it's not present in the current scope.
-///
-/// **Example:**
-/// ```rust
-/// match x {
-///     A => {},
-///     _ => {},
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard enum matches using `_`.
+    ///
+    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    ///
+    /// **Known problems:** Suggested replacements may be incorrect if guards exhaustively cover some
+    /// variants, and also may not use correct path to enum if it's not present in the current scope.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// match x {
+    ///     A => {},
+    ///     _ => {},
+    /// }
+    /// ```
     pub WILDCARD_ENUM_MATCH_ARM,
     restriction,
     "a wildcard enum match arm using `_`"

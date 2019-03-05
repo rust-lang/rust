@@ -6,22 +6,22 @@ use syntax::ast;
 use syntax::source_map::Span;
 use syntax::tokenstream::TokenStream;
 
-/// **What it does:** Checks for usage of dbg!() macro.
-///
-/// **Why is this bad?** `dbg!` macro is intended as a debugging tool. It
-/// should not be in version control.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// // Bad
-/// dbg!(true)
-///
-/// // Good
-/// true
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of dbg!() macro.
+    ///
+    /// **Why is this bad?** `dbg!` macro is intended as a debugging tool. It
+    /// should not be in version control.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// // Bad
+    /// dbg!(true)
+    ///
+    /// // Good
+    /// true
+    /// ```
     pub DBG_MACRO,
     restriction,
     "`dbg!` macro is intended as a debugging tool"

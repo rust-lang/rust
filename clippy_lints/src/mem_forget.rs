@@ -3,19 +3,19 @@ use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
-/// `Drop`.
-///
-/// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its
-/// destructor, possibly causing leaks.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// mem::forget(Rc::new(55))
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
+    /// `Drop`.
+    ///
+    /// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its
+    /// destructor, possibly causing leaks.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// mem::forget(Rc::new(55))
+    /// ```
     pub MEM_FORGET,
     restriction,
     "`mem::forget` usage on `Drop` types, likely to cause memory leaks"

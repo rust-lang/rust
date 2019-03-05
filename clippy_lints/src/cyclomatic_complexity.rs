@@ -11,16 +11,16 @@ use syntax::source_map::Span;
 
 use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 
-/// **What it does:** Checks for methods with high cyclomatic complexity.
-///
-/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly
-/// readable. Also LLVM will usually optimize small methods better.
-///
-/// **Known problems:** Sometimes it's hard to find a way to reduce the
-/// complexity.
-///
-/// **Example:** No. You'll see it when you get the warning.
 declare_clippy_lint! {
+    /// **What it does:** Checks for methods with high cyclomatic complexity.
+    ///
+    /// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly
+    /// readable. Also LLVM will usually optimize small methods better.
+    ///
+    /// **Known problems:** Sometimes it's hard to find a way to reduce the
+    /// complexity.
+    ///
+    /// **Example:** No. You'll see it when you get the warning.
     pub CYCLOMATIC_COMPLEXITY,
     complexity,
     "functions that should be split up into multiple functions"

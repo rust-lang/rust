@@ -9,62 +9,61 @@ use rustc_errors::Applicability;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::source_map::{Span, Spanned};
 
-/// **What it does:** Checks for getting the length of something via `.len()`
-/// just to compare to zero, and suggests using `.is_empty()` where applicable.
-///
-/// **Why is this bad?** Some structures can answer `.is_empty()` much faster
-/// than calculating their length. Notably, for slices, getting the length
-/// requires a subtraction whereas `.is_empty()` is just a comparison. So it is
-/// good to get into the habit of using `.is_empty()`, and having it is cheap.
-/// Besides, it makes the intent clearer than a manual comparison.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if x.len() == 0 {
-///     ..
-/// }
-/// if y.len() != 0 {
-///     ..
-/// }
-/// ```
-/// instead use
-/// ```rust
-/// if x.is_empty() {
-///     ..
-/// }
-/// if !y.is_empty() {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
-pub LEN_ZERO,
-style,
-"checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
- could be used instead"
+    /// **What it does:** Checks for getting the length of something via `.len()`
+    /// just to compare to zero, and suggests using `.is_empty()` where applicable.
+    ///
+    /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
+    /// than calculating their length. Notably, for slices, getting the length
+    /// requires a subtraction whereas `.is_empty()` is just a comparison. So it is
+    /// good to get into the habit of using `.is_empty()`, and having it is cheap.
+    /// Besides, it makes the intent clearer than a manual comparison.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if x.len() == 0 {
+    ///     ..
+    /// }
+    /// if y.len() != 0 {
+    ///     ..
+    /// }
+    /// ```
+    /// instead use
+    /// ```rust
+    /// if x.is_empty() {
+    ///     ..
+    /// }
+    /// if !y.is_empty() {
+    ///     ..
+    /// }
+    /// ```
+    pub LEN_ZERO,
+    style,
+    "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead"
 }
 
-/// **What it does:** Checks for items that implement `.len()` but not
-/// `.is_empty()`.
-///
-/// **Why is this bad?** It is good custom to have both methods, because for
-/// some data structures, asking about the length will be a costly operation,
-/// whereas `.is_empty()` can usually answer in constant time. Also it used to
-/// lead to false positives on the [`len_zero`](#len_zero) lint – currently that
-/// lint will ignore such entities.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// impl X {
-///     pub fn len(&self) -> usize {
-///         ..
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for items that implement `.len()` but not
+    /// `.is_empty()`.
+    ///
+    /// **Why is this bad?** It is good custom to have both methods, because for
+    /// some data structures, asking about the length will be a costly operation,
+    /// whereas `.is_empty()` can usually answer in constant time. Also it used to
+    /// lead to false positives on the [`len_zero`](#len_zero) lint – currently that
+    /// lint will ignore such entities.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// impl X {
+    ///     pub fn len(&self) -> usize {
+    ///         ..
+    ///     }
+    /// }
+    /// ```
     pub LEN_WITHOUT_IS_EMPTY,
     style,
     "traits or impls with a public `len` method but no corresponding `is_empty` method"

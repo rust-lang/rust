@@ -10,94 +10,94 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use syntax::symbol::LocalInternedString;
 
-/// **What it does:** Checks for consecutive `if`s with the same condition.
-///
-/// **Why is this bad?** This is probably a copy & paste error.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
-/// ```rust
-/// if a == b {
-///     …
-/// } else if a == b {
-///     …
-/// }
-/// ```
-///
-/// Note that this lint ignores all conditions with a function call as it could
-/// have side effects:
-///
-/// ```rust
-/// if foo() {
-///     …
-/// } else if foo() { // not linted
-///     …
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for consecutive `if`s with the same condition.
+    ///
+    /// **Why is this bad?** This is probably a copy & paste error.
+    ///
+    /// **Known problems:** Hopefully none.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if a == b {
+    ///     …
+    /// } else if a == b {
+    ///     …
+    /// }
+    /// ```
+    ///
+    /// Note that this lint ignores all conditions with a function call as it could
+    /// have side effects:
+    ///
+    /// ```rust
+    /// if foo() {
+    ///     …
+    /// } else if foo() { // not linted
+    ///     …
+    /// }
+    /// ```
     pub IFS_SAME_COND,
     correctness,
     "consecutive `ifs` with the same condition"
 }
 
-/// **What it does:** Checks for `if/else` with the same body as the *then* part
-/// and the *else* part.
-///
-/// **Why is this bad?** This is probably a copy & paste error.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
-/// ```rust
-/// let foo = if … {
-///     42
-/// } else {
-///     42
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `if/else` with the same body as the *then* part
+    /// and the *else* part.
+    ///
+    /// **Why is this bad?** This is probably a copy & paste error.
+    ///
+    /// **Known problems:** Hopefully none.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let foo = if … {
+    ///     42
+    /// } else {
+    ///     42
+    /// };
+    /// ```
     pub IF_SAME_THEN_ELSE,
     correctness,
     "if with the same *then* and *else* blocks"
 }
 
-/// **What it does:** Checks for `match` with identical arm bodies.
-///
-/// **Why is this bad?** This is probably a copy & paste error. If arm bodies
-/// are the same on purpose, you can factor them
-/// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
-///
-/// **Known problems:** False positive possible with order dependent `match`
-/// (see issue
-/// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
-///
-/// **Example:**
-/// ```rust,ignore
-/// match foo {
-///     Bar => bar(),
-///     Quz => quz(),
-///     Baz => bar(), // <= oops
-/// }
-/// ```
-///
-/// This should probably be
-/// ```rust,ignore
-/// match foo {
-///     Bar => bar(),
-///     Quz => quz(),
-///     Baz => baz(), // <= fixed
-/// }
-/// ```
-///
-/// or if the original code was not a typo:
-/// ```rust,ignore
-/// match foo {
-///     Bar | Baz => bar(), // <= shows the intent better
-///     Quz => quz(),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `match` with identical arm bodies.
+    ///
+    /// **Why is this bad?** This is probably a copy & paste error. If arm bodies
+    /// are the same on purpose, you can factor them
+    /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
+    ///
+    /// **Known problems:** False positive possible with order dependent `match`
+    /// (see issue
+    /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// match foo {
+    ///     Bar => bar(),
+    ///     Quz => quz(),
+    ///     Baz => bar(), // <= oops
+    /// }
+    /// ```
+    ///
+    /// This should probably be
+    /// ```rust,ignore
+    /// match foo {
+    ///     Bar => bar(),
+    ///     Quz => quz(),
+    ///     Baz => baz(), // <= fixed
+    /// }
+    /// ```
+    ///
+    /// or if the original code was not a typo:
+    /// ```rust,ignore
+    /// match foo {
+    ///     Bar | Baz => bar(), // <= shows the intent better
+    ///     Quz => quz(),
+    /// }
+    /// ```
     pub MATCH_SAME_ARMS,
     pedantic,
     "`match` with identical arm bodies"

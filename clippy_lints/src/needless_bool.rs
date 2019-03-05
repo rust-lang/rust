@@ -11,44 +11,44 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for expressions of the form `if c { true } else {
-/// false }`
-/// (or vice versa) and suggest using the condition directly.
-///
-/// **Why is this bad?** Redundant code.
-///
-/// **Known problems:** Maybe false positives: Sometimes, the two branches are
-/// painstakingly documented (which we of course do not detect), so they *may*
-/// have some value. Even then, the documentation can be rewritten to match the
-/// shorter code.
-///
-/// **Example:**
-/// ```rust
-/// if x {
-///     false
-/// } else {
-///     true
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions of the form `if c { true } else {
+    /// false }`
+    /// (or vice versa) and suggest using the condition directly.
+    ///
+    /// **Why is this bad?** Redundant code.
+    ///
+    /// **Known problems:** Maybe false positives: Sometimes, the two branches are
+    /// painstakingly documented (which we of course do not detect), so they *may*
+    /// have some value. Even then, the documentation can be rewritten to match the
+    /// shorter code.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if x {
+    ///     false
+    /// } else {
+    ///     true
+    /// }
+    /// ```
     pub NEEDLESS_BOOL,
     complexity,
     "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
 }
 
-/// **What it does:** Checks for expressions of the form `x == true`,
-/// `x != true` and order comparisons such as `x < true` (or vice versa) and
-/// suggest using the variable directly.
-///
-/// **Why is this bad?** Unnecessary code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if x == true {} // could be `if x { }`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions of the form `x == true`,
+    /// `x != true` and order comparisons such as `x < true` (or vice versa) and
+    /// suggest using the variable directly.
+    ///
+    /// **Why is this bad?** Unnecessary code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if x == true {} // could be `if x { }`
+    /// ```
     pub BOOL_COMPARISON,
     complexity,
     "comparing a variable to a boolean, e.g. `if x == true` or `if x != true`"

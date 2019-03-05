@@ -4,23 +4,23 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for needlessly including a base struct on update
-/// when all fields are changed anyway.
-///
-/// **Why is this bad?** This will cost resources (because the base has to be
-/// somewhere), and make the code less readable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// Point {
-///     x: 1,
-///     y: 0,
-///     ..zero_point
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for needlessly including a base struct on update
+    /// when all fields are changed anyway.
+    ///
+    /// **Why is this bad?** This will cost resources (because the base has to be
+    /// somewhere), and make the code less readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// Point {
+    ///     x: 1,
+    ///     y: 0,
+    ///     ..zero_point
+    /// }
+    /// ```
     pub NEEDLESS_UPDATE,
     complexity,
     "using `Foo { ..base }` when there are no missing fields"

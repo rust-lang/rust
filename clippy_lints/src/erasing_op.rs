@@ -5,21 +5,21 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for erasing operations, e.g. `x * 0`.
-///
-/// **Why is this bad?** The whole expression can be replaced by zero.
-/// This is most likely not the intended outcome and should probably be
-/// corrected
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// 0 / x;
-/// 0 * x;
-/// x & 0
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for erasing operations, e.g. `x * 0`.
+    ///
+    /// **Why is this bad?** The whole expression can be replaced by zero.
+    /// This is most likely not the intended outcome and should probably be
+    /// corrected
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// 0 / x;
+    /// 0 * x;
+    /// x & 0
+    /// ```
     pub ERASING_OP,
     correctness,
     "using erasing operations, e.g. `x * 0` or `y & 0`"
