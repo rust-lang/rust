@@ -1,7 +1,8 @@
 use clap::{App, SubCommand};
-
+use core::str;
+use failure::bail;
 use tools::{
-    generate, gen_tests, install_format_hook, run, run_rustfmt,
+    generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
     Overwrite, Result, run_fuzzer,
 };
 
@@ -43,6 +44,22 @@ fn install_code_extension() -> Result<()> {
         )?;
     } else {
         run(r"code --install-extension ./ra-lsp-0.0.1.vsix --force", "./editors/code")?;
+    }
+    verify_installed_extensions()?;
+    Ok(())
+}
+
+fn verify_installed_extensions() -> Result<()> {
+    let exts = if cfg!(windows) {
+        run_with_output(r"cmd.exe /c code.cmd --list-extensions", ".")?
+    } else {
+        run_with_output(r"code --list-extensions", ".")?
+    };
+    if !str::from_utf8(&exts.stdout)?.contains("ra-lsp") {
+        bail!(
+            "Could not install the Visual Studio Code extension. Please make sure you \
+             have at least NodeJS 10.x installed and try again."
+        );
     }
     Ok(())
 }
