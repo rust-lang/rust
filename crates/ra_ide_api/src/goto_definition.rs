@@ -5,7 +5,7 @@ use ra_syntax::{
     SyntaxNode,
 };
 use test_utils::tested_by;
-use hir::Resolution;
+use hir::{Pat, Resolution};
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
@@ -100,6 +100,7 @@ pub(crate) fn reference_definition(
             }
         }
     }
+
     // Try name resolution
     let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
     if let Some(path) =
@@ -126,19 +127,42 @@ pub(crate) fn reference_definition(
             None => {
                 // If we failed to resolve then check associated items
                 if let Some(function) = function {
-                    // Should we do this above and then grab path from the PathExpr?
+                    // Resolve associated item for path expressions
                     if let Some(path_expr) =
                         name_ref.syntax().ancestors().find_map(ast::PathExpr::cast)
                     {
                         let infer_result = function.infer(db);
                         let source_map = function.body_source_map(db);
-                        let expr = ast::Expr::cast(path_expr.syntax()).unwrap();
 
-                        if let Some(res) = source_map
-                            .node_expr(expr)
-                            .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
-                        {
-                            return Exact(NavigationTarget::from_impl_item(db, res));
+                        if let Some(expr) = ast::Expr::cast(path_expr.syntax()) {
+                            if let Some(res) = source_map
+                                .node_expr(expr)
+                                .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
+                            {
+                                return Exact(NavigationTarget::from_impl_item(db, res));
+                            }
+                        }
+                    }
+
+                    // Resolve associated item for path patterns
+                    if let Some(path_pat) =
+                        name_ref.syntax().ancestors().find_map(ast::PathPat::cast)
+                    {
+                        let infer_result = function.infer(db);
+
+                        if let Some(p) = path_pat.path().and_then(hir::Path::from_ast) {
+                            if let Some(pat_id) =
+                                function.body(db).pats().find_map(|(pat_id, pat)| match pat {
+                                    Pat::Path(ref path) if *path == p => Some(pat_id),
+                                    _ => None,
+                                })
+                            {
+                                if let Some(res) =
+                                    infer_result.assoc_resolutions_for_pat(pat_id.into())
+                                {
+                                    return Exact(NavigationTarget::from_impl_item(db, res));
+                                }
+                            }
                         }
                     }
                 }

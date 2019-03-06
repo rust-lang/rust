@@ -60,7 +60,7 @@ pub use self::{
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
-    expr::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax},
+    expr::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax, Pat},
     resolve::{Resolver, Resolution},
 };
 
