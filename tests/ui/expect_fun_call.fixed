@@ -81,4 +81,7 @@ fn main() {
         Some("foo").unwrap_or_else(|| { panic!(get_static_str()) });
         Some("foo").unwrap_or_else(|| { panic!(get_non_static_str(&0).to_string()) });
     }
+
+    //Issue #3839
+    Some(true).unwrap_or_else(|| panic!("key {}, {}", 1, 2));
 }
