@@ -2,7 +2,7 @@ use std::{
     fs,
     collections::HashMap,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Command, Output, Stdio},
     io::{Error, ErrorKind}
 };
 
@@ -80,15 +80,14 @@ pub fn project_root() -> PathBuf {
 }
 
 pub fn run(cmdline: &str, dir: &str) -> Result<()> {
-    eprintln!("\nwill run: {}", cmdline);
-    let project_dir = project_root().join(dir);
-    let mut args = cmdline.split_whitespace();
-    let exec = args.next().unwrap();
-    let status = Command::new(exec).args(args).current_dir(project_dir).status()?;
-    if !status.success() {
-        bail!("`{}` exited with {}", cmdline, status);
-    }
-    Ok(())
+    do_run(cmdline, dir, |c| {
+        c.stdout(Stdio::inherit());
+    })
+    .map(|_| ())
+}
+
+pub fn run_with_output(cmdline: &str, dir: &str) -> Result<Output> {
+    do_run(cmdline, dir, |_| {})
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
@@ -173,6 +172,23 @@ pub fn gen_tests(mode: Mode) -> Result<()> {
     }
     install_tests(&tests.ok, OK_INLINE_TESTS_DIR, mode)?;
     install_tests(&tests.err, ERR_INLINE_TESTS_DIR, mode)
+}
+
+fn do_run<F>(cmdline: &str, dir: &str, mut f: F) -> Result<Output>
+where
+    F: FnMut(&mut Command),
+{
+    eprintln!("\nwill run: {}", cmdline);
+    let proj_dir = project_root().join(dir);
+    let mut args = cmdline.split_whitespace();
+    let exec = args.next().unwrap();
+    let mut cmd = Command::new(exec);
+    f(cmd.args(args).current_dir(proj_dir).stderr(Stdio::inherit()));
+    let output = cmd.output()?;
+    if !output.status.success() {
+        bail!("`{}` exited with {}", cmdline, output.status);
+    }
+    Ok(output)
 }
 
 #[derive(Default, Debug)]
