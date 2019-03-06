@@ -63,7 +63,7 @@ macro_rules! atomic_binop_return_old {
     ($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) => {
         let clif_ty = $fx.clif_type($T).unwrap();
         let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
-        let new = $fx.bcx.ins().band(old, $src);
+        let new = $fx.bcx.ins().$op(old, $src);
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
         $ret.write_cvalue($fx, CValue::ByVal(old, $fx.layout_of($T)));
     };
@@ -440,7 +440,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
         };
         _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, v src) {
-            atomic_binop_return_old! (fx, bnand<T>(ptr, src) -> ret);
+            atomic_binop_return_old! (fx, band_not<T>(ptr, src) -> ret);
         };
         _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, v src) {
             atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
