@@ -1049,7 +1049,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
-/// // equivalent code with `MaybeUninit<&i32>`
+/// // The equivalent code with `MaybeUninit<&i32>`:
 /// let x: &i32 = unsafe { MaybeUninit::zeroed().into_initialized() }; // undefined behavior!
 /// ```
 ///
@@ -1078,7 +1078,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
-/// // equivalent code with `MaybeUninit<i32>`
+/// // The equivalent code with `MaybeUninit<i32>`:
 /// let x: i32 = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
@@ -1231,7 +1231,7 @@ impl<T> MaybeUninit<T> {
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
-    /// (Notice that the rules around referenced to uninitialized data are not finalized yet, but
+    /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
