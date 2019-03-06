@@ -1,27 +1,28 @@
 // This issue reproduces an ICE on compile (E.g. fails on 2018-12-19 nightly).
+// "cannot relate bound region: ReLateBound(DebruijnIndex(1), BrAnon(1)) <= '_#1r"
 // run-pass
 // edition:2018
-#![feature(async_await,futures_api,generators)]
+#![feature(generators,generator_trait)]
+use std::ops::Generator;
 
-pub struct Foo;
-
-impl Foo {
-    async fn with<'a, F, R>(&'a self, f: F) -> R
-    where F: Fn() -> R + 'a,
-    {
+fn with<F>(f: F) -> impl Generator<Yield=(), Return=()>
+where F: Fn() -> ()
+{
+    move || {
         loop {
             match f() {
                 _ => yield,
             }
         }
     }
+}
 
-    pub async fn run<'a>(&'a self, data: &'a [u8])
-    {
-        let _to_pin = self.with(move || println!("{:p}", data));
+fn main() {
+    let data = &vec![1];
+    || {
+        let _to_pin = with(move || println!("{:p}", data));
         loop {
             yield
         }
-    }
+    };
 }
-fn main() {}
