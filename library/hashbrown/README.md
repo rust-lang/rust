@@ -65,6 +65,13 @@ Add this to your `Cargo.toml`:
 hashbrown = "0.1"
 ```
 
+In version 0.1.8 rayon support has appeared, so that it works, specify:
+
+```toml
+[dependencies]
+hashbrown = { version = "0.1", features = ["rayon"] }
+```
+
 and this to your crate root:
 
 ```rust
