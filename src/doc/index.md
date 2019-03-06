@@ -139,3 +139,18 @@ When developing for Bare Metal or Embedded Linux systems, you may find these res
 [The Embedded Rust Book] is targeted at developers familiar with embedded development and familiar with Rust, but have not used Rust for embedded development.
 
 [The Embedded Rust Book]: embedded-book/index.html
+
+## WebAssembly
+
+To use Rust in your web browser or to interoperate with JavaScript, check out
+the resources maintained by the [WebAssembly Working Group].
+
+[WebAssembly Working Group]: https://github.com/rustwasm
+
+### The Rust and WebAssembly Bookshelf
+
+[The Rust and WebAssembly Bookshelf] contains resources for those just getting
+started with Rust and WebAssembly and for those that would like a deeper dive
+into the various tools and crates in the rustwasm project.
+
+[The Rust and WebAssembly Bookshelf]: https://rustwasm.github.io/docs.html
