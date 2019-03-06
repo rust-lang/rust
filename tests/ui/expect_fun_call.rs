@@ -81,4 +81,7 @@ fn main() {
         Some("foo").expect(get_static_str());
         Some("foo").expect(get_non_static_str(&0));
     }
+
+    //Issue #3839
+    Some(true).expect(&format!("key {}, {}", 1, 2));
 }
