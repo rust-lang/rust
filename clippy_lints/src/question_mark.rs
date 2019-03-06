@@ -10,25 +10,25 @@ use crate::utils::paths::*;
 use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for expressions that could be replaced by the question mark operator
-///
-/// **Why is this bad?** Question mark usage is more idiomatic
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// if option.is_none() {
-///     return None;
-/// }
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// option?;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions that could be replaced by the question mark operator
+    ///
+    /// **Why is this bad?** Question mark usage is more idiomatic
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if option.is_none() {
+    ///     return None;
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```ignore
+    /// option?;
+    /// ```
     pub QUESTION_MARK,
     style,
     "checks for expressions that could be replaced by the question mark operator"

@@ -5,19 +5,19 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for `enum`s with no variants.
-///
-/// **Why is this bad?** Enum's with no variants should be replaced with `!`,
-/// the uninhabited type,
-/// or a wrapper around it.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// enum Test {}
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `enum`s with no variants.
+    ///
+    /// **Why is this bad?** Enum's with no variants should be replaced with `!`,
+    /// the uninhabited type,
+    /// or a wrapper around it.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// enum Test {}
+    /// ```
     pub EMPTY_ENUM,
     pedantic,
     "enum with no variants"

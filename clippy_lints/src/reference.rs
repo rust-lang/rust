@@ -5,20 +5,20 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::{Expr, ExprKind, UnOp};
 
-/// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
-///
-/// **Why is this bad?** Immediately dereferencing a reference is no-op and
-/// makes the code less clear.
-///
-/// **Known problems:** Multiple dereference/addrof pairs are not handled so
-/// the suggested fix for `x = **&&y` is `x = *&y`, which is still incorrect.
-///
-/// **Example:**
-/// ```rust
-/// let a = f(*&mut b);
-/// let c = *&d;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
+    ///
+    /// **Why is this bad?** Immediately dereferencing a reference is no-op and
+    /// makes the code less clear.
+    ///
+    /// **Known problems:** Multiple dereference/addrof pairs are not handled so
+    /// the suggested fix for `x = **&&y` is `x = *&y`, which is still incorrect.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let a = f(*&mut b);
+    /// let c = *&d;
+    /// ```
     pub DEREF_ADDROF,
     complexity,
     "use of `*&` or `*&mut` in an expression"
@@ -64,19 +64,19 @@ impl EarlyLintPass for Pass {
     }
 }
 
-/// **What it does:** Checks for references in expressions that use
-/// auto dereference.
-///
-/// **Why is this bad?** The reference is a no-op and is automatically
-/// dereferenced by the compiler and makes the code less clear.
-///
-/// **Example:**
-/// ```rust
-/// struct Point(u32, u32);
-/// let point = Foo(30, 20);
-/// let x = (&point).x;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for references in expressions that use
+    /// auto dereference.
+    ///
+    /// **Why is this bad?** The reference is a no-op and is automatically
+    /// dereferenced by the compiler and makes the code less clear.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Point(u32, u32);
+    /// let point = Foo(30, 20);
+    /// let x = (&point).x;
+    /// ```
     pub REF_IN_DEREF,
     complexity,
     "Use of reference in auto dereference expression."

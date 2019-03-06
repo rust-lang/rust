@@ -6,19 +6,19 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 
-/// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
-/// replaced with `(e)print!()` / `(e)println!()`
-///
-/// **Why is this bad?** Using `(e)println! is clearer and more concise
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// // this would be clearer as `eprintln!("foo: {:?}", bar);`
-/// writeln!(&mut io::stderr(), "foo: {:?}", bar).unwrap();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
+    /// replaced with `(e)print!()` / `(e)println!()`
+    ///
+    /// **Why is this bad?** Using `(e)println! is clearer and more concise
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
+    /// writeln!(&mut io::stderr(), "foo: {:?}", bar).unwrap();
+    /// ```
     pub EXPLICIT_WRITE,
     complexity,
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"

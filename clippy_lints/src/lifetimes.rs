@@ -10,45 +10,45 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::source_map::Span;
 use syntax::symbol::keywords;
 
-/// **What it does:** Checks for lifetime annotations which can be removed by
-/// relying on lifetime elision.
-///
-/// **Why is this bad?** The additional lifetimes make the code look more
-/// complicated, while there is nothing out of the ordinary going on. Removing
-/// them leads to more readable code.
-///
-/// **Known problems:** Potential false negatives: we bail out if the function
-/// has a `where` clause where lifetimes are mentioned.
-///
-/// **Example:**
-/// ```rust
-/// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
-///     x
-/// }
-/// ```
 declare_clippy_lint! {
-pub NEEDLESS_LIFETIMES,
-complexity,
-"using explicit lifetimes for references in function arguments when elision rules \
- would allow omitting them"
+    /// **What it does:** Checks for lifetime annotations which can be removed by
+    /// relying on lifetime elision.
+    ///
+    /// **Why is this bad?** The additional lifetimes make the code look more
+    /// complicated, while there is nothing out of the ordinary going on. Removing
+    /// them leads to more readable code.
+    ///
+    /// **Known problems:** Potential false negatives: we bail out if the function
+    /// has a `where` clause where lifetimes are mentioned.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
+    ///     x
+    /// }
+    /// ```
+    pub NEEDLESS_LIFETIMES,
+    complexity,
+    "using explicit lifetimes for references in function arguments when elision rules \
+     would allow omitting them"
 }
 
-/// **What it does:** Checks for lifetimes in generics that are never used
-/// anywhere else.
-///
-/// **Why is this bad?** The additional lifetimes make the code look more
-/// complicated, while there is nothing out of the ordinary going on. Removing
-/// them leads to more readable code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn unused_lifetime<'a>(x: u8) {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for lifetimes in generics that are never used
+    /// anywhere else.
+    ///
+    /// **Why is this bad?** The additional lifetimes make the code look more
+    /// complicated, while there is nothing out of the ordinary going on. Removing
+    /// them leads to more readable code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn unused_lifetime<'a>(x: u8) {
+    ///     ..
+    /// }
+    /// ```
     pub EXTRA_UNUSED_LIFETIMES,
     complexity,
     "unused lifetimes in function definitions"

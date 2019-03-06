@@ -5,26 +5,28 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for `mem::replace()` on an `Option` with
-/// `None`.
-///
-/// **Why is this bad?** `Option` already has the method `take()` for
-/// taking its current value (Some(..) or None) and replacing it with
-/// `None`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let mut an_option = Some(0);
-/// let replaced = mem::replace(&mut an_option, None);
-/// ```
-/// Is better expressed with:
-/// ```rust
-/// let mut an_option = Some(0);
-/// let taken = an_option.take();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `mem::replace()` on an `Option` with
+    /// `None`.
+    ///
+    /// **Why is this bad?** `Option` already has the method `take()` for
+    /// taking its current value (Some(..) or None) and replacing it with
+    /// `None`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// use std::mem;
+    ///
+    /// let mut an_option = Some(0);
+    /// let replaced = mem::replace(&mut an_option, None);
+    /// ```
+    /// Is better expressed with:
+    /// ```rust
+    /// let mut an_option = Some(0);
+    /// let taken = an_option.take();
+    /// ```
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"

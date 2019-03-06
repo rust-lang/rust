@@ -5,19 +5,19 @@ use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for construction of a structure or tuple just to
-/// assign a value in it.
-///
-/// **Why is this bad?** Readability. If the structure is only created to be
-/// updated, why not write the structure you want in the first place?
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// (0, 0).0 = 1
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for construction of a structure or tuple just to
+    /// assign a value in it.
+    ///
+    /// **Why is this bad?** Readability. If the structure is only created to be
+    /// updated, why not write the structure you want in the first place?
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// (0, 0).0 = 1
+    /// ```
     pub TEMPORARY_ASSIGNMENT,
     complexity,
     "assignments to temporaries"

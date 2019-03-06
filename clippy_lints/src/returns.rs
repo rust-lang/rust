@@ -8,75 +8,75 @@ use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
-/// **What it does:** Checks for return statements at the end of a block.
-///
-/// **Why is this bad?** Removing the `return` and semicolon will make the code
-/// more rusty.
-///
-/// **Known problems:** If the computation returning the value borrows a local
-/// variable, removing the `return` may run afoul of the borrow checker.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(x: usize) {
-///     return x;
-/// }
-/// ```
-/// simplify to
-/// ```rust
-/// fn foo(x: usize) {
-///     x
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for return statements at the end of a block.
+    ///
+    /// **Why is this bad?** Removing the `return` and semicolon will make the code
+    /// more rusty.
+    ///
+    /// **Known problems:** If the computation returning the value borrows a local
+    /// variable, removing the `return` may run afoul of the borrow checker.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo(x: usize) -> usize {
+    ///     return x;
+    /// }
+    /// ```
+    /// simplify to
+    /// ```rust
+    /// fn foo(x: usize) -> usize {
+    ///     x
+    /// }
+    /// ```
     pub NEEDLESS_RETURN,
     style,
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-/// **What it does:** Checks for `let`-bindings, which are subsequently
-/// returned.
-///
-/// **Why is this bad?** It is just extraneous code. Remove it to make your code
-/// more rusty.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn foo() -> String {
-///     let x = String::new();
-///     x
-/// }
-/// ```
-/// instead, use
-/// ```
-/// fn foo() -> String {
-///     String::new()
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `let`-bindings, which are subsequently
+    /// returned.
+    ///
+    /// **Why is this bad?** It is just extraneous code. Remove it to make your code
+    /// more rusty.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo() -> String {
+    ///     let x = String::new();
+    ///     x
+    /// }
+    /// ```
+    /// instead, use
+    /// ```
+    /// fn foo() -> String {
+    ///     String::new()
+    /// }
+    /// ```
     pub LET_AND_RETURN,
     style,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
 }
 
-/// **What it does:** Checks for unit (`()`) expressions that can be removed.
-///
-/// **Why is this bad?** Such expressions add no value, but can make the code
-/// less readable. Depending on formatting they can make a `break` or `return`
-/// statement look like a function call.
-///
-/// **Known problems:** The lint currently misses unit return types in types,
-/// e.g. the `F` in `fn generic_unit<F: Fn() -> ()>(f: F) { .. }`.
-///
-/// **Example:**
-/// ```rust
-/// fn return_unit() -> () {
-///     ()
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for unit (`()`) expressions that can be removed.
+    ///
+    /// **Why is this bad?** Such expressions add no value, but can make the code
+    /// less readable. Depending on formatting they can make a `break` or `return`
+    /// statement look like a function call.
+    ///
+    /// **Known problems:** The lint currently misses unit return types in types,
+    /// e.g. the `F` in `fn generic_unit<F: Fn() -> ()>(f: F) { .. }`.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn return_unit() -> () {
+    ///     ()
+    /// }
+    /// ```
     pub UNUSED_UNIT,
     style,
     "needless unit expression"

@@ -12,8 +12,9 @@ use walkdir::WalkDir;
 lazy_static! {
     static ref DEC_CLIPPY_LINT_RE: Regex = Regex::new(
         r#"(?x)
-        declare_clippy_lint!\s*[\{(]\s*
-        pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+        declare_clippy_lint!\s*[\{(]
+        (?:\s+///.*)*
+        \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
         (?P<cat>[a-z_]+)\s*,\s*
         "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
     "#
@@ -22,7 +23,8 @@ lazy_static! {
     static ref DEC_DEPRECATED_LINT_RE: Regex = Regex::new(
         r#"(?x)
         declare_deprecated_lint!\s*[{(]\s*
-        pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+        (?:\s+///.*)*
+        \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
         "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
     "#
     )

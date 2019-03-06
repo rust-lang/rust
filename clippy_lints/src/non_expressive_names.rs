@@ -7,57 +7,57 @@ use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 
-/// **What it does:** Checks for names that are very similar and thus confusing.
-///
-/// **Why is this bad?** It's hard to distinguish between names that differ only
-/// by a single character.
-///
-/// **Known problems:** None?
-///
-/// **Example:**
-/// ```rust
-/// let checked_exp = something;
-/// let checked_expr = something_else;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for names that are very similar and thus confusing.
+    ///
+    /// **Why is this bad?** It's hard to distinguish between names that differ only
+    /// by a single character.
+    ///
+    /// **Known problems:** None?
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// let checked_exp = something;
+    /// let checked_expr = something_else;
+    /// ```
     pub SIMILAR_NAMES,
     pedantic,
     "similarly named items and bindings"
 }
 
-/// **What it does:** Checks for too many variables whose name consists of a
-/// single character.
-///
-/// **Why is this bad?** It's hard to memorize what a variable means without a
-/// descriptive name.
-///
-/// **Known problems:** None?
-///
-/// **Example:**
-/// ```rust
-/// let (a, b, c, d, e, f, g) = (...);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for too many variables whose name consists of a
+    /// single character.
+    ///
+    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// descriptive name.
+    ///
+    /// **Known problems:** None?
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// let (a, b, c, d, e, f, g) = (...);
+    /// ```
     pub MANY_SINGLE_CHAR_NAMES,
     style,
     "too many single character bindings"
 }
 
-/// **What it does:** Checks if you have variables whose name consists of just
-/// underscores and digits.
-///
-/// **Why is this bad?** It's hard to memorize what a variable means without a
-/// descriptive name.
-///
-/// **Known problems:** None?
-///
-/// **Example:**
-/// ```rust
-/// let _1 = 1;
-/// let ___1 = 1;
-/// let __1___2 = 11;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks if you have variables whose name consists of just
+    /// underscores and digits.
+    ///
+    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// descriptive name.
+    ///
+    /// **Known problems:** None?
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let _1 = 1;
+    /// let ___1 = 1;
+    /// let __1___2 = 11;
+    /// ```
     pub JUST_UNDERSCORES_AND_DIGITS,
     style,
     "unclear name"

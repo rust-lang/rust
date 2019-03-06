@@ -14,24 +14,24 @@ pub struct Pass {
     pub too_large_for_stack: u64,
 }
 
-/// **What it does:** Checks for usage of `Box<T>` where an unboxed `T` would
-/// work fine.
-///
-/// **Why is this bad?** This is an unnecessary allocation, and bad for
-/// performance. It is only necessary to allocate if you wish to move the box
-/// into something.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn main() {
-///     let x = Box::new(1);
-///     foo(*x);
-///     println!("{}", *x);
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `Box<T>` where an unboxed `T` would
+    /// work fine.
+    ///
+    /// **Why is this bad?** This is an unnecessary allocation, and bad for
+    /// performance. It is only necessary to allocate if you wish to move the box
+    /// into something.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn main() {
+    ///     let x = Box::new(1);
+    ///     foo(*x);
+    ///     println!("{}", *x);
+    /// }
+    /// ```
     pub BOXED_LOCAL,
     perf,
     "using `Box<T>` where unnecessary"

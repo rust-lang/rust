@@ -7,18 +7,18 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
-///
-/// **Why is this bad?** Redundant code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// // format!() returns a `String`
-/// let s: String = format!("hello").into();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
+    ///
+    /// **Why is this bad?** Redundant code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // format!() returns a `String`
+    /// let s: String = format!("hello").into();
+    /// ```
     pub IDENTITY_CONVERSION,
     complexity,
     "using always-identical `Into`/`From`/`IntoIter` conversions"

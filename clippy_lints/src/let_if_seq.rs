@@ -8,46 +8,46 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast;
 
-/// **What it does:** Checks for variable declarations immediately followed by a
-/// conditional affectation.
-///
-/// **Why is this bad?** This is not idiomatic Rust.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// let foo;
-///
-/// if bar() {
-///     foo = 42;
-/// } else {
-///     foo = 0;
-/// }
-///
-/// let mut baz = None;
-///
-/// if bar() {
-///     baz = Some(42);
-/// }
-/// ```
-///
-/// should be written
-///
-/// ```rust,ignore
-/// let foo = if bar() {
-///     42
-/// } else {
-///     0
-/// };
-///
-/// let baz = if bar() {
-///     Some(42)
-/// } else {
-///     None
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for variable declarations immediately followed by a
+    /// conditional affectation.
+    ///
+    /// **Why is this bad?** This is not idiomatic Rust.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// let foo;
+    ///
+    /// if bar() {
+    ///     foo = 42;
+    /// } else {
+    ///     foo = 0;
+    /// }
+    ///
+    /// let mut baz = None;
+    ///
+    /// if bar() {
+    ///     baz = Some(42);
+    /// }
+    /// ```
+    ///
+    /// should be written
+    ///
+    /// ```rust,ignore
+    /// let foo = if bar() {
+    ///     42
+    /// } else {
+    ///     0
+    /// };
+    ///
+    /// let baz = if bar() {
+    ///     Some(42)
+    /// } else {
+    ///     None
+    /// };
+    /// ```
     pub USELESS_LET_IF_SEQ,
     style,
     "unidiomatic `let mut` declaration followed by initialization in `if`"

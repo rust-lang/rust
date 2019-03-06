@@ -5,19 +5,21 @@ use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::source_map::{Span, Spanned};
 
-/// **What it does:** Checks for duplicate open options as well as combinations
-/// that make no sense.
-///
-/// **Why is this bad?** In the best case, the code will be harder to read than
-/// necessary. I don't know the worst case.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// OpenOptions::new().read(true).truncate(true)
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for duplicate open options as well as combinations
+    /// that make no sense.
+    ///
+    /// **Why is this bad?** In the best case, the code will be harder to read than
+    /// necessary. I don't know the worst case.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().read(true).truncate(true);
+    /// ```
     pub NONSENSICAL_OPEN_OPTIONS,
     correctness,
     "nonsensical combination of options for opening a file"

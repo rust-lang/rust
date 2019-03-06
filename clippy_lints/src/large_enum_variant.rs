@@ -7,23 +7,23 @@ use rustc::ty::layout::LayoutOf;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for large size differences between variants on
-/// `enum`s.
-///
-/// **Why is this bad?** Enum size is bounded by the largest variant. Having a
-/// large variant
-/// can penalize the memory layout of that enum.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// enum Test {
-///     A(i32),
-///     B([i32; 8000]),
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for large size differences between variants on
+    /// `enum`s.
+    ///
+    /// **Why is this bad?** Enum size is bounded by the largest variant. Having a
+    /// large variant
+    /// can penalize the memory layout of that enum.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// enum Test {
+    ///     A(i32),
+    ///     B([i32; 8000]),
+    /// }
+    /// ```
     pub LARGE_ENUM_VARIANT,
     perf,
     "large size difference between variants on an enum"

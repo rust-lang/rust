@@ -7,17 +7,17 @@ use syntax::source_map::{Span, Spanned};
 use crate::consts::{self, Constant};
 use crate::utils::span_lint;
 
-/// **What it does:** Checks for multiplication by -1 as a form of negation.
-///
-/// **Why is this bad?** It's more readable to just negate.
-///
-/// **Known problems:** This only catches integers (for now).
-///
-/// **Example:**
-/// ```rust
-/// x * -1
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for multiplication by -1 as a form of negation.
+    ///
+    /// **Why is this bad?** It's more readable to just negate.
+    ///
+    /// **Known problems:** This only catches integers (for now).
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// x * -1
+    /// ```
     pub NEG_MULTIPLY,
     style,
     "multiplying integers with -1"

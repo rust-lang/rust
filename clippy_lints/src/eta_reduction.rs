@@ -8,26 +8,26 @@ use rustc_errors::Applicability;
 
 pub struct EtaPass;
 
-/// **What it does:** Checks for closures which just call another function where
-/// the function can be called directly. `unsafe` functions or calls where types
-/// get adjusted are ignored.
-///
-/// **Why is this bad?** Needlessly creating a closure adds code for no benefit
-/// and gives the optimizer more work.
-///
-/// **Known problems:** If creating the closure inside the closure has a side-
-/// effect then moving the closure creation out will change when that side-
-/// effect runs.
-/// See https://github.com/rust-lang/rust-clippy/issues/1439 for more
-/// details.
-///
-/// **Example:**
-/// ```rust
-/// xs.map(|x| foo(x))
-/// ```
-/// where `foo(_)` is a plain function that takes the exact argument type of
-/// `x`.
 declare_clippy_lint! {
+    /// **What it does:** Checks for closures which just call another function where
+    /// the function can be called directly. `unsafe` functions or calls where types
+    /// get adjusted are ignored.
+    ///
+    /// **Why is this bad?** Needlessly creating a closure adds code for no benefit
+    /// and gives the optimizer more work.
+    ///
+    /// **Known problems:** If creating the closure inside the closure has a side-
+    /// effect then moving the closure creation out will change when that side-
+    /// effect runs.
+    /// See https://github.com/rust-lang/rust-clippy/issues/1439 for more
+    /// details.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// xs.map(|x| foo(x))
+    /// ```
+    /// where `foo(_)` is a plain function that takes the exact argument type of
+    /// `x`.
     pub REDUNDANT_CLOSURE,
     style,
     "redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)"

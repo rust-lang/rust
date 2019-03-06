@@ -39,7 +39,7 @@ use toml;
 ///
 /// Every lint declaration consists of 4 parts:
 ///
-/// 1. The documentation above the lint, which is used for the website
+/// 1. The documentation, which is used for the website
 /// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
 /// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
 ///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
@@ -60,22 +60,22 @@ use toml;
 /// # use clippy_lints::declare_clippy_lint;
 /// use rustc::declare_tool_lint;
 ///
-/// /// **What it does:** Checks for ... (describe what the lint matches).
-/// ///
-/// /// **Why is this bad?** Supply the reason for linting the code.
-/// ///
-/// /// **Known problems:** None. (Or describe where it could go wrong.)
-/// ///
-/// /// **Example:**
-/// ///
-/// /// ```rust
-/// /// // Bad
-/// /// Insert a short example of code that triggers the lint
-/// ///
-/// /// // Good
-/// /// Insert a short example of improved code that doesn't trigger the lint
-/// /// ```
 /// declare_clippy_lint! {
+///     /// **What it does:** Checks for ... (describe what the lint matches).
+///     ///
+///     /// **Why is this bad?** Supply the reason for linting the code.
+///     ///
+///     /// **Known problems:** None. (Or describe where it could go wrong.)
+///     ///
+///     /// **Example:**
+///     ///
+///     /// ```rust
+///     /// // Bad
+///     /// Insert a short example of code that triggers the lint
+///     ///
+///     /// // Good
+///     /// Insert a short example of improved code that doesn't trigger the lint
+///     /// ```
 ///     pub LINT_NAME,
 ///     pedantic,
 ///     "description"
@@ -84,35 +84,55 @@ use toml;
 /// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 #[macro_export]
 macro_rules! declare_clippy_lint {
-    { pub $name:tt, style, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, style, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, correctness, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Deny, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, complexity, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, perf, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, pedantic, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, restriction, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, restriction, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, cargo, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, nursery, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, internal, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, internal_warn, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
 }
 

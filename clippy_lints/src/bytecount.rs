@@ -10,22 +10,22 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::{Name, UintTy};
 
-/// **What it does:** Checks for naive byte counts
-///
-/// **Why is this bad?** The [`bytecount`](https://crates.io/crates/bytecount)
-/// crate has methods to count your bytes faster, especially for large slices.
-///
-/// **Known problems:** If you have predominantly small slices, the
-/// `bytecount::count(..)` method may actually be slower. However, if you can
-/// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
-/// faster in those cases.
-///
-/// **Example:**
-///
-/// ```rust
-/// &my_data.filter(|&x| x == 0u8).count() // use bytecount::count instead
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for naive byte counts
+    ///
+    /// **Why is this bad?** The [`bytecount`](https://crates.io/crates/bytecount)
+    /// crate has methods to count your bytes faster, especially for large slices.
+    ///
+    /// **Known problems:** If you have predominantly small slices, the
+    /// `bytecount::count(..)` method may actually be slower. However, if you can
+    /// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
+    /// faster in those cases.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// &my_data.filter(|&x| x == 0u8).count() // use bytecount::count instead
+    /// ```
     pub NAIVE_BYTECOUNT,
     perf,
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"

@@ -3,16 +3,16 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for mis-uses of the serde API.
-///
-/// **Why is this bad?** Serde is very finnicky about how its API should be
-/// used, but the type system can't be used to enforce it (yet?).
-///
-/// **Known problems:** None.
-///
-/// **Example:** Implementing `Visitor::visit_string` but not
-/// `Visitor::visit_str`.
 declare_clippy_lint! {
+    /// **What it does:** Checks for mis-uses of the serde API.
+    ///
+    /// **Why is this bad?** Serde is very finnicky about how its API should be
+    /// used, but the type system can't be used to enforce it (yet?).
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:** Implementing `Visitor::visit_string` but not
+    /// `Visitor::visit_str`.
     pub SERDE_API_MISUSE,
     correctness,
     "various things that will negatively affect your serde experience"

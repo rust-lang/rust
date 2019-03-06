@@ -4,18 +4,18 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Detects classic underflow/overflow checks.
-///
-/// **Why is this bad?** Most classic C underflow/overflow checks will fail in
-/// Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// a + b < a
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Detects classic underflow/overflow checks.
+    ///
+    /// **Why is this bad?** Most classic C underflow/overflow checks will fail in
+    /// Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// a + b < a
+    /// ```
     pub OVERFLOW_CHECK_CONDITIONAL,
     complexity,
     "overflow checks inspired by C which are likely to panic"

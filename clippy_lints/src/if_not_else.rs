@@ -7,32 +7,32 @@ use syntax::ast::*;
 
 use crate::utils::span_help_and_lint;
 
-/// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
-/// else branch.
-///
-/// **Why is this bad?** Negations reduce the readability of statements.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if !v.is_empty() {
-///     a()
-/// } else {
-///     b()
-/// }
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// if v.is_empty() {
-///     b()
-/// } else {
-///     a()
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
+    /// else branch.
+    ///
+    /// **Why is this bad?** Negations reduce the readability of statements.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if !v.is_empty() {
+    ///     a()
+    /// } else {
+    ///     b()
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```rust
+    /// if v.is_empty() {
+    ///     b()
+    /// } else {
+    ///     a()
+    /// }
+    /// ```
     pub IF_NOT_ELSE,
     pedantic,
     "`if` branches that could be swapped so no negation operation is necessary on the condition"

@@ -7,24 +7,24 @@ use syntax::ast::*;
 
 use crate::utils::{snippet_opt, span_lint_and_then};
 
-/// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
-///
-///
-/// **Why is this bad?** Readability -- better to use `> y` instead of `>= y + 1`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x >= y + 1
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// x > y
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
+    ///
+    ///
+    /// **Why is this bad?** Readability -- better to use `> y` instead of `>= y + 1`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x >= y + 1
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```rust
+    /// x > y
+    /// ```
     pub INT_PLUS_ONE,
     complexity,
     "instead of using x >= y + 1, use x > y"

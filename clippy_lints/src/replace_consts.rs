@@ -6,24 +6,24 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
-/// `uX/iX::MIN/MAX`.
-///
-/// **Why is this bad?** `const fn`s exist
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// static FOO: AtomicIsize = AtomicIsize::new(0);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
+    /// `uX/iX::MIN/MAX`.
+    ///
+    /// **Why is this bad?** `const fn`s exist
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```rust
+    /// static FOO: AtomicIsize = AtomicIsize::new(0);
+    /// ```
     pub REPLACE_CONSTS,
     pedantic,
     "Lint usages of standard library `const`s that could be replaced by `const fn`s"

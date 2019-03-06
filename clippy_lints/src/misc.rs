@@ -16,208 +16,208 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::{ExpnFormat, Span};
 
-/// **What it does:** Checks for function arguments and let bindings denoted as
-/// `ref`.
-///
-/// **Why is this bad?** The `ref` declaration makes the function take an owned
-/// value, but turns the argument into a reference (which means that the value
-/// is destroyed when exiting the function). This adds not much value: either
-/// take a reference type, or take an owned value and create references in the
-/// body.
-///
-/// For let bindings, `let x = &foo;` is preferred over `let ref x = foo`. The
-/// type of `x` is more obvious with the former.
-///
-/// **Known problems:** If the argument is dereferenced within the function,
-/// removing the `ref` will lead to errors. This can be fixed by removing the
-/// dereferences, e.g. changing `*x` to `x` within the function.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(ref x: u8) -> bool {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for function arguments and let bindings denoted as
+    /// `ref`.
+    ///
+    /// **Why is this bad?** The `ref` declaration makes the function take an owned
+    /// value, but turns the argument into a reference (which means that the value
+    /// is destroyed when exiting the function). This adds not much value: either
+    /// take a reference type, or take an owned value and create references in the
+    /// body.
+    ///
+    /// For let bindings, `let x = &foo;` is preferred over `let ref x = foo`. The
+    /// type of `x` is more obvious with the former.
+    ///
+    /// **Known problems:** If the argument is dereferenced within the function,
+    /// removing the `ref` will lead to errors. This can be fixed by removing the
+    /// dereferences, e.g. changing `*x` to `x` within the function.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// fn foo(ref x: u8) -> bool {
+    ///     ..
+    /// }
+    /// ```
     pub TOPLEVEL_REF_ARG,
     style,
     "an entire binding declared as `ref`, in a function argument or a `let` statement"
 }
 
-/// **What it does:** Checks for comparisons to NaN.
-///
-/// **Why is this bad?** NaN does not compare meaningfully to anything – not
-/// even itself – so those comparisons are simply wrong.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x == NAN
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for comparisons to NaN.
+    ///
+    /// **Why is this bad?** NaN does not compare meaningfully to anything – not
+    /// even itself – so those comparisons are simply wrong.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// x == NAN
+    /// ```
     pub CMP_NAN,
     correctness,
     "comparisons to NAN, which will always return false, probably not intended"
 }
 
-/// **What it does:** Checks for (in-)equality comparisons on floating-point
-/// values (apart from zero), except in functions called `*eq*` (which probably
-/// implement equality for a type involving floats).
-///
-/// **Why is this bad?** Floating point calculations are usually imprecise, so
-/// asking if two values are *exactly* equal is asking for trouble. For a good
-/// guide on what to do, see [the floating point
-/// guide](http://www.floating-point-gui.de/errors/comparison).
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// y == 1.23f64
-/// y != x  // where both are floats
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for (in-)equality comparisons on floating-point
+    /// values (apart from zero), except in functions called `*eq*` (which probably
+    /// implement equality for a type involving floats).
+    ///
+    /// **Why is this bad?** Floating point calculations are usually imprecise, so
+    /// asking if two values are *exactly* equal is asking for trouble. For a good
+    /// guide on what to do, see [the floating point
+    /// guide](http://www.floating-point-gui.de/errors/comparison).
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// y == 1.23f64
+    /// y != x  // where both are floats
+    /// ```
     pub FLOAT_CMP,
     correctness,
     "using `==` or `!=` on float values instead of comparing difference with an epsilon"
 }
 
-/// **What it does:** Checks for conversions to owned values just for the sake
-/// of a comparison.
-///
-/// **Why is this bad?** The comparison can operate on a reference, so creating
-/// an owned value effectively throws it away directly afterwards, which is
-/// needlessly consuming code and heap space.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x.to_owned() == y
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for conversions to owned values just for the sake
+    /// of a comparison.
+    ///
+    /// **Why is this bad?** The comparison can operate on a reference, so creating
+    /// an owned value effectively throws it away directly afterwards, which is
+    /// needlessly consuming code and heap space.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x.to_owned() == y
+    /// ```
     pub CMP_OWNED,
     perf,
     "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`"
 }
 
-/// **What it does:** Checks for getting the remainder of a division by one.
-///
-/// **Why is this bad?** The result can only ever be zero. No one will write
-/// such code deliberately, unless trying to win an Underhanded Rust
-/// Contest. Even for that contest, it's probably a bad idea. Use something more
-/// underhanded.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x % 1
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for getting the remainder of a division by one.
+    ///
+    /// **Why is this bad?** The result can only ever be zero. No one will write
+    /// such code deliberately, unless trying to win an Underhanded Rust
+    /// Contest. Even for that contest, it's probably a bad idea. Use something more
+    /// underhanded.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// x % 1
+    /// ```
     pub MODULO_ONE,
     correctness,
     "taking a number modulo 1, which always returns 0"
 }
 
-/// **What it does:** Checks for patterns in the form `name @ _`.
-///
-/// **Why is this bad?** It's almost always more readable to just use direct
-/// bindings.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// match v {
-///     Some(x) => (),
-///     y @ _ => (), // easier written as `y`,
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for patterns in the form `name @ _`.
+    ///
+    /// **Why is this bad?** It's almost always more readable to just use direct
+    /// bindings.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// match v {
+    ///     Some(x) => (),
+    ///     y @ _ => (), // easier written as `y`,
+    /// }
+    /// ```
     pub REDUNDANT_PATTERN,
     style,
     "using `name @ _` in a pattern"
 }
 
-/// **What it does:** Checks for the use of bindings with a single leading
-/// underscore.
-///
-/// **Why is this bad?** A single leading underscore is usually used to indicate
-/// that a binding will not be used. Using such a binding breaks this
-/// expectation.
-///
-/// **Known problems:** The lint does not work properly with desugaring and
-/// macro, it has been allowed in the mean time.
-///
-/// **Example:**
-/// ```rust
-/// let _x = 0;
-/// let y = _x + 1; // Here we are using `_x`, even though it has a leading
-///                 // underscore. We should rename `_x` to `x`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the use of bindings with a single leading
+    /// underscore.
+    ///
+    /// **Why is this bad?** A single leading underscore is usually used to indicate
+    /// that a binding will not be used. Using such a binding breaks this
+    /// expectation.
+    ///
+    /// **Known problems:** The lint does not work properly with desugaring and
+    /// macro, it has been allowed in the mean time.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let _x = 0;
+    /// let y = _x + 1; // Here we are using `_x`, even though it has a leading
+    ///                 // underscore. We should rename `_x` to `x`
+    /// ```
     pub USED_UNDERSCORE_BINDING,
     pedantic,
     "using a binding which is prefixed with an underscore"
 }
 
-/// **What it does:** Checks for the use of short circuit boolean conditions as
-/// a
-/// statement.
-///
-/// **Why is this bad?** Using a short circuit boolean condition as a statement
-/// may hide the fact that the second part is executed or not depending on the
-/// outcome of the first part.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// f() && g(); // We should write `if f() { g(); }`.
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the use of short circuit boolean conditions as
+    /// a
+    /// statement.
+    ///
+    /// **Why is this bad?** Using a short circuit boolean condition as a statement
+    /// may hide the fact that the second part is executed or not depending on the
+    /// outcome of the first part.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// f() && g(); // We should write `if f() { g(); }`.
+    /// ```
     pub SHORT_CIRCUIT_STATEMENT,
     complexity,
     "using a short circuit boolean condition as a statement"
 }
 
-/// **What it does:** Catch casts from `0` to some pointer type
-///
-/// **Why is this bad?** This generally means `null` and is better expressed as
-/// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// 0 as *const u32
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Catch casts from `0` to some pointer type
+    ///
+    /// **Why is this bad?** This generally means `null` and is better expressed as
+    /// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```ignore
+    /// 0 as *const u32
+    /// ```
     pub ZERO_PTR,
     style,
     "using 0 as *{const, mut} T"
 }
 
-/// **What it does:** Checks for (in-)equality comparisons on floating-point
-/// value and constant, except in functions called `*eq*` (which probably
-/// implement equality for a type involving floats).
-///
-/// **Why is this bad?** Floating point calculations are usually imprecise, so
-/// asking if two values are *exactly* equal is asking for trouble. For a good
-/// guide on what to do, see [the floating point
-/// guide](http://www.floating-point-gui.de/errors/comparison).
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// const ONE = 1.00f64;
-/// x == ONE  // where both are floats
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for (in-)equality comparisons on floating-point
+    /// value and constant, except in functions called `*eq*` (which probably
+    /// implement equality for a type involving floats).
+    ///
+    /// **Why is this bad?** Floating point calculations are usually imprecise, so
+    /// asking if two values are *exactly* equal is asking for trouble. For a good
+    /// guide on what to do, see [the floating point
+    /// guide](http://www.floating-point-gui.de/errors/comparison).
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// const ONE = 1.00f64;
+    /// x == ONE  // where both are floats
+    /// ```
     pub FLOAT_CMP_CONST,
     restriction,
     "using `==` or `!=` on float constants instead of comparing difference with an epsilon"

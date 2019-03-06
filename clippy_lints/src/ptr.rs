@@ -13,82 +13,82 @@ use std::borrow::Cow;
 use syntax::source_map::Span;
 use syntax_pos::MultiSpan;
 
-/// **What it does:** This lint checks for function arguments of type `&String`
-/// or `&Vec` unless the references are mutable. It will also suggest you
-/// replace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`
-/// calls.
-///
-/// **Why is this bad?** Requiring the argument to be of the specific size
-/// makes the function less useful for no benefit; slices in the form of `&[T]`
-/// or `&str` usually suffice and can be obtained from other types, too.
-///
-/// **Known problems:** The lint does not follow data. So if you have an
-/// argument `x` and write `let y = x; y.clone()` the lint will not suggest
-/// changing that `.clone()` to `.to_owned()`.
-///
-/// Other functions called from this function taking a `&String` or `&Vec`
-/// argument may also fail to compile if you change the argument. Applying
-/// this lint on them will fix the problem, but they may be in other crates.
-///
-/// Also there may be `fn(&Vec)`-typed references pointing to your function.
-/// If you have them, you will get a compiler error after applying this lint's
-/// suggestions. You then have the choice to undo your changes or change the
-/// type of the reference.
-///
-/// Note that if the function is part of your public interface, there may be
-/// other crates referencing it you may not be aware. Carefully deprecate the
-/// function before applying the lint suggestions in this case.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(&Vec<u32>) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** This lint checks for function arguments of type `&String`
+    /// or `&Vec` unless the references are mutable. It will also suggest you
+    /// replace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`
+    /// calls.
+    ///
+    /// **Why is this bad?** Requiring the argument to be of the specific size
+    /// makes the function less useful for no benefit; slices in the form of `&[T]`
+    /// or `&str` usually suffice and can be obtained from other types, too.
+    ///
+    /// **Known problems:** The lint does not follow data. So if you have an
+    /// argument `x` and write `let y = x; y.clone()` the lint will not suggest
+    /// changing that `.clone()` to `.to_owned()`.
+    ///
+    /// Other functions called from this function taking a `&String` or `&Vec`
+    /// argument may also fail to compile if you change the argument. Applying
+    /// this lint on them will fix the problem, but they may be in other crates.
+    ///
+    /// Also there may be `fn(&Vec)`-typed references pointing to your function.
+    /// If you have them, you will get a compiler error after applying this lint's
+    /// suggestions. You then have the choice to undo your changes or change the
+    /// type of the reference.
+    ///
+    /// Note that if the function is part of your public interface, there may be
+    /// other crates referencing it you may not be aware. Carefully deprecate the
+    /// function before applying the lint suggestions in this case.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// fn foo(&Vec<u32>) { .. }
+    /// ```
     pub PTR_ARG,
     style,
     "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively"
 }
 
-/// **What it does:** This lint checks for equality comparisons with `ptr::null`
-///
-/// **Why is this bad?** It's easier and more readable to use the inherent
-/// `.is_null()`
-/// method instead
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if x == ptr::null {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** This lint checks for equality comparisons with `ptr::null`
+    ///
+    /// **Why is this bad?** It's easier and more readable to use the inherent
+    /// `.is_null()`
+    /// method instead
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if x == ptr::null {
+    ///     ..
+    /// }
+    /// ```
     pub CMP_NULL,
     style,
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
 }
 
-/// **What it does:** This lint checks for functions that take immutable
-/// references and return
-/// mutable ones.
-///
-/// **Why is this bad?** This is trivially unsound, as one can create two
-/// mutable references
-/// from the same (immutable!) source. This
-/// [error](https://github.com/rust-lang/rust/issues/39465)
-/// actually lead to an interim Rust release 1.15.1.
-///
-/// **Known problems:** To be on the conservative side, if there's at least one
-/// mutable reference
-/// with the output lifetime, this lint will not trigger. In practice, this
-/// case is unlikely anyway.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(&Foo) -> &mut Bar { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** This lint checks for functions that take immutable
+    /// references and return
+    /// mutable ones.
+    ///
+    /// **Why is this bad?** This is trivially unsound, as one can create two
+    /// mutable references
+    /// from the same (immutable!) source. This
+    /// [error](https://github.com/rust-lang/rust/issues/39465)
+    /// actually lead to an interim Rust release 1.15.1.
+    ///
+    /// **Known problems:** To be on the conservative side, if there's at least one
+    /// mutable reference
+    /// with the output lifetime, this lint will not trigger. In practice, this
+    /// case is unlikely anyway.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// fn foo(&Foo) -> &mut Bar { .. }
+    /// ```
     pub MUT_FROM_REF,
     correctness,
     "fns that create mutable refs from immutable ref args"

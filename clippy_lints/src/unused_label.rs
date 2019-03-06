@@ -7,21 +7,21 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
-/// **What it does:** Checks for unused labels.
-///
-/// **Why is this bad?** Maybe the label should be used in which case there is
-/// an error in the code or it should be removed.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
-/// ```rust,ignore
-/// fn unused_label() {
-///     'label: for i in 1..2 {
-///         if i > 4 { continue }
-///     }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for unused labels.
+    ///
+    /// **Why is this bad?** Maybe the label should be used in which case there is
+    /// an error in the code or it should be removed.
+    ///
+    /// **Known problems:** Hopefully none.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// fn unused_label() {
+    ///     'label: for i in 1..2 {
+    ///         if i > 4 { continue }
+    ///     }
+    /// ```
     pub UNUSED_LABEL,
     complexity,
     "unused labels"

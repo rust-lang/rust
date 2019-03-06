@@ -6,67 +6,67 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for string appends of the form `x = x + y` (without
-/// `let`!).
-///
-/// **Why is this bad?** It's not really bad, but some people think that the
-/// `.push_str(_)` method is more readable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// let mut x = "Hello".to_owned();
-/// x = x + ", World";
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for string appends of the form `x = x + y` (without
+    /// `let`!).
+    ///
+    /// **Why is this bad?** It's not really bad, but some people think that the
+    /// `.push_str(_)` method is more readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let mut x = "Hello".to_owned();
+    /// x = x + ", World";
+    /// ```
     pub STRING_ADD_ASSIGN,
     pedantic,
     "using `x = x + ..` where x is a `String` instead of `push_str()`"
 }
 
-/// **What it does:** Checks for all instances of `x + _` where `x` is of type
-/// `String`, but only if [`string_add_assign`](#string_add_assign) does *not*
-/// match.
-///
-/// **Why is this bad?** It's not bad in and of itself. However, this particular
-/// `Add` implementation is asymmetric (the other operand need not be `String`,
-/// but `x` does), while addition as mathematically defined is symmetric, also
-/// the `String::push_str(_)` function is a perfectly good replacement.
-/// Therefore some dislike it and wish not to have it in their code.
-///
-/// That said, other people think that string addition, having a long tradition
-/// in other languages is actually fine, which is why we decided to make this
-/// particular lint `allow` by default.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// let x = "Hello".to_owned();
-/// x + ", World"
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for all instances of `x + _` where `x` is of type
+    /// `String`, but only if [`string_add_assign`](#string_add_assign) does *not*
+    /// match.
+    ///
+    /// **Why is this bad?** It's not bad in and of itself. However, this particular
+    /// `Add` implementation is asymmetric (the other operand need not be `String`,
+    /// but `x` does), while addition as mathematically defined is symmetric, also
+    /// the `String::push_str(_)` function is a perfectly good replacement.
+    /// Therefore some dislike it and wish not to have it in their code.
+    ///
+    /// That said, other people think that string addition, having a long tradition
+    /// in other languages is actually fine, which is why we decided to make this
+    /// particular lint `allow` by default.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = "Hello".to_owned();
+    /// x + ", World"
+    /// ```
     pub STRING_ADD,
     restriction,
     "using `x + ..` where x is a `String` instead of `push_str()`"
 }
 
-/// **What it does:** Checks for the `as_bytes` method called on string literals
-/// that contain only ASCII characters.
-///
-/// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used
-/// instead. They are shorter but less discoverable than `as_bytes()`.
-///
-/// **Known Problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let bs = "a byte string".as_bytes();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the `as_bytes` method called on string literals
+    /// that contain only ASCII characters.
+    ///
+    /// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used
+    /// instead. They are shorter but less discoverable than `as_bytes()`.
+    ///
+    /// **Known Problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let bs = "a byte string".as_bytes();
+    /// ```
     pub STRING_LIT_AS_BYTES,
     style,
     "calling `as_bytes` on a string literal instead of using a byte string literal"

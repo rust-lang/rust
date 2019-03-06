@@ -4,29 +4,29 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 
-/// **What it does:** Checks for fields in struct literals where shorthands
-/// could be used.
-///
-/// **Why is this bad?** If the field and variable names are the same,
-/// the field name is redundant.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let bar: u8 = 123;
-///
-/// struct Foo {
-///     bar: u8,
-/// }
-///
-/// let foo = Foo{ bar: bar }
-/// ```
-/// the last line can be simplified to
-/// ```rust
-/// let foo = Foo{ bar }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for fields in struct literals where shorthands
+    /// could be used.
+    ///
+    /// **Why is this bad?** If the field and variable names are the same,
+    /// the field name is redundant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let bar: u8 = 123;
+    ///
+    /// struct Foo {
+    ///     bar: u8,
+    /// }
+    ///
+    /// let foo = Foo { bar: bar };
+    /// ```
+    /// the last line can be simplified to
+    /// ```ignore
+    /// let foo = Foo { bar };
+    /// ```
     pub REDUNDANT_FIELD_NAMES,
     style,
     "checks for fields in struct literals where shorthands could be used"

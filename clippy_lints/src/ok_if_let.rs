@@ -4,31 +4,31 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:*** Checks for unnecessary `ok()` in if let.
-///
-/// **Why is this bad?** Calling `ok()` in if let is unnecessary, instead match
-/// on `Ok(pat)`
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for result in iter {
-///     if let Some(bench) = try!(result).parse().ok() {
-///         vec.push(bench)
-///     }
-/// }
-/// ```
-/// Could be written:
-///
-/// ```rust
-/// for result in iter {
-///     if let Ok(bench) = try!(result).parse() {
-///         vec.push(bench)
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:*** Checks for unnecessary `ok()` in if let.
+    ///
+    /// **Why is this bad?** Calling `ok()` in if let is unnecessary, instead match
+    /// on `Ok(pat)`
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for result in iter {
+    ///     if let Some(bench) = try!(result).parse().ok() {
+    ///         vec.push(bench)
+    ///     }
+    /// }
+    /// ```
+    /// Could be written:
+    ///
+    /// ```ignore
+    /// for result in iter {
+    ///     if let Ok(bench) = try!(result).parse() {
+    ///         vec.push(bench)
+    ///     }
+    /// }
+    /// ```
     pub IF_LET_SOME_RESULT,
     style,
     "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead"

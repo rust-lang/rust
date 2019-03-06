@@ -5,17 +5,17 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for creation of references to zeroed or uninitialized memory.
-///
-/// **Why is this bad?** Creation of null references is undefined behavior.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let bad_ref: &usize = std::mem::zeroed();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for creation of references to zeroed or uninitialized memory.
+    ///
+    /// **Why is this bad?** Creation of null references is undefined behavior.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// let bad_ref: &usize = unsafe { std::mem::zeroed() };
+    /// ```
     pub INVALID_REF,
     correctness,
     "creation of invalid reference"

@@ -5,52 +5,52 @@ use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::source_map::Span;
 
-/// **What it does:** it lints if an exported function, method, trait method with default impl,
-/// or trait method impl is not `#[inline]`.
-///
-/// **Why is this bad?** In general, it is not. Functions can be inlined across
-/// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
-/// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
-/// might intend for most of the methods in their public API to be able to be inlined across
-/// crates even when LTO is disabled. For these types of crates, enabling this lint might make
-/// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
-/// then opt out for specific methods where this might not make sense.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// pub fn foo() {} // missing #[inline]
-/// fn ok() {} // ok
-/// #[inline] pub fn bar() {} // ok
-/// #[inline(always)] pub fn baz() {} // ok
-///
-/// pub trait Bar {
-///   fn bar(); // ok
-///   fn def_bar() {} // missing #[inline]
-/// }
-///
-/// struct Baz;
-/// impl Baz {
-///    fn priv() {} // ok
-/// }
-///
-/// impl Bar for Baz {
-///   fn bar() {} // ok - Baz is not exported
-/// }
-///
-/// pub struct PubBaz;
-/// impl PubBaz {
-///    fn priv() {} // ok
-///    pub not_ptriv() {} // missing #[inline]
-/// }
-///
-/// impl Bar for PubBaz {
-///    fn bar() {} // missing #[inline]
-///    fn def_bar() {} // missing #[inline]
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** it lints if an exported function, method, trait method with default impl,
+    /// or trait method impl is not `#[inline]`.
+    ///
+    /// **Why is this bad?** In general, it is not. Functions can be inlined across
+    /// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
+    /// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
+    /// might intend for most of the methods in their public API to be able to be inlined across
+    /// crates even when LTO is disabled. For these types of crates, enabling this lint might make
+    /// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
+    /// then opt out for specific methods where this might not make sense.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// pub fn foo() {} // missing #[inline]
+    /// fn ok() {} // ok
+    /// #[inline] pub fn bar() {} // ok
+    /// #[inline(always)] pub fn baz() {} // ok
+    ///
+    /// pub trait Bar {
+    ///   fn bar(); // ok
+    ///   fn def_bar() {} // missing #[inline]
+    /// }
+    ///
+    /// struct Baz;
+    /// impl Baz {
+    ///    fn priv() {} // ok
+    /// }
+    ///
+    /// impl Bar for Baz {
+    ///   fn bar() {} // ok - Baz is not exported
+    /// }
+    ///
+    /// pub struct PubBaz;
+    /// impl PubBaz {
+    ///    fn priv() {} // ok
+    ///    pub not_ptriv() {} // missing #[inline]
+    /// }
+    ///
+    /// impl Bar for PubBaz {
+    ///    fn bar() {} // missing #[inline]
+    ///    fn def_bar() {} // missing #[inline]
+    /// }
+    /// ```
     pub MISSING_INLINE_IN_PUBLIC_ITEMS,
     restriction,
     "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)"

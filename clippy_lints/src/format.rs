@@ -12,23 +12,23 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for the use of `format!("string literal with no
-/// argument")` and `format!("{}", foo)` where `foo` is a string.
-///
-/// **Why is this bad?** There is no point of doing that. `format!("foo")` can
-/// be replaced by `"foo".to_owned()` if you really need a `String`. The even
-/// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
-/// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
-/// if `foo: &str`.
-///
-/// **Known problems:** None.
-///
-/// **Examples:**
-/// ```rust
-/// format!("foo")
-/// format!("{}", foo)
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `format!("string literal with no
+    /// argument")` and `format!("{}", foo)` where `foo` is a string.
+    ///
+    /// **Why is this bad?** There is no point of doing that. `format!("foo")` can
+    /// be replaced by `"foo".to_owned()` if you really need a `String`. The even
+    /// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
+    /// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
+    /// if `foo: &str`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// format!("foo")
+    /// format!("{}", foo)
+    /// ```
     pub USELESS_FORMAT,
     complexity,
     "useless use of `format!`"

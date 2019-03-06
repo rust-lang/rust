@@ -3,20 +3,20 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::*;
 
-/// **What it does:** Checks for unnecessary double parentheses.
-///
-/// **Why is this bad?** This makes code harder to read and might indicate a
-/// mistake.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// ((0))
-/// foo((0))
-/// ((1, 2))
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for unnecessary double parentheses.
+    ///
+    /// **Why is this bad?** This makes code harder to read and might indicate a
+    /// mistake.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// ((0))
+    /// foo((0))
+    /// ((1, 2))
+    /// ```
     pub DOUBLE_PARENS,
     complexity,
     "Warn on unnecessary double parentheses"

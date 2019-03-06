@@ -4,29 +4,29 @@ use rustc::hir::*;
 use rustc::lint::{LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for generics with `std::ops::Drop` as bounds.
-///
-/// **Why is this bad?** `Drop` bounds do not really accomplish anything.
-/// A type may have compiler-generated drop glue without implementing the
-/// `Drop` trait itself. The `Drop` trait also only has one method,
-/// `Drop::drop`, and that function is by fiat not callable in user code.
-/// So there is really no use case for using `Drop` in trait bounds.
-///
-/// The most likely use case of a drop bound is to distinguish between types
-/// that have destructors and types that don't. Combined with specialization,
-/// a naive coder would write an implementation that assumed a type could be
-/// trivially dropped, then write a specialization for `T: Drop` that actually
-/// calls the destructor. Except that doing so is not correct; String, for
-/// example, doesn't actually implement Drop, but because String contains a
-/// Vec, assuming it can be trivially dropped will leak memory.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn foo<T: Drop>() {}
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for generics with `std::ops::Drop` as bounds.
+    ///
+    /// **Why is this bad?** `Drop` bounds do not really accomplish anything.
+    /// A type may have compiler-generated drop glue without implementing the
+    /// `Drop` trait itself. The `Drop` trait also only has one method,
+    /// `Drop::drop`, and that function is by fiat not callable in user code.
+    /// So there is really no use case for using `Drop` in trait bounds.
+    ///
+    /// The most likely use case of a drop bound is to distinguish between types
+    /// that have destructors and types that don't. Combined with specialization,
+    /// a naive coder would write an implementation that assumed a type could be
+    /// trivially dropped, then write a specialization for `T: Drop` that actually
+    /// calls the destructor. Except that doing so is not correct; String, for
+    /// example, doesn't actually implement Drop, but because String contains a
+    /// Vec, assuming it can be trivially dropped will leak memory.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo<T: Drop>() {}
+    /// ```
     pub DROP_BOUNDS,
     correctness,
     "Bounds of the form `T: Drop` are useless"
