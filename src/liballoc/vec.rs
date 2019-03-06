@@ -2481,7 +2481,7 @@ impl<'a, T> Drain<'a, T> {
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_slice(), &['b', 'c']);
     /// ```
-    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "0")]
+    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "58957")]
     pub fn as_slice(&self) -> &[T] {
         self.iter.as_slice()
     }

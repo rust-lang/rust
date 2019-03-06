@@ -3312,7 +3312,7 @@ impl<'a, T> IterMut<'a, T> {
     /// // Now `as_slice` returns "[2, 3]":
     /// assert_eq!(iter.as_slice(), &[2, 3]);
     /// ```
-    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "0")]
+    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "58957")]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
     }
