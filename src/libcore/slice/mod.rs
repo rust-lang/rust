@@ -3291,8 +3291,8 @@ impl<'a, T> IterMut<'a, T> {
 
     /// Views the underlying data as a subslice of the original data.
     ///
-    /// To avoid creating `&mut` references that alias, this has a
-    /// borrowed lifetime from the iterator.
+    /// To avoid creating `&mut [T]` references that alias, the returned slice
+    /// borrows its lifetime from the iterator the method is applied on.
     ///
     /// # Examples
     ///
@@ -3302,11 +3302,11 @@ impl<'a, T> IterMut<'a, T> {
     /// # #![feature(slice_iter_mut_as_slice)]
     /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
     /// // struct (&[usize here]):
-    /// let mut slice = &mut [1, 2, 3];
+    /// let mut slice: &mut [usize] = &mut [1, 2, 3];
     ///
     /// // Then, we get the iterator:
     /// let mut iter = slice.iter_mut();
-    /// // So if we print what `as_slice` method returns here, we have "[1, 2, 3]":
+    /// // So if we print what the `as_slice` method returns here, we have "[1, 2, 3]":
     /// println!("{:?}", iter.as_slice());
     /// assert_eq!(iter.as_slice(), &[1, 2, 3]);
     ///
