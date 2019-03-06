@@ -285,7 +285,7 @@ impl<'a> Parser<'a> {
         }
 
         let found = self.this_token_to_string();
-        let msg = format!("expected unsuffixed literal or identifier, found {}", found);
+        let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
         Err(self.diagnostic().struct_span_err(self.span, &msg))
     }
 
