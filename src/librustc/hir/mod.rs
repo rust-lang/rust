@@ -327,7 +327,6 @@ pub struct PathSegment {
     // therefore will not have 'jump to def' in IDEs, but otherwise will not be
     // affected. (In general, we don't bother to get the defs for synthesized
     // segments, only for segments which have come from the AST).
-    pub id: Option<NodeId>,
     pub hir_id: Option<HirId>,
     pub def: Option<Def>,
 
@@ -350,7 +349,6 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> PathSegment {
         PathSegment {
             ident,
-            id: None,
             hir_id: None,
             def: None,
             infer_types: true,
@@ -360,7 +358,6 @@ impl PathSegment {
 
     pub fn new(
         ident: Ident,
-        id: Option<NodeId>,
         hir_id: Option<HirId>,
         def: Option<Def>,
         args: GenericArgs,
@@ -368,7 +365,6 @@ impl PathSegment {
     ) -> Self {
         PathSegment {
             ident,
-            id,
             hir_id,
             def,
             infer_types,

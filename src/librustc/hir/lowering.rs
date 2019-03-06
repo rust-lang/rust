@@ -1932,7 +1932,6 @@ impl<'a> LoweringContext<'a> {
 
         hir::PathSegment::new(
             segment.ident,
-            Some(id.node_id),
             Some(id.hir_id),
             Some(def),
             generic_args,
@@ -3276,10 +3275,8 @@ impl<'a> LoweringContext<'a> {
         debug!("renumber_segment_ids(path = {:?})", path);
         let mut path = path.clone();
         for seg in path.segments.iter_mut() {
-            if seg.id.is_some() {
-                let next_id = self.next_id();
-                seg.id = Some(next_id.node_id);
-                seg.hir_id = Some(next_id.hir_id);
+            if seg.hir_id.is_some() {
+                seg.hir_id = Some(self.next_id().hir_id);
             }
         }
         path
@@ -5024,8 +5021,8 @@ impl<'a> LoweringContext<'a> {
 
 
         for seg in path.segments.iter_mut() {
-            if let Some(id) = seg.id {
-                seg.id = Some(self.lower_node_id(id).node_id);
+            if seg.hir_id.is_some() {
+                seg.hir_id = Some(self.next_id().hir_id);
             }
         }
         path

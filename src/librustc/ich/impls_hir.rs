@@ -171,7 +171,6 @@ impl_stable_hash_for!(struct hir::Path {
 
 impl_stable_hash_for!(struct hir::PathSegment {
     ident -> (ident.name),
-    id,
     hir_id,
     def,
     infer_types,

@@ -191,7 +191,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
             real_name.unwrap_or(last.ident),
             None,
             None,
-            None,
             self.generics_to_path_params(generics.clone()),
             false,
         ));
