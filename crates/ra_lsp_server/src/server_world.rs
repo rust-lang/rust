@@ -40,7 +40,7 @@ impl ServerWorldState {
         let mut roots = Vec::new();
         roots.push(root.clone());
         for ws in workspaces.iter() {
-            ws.add_roots(&mut roots);
+            roots.extend(ws.to_roots());
         }
         let (mut vfs, roots) = Vfs::new(roots);
         let roots_to_scan = roots.len();

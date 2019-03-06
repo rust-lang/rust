@@ -50,20 +50,25 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn add_roots(&self, roots: &mut Vec<PathBuf>) {
+    pub fn to_roots(&self) -> Vec<PathBuf> {
         match self {
             ProjectWorkspace::Json { project } => {
+                let mut roots = Vec::with_capacity(project.roots.len());
                 for root in &project.roots {
                     roots.push(root.path.clone());
                 }
+                roots
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
+                let mut roots =
+                    Vec::with_capacity(cargo.packages().count() + sysroot.crates().count());
                 for pkg in cargo.packages() {
                     roots.push(pkg.root(&cargo).to_path_buf());
                 }
                 for krate in sysroot.crates() {
                     roots.push(krate.root_dir(&sysroot).to_path_buf())
                 }
+                roots
             }
         }
     }
