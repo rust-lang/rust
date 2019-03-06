@@ -1067,6 +1067,14 @@ fn test_iterator_sum_result() {
 }
 
 #[test]
+fn test_iterator_sum_option() {
+    let v: &[Option<i32>] = &[Some(1), Some(2), Some(3), Some(4)];
+    assert_eq!(v.iter().cloned().sum::<Option<i32>>(), Some(10));
+    let v: &[Option<i32>] = &[Some(1), None, Some(3), Some(4)];
+    assert_eq!(v.iter().cloned().sum::<Option<i32>>(), None);
+}
+
+#[test]
 fn test_iterator_product() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().cloned().product::<i32>(), 0);
@@ -1080,6 +1088,14 @@ fn test_iterator_product_result() {
     assert_eq!(v.iter().cloned().product::<Result<i32, _>>(), Ok(24));
     let v: &[Result<i32, ()>] = &[Ok(1), Err(()), Ok(3), Ok(4)];
     assert_eq!(v.iter().cloned().product::<Result<i32, _>>(), Err(()));
+}
+
+#[test]
+fn test_iterator_product_option() {
+    let v: &[Option<i32>] = &[Some(1), Some(2), Some(3), Some(4)];
+    assert_eq!(v.iter().cloned().product::<Option<i32>>(), Some(24));
+    let v: &[Option<i32>] = &[Some(1), None, Some(3), Some(4)];
+    assert_eq!(v.iter().cloned().product::<Option<i32>>(), None);
 }
 
 #[test]
