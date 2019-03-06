@@ -5,7 +5,7 @@ use ra_syntax::{
     SyntaxNode,
 };
 use test_utils::tested_by;
-use hir::{Pat, Resolution};
+use hir::Resolution;
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
@@ -149,20 +149,15 @@ pub(crate) fn reference_definition(
                         name_ref.syntax().ancestors().find_map(ast::PathPat::cast)
                     {
                         let infer_result = function.infer(db);
+                        let source_map = function.body_source_map(db);
 
-                        if let Some(p) = path_pat.path().and_then(hir::Path::from_ast) {
-                            if let Some(pat_id) =
-                                function.body(db).pats().find_map(|(pat_id, pat)| match pat {
-                                    Pat::Path(ref path) if *path == p => Some(pat_id),
-                                    _ => None,
-                                })
-                            {
-                                if let Some(res) =
-                                    infer_result.assoc_resolutions_for_pat(pat_id.into())
-                                {
-                                    return Exact(NavigationTarget::from_impl_item(db, res));
-                                }
-                            }
+                        let pat: &ast::Pat = path_pat.into();
+
+                        if let Some(res) = source_map
+                            .node_pat(pat)
+                            .and_then(|it| infer_result.assoc_resolutions_for_pat(it.into()))
+                        {
+                            return Exact(NavigationTarget::from_impl_item(db, res));
                         }
                     }
                 }
