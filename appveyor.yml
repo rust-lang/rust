@@ -11,6 +11,13 @@ environment:
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
     CI_JOB_NAME: x86_64-msvc
+    INFINITE_SLEEP: 1
+
+  - MSYS_BITS: 64
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+    SCRIPT: python x.py test
+    CI_JOB_NAME: x86_64-msvc-infinite
+    INFINITE_SLEEP: 2
 
 matrix:
   fast_finish: true
