@@ -109,7 +109,7 @@ test_script:
   - sh src/ci/init_repo.sh . /c/cache/rustsrc
   - set SRC=.
   - set NO_CCACHE=1
-  - sh src/ci/run.sh
+  - powershell src/ci/wrapper.ps1 src/ci/run.sh
 
 on_failure:
   # Dump crash log
