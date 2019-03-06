@@ -131,6 +131,8 @@ cfg_if! {
         #[macro_export]
         macro_rules! parallel {
             ($($blocks:tt),*) => {
+                // We catch panics here ensuring that all the blocks execute.
+                // This makes behavior consistent with the parallel compiler.
                 let mut panic = None;
                 $(
                     if let Err(p) = ::std::panic::catch_unwind(
@@ -158,6 +160,8 @@ cfg_if! {
             for_each:
                 impl Fn(<<T as IntoIterator>::IntoIter as Iterator>::Item) + Sync + Send
         ) {
+            // We catch panics here ensuring that all the loop iterations execute.
+            // This makes behavior consistent with the parallel compiler.
             let mut panic = None;
             t.into_iter().for_each(|i| {
                 if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
@@ -309,6 +313,8 @@ cfg_if! {
         use std::thread;
         pub use rayon::{join, scope};
 
+        /// Runs a list of blocks in parallel. The first block is executed immediately on
+        /// the current thread. Use that for the longest running block.
         #[macro_export]
         macro_rules! parallel {
             (impl $fblock:tt [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
@@ -323,7 +329,7 @@ cfg_if! {
                 })
             };
             ($fblock:tt, $($blocks:tt),*) => {
-                // Reverse the order of the blocks since Rayon executes them in reverse order
+                // Reverse the order of the later blocks since Rayon executes them in reverse order
                 // when using a single thread. This ensures the execution order matches that
                 // of a single threaded rustc
                 parallel!(impl $fblock [] [$($blocks),*]);
