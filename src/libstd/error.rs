@@ -204,8 +204,52 @@ pub trait Error: Debug + Display {
     }
 }
 
+/// This auto trait is an internal detail used to allow the otherwise
+/// conflicting implementations:
+///
+/// - `impl Error for Box<dyn Error>`
+/// - `impl<E: Error> From<E> for Box<dyn Error>`
+/// - `impl<T> From<T> for T`
+///
+/// Those implementations normally cause a conflict, since a `Box<dyn Error>`
+/// can satify both `From<E: Error>` and `From<T>`.
+///
+/// However, we *really* want `Box<dyn Error>` to implement `Error`. Without
+/// it, we cannot pass `Box<dyn Error>` to anything asking for `E: Error`.
+///
+/// To get around the conflict, an auto trait is used, since we can have
+/// negative imlementations. Then, the `From<E: Error>` implementation above
+/// can be changed to `From<E: Error + NotBoxDynError>`. *Everything*
+/// automatically implements `NotBoxDynError`, so no existing code breaks. The
+/// negative implementations for `Box<dyn Error>` just make coherence happy.
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+pub auto trait NotBoxDynError {}
+
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+impl<'a> NotBoxDynError for dyn Error + 'a {}
+
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+impl<'a> NotBoxDynError for dyn Error + Send + Sync + 'a {}
+
+/// This marker is used for `From` where clauses to detect *exactly* when
+/// a type is a `Box<dyn Error>`, and not a type *containing* one.
+///
+/// It should be used for **nothing** else.
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+#[allow(missing_debug_implementations)]
+pub struct IsBoxDynError<T>(T);
+
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+impl<'a> !NotBoxDynError for IsBoxDynError<Box<dyn Error + 'a>> {}
+#[unstable(feature = "error_box_dyn_negative", issue = "0")]
+impl<'a> !NotBoxDynError for IsBoxDynError<Box<dyn Error + Send + Sync + 'a>> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
+impl<'a, E> From<E> for Box<dyn Error + 'a>
+where
+    E: Error + 'a,
+    IsBoxDynError<E>: NotBoxDynError,
+{
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
     /// # Examples
@@ -241,7 +285,11 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
+impl<'a, E> From<E> for Box<dyn Error + Send + Sync + 'a>
+where
+    E: Error + Send + Sync + 'a,
+    IsBoxDynError<E>: NotBoxDynError,
+{
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of dyn [`Error`] +
     /// [`Send`] + [`Sync`].
     ///
@@ -517,7 +565,7 @@ impl Error for char::DecodeUtf16Error {
 }
 
 #[stable(feature = "box_error", since = "1.8.0")]
-impl<T: Error> Error for Box<T> {
+impl<T: Error + ?Sized> Error for Box<T> {
     fn description(&self) -> &str {
         Error::description(&**self)
     }
