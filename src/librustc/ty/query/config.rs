@@ -369,9 +369,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::check_privacy<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::check_private_in_public<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "privacy checking".into()
+        "checking for private elements in public interfaces".into()
     }
 }
 

@@ -352,7 +352,7 @@ define_queries! { <'tcx>
 
         /// Performs part of the privacy check and computes "access levels".
         [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Lrc<AccessLevels>,
-        [] fn check_privacy: CheckPrivacy(CrateNum) -> (),
+        [] fn check_private_in_public: CheckPrivateInPublic(CrateNum) -> (),
     },
 
     Other {

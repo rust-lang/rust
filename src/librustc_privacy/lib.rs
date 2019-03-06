@@ -1760,7 +1760,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         privacy_access_levels,
-        check_privacy,
+        check_private_in_public,
         check_mod_privacy,
         ..*providers
     };
@@ -1820,7 +1820,7 @@ fn privacy_access_levels<'tcx>(
     Lrc::new(visitor.access_levels)
 }
 
-fn check_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {
+fn check_private_in_public<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {
     assert_eq!(krate, LOCAL_CRATE);
 
     let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);

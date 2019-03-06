@@ -281,8 +281,8 @@ fn analysis<'tcx>(
                 tcx.ensure().privacy_access_levels(LOCAL_CRATE);
             });
             parallel!({
-                time(sess, "privacy checking", || {
-                    tcx.ensure().check_privacy(LOCAL_CRATE);
+                time(sess, "private in public", || {
+                    tcx.ensure().check_private_in_public(LOCAL_CRATE);
                 });
             }, {
                 time(sess, "death checking", || middle::dead::check_crate(tcx));
