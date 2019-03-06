@@ -514,7 +514,7 @@ impl Step for Cargo {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/cargo",
             is_optional_tool: false,
             source_type: SourceType::Submodule,
