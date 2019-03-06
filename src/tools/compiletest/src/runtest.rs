@@ -291,7 +291,8 @@ impl<'test> TestCx<'test> {
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
             CompileFail => self.props.compile_pass,
-            RunPass | JsDocTest => true,
+            RunPass => true,
+            JsDocTest => true,
             Ui => self.props.compile_pass,
             Incremental => {
                 let revision = self.revision
@@ -2728,6 +2729,8 @@ impl<'test> TestCx<'test> {
             if !res.status.success() {
                 self.fatal_proc_rec("rustdoc-js test failed!", &res);
             }
+        } else {
+            self.fatal("no nodeJS");
         }
     }
 
