@@ -59,7 +59,7 @@ pub fn opts() -> TargetOptions {
         singlethread: true,
         emit_debug_gdb_scripts: false,
 
-        linker: Some("lld-link".to_string()),
+        linker: Some("rust-lld".to_string()),
         lld_flavor: LldFlavor::Link,
         pre_link_args,
 
