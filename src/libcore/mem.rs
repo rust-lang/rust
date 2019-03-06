@@ -1269,7 +1269,7 @@ impl<T> MaybeUninit<T> {
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
-    /// (Notice that the rules around referenced to uninitialized data are not finalized yet, but
+    /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
