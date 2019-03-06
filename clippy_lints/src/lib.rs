@@ -152,11 +152,11 @@ pub mod block_in_if_condition;
 pub mod booleans;
 pub mod bytecount;
 pub mod cargo_common_metadata;
+pub mod cognitive_complexity;
 pub mod collapsible_if;
 pub mod const_static_lifetime;
 pub mod copies;
 pub mod copy_iterator;
-pub mod cyclomatic_complexity;
 pub mod dbg_macro;
 pub mod default_trait_access;
 pub mod derive;
@@ -478,7 +478,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(
-        box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold)
+        box cognitive_complexity::CognitiveComplexity::new(conf.cognitive_complexity_threshold)
     );
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
@@ -666,11 +666,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         bytecount::NAIVE_BYTECOUNT,
+        cognitive_complexity::COGNITIVE_COMPLEXITY,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
-        cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
@@ -962,7 +962,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_CFG_ATTR,
         booleans::NONMINIMAL_BOOL,
-        cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        cognitive_complexity::COGNITIVE_COMPLEXITY,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
         duration_subsec::DURATION_SUBSEC,
@@ -1131,6 +1131,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
+    ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
 }
 
 // only exists to let the dogfood integration test works.

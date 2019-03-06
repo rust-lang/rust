@@ -131,7 +131,7 @@ Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml
 
 ```toml
 blacklisted-names = ["toto", "tata", "titi"]
-cyclomatic-complexity-threshold = 30
+cognitive-complexity-threshold = 30
 ```
 
 See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the

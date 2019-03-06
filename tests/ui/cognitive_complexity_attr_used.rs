@@ -1,11 +1,11 @@
-#![warn(clippy::cyclomatic_complexity)]
+#![warn(clippy::cognitive_complexity)]
 #![warn(unused)]
 
 fn main() {
     kaboom();
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn kaboom() {
     if 42 == 43 {
         panic!();

@@ -15,7 +15,11 @@ pub enum DeprecationStatus {
 
 pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
     ("author", DeprecationStatus::None),
-    ("cyclomatic_complexity", DeprecationStatus::None),
+    ("cognitive_complexity", DeprecationStatus::None),
+    (
+        "cyclomatic_complexity",
+        DeprecationStatus::Replaced("cognitive_complexity"),
+    ),
     ("dump", DeprecationStatus::None),
 ];
 

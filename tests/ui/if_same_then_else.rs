@@ -2,7 +2,7 @@
 #![allow(
     clippy::blacklisted_name,
     clippy::collapsible_if,
-    clippy::cyclomatic_complexity,
+    clippy::cognitive_complexity,
     clippy::eq_op,
     clippy::needless_return,
     clippy::never_loop,
