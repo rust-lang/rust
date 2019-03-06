@@ -23,6 +23,7 @@ use test_utils::{parse_fixture, find_mismatch};
 
 use ra_lsp_server::{
     main_loop, req,
+    InitializationOptions,
 };
 
 pub fn project(fixture: &str) -> Server {
@@ -57,7 +58,13 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(path, true, &mut msg_receiver, &mut msg_sender).unwrap()
+                main_loop(
+                    path,
+                    InitializationOptions::default(),
+                    &mut msg_receiver,
+                    &mut msg_sender,
+                )
+                .unwrap()
             },
         );
         let res = Server {

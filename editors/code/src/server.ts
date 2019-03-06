@@ -26,7 +26,9 @@ export class Server {
         const clientOptions: lc.LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
             initializationOptions: {
-                publishDecorations: true
+                publishDecorations: true,
+                showWorkspaceLoaded:
+                    Server.config.showWorkspaceLoadedNotification
             },
             traceOutputChannel
         };

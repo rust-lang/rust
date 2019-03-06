@@ -8,6 +8,7 @@ export class Config {
     public highlightingOn = true;
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
+    public showWorkspaceLoadedNotification = true;
 
     private prevEnhancedTyping: null | boolean = null;
 
@@ -22,6 +23,12 @@ export class Config {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
         if (config.has('highlightingOn')) {
             this.highlightingOn = config.get('highlightingOn') as boolean;
+        }
+
+        if (config.has('showWorkspaceLoadedNotification')) {
+            this.showWorkspaceLoadedNotification = config.get(
+                'showWorkspaceLoadedNotification'
+            ) as boolean;
         }
 
         if (!this.highlightingOn && Server) {

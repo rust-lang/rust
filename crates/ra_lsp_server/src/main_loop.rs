@@ -22,6 +22,7 @@ use crate::{
     req,
     server_world::{ServerWorld, ServerWorldState},
     Result,
+    InitializationOptions,
 };
 
 #[derive(Debug, Fail)]
@@ -47,7 +48,7 @@ const THREADPOOL_SIZE: usize = 8;
 
 pub fn main_loop(
     ws_root: PathBuf,
-    supports_decorations: bool,
+    options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
@@ -80,7 +81,7 @@ pub fn main_loop(
     let mut pending_requests = FxHashSet::default();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
-        supports_decorations,
+        options,
         &pool,
         msg_sender,
         msg_receiver,
@@ -147,7 +148,7 @@ impl fmt::Debug for Event {
 }
 
 fn main_loop_inner(
-    supports_decorations: bool,
+    options: InitializationOptions,
     pool: &ThreadPool,
     msg_sender: &Sender<RawMessage>,
     msg_receiver: &Receiver<RawMessage>,
@@ -247,7 +248,9 @@ fn main_loop_inner(
             && pending_libraries.is_empty()
             && in_flight_libraries == 0
         {
-            show_message(req::MessageType::Info, "workspace loaded", msg_sender);
+            if options.show_workspace_loaded {
+                show_message(req::MessageType::Info, "workspace loaded", msg_sender);
+            }
             // Only send the notification first time
             send_workspace_notification = false;
         }
@@ -256,7 +259,7 @@ fn main_loop_inner(
             update_file_notifications_on_threadpool(
                 pool,
                 state.snapshot(),
-                supports_decorations,
+                options.publish_decorations,
                 task_sender.clone(),
                 subs.subscriptions(),
             )
