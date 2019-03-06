@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
 
         let found = self.this_token_to_string();
         let msg = format!("expected unsuffixed literal or identifier, found {}", found);
-        Err(self.diagnostic().struct_span_err(lo, &msg))
+        Err(self.diagnostic().struct_span_err(self.span, &msg))
     }
 
     /// matches meta_seq = ( COMMASEP(meta_item_inner) )

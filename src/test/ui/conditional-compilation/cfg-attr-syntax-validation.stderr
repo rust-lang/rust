@@ -53,10 +53,10 @@ LL | #[cfg(a = b"hi")]  //~ ERROR literal in `cfg` predicate value must be a str
    |           ^^^^^ help: consider removing the prefix: `"hi"`
 
 error: expected unsuffixed literal or identifier, found concat!("nonexistent")
-  --> $DIR/cfg-attr-syntax-validation.rs:30:15
+  --> $DIR/cfg-attr-syntax-validation.rs:30:25
    |
 LL |         #[cfg(feature = $expr)]
-   |               ^^^^^^^
+   |                         ^^^^^
 ...
 LL | generate_s10!(concat!("nonexistent"));
    | -------------------------------------- in this macro invocation
