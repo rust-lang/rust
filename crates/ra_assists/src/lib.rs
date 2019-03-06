@@ -95,6 +95,7 @@ mod replace_if_let_with_match;
 mod split_import;
 mod remove_dbg;
 mod auto_import;
+mod add_missing_impl_members;
 
 fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
     &[
@@ -108,6 +109,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         split_import::split_import,
         remove_dbg::remove_dbg,
         auto_import::auto_import,
+        add_missing_impl_members::add_missing_impl_members,
     ]
 }
 
