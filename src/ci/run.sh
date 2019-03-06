@@ -2,6 +2,8 @@
 
 set -e
 
+bash -c "while true; do echo foo; sleep 60; done" &
+
 if [[ "${INFINITE_SLEEP}" -eq 1 ]]; then
     echo "Sleeping for 3.5 hours y'all"
     sleep 12600
