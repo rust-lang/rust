@@ -213,6 +213,7 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
                 _ => Err(())
             }
         } else {
+            debug!("attempting to resolve item without parent module: {}", path_str);
             Err(())
         }
     }
@@ -433,6 +434,15 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
         } else {
             self.fold_item_recur(item)
         }
+    }
+
+    // FIXME: if we can resolve intra-doc links from other crates, we can use the stock
+    // `fold_crate`, but until then we should avoid scanning `krate.external_traits` since those
+    // will never resolve properly
+    fn fold_crate(&mut self, mut c: Crate) -> Crate {
+        c.module = c.module.take().and_then(|module| self.fold_item(module));
+
+        c
     }
 }
 
