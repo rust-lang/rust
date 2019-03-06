@@ -172,10 +172,3 @@ pub struct SourceChange {
     pub workspace_edit: WorkspaceEdit,
     pub cursor_position: Option<TextDocumentPositionParams>,
 }
-
-pub enum InternalFeedback {}
-
-impl Notification for InternalFeedback {
-    const METHOD: &'static str = "internalFeedback";
-    type Params = String;
-}

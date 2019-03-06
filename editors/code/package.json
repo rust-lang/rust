@@ -150,6 +150,11 @@
                     "default": false,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
                 },
+                "rust-analyzer.showWorkspaceLoadedNotification": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show notification when workspace was loaded"
+                },
                 "rust-analyzer.enableEnhancedTyping": {
                     "type": "boolean",
                     "default": true,

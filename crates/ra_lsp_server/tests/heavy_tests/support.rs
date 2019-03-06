@@ -13,6 +13,7 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{Request, Shutdown},
     DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
+    notification::{Notification, ShowMessage},
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -22,6 +23,7 @@ use test_utils::{parse_fixture, find_mismatch};
 
 use ra_lsp_server::{
     main_loop, req,
+    InitializationOptions,
 };
 
 pub fn project(fixture: &str) -> Server {
@@ -56,7 +58,13 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(true, path, true, &mut msg_receiver, &mut msg_sender).unwrap()
+                main_loop(
+                    path,
+                    InitializationOptions::default(),
+                    &mut msg_receiver,
+                    &mut msg_sender,
+                )
+                .unwrap()
             },
         );
         let res = Server {
@@ -133,13 +141,14 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_for_feedback(&self, feedback: &str) {
-        self.wait_for_feedback_n(feedback, 1)
+    pub fn wait_for_message(&self, message: &str) {
+        self.wait_for_message_n(message, 1)
     }
-    pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
+    pub fn wait_for_message_n(&self, message: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
-            RawMessage::Notification(n) if n.method == "internalFeedback" => {
-                return n.clone().cast::<req::InternalFeedback>().unwrap() == feedback;
+            RawMessage::Notification(n) if n.method == ShowMessage::METHOD => {
+                let msg = n.clone().cast::<req::ShowMessage>().unwrap();
+                msg.message == message
             }
             _ => false,
         };

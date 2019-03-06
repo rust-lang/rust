@@ -22,6 +22,7 @@ use crate::{
     req,
     server_world::{ServerWorld, ServerWorldState},
     Result,
+    InitializationOptions,
 };
 
 #[derive(Debug, Fail)]
@@ -46,9 +47,8 @@ enum Task {
 const THREADPOOL_SIZE: usize = 8;
 
 pub fn main_loop(
-    internal_mode: bool,
     ws_root: PathBuf,
-    supports_decorations: bool,
+    options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
@@ -63,11 +63,12 @@ pub fn main_loop(
             Ok(ws) => vec![ws],
             Err(e) => {
                 log::error!("loading workspace failed: {}", e);
-                let msg = RawNotification::new::<req::ShowMessage>(&req::ShowMessageParams {
-                    typ: req::MessageType::Error,
-                    message: format!("rust-analyzer failed to load workspace: {}", e),
-                });
-                msg_sender.send(msg.into()).unwrap();
+
+                show_message(
+                    req::MessageType::Error,
+                    format!("rust-analyzer failed to load workspace: {}", e),
+                    msg_sender,
+                );
                 Vec::new()
             }
         }
@@ -80,8 +81,7 @@ pub fn main_loop(
     let mut pending_requests = FxHashSet::default();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
-        internal_mode,
-        supports_decorations,
+        options,
         &pool,
         msg_sender,
         msg_receiver,
@@ -148,8 +148,7 @@ impl fmt::Debug for Event {
 }
 
 fn main_loop_inner(
-    internal_mode: bool,
-    supports_decorations: bool,
+    options: InitializationOptions,
     pool: &ThreadPool,
     msg_sender: &Sender<RawMessage>,
     msg_receiver: &Receiver<RawMessage>,
@@ -163,6 +162,7 @@ fn main_loop_inner(
     // time to always have a thread ready to react to input.
     let mut in_flight_libraries = 0;
     let mut pending_libraries = Vec::new();
+    let mut send_workspace_notification = true;
 
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
@@ -190,7 +190,6 @@ fn main_loop_inner(
                 state_changed = true;
             }
             Event::Lib(lib) => {
-                feedback(internal_mode, "library loaded", msg_sender);
                 state.add_lib(lib);
                 in_flight_libraries -= 1;
             }
@@ -244,15 +243,23 @@ fn main_loop_inner(
             });
         }
 
-        if state.roots_to_scan == 0 && pending_libraries.is_empty() && in_flight_libraries == 0 {
-            feedback(internal_mode, "workspace loaded", msg_sender);
+        if send_workspace_notification
+            && state.roots_to_scan == 0
+            && pending_libraries.is_empty()
+            && in_flight_libraries == 0
+        {
+            if options.show_workspace_loaded {
+                show_message(req::MessageType::Info, "workspace loaded", msg_sender);
+            }
+            // Only send the notification first time
+            send_workspace_notification = false;
         }
 
         if state_changed {
             update_file_notifications_on_threadpool(
                 pool,
                 state.snapshot(),
-                supports_decorations,
+                options.publish_decorations,
                 task_sender.clone(),
                 subs.subscriptions(),
             )
@@ -501,11 +508,12 @@ fn update_file_notifications_on_threadpool(
     });
 }
 
-fn feedback(intrnal_mode: bool, msg: &str, sender: &Sender<RawMessage>) {
-    if !intrnal_mode {
-        return;
-    }
-    let not = RawNotification::new::<req::InternalFeedback>(&msg.to_string());
+fn show_message<M: Into<String>>(typ: req::MessageType, msg: M, sender: &Sender<RawMessage>) {
+    let not = RawNotification::new::<req::ShowMessage>(&req::ShowMessageParams {
+        typ,
+        message: msg.into(),
+    });
+
     sender.send(not.into()).unwrap();
 }
 
