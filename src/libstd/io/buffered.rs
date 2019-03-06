@@ -191,6 +191,13 @@ impl<R: Read> BufReader<R> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> R { self.inner }
+
+    /// Invalidates all data in the internal buffer.
+    #[inline]
+    fn discard_buffer(&mut self) {
+        self.pos = 0;
+        self.cap = 0;
+    }
 }
 
 impl<R: Seek> BufReader<R> {
@@ -225,9 +232,7 @@ impl<R: Read> Read for BufReader<R> {
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
         if self.pos == self.cap && buf.len() >= self.buf.len() {
-            // Empty the buffer
-            self.cap = 0;
-            self.pos = 0;
+            self.discard_buffer();
             return self.inner.read(buf);
         }
         let nread = {
@@ -241,6 +246,7 @@ impl<R: Read> Read for BufReader<R> {
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.pos == self.cap && total_len >= self.buf.len() {
+            self.discard_buffer();
             return self.inner.read_vectored(bufs);
         }
         let nread = {
@@ -326,18 +332,14 @@ impl<R: Seek> Seek for BufReader<R> {
             } else {
                 // seek backwards by our remainder, and then by the offset
                 self.inner.seek(SeekFrom::Current(-remainder))?;
-                // Empty the buffer
-                self.cap = 0;
-                self.pos = 0;
+                self.discard_buffer();
                 result = self.inner.seek(SeekFrom::Current(n))?;
             }
         } else {
             // Seeking with Start/End doesn't care about our buffer length.
             result = self.inner.seek(pos)?;
         }
-        // Empty the buffer
-        self.cap = 0;
-        self.pos = 0;
+        self.discard_buffer();
         Ok(result)
     }
 }
