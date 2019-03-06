@@ -279,7 +279,7 @@ fn main() {}
         PATH = tmp_dir.path().display()
     );
     let server = project_with_tmpdir(tmp_dir, &code);
-    server.wait_for_feedback("workspace loaded");
+    server.wait_for_message("workspace loaded");
     let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(
         CodeActionParams {
@@ -320,4 +320,47 @@ fn main() {}
         },
         json!([]),
     );
+}
+
+#[test]
+fn completes_items_from_second_crate_in_json_project() {
+    let tmp_dir = TempDir::new().unwrap();
+    let code = format!(
+        r#"
+//- rust-project.json
+{{ 
+    "roots": [ "{PATH}" ], 
+    "crates": [ 
+        {{ 
+            "root_module": "{PATH}/foo/lib.rs",
+            "deps": [
+                {{
+                    "name": "bar",
+                    "crate": 1
+                }}
+            ], 
+            "edition": "2015" 
+        }},
+        {{ "root_module": "{PATH}/bar/lib.rs", "deps": [], "edition": "2015" }}
+    ] 
+}}
+
+//- bar/lib.rs
+pub struct Spam;
+pub struct CannedMeat;
+
+//- foo/lib.rs
+extern crate bar;
+use bar::Spam;
+"#,
+        PATH = tmp_dir.path().display()
+    );
+    let server = project_with_tmpdir(tmp_dir, &code);
+    server.wait_for_message("workspace loaded");
+    let res = server.send_request::<Completion>(CompletionParams {
+        text_document: server.doc_id("foo/lib.rs"),
+        context: None,
+        position: Position::new(1, 10),
+    });
+    assert!(format!("{}", res).contains("CannedMeat"));
 }
