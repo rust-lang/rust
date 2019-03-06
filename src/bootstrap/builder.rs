@@ -927,7 +927,8 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
-            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
+            // sysroot libdir required for case with custom libdir
+            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
         }
 
         if mode.is_tool() {

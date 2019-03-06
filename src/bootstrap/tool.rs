@@ -426,18 +426,22 @@ impl Step for Rustdoc {
             return builder.initial_rustc.with_file_name(exe("rustdoc", &target_compiler.host));
         }
         let target = target_compiler.host;
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+        let build_compiler = if target_compiler.stage >= 2 {
+            // Past stage 2, we consider the compiler to be ABI-compatible and hence capable of
+            // building rustdoc itself.
+            builder.compiler(target_compiler.stage, builder.config.build)
+        } else {
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+            // compilers, which isn't what we want.
+            builder.compiler(target_compiler.stage - 1, builder.config.build)
+        };
 
-        // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
-        // compiler libraries, ...) are built. Rustdoc does not require the presence of any
-        // libraries within sysroot_libdir (i.e., rustlib), though doctests may want it (since
-        // they'll be linked to those libraries). As such, don't explicitly `ensure` any additional
-        // libraries here. The intuition here is that If we've built a compiler, we should be able
-        // to build rustdoc.
+        // require host compiler so documentation of other targets won't fail on missing libraries
+        builder.ensure(compile::Rustc {
+            compiler: build_compiler,
+            target: builder.config.build,
+        });
 
         let mut cargo = prepare_tool_cargo(
             builder,
