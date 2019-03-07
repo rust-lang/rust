@@ -5,7 +5,7 @@ use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
 
 const NUM_ARG_GPR: u64 = 6;
 const MAX_ARG_IN_REGS_SIZE: u64  = 4 * 32;
-// const MAX_ARG_DIRECT_SIZE : u64 = MAX_ARG_IN_REGS_SIZE;
+// const MAX_ARG_DIRECT_SIZE: u64 = MAX_ARG_IN_REGS_SIZE;
 const MAX_RET_IN_REGS_SIZE: u64  = 2 * 32;
 
 fn classify_ret_ty<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
@@ -21,45 +21,69 @@ fn classify_arg_ty<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64, remaining_gpr: &mut 
     // register pairs, so may consume 3 registers.
     
     let mut stack_required = false;
-    let mut required_gpr = 1u64; // at least one to start
-    let arg_size = arg.layout.size.bits();
-    // let alignment = arg.layout.details.align.abi.bits();
+    let arg_size = arg.layout.size;
+    let alignment = arg.layout.details.align.abi;
 
 
-    if  arg_size > xlen && arg_size <= MAX_ARG_IN_REGS_SIZE {
-        required_gpr = arg_size + (xlen - 1) / xlen; 
+    let mut required_gpr = 1u64; // at least one per arg
+    if alignment.bits() == 2 * xlen {
+        required_gpr = 2 + (*remaining_gpr % 2);
+    } else if  arg_size.bits() > xlen && arg_size.bits() <= MAX_ARG_IN_REGS_SIZE {
+        required_gpr = arg_size.bits() + (xlen - 1) / xlen; 
     }
 
     if required_gpr > *remaining_gpr {
         stack_required = true;
-    required_gpr = *remaining_gpr; }
-
-
+        required_gpr = *remaining_gpr;
+    }
     *remaining_gpr -= required_gpr;
 
     // if  a value can fit in a reg and the
     // stack is not required, extend
-    if !arg.layout.is_aggregate() {
-        if arg_size < xlen && !stack_required {
+    if !arg.layout.is_aggregate() { // non-aggregate types
+        if arg_size.bits() < xlen && !stack_required {
             arg.extend_integer_width_to(xlen);
         }
-        return;
-    }
-
-
-    if arg_size as u64 <= MAX_ARG_IN_REGS_SIZE {
-        let align = arg.layout.align.abi.bytes();
-        let total = arg.layout.size;
-        arg.cast_to(Uniform {
-            unit: if align <= 4 { Reg::i32() } else { Reg::i64() },
-            total
-        });
-        return;
-    }
+    } else if arg_size.bits() as u64 <= MAX_ARG_IN_REGS_SIZE { // aggregate types
+        // Aggregates which are <= 4*32 will be passed in registers if possible,
+        // so coerce to integers.
         
-    // if we get here the stack is required
-    // assert!(stack_required);
-    arg.make_indirect();
+        // Use a single XLen int if possible, 2*XLen if 2*XLen alignment is
+        // required, and a 2-element XLen array if only XLen alignment is
+        // required.
+        // if alignment == 2 * xlen {
+        //     arg.extend_integer_width_to(xlen * 2);
+        // } else {
+        //     arg.extend_integer_width_to(arg_size + (xlen - 1) / xlen);
+        // }
+        if alignment.bits() == 2 * xlen {
+            arg.cast_to(Uniform {
+                unit: Reg::i64(),
+                total: arg_size
+            });
+        } else {
+            //TODO array type - this should be a homogenous array type
+            // arg.extend_integer_width_to(arg_size + (xlen - 1) / xlen);
+        }
+        
+    } else {
+        // if we get here the stack is required
+        assert!(stack_required);
+        arg.make_indirect();
+    }
+
+
+   // if arg_size as u64 <= MAX_ARG_IN_REGS_SIZE {
+   //     let align = arg.layout.align.abi.bytes();
+   //     let total = arg.layout.size;
+   //     arg.cast_to(Uniform {
+   //         unit: if align <= 4 { Reg::i32() } else { Reg::i64() },
+   //         total
+   //     });
+   //     return;
+   // }
+        
+    
 }
 
 pub fn compute_abi_info<Ty>(fabi: &mut FnAbi<'_, Ty>, xlen: u64) {
