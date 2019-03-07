@@ -8,7 +8,7 @@ clone_depth: 2
 build: false
 
 install:
-  - INSTALL_STEP=1 powershell src/ci/wrapper.ps1 src/ci/run.sh
+  - powershell src/ci/wrapper.ps1 src/ci/run.sh install
 
 test_script:
   - powershell src/ci/wrapper.ps1 src/ci/run.sh

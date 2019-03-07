@@ -3,7 +3,7 @@
 set -e
 
 if [[ "${INFINITE_SLEEP}" -eq 1 ]]; then
-    if ! [[ "${INSTALL_STEP}" -eq 1 ]]; then
+    if ! [[ $1 == "install" ]]; then
         echo "Sleeping for 200 minutes y'all"
         i=0
         while [[ "$i" -le 200 ]]; do
