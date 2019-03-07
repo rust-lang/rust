@@ -12,8 +12,9 @@ use ra_lsp_server::req::{
     CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams, CompletionParams, Completion,
 };
 use serde_json::json;
+use tempfile::TempDir;
 
-use crate::support::project;
+use crate::support::{project, project_with_tmpdir};
 
 const LOG: &'static str = "";
 
@@ -216,6 +217,68 @@ mod bar;
 fn main() {}
 "#,
     );
+    server.wait_for_message("workspace loaded");
+    let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
+    server.request::<CodeActionRequest>(
+        CodeActionParams {
+            text_document: server.doc_id("src/lib.rs"),
+            range: Range::new(Position::new(0, 4), Position::new(0, 7)),
+            context: empty_context(),
+        },
+        json!([
+          {
+            "command": {
+              "arguments": [
+                {
+                  "cursorPosition": null,
+                  "label": "create module",
+                  "workspaceEdit": {
+                    "documentChanges": [
+                      {
+                        "kind": "create",
+                        "uri": "file:///[..]/src/bar.rs"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "command": "rust-analyzer.applySourceChange",
+              "title": "create module"
+            },
+            "title": "create module"
+          }
+        ]),
+    );
+
+    server.request::<CodeActionRequest>(
+        CodeActionParams {
+            text_document: server.doc_id("src/lib.rs"),
+            range: Range::new(Position::new(2, 4), Position::new(2, 7)),
+            context: empty_context(),
+        },
+        json!([]),
+    );
+}
+
+#[test]
+fn test_missing_module_code_action_in_json_project() {
+    let tmp_dir = TempDir::new().unwrap();
+    let code = format!(
+        r#"
+//- rust-project.json
+{{ 
+    "roots": [ "{PATH}" ], 
+    "crates": [ {{ "root_module": "{PATH}/src/lib.rs", "deps": [], "edition": "2015" }} ] 
+}}
+
+//- src/lib.rs
+mod bar;
+
+fn main() {}
+"#,
+        PATH = tmp_dir.path().display()
+    );
+    let server = project_with_tmpdir(tmp_dir, &code);
     server.wait_for_message("workspace loaded");
     let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(

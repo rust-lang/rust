@@ -99,12 +99,7 @@ impl BatchDatabase {
         let ws = ProjectWorkspace::discover(root.as_ref())?;
         let mut roots = Vec::new();
         roots.push(root.clone());
-        for pkg in ws.cargo.packages() {
-            roots.push(pkg.root(&ws.cargo).to_path_buf());
-        }
-        for krate in ws.sysroot.crates() {
-            roots.push(krate.root_dir(&ws.sysroot).to_path_buf())
-        }
+        roots.extend(ws.to_roots());
         let (mut vfs, roots) = Vfs::new(roots);
         let mut load = |path: &Path| {
             let vfs_file = vfs.load(path);
