@@ -1,7 +1,7 @@
 if_chain! {
     if let StmtKind::Decl(ref decl, _) = stmt.node
     if let DeclKind::Local(ref local) = decl.node;
-    if let Some(ref init) = local.init
+    if let Some(ref init) = local.init;
     if let ExprKind::Match(ref expr, ref arms, MatchSource::Normal) = init.node;
     if let ExprKind::Lit(ref lit) = expr.node;
     if let LitKind::Int(42, _) = lit.node;
