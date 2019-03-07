@@ -126,6 +126,19 @@ impl NavigationTarget {
         }
     }
 
+    pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::AdtDef) -> NavigationTarget {
+        match adt_def {
+            hir::AdtDef::Struct(s) => {
+                let (file_id, node) = s.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            hir::AdtDef::Enum(s) => {
+                let (file_id, node) = s.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+        }
+    }
+
     pub(crate) fn from_def(db: &RootDatabase, module_def: hir::ModuleDef) -> NavigationTarget {
         match module_def {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
