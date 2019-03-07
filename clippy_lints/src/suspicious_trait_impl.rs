@@ -1,4 +1,4 @@
-use crate::utils::{get_trait_def_id, span_lint};
+use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -177,12 +177,9 @@ fn check_binop<'a>(
 
     // Get the actually implemented trait
     let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
-    let parent_impl = cx.tcx.hir().get_parent_item(parent_fn);
 
     if_chain! {
-        if parent_impl != hir::CRATE_HIR_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
-        if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+        if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];
         then{

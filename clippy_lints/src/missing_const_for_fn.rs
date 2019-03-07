@@ -1,5 +1,4 @@
-use crate::utils::{is_entrypoint_fn, span_lint};
-use if_chain::if_chain;
+use crate::utils::{is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc::hir;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::{Body, Constness, FnDecl, HirId};
@@ -96,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if is_trait_method(cx, hir_id) || already_const(sig.header) {
+                if trait_ref_of_method(cx, hir_id).is_some() || already_const(sig.header) {
                     return;
                 }
             },
@@ -113,18 +112,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
             span_lint(cx, MISSING_CONST_FOR_FN, span, "this could be a const_fn");
         }
     }
-}
-
-fn is_trait_method(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
-    // Get the implemented trait for the current function
-    let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
-    if_chain! {
-        if parent_impl != hir::CRATE_HIR_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
-        if let hir::ItemKind::Impl(_, _, _, _, Some(_trait_ref), _, _) = &item.node;
-        then { return true; }
-    }
-    false
 }
 
 // We don't have to lint on something that's already `const`

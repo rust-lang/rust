@@ -1,4 +1,4 @@
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq};
 use crate::utils::{higher, sugg};
 use if_chain::if_chain;
 use rustc::hir;
@@ -140,13 +140,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         };
                                         // check that we are not inside an `impl AssignOp` of this exact operation
                                         let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
-                                        let parent_impl = cx.tcx.hir().get_parent_item(parent_fn);
-                                        // the crate node is the only one that is not in the map
                                         if_chain! {
-                                            if parent_impl != hir::CRATE_HIR_ID;
-                                            if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
-                                            if let hir::ItemKind::Impl(_, _, _, _, Some(trait_ref), _, _) =
-                                                &item.node;
+                                            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
                                         }
