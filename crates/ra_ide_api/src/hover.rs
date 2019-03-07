@@ -195,6 +195,7 @@ impl NavigationTarget {
             .visit(doc_comments::<ast::ConstDef>)
             .visit(doc_comments::<ast::StaticDef>)
             .visit(doc_comments::<ast::NamedFieldDef>)
+            .visit(doc_comments::<ast::EnumVariant>)
             .accept(&node)?
     }
 
@@ -226,7 +227,7 @@ impl NavigationTarget {
             let mut string =
                 node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
             string.push_str(label);
-            node.name()?.syntax().text().push_to(&mut string);
+            string.push_str(node.name()?.text().as_str());
             Some(string)
         }
 
@@ -240,6 +241,7 @@ impl NavigationTarget {
             .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
             .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
             .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
+            .visit(|node: &ast::EnumVariant| Some(node.name()?.text().to_string()))
             .accept(&node)?
     }
 }
@@ -428,8 +430,60 @@ mod tests {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        // not the nicest way to show it currently
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Some<i32>(T) -> Option<T>"));
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Some"));
+
+        let (analysis, position) = single_file_with_position(
+            "
+            enum Option<T> { Some(T) }
+            use Option::Some;
+
+            fn main() {
+                let b<|>ar = Some(12);
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option<i32>"));
+    }
+
+    #[test]
+    fn hover_enum_variant() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            enum Option<T> {
+                /// The None variant
+                Non<|>e
+            }
+        "#,
+            &["
+None
+```
+
+The None variant
+            "
+            .trim()],
+        );
+
+        check_hover_result(
+            r#"
+            //- /main.rs
+            enum Option<T> {
+                /// The Some variant
+                Some(T)
+            }
+            fn main() {
+                let s = Option::Som<|>e(12);
+            }
+        "#,
+            &["
+Some
+```
+
+The Some variant
+            "
+            .trim()],
+        );
     }
 
     #[test]
