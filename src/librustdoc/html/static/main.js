@@ -755,13 +755,19 @@ if (!DOMTokenList.prototype.remove) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
-                    var tmp = checkType(obj.type[OUTPUT_DATA], val, literalSearch);
-                    if (literalSearch === true && tmp === true) {
-                        return true;
+                    var ret = obj.type[OUTPUT_DATA];
+                    if (!obj.type[OUTPUT_DATA].length) {
+                        ret = [ret];
                     }
-                    lev_distance = Math.min(tmp, lev_distance);
-                    if (lev_distance === 0) {
-                        return 0;
+                    for (var x = 0; x < ret.length; ++x) {
+                        var tmp = checkType(ret[x], val, literalSearch);
+                        if (literalSearch === true && tmp === true) {
+                            return true;
+                        }
+                        lev_distance = Math.min(tmp, lev_distance);
+                        if (lev_distance === 0) {
+                            return 0;
+                        }
                     }
                 }
                 return literalSearch === true ? false : lev_distance;

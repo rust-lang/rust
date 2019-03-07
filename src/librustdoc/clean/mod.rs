@@ -1751,7 +1751,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 }
 
 // The point is to replace bounds with types.
-pub fn get_real_types(
+fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_, '_, '_>,
@@ -1822,7 +1822,7 @@ pub fn get_all_types(
     generics: &Generics,
     decl: &FnDecl,
     cx: &DocContext<'_, '_, '_>,
-) -> Vec<Type> {
+) -> (Vec<Type>, Vec<Type>) {
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
@@ -1837,7 +1837,23 @@ pub fn get_all_types(
     // FIXME: use a HashSet instead?
     all_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).unwrap());
     all_types.dedup();
-    all_types
+
+    let mut ret_types = match decl.output {
+        FunctionRetTy::Return(ref return_type) => {
+            let mut ret = Vec::new();
+            if let Some(mut args) = get_real_types(generics, &return_type, cx) {
+                ret.append(&mut args);
+            } else {
+                ret.push(return_type.clone());
+            }
+            ret
+        }
+        _ => Vec::new(),
+    };
+    // FIXME: use a HashSet instead?
+    ret_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).unwrap());
+    ret_types.dedup();
+    (all_types, ret_types)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1847,6 +1863,7 @@ pub struct Method {
     pub header: hir::FnHeader,
     pub defaultness: Option<hir::Defaultness>,
     pub all_types: Vec<Type>,
+    pub ret_types: Vec<Type>,
 }
 
 impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
@@ -1855,13 +1872,14 @@ impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
         let (generics, decl) = enter_impl_trait(cx, || {
             (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx))
         });
-        let all_types = get_all_types(&generics, &decl, cx);
+        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
         Method {
             decl,
             generics,
             header: self.0.header,
             defaultness: self.3,
             all_types,
+            ret_types,
         }
     }
 }
@@ -1872,6 +1890,7 @@ pub struct TyMethod {
     pub decl: FnDecl,
     pub generics: Generics,
     pub all_types: Vec<Type>,
+    pub ret_types: Vec<Type>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1880,6 +1899,7 @@ pub struct Function {
     pub generics: Generics,
     pub header: hir::FnHeader,
     pub all_types: Vec<Type>,
+    pub ret_types: Vec<Type>,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1894,7 +1914,7 @@ impl Clean<Item> for doctree::Function {
         } else {
             hir::Constness::NotConst
         };
-        let all_types = get_all_types(&generics, &decl, cx);
+        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1908,6 +1928,7 @@ impl Clean<Item> for doctree::Function {
                 generics,
                 header: hir::FnHeader { constness, ..self.header },
                 all_types,
+                ret_types,
             }),
         }
     }
@@ -2177,12 +2198,13 @@ impl Clean<Item> for hir::TraitItem {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
-                let all_types = get_all_types(&generics, &decl, cx);
+                let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 TyMethodItem(TyMethod {
                     header: sig.header,
                     decl,
                     generics,
                     all_types,
+                    ret_types,
                 })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
@@ -2280,7 +2302,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     ty::ImplContainer(_) => true,
                     ty::TraitContainer(_) => self.defaultness.has_value()
                 };
-                let all_types = get_all_types(&generics, &decl, cx);
+                let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 if provided {
                     let constness = if cx.tcx.is_min_const_fn(self.def_id) {
                         hir::Constness::Const
@@ -2298,6 +2320,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         },
                         defaultness: Some(self.defaultness),
                         all_types,
+                        ret_types,
                     })
                 } else {
                     TyMethodItem(TyMethod {
@@ -2310,6 +2333,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             asyncness: hir::IsAsync::NotAsync,
                         },
                         all_types,
+                        ret_types,
                     })
                 }
             }
@@ -3976,7 +4000,7 @@ impl Clean<Item> for hir::ForeignItem {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                 });
-                let all_types = get_all_types(&generics, &decl, cx);
+                let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
                 ForeignFunctionItem(Function {
                     decl,
                     generics,
@@ -3987,6 +4011,7 @@ impl Clean<Item> for hir::ForeignItem {
                         asyncness: hir::IsAsync::NotAsync,
                     },
                     all_types,
+                    ret_types,
                 })
             }
             hir::ForeignItemKind::Static(ref ty, mutbl) => {
