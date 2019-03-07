@@ -714,7 +714,10 @@ if (!DOMTokenList.prototype.remove) {
                 }
                 lev_distance = Math.min(levenshtein(obj[NAME], val.name), lev_distance);
                 if (lev_distance <= MAX_LEV_DISTANCE) {
-                    lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
+                    // The generics didn't match but the name kinda did so we give it
+                    // a levenshtein distance value that isn't *this* good so it goes
+                    // into the search results but not too high.
+                    lev_distance = Math.ceil((checkGenerics(obj, val) + lev_distance) / 2);
                 } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     // We can check if the type we're looking for is inside the generics!
                     var olength = obj[GENERICS_DATA].length;
