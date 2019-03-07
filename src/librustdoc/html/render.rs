@@ -455,19 +455,27 @@ impl ToJson for Type {
 #[derive(Debug)]
 struct IndexItemFunctionType {
     inputs: Vec<Type>,
-    output: Vec<Type>,
+    output: Option<Vec<Type>>,
 }
 
 impl ToJson for IndexItemFunctionType {
     fn to_json(&self) -> Json {
         // If we couldn't figure out a type, just write `null`.
-        if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
+        let mut iter = self.inputs.iter();
+        if match self.output {
+            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
+            None => iter.any(|ref i| i.name.is_none()),
+        } {
             Json::Null
         } else {
             let mut data = Vec::with_capacity(2);
             data.push(self.inputs.to_json());
-            if !self.output.is_empty() {
-                data.push(self.output.to_json());
+            if let Some(ref output) = self.output {
+                if output.len() > 1 {
+                    data.push(output.to_json());
+                } else {
+                    data.push(output[0].to_json());
+                }
             }
             Json::Array(data)
         }
@@ -5034,11 +5042,17 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
 
     let inputs = all_types.iter().map(|arg| {
         get_index_type(&arg)
-    }).collect();
+    }).filter(|a| a.name.is_some()).collect();
     let output = ret_types.iter().map(|arg| {
         get_index_type(&arg)
-    }).collect();
+    }).filter(|a| a.name.is_some()).collect::<Vec<_>>();
+    let output = if output.is_empty() {
+        None
+    } else {
+        Some(output)
+    };
 
+    println!("===> {:?}", output);
     Some(IndexItemFunctionType { inputs, output })
 }
 

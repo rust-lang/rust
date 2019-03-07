@@ -756,6 +756,9 @@ if (!DOMTokenList.prototype.remove) {
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
                     var ret = obj.type[OUTPUT_DATA];
+                    //if (obj.name === "xo") {
+                    //    debugger;
+                    //}
                     if (!obj.type[OUTPUT_DATA].length) {
                         ret = [ret];
                     }

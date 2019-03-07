@@ -1755,55 +1755,59 @@ fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_, '_, '_>,
-) -> Option<Vec<Type>> {
+) -> Vec<Type> {
+    let arg_s = arg.to_string();
     let mut res = Vec::new();
-    if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
-        match g {
-            &WherePredicate::BoundPredicate { ref ty, .. } => ty.def_id() == arg.def_id(),
-            _ => false,
-        }
-    }) {
-        let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
-        for bound in bounds.iter() {
-            match *bound {
-                GenericBound::TraitBound(ref poly_trait, _) => {
-                    for x in poly_trait.generic_params.iter() {
-                        if !x.is_type() {
-                            continue
-                        }
-                        if let Some(ty) = x.get_type(cx) {
-                            if let Some(mut adds) = get_real_types(generics, &ty, cx) {
-                                res.append(&mut adds);
-                            } else if !ty.is_full_generic() {
-                                res.push(ty);
+    if arg.is_full_generic() {
+        if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
+            match g {
+                &WherePredicate::BoundPredicate { ref ty, .. } => ty.def_id() == arg.def_id(),
+                _ => false,
+            }
+        }) {
+            let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
+            for bound in bounds.iter() {
+                match *bound {
+                    GenericBound::TraitBound(ref poly_trait, _) => {
+                        for x in poly_trait.generic_params.iter() {
+                            if !x.is_type() {
+                                continue
+                            }
+                            if let Some(ty) = x.get_type(cx) {
+                                let mut adds = get_real_types(generics, &ty, cx);
+                                if !adds.is_empty() {
+                                    res.append(&mut adds);
+                                } else if !ty.is_full_generic() {
+                                    res.push(ty);
+                                }
                             }
                         }
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
-    } else {
-        let arg_s = arg.to_string();
         if let Some(bound) = generics.params.iter().find(|g| {
             g.is_type() && g.name == arg_s
         }) {
             for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
                 if let Some(ty) = bound.get_trait_type() {
-                    if let Some(mut adds) = get_real_types(generics, &ty, cx) {
+                    let mut adds = get_real_types(generics, &ty, cx);
+                    if !adds.is_empty() {
                         res.append(&mut adds);
-                    } else {
-                        if !ty.is_full_generic() {
-                            res.push(ty.clone());
-                        }
+                    } else if !ty.is_full_generic() {
+                        res.push(ty.clone());
                     }
                 }
             }
-        } else if let Some(gens) = arg.generics() {
-            res.push(arg.clone());
+        }
+    } else {
+        res.push(arg.clone());
+        if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
-                    if let Some(mut adds) = get_real_types(generics, gen, cx) {
+                    let mut adds = get_real_types(generics, gen, cx);
+                    if !adds.is_empty() {
                         res.append(&mut adds);
                     }
                 } else {
@@ -1812,10 +1816,7 @@ fn get_real_types(
             }
         }
     }
-    if res.is_empty() && !arg.is_full_generic() {
-        res.push(arg.clone());
-    }
-    Some(res)
+    res
 }
 
 pub fn get_all_types(
@@ -1828,7 +1829,8 @@ pub fn get_all_types(
         if arg.type_.is_self_type() {
             continue;
         }
-        if let Some(mut args) = get_real_types(generics, &arg.type_, cx) {
+        let mut args = get_real_types(generics, &arg.type_, cx);
+        if !args.is_empty() {
             all_types.append(&mut args);
         } else {
             all_types.push(arg.type_.clone());
@@ -1840,10 +1842,8 @@ pub fn get_all_types(
 
     let mut ret_types = match decl.output {
         FunctionRetTy::Return(ref return_type) => {
-            let mut ret = Vec::new();
-            if let Some(mut args) = get_real_types(generics, &return_type, cx) {
-                ret.append(&mut args);
-            } else {
+            let mut ret = get_real_types(generics, &return_type, cx);
+            if ret.is_empty() {
                 ret.push(return_type.clone());
             }
             ret
