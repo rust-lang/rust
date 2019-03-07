@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::{Assist, AssistId, AssistCtx};
 
 use hir::Resolver;
@@ -69,14 +67,9 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
     let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
     let impl_fns = impl_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
 
-    let trait_fn_names = trait_fns.iter().cloned().filter_map(def_name).collect::<HashSet<_>>();
-    let impl_fn_names = impl_fns.iter().cloned().filter_map(def_name).collect::<HashSet<_>>();
-
-    let missing_fn_names = trait_fn_names.difference(&impl_fn_names).collect::<HashSet<_>>();
     let missing_fns: Vec<_> = trait_fns
-        .iter()
-        .cloned()
-        .filter(|t| def_name(t).map(|n| missing_fn_names.contains(&n)).unwrap_or(false))
+        .into_iter()
+        .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
         .collect();
     if missing_fns.is_empty() {
         return None;
