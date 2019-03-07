@@ -69,6 +69,7 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
 
     let missing_fns: Vec<_> = trait_fns
         .into_iter()
+        .filter(|t| def_name(t).is_some())
         .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
         .collect();
     if missing_fns.is_empty() {
@@ -89,8 +90,7 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
                 .unwrap_or_else(|| impl_block_indent().to_owned() + DEFAULT_INDENT)
         };
 
-        let mut func_bodies = missing_fns.into_iter().map(build_func_body);
-        let func_bodies = func_bodies.join("\n");
+        let func_bodies = missing_fns.into_iter().map(build_func_body).join("\n");
         let func_bodies = String::from("\n") + &func_bodies;
         let func_bodies = reindent(&func_bodies, &indent) + "\n";
 
@@ -153,6 +153,40 @@ impl Foo for S {
     }
 
     #[test]
+    fn test_copied_overriden_members() {
+        check_assist(
+            add_missing_impl_members,
+            "
+trait Foo {
+    fn foo(&self);
+    fn bar(&self) -> bool { true }
+    fn baz(&self) -> u32 { 42 }
+}
+
+struct S;
+
+impl Foo for S {
+    fn bar(&self) {}
+    <|>
+}",
+            "
+trait Foo {
+    fn foo(&self);
+    fn bar(&self) -> bool { true }
+    fn baz(&self) -> u32 { 42 }
+}
+
+struct S;
+
+impl Foo for S {
+    fn bar(&self) {}
+    fn foo(&self) { unimplemented!() }
+    fn baz(&self) -> u32 { 42 }<|>
+}",
+        );
+    }
+
+    #[test]
     fn test_empty_impl_block() {
         check_assist(
             add_missing_impl_members,
@@ -177,6 +211,40 @@ impl Foo for S {
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {}<|>",
+        )
+    }
+
+    #[test]
+    fn test_empty_trait() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            "
+trait Foo;
+struct S;
+impl Foo for S { <|> }",
+        )
+    }
+
+    #[test]
+    fn test_ignore_unnamed_trait_members() {
+        check_assist(
+            add_missing_impl_members,
+            "
+trait Foo {
+    fn (arg: u32);
+    fn valid(some: u32) -> bool { false }
+}
+struct S;
+impl Foo for S { <|> }",
+            "
+trait Foo {
+    fn (arg: u32);
+    fn valid(some: u32) -> bool { false }
+}
+struct S;
+impl Foo for S {
+    fn valid(some: u32) -> bool { false }<|>
+}",
         )
     }
 }
