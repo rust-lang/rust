@@ -310,7 +310,7 @@ where
             ty::Projection(projection_ty)
                 if D::normalization() == NormalizationStrategy::Lazy =>
             {
-                return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_var(vid)));
+                return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_ty_var(vid)));
             }
 
             _ => (),
@@ -764,7 +764,7 @@ where
                             // the universe `_universe`.
                             let new_var_id = variables.new_var(self.universe, false, origin);
 
-                            let u = self.tcx().mk_var(new_var_id);
+                            let u = self.tcx().mk_ty_var(new_var_id);
                             debug!(
                                 "generalize: replacing original vid={:?} with new={:?}",
                                 vid,

@@ -448,7 +448,7 @@ fn mono_item_visibility(
         return Visibility::Hidden
     }
 
-    let is_generic = instance.substs.types().next().is_some();
+    let is_generic = instance.substs.non_erasable_generics().next().is_some();
 
     // Upstream `DefId` instances get different handling than local ones
     if !def_id.is_local() {

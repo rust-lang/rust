@@ -259,7 +259,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // inlining. This is to ensure that the final crate doesn't have MIR that
         // reference unexported symbols
         if callsite.callee.is_local() {
-            if callsite.substs.types().count() == 0 && !hinted {
+            if callsite.substs.non_erasable_generics().count() == 0 && !hinted {
                 debug!("    callee is an exported function - not inlining");
                 return false;
             }

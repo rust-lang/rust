@@ -5,7 +5,7 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def::{Def, CtorKind};
-use rustc::mir::interpret::{GlobalId, ErrorHandled};
+use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
@@ -699,7 +699,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 };
 
                 let source = if let Some((did, offset, var_ty)) = var {
-                    let mk_const = |literal| Expr {
+                    let mk_lazy_const = |literal| Expr {
                         temp_lifetime,
                         ty: var_ty,
                         span: expr.span,
@@ -708,7 +708,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             user_ty: None
                         },
                     }.to_ref();
-                    let offset = mk_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
+                    let offset = mk_lazy_const(ty::LazyConst::Evaluated(ty::Const::from_bits(
                         cx.tcx,
                         offset as u128,
                         cx.param_env.and(var_ty),
@@ -718,7 +718,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(ty::LazyConst::Unevaluated(did, substs));
+                            let lhs = mk_lazy_const(ty::LazyConst::Unevaluated(did, substs));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
                                 lhs,
@@ -925,7 +925,26 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ))),
                 user_ty,
             }
-        },
+        }
+
+        Def::ConstParam(def_id) => {
+            let node_id = cx.tcx.hir().as_local_node_id(def_id).unwrap();
+            let item_id = cx.tcx.hir().get_parent_node(node_id);
+            let item_def_id = cx.tcx.hir().local_def_id(item_id);
+            let generics = cx.tcx.generics_of(item_def_id);
+            let index = generics.param_def_id_to_index[&cx.tcx.hir().local_def_id(node_id)];
+            let name = cx.tcx.hir().name(node_id).as_interned_str();
+            let val = ConstValue::Param(ty::ParamConst::new(index, name));
+            ExprKind::Literal {
+                literal: cx.tcx.mk_lazy_const(
+                    ty::LazyConst::Evaluated(ty::Const {
+                        val,
+                        ty: cx.tables().node_type(expr.hir_id),
+                    })
+                ),
+                user_ty: None,
+            }
+        }
 
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => {

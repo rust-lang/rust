@@ -9,16 +9,9 @@ error: const parameters are not permitted in `const fn`
    |
 LL | / const fn const_u32_identity<const X: u32>() -> u32 {
 LL | |     //~^ ERROR const parameters are not permitted in `const fn`
-LL | |     //~^^ ERROR const generics in any position are currently unsupported
 LL | |     X
 LL | | }
    | |_^
 
-error: const generics in any position are currently unsupported
-  --> $DIR/const-fn-with-const-param.rs:4:35
-   |
-LL | const fn const_u32_identity<const X: u32>() -> u32 {
-   |                                   ^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

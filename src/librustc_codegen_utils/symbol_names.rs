@@ -172,7 +172,7 @@ fn get_symbol_hash<'a, 'tcx>(
         assert!(!substs.needs_subst());
         substs.hash_stable(&mut hcx, &mut hasher);
 
-        let is_generic = substs.types().next().is_some();
+        let is_generic = substs.non_erasable_generics().next().is_some();
         let avoid_cross_crate_conflicts =
             // If this is an instance of a generic function, we also hash in
             // the ID of the instantiating crate. This avoids symbol conflicts

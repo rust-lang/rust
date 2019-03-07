@@ -1004,67 +1004,65 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
         ast_generics
             .params
             .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Type {
-                    ref default,
-                    synthetic,
-                    ..
-                } => {
-                    if param.name.ident().name == keywords::SelfUpper.name() {
-                        span_bug!(
-                            param.span,
-                            "`Self` should not be the name of a regular parameter"
-                        );
-                    }
-
-                    if !allow_defaults && default.is_some() {
-                        if !tcx.features().default_type_parameter_fallback {
-                            tcx.lint_hir(
-                                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                                param.hir_id,
+            .filter_map(|param| {
+                let kind = match param.kind {
+                    GenericParamKind::Type {
+                        ref default,
+                        synthetic,
+                        ..
+                    } => {
+                        if param.name.ident().name == keywords::SelfUpper.name() {
+                            span_bug!(
                                 param.span,
-                                &format!(
-                                    "defaults for type parameters are only allowed in \
-                                     `struct`, `enum`, `type`, or `trait` definitions."
-                                ),
+                                "`Self` should not be the name of a regular parameter"
                             );
                         }
-                    }
 
-                    let ty_param = ty::GenericParamDef {
-                        index: type_start + i as u32,
-                        name: param.name.ident().as_interned_str(),
-                        def_id: tcx.hir().local_def_id_from_hir_id(param.hir_id),
-                        pure_wrt_drop: param.pure_wrt_drop,
-                        kind: ty::GenericParamDefKind::Type {
+                        if !allow_defaults && default.is_some() {
+                            if !tcx.features().default_type_parameter_fallback {
+                                tcx.lint_hir(
+                                    lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                    param.hir_id,
+                                    param.span,
+                                    &format!(
+                                        "defaults for type parameters are only allowed in \
+                                        `struct`, `enum`, `type`, or `trait` definitions."
+                                    ),
+                                );
+                            }
+                        }
+
+                        ty::GenericParamDefKind::Type {
                             has_default: default.is_some(),
                             object_lifetime_default: object_lifetime_defaults
                                 .as_ref()
                                 .map_or(rl::Set1::Empty, |o| o[i]),
                             synthetic,
-                        },
-                    };
-                    i += 1;
-                    Some(ty_param)
-                }
-                GenericParamKind::Const { .. } => {
-                    if param.name.ident().name == keywords::SelfUpper.name() {
-                        span_bug!(
-                            param.span,
-                            "`Self` should not be the name of a regular parameter",
-                        );
+                        }
                     }
+                    GenericParamKind::Const { .. } => {
+                        if param.name.ident().name == keywords::SelfUpper.name() {
+                            span_bug!(
+                                param.span,
+                                "`Self` should not be the name of a regular parameter",
+                            );
+                        }
 
-                    // Emit an error, but skip the parameter rather than aborting to
-                    // continue to get other errors.
-                    tcx.sess.struct_span_err(
-                        param.span,
-                        "const generics in any position are currently unsupported",
-                    ).emit();
-                    None
-                }
-                _ => None,
-            }),
+                        ty::GenericParamDefKind::Const
+                    }
+                    _ => return None,
+                };
+
+                let param_def = ty::GenericParamDef {
+                    index: type_start + i as u32,
+                    name: param.name.ident().as_interned_str(),
+                    def_id: tcx.hir().local_def_id_from_hir_id(param.hir_id),
+                    pure_wrt_drop: param.pure_wrt_drop,
+                    kind,
+                };
+                i += 1;
+                Some(param_def)
+            })
     );
 
     // provide junk type parameter defs - the only place that
@@ -1284,44 +1282,111 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             tcx.mk_closure(def_id, substs)
         }
 
-        Node::AnonConst(_) => match tcx.hir().get_by_hir_id(
-            tcx.hir().get_parent_node_by_hir_id(hir_id))
-        {
-            Node::Ty(&hir::Ty {
-                node: hir::TyKind::Array(_, ref constant),
-                ..
-            })
-            | Node::Ty(&hir::Ty {
-                node: hir::TyKind::Typeof(ref constant),
-                ..
-            })
-            | Node::Expr(&hir::Expr {
-                node: ExprKind::Repeat(_, ref constant),
-                ..
-            }) if constant.hir_id == hir_id =>
-            {
-                tcx.types.usize
-            }
+        Node::AnonConst(_) => {
+            let parent_node = tcx.hir().get_by_hir_id(tcx.hir().get_parent_node_by_hir_id(hir_id));
+            match parent_node {
+                Node::Ty(&hir::Ty {
+                    node: hir::TyKind::Array(_, ref constant),
+                    ..
+                })
+                | Node::Ty(&hir::Ty {
+                    node: hir::TyKind::Typeof(ref constant),
+                    ..
+                })
+                | Node::Expr(&hir::Expr {
+                    node: ExprKind::Repeat(_, ref constant),
+                    ..
+                }) if constant.hir_id == hir_id =>
+                {
+                    tcx.types.usize
+                }
 
-            Node::Variant(&Spanned {
-                node:
-                    VariantKind {
-                        disr_expr: Some(ref e),
-                        ..
-                    },
-                ..
-            }) if e.hir_id == hir_id =>
-            {
-                tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id))
-                    .repr
-                    .discr_type()
-                    .to_ty(tcx)
-            }
+                Node::Variant(&Spanned {
+                    node:
+                        VariantKind {
+                            disr_expr: Some(ref e),
+                            ..
+                        },
+                    ..
+                }) if e.hir_id == hir_id =>
+                {
+                    tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id))
+                        .repr
+                        .discr_type()
+                        .to_ty(tcx)
+                }
 
-            x => {
-                bug!("unexpected const parent in type_of_def_id(): {:?}", x);
+                Node::Ty(&hir::Ty { node: hir::TyKind::Path(_), .. }) |
+                Node::Expr(&hir::Expr { node: ExprKind::Struct(..), .. }) |
+                Node::Expr(&hir::Expr { node: ExprKind::Path(_), .. }) => {
+                    let path = match parent_node {
+                        Node::Ty(&hir::Ty { node: hir::TyKind::Path(ref path), .. }) |
+                        Node::Expr(&hir::Expr { node: ExprKind::Path(ref path), .. }) => {
+                            path
+                        }
+                        Node::Expr(&hir::Expr { node: ExprKind::Struct(ref path, ..), .. }) => {
+                            &*path
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    match path {
+                        QPath::Resolved(_, ref path) => {
+                            let mut arg_index = 0;
+                            let mut found_const = false;
+                            for seg in &path.segments {
+                                if let Some(generic_args) = &seg.args {
+                                    let args = &generic_args.args;
+                                    for arg in args {
+                                        if let GenericArg::Const(ct) = arg {
+                                            if ct.value.hir_id == hir_id {
+                                                found_const = true;
+                                                break;
+                                            }
+                                            arg_index += 1;
+                                        }
+                                    }
+                                }
+                            }
+                            // Sanity check to make sure everything is as expected.
+                            if !found_const {
+                                bug!("no arg matching AnonConst in path")
+                            }
+                            match path.def {
+                                // We've encountered an `AnonConst` in some path, so we need to
+                                // figure out which generic parameter it corresponds to and return
+                                // the relevant type.
+                                Def::Struct(def_id)
+                                | Def::Union(def_id)
+                                | Def::Enum(def_id)
+                                | Def::Fn(def_id) => {
+                                    let generics = tcx.generics_of(def_id);
+                                    let mut param_index = 0;
+                                    for param in &generics.params {
+                                        if let ty::GenericParamDefKind::Const = param.kind {
+                                            if param_index == arg_index {
+                                                return tcx.type_of(param.def_id);
+                                            }
+                                            param_index += 1;
+                                        }
+                                    }
+                                    // This is no generic parameter associated with the arg. This is
+                                    // probably from an extra arg where one is not needed.
+                                    return tcx.types.err;
+                                }
+                                Def::Err => tcx.types.err,
+                                x => bug!("unexpected const parent path def {:?}", x),
+                            }
+                        }
+                        x => bug!("unexpected const parent path {:?}", x),
+                    }
+                }
+
+                x => {
+                    bug!("unexpected const parent in type_of_def_id(): {:?}", x);
+                }
             }
-        },
+        }
 
         Node::GenericParam(param) => match &param.kind {
             hir::GenericParamKind::Type { default: Some(ref ty), .. } |

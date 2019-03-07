@@ -2533,7 +2533,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                     ),
                                 ))
                             }
-                            UnpackedKind::Type(_) => None,
+                            UnpackedKind::Type(_) | UnpackedKind::Const(_) => None,
                         }
                     })
                     .collect();

@@ -423,7 +423,7 @@ impl Foo for Bar {
 
 E0049: r##"
 This error indicates that an attempted implementation of a trait method
-has the wrong number of type parameters.
+has the wrong number of type or const parameters.
 
 For example, the trait below has a method `foo` with a type parameter `T`,
 but the implementation of `foo` for the type `Bar` is missing this parameter:
@@ -1032,6 +1032,7 @@ enum NightsWatch {}
 ```
 "##,
 
+// FIXME(const_generics:docs): example of inferring const parameter.
 E0087: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
@@ -1152,8 +1153,8 @@ fn main() {
 "##,
 
 E0091: r##"
-You gave an unnecessary type parameter in a type alias. Erroneous code
-example:
+You gave an unnecessary type or const parameter in a type alias. Erroneous
+code example:
 
 ```compile_fail,E0091
 type Foo<T> = u32; // error: type parameter `T` is unused
@@ -1161,7 +1162,7 @@ type Foo<T> = u32; // error: type parameter `T` is unused
 type Foo<A,B> = Box<A>; // error: type parameter `B` is unused
 ```
 
-Please check you didn't write too many type parameters. Example:
+Please check you didn't write too many parameters. Example:
 
 ```
 type Foo = u32; // ok!

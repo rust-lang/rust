@@ -1,13 +1,13 @@
 error: expected identifier, found `<-`
-  --> $DIR/const-expression-parameter.rs:10:19
+  --> $DIR/const-expression-parameter.rs:9:19
    |
-LL |     u32_identity::<-1>(); //~ ERROR expected identifier, found `<-`
+LL |     i32_identity::<-1>(); //~ ERROR expected identifier, found `<-`
    |                   ^^ expected identifier
 
 error: expected one of `,` or `>`, found `+`
-  --> $DIR/const-expression-parameter.rs:14:22
+  --> $DIR/const-expression-parameter.rs:13:22
    |
-LL |     u32_identity::<1 + 2>(); //~ ERROR expected one of `,` or `>`, found `+`
+LL |     i32_identity::<1 + 2>(); //~ ERROR expected one of `,` or `>`, found `+`
    |                      ^ expected one of `,` or `>` here
 
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
@@ -16,11 +16,5 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
 
-error: const generics in any position are currently unsupported
-  --> $DIR/const-expression-parameter.rs:4:23
-   |
-LL | fn u32_identity<const X: u32>() -> u32 {
-   |                       ^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

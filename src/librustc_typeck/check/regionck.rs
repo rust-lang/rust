@@ -81,7 +81,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc::ty::adjustment;
-use rustc::ty::subst::SubstsRef;
+use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty};
 
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -1407,13 +1407,19 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let origin = infer::ParameterInScope(origin, expr_span);
 
-        for region in substs.regions() {
-            self.sub_regions(origin.clone(), expr_region, region);
-        }
-
-        for ty in substs.types() {
-            let ty = self.resolve_type(ty);
-            self.type_must_outlive(origin.clone(), ty, expr_region);
+        for kind in substs {
+            match kind.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    self.sub_regions(origin.clone(), expr_region, lt);
+                }
+                UnpackedKind::Type(ty) => {
+                    let ty = self.resolve_type(ty);
+                    self.type_must_outlive(origin.clone(), ty, expr_region);
+                }
+                UnpackedKind::Const(_) => {
+                    // Const parameters don't impose constraints.
+                }
+            }
         }
     }
 }

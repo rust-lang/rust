@@ -2437,6 +2437,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
+    pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        AstConv::ast_const_to_const(self, ast_c, ty)
+    }
+
     // If the type given by the user has free regions, save it for later, since
     // NLL would like to enforce those. Also pass in types that involve
     // projections, since those can resolve to `'static` bounds (modulo #54940,
@@ -5501,6 +5505,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.to_ty(ty).into()
                     }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        self.to_const(&ct.value, self.tcx.type_of(param.def_id)).into()
+                    }
                     _ => unreachable!(),
                 }
             },
@@ -5527,6 +5534,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // Using inference instead of `Error` gives better error messages.
                             self.var_for_def(span, param)
                         }
+                    }
+                    GenericParamDefKind::Const => {
+                        // FIXME(const_generics:defaults)
+                        // No const parameters were provided, we have to infer them.
+                        self.var_for_def(span, param)
                     }
                 }
             },
@@ -5685,11 +5697,19 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        generics: &ty::Generics,
                                        ty: Ty<'tcx>) {
     let own_counts = generics.own_counts();
-    debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
+    debug!(
+        "check_bounds_are_used(n_tys={}, n_cts={}, ty={:?})",
+        own_counts.types,
+        own_counts.consts,
+        ty
+    );
+
+    // FIXME(const_generics): we probably want to check the bounds for const parameters too.
 
     if own_counts.types == 0 {
         return;
     }
+
     // Make a vector of booleans initially false, set to true when used.
     let mut types_used = vec![false; own_counts.types];
 

@@ -16,6 +16,7 @@ use crate::mir::interpret::{Scalar, Pointer};
 use smallvec::SmallVec;
 use std::iter;
 use std::cmp::Ordering;
+use std::marker::PhantomData;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
@@ -1061,6 +1062,26 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 }
 
+#[derive(Copy, Clone, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+pub struct ParamConst {
+    pub index: u32,
+    pub name: InternedString,
+}
+
+impl<'a, 'gcx, 'tcx> ParamConst {
+    pub fn new(index: u32, name: InternedString) -> ParamConst {
+        ParamConst { index, name }
+    }
+
+    pub fn for_def(def: &ty::GenericParamDef) -> ParamConst {
+        ParamConst::new(def.index, def.name)
+    }
+
+    pub fn to_const(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx LazyConst<'tcx> {
+        tcx.mk_const_param(self.index, self.name, ty)
+    }
+}
+
 /// A [De Bruijn index][dbi] is a standard means of representing
 /// regions (and perhaps later types) in a higher-ranked setting. In
 /// particular, imagine a type like this:
@@ -1227,6 +1248,12 @@ pub struct EarlyBoundRegion {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct TyVid {
     pub index: u32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub struct ConstVid<'tcx> {
+    pub index: u32,
+    pub phantom: PhantomData<&'tcx ()>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -2083,6 +2110,22 @@ impl<'tcx> LazyConst<'tcx> {
     pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
         self.assert_usize(tcx).expect("expected `LazyConst` to contain a usize")
     }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        // FIXME(const_generics): incorporate substs flags.
+        let flags = match self {
+            LazyConst::Unevaluated(..) => {
+                TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION
+            }
+            LazyConst::Evaluated(c) => {
+                c.type_flags()
+            }
+        };
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
 }
 
 /// Typed constant value.
@@ -2198,6 +2241,44 @@ impl<'tcx> Const<'tcx> {
         self.assert_usize(tcx).unwrap_or_else(||
             bug!("expected constant usize, got {:#?}", self))
     }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        let mut flags = self.ty.flags;
+
+        match self.val {
+            ConstValue::Param(_) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_PARAMS;
+            }
+            ConstValue::Infer(infer) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_CT_INFER;
+                match infer {
+                    InferConst::Fresh(_) |
+                    InferConst::Canonical(_, _) => {}
+                    InferConst::Var(_) => {
+                        flags |= TypeFlags::KEEP_IN_LOCAL_TCX;
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}
+
+/// An inference variable for a const, for use in const generics.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+pub enum InferConst<'tcx> {
+    /// Infer the value of the const.
+    Var(ConstVid<'tcx>),
+    /// A fresh const variable. See `infer::freshen` for more details.
+    Fresh(u32),
+    /// Canonicalized const variable, used only when preparing a trait query.
+    Canonical(DebruijnIndex, BoundVar),
+}

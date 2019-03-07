@@ -54,14 +54,14 @@ use crate::hir;
 
 pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, CanonicalPolyFnSig, PolyFnSig, PolyGenSig};
-pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+pub use self::sty::{InferTy, ParamTy, ParamConst, InferConst, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const, LazyConst};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, ConstVid, RegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -451,6 +451,8 @@ bitflags! {
 
         const HAS_TY_PLACEHOLDER = 1 << 14;
 
+        const HAS_CT_INFER = 1 << 15;
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -462,6 +464,7 @@ bitflags! {
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
+                                  TypeFlags::HAS_CT_INFER.bits |
                                   TypeFlags::HAS_RE_PLACEHOLDER.bits |
                                   TypeFlags::HAS_RE_EARLY_BOUND.bits |
                                   TypeFlags::HAS_FREE_REGIONS.bits |
@@ -837,7 +840,8 @@ pub enum GenericParamDefKind {
         has_default: bool,
         object_lifetime_default: ObjectLifetimeDefault,
         synthetic: Option<hir::SyntheticTyParamKind>,
-    }
+    },
+    Const,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -880,6 +884,7 @@ impl GenericParamDef {
 pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
+    pub consts: usize,
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -915,6 +920,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
+                GenericParamDefKind::Const => own_counts.consts += 1,
             };
         }
 
@@ -924,7 +930,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type { .. } => return true,
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => return true,
                 GenericParamDefKind::Lifetime => {}
             }
         }
@@ -944,7 +950,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
-                ty::GenericParamDefKind::Lifetime => param,
+                GenericParamDefKind::Lifetime => param,
                 _ => bug!("expected lifetime parameter, but found another generic parameter")
             }
         } else {
@@ -961,12 +967,29 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
-                ty::GenericParamDefKind::Type {..} => param,
+                GenericParamDefKind::Type { .. } => param,
                 _ => bug!("expected type parameter, but found another generic parameter")
             }
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                .type_param(param, tcx)
+        }
+    }
+
+    /// Returns the `ConstParameterDef` associated with this `ParamConst`.
+    pub fn const_param(&'tcx self,
+                       param: &ParamConst,
+                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                       -> &GenericParamDef {
+        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
+            let param = &self.params[index as usize];
+            match param.kind {
+                GenericParamDefKind::Const => param,
+                _ => bug!("expected const parameter, but found another generic parameter")
+            }
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .const_param(param, tcx)
         }
     }
 }

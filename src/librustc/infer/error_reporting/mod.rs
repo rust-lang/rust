@@ -691,17 +691,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> SubstsRef<'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
-        let mut type_params = generics
-            .params
-            .iter()
-            .rev()
-            .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => None,
-                ty::GenericParamDefKind::Type { has_default, .. } => {
-                    Some((param.def_id, has_default))
-                }
-            })
-            .peekable();
+        let mut type_params = generics.params.iter().rev().filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => None,
+            ty::GenericParamDefKind::Type { has_default, .. } => Some((param.def_id, has_default)),
+            ty::GenericParamDefKind::Const => None, // FIXME(const_generics:defaults)
+        }).peekable();
         let has_default = {
             let has_default = type_params.peek().map(|(_, has_default)| has_default);
             *has_default.unwrap_or(&false)

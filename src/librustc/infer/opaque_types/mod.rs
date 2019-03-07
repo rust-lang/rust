@@ -381,10 +381,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         substs,
                         item_def_id: _,
                     }) => {
-                        for r in substs.regions() {
-                            bound_region(r);
+                        for k in substs {
+                            match k.unpack() {
+                                UnpackedKind::Lifetime(lt) => bound_region(lt),
+                                UnpackedKind::Type(ty) => types.push(ty),
+                                UnpackedKind::Const(_) => {
+                                    // Const parameters don't impose constraints.
+                                }
+                            }
                         }
-                        types.extend(substs.types());
                     }
 
                     Component::EscapingProjection(more_components) => {

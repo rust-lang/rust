@@ -1,8 +1,9 @@
 use crate::monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::mir::interpret::ConstValue;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
+use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts, LazyConst, ParamConst};
 use rustc::ty::subst::{SubstsRef, InternalSubsts};
 use syntax::ast;
 use syntax::attr::InlineAttr;
@@ -44,7 +45,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn is_generic_fn(&self) -> bool {
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
-                instance.substs.types().next().is_some()
+                instance.substs.non_erasable_generics().next().is_some()
             }
             MonoItem::Static(..) |
             MonoItem::GlobalAsm(..) => false,
@@ -267,7 +268,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Float(ast::FloatTy::F64) => output.push_str("f64"),
             ty::Adt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
-                self.push_type_params(substs, iter::empty(), output, debug);
+                self.push_generic_params(substs, iter::empty(), output, debug);
             },
             ty::Tuple(component_types) => {
                 output.push('(');
@@ -312,7 +313,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Dynamic(ref trait_data, ..) => {
                 if let Some(principal) = trait_data.principal() {
                     self.push_def_path(principal.def_id(), output);
-                    self.push_type_params(
+                    self.push_generic_params(
                         principal.skip_binder().substs,
                         trait_data.projection_bounds(),
                         output,
@@ -373,7 +374,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);
-                self.push_type_params(substs, iter::empty(), output, debug);
+                self.push_generic_params(substs, iter::empty(), output, debug);
             }
             ty::Error |
             ty::Bound(..) |
@@ -390,6 +391,24 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     bug!("DefPathBasedNames: Trying to create type name for \
                                          unexpected type: {:?}", t);
                 }
+            }
+        }
+    }
+
+    // FIXME(const_generics): handle debug printing.
+    pub fn push_const_name(&self, c: &LazyConst<'tcx>, output: &mut String, debug: bool) {
+        match c {
+            LazyConst::Unevaluated(..) => output.push_str("_: _"),
+            LazyConst::Evaluated(Const { ty, val }) => {
+                match val {
+                    ConstValue::Infer(..) => output.push_str("_"),
+                    ConstValue::Param(ParamConst { name, .. }) => {
+                        write!(output, "{}", name).unwrap();
+                    }
+                    _ => write!(output, "{:?}", c).unwrap(),
+                }
+                output.push_str(": ");
+                self.push_type_name(ty, output, debug);
             }
         }
     }
@@ -421,15 +440,15 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         output.pop();
     }
 
-    fn push_type_params<I>(&self,
-                            substs: SubstsRef<'tcx>,
-                            projections: I,
-                            output: &mut String,
-                            debug: bool)
-        where I: Iterator<Item=ty::PolyExistentialProjection<'tcx>>
-    {
+    fn push_generic_params<I>(
+        &self,
+        substs: SubstsRef<'tcx>,
+        projections: I,
+        output: &mut String,
+        debug: bool,
+    ) where I: Iterator<Item=ty::PolyExistentialProjection<'tcx>> {
         let mut projections = projections.peekable();
-        if substs.types().next().is_none() && projections.peek().is_none() {
+        if substs.non_erasable_generics().next().is_none() && projections.peek().is_none() {
             return;
         }
 
@@ -449,6 +468,11 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             output.push_str(", ");
         }
 
+        for const_parameter in substs.consts() {
+            self.push_const_name(const_parameter, output, debug);
+            output.push_str(", ");
+        }
+
         output.pop();
         output.pop();
 
@@ -460,6 +484,6 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                                    output: &mut String,
                                    debug: bool) {
         self.push_def_path(instance.def_id(), output);
-        self.push_type_params(instance.substs, iter::empty(), output, debug);
+        self.push_generic_params(instance.substs, iter::empty(), output, debug);
     }
 }

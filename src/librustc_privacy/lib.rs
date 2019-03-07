@@ -748,12 +748,15 @@ impl<'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
+                GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Const => {
+                    self.visit(self.ev.tcx.type_of(param.def_id));
+                }
             }
         }
         self
@@ -1517,12 +1520,15 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
+                GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Const => {
+                    self.visit(self.tcx.type_of(param.def_id));
+                }
             }
         }
         self
