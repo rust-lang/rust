@@ -95,6 +95,9 @@ pub struct LoweringContext<'a> {
     modules: BTreeMap<NodeId, hir::ModuleItems>,
 
     is_generator: bool,
+    /// This is true if and only if we are in a function that returns an `impl`
+    /// Trait. We use it to quell the `From::from` call in the `?` lowering
+    returns_impl: bool,
 
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
@@ -246,6 +249,7 @@ pub fn lower_crate(
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
+        returns_impl: false,
         is_in_trait_impl: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
@@ -2880,8 +2884,10 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ItemKind::Fn(ref decl, header, ref generics, ref body) => {
+                let returns_impl = mem::replace(&mut self.returns_impl,
+                                                returns_impl_trait(decl));
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
-                self.with_new_scopes(|this| {
+                let res = self.with_new_scopes(|this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -2906,7 +2912,9 @@ impl<'a> LoweringContext<'a> {
                         generics,
                         body_id,
                     )
-                })
+                });
+                self.returns_impl = returns_impl;
+                res
             }
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
@@ -3311,10 +3319,13 @@ impl<'a> LoweringContext<'a> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
+                let returns_impl = mem::replace(&mut self.returns_impl,
+                                                returns_impl_trait(&sig.decl));
                 let body_id = self.lower_body(Some(&sig.decl), |this| {
                     let body = this.lower_block(body, false);
                     this.expr_block(body, ThinVec::new())
                 });
+                self.returns_impl = returns_impl;
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
@@ -3387,6 +3398,8 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
+                let returns_impl = mem::replace(&mut self.returns_impl,
+                                returns_impl_trait(&sig.decl));
                 let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness.node, body);
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
@@ -3396,6 +3409,7 @@ impl<'a> LoweringContext<'a> {
                     impl_trait_return_allow,
                     sig.header.asyncness.node.opt_return_id(),
                 );
+                self.returns_impl = returns_impl;
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
             ImplItemKind::Type(ref ty) => (
@@ -3946,7 +3960,8 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
-                if let IsAsync::Async { closure_id, .. } = asyncness {
+                let returns_impl = mem::replace(&mut self.returns_impl, false);
+                let res = if let IsAsync::Async { closure_id, .. } = asyncness {
                     let outer_decl = FnDecl {
                         inputs: decl.inputs.clone(),
                         output: FunctionRetTy::Default(fn_decl_span),
@@ -4040,7 +4055,9 @@ impl<'a> LoweringContext<'a> {
                             generator_option,
                         )
                     })
-                }
+                };
+                self.returns_impl = returns_impl;
+                res
             }
             ExprKind::Block(ref blk, opt_label) => {
                 hir::ExprKind::Block(self.lower_block(blk,
@@ -4555,11 +4572,15 @@ impl<'a> LoweringContext<'a> {
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
                     let (err_local, err_local_nid) = self.pat_ident(e.span, err_ident);
-                    let from_expr = {
+                    let err_expr = self.expr_ident(e.span, err_ident, err_local_nid);
+                    // we omit the `From::from` if there is no catch scope and we are
+                    // in an `impl Trait` returning function
+                    let from_expr = if self.catch_scopes.is_empty() && self.returns_impl {
+                        err_expr
+                    } else {
                         let path = &["convert", "From", "from"];
                         let from = P(self.expr_std_path(
                                 e.span, path, None, ThinVec::new()));
-                        let err_expr = self.expr_ident(e.span, err_ident, err_local_nid);
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
                     };
@@ -5213,4 +5234,14 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
     body_ids.sort_by_key(|b| bodies[b].value.span);
     body_ids
+}
+
+/// Does the declared function return an `impl` Trait?
+fn returns_impl_trait(decl: &FnDecl) -> bool {
+    if let FunctionRetTy::Ty(ref ty) = decl.output {
+        if let TyKind::ImplTrait(..) = ty.node {
+            return true
+        }
+    }
+    false
 }
