@@ -1,8 +1,8 @@
 environment:
   matrix:
   - INFINITE_SLEEP: 1
-  - NFINITE_SLEEP: 2
-  - NFINITE_SLEEP: 3
+  - INFINITE_SLEEP: 2
+  - INFINITE_SLEEP: 3
 
 clone_depth: 2
 build: false
