@@ -5052,7 +5052,6 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
         Some(output)
     };
 
-    println!("===> {:?}", output);
     Some(IndexItemFunctionType { inputs, output })
 }
 

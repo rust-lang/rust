@@ -1474,7 +1474,7 @@ impl GenericParamDefKind {
         }
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_, '_, '_>) -> Option<Type> {
+    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
         match *self {
             GenericParamDefKind::Type { did, .. } => {
                 rustc_typeck::checked_type_of(cx.tcx, did, false).map(|t| t.clean(cx))
@@ -1505,7 +1505,7 @@ impl GenericParamDef {
         self.kind.is_type()
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_, '_, '_>) -> Option<Type> {
+    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
         self.kind.get_type(cx)
     }
 
@@ -1750,12 +1750,16 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
     }
 }
 
-// The point is to replace bounds with types.
+/// The point of this function is to replace bounds with types.
+///
+/// i.e. `[T, U]` when you have the following bounds: `T: Display, U: Option<T>` will return
+/// `[Display, Option]` (we just returns the list of the types, we don't care about the
+/// wrapped types in here).
 fn get_real_types(
     generics: &Generics,
     arg: &Type,
-    cx: &DocContext<'_, '_, '_>,
-) -> Vec<Type> {
+    cx: &DocContext<'_>,
+) -> FxHashSet<Type> {
     let arg_s = arg.to_string();
     let mut res = Vec::new();
     if arg.is_full_generic() {
@@ -1776,7 +1780,7 @@ fn get_real_types(
                             if let Some(ty) = x.get_type(cx) {
                                 let mut adds = get_real_types(generics, &ty, cx);
                                 if !adds.is_empty() {
-                                    res.append(&mut adds);
+                                    res.extend(adds);
                                 } else if !ty.is_full_generic() {
                                     res.push(ty);
                                 }
@@ -1794,7 +1798,7 @@ fn get_real_types(
                 if let Some(ty) = bound.get_trait_type() {
                     let mut adds = get_real_types(generics, &ty, cx);
                     if !adds.is_empty() {
-                        res.append(&mut adds);
+                        res.extend(adds);
                     } else if !ty.is_full_generic() {
                         res.push(ty.clone());
                     }
@@ -1808,7 +1812,7 @@ fn get_real_types(
                 if gen.is_full_generic() {
                     let mut adds = get_real_types(generics, gen, cx);
                     if !adds.is_empty() {
-                        res.append(&mut adds);
+                        res.extend(adds);
                     }
                 } else {
                     res.push(gen.clone());
@@ -1819,10 +1823,14 @@ fn get_real_types(
     res
 }
 
+/// Return the full list of types when bounds have been resolved.
+///
+/// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
+/// `[u32, Display, Option]`.
 pub fn get_all_types(
     generics: &Generics,
     decl: &FnDecl,
-    cx: &DocContext<'_, '_, '_>,
+    cx: &DocContext<'_>,
 ) -> (Vec<Type>, Vec<Type>) {
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
@@ -1831,7 +1839,7 @@ pub fn get_all_types(
         }
         let mut args = get_real_types(generics, &arg.type_, cx);
         if !args.is_empty() {
-            all_types.append(&mut args);
+            all_types.extend(args);
         } else {
             all_types.push(arg.type_.clone());
         }

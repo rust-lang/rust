@@ -1133,6 +1133,10 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     checked_type_of(tcx, def_id, true).unwrap()
 }
 
+/// Same as [`type_of`] but returns [`Option`] instead of failing.
+///
+/// If you want to fail anyway, you can set the `fail` parameter to true, but in this case,
+/// you'd better just call [`type_of`] directly.
 pub fn checked_type_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1382,14 +1386,14 @@ pub fn checked_type_of<'a, 'tcx>(
                                     for param in &generics.params {
                                         if let ty::GenericParamDefKind::Const = param.kind {
                                             if param_index == arg_index {
-                                                return tcx.type_of(param.def_id);
+                                                return Some(tcx.type_of(param.def_id));
                                             }
                                             param_index += 1;
                                         }
                                     }
                                     // This is no generic parameter associated with the arg. This is
                                     // probably from an extra arg where one is not needed.
-                                    return tcx.types.err;
+                                    return Some(tcx.types.err);
                                 }
                                 Def::Err => tcx.types.err,
                                 x => {
