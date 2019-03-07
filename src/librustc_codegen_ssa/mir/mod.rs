@@ -532,13 +532,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 PassMode::Ignore(IgnoreMode::Zst) => {
                     return local(OperandRef::new_zst(bx.cx(), arg.layout));
                 }
-                PassMode::Ignore(IgnoreMode::CVarArgs) => {
-                    let backend_type = bx.cx().immediate_backend_type(arg.layout);
-                    return local(OperandRef {
-                        val: OperandValue::Immediate(bx.cx().const_undef(backend_type)),
-                        layout: arg.layout,
-                    });
-                }
+                PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(llarg, &name);
