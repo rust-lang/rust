@@ -1755,35 +1755,24 @@ pub fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_, '_, '_>,
-    debug: bool,
 ) -> Option<Vec<Type>> {
     let mut res = Vec::new();
-    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-        println!("0. {:?}", arg);
-    }
     if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
         match g {
             &WherePredicate::BoundPredicate { ref ty, .. } => ty.def_id() == arg.def_id(),
             _ => false,
         }
     }) {
-        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-            println!("1. {:?} => {:?}", arg, where_pred);
-        }
         let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
         for bound in bounds.iter() {
             match *bound {
                 GenericBound::TraitBound(ref poly_trait, _) => {
-                    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                        println!("    {:?}", poly_trait.trait_);
-                    }
                     for x in poly_trait.generic_params.iter() {
                         if !x.is_type() {
                             continue
                         }
                         if let Some(ty) = x.get_type(cx) {
-                            if let Some(mut adds) = get_real_types(generics, &ty, cx,
-                                arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
+                            if let Some(mut adds) = get_real_types(generics, &ty, cx) {
                                 res.append(&mut adds);
                             } else if !ty.is_full_generic() {
                                 res.push(ty);
@@ -1799,51 +1788,25 @@ pub fn get_real_types(
         if let Some(bound) = generics.params.iter().find(|g| {
             g.is_type() && g.name == arg_s
         }) {
-            if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                println!("2. {:?} => {:?}", arg, bound);
-            }
             for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
                 if let Some(ty) = bound.get_trait_type() {
-                    if let Some(mut adds) = get_real_types(generics, &ty, cx,
-                        arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
-                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                            println!("3. {:?}", adds);
-                        }
+                    if let Some(mut adds) = get_real_types(generics, &ty, cx) {
                         res.append(&mut adds);
                     } else {
-                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                            println!("4. {:?}", ty);
-                        }
                         if !ty.is_full_generic() {
                             res.push(ty.clone());
                         }
                     }
                 }
             }
-            /*if let Some(ty) = bound.get_type(cx) {
-                if let Some(mut adds) = get_real_types(generics, &ty, cx, level + 1) {
-                    res.append(&mut adds);
-                } else {
-                    res.push(ty);
-                }
-            } else {
-                res.push(arg.clone());
-            }*/
         } else if let Some(gens) = arg.generics() {
             res.push(arg.clone());
             for gen in gens.iter() {
                 if gen.is_full_generic() {
-                    if let Some(mut adds) = get_real_types(generics, gen, cx,
-                        arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
-                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                            println!("5. {:?}", adds);
-                        }
+                    if let Some(mut adds) = get_real_types(generics, gen, cx) {
                         res.append(&mut adds);
                     }
                 } else {
-                    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-                        println!("6. {:?}", gen);
-                    }
                     res.push(gen.clone());
                 }
             }
@@ -1851,9 +1814,6 @@ pub fn get_real_types(
     }
     if res.is_empty() && !arg.is_full_generic() {
         res.push(arg.clone());
-    }
-    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
-        println!("7. /!\\ {:?}", res);
     }
     Some(res)
 }
@@ -1868,17 +1828,15 @@ pub fn get_all_types(
         if arg.type_.is_self_type() {
             continue;
         }
-        if let Some(mut args) = get_real_types(generics, &arg.type_, cx, false) {
+        if let Some(mut args) = get_real_types(generics, &arg.type_, cx) {
             all_types.append(&mut args);
         } else {
             all_types.push(arg.type_.clone());
         }
     }
-    all_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).expect("a") );
+    // FIXME: use a HashSet instead?
+    all_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).unwrap());
     all_types.dedup();
-    if decl.inputs.values.iter().any(|s| s.type_.to_string() == "W" || s.type_.to_string() == "Z") {
-        println!("||||> {:?}", all_types);
-    }
     all_types
 }
 

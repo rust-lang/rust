@@ -5029,16 +5029,17 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
         clean::FunctionItem(ref f) => (&f.decl, &f.all_types),
         clean::MethodItem(ref m) => (&m.decl, &m.all_types),
         clean::TyMethodItem(ref m) => (&m.decl, &m.all_types),
-        _ => return None
+        _ => return None,
     };
 
-    println!("====> {:?}", all_types);
     let inputs = all_types.iter().map(|arg| {
         get_index_type(&arg)
     }).collect();
     let output = match decl.output {
-        clean::FunctionRetTy::Return(ref return_type) => Some(get_index_type(return_type)),
-        _ => None
+        clean::FunctionRetTy::Return(ref return_type) => {
+            Some(get_index_type(return_type))
+        },
+        _ => None,
     };
 
     Some(IndexItemFunctionType { inputs: inputs, output: output })
