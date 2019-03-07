@@ -44,31 +44,35 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
     let impl_node = node.ancestors().find_map(ast::ImplBlock::cast)?;
     let impl_item_list = impl_node.item_list()?;
     // Don't offer the assist when cursor is at the end, outside the block itself.
+    let cursor_range = TextRange::from_to(node.range().end(), node.range().end());
     if node.range().end() == impl_node.syntax().range().end() {
         return None;
     }
 
     let trait_def = {
-        let position = FilePosition { file_id: ctx.frange.file_id, offset: node.range().end() };
+        let position = FilePosition { file_id: ctx.frange.file_id, offset: cursor_range.end() };
         let resolver = hir::source_binder::resolver_for_position(ctx.db, position);
 
         resolve_target_trait_def(ctx.db, &resolver, impl_node)?
     };
 
-    let fn_def_opt = |kind| if let ImplItemKind::FnDef(def) = kind { Some(def) } else { None };
-    let def_name = |def| -> Option<&SmolStr> { FnDef::name(def).map(ast::Name::text) };
+    let missing_fns: Vec<_> = {
+        let fn_def_opt = |kind| if let ImplItemKind::FnDef(def) = kind { Some(def) } else { None };
+        let def_name = |def| -> Option<&SmolStr> { FnDef::name(def).map(ast::Name::text) };
 
-    let trait_items = trait_def.syntax().descendants().find_map(ast::ItemList::cast)?.impl_items();
-    let impl_items = impl_item_list.impl_items();
+        let trait_items =
+            trait_def.syntax().descendants().find_map(ast::ItemList::cast)?.impl_items();
+        let impl_items = impl_item_list.impl_items();
 
-    let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
-    let impl_fns = impl_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
+        let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
+        let impl_fns = impl_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
 
-    let missing_fns: Vec<_> = trait_fns
-        .into_iter()
-        .filter(|t| def_name(t).is_some())
-        .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
-        .collect();
+        trait_fns
+            .into_iter()
+            .filter(|t| def_name(t).is_some())
+            .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
+            .collect()
+    };
     if missing_fns.is_empty() {
         return None;
     }
@@ -89,20 +93,16 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
             )
         };
 
-        let func_bodies = missing_fns.into_iter().map(build_func_body).join("\n");
-        let func_bodies = String::from("\n") + &func_bodies;
-        let trailing_whitespace = format!("\n{}", parent_indent);
-        let func_bodies = reindent(&func_bodies, &indent) + &trailing_whitespace;
-
         let changed_range = {
             let last_whitespace = impl_item_list.syntax().children();
             let last_whitespace = last_whitespace.filter_map(ast::Whitespace::cast).last();
-            let last_whitespace = last_whitespace.map(|w| w.syntax());
 
-            let cursor_range = TextRange::from_to(node.range().end(), node.range().end());
-
-            last_whitespace.map(|x| x.range()).unwrap_or(cursor_range)
+            last_whitespace.map(|w| w.syntax().range()).unwrap_or(cursor_range)
         };
+
+        let func_bodies = format!("\n{}", missing_fns.into_iter().map(build_func_body).join("\n"));
+        let trailing_whitespace = format!("\n{}", parent_indent);
+        let func_bodies = reindent(&func_bodies, &indent) + &trailing_whitespace;
 
         let replaced_text_range = TextUnit::of_str(&func_bodies);
 
