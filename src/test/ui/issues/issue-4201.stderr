@@ -13,6 +13,7 @@ LL | |     };
    |
    = note: expected type `()`
               found type `{integer}`
+   = note: `if` expressions without `else` must evaluate to `()`
 
 error: aborting due to previous error
 

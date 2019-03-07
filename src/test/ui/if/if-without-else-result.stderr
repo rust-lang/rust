@@ -6,6 +6,7 @@ LL |     let a = if true { true };
    |
    = note: expected type `()`
               found type `bool`
+   = note: `if` expressions without `else` must evaluate to `()`
 
 error: aborting due to previous error
 
