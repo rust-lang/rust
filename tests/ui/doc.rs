@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 #![warn(clippy::doc_markdown)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
 /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
