@@ -448,7 +448,7 @@ impl_stable_hash_for!(enum hir::RangeEnd {
 
 impl_stable_hash_for!(enum hir::PatKind {
     Wild,
-    Binding(binding_mode, var, hir_id, name, sub),
+    Binding(binding_mode, hir_id, name, sub),
     Struct(path, field_pats, dotdot),
     TupleStruct(path, field_pats, dotdot),
     Path(path),

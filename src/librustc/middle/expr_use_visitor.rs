@@ -860,7 +860,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
                     // Each match binding is effectively an assignment to the
                     // binding being produced.
-                    let def = Def::Local(canonical_id);
+                    let def = Def::Local(mc.tcx.hir().hir_to_node_id(canonical_id));
                     if let Ok(ref binding_cmt) = mc.cat_def(pat.hir_id, pat.span, pat_ty, def) {
                         delegate.mutate(pat.hir_id, pat.span, binding_cmt, MutateMode::Init);
                     }

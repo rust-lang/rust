@@ -3679,11 +3679,10 @@ impl<'a> LoweringContext<'a> {
                             Some(Def::Local(id)) => id,
                             _ => p.id,
                         };
-                        let hir_id = self.lower_node_id(canonical_id).hir_id;
+
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
-                            canonical_id,
-                            hir_id,
+                            self.lower_node_id(canonical_id).hir_id,
                             ident,
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
@@ -4985,7 +4984,7 @@ impl<'a> LoweringContext<'a> {
         (
             P(hir::Pat {
                 hir_id,
-                node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
+                node: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
             }),
             node_id

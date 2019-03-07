@@ -697,8 +697,8 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Binding(_, canonical_id, _hir_id, ident, ref optional_subpattern) => {
-            visitor.visit_def_mention(Def::Local(canonical_id));
+        PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
+            // visitor.visit_def_mention(Def::Local(hir_id));
             visitor.visit_ident(ident);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }

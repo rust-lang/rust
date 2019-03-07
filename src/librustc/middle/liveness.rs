@@ -407,7 +407,7 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     while let Some(pat) = pats.pop_front() {
         use crate::hir::PatKind::*;
         match pat.node {
-            Binding(_, _, _, _, ref inner_pat) => {
+            Binding(_, _, _, ref inner_pat) => {
                 pats.extend(inner_pat.iter());
             }
             Struct(_, ref fields, _) => {

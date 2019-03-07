@@ -1004,7 +1004,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Binding(_, _, _, ident, _) = p.node {
+        if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
             let node_id = self.fcx.tcx.hir().hir_to_node_id(p.hir_id);

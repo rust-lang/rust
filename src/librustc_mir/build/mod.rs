@@ -13,13 +13,12 @@ use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::SubstsRef;
-use rustc::util::nodemap::NodeMap;
+use rustc::util::nodemap::HirIdMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use std::mem;
 use std::u32;
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
@@ -376,7 +375,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// Maps `NodeId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
-    var_indices: NodeMap<LocalsForNode>,
+    var_indices: HirIdMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
     upvar_decls: Vec<UpvarDecl>,
@@ -392,11 +391,11 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    fn is_bound_var_in_guard(&self, id: ast::NodeId) -> bool {
+    fn is_bound_var_in_guard(&self, id: hir::HirId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
 
-    fn var_local_id(&self, id: ast::NodeId, for_guard: ForGuard) -> Local {
+    fn var_local_id(&self, id: hir::HirId, for_guard: ForGuard) -> Local {
         self.var_indices[&id].local_id(for_guard)
     }
 }
@@ -471,11 +470,11 @@ enum LocalsForNode {
 
 #[derive(Debug)]
 struct GuardFrameLocal {
-    id: ast::NodeId,
+    id: hir::HirId,
 }
 
 impl GuardFrameLocal {
-    fn new(id: ast::NodeId, _binding_mode: BindingMode) -> Self {
+    fn new(id: hir::HirId, _binding_mode: BindingMode) -> Self {
         GuardFrameLocal {
             id: id,
         }
@@ -650,7 +649,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 mutability: Mutability::Not,
             };
             if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
-                if let hir::PatKind::Binding(_, _, _, ident, _) = pat.node {
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
                         if bm == ty::BindByValue(hir::MutMutable) {
@@ -855,8 +854,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let mut name = None;
             if let Some(pat) = pattern {
                 match pat.node {
-                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, _, ident, _)
-                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, _, ident, _) => {
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _)
+                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, _) => {
                         name = Some(ident.name);
                     }
                     _ => (),
