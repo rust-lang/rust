@@ -360,24 +360,36 @@ mod c {
         }
 
         if llvm_target.last().unwrap().ends_with("eabihf") {
-            if !llvm_target[0].starts_with("thumbv7em") {
+            if !llvm_target[0].starts_with("thumbv7em") &&
+               !llvm_target[0].starts_with("thumbv8m.main") {
+                // The FPU option chosen for these architectures in cc-rs, ie:
+                //     -mfpu=fpv4-sp-d16 for thumbv7em
+                //     -mfpu=fpv5-sp-d16 for thumbv8m.main
+                // do not support double precision floating points conversions so the files
+                // that include such instructions are not included for these targets.
                 sources.extend(
                     &[
                         "arm/fixdfsivfp.S",
-                        "arm/fixsfsivfp.S",
                         "arm/fixunsdfsivfp.S",
-                        "arm/fixunssfsivfp.S",
                         "arm/floatsidfvfp.S",
-                        "arm/floatsisfvfp.S",
                         "arm/floatunssidfvfp.S",
-                        "arm/floatunssisfvfp.S",
-                        "arm/restore_vfp_d8_d15_regs.S",
-                        "arm/save_vfp_d8_d15_regs.S",
                     ],
                 );
             }
 
-            sources.extend(&["arm/negdf2vfp.S", "arm/negsf2vfp.S"]);
+            sources.extend(
+                &[
+                    "arm/fixsfsivfp.S",
+                    "arm/fixunssfsivfp.S",
+                    "arm/floatsisfvfp.S",
+                    "arm/floatunssisfvfp.S",
+                    "arm/floatunssisfvfp.S",
+                    "arm/restore_vfp_d8_d15_regs.S",
+                    "arm/save_vfp_d8_d15_regs.S",
+                    "arm/negdf2vfp.S",
+                    "arm/negsf2vfp.S",
+                ]
+            );
 
         }
 
