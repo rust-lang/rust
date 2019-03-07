@@ -248,8 +248,10 @@ fn main_loop_inner(
             && pending_libraries.is_empty()
             && in_flight_libraries == 0
         {
+            let n_packages: usize = state.workspaces.iter().map(|it| it.count()).sum();
             if options.show_workspace_loaded {
-                show_message(req::MessageType::Info, "workspace loaded", msg_sender);
+                let msg = format!("workspace loaded, {} rust packages", n_packages);
+                show_message(req::MessageType::Info, msg, msg_sender);
             }
             // Only send the notification first time
             send_workspace_notification = false;
@@ -508,12 +510,10 @@ fn update_file_notifications_on_threadpool(
     });
 }
 
-fn show_message<M: Into<String>>(typ: req::MessageType, msg: M, sender: &Sender<RawMessage>) {
-    let not = RawNotification::new::<req::ShowMessage>(&req::ShowMessageParams {
-        typ,
-        message: msg.into(),
-    });
-
+fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Sender<RawMessage>) {
+    let message = message.into();
+    let params = req::ShowMessageParams { typ, message };
+    let not = RawNotification::new::<req::ShowMessage>(&params);
     sender.send(not.into()).unwrap();
 }
 

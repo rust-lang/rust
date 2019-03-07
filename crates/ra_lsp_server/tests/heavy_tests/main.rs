@@ -32,7 +32,7 @@ version = "0.0.0"
 use std::collections::Spam;
 "#,
     );
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
     eprintln!("loading took    {:?}", project_start.elapsed());
     let completion_start = Instant::now();
     let res = server.send_request::<Completion>(CompletionParams {
@@ -54,7 +54,7 @@ fn foo() {
 }
 ",
     );
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
         json!([
@@ -108,7 +108,7 @@ pub fn foo() {}
 fn test_eggs() {}
 "#,
     );
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
         RunnablesParams {
             text_document: server.doc_id("tests/spam.rs"),
@@ -168,7 +168,7 @@ fn main() {
 pub use std::collections::HashMap;
 "#,
     );
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
 
     server.request::<Formatting>(
         DocumentFormattingParams {
@@ -217,7 +217,7 @@ mod bar;
 fn main() {}
 "#,
     );
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
     let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(
         CodeActionParams {
@@ -279,7 +279,7 @@ fn main() {}
         PATH = tmp_dir.path().display()
     );
     let server = project_with_tmpdir(tmp_dir, &code);
-    server.wait_for_message("workspace loaded");
+    server.wait_until_workspace_is_loaded();
     let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(
         CodeActionParams {

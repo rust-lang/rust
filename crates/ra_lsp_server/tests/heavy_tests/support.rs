@@ -145,26 +145,25 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_for_message(&self, message: &str) {
-        self.wait_for_message_n(message, 1)
-    }
-    pub fn wait_for_message_n(&self, message: &str, n: usize) {
-        let f = |msg: &RawMessage| match msg {
+    pub fn wait_until_workspace_is_loaded(&self) {
+        self.wait_for_message_cond(1, &|msg: &RawMessage| match msg {
             RawMessage::Notification(n) if n.method == ShowMessage::METHOD => {
                 let msg = n.clone().cast::<req::ShowMessage>().unwrap();
-                msg.message == message
+                msg.message.starts_with("workspace loaded")
             }
             _ => false,
-        };
+        })
+    }
+    fn wait_for_message_cond(&self, n: usize, cond: &dyn Fn(&RawMessage) -> bool) {
         let mut total = 0;
         for msg in self.messages.borrow().iter() {
-            if f(msg) {
+            if cond(msg) {
                 total += 1
             }
         }
         while total < n {
             let msg = self.recv().expect("no response");
-            if f(&msg) {
+            if cond(&msg) {
                 total += 1;
             }
         }
