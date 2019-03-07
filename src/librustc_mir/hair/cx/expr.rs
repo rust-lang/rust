@@ -591,7 +591,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope {
-                        id: cx.tcx.hir().node_to_hir_id(target_id).local_id,
+                        id: target_id.local_id,
                         data: region::ScopeData::Node
                     },
                     value: value.to_ref(),
@@ -603,7 +603,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope {
-                        id: cx.tcx.hir().node_to_hir_id(loop_id).local_id,
+                        id: loop_id.local_id,
                         data: region::ScopeData::Node
                     },
                 },

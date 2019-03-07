@@ -1618,7 +1618,7 @@ pub struct Destination {
 
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
-    pub target_id: Result<NodeId, LoopIdError>,
+    pub target_id: Result<HirId, LoopIdError>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

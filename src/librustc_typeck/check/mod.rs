@@ -4262,7 +4262,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
-                    let target_id = tcx.hir().node_to_hir_id(target_id);
                     let (e_ty, cause);
                     if let Some(ref e) = *expr_opt {
                         // If this is a break with a value, we need to type-check

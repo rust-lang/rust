@@ -1064,18 +1064,22 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprKind::Break(ref destination, ref opt_expr) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
+                /*
                 if let Ok(node_id) = destination.target_id {
                     visitor.visit_def_mention(Def::Label(node_id))
                 }
+                */
             }
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprKind::Continue(ref destination) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
+                /*
                 if let Ok(node_id) = destination.target_id {
                     visitor.visit_def_mention(Def::Label(node_id))
                 }
+                */
             }
         }
         ExprKind::Ret(ref optional_expression) => {

@@ -1068,7 +1068,7 @@ impl<'a> LoweringContext<'a> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    Ok(self.lower_node_id(loop_id).node_id)
+                    Ok(self.lower_node_id(loop_id).hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
@@ -1077,7 +1077,7 @@ impl<'a> LoweringContext<'a> {
                 self.loop_scopes
                     .last()
                     .cloned()
-                    .map(|id| Ok(self.lower_node_id(id).node_id))
+                    .map(|id| Ok(self.lower_node_id(id).hir_id))
                     .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
                     .into()
             }
@@ -4564,12 +4564,13 @@ impl<'a> LoweringContext<'a> {
                     let thin_attrs = ThinVec::from(attrs);
                     let catch_scope = self.catch_scopes.last().map(|x| *x);
                     let ret_expr = if let Some(catch_node) = catch_scope {
+                        let target_id = Ok(self.lower_node_id(catch_node).hir_id);
                         P(self.expr(
                             e.span,
                             hir::ExprKind::Break(
                                 hir::Destination {
                                     label: None,
-                                    target_id: Ok(catch_node),
+                                    target_id,
                                 },
                                 Some(from_err_expr),
                             ),

@@ -571,9 +571,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match destination.target_id {
             Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
-                    if b.block_expr_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
+                    if b.block_expr_id == loop_id.local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
+                            id: loop_id.local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {
@@ -583,9 +583,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     }
                 }
                 for l in &self.loop_scopes {
-                    if l.loop_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
+                    if l.loop_id == loop_id.local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
+                            id: loop_id.local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {
