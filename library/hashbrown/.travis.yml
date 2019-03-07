@@ -3,6 +3,15 @@ sudo: false
 
 matrix:
   include:
+    - name: "miri"
+      rust: nightly
+      install:
+        - rustup component add rust-src
+        - cargo +nightly install --force --git https://github.com/rust-lang/miri miri
+        - cargo install xargo
+      script:
+        - cargo clean
+        - cargo +nightly miri test
     - rust: 1.29.0
     - rust: stable
     - rust: beta

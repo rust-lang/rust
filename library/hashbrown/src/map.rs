@@ -2513,10 +2513,11 @@ mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
     use super::HashMap;
-    use rand::{thread_rng, Rng};
+    use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
     use std::usize;
     use std::vec::Vec;
+    #[cfg(not(miri))]
     use CollectionAllocErr::*;
 
     #[test]
@@ -2770,6 +2771,7 @@ mod test_map {
     }
 
     #[test]
+    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/654
     fn test_lots_of_insertions() {
         let mut m = HashMap::new();
 
@@ -3191,6 +3193,7 @@ mod test_map {
 
     #[test]
     #[should_panic]
+    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/636
     fn test_index_nonexistent() {
         let mut map = HashMap::new();
 
@@ -3262,7 +3265,12 @@ mod test_map {
         }
 
         let mut m = HashMap::new();
-        let mut rng = thread_rng();
+
+        // FIXME: https://github.com/rust-lang/miri/issues/653
+        let mut rng = {
+            let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+            SmallRng::from_seed(seed)
+        };
 
         // Populate the map with some items.
         for _ in 0..50 {
@@ -3372,6 +3380,7 @@ mod test_map {
     }
 
     #[test]
+    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/655
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 

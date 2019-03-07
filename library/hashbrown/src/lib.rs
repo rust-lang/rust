@@ -43,6 +43,9 @@ extern crate serde;
 #[cfg_attr(test, macro_use)]
 extern crate std as alloc;
 
+#[macro_use]
+mod macros;
+
 mod external_trait_impls;
 mod fx;
 mod map;
