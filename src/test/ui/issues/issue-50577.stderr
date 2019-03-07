@@ -2,7 +2,10 @@ error[E0317]: if may be missing an else clause
   --> $DIR/issue-50577.rs:3:16
    |
 LL |         Drop = assert_eq!(1, 1)
-   |                ^^^^^^^^^^^^^^^^ expected (), found isize
+   |                ^^^^^^^^^^^^^^^^
+   |                |
+   |                expected (), found isize
+   |                found here
    |
    = note: expected type `()`
               found type `isize`

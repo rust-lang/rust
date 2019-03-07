@@ -3480,6 +3480,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             coerce.coerce_forced_unit(self, &else_cause, &mut |err| {
                 if let Some((sp, msg)) = &ret_reason {
                     err.span_label(*sp, msg.as_str());
+                } else if let ExprKind::Block(block, _) = &then_expr.node {
+                    if let Some(expr) = &block.expr {
+                        err.span_label(expr.span, "found here".to_string());
+                    }
                 }
                 err.note("`if` expressions without `else` evaluate to `()`");
                 err.help("consider adding an `else` block that evaluates to the expected type");
@@ -3498,11 +3502,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
-        if let Node::Block(block) = self.tcx.hir().get_by_hir_id(
-            self.tcx.hir().get_parent_node_by_hir_id(
-                self.tcx.hir().get_parent_node_by_hir_id(hir_id),
-            ),
-        ) {
+        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(
+            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+        ));
+        if let Node::Block(block) = node {
             // check that the body's parent is an fn
             let parent = self.tcx.hir().get_by_hir_id(
                 self.tcx.hir().get_parent_node_by_hir_id(
@@ -3520,6 +3523,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ));
                 }
             }
+        }
+        if let Node::Local(hir::Local {
+            ty: Some(_), pat, ..
+        }) = node {
+            return Some((pat.span, "expected because of this assignment".to_string()));
         }
         None
     }

@@ -8,6 +8,7 @@ LL | | //~| expected type `()`
 LL | | //~| found type `{integer}`
 LL | | //~| expected (), found integer
 LL | |         1
+   | |         - found here
 LL | |     };
    | |_____^ expected (), found integer
    |
