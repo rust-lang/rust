@@ -657,8 +657,7 @@ impl Handler {
             1 => "aborting due to previous error".to_string(),
             _ => format!("aborting due to {} previous errors", self.err_count())
         };
-        let err_as_bug = self.flags.treat_err_as_bug.unwrap_or(0);
-        if self.err_count() >= err_as_bug {
+        if self.treat_err_as_bug() {
             return;
         }
 
