@@ -639,7 +639,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Local(ref {}) = {};", local_pat, current);
                 if let Some(ref init) = local.init {
                     let init_pat = self.next("init");
-                    println!("    if let Some(ref {}) = {}.init", init_pat, local_pat);
+                    println!("    if let Some(ref {}) = {}.init;", init_pat, local_pat);
                     self.current = init_pat;
                     self.visit_expr(init);
                 }
