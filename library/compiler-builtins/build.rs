@@ -49,10 +49,11 @@ fn main() {
         println!("cargo:rustc-cfg=thumb")
     }
 
-    // compiler-rt `cfg`s away some intrinsics for thumbv6m because that target doesn't have full
-    // THUMBv2 support. We have to cfg our code accordingly.
-    if llvm_target[0] == "thumbv6m" {
-        println!("cargo:rustc-cfg=thumbv6m")
+    // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
+    // these targets do not have full Thumb-2 support but only original Thumb-1.
+    // We have to cfg our code accordingly.
+    if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
+        println!("cargo:rustc-cfg=thumb_1")
     }
 
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures.
@@ -407,7 +408,7 @@ mod c {
         }
 
         // Remove the assembly implementations that won't compile for the target
-        if llvm_target[0] == "thumbv6m" {
+        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
             sources.remove(
                 &[
                     "clzdi2",
