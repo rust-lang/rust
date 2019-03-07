@@ -557,4 +557,62 @@ mod tests {
         assert_eq!(trim_markup_opt(hover.info.first()), Some("const C: u32"));
         assert_eq!(hover.info.is_exact(), true);
     }
+
+    #[test]
+    fn test_hover_self() {
+        let (analysis, position) = single_file_with_position(
+            "
+            struct Thing { x: u32 };
+            impl Thing {
+                fn new() -> Self {
+                    Self<|> { x: 0 }
+                }
+            }
+        ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("struct Thing"));
+        assert_eq!(hover.info.is_exact(), true);
+
+        let (analysis, position) = single_file_with_position(
+            "
+            struct Thing { x: u32 };
+            impl Thing {
+                fn new() -> Self<|> {
+                    Self { x: 0 }
+                }
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("struct Thing"));
+        assert_eq!(hover.info.is_exact(), true);
+
+        let (analysis, position) = single_file_with_position(
+            "
+            enum Thing { A };
+            impl Thing {
+                pub fn new() -> Self<|> {
+                    Thing::A
+                }
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
+        assert_eq!(hover.info.is_exact(), true);
+
+        let (analysis, position) = single_file_with_position(
+            "
+            enum Thing { A };
+            impl Thing {
+                pub fn thing(a: Self<|>) {
+                }
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
 }

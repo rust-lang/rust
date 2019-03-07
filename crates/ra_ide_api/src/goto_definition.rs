@@ -121,8 +121,12 @@ pub(crate) fn reference_definition(
             Some(Resolution::GenericParam(..)) => {
                 // TODO: go to the generic param def
             }
-            Some(Resolution::SelfType(_impl_block)) => {
-                // TODO: go to the implemented type
+            Some(Resolution::SelfType(impl_block)) => {
+                let ty = impl_block.target_ty(db);
+
+                if let hir::Ty::Adt { def_id, .. } = ty {
+                    return Exact(NavigationTarget::from_adt_def(db, def_id));
+                }
             }
             None => {
                 // If we failed to resolve then check associated items
@@ -335,6 +339,94 @@ mod tests {
             }
             ",
             "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+        );
+    }
+    #[test]
+    fn goto_definition_on_self() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            impl Foo {
+                pub fn new() -> Self {
+                    Self<|> {}
+                }
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            impl Foo {
+                pub fn new() -> Self<|> {
+                    Self {}
+                }
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo { A }
+            impl Foo {
+                pub fn new() -> Self<|> {
+                    Foo::A
+                }
+            }
+            ",
+            "Foo ENUM_DEF FileId(1) [0; 14) [5; 8)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo { A }
+            impl Foo {
+                pub fn thing(a: &Self<|>) {
+                }
+            }
+            ",
+            "Foo ENUM_DEF FileId(1) [0; 14) [5; 8)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_on_self_in_trait_impl() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            trait Make {
+                fn new() -> Self;
+            }
+            impl Make for Foo {
+                fn new() -> Self {
+                    Self<|> {}
+                }
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            trait Make {
+                fn new() -> Self;
+            }
+            impl Make for Foo {
+                fn new() -> Self<|> {
+                    Self{}
+                }
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
         );
     }
 
