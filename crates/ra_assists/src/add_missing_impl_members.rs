@@ -4,7 +4,7 @@ use crate::{Assist, AssistId, AssistCtx};
 
 use hir::Resolver;
 use hir::db::HirDatabase;
-use ra_syntax::{SmolStr, SyntaxKind, SyntaxNode, TextUnit, TreeArc};
+use ra_syntax::{SmolStr, SyntaxKind, TextRange, TextUnit, TreeArc};
 use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;
 use ra_fmt::{leading_indent, reindent};
@@ -42,17 +42,13 @@ pub(crate) fn build_func_body(def: &ast::FnDef) -> String {
 }
 
 pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    use SyntaxKind::{IMPL_BLOCK, ITEM_LIST, WHITESPACE};
-
     let node = ctx.covering_node();
-    let kinds = node.ancestors().take(3).map(SyntaxNode::kind);
-    // Only suggest this in `impl Foo for S { [Item...] <|> }` cursor position
-    if !Iterator::eq(kinds, [WHITESPACE, ITEM_LIST, IMPL_BLOCK].iter().cloned()) {
-        return None;
-    }
-
     let impl_node = node.ancestors().find_map(ast::ImplBlock::cast)?;
     let impl_item_list = impl_node.item_list()?;
+    // Don't offer the assist when cursor is at the end, outside the block itself.
+    if node.range().end() == impl_node.syntax().range().end() {
+        return None;
+    }
 
     let trait_def = {
         let db = ctx.db;
@@ -82,13 +78,9 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         .cloned()
         .filter(|t| def_name(t).map(|n| missing_fn_names.contains(&n)).unwrap_or(false))
         .collect();
-
     if missing_fns.is_empty() {
         return None;
     }
-
-    let last_whitespace_node =
-        impl_item_list.syntax().children().filter_map(ast::Whitespace::cast).last()?.syntax();
 
     ctx.add_action(AssistId("add_impl_missing_members"), "add missing impl members", |edit| {
         let indent = {
@@ -109,7 +101,16 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         let func_bodies = String::from("\n") + &func_bodies;
         let func_bodies = reindent(&func_bodies, &indent) + "\n";
 
-        let changed_range = last_whitespace_node.range();
+        let changed_range = {
+            let last_whitespace = impl_item_list.syntax().children();
+            let last_whitespace = last_whitespace.filter_map(ast::Whitespace::cast).last();
+            let last_whitespace = last_whitespace.map(|w| w.syntax());
+
+            let cursor_range = TextRange::from_to(node.range().end(), node.range().end());
+
+            last_whitespace.map(|x| x.range()).unwrap_or(cursor_range)
+        };
+
         let replaced_text_range = TextUnit::of_str(&func_bodies);
 
         edit.replace(changed_range, func_bodies);
@@ -122,7 +123,7 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{ check_assist };
+    use crate::helpers::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn test_add_missing_impl_members() {
@@ -156,5 +157,33 @@ impl Foo for S {
     fn baz(&self) { unimplemented!() }<|>
 }",
         );
+    }
+
+    #[test]
+    fn test_empty_impl_block() {
+        check_assist(
+            add_missing_impl_members,
+            "
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S {<|>}",
+            "
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S {
+    fn foo(&self) { unimplemented!() }<|>
+}",
+        );
+    }
+
+    #[test]
+    fn test_cursor_after_empty_impl_block() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            "
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S {}<|>",
+        )
     }
 }
