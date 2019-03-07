@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
         };
 
         match expr.node {
-            hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
+            hir::ExprKind::Match(ref res, _, _) if is_try(cx, expr).is_some() => {
                 if let hir::ExprKind::Call(ref func, ref args) = res.node {
                     if let hir::ExprKind::Path(ref path) = func.node {
                         if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {

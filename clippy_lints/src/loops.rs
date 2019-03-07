@@ -486,8 +486,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for never_loop
         match expr.node {
             ExprKind::While(_, ref block, _) | ExprKind::Loop(ref block, _, _) => {
-                let node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
-                match never_loop_block(block, node_id) {
+                match never_loop_block(block, expr.hir_id) {
                     NeverLoopResult::AlwaysBreak => {
                         span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
                     },
@@ -664,7 +663,7 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
     }
 }
 
-fn never_loop_block(block: &Block, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_block(block: &Block, main_loop_id: HirId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
     let expr = once(block.expr.as_ref().map(|p| &**p));
     let mut iter = stmts.chain(expr).filter_map(|e| e);
@@ -679,7 +678,7 @@ fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
     }
 }
 
-fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
     match expr.node {
         ExprKind::Box(ref e)
         | ExprKind::Unary(_, ref e)
@@ -753,17 +752,17 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
     }
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_both)
 }
 
-fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     e.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
@@ -784,14 +783,14 @@ fn check_for_loop<'a, 'tcx>(
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
-fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {
+fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> bool {
     if_chain! {
         if let ExprKind::Path(ref qpath) = expr.node;
         if let QPath::Resolved(None, ref path) = *qpath;
         if path.segments.len() == 1;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id);
         // our variable!
-        if local_id == var;
+        if cx.tcx.hir().node_to_hir_id(local_id) == var;
         then {
             return true;
         }
@@ -833,8 +832,8 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
-fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> Option<FixedOffsetVar> {
-    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: ast::NodeId) -> Option<String> {
+fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> Option<FixedOffsetVar> {
+    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: HirId) -> Option<String> {
         match e.node {
             ExprKind::Lit(ref l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
@@ -889,7 +888,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &Expr,
-    var: ast::NodeId,
+    var: HirId,
 ) -> Option<FixedOffsetVar> {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
@@ -907,12 +906,12 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
 fn get_indexed_assignments<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr,
-    var: ast::NodeId,
+    var: HirId,
 ) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
     fn get_assignment<'a, 'tcx>(
         cx: &LateContext<'a, 'tcx>,
         e: &Expr,
-        var: ast::NodeId,
+        var: HirId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
         if let ExprKind::Assign(ref lhs, ref rhs) = e.node {
             match (
@@ -970,7 +969,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, _, _, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
@@ -1087,7 +1086,7 @@ fn check_for_loop_range<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, _, ident, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx,
                 var: canonical_id,
@@ -1711,7 +1710,7 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
 
 struct LocalUsedVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    local: ast::NodeId,
+    local: HirId,
     used: bool,
 }
 
@@ -1733,7 +1732,7 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// context reference
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
-    var: ast::NodeId,
+    var: HirId,
     /// indexed variables that are used mutably
     indexed_mut: FxHashSet<Name>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
@@ -1841,7 +1840,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             then {
                 match self.cx.tables.qpath_def(qpath, expr.hir_id) {
                     Def::Upvar(local_id, ..) => {
-                        if local_id == self.var {
+                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
                             // we are not indexing anything, record that
                             self.nonindex = true;
                         }
@@ -1849,7 +1848,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     Def::Local(local_id) =>
                     {
 
-                        if local_id == self.var {
+                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
                             self.nonindex = true;
                         } else {
                             // not the correct variable, but still a variable

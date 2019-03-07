@@ -8,7 +8,6 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -278,8 +277,8 @@ impl<'a, 'tcx> Functions {
     }
 }
 
-fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<ast::NodeId> {
-    if let (&hir::PatKind::Binding(_, id, _, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.node, &ty.node) {
+fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<hir::HirId> {
+    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.node, &ty.node) {
         Some(id)
     } else {
         None
@@ -288,7 +287,7 @@ fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<ast::NodeId> {
 
 struct DerefVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ptrs: FxHashSet<ast::NodeId>,
+    ptrs: FxHashSet<hir::HirId>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
 
@@ -329,7 +328,7 @@ impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprKind::Path(ref qpath) = ptr.node {
             if let Def::Local(id) = self.cx.tables.qpath_def(qpath, ptr.hir_id) {
-                if self.ptrs.contains(&id) {
+                if self.ptrs.contains(&self.cx.tcx.hir().node_to_hir_id(id)) {
                     span_lint(
                         self.cx,
                         NOT_UNSAFE_PTR_ARG_DEREF,

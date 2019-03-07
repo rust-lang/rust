@@ -829,15 +829,15 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<I
 
 /// Check if a given expression is a match expression
 /// expanded from `?` operator or `try` macro.
-pub fn is_try(expr: &Expr) -> Option<&Expr> {
-    fn is_ok(arm: &Arm) -> bool {
+pub fn is_try<'a>(cx: &'_ LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
+    fn is_ok(cx: &'_ LateContext<'_, '_>, arm: &Arm) -> bool {
         if_chain! {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node;
             if match_qpath(path, &paths::RESULT_OK[1..]);
-            if let PatKind::Binding(_, defid, _, _, None) = pat[0].node;
+            if let PatKind::Binding(_, hir_id, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
             if let Def::Local(lid) = path.def;
-            if lid == defid;
+            if cx.tcx.hir().node_to_hir_id(lid) == hir_id;
             then {
                 return true;
             }
@@ -863,8 +863,8 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
             if arms.len() == 2;
             if arms[0].pats.len() == 1 && arms[0].guard.is_none();
             if arms[1].pats.len() == 1 && arms[1].guard.is_none();
-            if (is_ok(&arms[0]) && is_err(&arms[1])) ||
-                (is_ok(&arms[1]) && is_err(&arms[0]));
+            if (is_ok(cx, &arms[0]) && is_err(&arms[1])) ||
+                (is_ok(cx, &arms[1]) && is_err(&arms[0]));
             then {
                 return Some(expr);
             }
