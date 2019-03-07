@@ -44,3 +44,6 @@ pub use self::cmpxchg16b::*;
 
 mod adx;
 pub use self::adx::*;
+
+mod bt;
+pub use self::bt::*;

@@ -246,6 +246,15 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         // the `x` inside the name which requires adx
         "_addcarry_u32" | "_addcarry_u64" | "_subborrow_u32" | "_subborrow_u64" => {}
 
+        "_bittest"
+        | "_bittestandset"
+        | "_bittestandreset"
+        | "_bittestandcomplement"
+        | "_bittest64"
+        | "_bittestandset64"
+        | "_bittestandreset64"
+        | "_bittestandcomplement64" => {}
+
         _ => {
             if intel.cpuid.is_empty() {
                 bail!("missing cpuid for {}", rust.name);
@@ -423,6 +432,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::Ptr(&Type::PrimFloat(32)), "float*") => {}
         (&Type::Ptr(&Type::PrimFloat(64)), "double*") => {}
         (&Type::Ptr(&Type::PrimSigned(32)), "int*") => {}
+        (&Type::Ptr(&Type::PrimSigned(32)), "__int32*") => {}
         (&Type::Ptr(&Type::PrimSigned(64)), "__int64*") => {}
         (&Type::Ptr(&Type::PrimSigned(8)), "char*") => {}
         (&Type::Ptr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
