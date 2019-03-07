@@ -263,20 +263,25 @@ fn main() {}
 #[test]
 fn test_missing_module_code_action_in_json_project() {
     let tmp_dir = TempDir::new().unwrap();
+
+    let path = tmp_dir.path();
+
+    let project = json!({
+        "roots": [path],
+        "crates": [ { "root_module": path.join("src/lib.rs"), "deps": [], "edition": "2015" } ]
+    });
+
     let code = format!(
         r#"
 //- rust-project.json
-{{ 
-    "roots": [ "{PATH}" ], 
-    "crates": [ {{ "root_module": "{PATH}/src/lib.rs", "deps": [], "edition": "2015" }} ] 
-}}
+{PROJECT}
 
 //- src/lib.rs
 mod bar;
 
-fn main() {}
+fn main() {{}}
 "#,
-        PATH = tmp_dir.path().display()
+        PROJECT = project.to_string(),
     );
     let server = project_with_tmpdir(tmp_dir, &code);
     server.wait_until_workspace_is_loaded();
