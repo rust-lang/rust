@@ -756,16 +756,20 @@ if (!DOMTokenList.prototype.remove) {
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
                     var ret = obj.type[OUTPUT_DATA];
-                    //if (obj.name === "xo") {
-                    //    debugger;
-                    //}
                     if (!obj.type[OUTPUT_DATA].length) {
                         ret = [ret];
                     }
                     for (var x = 0; x < ret.length; ++x) {
-                        var tmp = checkType(ret[x], val, literalSearch);
-                        if (literalSearch === true && tmp === true) {
-                            return true;
+                        var r = ret[x];
+                        if (typeof r === "string") {
+                            r = [r];
+                        }
+                        var tmp = checkType(r, val, literalSearch);
+                        if (literalSearch === true) {
+                            if (tmp === true) {
+                                return true;
+                            }
+                            continue;
                         }
                         lev_distance = Math.min(tmp, lev_distance);
                         if (lev_distance === 0) {

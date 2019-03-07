@@ -1761,7 +1761,7 @@ fn get_real_types(
     cx: &DocContext<'_>,
 ) -> FxHashSet<Type> {
     let arg_s = arg.to_string();
-    let mut res = Vec::new();
+    let mut res = FxHashSet::default();
     if arg.is_full_generic() {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
             match g {
@@ -1778,11 +1778,11 @@ fn get_real_types(
                                 continue
                             }
                             if let Some(ty) = x.get_type(cx) {
-                                let mut adds = get_real_types(generics, &ty, cx);
+                                let adds = get_real_types(generics, &ty, cx);
                                 if !adds.is_empty() {
                                     res.extend(adds);
                                 } else if !ty.is_full_generic() {
-                                    res.push(ty);
+                                    res.insert(ty);
                                 }
                             }
                         }
@@ -1796,26 +1796,26 @@ fn get_real_types(
         }) {
             for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
                 if let Some(ty) = bound.get_trait_type() {
-                    let mut adds = get_real_types(generics, &ty, cx);
+                    let adds = get_real_types(generics, &ty, cx);
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        res.push(ty.clone());
+                        res.insert(ty.clone());
                     }
                 }
             }
         }
     } else {
-        res.push(arg.clone());
+        res.insert(arg.clone());
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
-                    let mut adds = get_real_types(generics, gen, cx);
+                    let adds = get_real_types(generics, gen, cx);
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
                 } else {
-                    res.push(gen.clone());
+                    res.insert(gen.clone());
                 }
             }
         }
@@ -1832,36 +1832,30 @@ pub fn get_all_types(
     decl: &FnDecl,
     cx: &DocContext<'_>,
 ) -> (Vec<Type>, Vec<Type>) {
-    let mut all_types = Vec::new();
+    let mut all_types = FxHashSet::default();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
             continue;
         }
-        let mut args = get_real_types(generics, &arg.type_, cx);
+        let args = get_real_types(generics, &arg.type_, cx);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            all_types.push(arg.type_.clone());
+            all_types.insert(arg.type_.clone());
         }
     }
-    // FIXME: use a HashSet instead?
-    all_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).unwrap());
-    all_types.dedup();
 
-    let mut ret_types = match decl.output {
+    let ret_types = match decl.output {
         FunctionRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx);
             if ret.is_empty() {
-                ret.push(return_type.clone());
+                ret.insert(return_type.clone());
             }
-            ret
+            ret.into_iter().collect()
         }
         _ => Vec::new(),
     };
-    // FIXME: use a HashSet instead?
-    ret_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).unwrap());
-    ret_types.dedup();
-    (all_types, ret_types)
+    (all_types.into_iter().collect(), ret_types)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
