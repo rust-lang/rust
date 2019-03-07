@@ -534,4 +534,27 @@ mod tests {
         assert_eq!(trim_markup_opt(hover.info.first()), Some("fn new() -> Thing"));
         assert_eq!(hover.info.is_exact(), true);
     }
+
+    #[test]
+    fn test_hover_infer_associated_const_in_pattern() {
+        let (analysis, position) = single_file_with_position(
+            "
+            struct X;
+            impl X {
+                const C: u32 = 1;
+            }
+
+            fn main() {
+                match 1 {
+                    X::C<|> => {},
+                    2 => {},
+                    _ => {}
+                };
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("const C: u32"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
 }

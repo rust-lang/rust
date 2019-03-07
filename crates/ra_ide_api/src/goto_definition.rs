@@ -100,6 +100,7 @@ pub(crate) fn reference_definition(
             }
         }
     }
+
     // Try name resolution
     let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
     if let Some(path) =
@@ -126,17 +127,35 @@ pub(crate) fn reference_definition(
             None => {
                 // If we failed to resolve then check associated items
                 if let Some(function) = function {
-                    // Should we do this above and then grab path from the PathExpr?
+                    // Resolve associated item for path expressions
                     if let Some(path_expr) =
                         name_ref.syntax().ancestors().find_map(ast::PathExpr::cast)
                     {
                         let infer_result = function.infer(db);
                         let source_map = function.body_source_map(db);
-                        let expr = ast::Expr::cast(path_expr.syntax()).unwrap();
+
+                        if let Some(expr) = ast::Expr::cast(path_expr.syntax()) {
+                            if let Some(res) = source_map
+                                .node_expr(expr)
+                                .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
+                            {
+                                return Exact(NavigationTarget::from_impl_item(db, res));
+                            }
+                        }
+                    }
+
+                    // Resolve associated item for path patterns
+                    if let Some(path_pat) =
+                        name_ref.syntax().ancestors().find_map(ast::PathPat::cast)
+                    {
+                        let infer_result = function.infer(db);
+                        let source_map = function.body_source_map(db);
+
+                        let pat: &ast::Pat = path_pat.into();
 
                         if let Some(res) = source_map
-                            .node_expr(expr)
-                            .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
+                            .node_pat(pat)
+                            .and_then(|it| infer_result.assoc_resolutions_for_pat(it.into()))
                         {
                             return Exact(NavigationTarget::from_impl_item(db, res));
                         }
