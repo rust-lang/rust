@@ -152,7 +152,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
 
 pub fn check_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let trait_item = tcx.hir().expect_trait_item_by_hir_id(hir_id);
+    let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.node {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
@@ -163,7 +163,7 @@ pub fn check_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
 pub fn check_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let impl_item = tcx.hir().expect_impl_item_by_hir_id(hir_id);
+    let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.node {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),

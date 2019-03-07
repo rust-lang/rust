@@ -780,7 +780,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
 
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let ast_item = tcx.hir().expect_trait_item_by_hir_id(hir_id);
+        let ast_item = tcx.hir().expect_trait_item(hir_id);
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
@@ -890,7 +890,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
 
         let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
-        let ast_item = self.tcx.hir().expect_impl_item_by_hir_id(hir_id);
+        let ast_item = self.tcx.hir().expect_impl_item(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {

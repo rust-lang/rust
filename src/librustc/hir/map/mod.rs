@@ -618,11 +618,11 @@ impl<'hir> Map<'hir> {
         }
 
         for id in &module.trait_items {
-            visitor.visit_trait_item(self.expect_trait_item_by_hir_id(id.hir_id));
+            visitor.visit_trait_item(self.expect_trait_item(id.hir_id));
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item_by_hir_id(id.hir_id));
+            visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
         }
     }
 
@@ -929,66 +929,52 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn expect_item_by_hir_id(&self, id: HirId) -> &'hir Item {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_item(node_id)
-    }
-
-    pub fn expect_impl_item(&self, id: NodeId) -> &'hir ImplItem {
-        match self.find(id) {
-            Some(Node::ImplItem(item)) => item,
-            _ => bug!("expected impl item, found {}", self.node_to_string(id))
+        match self.find_by_hir_id(id) { // read recorded by `find`
+            Some(Node::Item(item)) => item,
+            _ => bug!("expected item, found {}", self.hir_to_string(id))
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn expect_impl_item_by_hir_id(&self, id: HirId) -> &'hir ImplItem {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_impl_item(node_id)
+    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
+        match self.find_by_hir_id(id) {
+            Some(Node::ImplItem(item)) => item,
+            _ => bug!("expected impl item, found {}", self.hir_to_string(id))
+        }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn expect_trait_item_by_hir_id(&self, id: HirId) -> &'hir TraitItem {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_trait_item(node_id)
-    }
-
-    pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
-        match self.find(id) {
+    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
+        match self.find_by_hir_id(id) {
             Some(Node::TraitItem(item)) => item,
-            _ => bug!("expected trait item, found {}", self.node_to_string(id))
+            _ => bug!("expected trait item, found {}", self.hir_to_string(id))
         }
     }
 
     pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
-        match self.find(id) {
+        match self.find_by_hir_id(id) {
             Some(Node::Item(i)) => {
                 match i.node {
                     ItemKind::Struct(ref struct_def, _) |
                     ItemKind::Union(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
+                    _ => bug!("struct ID bound to non-struct {}", self.hir_to_string(id))
                 }
             }
             Some(Node::StructCtor(data)) => data,
             Some(Node::Variant(variant)) => &variant.node.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id))
+            _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
         }
     }
 
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
-        match self.find(id) {
+        match self.find_by_hir_id(id) {
             Some(Node::Variant(variant)) => variant,
-            _ => bug!("expected variant, found {}", self.node_to_string(id)),
+            _ => bug!("expected variant, found {}", self.hir_to_string(id)),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> &'hir ForeignItem {
-        match self.find(id) {
+    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
+        match self.find_by_hir_id(id) {
             Some(Node::ForeignItem(item)) => item,
-            _ => bug!("expected foreign item, found {}", self.node_to_string(id))
+            _ => bug!("expected foreign item, found {}", self.hir_to_string(id))
         }
     }
 
