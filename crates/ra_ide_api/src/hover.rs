@@ -227,7 +227,7 @@ impl NavigationTarget {
             let mut string =
                 node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
             string.push_str(label);
-            node.name()?.syntax().text().push_to(&mut string);
+            string.push_str(node.name()?.text().as_str());
             Some(string)
         }
 
@@ -241,7 +241,7 @@ impl NavigationTarget {
             .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
             .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
             .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
-            .visit(|node: &ast::EnumVariant| Some(node.name()?.syntax().text().to_string()))
+            .visit(|node: &ast::EnumVariant| Some(node.name()?.text().to_string()))
             .accept(&node)?
     }
 }
