@@ -3474,37 +3474,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             // If this `if` expr is the parent's function return expr, the cause of the type
             // coercion is the return type, point at it. (#25228)
-            let mut ret_reason = None;
-            if let Node::Block(block) = self.tcx.hir().get_by_hir_id(
-                self.tcx.hir().get_parent_node_by_hir_id(
-                    self.tcx.hir().get_parent_node_by_hir_id(then_expr.hir_id),
-                ),
-            ) {
-                // check that the body's parent is an fn
-                let parent = self.tcx.hir().get_by_hir_id(
-                    self.tcx.hir().get_parent_node_by_hir_id(
-                        self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
-                    ),
-                );
-                if let (Some(expr), Node::Item(hir::Item {
-                    node: hir::ItemKind::Fn(..), ..
-                })) = (&block.expr, parent) {
-                    // check that the `if` expr without `else` is the fn body's expr
-                    if expr.span == sp {
-                        ret_reason = self.get_fn_decl(then_expr.hir_id).map(|(fn_decl, _)| (
-                            fn_decl.output.span(),
-                            format!("found `{}` because of this return type", fn_decl.output),
-                        ));
-                    }
-                }
-            }
+            let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, sp);
+
             let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
             coerce.coerce_forced_unit(self, &else_cause, &mut |err| {
                 if let Some((sp, msg)) = &ret_reason {
                     err.span_label(*sp, msg.as_str());
                 }
-                err.note("`if` expressions without `else` must evaluate to `()`");
-            }, true);
+                err.note("`if` expressions without `else` evaluate to `()`");
+                err.help("consider adding an `else` block that evaluates to the expected type");
+            }, ret_reason.is_none());
 
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
@@ -3516,6 +3495,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             result_ty
         }
+    }
+
+    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
+        if let Node::Block(block) = self.tcx.hir().get_by_hir_id(
+            self.tcx.hir().get_parent_node_by_hir_id(
+                self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+            ),
+        ) {
+            // check that the body's parent is an fn
+            let parent = self.tcx.hir().get_by_hir_id(
+                self.tcx.hir().get_parent_node_by_hir_id(
+                    self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
+                ),
+            );
+            if let (Some(expr), Node::Item(hir::Item {
+                node: hir::ItemKind::Fn(..), ..
+            })) = (&block.expr, parent) {
+                // check that the `if` expr without `else` is the fn body's expr
+                if expr.span == sp {
+                    return self.get_fn_decl(hir_id).map(|(fn_decl, _)| (
+                        fn_decl.output.span(),
+                        format!("expected `{}` because of this return type", fn_decl.output),
+                    ));
+                }
+            }
+        }
+        None
     }
 
     // Check field access expressions
