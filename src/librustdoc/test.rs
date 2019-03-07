@@ -272,7 +272,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                                                         false);
 
         // Compile the code
-        let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
+        let diagnostic_handler = errors::Handler::with_emitter(true, None, box emitter);
 
         let mut sess = session::build_session_(
             sessopts, None, diagnostic_handler, source_map, Default::default(),
@@ -424,7 +424,7 @@ pub fn make_test(s: &str,
         // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = EmitterWriter::new(box io::sink(), None, false, false);
-        let handler = Handler::with_emitter(false, false, box emitter);
+        let handler = Handler::with_emitter(false, None, box emitter);
         let sess = ParseSess::with_span_handler(handler, cm);
 
         let mut found_main = false;
