@@ -517,7 +517,19 @@ impl Handler {
 
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
-            panic!("encountered error with `-Z treat_err_as_bug");
+            let s = match (self.err_count(), self.flags.treat_err_as_bug.unwrap_or(0)) {
+                (0, _) => return,
+                (1, 1) => "aborting due to `-Z treat-err-as-bug=1`".to_string(),
+                (1, _) => return,
+                (count, as_bug) => {
+                    format!(
+                        "aborting after {} errors due to `-Z treat-err-as-bug={}`",
+                        count,
+                        as_bug,
+                    )
+                }
+            };
+            panic!(s);
         }
     }
 
@@ -645,14 +657,12 @@ impl Handler {
             1 => "aborting due to previous error".to_string(),
             _ => format!("aborting due to {} previous errors", self.err_count())
         };
+        let err_as_bug = self.flags.treat_err_as_bug.unwrap_or(0);
+        if self.err_count() >= err_as_bug {
+            return;
+        }
 
-        let _ = if self.treat_err_as_bug() {
-            self.fatal(&s)
-        } else {
-            // only emit one backtrace when using `-Z treat-err-as-bug=X`
-            DiagnosticBuilder::new(self, Fatal, &s).emit();
-            FatalError
-        };
+        let _ = self.fatal(&s);
 
         let can_show_explain = self.emitter.borrow().should_show_explain();
         let are_there_diagnostics = !self.emitted_diagnostic_codes.borrow().is_empty();

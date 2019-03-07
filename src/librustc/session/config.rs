@@ -816,6 +816,8 @@ macro_rules! options {
             Some("crate=integer");
         pub const parse_unpretty: Option<&str> =
             Some("`string` or `string=string`");
+        pub const parse_treat_err_as_bug: Option<&str> =
+            Some("either no value or a number bigger than 0");
         pub const parse_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
                   `fat`, or omitted");
@@ -1019,6 +1021,13 @@ macro_rules! options {
                     true
                 }
                 _ => false,
+            }
+        }
+
+        fn parse_treat_err_as_bug(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = s.parse().ok().filter(|&x| x != 0); slot.unwrap_or(0) != 0 }
+                None => { *slot = Some(1); true }
             }
         }
 
@@ -1234,7 +1243,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "parse only; do not compile, assemble, or link"),
     no_codegen: bool = (false, parse_bool, [TRACKED],
         "run all passes except codegen; no output"),
-    treat_err_as_bug: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat all errors that occur as bugs"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug`"),
@@ -3212,7 +3221,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.treat_err_as_bug = Some(0);
+        opts.debugging_opts.treat_err_as_bug = Some(1);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

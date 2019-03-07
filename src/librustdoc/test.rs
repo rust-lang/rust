@@ -67,7 +67,7 @@ pub fn run(mut options: Options) -> isize {
         let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let handler =
             errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                            true, false,
+                                            true, None,
                                             Some(source_map.clone()));
 
         let mut sess = session::build_session_(
