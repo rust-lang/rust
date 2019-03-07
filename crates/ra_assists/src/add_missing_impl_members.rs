@@ -49,13 +49,10 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
     }
 
     let trait_def = {
-        let db = ctx.db;
-        // TODO: Can we get the position of cursor itself rather than supplied range?
-        let range = ctx.frange;
-        let position = FilePosition { file_id: range.file_id, offset: range.range.start() };
-        let resolver = hir::source_binder::resolver_for_position(db, position);
+        let position = FilePosition { file_id: ctx.frange.file_id, offset: node.range().end() };
+        let resolver = hir::source_binder::resolver_for_position(ctx.db, position);
 
-        resolve_target_trait_def(db, &resolver, impl_node)?
+        resolve_target_trait_def(ctx.db, &resolver, impl_node)?
     };
 
     let fn_def_opt = |kind| if let ImplItemKind::FnDef(def) = kind { Some(def) } else { None };
