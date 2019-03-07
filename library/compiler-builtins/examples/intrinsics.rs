@@ -19,9 +19,6 @@ extern crate panic_handler;
 #[link(name = "c")]
 extern {}
 
-// NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
-// compiler-rt provides a C/assembly implementation.
-
 // Every function in this module maps will be lowered to an intrinsic by LLVM, if the platform
 // doesn't have native support for the operation used in the function. ARM has a naming convention
 // convention for its intrinsics that's different from other architectures; that's why some function
@@ -39,14 +36,8 @@ mod intrinsics {
     }
 
     // fixdfdi
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_d2l(x: f64) -> i64 {
         x as i64
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_d2l(_: f64) -> i64 {
-        0
     }
 
     // fixunsdfsi
@@ -55,14 +46,8 @@ mod intrinsics {
     }
 
     // fixunsdfdi
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_d2ulz(x: f64) -> u64 {
         x as u64
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_d2ulz(_: f64) -> u64 {
-        0
     }
 
     // adddf3
@@ -71,36 +56,18 @@ mod intrinsics {
     }
 
     // eqdf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_dcmpeq(a: f64, b: f64) -> bool {
         a == b
     }
 
-    #[cfg(thumbv6m)]
-    pub fn aeabi_dcmpeq(_: f64, _: f64) -> bool {
-        true
-    }
-
     // gtdf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_dcmpgt(a: f64, b: f64) -> bool {
         a > b
     }
 
-    #[cfg(thumbv6m)]
-    pub fn aeabi_dcmpgt(_: f64, _: f64) -> bool {
-        true
-    }
-
     // ltdf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_dcmplt(a: f64, b: f64) -> bool {
         a < b
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_dcmplt(_: f64, _: f64) -> bool {
-        true
     }
 
     // divdf3
@@ -129,14 +96,8 @@ mod intrinsics {
     }
 
     // fixsfdi
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_f2lz(x: f32) -> i64 {
         x as i64
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_f2lz(_: f32) -> i64 {
-        0
     }
 
     // fixunssfsi
@@ -145,14 +106,8 @@ mod intrinsics {
     }
 
     // fixunssfdi
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_f2ulz(x: f32) -> u64 {
         x as u64
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_f2ulz(_: f32) -> u64 {
-        0
     }
 
     // addsf3
@@ -161,36 +116,18 @@ mod intrinsics {
     }
 
     // eqsf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_fcmpeq(a: f32, b: f32) -> bool {
         a == b
     }
 
-    #[cfg(thumbv6m)]
-    pub fn aeabi_fcmpeq(_: f32, _: f32) -> bool {
-        true
-    }
-
     // gtsf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_fcmpgt(a: f32, b: f32) -> bool {
         a > b
     }
 
-    #[cfg(thumbv6m)]
-    pub fn aeabi_fcmpgt(_: f32, _: f32) -> bool {
-        true
-    }
-
     // ltsf2
-    #[cfg(not(thumbv6m))]
     pub fn aeabi_fcmplt(a: f32, b: f32) -> bool {
         a < b
-    }
-
-    #[cfg(thumbv6m)]
-    pub fn aeabi_fcmplt(_: f32, _: f32) -> bool {
-        true
     }
 
     // divsf3
