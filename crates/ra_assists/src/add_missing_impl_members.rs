@@ -90,15 +90,24 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
     let last_whitespace_node =
         impl_item_list.syntax().children().filter_map(ast::Whitespace::cast).last()?.syntax();
 
-    ctx.add_action(AssistId("add_impl_missing_members"), "add impl missing members", |edit| {
-        let func_bodies = missing_fns.into_iter().map(build_func_body).join("\n");
-        let func_bodies = String::from("\n") + &func_bodies;
+    ctx.add_action(AssistId("add_impl_missing_members"), "add missing impl members", |edit| {
+        let indent = {
+            // FIXME: Find a way to get the indent already used in the file.
+            // Now, we copy the indent of first item or indent with 4 spaces relative to impl block
+            const DEFAULT_INDENT: &str = "    ";
+            let first_item = impl_item_list.impl_items().next();
+            let first_item_indent = first_item.and_then(|i| leading_indent(i.syntax()));
+            let impl_block_indent = || leading_indent(impl_node.syntax()).unwrap_or_default();
 
-        let first_impl_item = impl_item_list.impl_items().next();
-        // FIXME: We should respect the indent of the first item from the item list or the indent of leading block + some default indent (4?)
-        // Another approach is to not indent at all if there are no items here
-        let indent = first_impl_item.and_then(|i| leading_indent(i.syntax())).unwrap_or_default();
-        let func_bodies = reindent(&func_bodies, indent) + "\n";
+            first_item_indent
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| impl_block_indent().to_owned() + DEFAULT_INDENT)
+        };
+
+        let mut func_bodies = missing_fns.into_iter().map(build_func_body);
+        let func_bodies = func_bodies.join("\n");
+        let func_bodies = String::from("\n") + &func_bodies;
+        let func_bodies = reindent(&func_bodies, &indent) + "\n";
 
         let changed_range = last_whitespace_node.range();
         let replaced_text_range = TextUnit::of_str(&func_bodies);
@@ -123,6 +132,7 @@ mod tests {
 trait Foo {
     fn foo(&self);
     fn bar(&self);
+    fn baz(&self);
 }
 
 struct S;
@@ -135,13 +145,15 @@ impl Foo for S {
 trait Foo {
     fn foo(&self);
     fn bar(&self);
+    fn baz(&self);
 }
 
 struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) { unimplemented!() }<|>
+    fn foo(&self) { unimplemented!() }
+    fn baz(&self) { unimplemented!() }<|>
 }",
         );
     }
