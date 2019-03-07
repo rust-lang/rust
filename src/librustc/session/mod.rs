@@ -1315,7 +1315,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
             Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }
     };
-    let handler = errors::Handler::with_emitter(true, false, emitter);
+    let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
     errors::FatalError.raise();
 }
@@ -1330,7 +1330,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
             Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }
     };
-    let handler = errors::Handler::with_emitter(true, false, emitter);
+    let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 

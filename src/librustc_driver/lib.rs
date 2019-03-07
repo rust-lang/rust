@@ -148,7 +148,7 @@ pub fn run<F>(run_compiler: F) -> isize
                                 true,
                                 false
                             );
-                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                        let handler = errors::Handler::with_emitter(true, None, Box::new(emitter));
                         handler.emit(&MultiSpan::new(),
                                      "aborting due to previous error(s)",
                                      errors::Level::Fatal);
@@ -1327,7 +1327,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) -> Result<(), CompilationFail
                                                                 None,
                                                                 false,
                                                                 false));
-            let handler = errors::Handler::with_emitter(true, false, emitter);
+            let handler = errors::Handler::with_emitter(true, None, emitter);
 
             // a .span_bug or .bug call has already printed what
             // it wants to print.

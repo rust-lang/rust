@@ -1234,7 +1234,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "parse only; do not compile, assemble, or link"),
     no_codegen: bool = (false, parse_bool, [TRACKED],
         "run all passes except codegen; no output"),
-    treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
+    treat_err_as_bug: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "treat all errors that occur as bugs"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug`"),
@@ -3212,7 +3212,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.treat_err_as_bug = true;
+        opts.debugging_opts.treat_err_as_bug = Some(1);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

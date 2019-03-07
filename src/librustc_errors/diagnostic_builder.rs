@@ -103,7 +103,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// Buffers the diagnostic for later emission, unless handler
     /// has disabled such buffering.
     pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {
-        if self.handler.flags.dont_buffer_diagnostics || self.handler.flags.treat_err_as_bug {
+        if self.handler.flags.dont_buffer_diagnostics || self.handler.treat_err_as_bug() {
             self.emit();
             return;
         }
