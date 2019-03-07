@@ -8,6 +8,8 @@
 
 #![deny(clippy::unused_unit)]
 #![allow(clippy::needless_return)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
 
 struct Unitter;
 impl Unitter {
