@@ -3212,7 +3212,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.treat_err_as_bug = Some(1);
+        opts.debugging_opts.treat_err_as_bug = Some(0);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
