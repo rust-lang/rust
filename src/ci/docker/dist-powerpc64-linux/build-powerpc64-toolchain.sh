@@ -23,7 +23,8 @@ pushd binutils-$TARGET
 curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.bz2 | tar xjf -
 mkdir binutils-build
 cd binutils-build
-hide_output ../binutils-$BINUTILS/configure --target=$TARGET --prefix=$PREFIX --with-sysroot=$SYSROOT
+hide_output ../binutils-$BINUTILS/configure --target=$TARGET \
+  --prefix=$PREFIX --with-sysroot=$SYSROOT
 hide_output make -j10
 hide_output make install
 popd
