@@ -1084,9 +1084,10 @@ impl GenericBound {
 
     fn get_trait_type(&self) -> Option<Type> {
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
-            return Some(trait_.clone());
+            Some(trait_.clone())
+        } else {
+            None
         }
-        None
     }
 }
 
@@ -1319,6 +1320,16 @@ pub enum WherePredicate {
     EqPredicate { lhs: Type, rhs: Type },
 }
 
+impl WherePredicate {
+    pub fn get_bounds(&self) -> Option<&[GenericBound]> {
+        match *self {
+            WherePredicate::BoundPredicate { ref bounds, .. } => Some(bounds),
+            WherePredicate::RegionPredicate { ref bounds, .. } => Some(bounds),
+            _ => None,
+        }
+    }
+}
+
 impl Clean<WherePredicate> for hir::WherePredicate {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
         match *self {
@@ -1455,6 +1466,25 @@ pub enum GenericParamDefKind {
     },
 }
 
+impl GenericParamDefKind {
+    pub fn is_type(&self) -> bool {
+        match *self {
+            GenericParamDefKind::Type { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_type(&self, cx: &DocContext<'_, '_, '_>) -> Option<Type> {
+        match *self {
+            GenericParamDefKind::Type { did, .. } => {
+                rustc_typeck::checked_type_of(cx.tcx, did, false).map(|t| t.clean(cx))
+            }
+            GenericParamDefKind::Const { ref ty, .. } => Some(ty.clone()),
+            GenericParamDefKind::Lifetime => None,
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParamDef {
     pub name: String,
@@ -1466,10 +1496,23 @@ impl GenericParamDef {
     pub fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime |
-            GenericParamDefKind::Const { .. } => {
-                false
-            }
+            GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { ref synthetic, .. } => synthetic.is_some(),
+        }
+    }
+
+    pub fn is_type(&self) -> bool {
+        self.kind.is_type()
+    }
+
+    pub fn get_type(&self, cx: &DocContext<'_, '_, '_>) -> Option<Type> {
+        self.kind.get_type(cx)
+    }
+
+    pub fn get_bounds(&self) -> Option<&[GenericBound]> {
+        match self.kind {
+            GenericParamDefKind::Type { ref bounds, .. } => Some(bounds),
+            _ => None,
         }
     }
 }
@@ -1707,12 +1750,145 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
     }
 }
 
+// The point is to replace bounds with types.
+pub fn get_real_types(
+    generics: &Generics,
+    arg: &Type,
+    cx: &DocContext<'_, '_, '_>,
+    debug: bool,
+) -> Option<Vec<Type>> {
+    let mut res = Vec::new();
+    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+        println!("0. {:?}", arg);
+    }
+    if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
+        match g {
+            &WherePredicate::BoundPredicate { ref ty, .. } => ty.def_id() == arg.def_id(),
+            _ => false,
+        }
+    }) {
+        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+            println!("1. {:?} => {:?}", arg, where_pred);
+        }
+        let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
+        for bound in bounds.iter() {
+            match *bound {
+                GenericBound::TraitBound(ref poly_trait, _) => {
+                    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                        println!("    {:?}", poly_trait.trait_);
+                    }
+                    for x in poly_trait.generic_params.iter() {
+                        if !x.is_type() {
+                            continue
+                        }
+                        if let Some(ty) = x.get_type(cx) {
+                            if let Some(mut adds) = get_real_types(generics, &ty, cx,
+                                arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
+                                res.append(&mut adds);
+                            } else if !ty.is_full_generic() {
+                                res.push(ty);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    } else {
+        let arg_s = arg.to_string();
+        if let Some(bound) = generics.params.iter().find(|g| {
+            g.is_type() && g.name == arg_s
+        }) {
+            if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                println!("2. {:?} => {:?}", arg, bound);
+            }
+            for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
+                if let Some(ty) = bound.get_trait_type() {
+                    if let Some(mut adds) = get_real_types(generics, &ty, cx,
+                        arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
+                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                            println!("3. {:?}", adds);
+                        }
+                        res.append(&mut adds);
+                    } else {
+                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                            println!("4. {:?}", ty);
+                        }
+                        if !ty.is_full_generic() {
+                            res.push(ty.clone());
+                        }
+                    }
+                }
+            }
+            /*if let Some(ty) = bound.get_type(cx) {
+                if let Some(mut adds) = get_real_types(generics, &ty, cx, level + 1) {
+                    res.append(&mut adds);
+                } else {
+                    res.push(ty);
+                }
+            } else {
+                res.push(arg.clone());
+            }*/
+        } else if let Some(gens) = arg.generics() {
+            res.push(arg.clone());
+            for gen in gens.iter() {
+                if gen.is_full_generic() {
+                    if let Some(mut adds) = get_real_types(generics, gen, cx,
+                        arg.to_string() == "W" || arg.to_string() == "Z" || debug) {
+                        if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                            println!("5. {:?}", adds);
+                        }
+                        res.append(&mut adds);
+                    }
+                } else {
+                    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+                        println!("6. {:?}", gen);
+                    }
+                    res.push(gen.clone());
+                }
+            }
+        }
+    }
+    if res.is_empty() && !arg.is_full_generic() {
+        res.push(arg.clone());
+    }
+    if arg.to_string() == "W" || arg.to_string() == "Z" || debug {
+        println!("7. /!\\ {:?}", res);
+    }
+    Some(res)
+}
+
+pub fn get_all_types(
+    generics: &Generics,
+    decl: &FnDecl,
+    cx: &DocContext<'_, '_, '_>,
+) -> Vec<Type> {
+    let mut all_types = Vec::new();
+    for arg in decl.inputs.values.iter() {
+        if arg.type_.is_self_type() {
+            continue;
+        }
+        if let Some(mut args) = get_real_types(generics, &arg.type_, cx, false) {
+            all_types.append(&mut args);
+        } else {
+            all_types.push(arg.type_.clone());
+        }
+    }
+    all_types.sort_unstable_by(|a, b| a.to_string().partial_cmp(&b.to_string()).expect("a") );
+    all_types.dedup();
+    if decl.inputs.values.iter().any(|s| s.type_.to_string() == "W" || s.type_.to_string() == "Z") {
+        println!("||||> {:?}", all_types);
+    }
+    all_types
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Method {
     pub generics: Generics,
     pub decl: FnDecl,
     pub header: hir::FnHeader,
     pub defaultness: Option<hir::Defaultness>,
+    pub all_types: Vec<Type>,
 }
 
 impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
@@ -1721,11 +1897,13 @@ impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
         let (generics, decl) = enter_impl_trait(cx, || {
             (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx))
         });
+        let all_types = get_all_types(&generics, &decl, cx);
         Method {
             decl,
             generics,
             header: self.0.header,
             defaultness: self.3,
+            all_types,
         }
     }
 }
@@ -1735,6 +1913,7 @@ pub struct TyMethod {
     pub header: hir::FnHeader,
     pub decl: FnDecl,
     pub generics: Generics,
+    pub all_types: Vec<Type>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1742,6 +1921,7 @@ pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: hir::FnHeader,
+    pub all_types: Vec<Type>,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1756,6 +1936,7 @@ impl Clean<Item> for doctree::Function {
         } else {
             hir::Constness::NotConst
         };
+        let all_types = get_all_types(&generics, &decl, cx);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1768,6 +1949,7 @@ impl Clean<Item> for doctree::Function {
                 decl,
                 generics,
                 header: hir::FnHeader { constness, ..self.header },
+                all_types,
             }),
         }
     }
@@ -1855,7 +2037,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
         FnDecl {
             inputs: (&self.0.inputs[..], self.1).clean(cx),
             output: self.0.output.clean(cx),
-            attrs: Attributes::default()
+            attrs: Attributes::default(),
         }
     }
 }
@@ -2037,10 +2219,12 @@ impl Clean<Item> for hir::TraitItem {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
+                let all_types = get_all_types(&generics, &decl, cx);
                 TyMethodItem(TyMethod {
                     header: sig.header,
                     decl,
                     generics,
+                    all_types,
                 })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
@@ -2138,6 +2322,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     ty::ImplContainer(_) => true,
                     ty::TraitContainer(_) => self.defaultness.has_value()
                 };
+                let all_types = get_all_types(&generics, &decl, cx);
                 if provided {
                     let constness = if cx.tcx.is_min_const_fn(self.def_id) {
                         hir::Constness::Const
@@ -2154,6 +2339,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             asyncness: hir::IsAsync::NotAsync,
                         },
                         defaultness: Some(self.defaultness),
+                        all_types,
                     })
                 } else {
                     TyMethodItem(TyMethod {
@@ -2164,7 +2350,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             abi: sig.abi(),
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
-                        }
+                        },
+                        all_types,
                     })
                 }
             }
@@ -2408,6 +2595,13 @@ impl Type {
                 })
             }
             _ => None
+        }
+    }
+
+    pub fn is_full_generic(&self) -> bool {
+        match *self {
+            Type::Generic(_) => true,
+            _ => false,
         }
     }
 }
@@ -3824,6 +4018,7 @@ impl Clean<Item> for hir::ForeignItem {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                 });
+                let all_types = get_all_types(&generics, &decl, cx);
                 ForeignFunctionItem(Function {
                     decl,
                     generics,
@@ -3833,6 +4028,7 @@ impl Clean<Item> for hir::ForeignItem {
                         constness: hir::Constness::NotConst,
                         asyncness: hir::IsAsync::NotAsync,
                     },
+                    all_types,
                 })
             }
             hir::ForeignItemKind::Static(ref ty, mutbl) => {
