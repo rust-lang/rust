@@ -812,7 +812,7 @@ impl Ident {
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
-    #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
+    #[stable(feature = "proc_macro_raw_ident", since = "1.34.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         Ident(bridge::client::Ident::new(string, span.0, true))
     }
