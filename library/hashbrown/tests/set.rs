@@ -1,6 +1,4 @@
 #![cfg(not(miri))] // FIXME: takes too long
-extern crate hashbrown;
-extern crate rand;
 
 use hashbrown::HashSet;
 use rand::{distributions::Alphanumeric, Rng, SeedableRng, XorShiftRng};

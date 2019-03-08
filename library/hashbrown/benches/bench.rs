@@ -1,7 +1,5 @@
 #![feature(test)]
 
-extern crate hashbrown;
-extern crate rustc_hash;
 extern crate test;
 
 use std::hash::Hash;

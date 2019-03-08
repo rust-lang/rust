@@ -1,9 +1,9 @@
 use self::RustcEntry::*;
+use crate::map::{make_hash, Drain, HashMap, IntoIter, Iter, IterMut};
+use crate::raw::{Bucket, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
 use core::mem;
-use map::{make_hash, HashMap, Iter, IterMut, IntoIter, Drain};
-use raw::{Bucket, RawTable};
 
 impl<K, V, S> HashMap<K, V, S>
 where
@@ -30,7 +30,7 @@ where
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[inline]
-    pub fn rustc_entry(&mut self, key: K) -> RustcEntry<K, V> {
+    pub fn rustc_entry(&mut self, key: K) -> RustcEntry<'_, K, V> {
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             RustcEntry::Occupied(RustcOccupiedEntry {
@@ -67,8 +67,8 @@ pub enum RustcEntry<'a, K: 'a, V: 'a> {
     Vacant(RustcVacantEntry<'a, K, V>),
 }
 
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for RustcEntry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug> Debug for RustcEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
             Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
@@ -80,27 +80,27 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for RustcEntry<'a, K, V> {
 /// It is part of the [`RustcEntry`] enum.
 ///
 /// [`RustcEntry`]: enum.RustcEntry.html
-pub struct RustcOccupiedEntry<'a, K: 'a, V: 'a> {
+pub struct RustcOccupiedEntry<'a, K, V> {
     key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V)>,
 }
 
-unsafe impl<'a, K, V> Send for RustcOccupiedEntry<'a, K, V>
+unsafe impl<K, V> Send for RustcOccupiedEntry<'_, K, V>
 where
     K: Send,
     V: Send,
 {
 }
-unsafe impl<'a, K, V> Sync for RustcOccupiedEntry<'a, K, V>
+unsafe impl<K, V> Sync for RustcOccupiedEntry<'_, K, V>
 where
     K: Sync,
     V: Sync,
 {
 }
 
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for RustcOccupiedEntry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug> Debug for RustcOccupiedEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
             .field("value", self.get())
@@ -112,14 +112,14 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for RustcOccupiedEntry<'a, K, V> {
 /// It is part of the [`RustcEntry`] enum.
 ///
 /// [`RustcEntry`]: enum.RustcEntry.html
-pub struct RustcVacantEntry<'a, K: 'a, V: 'a> {
+pub struct RustcVacantEntry<'a, K, V> {
     hash: u64,
     key: K,
     table: &'a mut RawTable<(K, V)>,
 }
 
-impl<'a, K: 'a + Debug, V: 'a> Debug for RustcVacantEntry<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V> Debug for RustcVacantEntry<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
 }
@@ -489,7 +489,7 @@ impl<'a, K, V> RustcOccupiedEntry<'a, K, V> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> RustcVacantEntry<'a, K, V> {
+impl<'a, K, V> RustcVacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `RustcVacantEntry`.
     ///
@@ -542,18 +542,16 @@ impl<'a, K: 'a, V: 'a> RustcVacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[inline]
-    pub fn insert(self, value: V) -> &'a mut V
-    {
+    pub fn insert(self, value: V) -> &'a mut V {
         let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
         unsafe { &mut bucket.as_mut().1 }
     }
 }
 
-
-impl<'a, K, V> IterMut<'a, K, V> {
+impl<K, V> IterMut<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub fn rustc_iter(&self) -> Iter<K, V> {
+    pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
 }
@@ -561,15 +559,15 @@ impl<'a, K, V> IterMut<'a, K, V> {
 impl<K, V> IntoIter<K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub fn rustc_iter(&self) -> Iter<K, V> {
+    pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
 }
 
-impl<'a, K, V> Drain<'a, K, V> {
+impl<K, V> Drain<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub fn rustc_iter(&self) -> Iter<K, V> {
+    pub fn rustc_iter(&self) -> Iter<'_, K, V> {
         self.iter()
     }
 }

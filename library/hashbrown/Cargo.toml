@@ -9,6 +9,7 @@ readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".travis.yml", "bors.toml"]
+edition = "2018"
 
 [dependencies]
 # For external trait impls

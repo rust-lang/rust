@@ -1,14 +1,14 @@
+use crate::raw::Bucket;
+use crate::raw::{RawIterRange, RawTable};
+use crate::scopeguard::guard;
 use alloc::alloc::dealloc;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
-use raw::Bucket;
-use raw::{RawIterRange, RawTable};
 use rayon::iter::{
     plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
     ParallelIterator,
 };
-use scopeguard::guard;
 
 /// Parallel iterator which returns a raw pointer to every full bucket in the table.
 pub struct RawParIter<T> {
@@ -87,9 +87,9 @@ pub struct RawParDrain<'a, T> {
     _marker: PhantomData<&'a RawTable<T>>,
 }
 
-unsafe impl<'a, T> Send for RawParDrain<'a, T> {}
+unsafe impl<T> Send for RawParDrain<'_, T> {}
 
-impl<'a, T: Send> ParallelIterator for RawParDrain<'a, T> {
+impl<T: Send> ParallelIterator for RawParDrain<'_, T> {
     type Item = T;
 
     #[inline]
@@ -107,7 +107,7 @@ impl<'a, T: Send> ParallelIterator for RawParDrain<'a, T> {
     }
 }
 
-impl<'a, T> Drop for RawParDrain<'a, T> {
+impl<T> Drop for RawParDrain<'_, T> {
     fn drop(&mut self) {
         // If drive_unindexed is not called then simply clear the table.
         unsafe { self.table.as_mut().clear() }
@@ -184,7 +184,7 @@ impl<T> RawTable<T> {
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
     #[inline]
-    pub fn par_drain(&mut self) -> RawParDrain<T> {
+    pub fn par_drain(&mut self) -> RawParDrain<'_, T> {
         RawParDrain {
             table: NonNull::from(self),
             _marker: PhantomData,

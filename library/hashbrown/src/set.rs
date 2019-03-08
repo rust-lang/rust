@@ -1,9 +1,9 @@
+use crate::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
-use CollectionAllocErr;
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 
@@ -187,7 +187,7 @@ impl<T, S> HashSet<T, S> {
     /// }
     /// ```
     #[inline]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             iter: self.map.keys(),
         }
@@ -245,7 +245,7 @@ impl<T, S> HashSet<T, S> {
     /// assert!(set.is_empty());
     /// ```
     #[inline]
-    pub fn drain(&mut self) -> Drain<T> {
+    pub fn drain(&mut self) -> Drain<'_, T> {
         Drain {
             iter: self.map.drain(),
         }
@@ -821,7 +821,7 @@ where
     T: Eq + Hash + fmt::Debug,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
     }
 }
@@ -875,7 +875,7 @@ where
     }
 }
 
-impl<'a, 'b, T, S> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
@@ -907,7 +907,7 @@ where
     }
 }
 
-impl<'a, 'b, T, S> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
@@ -939,7 +939,7 @@ where
     }
 }
 
-impl<'a, 'b, T, S> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
@@ -971,7 +971,7 @@ where
     }
 }
 
-impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
@@ -1010,7 +1010,7 @@ where
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`iter`]: struct.HashSet.html#method.iter
-pub struct Iter<'a, K: 'a> {
+pub struct Iter<'a, K> {
     iter: Keys<'a, K, ()>,
 }
 
@@ -1032,7 +1032,7 @@ pub struct IntoIter<K> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`drain`]: struct.HashSet.html#method.drain
-pub struct Drain<'a, K: 'a> {
+pub struct Drain<'a, K> {
     iter: map::Drain<'a, K, ()>,
 }
 
@@ -1043,7 +1043,7 @@ pub struct Drain<'a, K: 'a> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`intersection`]: struct.HashSet.html#method.intersection
-pub struct Intersection<'a, T: 'a, S: 'a> {
+pub struct Intersection<'a, T, S> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1057,7 +1057,7 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`difference`]: struct.HashSet.html#method.difference
-pub struct Difference<'a, T: 'a, S: 'a> {
+pub struct Difference<'a, T, S> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1071,7 +1071,7 @@ pub struct Difference<'a, T: 'a, S: 'a> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
-pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
+pub struct SymmetricDifference<'a, T, S> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
 }
 
@@ -1082,7 +1082,7 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`union`]: struct.HashSet.html#method.union
-pub struct Union<'a, T: 'a, S: 'a> {
+pub struct Union<'a, T, S> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
 }
 
@@ -1128,9 +1128,9 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     }
 }
 
-impl<'a, K> Clone for Iter<'a, K> {
+impl<K> Clone for Iter<'_, K> {
     #[inline]
-    fn clone(&self) -> Iter<'a, K> {
+    fn clone(&self) -> Self {
         Iter {
             iter: self.iter.clone(),
         }
@@ -1154,10 +1154,10 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
         self.iter.len()
     }
 }
-impl<'a, K> FusedIterator for Iter<'a, K> {}
+impl<K> FusedIterator for Iter<'_, K> {}
 
-impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -1183,13 +1183,13 @@ impl<K> ExactSizeIterator for IntoIter<K> {
 impl<K> FusedIterator for IntoIter<K> {}
 
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<'a, K> Iterator for Drain<'a, K> {
+impl<K> Iterator for Drain<'_, K> {
     type Item = K;
 
     #[inline]
@@ -1201,24 +1201,24 @@ impl<'a, K> Iterator for Drain<'a, K> {
         self.iter.size_hint()
     }
 }
-impl<'a, K> ExactSizeIterator for Drain<'a, K> {
+impl<K> ExactSizeIterator for Drain<'_, K> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
-impl<'a, K> FusedIterator for Drain<'a, K> {}
+impl<K> FusedIterator for Drain<'_, K> {}
 
-impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<'a, T, S> Clone for Intersection<'a, T, S> {
+impl<T, S> Clone for Intersection<'_, T, S> {
     #[inline]
-    fn clone(&self) -> Intersection<'a, T, S> {
+    fn clone(&self) -> Self {
         Intersection {
             iter: self.iter.clone(),
             ..*self
@@ -1250,26 +1250,26 @@ where
     }
 }
 
-impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
+impl<T, S> fmt::Debug for Intersection<'_, T, S>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
+impl<T, S> FusedIterator for Intersection<'_, T, S>
 where
     T: Eq + Hash,
     S: BuildHasher,
 {
 }
 
-impl<'a, T, S> Clone for Difference<'a, T, S> {
+impl<T, S> Clone for Difference<'_, T, S> {
     #[inline]
-    fn clone(&self) -> Difference<'a, T, S> {
+    fn clone(&self) -> Self {
         Difference {
             iter: self.iter.clone(),
             ..*self
@@ -1301,26 +1301,26 @@ where
     }
 }
 
-impl<'a, T, S> FusedIterator for Difference<'a, T, S>
+impl<T, S> FusedIterator for Difference<'_, T, S>
 where
     T: Eq + Hash,
     S: BuildHasher,
 {
 }
 
-impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
+impl<T, S> fmt::Debug for Difference<'_, T, S>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<'a, T, S> Clone for SymmetricDifference<'a, T, S> {
+impl<T, S> Clone for SymmetricDifference<'_, T, S> {
     #[inline]
-    fn clone(&self) -> SymmetricDifference<'a, T, S> {
+    fn clone(&self) -> Self {
         SymmetricDifference {
             iter: self.iter.clone(),
         }
@@ -1344,45 +1344,45 @@ where
     }
 }
 
-impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
+impl<T, S> FusedIterator for SymmetricDifference<'_, T, S>
 where
     T: Eq + Hash,
     S: BuildHasher,
 {
 }
 
-impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
+impl<T, S> fmt::Debug for SymmetricDifference<'_, T, S>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<'a, T, S> Clone for Union<'a, T, S> {
+impl<T, S> Clone for Union<'_, T, S> {
     #[inline]
-    fn clone(&self) -> Union<'a, T, S> {
+    fn clone(&self) -> Self {
         Union {
             iter: self.iter.clone(),
         }
     }
 }
 
-impl<'a, T, S> FusedIterator for Union<'a, T, S>
+impl<T, S> FusedIterator for Union<'_, T, S>
 where
     T: Eq + Hash,
     S: BuildHasher,
 {
 }
 
-impl<'a, T, S> fmt::Debug for Union<'a, T, S>
+impl<T, S> fmt::Debug for Union<'_, T, S>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }

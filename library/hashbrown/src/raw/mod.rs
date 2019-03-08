@@ -1,4 +1,6 @@
-use alloc::alloc::{alloc, dealloc, handle_alloc_error};
+use crate::alloc::alloc::{alloc, dealloc, handle_alloc_error};
+use crate::scopeguard::guard;
+use crate::CollectionAllocErr;
 use core::alloc::Layout;
 use core::hint;
 use core::iter::FusedIterator;
@@ -6,8 +8,6 @@ use core::marker::PhantomData;
 use core::mem;
 use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
-use scopeguard::guard;
-use CollectionAllocErr;
 
 cfg_if! {
     // Use the SSE2 implementation if possible: it allows us to scan 16 buckets
@@ -139,11 +139,11 @@ fn h2(hash: u64) -> u8 {
 
 /// Probe sequence based on triangular numbers, which is guaranteed (since our
 /// table size is a power of two) to visit every group of elements exactly once.
-/// 
+///
 /// A triangular probe has us jump by 1 more group every time. So first we
 /// jump by 1 group (meaning we just continue our linear scan), then 2 groups
 /// (skipping over 1 group), then 3 groups (skipping over 2 groups), and so on.
-/// 
+///
 /// Proof that the probe will visit every group in the table:
 /// https://fgiesen.wordpress.com/2015/02/22/triangular-numbers-mod-2n/
 struct ProbeSeq {
@@ -917,7 +917,7 @@ impl<T> RawTable<T> {
     /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
     /// on the `RawDrain`, we have to make the `drain` method unsafe.
     #[inline]
-    pub unsafe fn drain(&mut self) -> RawDrain<T> {
+    pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
         RawDrain {
             iter: self.iter(),
             table: ManuallyDrop::new(mem::replace(self, Self::new())),
@@ -1231,7 +1231,7 @@ pub struct RawIntoIter<T> {
     alloc: Option<(NonNull<u8>, Layout)>,
 }
 
-impl<'a, T> RawIntoIter<T> {
+impl<T> RawIntoIter<T> {
     #[inline]
     pub fn iter(&self) -> RawIter<T> {
         self.iter.clone()
@@ -1278,7 +1278,7 @@ impl<T> ExactSizeIterator for RawIntoIter<T> {}
 impl<T> FusedIterator for RawIntoIter<T> {}
 
 /// Iterator which consumes elements without freeing the table storage.
-pub struct RawDrain<'a, T: 'a> {
+pub struct RawDrain<'a, T> {
     iter: RawIter<T>,
 
     // The table is moved into the iterator for the duration of the drain. This
@@ -1292,17 +1292,17 @@ pub struct RawDrain<'a, T: 'a> {
     _marker: PhantomData<&'a RawTable<T>>,
 }
 
-impl<'a, T> RawDrain<'a, T> {
+impl<T> RawDrain<'_, T> {
     #[inline]
     pub fn iter(&self) -> RawIter<T> {
         self.iter.clone()
     }
 }
 
-unsafe impl<'a, T> Send for RawDrain<'a, T> where T: Send {}
-unsafe impl<'a, T> Sync for RawDrain<'a, T> where T: Sync {}
+unsafe impl<T> Send for RawDrain<'_, T> where T: Send {}
+unsafe impl<T> Sync for RawDrain<'_, T> where T: Sync {}
 
-impl<'a, T> Drop for RawDrain<'a, T> {
+impl<T> Drop for RawDrain<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -1325,7 +1325,7 @@ impl<'a, T> Drop for RawDrain<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for RawDrain<'a, T> {
+impl<T> Iterator for RawDrain<'_, T> {
     type Item = T;
 
     #[inline]
@@ -1342,5 +1342,5 @@ impl<'a, T> Iterator for RawDrain<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for RawDrain<'a, T> {}
-impl<'a, T> FusedIterator for RawDrain<'a, T> {}
+impl<T> ExactSizeIterator for RawDrain<'_, T> {}
+impl<T> FusedIterator for RawDrain<'_, T> {}

@@ -50,7 +50,8 @@ impl Hasher for FxHasher {
                 assert!(size_of::<$ty>() <= $src.len());
                 let mut data: $ty = 0;
                 unsafe {
-                    $src.as_ptr().copy_to_nonoverlapping(&mut data as *mut $ty as *mut u8, size_of::<$ty>());
+                    $src.as_ptr()
+                        .copy_to_nonoverlapping(&mut data as *mut $ty as *mut u8, size_of::<$ty>());
                 }
                 data
             }};
