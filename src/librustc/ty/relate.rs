@@ -583,6 +583,70 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
     }
 }
 
+/// The main "const relation" routine. Note that this does not handle
+/// inference artifacts, so you should filter those out before calling
+/// it.
+pub fn super_relate_consts<'a, 'gcx, 'tcx, R>(
+    relation: &mut R,
+    a: &'tcx ty::LazyConst<'tcx>,
+    b: &'tcx ty::LazyConst<'tcx>
+) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>>
+where
+    R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+{
+    let tcx = relation.tcx();
+
+    match (a, b) {
+        (ty::LazyConst::Evaluated(a_eval), ty::LazyConst::Evaluated(b_eval)) => {
+            // Only consts whose types are equal should be compared.
+            assert_eq!(a_eval.ty, b_eval.ty);
+
+            // Currently, the values that can be unified are those that
+            // implement both `PartialEq` and `Eq`, corresponding to
+            // `structural_match` types.
+            // FIXME(const_generics): check for `structural_match` synthetic attribute.
+            match (a_eval.val, b_eval.val) {
+                (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
+                    // The caller should handle these cases!
+                    bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
+                }
+                (ConstValue::Param(a_p), ConstValue::Param(b_p)) if a_p.index == b_p.index => {
+                    Ok(a)
+                }
+                (ConstValue::Scalar(Scalar::Bits { .. }), _) if a == b => {
+                    Ok(a)
+                }
+                (ConstValue::ByRef(..), _) => {
+                    bug!(
+                        "non-Scalar ConstValue encountered in super_relate_consts {:?} {:?}",
+                        a,
+                        b,
+                    );
+                }
+                 _ => {
+                    Err(TypeError::ConstError(
+                        ConstError::Mismatch(expected_found(relation, &a, &b))
+                    ))
+                }
+            }
+        }
+        // FIXME(const_generics): this is probably wrong (regarding TyProjection)
+        (
+            ty::LazyConst::Unevaluated(a_def_id, a_substs),
+            ty::LazyConst::Unevaluated(b_def_id, b_substs),
+        ) if a_def_id == b_def_id => {
+            let substs =
+                relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
+            Ok(tcx.mk_lazy_const(ty::LazyConst::Unevaluated(*a_def_id, substs)))
+        }
+        _ => {
+            Err(TypeError::ConstError(
+                ConstError::Mismatch(expected_found(relation, &a, &b))
+            ))
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &Self,
