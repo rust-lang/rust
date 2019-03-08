@@ -303,7 +303,7 @@ pub fn implements_trait<'a, 'tcx>(
 
 /// Get the `hir::TraitRef` of the trait the given method is implemented for
 ///
-/// Use this if you want to find the `TraitRef` of the `Point` trait in this example:
+/// Use this if you want to find the `TraitRef` of the `Add` trait in this example:
 ///
 /// ```rust
 /// struct Point(isize, isize);
