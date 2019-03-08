@@ -2,7 +2,7 @@
 //! map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
 //! and `HashSet` types.
 //!
-//! The original C++ version of SwissTable can be found [here], and this
+//! The original C++ version of [SwissTable] can be found [here], and this
 //! [CppCon talk] gives an overview of how the algorithm works.
 //!
 //! [SwissTable]: https://abseil.io/blog/20180927-swisstables
@@ -24,6 +24,7 @@
 )]
 #![warn(missing_docs)]
 #![cfg_attr(hashbrown_deny_warnings, deny(warnings))]
+#![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]
 #[macro_use]
@@ -31,7 +32,6 @@
 extern crate std;
 #[cfg(test)]
 extern crate rand;
-
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]
@@ -87,7 +87,7 @@ pub mod hash_set {
 pub use map::HashMap;
 pub use set::HashSet;
 
-/// Augments `AllocErr` with a CapacityOverflow variant.
+/// Augments `AllocErr` with a `CapacityOverflow` variant.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum CollectionAllocErr {
     /// Error due to the computed capacity exceeding the collection's maximum

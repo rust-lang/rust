@@ -1,5 +1,3 @@
-use self::Entry::*;
-
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash, Hasher};
@@ -212,8 +210,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// ```
     #[inline]
-    pub fn new() -> HashMap<K, V, DefaultHashBuilder> {
-        Default::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Creates an empty `HashMap` with the specified capacity.
@@ -228,8 +226,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
     /// ```
     #[inline]
-    pub fn with_capacity(capacity: usize) -> HashMap<K, V, DefaultHashBuilder> {
-        HashMap::with_capacity_and_hasher(capacity, Default::default())
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
     }
 }
 
@@ -259,8 +257,8 @@ where
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
+    pub fn with_hasher(hash_builder: S) -> Self {
+        Self {
             hash_builder,
             table: RawTable::new(),
         }
@@ -288,8 +286,8 @@ where
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        Self {
             hash_builder,
             table: RawTable::with_capacity(capacity),
         }
@@ -1023,7 +1021,7 @@ where
     V: PartialEq,
     S: BuildHasher,
 {
-    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -1059,8 +1057,8 @@ where
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     #[inline]
-    fn default() -> HashMap<K, V, S> {
-        HashMap::with_hasher(Default::default())
+    fn default() -> Self {
+        Self::with_hasher(Default::default())
     }
 }
 
@@ -1245,7 +1243,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
-/// A builder for computing where in a HashMap a key-value pair would be stored.
+/// A builder for computing where in a [`HashMap`] a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
@@ -1288,7 +1286,7 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     hash_builder: &'a S,
 }
 
-/// A builder for computing where in a HashMap a key-value pair would be stored.
+/// A builder for computing where in a [`HashMap`] a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
@@ -1304,6 +1302,7 @@ where
 {
     /// Create a `RawEntryMut` from the given key.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
     where
         K: Borrow<Q>,
@@ -1316,6 +1315,7 @@ where
 
     /// Create a `RawEntryMut` from the given key and its hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
     where
         K: Borrow<Q>,
@@ -1343,6 +1343,7 @@ where
 
     /// Create a `RawEntryMut` from the given hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
     where
         for<'b> F: FnMut(&'b K) -> bool,
@@ -1357,6 +1358,7 @@ where
 {
     /// Access an entry by key.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
@@ -1369,6 +1371,7 @@ where
 
     /// Access an entry by a key and its hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
@@ -1393,6 +1396,7 @@ where
 
     /// Access an entry by hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
     where
         F: FnMut(&K) -> bool,
@@ -1614,6 +1618,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[inline]
+    #[allow(clippy::shadow_unrelated)]
     pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V)
     where
         K: Hash,
@@ -1683,8 +1688,8 @@ pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
 impl<'a, K: 'a + Debug + Eq + Hash, V: 'a + Debug, S: 'a> Debug for Entry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
-            Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
+            Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
+            Entry::Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
         }
     }
 }
@@ -2007,8 +2012,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default),
         }
     }
 
@@ -2034,8 +2039,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default()),
         }
     }
 
@@ -2052,8 +2057,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     #[inline]
     pub fn key(&self) -> &K {
         match *self {
-            Occupied(ref entry) => entry.key(),
-            Vacant(ref entry) => entry.key(),
+            Entry::Occupied(ref entry) => entry.key(),
+            Entry::Vacant(ref entry) => entry.key(),
         }
     }
 
@@ -2083,11 +2088,11 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         F: FnOnce(&mut V),
     {
         match self {
-            Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 f(entry.get_mut());
-                Occupied(entry)
+                Entry::Occupied(entry)
             }
-            Vacant(entry) => Vacant(entry),
+            Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
 }
@@ -2115,8 +2120,8 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Default::default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(Default::default()),
         }
     }
 }
@@ -2423,9 +2428,9 @@ where
     S: BuildHasher + Default,
 {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let iter = iter.into_iter();
-        let mut map = HashMap::with_capacity_and_hasher(iter.size_hint().0, Default::default());
+        let mut map = Self::with_capacity_and_hasher(iter.size_hint().0, S::default());
         for (k, v) in iter {
             map.insert(k, v);
         }

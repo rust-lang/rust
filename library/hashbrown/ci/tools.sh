@@ -33,6 +33,12 @@ if retry rustup component add clippy ; then
     cargo clippy --all -- -D clippy::pedantic
 fi
 
+if [ "${TRAVIS_OS_NAME}" = "linux" ]; then
+    if retry rustup component add clippy ; then
+        cargo clippy --all --target=i586-unknown-linux-gnu -- -D clippy::pedantic
+    fi
+fi
+
 if command -v shellcheck ; then
     shellcheck --version
     shellcheck ci/*.sh

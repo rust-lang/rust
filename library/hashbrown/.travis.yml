@@ -8,7 +8,7 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       script: sh ci/miri.sh
     - name: "rustfmt/clippy"
-      env: TARGET=x86_64-unknown-linux-gnu
+      env: TARGET=i586-unknown-linux-gnu
       script: sh ci/tools.sh
     - name: "docs"
       env: TARGET=x86_64-unknown-linux-gnu
@@ -34,8 +34,14 @@ matrix:
     - name: "x86_64-unknown-linux-gnu (Rust 1.29.0)"
       rust: stable
       env: TARGET=x86_64-unknown-linux-gnu
+    - name: "i686-unknown-linux-gnu"
+      env: TARGET=i686-unknown-linux-gnu CROSS=1
     - name: "x86_64-apple-darwin"
       env: TARGET=x86_64-apple-darwin
+      os: osx
+      osx_image: xcode10
+    - name: "i686-apple-darwin"
+      env: TARGET=i686-apple-darwin
       os: osx
       osx_image: xcode10
     - name: "x86_64-pc-windows-msvc"
@@ -43,12 +49,20 @@ matrix:
       os: windows
     - name: "x86_64-pc-windows-gnu"
       env: TARGET=x86_64-pc-windows-gnu CROSS=1
+    - name: "i686-pc-windows-gnu"
+      env: TARGET=i686-pc-windows-gnu CROSS=1
 
     # Tier 2/3 targets:
     - name: "i586-unknown-linux-gnu (no SSE2)"
       env: TARGET=i586-unknown-linux-gnu CROSS=1
+    - name: "armv7-unknown-linux-gnueabihf"
+      env: TARGET=armv7-unknown-linux-gnueabihf CROSS=1
     - name: "aarch64-unknown-linux-gnu"
       env: TARGET=aarch64-unknown-linux-gnu CROSS=1
+
+  allow_failures:
+    # FIXME:
+    - name: "armv7-unknown-linux-gnueabihf"
    
 install: travis_retry rustup target add "${TARGET}"
 script: sh ci/run.sh

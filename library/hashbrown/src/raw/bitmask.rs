@@ -20,15 +20,15 @@ impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
-    pub fn invert(self) -> BitMask {
-        BitMask(self.0 ^ BITMASK_MASK)
+    pub fn invert(self) -> Self {
+        Self(self.0 ^ BITMASK_MASK)
     }
 
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]
-    pub fn remove_lowest_bit(self) -> BitMask {
-        BitMask(self.0 & (self.0 - 1))
+    pub fn remove_lowest_bit(self) -> Self {
+        Self(self.0 & (self.0 - 1))
     }
     /// Returns whether the `BitMask` has at least one set bit.
     #[inline]
