@@ -255,8 +255,8 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
         // doing more work yet
         if !pending_obligation.stalled_on.is_empty() {
             if pending_obligation.stalled_on.iter().all(|&ty| {
-                // Use the force-inlined variant of shallow_resolve() because this code is hot.
-                let resolved_ty = self.selcx.infcx().inlined_shallow_resolve(&ty);
+                // Use the force-inlined variant of shallow_resolve_type() because this code is hot.
+                let resolved_ty = self.selcx.infcx().inlined_shallow_resolve_type(&ty);
                 resolved_ty == ty // nothing changed here
             }) {
                 debug!("process_predicate: pending obligation {:?} still stalled on {:?}",

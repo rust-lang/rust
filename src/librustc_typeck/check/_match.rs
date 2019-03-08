@@ -350,7 +350,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let expected = self.shallow_resolve(expected);
+                let expected = self.shallow_resolve_type(expected);
                 if self.check_dereferencable(pat.span, expected, &inner) {
                     // `demand::subtype` would be good enough, but using
                     // `eqtype` turns out to be equally general. See (*)
@@ -519,7 +519,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {
         if let PatKind::Binding(..) = inner.node {
-            if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
+            if let Some(mt) = self.shallow_resolve_type(expected).builtin_deref(true) {
                 if let ty::Dynamic(..) = mt.ty.sty {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.

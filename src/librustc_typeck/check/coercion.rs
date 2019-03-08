@@ -154,7 +154,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     }
 
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        let a = self.shallow_resolve(a);
+        let a = self.shallow_resolve_type(a);
         debug!("Coerce.tys({:?} => {:?})", a, b);
 
         // Just ignore error types.
@@ -170,8 +170,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             //     let _: Option<?T> = Some({ return; });
             //
             // here, we would coerce from `!` to `?T`.
-            let b = self.shallow_resolve(b);
-            return if self.shallow_resolve(b).is_ty_var() {
+            let b = self.shallow_resolve_type(b);
+            return if self.shallow_resolve_type(b).is_ty_var() {
                 // micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(
@@ -659,7 +659,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         //! into a closure or a `proc`.
         //!
 
-        let b = self.shallow_resolve(b);
+        let b = self.shallow_resolve_type(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
 
         self.coerce_from_safe_fn(a, fn_ty_a, b,
@@ -673,7 +673,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         //! Attempts to coerce from the type of a Rust function item
         //! into a closure or a `proc`.
 
-        let b = self.shallow_resolve(b);
+        let b = self.shallow_resolve_type(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.sty {
@@ -719,7 +719,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         //! into a function pointer.
         //!
 
-        let b = self.shallow_resolve(b);
+        let b = self.shallow_resolve_type(b);
 
         let hir_id_a = self.tcx.hir().as_local_hir_id(def_id_a).unwrap();
         match b.sty {
@@ -1128,7 +1128,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         // compatibility (hopefully that is true) by helping us
         // uncover never types better.
         if expression_ty.is_ty_var() {
-            expression_ty = fcx.infcx.shallow_resolve(expression_ty);
+            expression_ty = fcx.infcx.shallow_resolve_type(expression_ty);
         }
 
         // If we see any error types, just propagate that error

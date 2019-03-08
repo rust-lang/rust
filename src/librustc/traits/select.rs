@@ -2403,7 +2403,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // NOTE: binder moved to (*)
         let self_ty = self.infcx
-            .shallow_resolve(obligation.predicate.skip_binder().self_ty());
+            .shallow_resolve_type(obligation.predicate.skip_binder().self_ty());
 
         match self_ty.sty {
             ty::Infer(ty::IntVar(_))
@@ -2467,7 +2467,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> BuiltinImplConditions<'tcx> {
         // NOTE: binder moved to (*)
         let self_ty = self.infcx
-            .shallow_resolve(obligation.predicate.skip_binder().self_ty());
+            .shallow_resolve_type(obligation.predicate.skip_binder().self_ty());
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
@@ -2866,7 +2866,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         );
 
         let types = obligation.predicate.map_bound(|inner| {
-            let self_ty = self.infcx.shallow_resolve(inner.self_ty());
+            let self_ty = self.infcx.shallow_resolve_type(inner.self_ty());
             self.constituent_types_for_ty(self_ty)
         });
         self.vtable_auto_impl(obligation, trait_def_id, types)
@@ -2990,7 +2990,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // from the object. Have to try to make a broken test case that
         // results.
         let self_ty = self.infcx
-            .shallow_resolve(*obligation.self_ty().skip_binder());
+            .shallow_resolve_type(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
             ty::Dynamic(ref data, ..) =>
                 data.principal().unwrap_or_else(|| {
@@ -3045,7 +3045,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // OK to skip binder; it is reintroduced below
         let self_ty = self.infcx
-            .shallow_resolve(*obligation.self_ty().skip_binder());
+            .shallow_resolve_type(*obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
         let trait_ref = self.tcx()
             .closure_trait_ref_and_return_type(
@@ -3125,7 +3125,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx
-            .shallow_resolve(obligation.self_ty().skip_binder());
+            .shallow_resolve_type(obligation.self_ty().skip_binder());
         let (generator_def_id, substs) = match self_ty.sty {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
@@ -3183,7 +3183,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx
-            .shallow_resolve(obligation.self_ty().skip_binder());
+            .shallow_resolve_type(obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
@@ -3278,14 +3278,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // assemble_candidates_for_unsizing should ensure there are no late bound
         // regions here. See the comment there for more details.
         let source = self.infcx
-            .shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
+            .shallow_resolve_type(obligation.self_ty().no_bound_vars().unwrap());
         let target = obligation
             .predicate
             .skip_binder()
             .trait_ref
             .substs
             .type_at(1);
-        let target = self.infcx.shallow_resolve(target);
+        let target = self.infcx.shallow_resolve_type(target);
 
         debug!(
             "confirm_builtin_unsize_candidate(source={:?}, target={:?})",
