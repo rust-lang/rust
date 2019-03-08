@@ -2,9 +2,7 @@
 
 enum Bird {
     pub Duck,
-    //~^ ERROR expected identifier, found keyword `pub`
-    //~| ERROR missing comma
-    //~| WARN variant `pub` should have an upper camel case name
+    //~^ ERROR unnecessary visibility qualifier
     Goose
 }
 

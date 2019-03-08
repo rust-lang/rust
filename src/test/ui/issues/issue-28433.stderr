@@ -1,26 +1,8 @@
-error: expected identifier, found keyword `pub`
+error: unnecessary visibility qualifier
   --> $DIR/issue-28433.rs:4:5
    |
 LL |     pub Duck,
-   |     ^^^ expected identifier, found keyword
-help: you can escape reserved keywords to use them as identifiers
-   |
-LL |     r#pub Duck,
-   |     ^^^^^
+   |     ^^^ `pub` not permitted here
 
-error: missing comma
-  --> $DIR/issue-28433.rs:4:8
-   |
-LL |     pub Duck,
-   |        ^ help: missing comma
-
-warning: variant `pub` should have an upper camel case name
-  --> $DIR/issue-28433.rs:4:5
-   |
-LL |     pub Duck,
-   |     ^^^ help: convert the identifier to upper camel case: `Pub`
-   |
-   = note: #[warn(non_camel_case_types)] on by default
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

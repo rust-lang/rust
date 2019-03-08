@@ -1524,7 +1524,7 @@ impl<'a> Parser<'a> {
                          at_end: &mut bool,
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.span;
-
+        self.eat_bad_pub();
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
@@ -7680,6 +7680,7 @@ impl<'a> Parser<'a> {
 
             let struct_def;
             let mut disr_expr = None;
+            self.eat_bad_pub();
             let ident = self.parse_ident()?;
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
@@ -8617,6 +8618,17 @@ impl<'a> Parser<'a> {
             ';'.to_string(),
             Applicability::MaybeIncorrect,
         ).emit();
+    }
+
+    /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
+    fn eat_bad_pub(&mut self) {
+        if self.token.is_keyword(keywords::Pub) {
+            self.bump();
+            let mut err = self.diagnostic()
+                .struct_span_err(self.prev_span, "unnecessary visibility qualifier");
+            err.span_label(self.prev_span, "`pub` not permitted here");
+            err.emit();
+        }
     }
 }
 
