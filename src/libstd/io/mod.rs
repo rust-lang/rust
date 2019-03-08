@@ -390,6 +390,28 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
     ret
 }
 
+pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoVecMut<'_>]) -> Result<usize>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize>
+{
+    let buf = bufs
+        .iter_mut()
+        .find(|b| !b.is_empty())
+        .map_or(&mut [][..], |b| &mut **b);
+    read(buf)
+}
+
+pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoVec<'_>]) -> Result<usize>
+where
+    F: FnOnce(&[u8]) -> Result<usize>
+{
+    let buf = bufs
+        .iter()
+        .find(|b| !b.is_empty())
+        .map_or(&[][..], |b| &**b);
+    write(buf)
+}
+
 /// The `Read` trait allows for reading bytes from a source.
 ///
 /// Implementors of the `Read` trait are called 'readers'.
@@ -528,14 +550,11 @@ pub trait Read {
     /// written to possibly being only partially filled. This method must behave
     /// as a single call to `read` with the buffers concatenated would.
     ///
-    /// The default implementation simply passes the first nonempty buffer to
-    /// `read`.
+    /// The default implementation calls `read` with either the first nonempty
+    /// buffer provided, or an empty one if none exists.
     #[unstable(feature = "iovec", issue = "58452")]
     fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
-        match bufs.iter_mut().find(|b| !b.is_empty()) {
-            Some(buf) => self.read(buf),
-            None => Ok(0),
-        }
+        default_read_vectored(|b| self.read(b), bufs)
     }
 
     /// Determines if this `Read`er can work with buffers of uninitialized
@@ -1107,14 +1126,11 @@ pub trait Write {
     /// read from possibly being only partially consumed. This method must
     /// behave as a call to `write` with the buffers concatenated would.
     ///
-    /// The default implementation simply passes the first nonempty buffer to
-    /// `write`.
+    /// The default implementation calls `write` with either the first nonempty
+    /// buffer provided, or an empty one if none exists.
     #[unstable(feature = "iovec", issue = "58452")]
     fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> Result<usize> {
-        match bufs.iter().find(|b| !b.is_empty()) {
-            Some(buf) => self.write(buf),
-            None => Ok(0),
-        }
+        default_write_vectored(|b| self.write(b), bufs)
     }
 
     /// Flush this output stream, ensuring that all intermediately buffered
