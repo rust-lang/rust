@@ -76,11 +76,19 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     // additional hooks for other types in the future if needed
     // without making older code, which called `relate`, obsolete.
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>)
-           -> RelateResult<'tcx, Ty<'tcx>>;
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>>;
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>>;
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>
+    ) -> RelateResult<'tcx, ty::Region<'tcx>>;
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::LazyConst<'tcx>,
+        b: &'tcx ty::LazyConst<'tcx>
+    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>>;
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
