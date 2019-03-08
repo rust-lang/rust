@@ -15,7 +15,9 @@ for example:
   or an invalid enum discriminant)
 * WIP: Violations of the rules governing aliasing for reference types
 
-Miri has already discovered some [real-world bugs](#bugs-found-by-miri).
+Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
+found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
+list!
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
@@ -49,6 +51,11 @@ Now you can run your project in Miri:
 2. To run all tests in your project through Miri, use `cargo +nightly miri test`.
 3. If you have a binary project, you can run it through Miri using `cargo
    +nightly miri run`.
+
+The first time you run Miri, it will perform some extra setup and install some
+dependencies.  It will ask you for confirmation before installing anything.  If
+you run Miri on CI, run `cargo +nightly miri setup` to avoid getting interactive
+questions.
 
 You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
