@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir().expect_trait_item_by_hir_id(tit.id.hir_id);
+                                let item = cx.tcx.hir().expect_trait_item(tit.id.hir_id);
                                 check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
                             }
                         },

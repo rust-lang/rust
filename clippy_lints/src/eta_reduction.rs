@@ -182,7 +182,7 @@ fn get_type_name(cx: &LateContext<'_, '_>, kind: &ty::TyKind<'_>) -> String {
 
 fn compare_inputs(closure_inputs: &mut dyn Iterator<Item = &Arg>, call_args: &mut dyn Iterator<Item = &Expr>) -> bool {
     for (closure_input, function_arg) in closure_inputs.zip(call_args) {
-        if let PatKind::Binding(_, _, _, ident, _) = closure_input.pat.node {
+        if let PatKind::Binding(_, _, ident, _) = closure_input.pat.node {
             // XXXManishearth Should I be checking the binding mode here?
             if let ExprKind::Path(QPath::Resolved(None, ref p)) = function_arg.node {
                 if p.segments.len() != 1 {

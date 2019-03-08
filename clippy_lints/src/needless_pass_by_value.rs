@@ -209,7 +209,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
-                if let PatKind::Binding(mode, _, canonical_id, ..) = arg.pat.node;
+                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node;
                 if !moved_vars.contains(&canonical_id);
                 then {
                     if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
