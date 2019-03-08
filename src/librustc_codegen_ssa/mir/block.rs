@@ -233,8 +233,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
     ) {
         if self.fn_ty.c_variadic {
-            if let Some(va_list) = self.va_list_ref {
-                bx.va_end(va_list.llval);
+            match self.va_list_ref {
+                Some(va_list) => {
+                    bx.va_end(va_list.llval);
+                }
+                None => {
+                    bug!("C-variadic function must have a `va_list_ref`");
+                }
             }
         }
         let llval = match self.fn_ty.ret.mode {
