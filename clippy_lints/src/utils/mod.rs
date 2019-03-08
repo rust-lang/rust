@@ -190,7 +190,10 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
     }
 }
 
-/// Match a `Path` against a slice of segment string literals.
+/// Match a `QPath` against a slice of segment string literals.
+///
+/// There is also `match_path` if you are dealing with a `rustc::hir::Path` instead of a
+/// `rustc::hir::QPath`.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -210,6 +213,22 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     }
 }
 
+/// Match a `Path` against a slice of segment string literals.
+///
+/// There is also `match_qpath` if you are dealing with a `rustc::hir::QPath` instead of a
+/// `rustc::hir::Path`.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// if match_path(&trait_ref.path, &paths::HASH) {
+///     // This is the `std::hash::Hash` trait.
+/// }
+///
+/// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
+///     // This is a `rustc::lint::Lint`.
+/// }
+/// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments
         .iter()
