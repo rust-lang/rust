@@ -367,6 +367,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe remove `&`?
                         hir::ExprKind::AddrOf(_, ref expr) => {
                             if !cm.span_to_filename(expr.span).is_real() {
+                                if let Ok(code) = cm.span_to_snippet(sp) {
+                                    if code.chars().next() == Some('&') {
+                                        return Some((
+                                            sp,
+                                            "consider removing the borrow",
+                                            code[1..].to_string()),
+                                        );
+                                    }
+                                }
                                 return None;
                             }
                             if let Ok(code) = cm.span_to_snippet(expr.span) {
