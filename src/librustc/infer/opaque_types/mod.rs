@@ -676,8 +676,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
             tcx,
-            reg_op: |reg| reg,
-            fldop: |ty| {
+            ty_op: |ty| {
                 if let ty::Opaque(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
@@ -776,6 +775,8 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
                 ty
             },
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
         })
     }
 

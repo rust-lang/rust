@@ -193,29 +193,37 @@ pub trait TypeVisitor<'tcx> : Sized {
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G>
+pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
+          H: FnMut(&'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
 {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub fldop: F,
-    pub reg_op: G,
+    pub ty_op: F,
+    pub lt_op: G,
+    pub ct_op: H,
 }
 
-impl<'a, 'gcx, 'tcx, F, G> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F, G>
+impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
+          H: FnMut(&'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
 {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let t1 = ty.super_fold_with(self);
-        (self.fldop)(t1)
+        let t = ty.super_fold_with(self);
+        (self.ty_op)(t)
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let r = r.super_fold_with(self);
-        (self.reg_op)(r)
+        (self.lt_op)(r)
+    }
+
+    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        let c = c.super_fold_with(self);
+        (self.ct_op)(c)
     }
 }
 
