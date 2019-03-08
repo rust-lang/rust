@@ -10,10 +10,11 @@ use crate::infer::canonical::{
     OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
+use crate::mir::interpret::ConstValue;
 use std::sync::atomic::Ordering;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::Kind;
-use crate::ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
+use crate::ty::{self, BoundVar, InferConst, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -432,6 +433,54 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             }
         }
     }
+
+    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        if let ty::LazyConst::Evaluated(ct) = c {
+            match ct.val {
+                ConstValue::Infer(InferConst::Var(vid)) => {
+                    debug!("canonical: const var found with vid {:?}", vid);
+                    match self.infcx.unwrap().probe_const_var(vid) {
+                        Ok(c) => {
+                            debug!("(resolved to {:?})", c);
+                            return self.fold_const(c);
+                        }
+
+                        // `ConstVar(vid)` is unresolved, track its universe index in the
+                        // canonicalized result
+                        Err(mut ui) => {
+                            if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
+                                // FIXME: perf problem described in #55921.
+                                ui = ty::UniverseIndex::ROOT;
+                            }
+                            return self.canonicalize_const_var(
+                                CanonicalVarInfo {
+                                    kind: CanonicalVarKind::Const(ui)
+                                },
+                                c
+                            );
+                        }
+                    }
+                }
+                ConstValue::Infer(InferConst::Fresh(_)) => {
+                    bug!("encountered a fresh const during canonicalization")
+                }
+                ConstValue::Infer(InferConst::Canonical(debruijn, _)) => {
+                    if debruijn >= self.binder_index {
+                        bug!("escaping bound type during canonicalization")
+                    } else {
+                        return c;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if c.type_flags().intersects(self.needs_canonical_flags) {
+            c.super_fold_with(self)
+        } else {
+            c
+        }
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
@@ -625,7 +674,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// `ty_var`.
     fn canonicalize_ty_var(&mut self, info: CanonicalVarInfo, ty_var: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
-        let bound_to = infcx.shallow_resolve(ty_var);
+        let bound_to = infcx.shallow_resolve_type(ty_var);
         if bound_to != ty_var {
             self.fold_ty(bound_to)
         } else {

@@ -27,7 +27,7 @@ use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, InferConst};
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
@@ -537,10 +537,10 @@ where
     }
 
     fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        let a = self.infcx.shallow_resolve(a);
+        let a = self.infcx.shallow_resolve_type(a);
 
         if !D::forbid_inference_vars() {
-            b = self.infcx.shallow_resolve(b);
+            b = self.infcx.shallow_resolve_type(b);
         }
 
         match (&a.sty, &b.sty) {
@@ -606,6 +606,24 @@ where
         }
 
         Ok(a)
+    }
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::LazyConst<'tcx>,
+        b: &'tcx ty::LazyConst<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(InferConst::Canonical(_, _)),
+            ..
+        }) = a {
+            // FIXME(const_generics): I'm unsure how this branch should actually be handled,
+            // so this is probably not correct.
+            self.infcx.super_combine_consts(self, a, b)
+        } else {
+            debug!("consts(a={:?}, b={:?}, variance={:?})", a, b, self.ambient_variance);
+            relate::super_relate_consts(self, a, b)
+        }
     }
 
     fn binders<T>(
@@ -853,7 +871,7 @@ where
     fn tys(&mut self, a: Ty<'tcx>, _: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use crate::infer::type_variable::TypeVariableValue;
 
-        debug!("TypeGeneralizer::tys(a={:?})", a,);
+        debug!("TypeGeneralizer::tys(a={:?})", a);
 
         match a.sty {
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
@@ -934,7 +952,7 @@ where
         a: ty::Region<'tcx>,
         _: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("TypeGeneralizer::regions(a={:?})", a,);
+        debug!("TypeGeneralizer::regions(a={:?})", a);
 
         if let ty::ReLateBound(debruijn, _) = a {
             if *debruijn < self.first_free_index {
@@ -963,6 +981,26 @@ where
         Ok(replacement_region_vid)
     }
 
+    fn consts(
+        &mut self,
+        a: &'tcx ty::LazyConst<'tcx>,
+        _: &'tcx ty::LazyConst<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        debug!("TypeGeneralizer::consts(a={:?})", a);
+
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(InferConst::Canonical(_, _)),
+            ..
+        }) = a {
+            bug!(
+                "unexpected inference variable encountered in NLL generalization: {:?}",
+                a
+            );
+        } else {
+            relate::super_relate_consts(self, a, a)
+        }
+    }
+
     fn binders<T>(
         &mut self,
         a: &ty::Binder<T>,
@@ -971,7 +1009,7 @@ where
     where
         T: Relate<'tcx>,
     {
-        debug!("TypeGeneralizer::binders(a={:?})", a,);
+        debug!("TypeGeneralizer::binders(a={:?})", a);
 
         self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;

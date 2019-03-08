@@ -464,7 +464,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
 
         debug!("generalize: t={:?}", t);
 
-        // Check to see whether the type we are genealizing references
+        // Check to see whether the type we are generalizing references
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
@@ -575,6 +575,32 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         // FIXME: This is non-ideal because we don't give a
         // very descriptive origin for this region variable.
         Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.span), self.for_universe))
+    }
+
+    fn consts(
+        &mut self,
+        c: &'tcx ty::LazyConst<'tcx>,
+        c2: &'tcx ty::LazyConst<'tcx>
+    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+
+        match c {
+            LazyConst::Evaluated(ty::Const {
+                val: ConstValue::Infer(InferConst::Var(vid)),
+                ..
+            }) => {
+                let mut variable_table = self.infcx.const_unification_table.borrow_mut();
+                match variable_table.probe(*vid).known() {
+                    Some(u) => {
+                        self.relate(&u, &u)
+                    }
+                    None => Ok(c),
+                }
+            }
+            _ => {
+                relate::super_relate_consts(self, c, c)
+            }
+        }
     }
 }
 
