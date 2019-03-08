@@ -68,7 +68,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
         match &expr.node {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 if let hir::ExprKind::Binary(binop, l, r) = &rhs.node {
-                    if op.node != binop.node { return; }
+                    if op.node != binop.node {
+                        return;
+                    }
                     // lhs op= l op r
                     if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
                         lint_misrefactored_assign_op(cx, expr, *op, rhs, lhs, r);
@@ -196,20 +198,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     }
 }
 
-fn lint_misrefactored_assign_op(cx: &LateContext<'_, '_>, expr: &hir::Expr, op: hir::BinOp, rhs: &hir::Expr, assignee: &hir::Expr, rhs_other: &hir::Expr) {
+fn lint_misrefactored_assign_op(
+    cx: &LateContext<'_, '_>,
+    expr: &hir::Expr,
+    op: hir::BinOp,
+    rhs: &hir::Expr,
+    assignee: &hir::Expr,
+    rhs_other: &hir::Expr,
+) {
     span_lint_and_then(
         cx,
         MISREFACTORED_ASSIGN_OP,
         expr.span,
         "variable appears on both sides of an assignment operation",
         |db| {
-            if let (Some(snip_a), Some(snip_r)) =
-                (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span))
-            {
+            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");
-                let long =
-                    format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
+                let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
                 db.span_suggestion(
                     expr.span,
                     &format!(
