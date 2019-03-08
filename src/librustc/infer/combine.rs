@@ -597,6 +597,15 @@ impl<'tcx, T:Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'t
     }
 }
 
+pub fn const_unification_error<'tcx>(
+    a_is_expected: bool,
+    (a, b): (&'tcx LazyConst<'tcx>, &'tcx LazyConst<'tcx>),
+) -> TypeError<'tcx> {
+    TypeError::ConstError(
+        ConstError::Mismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
+    )
+}
+
 fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::IntVarValue))
                                -> TypeError<'tcx>
 {
