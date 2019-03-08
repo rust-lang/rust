@@ -102,7 +102,7 @@ use crate::hir::Node;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
-use crate::util::nodemap::{NodeMap, HirIdMap, HirIdSet};
+use crate::util::nodemap::{HirIdMap, HirIdSet};
 
 use errors::Applicability;
 use std::collections::{BTreeMap, VecDeque};
@@ -407,7 +407,7 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     while let Some(pat) = pats.pop_front() {
         use crate::hir::PatKind::*;
         match pat.node {
-            Binding(_, _, _, _, ref inner_pat) => {
+            Binding(_, _, _, ref inner_pat) => {
                 pats.extend(inner_pat.iter());
             }
             Struct(_, ref fields, _) => {
@@ -476,8 +476,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let node_id = ir.tcx.hir().hir_to_node_id(expr.hir_id);
-        ir.tcx.with_freevars(node_id, |freevars| {
+        ir.tcx.with_freevars(expr.hir_id, |freevars| {
             call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
@@ -670,8 +669,8 @@ struct Liveness<'a, 'tcx: 'a> {
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
-    break_ln: NodeMap<LiveNode>,
-    cont_ln: NodeMap<LiveNode>,
+    break_ln: HirIdMap<LiveNode>,
+    cont_ln: HirIdMap<LiveNode>,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
@@ -952,8 +951,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
         if blk.targeted_by_break {
-            let node_id = self.ir.tcx.hir().hir_to_node_id(blk.hir_id);
-            self.break_ln.insert(node_id, succ);
+            self.break_ln.insert(blk.hir_id, succ);
         }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -1112,7 +1110,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Break(label, ref opt_expr) => {
                 // Find which label this break jumps to
                 let target = match label.target_id {
-                    Ok(node_id) => self.break_ln.get(&node_id),
+                    Ok(hir_id) => self.break_ln.get(&hir_id),
                     Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
                 }.cloned();
 
@@ -1391,15 +1389,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.hir_id, self.ir.tcx.hir().hir_to_pretty_string(body.hir_id));
 
-        let node_id = self.ir.tcx.hir().hir_to_node_id(expr.hir_id);
-        self.break_ln.insert(node_id, succ);
+        self.break_ln.insert(expr.hir_id, succ);
 
         let cond_ln = match kind {
             LoopLoop => ln,
             WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
         };
 
-        self.cont_ln.insert(node_id, cond_ln);
+        self.cont_ln.insert(expr.hir_id, cond_ln);
 
         let body_ln = self.propagate_through_block(body, cond_ln);
 

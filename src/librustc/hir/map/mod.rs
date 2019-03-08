@@ -501,10 +501,10 @@ impl<'hir> Map<'hir> {
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(&self, id: NodeId) -> BodyId {
-        self.maybe_body_owned_by(id).unwrap_or_else(|| {
-            span_bug!(self.span(id), "body_owned_by: {} has no associated body",
-                      self.node_to_string(id));
+    pub fn body_owned_by(&self, id: HirId) -> BodyId {
+        self.maybe_body_owned_by_by_hir_id(id).unwrap_or_else(|| {
+            span_bug!(self.span_by_hir_id(id), "body_owned_by: {} has no associated body",
+                      self.hir_to_string(id));
         })
     }
 
@@ -539,19 +539,19 @@ impl<'hir> Map<'hir> {
         self.body_owner_kind(node_id)
     }
 
-    pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
-        match self.get(id) {
+    pub fn ty_param_owner(&self, id: HirId) -> HirId {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => id,
-            Node::GenericParam(_) => self.get_parent_node(id),
-            _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
+            Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
+            _ => bug!("ty_param_owner: {} not a type parameter", self.hir_to_string(id))
         }
     }
 
-    pub fn ty_param_name(&self, id: NodeId) -> Name {
-        match self.get(id) {
+    pub fn ty_param_name(&self, id: HirId) -> Name {
+        match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfUpper.name(),
             Node::GenericParam(param) => param.name.ident().name,
-            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
+            _ => bug!("ty_param_name: {} not a type parameter", self.hir_to_string(id)),
         }
     }
 
@@ -618,11 +618,11 @@ impl<'hir> Map<'hir> {
         }
 
         for id in &module.trait_items {
-            visitor.visit_trait_item(self.expect_trait_item_by_hir_id(id.hir_id));
+            visitor.visit_trait_item(self.expect_trait_item(id.hir_id));
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item_by_hir_id(id.hir_id));
+            visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
         }
     }
 
@@ -929,66 +929,52 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn expect_item_by_hir_id(&self, id: HirId) -> &'hir Item {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_item(node_id)
-    }
-
-    pub fn expect_impl_item(&self, id: NodeId) -> &'hir ImplItem {
-        match self.find(id) {
-            Some(Node::ImplItem(item)) => item,
-            _ => bug!("expected impl item, found {}", self.node_to_string(id))
+        match self.find_by_hir_id(id) { // read recorded by `find`
+            Some(Node::Item(item)) => item,
+            _ => bug!("expected item, found {}", self.hir_to_string(id))
         }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn expect_impl_item_by_hir_id(&self, id: HirId) -> &'hir ImplItem {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_impl_item(node_id)
+    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
+        match self.find_by_hir_id(id) {
+            Some(Node::ImplItem(item)) => item,
+            _ => bug!("expected impl item, found {}", self.hir_to_string(id))
+        }
     }
 
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn expect_trait_item_by_hir_id(&self, id: HirId) -> &'hir TraitItem {
-        let node_id = self.hir_to_node_id(id);
-        self.expect_trait_item(node_id)
-    }
-
-    pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
-        match self.find(id) {
+    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
+        match self.find_by_hir_id(id) {
             Some(Node::TraitItem(item)) => item,
-            _ => bug!("expected trait item, found {}", self.node_to_string(id))
+            _ => bug!("expected trait item, found {}", self.hir_to_string(id))
         }
     }
 
     pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
-        match self.find(id) {
+        match self.find_by_hir_id(id) {
             Some(Node::Item(i)) => {
                 match i.node {
                     ItemKind::Struct(ref struct_def, _) |
                     ItemKind::Union(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
+                    _ => bug!("struct ID bound to non-struct {}", self.hir_to_string(id))
                 }
             }
             Some(Node::StructCtor(data)) => data,
             Some(Node::Variant(variant)) => &variant.node.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id))
+            _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
         }
     }
 
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
-        let id = self.hir_to_node_id(id); // FIXME(@ljedrz): remove when possible
-
-        match self.find(id) {
+        match self.find_by_hir_id(id) {
             Some(Node::Variant(variant)) => variant,
-            _ => bug!("expected variant, found {}", self.node_to_string(id)),
+            _ => bug!("expected variant, found {}", self.hir_to_string(id)),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> &'hir ForeignItem {
-        match self.find(id) {
+    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
+        match self.find_by_hir_id(id) {
             Some(Node::ForeignItem(item)) => item,
-            _ => bug!("expected foreign item, found {}", self.node_to_string(id))
+            _ => bug!("expected foreign item, found {}", self.hir_to_string(id))
         }
     }
 
@@ -1016,7 +1002,7 @@ impl<'hir> Map<'hir> {
             Node::Field(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
-            Node::Binding(&Pat { node: PatKind::Binding(_, _, _, l, _), .. }) => l.name,
+            Node::Binding(&Pat { node: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::StructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }

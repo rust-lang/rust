@@ -120,9 +120,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
-        let closure_node_id = self.tcx.hir().hir_to_node_id(closure_hir_id);
-
-        self.tcx.with_freevars(closure_node_id, |freevars| {
+        self.tcx.with_freevars(closure_hir_id, |freevars| {
             let mut freevar_list: Vec<ty::UpvarId> = Vec::with_capacity(freevars.len());
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
@@ -217,10 +215,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // inference algorithm will reject it).
 
         // Equate the type variables for the upvars with the actual types.
-        let final_upvar_tys = self.final_upvar_tys(closure_node_id);
+        let final_upvar_tys = self.final_upvar_tys(closure_hir_id);
         debug!(
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
-            closure_node_id, substs, final_upvar_tys
+            closure_hir_id, substs, final_upvar_tys
         );
         for (upvar_ty, final_upvar_ty) in substs
             .upvar_tys(closure_def_id, self.tcx)
@@ -238,14 +236,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Returns a list of `ClosureUpvar`s for each upvar.
-    fn final_upvar_tys(&self, closure_id: ast::NodeId) -> Vec<Ty<'tcx>> {
+    fn final_upvar_tys(&self, closure_id: hir::HirId) -> Vec<Ty<'tcx>> {
         // Presently an unboxed closure type cannot "escape" out of a
         // function, so we will only encounter ones that originated in the
         // local crate or were inlined into it along with some function.
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_index = tcx.hir().local_def_id(closure_id);
+        let closure_def_index = tcx.hir().local_def_id_from_hir_id(closure_id);
 
         tcx.with_freevars(closure_id, |freevars| {
             freevars

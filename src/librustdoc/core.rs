@@ -3,7 +3,7 @@ use rustc_driver::{driver, abort_on_err};
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
-use rustc::hir::{self, HirVec};
+use rustc::hir::{self, HirId, HirVec};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
@@ -17,7 +17,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
@@ -159,11 +159,20 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
 
     /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
+    pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
             self.tcx.hir().as_local_node_id(def_id)
+        }
+    }
+
+    // FIXME(@ljedrz): remove the NodeId variant
+    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
+        if self.all_fake_def_ids.borrow().contains(&def_id) {
+            None
+        } else {
+            self.tcx.hir().as_local_hir_id(def_id)
         }
     }
 
@@ -180,7 +189,6 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
 
         segments.push(hir::PathSegment::new(
             real_name.unwrap_or(last.ident),
-            None,
             None,
             None,
             self.generics_to_path_params(generics.clone()),

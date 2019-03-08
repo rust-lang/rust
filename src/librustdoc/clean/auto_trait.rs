@@ -3,7 +3,7 @@ use rustc::traits::auto_trait as auto;
 use rustc::ty::{self, TypeFoldable};
 use std::fmt::Debug;
 
-use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
+use self::def_ctor::{get_def_from_def_id, get_def_from_hir_id};
 
 use super::*;
 
@@ -25,9 +25,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         })
     }
 
-    pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
-        get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
-            let did = self.cx.tcx.hir().local_def_id(id);
+    pub fn get_with_hir_id(&self, id: hir::HirId, name: String) -> Vec<Item> {
+        get_def_from_hir_id(&self.cx, id, name, &|def_ctor, name| {
+            let did = self.cx.tcx.hir().local_def_id_from_hir_id(id);
             self.get_auto_trait_impls(did, &def_ctor, Some(name))
         })
     }

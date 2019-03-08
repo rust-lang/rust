@@ -96,10 +96,9 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::sync::Arc;
 
-use syntax::ast::NodeId;
 use syntax::symbol::InternedString;
 use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
-use rustc::hir::CodegenFnAttrFlags;
+use rustc::hir::{CodegenFnAttrFlags, HirId};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
@@ -162,19 +161,19 @@ pub trait CodegenUnitExt<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<NodeId>, ty::SymbolName);
+        pub struct ItemSortKey(Option<HirId>, ty::SymbolName);
 
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item: MonoItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
                 MonoItem::Fn(ref instance) => {
                     match instance.def {
-                        // We only want to take NodeIds of user-defined
+                        // We only want to take HirIds of user-defined
                         // instances into account. The others don't matter for
                         // the codegen tests and can even make item order
                         // unstable.
                         InstanceDef::Item(def_id) => {
-                            tcx.hir().as_local_node_id(def_id)
+                            tcx.hir().as_local_hir_id(def_id)
                         }
                         InstanceDef::VtableShim(..) |
                         InstanceDef::Intrinsic(..) |
@@ -188,10 +187,10 @@ pub trait CodegenUnitExt<'tcx> {
                     }
                 }
                 MonoItem::Static(def_id) => {
-                    tcx.hir().as_local_node_id(def_id)
+                    tcx.hir().as_local_hir_id(def_id)
                 }
-                MonoItem::GlobalAsm(node_id) => {
-                    Some(node_id)
+                MonoItem::GlobalAsm(hir_id) => {
+                    Some(hir_id)
                 }
             }, item.symbol_name(tcx))
         }
@@ -404,8 +403,8 @@ fn mono_item_visibility(
                 Visibility::Hidden
             };
         }
-        MonoItem::GlobalAsm(node_id) => {
-            let def_id = tcx.hir().local_def_id(*node_id);
+        MonoItem::GlobalAsm(hir_id) => {
+            let def_id = tcx.hir().local_def_id_from_hir_id(*hir_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, false)
@@ -789,7 +788,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(node_id) => Some(tcx.hir().local_def_id(node_id)),
+        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id_from_hir_id(hir_id)),
     }
 }
 

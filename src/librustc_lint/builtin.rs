@@ -198,7 +198,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, _, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.node.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
@@ -458,8 +458,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
-                if let Some(node_id) = cx.tcx.hir().as_local_node_id(real_trait) {
-                    match cx.tcx.hir().find(node_id) {
+                if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
+                    match cx.tcx.hir().find_by_hir_id(hir_id) {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {

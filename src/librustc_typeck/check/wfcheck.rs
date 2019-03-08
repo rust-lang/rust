@@ -151,8 +151,8 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
 }
 
 pub fn check_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let trait_item = tcx.hir().expect_trait_item(node_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.node {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
@@ -162,8 +162,8 @@ pub fn check_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 }
 
 pub fn check_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let impl_item = tcx.hir().expect_impl_item(node_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.node {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
@@ -625,8 +625,8 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                 let generics = tcx.generics_of(def_id);
                 // only check named existential types defined in this crate
                 if generics.parent.is_none() && def_id.is_local() {
-                    let opaque_node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-                    if may_define_existential_type(tcx, fn_def_id, opaque_node_id) {
+                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                    if may_define_existential_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_existential_types may define. Generics: {:#?}", generics);
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
                         for (subst, param) in substs.iter().zip(&generics.params) {

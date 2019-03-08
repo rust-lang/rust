@@ -27,7 +27,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                       w: &mut W) -> io::Result<()>
     where W: Write
 {
-    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_node_id(def_id).unwrap())?;
+    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_hir_id(def_id).unwrap())?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;

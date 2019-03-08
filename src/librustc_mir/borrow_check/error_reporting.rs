@@ -191,8 +191,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let needs_note = match ty.sty {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck_tables_of(id);
-                    let node_id = self.infcx.tcx.hir().as_local_node_id(id).unwrap();
-                    let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(id).unwrap();
 
                     tables.closure_kind_origins().get(hir_id).is_none()
                 }
@@ -1525,8 +1524,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                 if let ty::TyKind::Closure(did, _) = self.mir.local_decls[closure].ty.sty {
-                    let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
-                    let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                     if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
                         .closure_kind_origins()
@@ -1549,8 +1547,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
             if let ty::TyKind::Closure(did, _) = self.mir.local_decls[target].ty.sty {
-                let node_id = self.infcx.tcx.hir().as_local_node_id(did).unwrap();
-                let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
+                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                 if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
                     .closure_kind_origins()
@@ -1790,10 +1787,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let node_id = self.infcx.tcx.hir().as_local_node_id(def_id).unwrap();
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id).unwrap();
                     let freevar = self.infcx
                         .tcx
-                        .with_freevars(node_id, |fv| fv[field.index()]);
+                        .with_freevars(hir_id, |fv| fv[field.index()]);
 
                     self.infcx.tcx.hir().name(freevar.var_id()).to_string()
                 }
@@ -2105,8 +2102,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'_>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did);
-        let fn_node_id = self.infcx.tcx.hir().as_local_node_id(did)?;
-        let fn_decl = self.infcx.tcx.hir().fn_decl(fn_node_id)?;
+        let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(did)?;
+        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking
         // at the return type, where there are three cases:
@@ -2560,14 +2557,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let node_id = self.infcx.tcx.hir().as_local_node_id(def_id)?;
-        let expr = &self.infcx.tcx.hir().expect_expr(node_id).node;
-        debug!("closure_span: node_id={:?} expr={:?}", node_id, expr);
+        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
+        let expr = &self.infcx.tcx.hir().expect_expr_by_hir_id(hir_id).node;
+        debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(
             .., args_span, _
         ) = expr {
             let var_span = self.infcx.tcx.with_freevars(
-                node_id,
+                hir_id,
                 |freevars| {
                     for (v, place) in freevars.iter().zip(places) {
                         match place {

@@ -1068,7 +1068,7 @@ impl<'a> LoweringContext<'a> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    Ok(self.lower_node_id(loop_id).node_id)
+                    Ok(self.lower_node_id(loop_id).hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
@@ -1077,7 +1077,7 @@ impl<'a> LoweringContext<'a> {
                 self.loop_scopes
                     .last()
                     .cloned()
-                    .map(|id| Ok(self.lower_node_id(id).node_id))
+                    .map(|id| Ok(self.lower_node_id(id).hir_id))
                     .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
                     .into()
             }
@@ -1932,7 +1932,6 @@ impl<'a> LoweringContext<'a> {
 
         hir::PathSegment::new(
             segment.ident,
-            Some(id.node_id),
             Some(id.hir_id),
             Some(def),
             generic_args,
@@ -3276,10 +3275,8 @@ impl<'a> LoweringContext<'a> {
         debug!("renumber_segment_ids(path = {:?})", path);
         let mut path = path.clone();
         for seg in path.segments.iter_mut() {
-            if seg.id.is_some() {
-                let next_id = self.next_id();
-                seg.id = Some(next_id.node_id);
-                seg.hir_id = Some(next_id.hir_id);
+            if seg.hir_id.is_some() {
+                seg.hir_id = Some(self.next_id().hir_id);
             }
         }
         path
@@ -3682,11 +3679,10 @@ impl<'a> LoweringContext<'a> {
                             Some(Def::Local(id)) => id,
                             _ => p.id,
                         };
-                        let hir_id = self.lower_node_id(canonical_id).hir_id;
+
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
-                            canonical_id,
-                            hir_id,
+                            self.lower_node_id(canonical_id).hir_id,
                             ident,
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
@@ -4568,12 +4564,13 @@ impl<'a> LoweringContext<'a> {
                     let thin_attrs = ThinVec::from(attrs);
                     let catch_scope = self.catch_scopes.last().map(|x| *x);
                     let ret_expr = if let Some(catch_node) = catch_scope {
+                        let target_id = Ok(self.lower_node_id(catch_node).hir_id);
                         P(self.expr(
                             e.span,
                             hir::ExprKind::Break(
                                 hir::Destination {
                                     label: None,
-                                    target_id: Ok(catch_node),
+                                    target_id,
                                 },
                                 Some(from_err_expr),
                             ),
@@ -4988,7 +4985,7 @@ impl<'a> LoweringContext<'a> {
         (
             P(hir::Pat {
                 hir_id,
-                node: hir::PatKind::Binding(bm, node_id, hir_id, ident.with_span_pos(span), None),
+                node: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
             }),
             node_id
@@ -5024,8 +5021,8 @@ impl<'a> LoweringContext<'a> {
 
 
         for seg in path.segments.iter_mut() {
-            if let Some(id) = seg.id {
-                seg.id = Some(self.lower_node_id(id).node_id);
+            if seg.hir_id.is_some() {
+                seg.hir_id = Some(self.next_id().hir_id);
             }
         }
         path

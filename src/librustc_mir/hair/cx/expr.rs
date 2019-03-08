@@ -530,8 +530,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let expr_node_id = cx.tcx.hir().hir_to_node_id(expr.hir_id);
-            let upvars = cx.tcx.with_freevars(expr_node_id, |freevars| {
+            let upvars = cx.tcx.with_freevars(expr.hir_id, |freevars| {
                 freevars.iter()
                     .zip(substs.upvar_tys(def_id, cx.tcx))
                     .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
@@ -592,7 +591,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope {
-                        id: cx.tcx.hir().node_to_hir_id(target_id).local_id,
+                        id: target_id.local_id,
                         data: region::ScopeData::Node
                     },
                     value: value.to_ref(),
@@ -604,7 +603,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope {
-                        id: cx.tcx.hir().node_to_hir_id(loop_id).local_id,
+                        id: loop_id.local_id,
                         data: region::ScopeData::Node
                     },
                 },
@@ -993,7 +992,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
     match def {
-        Def::Local(id) => ExprKind::VarRef { id },
+        Def::Local(id) => ExprKind::VarRef { id: cx.tcx.hir().node_to_hir_id(id) },
 
         Def::Upvar(var_id, index, closure_expr_id) => {
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",

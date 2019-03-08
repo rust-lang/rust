@@ -1585,9 +1585,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(lifetime)) => {
-                    let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
-                    debug!("node id first={:?}", node_id);
-                    if let Some((id, span, name)) = match self.tcx.hir().get(node_id) {
+                    let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    debug!("hir id first={:?}", hir_id);
+                    if let Some((id, span, name)) = match self.tcx.hir().get_by_hir_id(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.hir_id,
                             hir_lifetime.span,
@@ -1626,8 +1626,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     debug!("Not one use lifetime");
                 }
                 None => {
-                    let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
-                    if let Some((id, span, name)) = match self.tcx.hir().get(node_id) {
+                    let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    if let Some((id, span, name)) = match self.tcx.hir().get_by_hir_id(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.hir_id,
                             hir_lifetime.span,

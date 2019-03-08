@@ -647,7 +647,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::Binding(&hir::Pat {
                 node: hir::PatKind::Binding(_, canonical_id, ..),
                 ..
-            }) => HirDef::Local(canonical_id),
+            }) => HirDef::Local(self.tcx.hir().hir_to_node_id(canonical_id)),
 
             Node::Ty(ty) => if let hir::Ty {
                 node: hir::TyKind::Path(ref qpath),

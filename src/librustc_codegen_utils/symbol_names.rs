@@ -242,7 +242,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let node_id = tcx.hir().as_local_node_id(def_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
 
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
@@ -256,8 +256,8 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(id) = node_id {
-        match tcx.hir().get(id) {
+    let is_foreign = if let Some(id) = hir_id {
+        match tcx.hir().get_by_hir_id(id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

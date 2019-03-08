@@ -1223,8 +1223,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let suitable_bounds = traits::transitive_bounds(tcx, bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
-        let param_node_id = tcx.hir().as_local_node_id(ty_param_def_id).unwrap();
-        let param_name = tcx.hir().ty_param_name(param_node_id);
+        let param_hir_id = tcx.hir().as_local_hir_id(ty_param_def_id).unwrap();
+        let param_name = tcx.hir().ty_param_name(param_hir_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
                                       assoc_name,

@@ -126,7 +126,7 @@ pub enum PatternKind<'tcx> {
         mutability: Mutability,
         name: ast::Name,
         mode: BindingMode,
-        var: ast::NodeId,
+        var: hir::HirId,
         ty: Ty<'tcx>,
         subpattern: Option<Pattern<'tcx>>,
     },
@@ -559,7 +559,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(_, id, _, ident, ref sub) => {
+            PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE
@@ -1090,7 +1090,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     SubstsRef<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>

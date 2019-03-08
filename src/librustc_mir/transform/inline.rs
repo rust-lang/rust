@@ -72,8 +72,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let param_env = self.tcx.param_env(self.source.def_id());
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
-        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
+        let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
+        if self.tcx.hir().body_owner_kind_by_hir_id(id).is_fn_or_closure()
+            && self.source.promoted.is_none()
+        {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
                                                                     bb_data,

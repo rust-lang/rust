@@ -52,9 +52,9 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     assert!(def_id.is_local());
 
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(hir_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
@@ -79,9 +79,9 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     // `def_id` should be a `Body` owner
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(hir_id);
     let _ = visitor.check_nested_body(body_id);
 
     Lrc::new(visitor.result)
@@ -455,10 +455,9 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Closure(_capture_clause, ref _box_fn_decl,
                                body_id, _span, _option_generator_movability) => {
             let nested_body_promotable = v.check_nested_body(body_id);
-            let node_id = v.tcx.hir().hir_to_node_id(e.hir_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            if v.tcx.with_freevars(node_id, |fv| !fv.is_empty()) {
+            if v.tcx.with_freevars(e.hir_id, |fv| !fv.is_empty()) {
                 NotPromotable
             } else {
                 nested_body_promotable

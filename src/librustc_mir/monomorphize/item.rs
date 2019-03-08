@@ -58,8 +58,8 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::Static(def_id) => {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
-            MonoItem::GlobalAsm(node_id) => {
-                let def_id = tcx.hir().local_def_id(node_id);
+            MonoItem::GlobalAsm(hir_id) => {
+                let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                 ty::SymbolName {
                     name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_interned_str()
                 }
@@ -190,15 +190,15 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
         match *self.as_mono_item() {
             MonoItem::Fn(Instance { def, .. }) => {
-                tcx.hir().as_local_node_id(def.def_id())
+                tcx.hir().as_local_hir_id(def.def_id())
             }
             MonoItem::Static(def_id) => {
-                tcx.hir().as_local_node_id(def_id)
+                tcx.hir().as_local_hir_id(def_id)
             }
-            MonoItem::GlobalAsm(node_id) => {
-                Some(node_id)
+            MonoItem::GlobalAsm(hir_id) => {
+                Some(hir_id)
             }
-        }.map(|node_id| tcx.hir().span(node_id))
+        }.map(|hir_id| tcx.hir().span_by_hir_id(hir_id))
     }
 }
 

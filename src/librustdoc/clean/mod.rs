@@ -1847,7 +1847,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext<'_, '_, '_>) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if cx.tcx.hir().as_local_node_id(did).is_some() {
+        let mut names = if cx.tcx.hir().as_local_hir_id(did).is_some() {
             vec![].into_iter()
         } else {
             cx.tcx.fn_arg_names(did).into_iter()
@@ -3541,13 +3541,13 @@ pub struct Impl {
     pub blanket_impl: Option<Type>,
 }
 
-pub fn get_auto_traits_with_node_id(
+pub fn get_auto_traits_with_hir_id(
     cx: &DocContext<'_, '_, '_>,
-    id: ast::NodeId,
+    id: hir::HirId,
     name: String
 ) -> Vec<Item> {
     let finder = AutoTraitFinder::new(cx);
-    finder.get_with_node_id(id, name)
+    finder.get_with_hir_id(id, name)
 }
 
 pub fn get_auto_traits_with_def_id(
@@ -3559,13 +3559,13 @@ pub fn get_auto_traits_with_def_id(
     finder.get_with_def_id(id)
 }
 
-pub fn get_blanket_impls_with_node_id(
+pub fn get_blanket_impls_with_hir_id(
     cx: &DocContext<'_, '_, '_>,
-    id: ast::NodeId,
+    id: hir::HirId,
     name: String
 ) -> Vec<Item> {
     let finder = BlanketImplFinder::new(cx);
-    finder.get_with_node_id(id, name)
+    finder.get_with_hir_id(id, name)
 }
 
 pub fn get_blanket_impls_with_def_id(
@@ -3869,7 +3869,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Binding(_, _, _, ident, _) => ident.to_string(),
+        PatKind::Binding(_, _, ident, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),
@@ -3902,8 +3902,8 @@ fn name_from_pat(p: &hir::Pat) -> String {
 fn print_const(cx: &DocContext<'_, '_, '_>, n: ty::LazyConst<'_>) -> String {
     match n {
         ty::LazyConst::Unevaluated(def_id, _) => {
-            if let Some(node_id) = cx.tcx.hir().as_local_node_id(def_id) {
-                print_const_expr(cx, cx.tcx.hir().body_owned_by(node_id))
+            if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+                print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
             }
@@ -4250,7 +4250,6 @@ where F: Fn(DefId) -> Def {
         def: def_ctor(def_id),
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
-            id: None,
             hir_id: None,
             def: None,
             args: None,
