@@ -23,12 +23,15 @@
     )
 )]
 #![warn(missing_docs)]
+#![cfg_attr(hashbrown_deny_warnings, deny(warnings))]
 
 #[cfg(test)]
 #[macro_use]
+#[allow(unused_imports)]
 extern crate std;
 #[cfg(test)]
 extern crate rand;
+
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]

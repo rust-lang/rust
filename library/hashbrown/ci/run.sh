@@ -7,6 +7,7 @@ set -ex
 FEATURES="rayon,serde"
 if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
+    export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
 fi
 
 CARGO=cargo
@@ -17,6 +18,8 @@ if [ "${CROSS}" = "1" ]; then
     cargo install cross
     CARGO=cross
 fi
+
+export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
 
 "${CARGO}" -vv test --target="${TARGET}"
 "${CARGO}" -vv test --target="${TARGET}" --features "${FEATURES}"
