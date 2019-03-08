@@ -2365,6 +2365,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_fs_util 0.0.0",
+ "rustc_macros 0.1.0",
  "rustc_target 0.0.0",
  "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
@@ -2815,6 +2816,16 @@ dependencies = [
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
+]
+
+[[package]]
+name = "rustc_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2 0.4.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.15.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "synstructure 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

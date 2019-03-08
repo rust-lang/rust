@@ -32,6 +32,7 @@ use crate::ty::query::Providers;
 
 use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_macros::HashStable;
 
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
@@ -149,7 +150,7 @@ pub const DUMMY_HIR_ID: HirId = HirId {
 
 pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Copy, HashStable)]
 pub struct Lifetime {
     pub hir_id: HirId,
     pub span: Span,
