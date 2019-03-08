@@ -103,24 +103,22 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
-    pub fn read_vectored(&self, buf: &mut [IoVecMut<'_>]) -> io::Result<usize> {
-        let buf = match buf.get_mut(0) {
-            Some(buf) => buf,
-            None => return Ok(0),
-        };
-        self.read(buf)
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        match bufs.iter_mut().find(|b| !b.is_empty()) {
+            Some(buf) => self.read(buf),
+            None => Ok(0),
+        }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.write(buf)
     }
 
-    pub fn write_vectored(&self, buf: &[IoVec<'_>]) -> io::Result<usize> {
-        let buf = match buf.get(0) {
-            Some(buf) => buf,
-            None => return Ok(0),
-        };
-        self.write(buf)
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        match bufs.iter().find(|b| !b.is_empty()) {
+            Some(buf) => self.write(buf),
+            None => Ok(0),
+        }
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
