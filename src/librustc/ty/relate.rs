@@ -7,8 +7,8 @@
 use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
-use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{GlobalId, ConstValue};
+use crate::ty::error::{ExpectedFound, TypeError, ConstError};
+use crate::mir::interpret::{GlobalId, ConstValue, Scalar};
 use crate::util::common::ErrorReported;
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
@@ -476,6 +476,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             let t = relation.relate(&a_t, &b_t)?;
             let to_u64 = |x: ty::Const<'tcx>| -> Result<u64, ErrorReported> {
                 match x.val {
+                    // FIXME(const_generics): this doesn't work right now,
+                    // because it tries to relate an `Infer` to a `Param`.
                     ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
@@ -489,7 +491,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             if let Some(instance) = instance {
                                 let cid = GlobalId {
                                     instance,
-                                    promoted: None
+                                    promoted: None,
                                 };
                                 if let Some(s) = tcx.const_eval(param_env.and(cid))
                                                     .ok()
@@ -718,6 +720,17 @@ impl<'tcx> Relate<'tcx> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for &'tcx ty::LazyConst<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &&'tcx ty::LazyConst<'tcx>,
+                           b: &&'tcx ty::LazyConst<'tcx>)
+                           -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        relation.consts(*a, *b)
+    }
+}
+
 impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<T> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::Binder<T>,
@@ -771,14 +784,17 @@ impl<'tcx> Relate<'tcx> for Kind<'tcx> {
             (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
                 Ok(relation.relate(&a_ty, &b_ty)?.into())
             }
+            (UnpackedKind::Const(a_ct), UnpackedKind::Const(b_ct)) => {
+                Ok(relation.relate(&a_ct, &b_ct)?.into())
+            }
             (UnpackedKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
             (UnpackedKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Const(_), _) => {
-                unimplemented!() // FIXME(const_generics)
+            (UnpackedKind::Const(unpacked), x) => {
+                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }
     }
