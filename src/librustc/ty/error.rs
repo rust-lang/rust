@@ -44,6 +44,14 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
+
+    ConstError(ConstError<'tcx>),
+}
+
+// Data structure used in const unification
+#[derive(Clone, Debug)]
+pub enum ConstError<'tcx> {
+    Mismatch(ExpectedFound<&'tcx ty::LazyConst<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -162,6 +170,21 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, &format!("trait `{}`", values.expected),
                                        &format!("trait `{}`", values.found))
+            }
+            ConstError(ref err) => {
+                write!(f, "{}", err)
+            }
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for ConstError<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use self::ConstError::*;
+
+        match *self {
+            Mismatch(ref values) => {
+                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
             }
         }
     }
