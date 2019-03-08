@@ -306,9 +306,15 @@ pub fn implements_trait<'a, 'tcx>(
 /// Use this if you want to find the `TraitRef` of the `Point` trait in this example:
 ///
 /// ```rust
-/// trait Point;
+/// struct Point(isize, isize);
 ///
-/// impl std::ops::Add for Point {}
+/// impl std::ops::Add for Point {
+///     type Output = Self;
+///
+///     fn add(self, other: Self) -> Self {
+///         Point(0, 0)
+///     }
+/// }
 /// ```
 pub fn trait_ref_of_method(cx: &LateContext<'_, '_>, hir_id: HirId) -> Option<TraitRef> {
     // Get the implemented trait for the current function
