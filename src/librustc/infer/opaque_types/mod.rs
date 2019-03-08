@@ -659,6 +659,10 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
             _ => ty.super_fold_with(self),
         }
     }
+
+    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        ct // FIXME(const_generics)
+    }
 }
 
 struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {

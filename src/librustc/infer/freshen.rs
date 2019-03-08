@@ -192,4 +192,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
     }
+
+    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        ct // FIXME(const_generics)
+    }
 }

@@ -174,4 +174,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
         }
         r
     }
+
+    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        ct // FIXME(const_generics)
+    }
 }
