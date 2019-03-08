@@ -1,4 +1,4 @@
-use crate::utils::{is_expn_of, match_def_path, opt_def_id, resolve_node, span_lint, span_lint_and_sugg};
+use crate::utils::{is_expn_of, match_def_path, resolve_node, span_lint, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprKind::Call(ref dest_fun, _) = write_args[0].node;
             if let ExprKind::Path(ref qpath) = dest_fun.node;
             if let Some(dest_fun_id) =
-                opt_def_id(resolve_node(cx, qpath, dest_fun.hir_id));
+                resolve_node(cx, qpath, dest_fun.hir_id).opt_def_id();
             if let Some(dest_name) = if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdio", "stdout"]) {
                 Some("stdout")
             } else if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdio", "stderr"]) {

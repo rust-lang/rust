@@ -2,8 +2,8 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
+    in_macro, last_line_of_span, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
+    without_block_comments,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -396,7 +396,7 @@ fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.node {
-                if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
+                if let Some(fun_id) = tables.qpath_def(qpath, path_expr.hir_id).opt_def_id() {
                     !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
                 } else {
                     true

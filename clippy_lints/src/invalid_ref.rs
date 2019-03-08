@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, opt_def_id, paths, span_help_and_lint};
+use crate::utils::{match_def_path, paths, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
             if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 0;
             if let ty::Ref(..) = cx.tables.expr_ty(expr).sty;
-            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
+            if let Some(def_id) = cx.tables.qpath_def(qpath, path.hir_id).opt_def_id();
             then {
                 let msg = if match_def_path(cx.tcx, def_id, &paths::MEM_ZEROED) |
                              match_def_path(cx.tcx, def_id, &paths::INIT)

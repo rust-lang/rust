@@ -4,9 +4,8 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
-    snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
-    AbsolutePathBuffer,
+    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
 };
 use if_chain::if_chain;
 use rustc::hir;
@@ -225,7 +224,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, ty.hir_id));
+        if let Some(did) = cx.tables.qpath_def(qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx.tcx, did, path);
         then {
             return true;
@@ -248,7 +247,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
         TyKind::Path(ref qpath) if !is_local => {
             let hir_id = hir_ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
-            if let Some(def_id) = opt_def_id(def) {
+            if let Some(def_id) = def.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     if match_type_parameter(cx, qpath, &paths::VEC) {
                         span_help_and_lint(
@@ -271,7 +270,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         // ty is now _ at this point
                         if let TyKind::Path(ref ty_qpath) = ty.node;
                         let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
-                        if let Some(def_id) = opt_def_id(def);
+                        if let Some(def_id) = def.opt_def_id();
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
@@ -378,7 +377,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
             let hir_id = mut_ty.ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
             if_chain! {
-                if let Some(def_id) = opt_def_id(def);
+                if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();
                 if let QPath::Resolved(None, ref path) = *qpath;
                 if let [ref bx] = *path.segments;

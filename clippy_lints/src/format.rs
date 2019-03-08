@@ -1,7 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet,
-    span_lint_and_then, walk_ptrs_ty,
+    in_macro, is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet, span_lint_and_then,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
                         if let ExprKind::Path(ref qpath) = fun.node;
-                        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
+                        if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
                         let new_v1 = match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
                         let new_v1_fmt = match_def_path(
                             cx.tcx,
@@ -159,7 +159,7 @@ fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option
         if let ExprKind::Call(_, ref args) = exprs[0].node;
         if args.len() == 2;
         if let ExprKind::Path(ref qpath) = args[1].node;
-        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, args[1].hir_id));
+        if let Some(fun_def_id) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
