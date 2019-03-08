@@ -21,7 +21,8 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, ConstVariableOrigin};
+use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_macros::HashStable;
 use serialize::UseSpecializedDecodable;
@@ -30,7 +31,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::Kind;
-use crate::ty::{self, BoundVar, Lift, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, InferConst, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -115,6 +116,7 @@ impl CanonicalVarInfo {
             CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
+            CanonicalVarKind::Const(_) => true,
         }
     }
 }
@@ -137,6 +139,9 @@ pub enum CanonicalVarKind {
     /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
     /// bound region `'a`.
     PlaceholderRegion(ty::PlaceholderRegion),
+
+    /// Some kind of const inference variable.
+    Const(ty::UniverseIndex),
 }
 
 impl CanonicalVarKind {
@@ -150,6 +155,7 @@ impl CanonicalVarKind {
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
+            CanonicalVarKind::Const(ui) => ui,
         }
     }
 }
@@ -388,6 +394,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 };
                 self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
             }
+
+            CanonicalVarKind::Const(ui) => {
+                self.next_const_var_in_universe(
+                    self.next_ty_var_in_universe(
+                        TypeVariableOrigin::MiscVariable(span),
+                        universe_map(ui),
+                    ),
+                    ConstVariableOrigin::MiscVariable(span),
+                    universe_map(ui),
+                ).into()
+            }
         }
     }
 }
@@ -443,8 +460,19 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     UnpackedKind::Lifetime(..) => tcx.mk_region(
                         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
                     ).into(),
-                    UnpackedKind::Const(..) => {
-                        unimplemented!() // FIXME(const_generics)
+                    UnpackedKind::Const(ct) => {
+                        let ty = match ct {
+                            ty::LazyConst::Unevaluated(def_id, _) => {
+                                tcx.type_of(*def_id)
+                            }
+                            ty::LazyConst::Evaluated(ty::Const { ty, .. }) => ty,
+                        };
+                        tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const {
+                            ty: ty,
+                            val: ConstValue::Infer(
+                                InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from_u32(i))
+                            ),
+                        })).into()
                     }
                 })
                 .collect()
