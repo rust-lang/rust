@@ -2,7 +2,7 @@ extern crate clap;
 extern crate clippy_dev;
 extern crate regex;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand};
 use clippy_dev::*;
 
 #[derive(PartialEq)]
@@ -13,9 +13,11 @@ enum UpdateMode {
 
 fn main() {
     let matches = App::new("Clippy developer tooling")
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("update_lints")
-                .about(
+                .about("Updates lint registration and information from the source code")
+                .long_about(
                     "Makes sure that:\n \
                      * the lint count in README.md is correct\n \
                      * the changelog contains markdown link references at the bottom\n \
