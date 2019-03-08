@@ -123,9 +123,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> EncodedMetadata {
         base::write_metadata(tcx, metadata)
     }
-    fn codegen_allocator(
+    fn codegen_allocator<'b, 'gcx>(
         &self,
-        tcx: TyCtxt<'_, '_, '_>,
+        tcx: TyCtxt<'b, 'gcx, 'gcx>,
         mods: &mut ModuleLlvm,
         kind: AllocatorKind
     ) {
