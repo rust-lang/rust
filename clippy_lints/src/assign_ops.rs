@@ -1,4 +1,6 @@
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq};
+use crate::utils::{
+    get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
+};
 use crate::utils::{higher, sugg};
 use if_chain::if_chain;
 use rustc::hir;
