@@ -46,7 +46,7 @@ use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{Symbol, keywords};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, MultiSpan, BytePos, FileName};
 use log::{debug, trace};
@@ -256,8 +256,15 @@ pub struct Parser<'a> {
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
+    last_unexpected_token_span: Option<Span>,
 }
 
+impl<'a> Drop for Parser<'a> {
+    fn drop(&mut self) {
+        let diag = self.diagnostic();
+        emit_unclosed_delims(&mut self.unclosed_delims, diag);
+    }
+}
 
 #[derive(Clone)]
 struct TokenCursor {
@@ -582,6 +589,7 @@ impl<'a> Parser<'a> {
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
+            last_unexpected_token_span: None,
         };
 
         let tok = parser.next_tok();
@@ -775,6 +783,8 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
             Ok(false)
+        } else if self.last_unexpected_token_span == Some(self.span) {
+            FatalError.raise();
         } else {
             let mut expected = edible.iter()
                 .map(|x| TokenType::Token(x.clone()))
@@ -802,6 +812,7 @@ impl<'a> Parser<'a> {
                  (self.sess.source_map().next_point(self.prev_span),
                   format!("expected {} here", expect)))
             };
+            self.last_unexpected_token_span = Some(self.span);
             let mut err = self.fatal(&msg_exp);
             if self.token.is_ident_named("and") {
                 err.span_suggestion_short(
@@ -1497,9 +1508,13 @@ impl<'a> Parser<'a> {
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_trait_item_(at_end, attrs)
+            let item = this.parse_trait_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
@@ -6333,7 +6348,10 @@ impl<'a> Parser<'a> {
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
             } else {
-                return self.unexpected();
+                match self.expect_one_of(&[], &[]) {
+                    Err(err) => return Err(err),
+                    Ok(recovered) => (vec![self_arg], recovered),
+                }
             }
         } else {
             self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
@@ -6459,9 +6477,13 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_impl_item_(at_end, attrs)
+            let item = this.parse_impl_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
@@ -7781,9 +7803,13 @@ impl<'a> Parser<'a> {
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
+        let mut unclosed_delims = vec![];
         let (ret, tokens) = self.collect_tokens(|this| {
-            this.parse_item_implementation(attrs, macros_allowed, attributes_allowed)
+            let item = this.parse_item_implementation(attrs, macros_allowed, attributes_allowed);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // Once we've parsed an item and recorded the tokens we got while
         // parsing we may want to store `tokens` into the item we're about to
@@ -8539,8 +8565,6 @@ impl<'a> Parser<'a> {
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
         });
-        emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
-        self.unclosed_delims.clear();
         krate
     }
 
@@ -8571,8 +8595,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors::Handler) {
-    for unmatched in unclosed_delims {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {
+    for unmatched in unclosed_delims.iter() {
         let mut err = handler.struct_span_err(unmatched.found_span, &format!(
             "incorrect close delimiter: `{}`",
             pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
@@ -8586,4 +8610,5 @@ pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors
         }
         err.emit();
     }
+    unclosed_delims.clear();
 }
