@@ -1920,7 +1920,7 @@ mod tests {
                                                           false,
                                                           false);
         ParseSess {
-            span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
+            span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
             config: CrateConfig::default(),
             included_mod_stack: Lock::new(Vec::new()),

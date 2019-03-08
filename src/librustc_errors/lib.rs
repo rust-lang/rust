@@ -330,7 +330,7 @@ pub struct HandlerFlags {
     pub can_emit_warnings: bool,
     /// If true, error-level diagnostics are upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
-    pub treat_err_as_bug: bool,
+    pub treat_err_as_bug: Option<usize>,
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
@@ -360,7 +360,7 @@ impl Drop for Handler {
 impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
-                            treat_err_as_bug: bool,
+                            treat_err_as_bug: Option<usize>,
                             cm: Option<Lrc<SourceMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
@@ -382,7 +382,7 @@ impl Handler {
     }
 
     pub fn with_emitter(can_emit_warnings: bool,
-                        treat_err_as_bug: bool,
+                        treat_err_as_bug: Option<usize>,
                         e: Box<dyn Emitter + sync::Send>)
                         -> Handler {
         Handler::with_emitter_and_flags(
@@ -516,8 +516,20 @@ impl Handler {
     }
 
     fn panic_if_treat_err_as_bug(&self) {
-        if self.flags.treat_err_as_bug {
-            panic!("encountered error with `-Z treat_err_as_bug");
+        if self.treat_err_as_bug() {
+            let s = match (self.err_count(), self.flags.treat_err_as_bug.unwrap_or(0)) {
+                (0, _) => return,
+                (1, 1) => "aborting due to `-Z treat-err-as-bug=1`".to_string(),
+                (1, _) => return,
+                (count, as_bug) => {
+                    format!(
+                        "aborting after {} errors due to `-Z treat-err-as-bug={}`",
+                        count,
+                        as_bug,
+                    )
+                }
+            };
+            panic!(s);
         }
     }
 
@@ -558,7 +570,7 @@ impl Handler {
         panic!(ExplicitBug);
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        if self.flags.treat_err_as_bug {
+        if self.treat_err_as_bug() {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
@@ -593,14 +605,14 @@ impl Handler {
         DiagnosticBuilder::new(self, FailureNote, msg).emit()
     }
     pub fn fatal(&self, msg: &str) -> FatalError {
-        if self.flags.treat_err_as_bug {
+        if self.treat_err_as_bug() {
             self.bug(msg);
         }
         DiagnosticBuilder::new(self, Fatal, msg).emit();
         FatalError
     }
     pub fn err(&self, msg: &str) {
-        if self.flags.treat_err_as_bug {
+        if self.treat_err_as_bug() {
             self.bug(msg);
         }
         let mut db = DiagnosticBuilder::new(self, Error, msg);
@@ -609,6 +621,9 @@ impl Handler {
     pub fn warn(&self, msg: &str) {
         let mut db = DiagnosticBuilder::new(self, Warning, msg);
         db.emit();
+    }
+    fn treat_err_as_bug(&self) -> bool {
+        self.flags.treat_err_as_bug.map(|c| self.err_count() >= c).unwrap_or(false)
     }
     pub fn note_without_error(&self, msg: &str) {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
@@ -624,8 +639,8 @@ impl Handler {
     }
 
     fn bump_err_count(&self) {
-        self.panic_if_treat_err_as_bug();
         self.err_count.fetch_add(1, SeqCst);
+        self.panic_if_treat_err_as_bug();
     }
 
     pub fn err_count(&self) -> usize {
@@ -642,6 +657,9 @@ impl Handler {
             1 => "aborting due to previous error".to_string(),
             _ => format!("aborting due to {} previous errors", self.err_count())
         };
+        if self.treat_err_as_bug() {
+            return;
+        }
 
         let _ = self.fatal(&s);
 
