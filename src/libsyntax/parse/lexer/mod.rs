@@ -1451,10 +1451,9 @@ impl<'a> StringReader<'a> {
                         self.err_span_(
                             start_with_quote,
                             self.pos,
-                            "lifetimes can't start with a number",
+                            "lifetimes cannot start with a number",
                         );
                     }
-
 
                     return Ok(token::Lifetime(ident));
                 }
@@ -1892,7 +1891,7 @@ fn ident_start(c: Option<char>) -> bool {
         None => return false,
     };
 
-    (c.is_alphabetic() || c == '_' || (c > '\x7f' && c.is_xid_start()))
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c > '\x7f' && c.is_xid_start())
 }
 
 fn ident_continue(c: Option<char>) -> bool {
@@ -1901,7 +1900,8 @@ fn ident_continue(c: Option<char>) -> bool {
         None => return false,
     };
 
-    (c.is_alphabetic() || c.is_numeric() || c == '_' || (c > '\x7f' && c.is_xid_continue()))
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' ||
+    (c > '\x7f' && c.is_xid_continue())
 }
 
 #[inline]
