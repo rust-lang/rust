@@ -251,11 +251,14 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let needs_drop_copy = || {
                 packed && {
                     let ty = variant.fields.last().unwrap().ty;
-                    let ty = fcx.tcx.erase_regions(&ty).lift_to_tcx(fcx_tcx)
+                    fcx.tcx.erase_regions(&ty).lift_to_tcx(fcx_tcx)
+                        .map(|ty| ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id)))
                         .unwrap_or_else(|| {
-                            span_bug!(item.span, "inference variables in {:?}", ty)
-                        });
-                    ty.needs_drop(fcx_tcx, fcx_tcx.param_env(def_id))
+                            fcx_tcx.sess.delay_span_bug(
+                                item.span, &format!("inference variables in {:?}", ty));
+                            // Just treat unresolved type expression as if it needs drop.
+                            true
+                        })
                 }
             };
             let all_sized =
