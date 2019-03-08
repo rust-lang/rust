@@ -231,6 +231,8 @@ pub struct CommonLifetimes<'tcx> {
     pub re_empty: Region<'tcx>,
     pub re_static: Region<'tcx>,
     pub re_erased: Region<'tcx>,
+
+    pub ct_err: &'tcx LazyConst<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V: 'a> {
@@ -943,7 +945,7 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(Bool),
             char: mk(Char),
             never: mk(Never),
-            err: mk(Error),
+            err,
             isize: mk(Int(ast::IntTy::Isize)),
             i8: mk(Int(ast::IntTy::I8)),
             i16: mk(Int(ast::IntTy::I16)),
