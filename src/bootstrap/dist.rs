@@ -904,6 +904,8 @@ impl Step for Src {
             "src/stdsimd",
             "src/libproc_macro",
             "src/tools/rustc-std-workspace-core",
+            "src/librustc",
+            "src/libsyntax",
         ];
 
         copy_src_dirs(builder, &std_src_dirs[..], &[], &dst_src);
