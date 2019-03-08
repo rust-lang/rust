@@ -10,16 +10,14 @@ edition = "2018"
 crate-type = ["dylib"]
 
 [dependencies]
-#cranelift = "0.14.0"
-#cranelift-module = "0.14.0"
-#cranelift-simplejit = "0.14.0"
-#cranelift-faerie = "0.14.0"
-
+# These have to be in sync with each other
 cranelift = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-module = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
-target-lexicon = "0.2.0"
+target-lexicon = "0.3.0"
+faerie = "0.9.1"
+
 #goblin = "0.0.17"
 ar = "0.6.1"
 bitflags = "1.0.3"
@@ -28,7 +26,6 @@ libc = "0.2.50"
 tempfile = "3.0.7"
 env_logger = "0.6"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
-faerie = "0.7.1"
 indexmap = "1.0.2"
 
 # Uncomment to use local checkout of cranelift
