@@ -339,22 +339,26 @@ lint declaration.
 Please document your lint with a doc comment akin to the following:
 
 ```rust
-/// **What it does:** Checks for ... (describe what the lint matches).
-///
-/// **Why is this bad?** Supply the reason for linting the code.
-///
-/// **Known problems:** None. (Or describe where it could go wrong.)
-///
-/// **Example:**
-///
-/// ```rust,ignore
-/// // Bad
-/// Insert a short example of code that triggers the lint
-///
-/// // Good
-/// Insert a short example of improved code that doesn't trigger the lint
-/// ```
-declare_clippy_lint! { /* ... */ }
+declare_clippy_lint! {
+    /// **What it does:** Checks for ... (describe what the lint matches).
+    ///
+    /// **Why is this bad?** Supply the reason for linting the code.
+    ///
+    /// **Known problems:** None. (Or describe where it could go wrong.)
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// // Bad
+    /// Insert a short example of code that triggers the lint
+    ///
+    /// // Good
+    /// Insert a short example of improved code that doesn't trigger the lint
+    /// ```
+    pub FOO_FUNCTIONS,
+    pedantic,
+    "function named `foo`, which is not a descriptive name"
+}
 ```
 
 Once your lint is merged, this documentation will show up in the [lint
