@@ -633,4 +633,34 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))
         }
     }
+
+    /// Given a type variable `const_var` of the given kind, first check
+    /// if `const_var` is bound to anything; if so, canonicalize
+    /// *that*. Otherwise, create a new canonical variable for
+    /// `const_var`.
+    fn canonicalize_const_var(
+        &mut self,
+        info: CanonicalVarInfo,
+        const_var: &'tcx ty::LazyConst<'tcx>
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        let infcx = self.infcx.expect("encountered const-var without infcx");
+        let bound_to = infcx.resolve_const_var(const_var);
+        if bound_to != const_var {
+            self.fold_const(bound_to)
+        } else {
+            let ty = match const_var {
+                ty::LazyConst::Unevaluated(def_id, _) => {
+                    self.tcx.type_of(*def_id)
+                }
+                ty::LazyConst::Evaluated(ty::Const { ty, .. }) => ty,
+            };
+            let var = self.canonical_var(info, const_var.into());
+            self.tcx().mk_lazy_const(
+                ty::LazyConst::Evaluated(ty::Const {
+                    val: ConstValue::Infer(InferConst::Canonical(self.binder_index, var.into())),
+                    ty,
+                })
+            )
+        }
+    }
 }
