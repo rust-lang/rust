@@ -13,14 +13,15 @@ use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use crate::middle::free_region::RegionRelations;
 use crate::middle::lang_items;
 use crate::middle::region;
+use crate::mir::interpret::ConstValue;
 use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::relate::RelateResult;
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef};
-use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
-use crate::ty::{FloatVid, IntVid, TyVid};
+use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners, InferConst};
+use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
 use crate::util::nodemap::FxHashMap;
 
 use arena::SyncDroplessArena;
@@ -34,6 +35,7 @@ use syntax_pos::symbol::InternedString;
 use syntax_pos::Span;
 
 use self::combine::CombineFields;
+use self::const_variable::ConstVariableOrigin;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
@@ -60,6 +62,7 @@ pub mod region_constraints;
 pub mod resolve;
 mod sub;
 pub mod type_variable;
+pub mod const_variable;
 pub mod unify_key;
 
 #[must_use]
@@ -72,7 +75,7 @@ pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
-pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
+pub type FixupResult<'tcx, T> = Result<T, FixupError<'tcx>>; // "fixup result"
 
 /// A flag that is used to suppress region errors. This is normally
 /// false, but sometimes -- when we are doing region checks that the
@@ -122,7 +125,10 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// order, represented by its upper and lower bounds.
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
-    /// Map from integral variable to the kind of integer it represents
+    /// Map from const parameter variable to the kind of const it represents.
+    const_unification_table: RefCell<const_variable::ConstVariableTable<'tcx>>,
+
+    /// Map from integral variable to the kind of integer it represents.
     int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
 
     /// Map from floating variable to the kind of float it represents
@@ -422,10 +428,11 @@ impl NLLRegionVariableOrigin {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum FixupError {
+pub enum FixupError<'tcx> {
     UnresolvedIntTy(IntVid),
     UnresolvedFloatTy(FloatVid),
     UnresolvedTy(TyVid),
+    UnresolvedConst(ConstVid<'tcx>),
 }
 
 /// See the `region_obligations` field for more information.
@@ -436,7 +443,7 @@ pub struct RegionObligation<'tcx> {
     pub origin: SubregionOrigin<'tcx>,
 }
 
-impl fmt::Display for FixupError {
+impl<'tcx> fmt::Display for FixupError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::FixupError::*;
 
@@ -452,6 +459,7 @@ impl fmt::Display for FixupError {
                  add a suffix to specify the type explicitly"
             ),
             UnresolvedTy(_) => write!(f, "unconstrained type"),
+            UnresolvedConst(_) => write!(f, "unconstrained const value"),
         }
     }
 }
@@ -524,6 +532,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
                 in_progress_tables,
                 projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
+                const_unification_table: RefCell::new(const_variable::ConstVariableTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
                 float_unification_table: RefCell::new(ut::UnificationTable::new()),
                 region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
@@ -589,6 +598,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 pub struct CombinedSnapshot<'a, 'tcx: 'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
+    const_snapshot: const_variable::Snapshot<'tcx>,
     int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
     float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
@@ -652,6 +662,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut type_variables = self.type_variables.borrow_mut();
         let mut int_unification_table = self.int_unification_table.borrow_mut();
         let mut float_unification_table = self.float_unification_table.borrow_mut();
+        // FIXME(const_generics): should there be an equivalent function for const variables?
 
         type_variables
             .unsolved_variables()
@@ -722,6 +733,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         CombinedSnapshot {
             projection_cache_snapshot: self.projection_cache.borrow_mut().snapshot(),
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
+            const_snapshot: self.const_unification_table.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_constraints_snapshot: self.borrow_region_constraints().start_snapshot(),
@@ -739,6 +751,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let CombinedSnapshot {
             projection_cache_snapshot,
             type_snapshot,
+            const_snapshot,
             int_snapshot,
             float_snapshot,
             region_constraints_snapshot,
@@ -751,21 +764,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
 
-        self.projection_cache
-            .borrow_mut()
-            .rollback_to(projection_cache_snapshot);
+        self.projection_cache.borrow_mut().rollback_to(projection_cache_snapshot);
         self.type_variables.borrow_mut().rollback_to(type_snapshot);
-        self.int_unification_table
-            .borrow_mut()
-            .rollback_to(int_snapshot);
-        self.float_unification_table
-            .borrow_mut()
-            .rollback_to(float_snapshot);
-        self.region_obligations
-            .borrow_mut()
-            .truncate(region_obligations_snapshot);
-        self.borrow_region_constraints()
-            .rollback_to(region_constraints_snapshot);
+        self.const_unification_table.borrow_mut().rollback_to(const_snapshot);
+        self.int_unification_table.borrow_mut().rollback_to(int_snapshot);
+        self.float_unification_table.borrow_mut().rollback_to(float_snapshot);
+        self.region_obligations.borrow_mut().truncate(region_obligations_snapshot);
+        self.borrow_region_constraints().rollback_to(region_constraints_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
@@ -773,6 +778,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let CombinedSnapshot {
             projection_cache_snapshot,
             type_snapshot,
+            const_snapshot,
             int_snapshot,
             float_snapshot,
             region_constraints_snapshot,
@@ -784,16 +790,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.in_snapshot.set(was_in_snapshot);
 
-        self.projection_cache
-            .borrow_mut()
-            .commit(projection_cache_snapshot);
+        self.projection_cache.borrow_mut().commit(projection_cache_snapshot);
         self.type_variables.borrow_mut().commit(type_snapshot);
+        self.const_unification_table.borrow_mut().commit(const_snapshot);
         self.int_unification_table.borrow_mut().commit(int_snapshot);
-        self.float_unification_table
-            .borrow_mut()
-            .commit(float_snapshot);
-        self.borrow_region_constraints()
-            .commit(region_constraints_snapshot);
+        self.float_unification_table.borrow_mut().commit(float_snapshot);
+        self.borrow_region_constraints().commit(region_constraints_snapshot);
     }
 
     /// Executes `f` and commit the bindings.
@@ -918,17 +920,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         predicate: &ty::PolySubtypePredicate<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
         // Subtle: it's ok to skip the binder here and resolve because
-        // `shallow_resolve` just ignores anything that is not a type
+        // `shallow_resolve_type` just ignores anything that is not a type
         // variable, and because type variable's can't (at present, at
         // least) capture any of the things bound by this binder.
         //
         // Really, there is no *particular* reason to do this
-        // `shallow_resolve` here except as a
+        // `shallow_resolve_type` here except as a
         // micro-optimization. Naturally I could not
         // resist. -nmatsakis
         let two_unbound_type_vars = {
-            let a = self.shallow_resolve(predicate.skip_binder().a);
-            let b = self.shallow_resolve(predicate.skip_binder().b);
+            let a = self.shallow_resolve_type(predicate.skip_binder().a);
+            let b = self.shallow_resolve_type(predicate.skip_binder().b);
             a.is_ty_var() && b.is_ty_var()
         };
 
@@ -997,6 +999,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_ty_var(self.next_ty_var_id(true, origin))
+    }
+
+    pub fn next_const_var(
+        &self,
+        ty: Ty<'tcx>,
+        origin: ConstVariableOrigin
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
+    }
+
+    pub fn next_const_var_in_universe(
+        &self,
+        ty: Ty<'tcx>,
+        origin: ConstVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        let vid = self.const_unification_table
+            .borrow_mut()
+            .new_var(universe, origin);
+        self.tcx.mk_const_var(vid, ty)
+    }
+
+    pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
+        self.const_unification_table
+            .borrow_mut()
+            .new_var(self.universe(), origin)
     }
 
     fn next_int_var_id(&self) -> IntVid {
@@ -1092,7 +1120,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.mk_ty_var(ty_var_id).into()
             }
             GenericParamDefKind::Const { .. } => {
-                unimplemented!() // FIXME(const_generics)
+                let const_var_id =
+                    self.const_unification_table
+                        .borrow_mut()
+                        .new_var(
+                            self.universe(),
+                            ConstVariableOrigin::ConstParameterDefinition(span, param.name),
+                        );
+                self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
         }
     }
@@ -1233,11 +1268,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_if_possible(t).to_string()
     }
 
-    // We have this force-inlined variant of shallow_resolve() for the one
+    // We have this force-inlined variant of `shallow_resolve_type` for the one
     // callsite that is extremely hot. All other callsites use the normal
     // variant.
     #[inline(always)]
-    pub fn inlined_shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn inlined_shallow_resolve_type(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.sty {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
@@ -1253,7 +1288,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     .borrow_mut()
                     .probe(v)
                     .known()
-                    .map(|t| self.shallow_resolve(t))
+                    .map(|t| self.shallow_resolve_type(t))
                     .unwrap_or(typ)
             }
 
@@ -1284,8 +1319,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve(typ)
+    pub fn shallow_resolve_type(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
+        self.inlined_shallow_resolve_type(typ)
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1323,9 +1358,60 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r.first_unresolved
     }
 
-    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
+    pub fn probe_const_var(
+        &self,
+        vid: ty::ConstVid<'tcx>
+    ) -> Result<&'tcx ty::LazyConst<'tcx>, ty::UniverseIndex> {
+        use self::const_variable::ConstVariableValue;
+
+        match self.const_unification_table.borrow_mut().probe(vid) {
+            ConstVariableValue::Known { value } => Ok(value),
+            ConstVariableValue::Unknown { universe } => Err(universe),
+        }
+    }
+
+    pub fn resolve_const_var(
+        &self,
+        ct: &'tcx ty::LazyConst<'tcx>
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(InferConst::Var(v)),
+            ..
+        }) = ct {
+            self.const_unification_table
+                .borrow_mut()
+                .probe(*v)
+                .known()
+                .map(|c| self.resolve_const_var(c))
+                .unwrap_or(ct)
+        } else {
+            ct
+        }
+    }
+
+    pub fn shallow_resolve_const(
+        &self,
+        ct: &'tcx ty::LazyConst<'tcx>
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        match ct {
+            ty::LazyConst::Evaluated(ty::Const {
+                val: ConstValue::Infer(InferConst::Var(vid)),
+                ..
+            }) => {
+                self.const_unification_table
+                    .borrow_mut()
+                    .probe(*vid)
+                    .known()
+                    .map(|c| self.shallow_resolve_const(c))
+                    .unwrap_or(ct)
+            }
+            _ => ct,
+        }
+    }
+
+    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<'tcx, T> {
         /*!
-         * Attempts to resolve all type/region variables in
+         * Attempts to resolve all type/region/const variables in
          * `value`. Region inference must have been run already (e.g.,
          * by calling `resolve_regions_and_report_errors`). If some
          * variable was never unified, an `Err` results.
@@ -1441,7 +1527,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         closure_substs: ty::ClosureSubsts<'tcx>,
     ) -> Option<ty::ClosureKind> {
         let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
-        let closure_kind_ty = self.shallow_resolve(&closure_kind_ty);
+        let closure_kind_ty = self.shallow_resolve_type(&closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
 
@@ -1455,7 +1541,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         substs: ty::ClosureSubsts<'tcx>,
     ) -> ty::PolyFnSig<'tcx> {
         let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
-        let closure_sig_ty = self.shallow_resolve(&closure_sig_ty);
+        let closure_sig_ty = self.shallow_resolve_type(&closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
     }
 
