@@ -1,13 +1,14 @@
 // compile-flags: -Z continue-parse-after-error
 
-enum bird {
-    pub duck,
-    //~^ ERROR: expected identifier, found keyword `pub`
-    //~| ERROR: expected
-    goose
+enum Bird {
+    pub Duck,
+    //~^ ERROR expected identifier, found keyword `pub`
+    //~| ERROR missing comma
+    //~| WARN variant `pub` should have an upper camel case name
+    Goose
 }
 
 
 fn main() {
-    let y = bird::goose;
+    let y = Bird::Goose;
 }
