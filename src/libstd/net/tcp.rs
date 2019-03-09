@@ -1743,21 +1743,6 @@ mod tests {
     }
 
     #[test]
-    fn connect_timeout_unbound() {
-        // bind and drop a socket to track down a "probably unassigned" port
-        let socket = TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = socket.local_addr().unwrap();
-        drop(socket);
-
-        let timeout = Duration::from_secs(1);
-        let e = TcpStream::connect_timeout(&addr, timeout).unwrap_err();
-        assert!(e.kind() == io::ErrorKind::ConnectionRefused ||
-                e.kind() == io::ErrorKind::TimedOut ||
-                e.kind() == io::ErrorKind::Other,
-                "bad error: {} {:?}", e, e.kind());
-    }
-
-    #[test]
     fn connect_timeout_valid() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
