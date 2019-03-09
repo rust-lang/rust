@@ -567,6 +567,32 @@ pub trait Ord: Eq + PartialOrd<Self> {
     where Self: Sized {
         if self <= other { self } else { other }
     }
+
+    /// Returns max if self is greater than max, and min if self is less than min.
+    /// Otherwise this will return self.  Panics if min > max.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp)]
+    ///
+    /// assert!((-3).clamp(-2, 1) == -2);
+    /// assert!(0.clamp(-2, 1) == 0);
+    /// assert!(2.clamp(-2, 1) == 1);
+    /// ```
+    #[unstable(feature = "clamp", issue = "44095")]
+    fn clamp(self, min: Self, max: Self) -> Self
+    where Self: Sized {
+        assert!(min <= max);
+        if self < min {
+            min
+        }
+        else if self > max {
+            max
+        } else {
+            self
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
