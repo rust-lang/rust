@@ -164,6 +164,9 @@
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 # Note that Python 2 is currently required.
+#
+# Defaults to python2.7, then python2. If neither executable can be found, then
+# it defaults to the Python interpreter used to execute x.py.
 #python = "python2.7"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
