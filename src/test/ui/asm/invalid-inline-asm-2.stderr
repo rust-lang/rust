@@ -1,8 +1,0 @@
-error: couldn't allocate output register for constraint 'd'
-  --> $DIR/invalid-inline-asm-2.rs:10:9
-   |
-LL |         asm!("" : "=d"(a) : : : );
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
