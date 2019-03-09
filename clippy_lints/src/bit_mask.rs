@@ -37,8 +37,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// if (x & 1 == 2) { … }
+    /// ```rust
+    /// # let x = 1;
+    /// if (x & 1 == 2) { }
     /// ```
     pub BAD_BIT_MASK,
     correctness,
@@ -65,8 +66,9 @@ declare_clippy_lint! {
     /// uncommon).
     ///
     /// **Example:**
-    /// ```ignore
-    /// if (x | 1 > 3) { … }
+    /// ```rust
+    /// # let x = 1;
+    /// if (x | 1 > 3) {  }
     /// ```
     pub INEFFECTIVE_BIT_MASK,
     correctness,
@@ -83,8 +85,9 @@ declare_clippy_lint! {
     /// **Known problems:** llvm generates better code for `x & 15 == 0` on x86
     ///
     /// **Example:**
-    /// ```ignore
-    /// x & 0x1111 == 0
+    /// ```rust
+    /// # let x = 1;
+    /// if x & 0x1111 == 0 { }
     /// ```
     pub VERBOSE_BIT_MASK,
     style,

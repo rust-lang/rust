@@ -511,7 +511,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # fn foo() {};
+    /// # fn bar() {};
+    /// # fn baz() {};
     /// if {
     ///     foo();
     /// } == {
@@ -521,7 +524,10 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// is equal to
-    /// ```ignore
+    /// ```rust
+    /// # fn foo() {};
+    /// # fn bar() {};
+    /// # fn baz() {};
     /// {
     ///     foo();
     ///     bar();
@@ -850,13 +856,13 @@ declare_clippy_lint! {
     ///
     /// **Example**
     ///
-    /// ```ignore
+    /// ```rust
     /// // Bad
-    /// fn fun() -> i32 {}
+    /// fn fun() -> i32 { 1 }
     /// let a = fun as i64;
     ///
     /// // Good
-    /// fn fun2() -> i32 {}
+    /// fn fun2() -> i32 { 1 }
     /// let a = fun2 as usize;
     /// ```
     pub FN_TO_NUMERIC_CAST,
@@ -1538,9 +1544,11 @@ declare_clippy_lint! {
     /// like `#[cfg(target_pointer_width = "64")] ..` instead.
     ///
     /// **Example:**
-    /// ```rust,ignore
-    /// vec.len() <= 0
-    /// 100 > std::i32::MAX
+    ///
+    /// ```rust
+    /// let vec: Vec<isize> = vec![];
+    /// if vec.len() <= 0 {}
+    /// if 100 > std::i32::MAX {}
     /// ```
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
@@ -1963,10 +1971,13 @@ declare_clippy_lint! {
     /// pieces of code, possibly including external crates.
     ///
     /// **Example:**
-    /// ```ignore
-    /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { ... }
+    /// ```rust
+    /// # use std::collections::HashMap;
+    /// # use std::hash::Hash;
+    /// # trait Serialize {};
+    /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { }
     ///
-    /// pub foo(map: &mut HashMap<i32, i32>) { .. }
+    /// pub fn foo(map: &mut HashMap<i32, i32>) { }
     /// ```
     pub IMPLICIT_HASHER,
     style,
@@ -2304,7 +2315,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// fn x(r: &i32) {
     ///     unsafe {
     ///         *(r as *const _ as *mut _) += 1;
@@ -2314,7 +2325,9 @@ declare_clippy_lint! {
     ///
     /// Instead consider using interior mutability types.
     ///
-    /// ```ignore
+    /// ```rust
+    /// use std::cell::UnsafeCell;
+    ///
     /// fn x(r: &UnsafeCell<i32>) {
     ///     unsafe {
     ///         *r.get() += 1;

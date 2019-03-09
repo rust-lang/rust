@@ -27,7 +27,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # fn bar(stool: &str) {}
+    /// # let x = Some("abc");
     /// match x {
     ///     Some(ref foo) => bar(foo),
     ///     _ => (),
@@ -59,7 +61,7 @@ declare_clippy_lint! {
     ///
     /// Using `if let` with `else`:
     ///
-    /// ```ignore
+    /// ```rust
     /// if let Some(ref foo) = x {
     ///     bar(foo);
     /// } else {
@@ -82,7 +84,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// match x {
     ///     &A(ref y) => foo(y),
     ///     &B => bar(),
@@ -103,7 +105,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # fn foo() {}
+    /// # fn bar() {}
     /// let condition: bool = true;
     /// match condition {
     ///     true => foo(),
@@ -111,7 +115,9 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use if/else instead:
-    /// ```ignore
+    /// ```rust
+    /// # fn foo() {}
+    /// # fn bar() {}
     /// let condition: bool = true;
     /// if condition {
     ///     foo();

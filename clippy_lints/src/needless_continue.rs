@@ -2,9 +2,12 @@
 //!
 //! For example, the lint would catch
 //!
-//! ```ignore
-//! while condition() {
-//!     update_condition();
+//! ```rust
+//! let mut a = 1;
+//! let x = true;
+//!
+//! while a < 5 {
+//!     a = 6;
 //!     if x {
 //!         // ...
 //!     } else {
@@ -16,9 +19,12 @@
 //!
 //! And suggest something like this:
 //!
-//! ```ignore
-//! while condition() {
-//!     update_condition();
+//! ```rust
+//! let mut a = 1;
+//! let x = true;
+//!
+//! while a < 5 {
+//!     a = 6;
 //!     if x {
 //!         // ...
 //!         println!("Hello, world");
@@ -374,7 +380,7 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 /// continues eating till a non-whitespace character is found.
 /// e.g., the string
 ///
-/// ```
+/// ```rust
 /// {
 ///     let x = 5;
 /// }
