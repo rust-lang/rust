@@ -1,4 +1,6 @@
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{
+    get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
+};
 use crate::utils::{higher, sugg};
 use if_chain::if_chain;
 use rustc::hir;
@@ -68,52 +70,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
         match &expr.node {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 if let hir::ExprKind::Binary(binop, l, r) = &rhs.node {
-                    if op.node == binop.node {
-                        let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
-                            span_lint_and_then(
-                                cx,
-                                MISREFACTORED_ASSIGN_OP,
-                                expr.span,
-                                "variable appears on both sides of an assignment operation",
-                                |db| {
-                                    if let (Some(snip_a), Some(snip_r)) =
-                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span))
-                                    {
-                                        let a = &sugg::Sugg::hir(cx, assignee, "..");
-                                        let r = &sugg::Sugg::hir(cx, rhs, "..");
-                                        let long =
-                                            format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                                        db.span_suggestion(
-                                            expr.span,
-                                            &format!(
-                                                "Did you mean {} = {} {} {} or {}? Consider replacing it with",
-                                                snip_a,
-                                                snip_a,
-                                                op.node.as_str(),
-                                                snip_r,
-                                                long
-                                            ),
-                                            format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                            Applicability::MachineApplicable,
-                                        );
-                                        db.span_suggestion(
-                                            expr.span,
-                                            "or",
-                                            long,
-                                            Applicability::MachineApplicable, // snippet
-                                        );
-                                    }
-                                },
-                            );
-                        };
-                        // lhs op= l op r
-                        if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
-                            lint(lhs, r);
-                        }
-                        // lhs op= l commutative_op r
-                        if is_commutative(op.node) && SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, r) {
-                            lint(lhs, l);
-                        }
+                    if op.node != binop.node {
+                        return;
+                    }
+                    // lhs op= l op r
+                    if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
+                        lint_misrefactored_assign_op(cx, expr, *op, rhs, lhs, r);
+                    }
+                    // lhs op= l commutative_op r
+                    if is_commutative(op.node) && SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, r) {
+                        lint_misrefactored_assign_op(cx, expr, *op, rhs, lhs, l);
                     }
                 }
             },
@@ -140,13 +106,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         };
                                         // check that we are not inside an `impl AssignOp` of this exact operation
                                         let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
-                                        let parent_impl = cx.tcx.hir().get_parent_item(parent_fn);
-                                        // the crate node is the only one that is not in the map
                                         if_chain! {
-                                            if parent_impl != hir::CRATE_HIR_ID;
-                                            if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
-                                            if let hir::ItemKind::Impl(_, _, _, _, Some(trait_ref), _, _) =
-                                                &item.node;
+                                            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
                                         }
@@ -232,6 +193,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             _ => {},
         }
     }
+}
+
+fn lint_misrefactored_assign_op(
+    cx: &LateContext<'_, '_>,
+    expr: &hir::Expr,
+    op: hir::BinOp,
+    rhs: &hir::Expr,
+    assignee: &hir::Expr,
+    rhs_other: &hir::Expr,
+) {
+    span_lint_and_then(
+        cx,
+        MISREFACTORED_ASSIGN_OP,
+        expr.span,
+        "variable appears on both sides of an assignment operation",
+        |db| {
+            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
+                let a = &sugg::Sugg::hir(cx, assignee, "..");
+                let r = &sugg::Sugg::hir(cx, rhs, "..");
+                let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
+                db.span_suggestion(
+                    expr.span,
+                    &format!(
+                        "Did you mean {} = {} {} {} or {}? Consider replacing it with",
+                        snip_a,
+                        snip_a,
+                        op.node.as_str(),
+                        snip_r,
+                        long
+                    ),
+                    format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                    Applicability::MachineApplicable,
+                );
+                db.span_suggestion(
+                    expr.span,
+                    "or",
+                    long,
+                    Applicability::MachineApplicable, // snippet
+                );
+            }
+        },
+    );
 }
 
 fn is_commutative(op: hir::BinOpKind) -> bool {

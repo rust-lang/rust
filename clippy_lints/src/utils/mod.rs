@@ -190,7 +190,10 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
     }
 }
 
-/// Match a `Path` against a slice of segment string literals.
+/// Match a `QPath` against a slice of segment string literals.
+///
+/// There is also `match_path` if you are dealing with a `rustc::hir::Path` instead of a
+/// `rustc::hir::QPath`.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -210,6 +213,22 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     }
 }
 
+/// Match a `Path` against a slice of segment string literals.
+///
+/// There is also `match_qpath` if you are dealing with a `rustc::hir::QPath` instead of a
+/// `rustc::hir::Path`.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// if match_path(&trait_ref.path, &paths::HASH) {
+///     // This is the `std::hash::Hash` trait.
+/// }
+///
+/// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
+///     // This is a `rustc::lint::Lint`.
+/// }
+/// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments
         .iter()
@@ -299,6 +318,33 @@ pub fn implements_trait<'a, 'tcx>(
     cx.tcx
         .infer_ctxt()
         .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+}
+
+/// Get the `hir::TraitRef` of the trait the given method is implemented for
+///
+/// Use this if you want to find the `TraitRef` of the `Add` trait in this example:
+///
+/// ```rust
+/// struct Point(isize, isize);
+///
+/// impl std::ops::Add for Point {
+///     type Output = Self;
+///
+///     fn add(self, other: Self) -> Self {
+///         Point(0, 0)
+///     }
+/// }
+/// ```
+pub fn trait_ref_of_method(cx: &LateContext<'_, '_>, hir_id: HirId) -> Option<TraitRef> {
+    // Get the implemented trait for the current function
+    let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
+    if_chain! {
+        if parent_impl != hir::CRATE_HIR_ID;
+        if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
+        if let hir::ItemKind::Impl(_, _, _, _, trait_ref, _, _) = &item.node;
+        then { return trait_ref.clone(); }
+    }
+    None
 }
 
 /// Check whether this type implements Drop.
