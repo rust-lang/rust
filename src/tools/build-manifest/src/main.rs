@@ -358,6 +358,7 @@ impl Builder {
         self.package("rust-src", &mut manifest.pkg, &["*"]);
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("clippy-preview", &mut manifest.pkg, HOSTS);
+        self.package("miri", &mut manifest.pkg, HOSTS);
         self.package("rustfmt-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         self.package("llvm-tools-preview", &mut manifest.pkg, TARGETS);
@@ -375,7 +376,7 @@ impl Builder {
                      &["rustc", "cargo", "rust-std", "rust-mingw",
                        "rust-docs", "rustfmt-preview", "clippy-preview",
                        "rls-preview", "rust-src", "llvm-tools-preview",
-                       "lldb-preview", "rust-analysis"]);
+                       "lldb-preview", "rust-analysis", "miri"]);
 
         manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
         manifest.renames.insert("rustfmt".to_owned(), Rename { to: "rustfmt-preview".to_owned() });
@@ -422,6 +423,7 @@ impl Builder {
             // weren't built
             extensions.extend(vec![
                 Component { pkg: "clippy-preview".to_string(), target: host.to_string() },
+                Component { pkg: "miri".to_string(), target: host.to_string() },
                 Component { pkg: "rls-preview".to_string(), target: host.to_string() },
                 Component { pkg: "rustfmt-preview".to_string(), target: host.to_string() },
                 Component { pkg: "llvm-tools-preview".to_string(), target: host.to_string() },
