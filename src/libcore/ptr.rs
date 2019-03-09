@@ -2790,7 +2790,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
-    pub fn as_ptr(self) -> *mut T {
+    pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
     }
 
@@ -2903,7 +2903,8 @@ impl<T: Sized> NonNull<T> {
     /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
-    pub fn dangling() -> Self {
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_nonnull"))]
+    pub const fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
             NonNull::new_unchecked(ptr)
@@ -2966,7 +2967,8 @@ impl<T: ?Sized> NonNull<T> {
     /// Cast to a pointer of another type
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
-    pub fn cast<U>(self) -> NonNull<U> {
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_nonnull"))]
+    pub const fn cast<U>(self) -> NonNull<U> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
         }
