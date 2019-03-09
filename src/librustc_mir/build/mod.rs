@@ -579,6 +579,10 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
+    // Validate `#[unwind]` syntax regardless of platform-specific panic strategy
+    let attrs = &tcx.get_attrs(fn_def_id);
+    let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
+
     // We never unwind, so it's not relevant to stop an unwind
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
 
@@ -587,8 +591,7 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
-    let attrs = &tcx.get_attrs(fn_def_id);
-    match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
+    match unwind_attr {
         None => true,
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,

@@ -3,7 +3,6 @@
 mod _match;
 mod check_match;
 
-pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
 use crate::const_eval::{const_field, const_variant_index};
@@ -937,10 +936,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = const_field(
-                self.tcx, self.param_env,
-                variant_opt, field, cv,
-            ).expect("field access failed");
+            let val = const_field(self.tcx, self.param_env, variant_opt, field, cv);
             self.const_to_pat(instance, val, id, span)
         };
         let adt_subpatterns = |n, variant_opt| {
@@ -979,9 +975,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let variant_index = const_variant_index(
-                    self.tcx, self.param_env, cv
-                ).expect("const_variant_index failed");
+                let variant_index = const_variant_index(self.tcx, self.param_env, cv);
                 let subpatterns = adt_subpatterns(
                     adt_def.variants[variant_index].fields.len(),
                     Some(variant_index),

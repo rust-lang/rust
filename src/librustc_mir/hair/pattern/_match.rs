@@ -440,13 +440,7 @@ impl<'tcx> Constructor<'tcx> {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            &ConstantValue(c) => {
-                crate::const_eval::const_variant_index(
-                    cx.tcx,
-                    cx.param_env,
-                    c,
-                ).unwrap()
-            },
+            &ConstantValue(c) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }
     }

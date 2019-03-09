@@ -1,3 +1,21 @@
+error[E0446]: private type `m::Priv` in public interface
+  --> $DIR/private-inferred-type.rs:61:36
+   |
+LL |     struct Priv;
+   |     - `m::Priv` declared as private
+...
+LL |     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
+   |                                    ^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `adjust::S2` in public interface
+  --> $DIR/private-inferred-type.rs:83:9
+   |
+LL |     struct S2;
+   |     - `adjust::S2` declared as private
+...
+LL |         type Target = S2Alias; //~ ERROR private type `adjust::S2` in public interface
+   |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+
 error: type `m::Priv` is private
   --> $DIR/private-inferred-type.rs:97:9
    |
@@ -201,24 +219,6 @@ error: type `m::Priv` is private
    |
 LL |     match a { //~ ERROR type `m::Priv` is private
    |           ^
-
-error[E0446]: private type `m::Priv` in public interface
-  --> $DIR/private-inferred-type.rs:61:36
-   |
-LL |     struct Priv;
-   |     - `m::Priv` declared as private
-...
-LL |     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
-   |                                    ^^^^^^^^^^^^^^^^^^^^ can't leak private type
-
-error[E0446]: private type `adjust::S2` in public interface
-  --> $DIR/private-inferred-type.rs:83:9
-   |
-LL |     struct S2;
-   |     - `adjust::S2` declared as private
-...
-LL |         type Target = S2Alias; //~ ERROR private type `adjust::S2` in public interface
-   |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: aborting due to 33 previous errors
 

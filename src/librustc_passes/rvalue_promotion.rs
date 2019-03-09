@@ -14,7 +14,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use rustc::ty::cast::CastKind;
+use rustc::ty::cast::CastTy;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
@@ -37,13 +37,6 @@ pub fn provide(providers: &mut Providers<'_>) {
         const_is_rvalue_promotable_to_static,
         ..*providers
     };
-}
-
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &body_id in &tcx.hir().krate().body_ids {
-        let def_id = tcx.hir().body_owner_def_id(body_id);
-        tcx.const_is_rvalue_promotable_to_static(def_id);
-    }
 }
 
 fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -318,15 +311,12 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
             debug!("Checking const cast(id={})", from.hir_id);
-            match v.tables.cast_kinds().get(from.hir_id) {
-                None => {
-                    v.tcx.sess.delay_span_bug(e.span, "no kind for cast");
-                    NotPromotable
-                },
-                Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
-                    NotPromotable
-                }
-                _ => expr_promotability
+            let cast_in = CastTy::from_ty(v.tables.expr_ty(from));
+            let cast_out = CastTy::from_ty(v.tables.expr_ty(e));
+            match (cast_in, cast_out) {
+                (Some(CastTy::FnPtr), Some(CastTy::Int(_))) |
+                (Some(CastTy::Ptr(_)), Some(CastTy::Int(_))) => NotPromotable,
+                (_, _) => expr_promotability
             }
         }
         hir::ExprKind::Path(ref qpath) => {
