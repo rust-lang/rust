@@ -3288,6 +3288,34 @@ impl<'a, T> IterMut<'a, T> {
     pub fn into_slice(self) -> &'a mut [T] {
         unsafe { from_raw_parts_mut(self.ptr, len!(self)) }
     }
+
+    /// Views the underlying data as a subslice of the original data.
+    ///
+    /// To avoid creating `&mut [T]` references that alias, the returned slice
+    /// borrows its lifetime from the iterator the method is applied on.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(slice_iter_mut_as_slice)]
+    /// let mut slice: &mut [usize] = &mut [1, 2, 3];
+    ///
+    /// // First, we get the iterator:
+    /// let mut iter = slice.iter_mut();
+    /// // So if we check what the `as_slice` method returns here, we have "[1, 2, 3]":
+    /// assert_eq!(iter.as_slice(), &[1, 2, 3]);
+    ///
+    /// // Next, we move to the second element of the slice:
+    /// iter.next();
+    /// // Now `as_slice` returns "[2, 3]":
+    /// assert_eq!(iter.as_slice(), &[2, 3]);
+    /// ```
+    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "58957")]
+    pub fn as_slice(&self) -> &[T] {
+        self.make_slice()
+    }
 }
 
 iterator!{struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
