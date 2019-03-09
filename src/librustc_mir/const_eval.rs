@@ -466,45 +466,42 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 }
 
 /// Projects to a field of a (variant of a) const.
+// this function uses `unwrap` copiously, because an already validated constant must have valid
+// fields and can thus never fail outside of compiler bugs
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: ty::Const<'tcx>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let result = (|| {
-        // get the operand again
-        let op = ecx.const_to_op(value, None)?;
-        // downcast
-        let down = match variant {
-            None => op,
-            Some(variant) => ecx.operand_downcast(op, variant)?
-        };
-        // then project
-        let field = ecx.operand_field(down, field.index() as u64)?;
-        // and finally move back to the const world, always normalizing because
-        // this is not called for statics.
-        op_to_const(&ecx, field)
-    })();
-    result.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
-        err.report_as_error(ecx.tcx, "could not access field of constant");
-        ErrorHandled::Reported
-    })
+    // get the operand again
+    let op = ecx.const_to_op(value, None).unwrap();
+    // downcast
+    let down = match variant {
+        None => op,
+        Some(variant) => ecx.operand_downcast(op, variant).unwrap(),
+    };
+    // then project
+    let field = ecx.operand_field(down, field.index() as u64).unwrap();
+    // and finally move back to the const world, always normalizing because
+    // this is not called for statics.
+    op_to_const(&ecx, field).unwrap()
 }
 
+// this function uses `unwrap` copiously, because an already validated constant must have valid
+// fields and can thus never fail outside of compiler bugs
 pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: ty::Const<'tcx>,
-) -> EvalResult<'tcx, VariantIdx> {
+) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = ecx.const_to_op(val, None)?;
-    Ok(ecx.read_discriminant(op)?.1)
+    let op = ecx.const_to_op(val, None).unwrap();
+    ecx.read_discriminant(op).unwrap().1
 }
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
