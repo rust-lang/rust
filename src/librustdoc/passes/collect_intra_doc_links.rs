@@ -1,5 +1,5 @@
 use errors::Applicability;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, Namespace::{self, *}, PerNS};
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint as lint;
@@ -36,29 +36,9 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
     }
 }
 
-#[derive(Debug)]
-enum PathKind {
-    /// Either a value or type, but not a macro
-    Unknown,
-    /// Macro
-    Macro,
-    /// Values, functions, consts, statics (everything in the value namespace)
-    Value,
-    /// Types, traits (everything in the type namespace)
-    Type,
-}
-
 struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     mod_ids: Vec<ast::NodeId>,
-    is_nightly_build: bool,
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Namespace {
-    Type,
-    Value,
-    Macro,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -66,16 +46,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
-            is_nightly_build: UnstableFeatures::from_environment().is_nightly_build(),
         }
     }
 
-    /// Resolves a given string as a path, along with whether or not it is
-    /// in the value namespace. Also returns an optional URL fragment in the case
-    /// of variants and methods.
+    /// Resolves a string as a path within a particular namespace. Also returns an optional
+    /// URL fragment in the case of variants and methods.
     fn resolve(&self,
                path_str: &str,
-               is_val: bool,
+               ns: Namespace,
                current_item: &Option<String>,
                parent_id: Option<ast::NodeId>)
         -> Result<(Def, Option<String>), ()>
@@ -86,11 +64,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // path.
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let result = cx.enter_resolver(|resolver| resolver.with_scope(id,
-                |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP,
-                                                    &path_str, is_val)
-            }));
+            let result = cx.enter_resolver(|resolver| {
+                resolver.with_scope(id, |resolver| {
+                    resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
+                })
+            });
 
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
@@ -103,16 +81,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     _ => return Ok((result.def, None))
                 };
 
-                if value != is_val {
+                if value != (ns == ValueNS) {
                     return Err(())
                 }
-            } else if let Some(prim) = is_primitive(path_str, is_val) {
+            } else if let Some(prim) = is_primitive(path_str, ns) {
                 return Ok((prim, Some(path_str.to_owned())))
             } else {
                 // If resolution failed, it may still be a method
                 // because methods are not handled by the resolver
                 // If so, bail when we're not looking for a value.
-                if !is_val {
+                if ns != ValueNS {
                     return Err(())
                 }
             }
@@ -136,7 +114,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     path = name.clone();
                 }
             }
-            if let Some(prim) = is_primitive(&path, false) {
+            if let Some(prim) = is_primitive(&path, TypeNS) {
                 let did = primitive_impl(cx, &path).ok_or(())?;
                 return cx.tcx.associated_items(did)
                     .find(|item| item.ident.name == item_name)
@@ -160,8 +138,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                      .find(|item| item.ident.name == item_name);
                     if let Some(item) = item {
                         let out = match item.kind {
-                            ty::AssociatedKind::Method if is_val => "method",
-                            ty::AssociatedKind::Const if is_val => "associatedconstant",
+                            ty::AssociatedKind::Method if ns == ValueNS => "method",
+                            ty::AssociatedKind::Const if ns == ValueNS => "associatedconstant",
                             _ => return Err(())
                         };
                         Ok((ty.def, Some(format!("{}.{}", out, item_name))))
@@ -198,9 +176,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                  .find(|item| item.ident.name == item_name);
                     if let Some(item) = item {
                         let kind = match item.kind {
-                            ty::AssociatedKind::Const if is_val => "associatedconstant",
-                            ty::AssociatedKind::Type if !is_val => "associatedtype",
-                            ty::AssociatedKind::Method if is_val => {
+                            ty::AssociatedKind::Const if ns == ValueNS => "associatedconstant",
+                            ty::AssociatedKind::Type if ns == TypeNS => "associatedtype",
+                            ty::AssociatedKind::Method if ns == ValueNS => {
                                 if item.defaultness.has_value() {
                                     "method"
                                 } else {
@@ -287,10 +265,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         look_for_tests(&cx, &dox, &item, true);
 
-        if !self.is_nightly_build {
-            return None;
-        }
-
         for (ori_link, link_range) in markdown_links(&dox) {
             // Bail early for real links.
             if ori_link.contains('/') {
@@ -298,28 +272,28 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
             let link = ori_link.replace("`", "");
             let (def, fragment) = {
-                let mut kind = PathKind::Unknown;
+                let mut kind = None;
                 let path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@",
                      "trait@", "union@"].iter()
                                       .find(|p| link.starts_with(**p)) {
-                    kind = PathKind::Type;
+                    kind = Some(TypeNS);
                     link.trim_start_matches(prefix)
                 } else if let Some(prefix) =
                     ["const@", "static@",
                      "value@", "function@", "mod@",
                      "fn@", "module@", "method@"]
                         .iter().find(|p| link.starts_with(**p)) {
-                    kind = PathKind::Value;
+                    kind = Some(ValueNS);
                     link.trim_start_matches(prefix)
                 } else if link.ends_with("()") {
-                    kind = PathKind::Value;
+                    kind = Some(ValueNS);
                     link.trim_end_matches("()")
                 } else if link.starts_with("macro@") {
-                    kind = PathKind::Macro;
+                    kind = Some(MacroNS);
                     link.trim_start_matches("macro@")
                 } else if link.ends_with('!') {
-                    kind = PathKind::Macro;
+                    kind = Some(MacroNS);
                     link.trim_end_matches('!')
                 } else {
                     &link[..]
@@ -331,8 +305,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
 
                 match kind {
-                    PathKind::Value => {
-                        if let Ok(def) = self.resolve(path_str, true, &current_item, parent_node) {
+                    Some(ns @ ValueNS) => {
+                        if let Ok(def) = self.resolve(path_str, ns, &current_item, parent_node) {
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
@@ -342,8 +316,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             continue;
                         }
                     }
-                    PathKind::Type => {
-                        if let Ok(def) = self.resolve(path_str, false, &current_item, parent_node) {
+                    Some(ns @ TypeNS) => {
+                        if let Ok(def) = self.resolve(path_str, ns, &current_item, parent_node) {
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
@@ -351,57 +325,49 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             continue;
                         }
                     }
-                    PathKind::Unknown => {
+                    None => {
                         // Try everything!
-                        let mut candidates = vec![];
+                        let candidates = PerNS {
+                            macro_ns: macro_resolve(cx, path_str).map(|def| (def, None)),
+                            type_ns: self
+                                .resolve(path_str, TypeNS, &current_item, parent_node)
+                                .ok(),
+                            value_ns: self
+                                .resolve(path_str, ValueNS, &current_item, parent_node)
+                                .ok()
+                                .and_then(|(def, fragment)| {
+                                    // Constructors are picked up in the type namespace.
+                                    match def {
+                                        Def::StructCtor(..)
+                                        | Def::VariantCtor(..)
+                                        | Def::SelfCtor(..) => None,
+                                        _ => Some((def, fragment))
+                                    }
+                                }),
+                        };
 
-                        if let Some(macro_def) = macro_resolve(cx, path_str) {
-                            candidates.push(((macro_def, None), Namespace::Macro));
-                        }
-
-                        if let Ok(type_def) =
-                            self.resolve(path_str, false, &current_item, parent_node)
-                        {
-                            candidates.push((type_def, Namespace::Type));
-                        }
-
-                        if let Ok(value_def) =
-                            self.resolve(path_str, true, &current_item, parent_node)
-                        {
-                            // Structs, variants, and mods exist in both namespaces, skip them.
-                            match value_def.0 {
-                                Def::StructCtor(..)
-                                | Def::Mod(..)
-                                | Def::Variant(..)
-                                | Def::VariantCtor(..)
-                                | Def::SelfCtor(..) => (),
-                                _ => candidates.push((value_def, Namespace::Value)),
-                            }
-                        }
-
-                        if candidates.len() == 1 {
-                            candidates.remove(0).0
-                        } else if candidates.is_empty() {
+                        if candidates.is_empty() {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
                             // this could just be a normal link
                             continue;
-                        } else {
-                            let candidates = candidates.into_iter().map(|((def, _), ns)| {
-                                (def, ns)
-                            }).collect::<Vec<_>>();
+                        }
 
+                        let is_unambiguous = candidates.clone().present_items().count() == 1;
+                        if is_unambiguous {
+                            candidates.present_items().next().unwrap()
+                        } else {
                             ambiguity_error(
                                 cx,
                                 &item.attrs,
                                 path_str,
                                 &dox,
                                 link_range,
-                                &candidates,
+                                candidates.map(|candidate| candidate.map(|(def, _)| def)),
                             );
                             continue;
                         }
                     }
-                    PathKind::Macro => {
+                    Some(MacroNS) => {
                         if let Some(def) = macro_resolve(cx, path_str) {
                             (def, None)
                         } else {
@@ -514,13 +480,16 @@ fn ambiguity_error(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    candidates: &[(Def, Namespace)],
+    candidates: PerNS<Option<Def>>,
 ) {
     let sp = span_of_attrs(attrs);
 
     let mut msg = format!("`{}` is ", path_str);
 
-    match candidates {
+    let candidates = [TypeNS, ValueNS, MacroNS].iter().filter_map(|&ns| {
+        candidates[ns].map(|def| (def, ns))
+    }).collect::<Vec<_>>();
+    match candidates.as_slice() {
         [(first_def, _), (second_def, _)] => {
             msg += &format!(
                 "both {} {} and {} {}",
@@ -568,9 +537,9 @@ fn ambiguity_error(
                             (Def::Union(..), _) => "union",
                             (Def::Trait(..), _) => "trait",
                             (Def::Mod(..), _) => "module",
-                            (_, Namespace::Type) => "type",
-                            (_, Namespace::Value) => "value",
-                            (_, Namespace::Macro) => "macro",
+                            (_, TypeNS) => "type",
+                            (_, ValueNS) => "value",
+                            (_, MacroNS) => "macro",
                         };
 
                         // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
@@ -646,11 +615,11 @@ const PRIMITIVES: &[(&str, Def)] = &[
     ("char",  Def::PrimTy(hir::PrimTy::Char)),
 ];
 
-fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
-    if is_val {
-        None
-    } else {
+fn is_primitive(path_str: &str, ns: Namespace) -> Option<Def> {
+    if ns == TypeNS {
         PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1)
+    } else {
+        None
     }
 }
 
