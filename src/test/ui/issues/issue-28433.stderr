@@ -4,5 +4,11 @@ error: unnecessary visibility qualifier
 LL |     pub Duck,
    |     ^^^ `pub` not permitted here
 
-error: aborting due to previous error
+error: unnecessary visibility qualifier
+  --> $DIR/issue-28433.rs:7:5
+   |
+LL |     pub(crate) Dove
+   |     ^^^^^^^^^^ `pub` not permitted here
+
+error: aborting due to 2 previous errors
 

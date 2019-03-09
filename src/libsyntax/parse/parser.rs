@@ -8623,11 +8623,15 @@ impl<'a> Parser<'a> {
     /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     fn eat_bad_pub(&mut self) {
         if self.token.is_keyword(keywords::Pub) {
-            self.bump();
-            let mut err = self.diagnostic()
-                .struct_span_err(self.prev_span, "unnecessary visibility qualifier");
-            err.span_label(self.prev_span, "`pub` not permitted here");
-            err.emit();
+            match self.parse_visibility(false) {
+                Ok(vis) => {
+                    let mut err = self.diagnostic()
+                        .struct_span_err(vis.span, "unnecessary visibility qualifier");
+                    err.span_label(vis.span, "`pub` not permitted here");
+                    err.emit();
+                }
+                Err(mut err) => err.emit(),
+            }
         }
     }
 }
