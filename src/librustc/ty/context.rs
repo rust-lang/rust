@@ -41,7 +41,7 @@ use crate::ty::steal::Steal;
 use crate::ty::subst::{UserSubsts, UnpackedKind};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
 use rustc_data_structures::interner::HashInterner;
@@ -409,9 +409,9 @@ pub struct TypeckTables<'tcx> {
     /// MIR construction and hence is not serialized to metadata.
     fru_field_types: ItemLocalMap<Vec<Ty<'tcx>>>,
 
-    /// Maps a cast expression to its kind. This is keyed on the
-    /// *from* expression of the cast, not the cast itself.
-    cast_kinds: ItemLocalMap<ty::cast::CastKind>,
+    /// For every coercion cast we add the HIR node ID of the cast
+    /// expression to this set.
+    coercion_casts: ItemLocalSet,
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports. During type
@@ -456,7 +456,7 @@ impl<'tcx> TypeckTables<'tcx> {
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
-            cast_kinds: Default::default(),
+            coercion_casts: Default::default(),
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: false,
             free_region_map: Default::default(),
@@ -718,19 +718,19 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn cast_kinds(&self) -> LocalTableInContext<'_, ty::cast::CastKind> {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.cast_kinds
-        }
+    pub fn is_coercion_cast(&self, hir_id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_tables(self.local_id_root, hir_id, true);
+        self.coercion_casts.contains(&hir_id.local_id)
     }
 
-    pub fn cast_kinds_mut(&mut self) -> LocalTableInContextMut<'_, ty::cast::CastKind> {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.cast_kinds
-        }
+    pub fn set_coercion_cast(&mut self, id: ItemLocalId) {
+        self.coercion_casts.insert(id);
     }
+
+    pub fn coercion_casts(&self) -> &ItemLocalSet {
+        &self.coercion_casts
+    }
+
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
@@ -753,7 +753,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             ref liberated_fn_sigs,
             ref fru_field_types,
 
-            ref cast_kinds,
+            ref coercion_casts,
 
             ref used_trait_imports,
             tainted_by_errors,
@@ -798,7 +798,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             closure_kind_origins.hash_stable(hcx, hasher);
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);
-            cast_kinds.hash_stable(hcx, hasher);
+            coercion_casts.hash_stable(hcx, hasher);
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
