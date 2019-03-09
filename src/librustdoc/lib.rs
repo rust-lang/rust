@@ -348,6 +348,11 @@ fn opts() -> Vec<RustcOptGroup> {
                       "generate-redirect-pages",
                       "Generate extra pages to support legacy URLs and tool links")
         }),
+        unstable("show-coverage", |o| {
+            o.optflag("",
+                      "show-coverage",
+                      "calculate percentage of public items with documentation")
+        }),
     ]
 }
 
@@ -392,7 +397,14 @@ fn main_args(args: &[String]) -> isize {
     let diag_opts = (options.error_format,
                      options.debugging_options.treat_err_as_bug,
                      options.debugging_options.ui_testing);
+    let show_coverage = options.show_coverage;
     rust_input(options, move |out| {
+        if show_coverage {
+            // if we ran coverage, bail early, we don't need to also generate docs at this point
+            // (also we didn't load in any of the useful passes)
+            return rustc_driver::EXIT_SUCCESS;
+        }
+
         let Output { krate, passes, renderinfo, renderopts } = out;
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
