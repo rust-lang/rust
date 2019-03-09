@@ -528,6 +528,9 @@ fn ambiguity_error(
                     Def::Method(..) | Def::Fn(..) => {
                         ("add parentheses", format!("{}()", path_str))
                     }
+                    Def::Macro(..) => {
+                        ("add an exclamation mark", format!("{}!", path_str))
+                    }
                     _ => {
                         let type_ = match (def, ns) {
                             (Def::Const(..), _) => "const",
