@@ -421,7 +421,7 @@ impl<K, V, S> HashMap<K, V, S> {
         unsafe {
             Iter {
                 inner: self.table.iter(),
-                _marker: PhantomData,
+                marker: PhantomData,
             }
         }
     }
@@ -455,7 +455,7 @@ impl<K, V, S> HashMap<K, V, S> {
         unsafe {
             IterMut {
                 inner: self.table.iter(),
-                _marker: PhantomData,
+                marker: PhantomData,
             }
         }
     }
@@ -1089,7 +1089,7 @@ where
 /// [`HashMap`]: struct.HashMap.html
 pub struct Iter<'a, K, V> {
     inner: RawIter<(K, V)>,
-    _marker: PhantomData<(&'a K, &'a V)>,
+    marker: PhantomData<(&'a K, &'a V)>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -1098,7 +1098,7 @@ impl<K, V> Clone for Iter<'_, K, V> {
     fn clone(&self) -> Self {
         Iter {
             inner: self.inner.clone(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1119,7 +1119,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 pub struct IterMut<'a, K, V> {
     inner: RawIter<(K, V)>,
     // To ensure invariance with respect to V
-    _marker: PhantomData<(&'a K, &'a mut V)>,
+    marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
 impl<K, V> IterMut<'_, K, V> {
@@ -1128,7 +1128,7 @@ impl<K, V> IterMut<'_, K, V> {
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.clone(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1150,7 +1150,7 @@ impl<K, V> IntoIter<K, V> {
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.iter(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1226,7 +1226,7 @@ impl<K, V> Drain<'_, K, V> {
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.iter(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }

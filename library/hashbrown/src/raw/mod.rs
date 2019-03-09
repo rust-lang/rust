@@ -343,6 +343,9 @@ pub struct RawTable<T> {
 
     // Number of elements in the table, only really used by len()
     items: usize,
+
+    // Tell dropck that we own instances of T.
+    marker: PhantomData<T>,
 }
 
 impl<T> RawTable<T> {
@@ -359,6 +362,7 @@ impl<T> RawTable<T> {
             bucket_mask: 0,
             items: 0,
             growth_left: 0,
+            marker: PhantomData,
         }
     }
 
@@ -380,6 +384,7 @@ impl<T> RawTable<T> {
             bucket_mask: buckets - 1,
             items: 0,
             growth_left: bucket_mask_to_capacity(buckets - 1),
+            marker: PhantomData,
         })
     }
 
@@ -922,7 +927,7 @@ impl<T> RawTable<T> {
             iter: self.iter(),
             table: ManuallyDrop::new(mem::replace(self, Self::new())),
             orig_table: NonNull::from(self),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 
@@ -1039,7 +1044,11 @@ impl<T> IntoIterator for RawTable<T> {
         unsafe {
             let iter = self.iter();
             let alloc = self.into_alloc();
-            RawIntoIter { iter, alloc }
+            RawIntoIter {
+                iter,
+                alloc,
+                marker: PhantomData,
+            }
         }
     }
 }
@@ -1229,6 +1238,7 @@ impl<T> FusedIterator for RawIter<T> {}
 pub struct RawIntoIter<T> {
     iter: RawIter<T>,
     alloc: Option<(NonNull<u8>, Layout)>,
+    marker: PhantomData<T>,
 }
 
 impl<T> RawIntoIter<T> {
@@ -1241,6 +1251,26 @@ impl<T> RawIntoIter<T> {
 unsafe impl<T> Send for RawIntoIter<T> where T: Send {}
 unsafe impl<T> Sync for RawIntoIter<T> where T: Sync {}
 
+#[cfg(feature = "nightly")]
+unsafe impl<#[may_dangle] T> Drop for RawIntoIter<T> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            // Drop all remaining elements
+            if mem::needs_drop::<T>() {
+                while let Some(item) = self.iter.next() {
+                    item.drop();
+                }
+            }
+
+            // Free the table
+            if let Some((ptr, layout)) = self.alloc {
+                dealloc(ptr.as_ptr(), layout);
+            }
+        }
+    }
+}
+#[cfg(not(feature = "nightly"))]
 impl<T> Drop for RawIntoIter<T> {
     #[inline]
     fn drop(&mut self) {
@@ -1289,7 +1319,7 @@ pub struct RawDrain<'a, T> {
 
     // We don't use a &'a mut RawTable<T> because we want RawDrain to be
     // covariant over T.
-    _marker: PhantomData<&'a RawTable<T>>,
+    marker: PhantomData<&'a RawTable<T>>,
 }
 
 impl<T> RawDrain<'_, T> {

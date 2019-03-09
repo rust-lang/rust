@@ -84,7 +84,7 @@ pub struct RawParDrain<'a, T> {
     // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
     // covariant over T.
     table: NonNull<RawTable<T>>,
-    _marker: PhantomData<&'a RawTable<T>>,
+    marker: PhantomData<&'a RawTable<T>>,
 }
 
 unsafe impl<T> Send for RawParDrain<'_, T> {}
@@ -187,7 +187,7 @@ impl<T> RawTable<T> {
     pub fn par_drain(&mut self) -> RawParDrain<'_, T> {
         RawParDrain {
             table: NonNull::from(self),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
