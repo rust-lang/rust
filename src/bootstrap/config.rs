@@ -650,6 +650,22 @@ impl Config {
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
 
+        // Disable should_panic tests on Android targets. Panic in tests currently means a potential
+        // segfault could occur on Android, which will spuriously fail our CI.
+        //
+        // See #55861 for more information.
+        if config.targets.iter().any(|target| target.contains("android")) {
+            if let Subcommand::Test { test_args, .. } |
+                Subcommand::Bench { test_args, .. } = &mut config.cmd {
+                if !test_args.contains(&String::from("-Zunstable-options")) {
+                    test_args.push(String::from("-Zunstable-options"));
+                }
+                if !test_args.contains(&String::from("--exclude-should-panic")) {
+                    test_args.push(String::from("--exclude-should-panic"));
+                }
+            }
+        }
+
         config
     }
 
