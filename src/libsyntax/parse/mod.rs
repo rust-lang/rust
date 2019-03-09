@@ -185,7 +185,7 @@ pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
-crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
+pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
                                     directory_ownership: DirectoryOwnership,
                                     module_name: Option<String>,
