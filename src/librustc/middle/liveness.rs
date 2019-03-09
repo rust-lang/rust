@@ -185,12 +185,6 @@ fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
-    }
-}
-
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         check_mod_liveness,

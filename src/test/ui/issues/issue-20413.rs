@@ -8,6 +8,7 @@ struct NoData<T>;
 impl<T> Foo for T where NoData<T>: Foo {
 //~^ ERROR: overflow evaluating the requirement
   fn answer(self) {
+  //~^ ERROR: overflow evaluating the requirement
     let val: NoData<T> = NoData;
   }
 }

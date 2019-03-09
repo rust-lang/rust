@@ -1251,6 +1251,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
             force!(crate_inherent_impls_overlap_check, LOCAL_CRATE)
         },
         DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
+        DepKind::CheckPrivateInPublic => { force!(check_private_in_public, LOCAL_CRATE); }
         DepKind::MirBuilt => { force!(mir_built, def_id!()); }
         DepKind::MirConstQualif => { force!(mir_const_qualif, def_id!()); }
         DepKind::MirConst => { force!(mir_const, def_id!()); }

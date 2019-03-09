@@ -56,12 +56,6 @@ struct OnlySelfBounds(bool);
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
-    }
-}
-
 fn collect_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,

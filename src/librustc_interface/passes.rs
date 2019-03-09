@@ -21,7 +21,7 @@ use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
 use rustc_incremental;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -191,51 +191,50 @@ fn analysis<'tcx>(
 
     let sess = tcx.sess;
 
-    parallel!({
-        time(sess, "looking for entry point", || {
-            middle::entry::find_entry_point(tcx)
-        });
+    time(sess, "misc checking 1", || {
+        parallel!({
+            time(sess, "looking for entry point", || {
+                middle::entry::find_entry_point(tcx)
+            });
 
-        time(sess, "looking for plugin registrar", || {
-            plugin::build::find_plugin_registrar(tcx)
-        });
+            time(sess, "looking for plugin registrar", || {
+                plugin::build::find_plugin_registrar(tcx)
+            });
 
-        time(sess, "looking for derive registrar", || {
-            proc_macro_decls::find(tcx)
-        });
-    }, {
-        time(sess, "loop checking", || loops::check_crate(tcx));
-    }, {
-        time(sess, "attribute checking", || {
-            hir::check_attr::check_crate(tcx)
-        });
-    }, {
-        time(sess, "stability checking", || {
-            stability::check_unstable_api_usage(tcx)
+            time(sess, "looking for derive registrar", || {
+                proc_macro_decls::find(tcx)
+            });
+        }, {
+            par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                tcx.ensure().check_mod_loops(tcx.hir().local_def_id(module));
+                tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
+                tcx.ensure().check_mod_unstable_api_usage(tcx.hir().local_def_id(module));
+            });
         });
     });
 
     // passes are timed inside typeck
     typeck::check_crate(tcx)?;
 
-    time(sess, "misc checking", || {
+    time(sess, "misc checking 2", || {
         parallel!({
-            time(sess, "rvalue promotion", || {
-                rvalue_promotion::check_crate(tcx)
+            time(sess, "rvalue promotion + match checking", || {
+                tcx.par_body_owners(|def_id| {
+                    tcx.ensure().const_is_rvalue_promotable_to_static(def_id);
+                    tcx.ensure().check_match(def_id);
+                });
             });
         }, {
-            time(sess, "intrinsic checking", || {
-                middle::intrinsicck::check_crate(tcx)
-            });
-        }, {
-            time(sess, "match checking", || mir::matchck_crate(tcx));
-        }, {
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            time(sess, "liveness checking", || {
-                middle::liveness::check_crate(tcx)
+            time(sess, "liveness checking + intrinsic checking", || {
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    // this must run before MIR dump, because
+                    // "not all control paths return a value" is reported here.
+                    //
+                    // maybe move the check to a MIR pass?
+                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id(module));
+
+                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id(module));
+                });
             });
         });
     });
@@ -276,19 +275,30 @@ fn analysis<'tcx>(
         return Err(ErrorReported);
     }
 
-    time(sess, "misc checking", || {
+    time(sess, "misc checking 3", || {
         parallel!({
-            time(sess, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
+            time(sess, "privacy access levels", || {
+                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+            });
+            parallel!({
+                time(sess, "private in public", || {
+                    tcx.ensure().check_private_in_public(LOCAL_CRATE);
+                });
+            }, {
+                time(sess, "death checking", || middle::dead::check_crate(tcx));
+            },  {
+                time(sess, "unused lib feature checking", || {
+                    stability::check_unused_or_stable_features(tcx)
+                });
+            }, {
+                time(sess, "lint checking", || lint::check_crate(tcx));
             });
         }, {
-            time(sess, "death checking", || middle::dead::check_crate(tcx));
-        },  {
-            time(sess, "unused lib feature checking", || {
-                stability::check_unused_or_stable_features(tcx)
+            time(sess, "privacy checking modules", || {
+                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
+                });
             });
-        }, {
-            time(sess, "lint checking", || lint::check_crate(tcx));
         });
     });
 

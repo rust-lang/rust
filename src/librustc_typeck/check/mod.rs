@@ -694,24 +694,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-        tcx.hir().krate().visit_all_item_likes(&mut visit);
-    })
-}
-
-pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
-    tcx.sess.track_errors(|| {
-        for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-        }
+        tcx.hir().krate().par_visit_all_item_likes(&mut visit);
     })
 }
 
 fn check_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
-}
-
-pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
-    tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)

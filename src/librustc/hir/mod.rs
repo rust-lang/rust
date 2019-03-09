@@ -30,7 +30,7 @@ use syntax::util::parser::ExprPrecedence;
 use crate::ty::AdtKind;
 use crate::ty::query::Providers;
 
-use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
 
@@ -779,15 +779,15 @@ impl Crate {
         where V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send
     {
         parallel!({
-            par_iter(&self.items).for_each(|(_, item)| {
+            par_for_each_in(&self.items, |(_, item)| {
                 visitor.visit_item(item);
             });
         }, {
-            par_iter(&self.trait_items).for_each(|(_, trait_item)| {
+            par_for_each_in(&self.trait_items, |(_, trait_item)| {
                 visitor.visit_trait_item(trait_item);
             });
         }, {
-            par_iter(&self.impl_items).for_each(|(_, impl_item)| {
+            par_for_each_in(&self.impl_items, |(_, impl_item)| {
                 visitor.visit_impl_item(impl_item);
             });
         });
