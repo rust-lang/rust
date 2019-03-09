@@ -1476,7 +1476,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
         let fld_t = |_| self.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        self.tcx.replace_bound_vars(value, fld_r, fld_t)
+        let fld_c = |_, ty| self.next_const_var(ty, ConstVariableOrigin::MiscVariable(span));
+        self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
     }
 
     /// See the [`region_constraints::verify_generic_bound`] method.

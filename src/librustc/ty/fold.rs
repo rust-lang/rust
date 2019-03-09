@@ -431,22 +431,26 @@ struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
+    fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx> + 'a),
 }
 
 impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
-    fn new<F, G>(
+    fn new<F, G, H>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         fld_r: &'a mut F,
-        fld_t: &'a mut G
+        fld_t: &'a mut G,
+        fld_c: &'a mut H,
     ) -> Self
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-              G: FnMut(ty::BoundTy) -> Ty<'tcx>
+              G: FnMut(ty::BoundTy) -> Ty<'tcx>,
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
     {
         BoundVarReplacer {
             tcx,
             current_index: ty::INNERMOST,
             fld_r,
             fld_t,
+            fld_c,
         }
     }
 }
@@ -508,7 +512,29 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        ct // FIXME(const_generics)
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
+            ty,
+        }) = *ct {
+            if debruijn == self.current_index {
+                let fld_c = &mut self.fld_c;
+                let ct = fld_c(bound_const, ty);
+                ty::fold::shift_vars(
+                    self.tcx,
+                    &ct,
+                    self.current_index.as_u32()
+                )
+            } else {
+                ct
+            }
+        } else {
+            if !ct.has_vars_bound_at_or_above(self.current_index) {
+                // Nothing more to substitute.
+                ct
+            } else {
+                ct.super_fold_with(self)
+            }
+        }
     }
 }
 
@@ -532,27 +558,34 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        // identity for bound types
+        // identity for bound types and consts
         let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
+        let fld_c = |bound_ct, ty| {
+            self.mk_const_infer(ty::InferConst::Canonical(ty::INNERMOST, bound_ct), ty)
+        };
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
-    /// bound regions while the `fld_t` closure replaces escaping bound types.
-    pub fn replace_escaping_bound_vars<T, F, G>(
+    /// bound regions; the `fld_t` closure replaces escaping bound types and the `fld_c`
+    /// closure replaces escaping bound consts.
+    pub fn replace_escaping_bound_vars<T, F, G, H>(
         self,
         value: &T,
         mut fld_r: F,
-        mut fld_t: G
+        mut fld_t: G,
+        mut fld_c: H,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-              T: TypeFoldable<'tcx>
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+              T: TypeFoldable<'tcx>,
     {
         use rustc_data_structures::fx::FxHashMap;
 
         let mut region_map = BTreeMap::new();
         let mut type_map = FxHashMap::default();
+        let mut const_map = FxHashMap::default();
 
         if !value.has_escaping_bound_vars() {
             (value.clone(), region_map)
@@ -565,7 +598,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 *type_map.entry(bound_ty).or_insert_with(|| fld_t(bound_ty))
             };
 
-            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut real_fld_t);
+            let mut real_fld_c = |bound_ct, ty| {
+                *const_map.entry(bound_ct).or_insert_with(|| fld_c(bound_ct, ty))
+            };
+
+            let mut replacer = BoundVarReplacer::new(
+                self,
+                &mut real_fld_r,
+                &mut real_fld_t,
+                &mut real_fld_c,
+            );
             let result = value.fold_with(&mut replacer);
             (result, region_map)
         }
@@ -574,17 +616,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Replaces all types or regions bound by the given `Binder`. The `fld_r`
     /// closure replaces bound regions while the `fld_t` closure replaces bound
     /// types.
-    pub fn replace_bound_vars<T, F, G>(
+    pub fn replace_bound_vars<T, F, G, H>(
         self,
         value: &Binder<T>,
         fld_r: F,
-        fld_t: G
+        fld_t: G,
+        fld_c: H,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> Ty<'tcx>,
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
