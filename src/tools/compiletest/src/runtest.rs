@@ -3083,6 +3083,12 @@ impl<'test> TestCx<'test> {
               .replace("\\", "/") // normalize for paths on windows
               .replace("\r\n", "\n") // normalize for linebreaks on windows
               .replace("\t", "\\t"); // makes tabs visible
+
+        // Remove test annotations like `//~ ERROR text` from the output,
+        // since they duplicate actual errors and make the output hard to read.
+        normalized = Regex::new("\\s*//~.*").unwrap()
+            .replace_all(&normalized, "").into_owned();
+
         for rule in custom_rules {
             let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
             normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();
