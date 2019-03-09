@@ -14,7 +14,7 @@ LL | fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
 error[E0277]: the trait bound `std::string::String: Bar::Foo<u8, _, u32>` is not satisfied
   --> $DIR/on-trait.rs:31:21
    |
-LL |     let x: String = foobar(); //~ ERROR
+LL |     let x: String = foobar();
    |                     ^^^^^^ test error `std::string::String` with `u8` `_` `u32` in `Bar::Foo`
    |
    = help: the trait `Bar::Foo<u8, _, u32>` is not implemented for `std::string::String`

@@ -1,7 +1,7 @@
 error[E0164]: expected tuple struct/variant, found associated constant `<Foo>::B`
   --> $DIR/E0164.rs:9:9
    |
-LL |         Foo::B(i) => i, //~ ERROR E0164
+LL |         Foo::B(i) => i,
    |         ^^^^^^^^^ not a tuple variant or struct
 
 error: aborting due to previous error

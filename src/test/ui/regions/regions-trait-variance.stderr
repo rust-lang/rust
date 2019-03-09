@@ -1,7 +1,7 @@
 error[E0597]: `*b` does not live long enough
   --> $DIR/regions-trait-variance.rs:37:19
    |
-LL |     let bb: &B = &*b; //~ ERROR `*b` does not live long enough
+LL |     let bb: &B = &*b;
    |                   ^^ borrowed value does not live long enough
 LL |     make_a(bb)
 LL | }

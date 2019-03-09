@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/unreachable-arm.rs:11:9
    |
-LL |         Foo::A(_, 1) => { } //~ ERROR unreachable pattern
+LL |         Foo::A(_, 1) => { }
    |         ^^^^^^^^^^^^
    |
 note: lint level defined here

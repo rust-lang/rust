@@ -1,7 +1,7 @@
 error[E0658]: comparing raw pointers inside static (see issue #53020)
   --> $DIR/E0395.rs:6:29
    |
-LL | static BAZ: bool = unsafe { (&FOO as *const i32) == (&BAR as *const i32) }; //~ ERROR issue #53020
+LL | static BAZ: bool = unsafe { (&FOO as *const i32) == (&BAR as *const i32) };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_compare_raw_pointers)] to the crate attributes to enable

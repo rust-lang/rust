@@ -1,7 +1,7 @@
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gated-feature-in-macro-arg.rs:8:9
    |
-LL | /         extern "rust-intrinsic" { //~ ERROR intrinsics are subject to change
+LL | /         extern "rust-intrinsic" {
 LL | |             fn atomic_fence();
 LL | |         }
    | |_________^

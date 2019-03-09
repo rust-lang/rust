@@ -1,7 +1,7 @@
 error[E0004]: non-exhaustive patterns: type `()` is non-empty
   --> $DIR/issue-3096-1.rs:2:11
    |
-LL |     match () { } //~ ERROR non-exhaustive
+LL |     match () { }
    |           ^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

@@ -9,7 +9,7 @@ LL | #[rustc_attribute_should_be_reserved]
 error: cannot determine resolution for the macro `foo`
   --> $DIR/reserved-attr-on-macro.rs:8:5
    |
-LL |     foo!(); //~ ERROR cannot determine resolution for the macro `foo`
+LL |     foo!();
    |     ^^^
    |
    = note: import resolution is stuck, try simplifying macro imports

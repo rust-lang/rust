@@ -1,7 +1,7 @@
 error: unexpected token: `)`
   --> $DIR/pat-tuple-5.rs:3:14
    |
-LL |         (pat ..) => {} //~ ERROR unexpected token: `)`
+LL |         (pat ..) => {}
    |              ^^
 
 error: aborting due to previous error

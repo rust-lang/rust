@@ -1,7 +1,7 @@
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:4:1
    |
-LL | fn foo() { //~ ERROR function cannot return without recursing
+LL | fn foo() {
    | ^^^^^^^^ cannot return without recursing
 LL |     foo();
    |     ----- recursive call site
@@ -16,7 +16,7 @@ LL | #![deny(unconditional_recursion)]
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:14:1
    |
-LL | fn baz() { //~ ERROR function cannot return without recursing
+LL | fn baz() {
    | ^^^^^^^^ cannot return without recursing
 LL |     if true {
 LL |         baz()
@@ -30,7 +30,7 @@ LL |         baz()
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:26:1
    |
-LL | fn quz() -> bool { //~ ERROR function cannot return without recursing
+LL | fn quz() -> bool {
    | ^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |     if true {
 LL |         while quz() {}
@@ -44,7 +44,7 @@ LL |         loop { quz(); }
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:37:5
    |
-LL |     fn bar(&self) { //~ ERROR function cannot return without recursing
+LL |     fn bar(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         self.bar()
    |         ---------- recursive call site
@@ -54,7 +54,7 @@ LL |         self.bar()
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:43:5
    |
-LL |     fn bar(&self) { //~ ERROR function cannot return without recursing
+LL |     fn bar(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         loop {
 LL |             self.bar()
@@ -65,7 +65,7 @@ LL |             self.bar()
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:52:5
    |
-LL |     fn bar(&self) { //~ ERROR function cannot return without recursing
+LL |     fn bar(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         0.bar()
    |         ------- recursive call site
@@ -75,7 +75,7 @@ LL |         0.bar()
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:65:5
    |
-LL |     fn bar(&self) { //~ ERROR function cannot return without recursing
+LL |     fn bar(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         Foo2::bar(self)
    |         --------------- recursive call site
@@ -85,7 +85,7 @@ LL |         Foo2::bar(self)
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:71:5
    |
-LL |     fn bar(&self) { //~ ERROR function cannot return without recursing
+LL |     fn bar(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         loop {
 LL |             Foo2::bar(self)
@@ -96,7 +96,7 @@ LL |             Foo2::bar(self)
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:81:5
    |
-LL |     fn qux(&self) { //~ ERROR function cannot return without recursing
+LL |     fn qux(&self) {
    |     ^^^^^^^^^^^^^ cannot return without recursing
 LL |         self.qux();
    |         ---------- recursive call site
@@ -106,7 +106,7 @@ LL |         self.qux();
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:86:5
    |
-LL |     fn as_ref(&self) -> &Self { //~ ERROR function cannot return without recursing
+LL |     fn as_ref(&self) -> &Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         Baz::as_ref(self)
    |         ----------------- recursive call site
@@ -116,7 +116,7 @@ LL |         Baz::as_ref(self)
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:93:5
    |
-LL |     fn default() -> Baz { //~ ERROR function cannot return without recursing
+LL |     fn default() -> Baz {
    |     ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         let x = Default::default();
    |                 ------------------ recursive call site
@@ -126,7 +126,7 @@ LL |         let x = Default::default();
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:102:5
    |
-LL |     fn deref(&self) -> &() { //~ ERROR function cannot return without recursing
+LL |     fn deref(&self) -> &() {
    |     ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         &**self
    |          ------ recursive call site
@@ -136,7 +136,7 @@ LL |         &**self
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:109:5
    |
-LL |     fn index(&self, x: usize) -> &Baz { //~ ERROR function cannot return without recursing
+LL |     fn index(&self, x: usize) -> &Baz {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         &self[x]
    |          ------- recursive call site
@@ -146,7 +146,7 @@ LL |         &self[x]
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:118:5
    |
-LL |     fn deref(&self) -> &Baz { //~ ERROR function cannot return without recursing
+LL |     fn deref(&self) -> &Baz {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         self.as_ref()
    |         ---- recursive call site

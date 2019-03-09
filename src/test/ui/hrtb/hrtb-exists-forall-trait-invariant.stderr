@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `(): Trait<for<'b> fn(std::cell::Cell<&'b u32>)>` is not satisfied
   --> $DIR/hrtb-exists-forall-trait-invariant.rs:28:5
    |
-LL |     foo::<()>(); //~ ERROR not satisfied
+LL |     foo::<()>();
    |     ^^^^^^^^^ the trait `Trait<for<'b> fn(std::cell::Cell<&'b u32>)>` is not implemented for `()`
    |
    = help: the following implementations were found:

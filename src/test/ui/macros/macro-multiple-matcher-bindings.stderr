@@ -1,7 +1,7 @@
 warning: duplicate matcher binding
   --> $DIR/macro-multiple-matcher-bindings.rs:11:6
    |
-LL |     ($a:ident, $a:ident) => {}; //~WARNING duplicate matcher binding
+LL |     ($a:ident, $a:ident) => {};
    |      ^^^^^^^^  ^^^^^^^^
    |
    = note: #[warn(duplicate_matcher_binding_name)] on by default
@@ -11,7 +11,7 @@ LL |     ($a:ident, $a:ident) => {}; //~WARNING duplicate matcher binding
 warning: duplicate matcher binding
   --> $DIR/macro-multiple-matcher-bindings.rs:12:6
    |
-LL |     ($a:ident, $a:path) => {};  //~WARNING duplicate matcher binding
+LL |     ($a:ident, $a:path) => {};
    |      ^^^^^^^^  ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -20,7 +20,7 @@ LL |     ($a:ident, $a:path) => {};  //~WARNING duplicate matcher binding
 warning: duplicate matcher binding
   --> $DIR/macro-multiple-matcher-bindings.rs:21:6
    |
-LL |     ($a:ident, $($a:ident),*) => {}; //~WARNING duplicate matcher binding
+LL |     ($a:ident, $($a:ident),*) => {};
    |      ^^^^^^^^    ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -29,7 +29,7 @@ LL |     ($a:ident, $($a:ident),*) => {}; //~WARNING duplicate matcher binding
 warning: duplicate matcher binding
   --> $DIR/macro-multiple-matcher-bindings.rs:22:8
    |
-LL |     ($($a:ident)+ # $($($a:path),+);*) => {}; //~WARNING duplicate matcher binding
+LL |     ($($a:ident)+ # $($($a:path),+);*) => {};
    |        ^^^^^^^^         ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

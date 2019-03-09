@@ -3,7 +3,7 @@ error[E0597]: borrowed value does not live long enough
    |
 LL |         &Test { s: &self.s}
    |          ^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |         //~^ ERROR: borrowed value does not live long enough
+LL |
 LL |     }
    |     - temporary value only lives until here
    |
@@ -12,7 +12,7 @@ note: borrowed value must be valid for the anonymous lifetime #1 defined on the 
    |
 LL | /     fn index(&self, _: usize) -> &Self::Output {
 LL | |         &Test { s: &self.s}
-LL | |         //~^ ERROR: borrowed value does not live long enough
+LL | |
 LL | |     }
    | |_____^
 

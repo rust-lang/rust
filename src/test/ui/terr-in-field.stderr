@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/terr-in-field.rs:13:14
    |
-LL |     want_foo(b); //~  ERROR mismatched types
+LL |     want_foo(b);
    |              ^ expected struct `Foo`, found struct `Bar`
    |
    = note: expected type `Foo`

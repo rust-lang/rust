@@ -9,7 +9,7 @@ LL |     let mut x = Vec::new();
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
    |
-LL |     let y: usize = x.foo(); //~ ERROR mismatched types
+LL |     let y: usize = x.foo();
    |                    ^^^^^^^ expected usize, found isize
 
 error: aborting due to 2 previous errors

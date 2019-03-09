@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/static-region-bound.rs:10:14
    |
-LL |     let x = &id(3); //~ ERROR borrowed value does not live long enough
+LL |     let x = &id(3);
    |              ^^^^^ temporary value does not live long enough
 LL |     f(x);
 LL | }

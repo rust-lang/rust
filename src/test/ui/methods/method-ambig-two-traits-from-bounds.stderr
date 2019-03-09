@@ -1,7 +1,7 @@
 error[E0034]: multiple applicable items in scope
   --> $DIR/method-ambig-two-traits-from-bounds.rs:5:7
    |
-LL |     t.foo(); //~ ERROR E0034
+LL |     t.foo();
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `A`

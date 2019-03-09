@@ -1,7 +1,7 @@
 error[E0597]: `rawLines` does not live long enough
   --> $DIR/issue-13497-2.rs:3:5
    |
-LL |     rawLines //~ ERROR `rawLines` does not live long enough
+LL |     rawLines
    |     ^^^^^^^^ borrowed value does not live long enough
 LL |         .iter().map(|l| l.trim()).collect()
 LL | }

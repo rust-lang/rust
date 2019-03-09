@@ -1,7 +1,7 @@
 error[E0723]: heap allocations are not allowed in const fn (see issue #57563)
   --> $DIR/bad_const_fn_body_ice.rs:2:5
    |
-LL |     vec![1, 2, 3] //~ ERROR heap allocations are not allowed in const fn
+LL |     vec![1, 2, 3]
    |     ^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

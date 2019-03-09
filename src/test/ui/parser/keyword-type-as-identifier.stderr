@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `type`
   --> $DIR/keyword-type-as-identifier.rs:4:9
    |
-LL |     let type = "foo"; //~ error: expected pattern, found keyword `type`
+LL |     let type = "foo";
    |         ^^^^ expected pattern
 
 error: aborting due to previous error

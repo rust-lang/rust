@@ -1,7 +1,7 @@
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
   --> $DIR/feature-gate-trace_macros.rs:2:5
    |
-LL |     trace_macros!(true); //~ ERROR: `trace_macros` is not stable
+LL |     trace_macros!(true);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(trace_macros)] to the crate attributes to enable

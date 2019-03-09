@@ -5,7 +5,7 @@ LL | fn main() {
    |           - close delimiter possibly meant for this
 LL |     foo(bar(;
    |            - un-closed delimiter
-LL |     //~^ ERROR cannot find function `bar` in this scope
+LL |
 LL | }
    | ^ incorrect close delimiter
 

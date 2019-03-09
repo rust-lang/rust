@@ -12,14 +12,14 @@ error[E0308]: match arms have incompatible types
    |
 LL |       let x = match n {
    |  _____________-
-LL | |     //~^ NOTE `match` arms have incompatible types
+LL | |
 LL | |         12 => 'b',
    | |               --- this is found to be of type `char`
-LL | |         //~^ NOTE this is found to be of type `char`
+LL | |
 LL | |         _ => 42,
    | |              ^^ expected char, found integer
 ...  |
-LL | |         //~| NOTE expected type `char`
+LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
@@ -31,17 +31,17 @@ error[E0308]: match arms have incompatible types
    |
 LL |       let x = match n {
    |  _____________-
-LL | |     //~^ NOTE `match` arms have incompatible types
+LL | |
 LL | |         1 => 'b',
 LL | |         2 => 'b',
 ...  |
 LL | |         6 => 'b',
    | |              --- this and all prior arms are found to be of type `char`
-LL | |         //~^ NOTE this and all prior arms are found to be of type `char`
+LL | |
 LL | |         _ => 42,
    | |              ^^ expected char, found integer
 ...  |
-LL | |         //~| NOTE expected type `char`
+LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |

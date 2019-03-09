@@ -1,7 +1,7 @@
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/E0449.rs:7:1
    |
-LL | pub impl Bar {} //~ ERROR E0449
+LL | pub impl Bar {}
    | ^^^ `pub` not permitted here because it's implied
    |
    = note: place qualifiers on individual impl items instead
@@ -9,13 +9,13 @@ LL | pub impl Bar {} //~ ERROR E0449
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/E0449.rs:9:1
    |
-LL | pub impl Foo for Bar { //~ ERROR E0449
+LL | pub impl Foo for Bar {
    | ^^^ `pub` not permitted here because it's implied
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/E0449.rs:10:5
    |
-LL |     pub fn foo() {} //~ ERROR E0449
+LL |     pub fn foo() {}
    |     ^^^ `pub` not permitted here because it's implied
 
 error: aborting due to 3 previous errors

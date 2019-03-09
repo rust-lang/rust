@@ -3,7 +3,7 @@ error[E0515]: cannot return value referencing local variable `z`
    |
 LL |     let k = f(&z);
    |               -- `z` is borrowed here
-LL |     f(x) //~ cannot return value referencing local variable
+LL |     f(x)
    |     ^^^^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error

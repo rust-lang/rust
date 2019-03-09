@@ -1,7 +1,7 @@
 error[E0658]: `global_asm!` is not stable enough for use and is subject to change (see issue #35119)
   --> $DIR/feature-gate-global_asm.rs:1:1
    |
-LL | global_asm!(""); //~ ERROR `global_asm!` is not stable
+LL | global_asm!("");
    | ^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(global_asm)] to the crate attributes to enable

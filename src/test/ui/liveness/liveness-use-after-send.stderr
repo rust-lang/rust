@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `message`
    |
 LL |     send(ch, message);
    |              ------- value moved here
-LL |     println!("{}", message); //~ ERROR use of moved value: `message`
+LL |     println!("{}", message);
    |                    ^^^^^^^ value used here after move
    |
    = note: move occurs because `message` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

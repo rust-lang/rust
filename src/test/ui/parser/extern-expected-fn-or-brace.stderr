@@ -1,7 +1,7 @@
 error: expected one of `fn` or `{`, found `mod`
   --> $DIR/extern-expected-fn-or-brace.rs:4:12
    |
-LL | extern "C" mod foo; //~ERROR expected one of `fn` or `{`, found `mod`
+LL | extern "C" mod foo;
    |            ^^^ expected one of `fn` or `{` here
 
 error: aborting due to previous error

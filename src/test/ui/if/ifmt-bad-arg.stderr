@@ -73,13 +73,13 @@ LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
 error: there is no argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:31:14
    |
-LL |     format!("{foo}");                //~ ERROR: no argument named `foo`
+LL |     format!("{foo}");
    |              ^^^^^
 
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:32:17
    |
-LL |     format!("", 1, 2);               //~ ERROR: multiple unused formatting arguments
+LL |     format!("", 1, 2);
    |             --  ^  ^ argument never used
    |             |   |
    |             |   argument never used
@@ -88,7 +88,7 @@ LL |     format!("", 1, 2);               //~ ERROR: multiple unused formatting 
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:33:22
    |
-LL |     format!("{}", 1, 2);             //~ ERROR: argument never used
+LL |     format!("{}", 1, 2);
    |             ----     ^ argument never used
    |             |
    |             formatting specifier missing
@@ -96,7 +96,7 @@ LL |     format!("{}", 1, 2);             //~ ERROR: argument never used
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:34:20
    |
-LL |     format!("{1}", 1, 2);            //~ ERROR: argument never used
+LL |     format!("{1}", 1, 2);
    |             -----  ^ argument never used
    |             |
    |             formatting specifier missing
@@ -104,7 +104,7 @@ LL |     format!("{1}", 1, 2);            //~ ERROR: argument never used
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:35:26
    |
-LL |     format!("{}", 1, foo=2);         //~ ERROR: named argument never used
+LL |     format!("{}", 1, foo=2);
    |             ----         ^ named argument never used
    |             |
    |             formatting specifier missing
@@ -112,7 +112,7 @@ LL |     format!("{}", 1, foo=2);         //~ ERROR: named argument never used
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:36:22
    |
-LL |     format!("{foo}", 1, foo=2);      //~ ERROR: argument never used
+LL |     format!("{foo}", 1, foo=2);
    |             -------  ^ argument never used
    |             |
    |             formatting specifier missing
@@ -120,7 +120,7 @@ LL |     format!("{foo}", 1, foo=2);      //~ ERROR: argument never used
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:37:21
    |
-LL |     format!("", foo=2);              //~ ERROR: named argument never used
+LL |     format!("", foo=2);
    |             --      ^ named argument never used
    |             |
    |             formatting specifier missing
@@ -128,7 +128,7 @@ LL |     format!("", foo=2);              //~ ERROR: named argument never used
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:38:32
    |
-LL |     format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused formatting arguments
+LL |     format!("{} {}", 1, 2, foo=1, bar=2);
    |             -------            ^      ^ named argument never used
    |             |                  |
    |             |                  named argument never used
@@ -137,19 +137,19 @@ LL |     format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused forma
 error: duplicate argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:40:33
    |
-LL |     format!("{foo}", foo=1, foo=2);  //~ ERROR: duplicate argument
+LL |     format!("{foo}", foo=1, foo=2);
    |                                 ^
    |
 note: previously here
   --> $DIR/ifmt-bad-arg.rs:40:26
    |
-LL |     format!("{foo}", foo=1, foo=2);  //~ ERROR: duplicate argument
+LL |     format!("{foo}", foo=1, foo=2);
    |                          ^
 
 error: expected ident, positional arguments cannot follow named arguments
   --> $DIR/ifmt-bad-arg.rs:41:24
    |
-LL |     format!("", foo=1, 2);           //~ ERROR: positional arguments cannot follow
+LL |     format!("", foo=1, 2);
    |                        ^
 
 error: there is no argument named `valueb`
@@ -169,7 +169,7 @@ LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
 error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/ifmt-bad-arg.rs:51:15
    |
-LL |     format!("{"); //~ ERROR: expected `'}'` but string was terminated
+LL |     format!("{");
    |              -^ expected `'}'` in format string
    |              |
    |              because of this opening brace
@@ -179,7 +179,7 @@ LL |     format!("{"); //~ ERROR: expected `'}'` but string was terminated
 error: invalid format string: unmatched `}` found
   --> $DIR/ifmt-bad-arg.rs:53:18
    |
-LL |     format!("foo } bar"); //~ ERROR: unmatched `}` found
+LL |     format!("foo } bar");
    |                  ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
@@ -187,7 +187,7 @@ LL |     format!("foo } bar"); //~ ERROR: unmatched `}` found
 error: invalid format string: unmatched `}` found
   --> $DIR/ifmt-bad-arg.rs:54:18
    |
-LL |     format!("foo }"); //~ ERROR: unmatched `}` found
+LL |     format!("foo }");
    |                  ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
@@ -195,7 +195,7 @@ LL |     format!("foo }"); //~ ERROR: unmatched `}` found
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:56:27
    |
-LL |     format!("foo %s baz", "bar"); //~ ERROR: argument never used
+LL |     format!("foo %s baz", "bar");
    |                  --       ^^^^^ argument never used
    |                  |
    |                  help: format specifiers use curly braces: `{}`

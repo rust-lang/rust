@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/mut-pattern-mismatched.rs:6:10
    |
-LL |      let &_ //~  ERROR mismatched types
+LL |      let &_
    |          ^^ types differ in mutability
    |
    = note: expected type `&mut {integer}`
@@ -10,7 +10,7 @@ LL |      let &_ //~  ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/mut-pattern-mismatched.rs:15:9
    |
-LL |     let &mut _ //~  ERROR mismatched types
+LL |     let &mut _
    |         ^^^^^^ types differ in mutability
    |
    = note: expected type `&{integer}`

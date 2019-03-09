@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/struct-path-self-type-mismatch.rs:7:23
    |
-LL |         Self { inner: 1.5f32 }; //~ ERROR mismatched types
+LL |         Self { inner: 1.5f32 };
    |                       ^^^^^^ expected i32, found f32
 
 error[E0308]: mismatched types
@@ -19,9 +19,9 @@ error[E0308]: mismatched types
 LL |       fn new<U>(u: U) -> Foo<U> {
    |                          ------ expected `Foo<U>` because of return type
 LL | /         Self {
-LL | |         //~^ ERROR mismatched types
+LL | |
 LL | |             inner: u
-LL | |             //~^ ERROR mismatched types
+LL | |
 LL | |         }
    | |_________^ expected type parameter, found a different type parameter
    |

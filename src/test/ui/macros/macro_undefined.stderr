@@ -1,7 +1,7 @@
 error: cannot find macro `k!` in this scope
   --> $DIR/macro_undefined.rs:11:5
    |
-LL |     k!(); //~ ERROR cannot find
+LL |     k!();
    |     ^ help: you could try the macro: `kl`
 
 error: aborting due to previous error

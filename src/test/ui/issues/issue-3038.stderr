@@ -13,7 +13,7 @@ LL |       H::I(J::L(x, _), K::M(_, x))
 error[E0416]: identifier `x` is bound more than once in the same pattern
   --> $DIR/issue-3038.rs:23:13
    |
-LL |         (x, x) => { x } //~ ERROR identifier `x` is bound more than once in the same pattern
+LL |         (x, x) => { x }
    |             ^ used in a pattern more than once
 
 error: aborting due to 3 previous errors

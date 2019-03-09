@@ -1,7 +1,7 @@
 error: expected `fn`, found `::`
   --> $DIR/keyword-extern-as-identifier-type.rs:1:16
    |
-LL | type A = extern::foo::bar; //~ ERROR expected `fn`, found `::`
+LL | type A = extern::foo::bar;
    |                ^^ expected `fn` here
 
 error: aborting due to previous error

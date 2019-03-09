@@ -4,7 +4,7 @@ error[E0623]: lifetime mismatch
 LL | fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
    |                                  -------     ------- these two types are declared with different lifetimes...
 LL |     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
-LL |     a.bigger_region(b) //~ ERROR lifetime mismatch [E0623]
+LL |     a.bigger_region(b)
    |       ^^^^^^^^^^^^^ ...but data from `b` flows into `a` here
 
 error: aborting due to previous error

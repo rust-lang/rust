@@ -1,97 +1,97 @@
 error: found 'hi's
   --> $DIR/subspan.rs:11:1
    |
-LL | subspan!("hi"); //~ ERROR found 'hi's
+LL | subspan!("hi");
    | ^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:11:11
    |
-LL | subspan!("hi"); //~ ERROR found 'hi's
+LL | subspan!("hi");
    |           ^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:14:1
    |
-LL | subspan!("hihi"); //~ ERROR found 'hi's
+LL | subspan!("hihi");
    | ^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:14:11
    |
-LL | subspan!("hihi"); //~ ERROR found 'hi's
+LL | subspan!("hihi");
    |           ^^^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:17:1
    |
-LL | subspan!("hihihi"); //~ ERROR found 'hi's
+LL | subspan!("hihihi");
    | ^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:17:11
    |
-LL | subspan!("hihihi"); //~ ERROR found 'hi's
+LL | subspan!("hihihi");
    |           ^^^^^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:20:1
    |
-LL | subspan!("why I hide? hi!"); //~ ERROR found 'hi's
+LL | subspan!("why I hide? hi!");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:20:17
    |
-LL | subspan!("why I hide? hi!"); //~ ERROR found 'hi's
+LL | subspan!("why I hide? hi!");
    |                 ^^    ^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:21:1
    |
-LL | subspan!("hey, hi, hidy, hidy, hi hi"); //~ ERROR found 'hi's
+LL | subspan!("hey, hi, hidy, hidy, hi hi");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:21:16
    |
-LL | subspan!("hey, hi, hidy, hidy, hi hi"); //~ ERROR found 'hi's
+LL | subspan!("hey, hi, hidy, hidy, hi hi");
    |                ^^  ^^    ^^    ^^ ^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:22:1
    |
-LL | subspan!("this is a hi, and this is another hi"); //~ ERROR found 'hi's
+LL | subspan!("this is a hi, and this is another hi");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:22:12
    |
-LL | subspan!("this is a hi, and this is another hi"); //~ ERROR found 'hi's
+LL | subspan!("this is a hi, and this is another hi");
    |            ^^       ^^       ^^             ^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:23:1
    |
-LL | subspan!("how are you this evening"); //~ ERROR found 'hi's
+LL | subspan!("how are you this evening");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:23:24
    |
-LL | subspan!("how are you this evening"); //~ ERROR found 'hi's
+LL | subspan!("how are you this evening");
    |                        ^^
 
 error: found 'hi's
   --> $DIR/subspan.rs:24:1
    |
-LL | subspan!("this is highly eradic"); //~ ERROR found 'hi's
+LL | subspan!("this is highly eradic");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: here
   --> $DIR/subspan.rs:24:12
    |
-LL | subspan!("this is highly eradic"); //~ ERROR found 'hi's
+LL | subspan!("this is highly eradic");
    |            ^^     ^^
 
 error: aborting due to 8 previous errors

@@ -3,7 +3,7 @@ error[E0594]: cannot assign to immutable borrowed content `*x`
    |
 LL | fn named_ref(x: &(i32,)) {
    |                 ------- use `&mut (i32,)` here to make mutable
-LL |     *x = (1,); //~ ERROR
+LL |     *x = (1,);
    |     ^^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
@@ -11,8 +11,8 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
    |
 LL | fn named_ref(x: &(i32,)) {
    |                 ------- use `&mut (i32,)` here to make mutable
-LL |     *x = (1,); //~ ERROR
-LL |     x.0 = 1; //~ ERROR
+LL |     *x = (1,);
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
@@ -21,7 +21,7 @@ error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
 LL | fn named_ref(x: &(i32,)) {
    |                 ------- use `&mut (i32,)` here to make mutable
 ...
-LL |     &mut *x; //~ ERROR
+LL |     &mut *x;
    |          ^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
@@ -30,85 +30,85 @@ error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
 LL | fn named_ref(x: &(i32,)) {
    |                 ------- use `&mut (i32,)` here to make mutable
 ...
-LL |     &mut x.0; //~ ERROR
+LL |     &mut x.0;
    |          ^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to immutable borrowed content
   --> $DIR/mutability-errors.rs:16:5
    |
-LL |     *f() = (1,); //~ ERROR
+LL |     *f() = (1,);
    |     ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to field of immutable binding
   --> $DIR/mutability-errors.rs:17:5
    |
-LL |     f().0 = 1; //~ ERROR
+LL |     f().0 = 1;
    |     ^^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable borrowed content as mutable
   --> $DIR/mutability-errors.rs:18:10
    |
-LL |     &mut *f(); //~ ERROR
+LL |     &mut *f();
    |          ^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow field of immutable binding as mutable
   --> $DIR/mutability-errors.rs:19:10
    |
-LL |     &mut f().0; //~ ERROR
+LL |     &mut f().0;
    |          ^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to immutable dereference of raw pointer `*x`
   --> $DIR/mutability-errors.rs:23:5
    |
-LL |     *x = (1,); //~ ERROR
+LL |     *x = (1,);
    |     ^^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
   --> $DIR/mutability-errors.rs:24:5
    |
-LL |     (*x).0 = 1; //~ ERROR
+LL |     (*x).0 = 1;
    |     ^^^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable dereference of raw pointer `*x` as mutable
   --> $DIR/mutability-errors.rs:25:10
    |
-LL |     &mut *x; //~ ERROR
+LL |     &mut *x;
    |          ^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
   --> $DIR/mutability-errors.rs:26:10
    |
-LL |     &mut (*x).0; //~ ERROR
+LL |     &mut (*x).0;
    |          ^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to immutable dereference of raw pointer
   --> $DIR/mutability-errors.rs:30:5
    |
-LL |     *f() = (1,); //~ ERROR
+LL |     *f() = (1,);
    |     ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to field of immutable binding
   --> $DIR/mutability-errors.rs:31:5
    |
-LL |     (*f()).0 = 1; //~ ERROR
+LL |     (*f()).0 = 1;
    |     ^^^^^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable dereference of raw pointer as mutable
   --> $DIR/mutability-errors.rs:32:10
    |
-LL |     &mut *f(); //~ ERROR
+LL |     &mut *f();
    |          ^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow field of immutable binding as mutable
   --> $DIR/mutability-errors.rs:33:10
    |
-LL |     &mut (*f()).0; //~ ERROR
+LL |     &mut (*f()).0;
    |          ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0387]: cannot assign to data in a captured outer variable in an `Fn` closure
   --> $DIR/mutability-errors.rs:40:9
    |
-LL |         x = (1,); //~ ERROR
+LL |         x = (1,);
    |         ^^^^^^^^
    |
 help: consider changing this closure to take self by mutable reference
@@ -116,17 +116,17 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(|| {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0387]: cannot assign to data in a captured outer variable in an `Fn` closure
   --> $DIR/mutability-errors.rs:41:9
    |
-LL |         x.0 = 1; //~ ERROR
+LL |         x.0 = 1;
    |         ^^^^^^^
    |
 help: consider changing this closure to take self by mutable reference
@@ -134,17 +134,17 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(|| {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0387]: cannot borrow data mutably in a captured outer variable in an `Fn` closure
   --> $DIR/mutability-errors.rs:42:14
    |
-LL |         &mut x; //~ ERROR
+LL |         &mut x;
    |              ^
    |
 help: consider changing this closure to take self by mutable reference
@@ -152,17 +152,17 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(|| {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0387]: cannot borrow data mutably in a captured outer variable in an `Fn` closure
   --> $DIR/mutability-errors.rs:43:14
    |
-LL |         &mut x.0; //~ ERROR
+LL |         &mut x.0;
    |              ^^^
    |
 help: consider changing this closure to take self by mutable reference
@@ -170,17 +170,17 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(|| {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
   --> $DIR/mutability-errors.rs:46:9
    |
-LL |         x = (1,); //~ ERROR
+LL |         x = (1,);
    |         ^^^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
@@ -189,23 +189,23 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(move || {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
   --> $DIR/mutability-errors.rs:47:9
    |
-LL |         x.0 = 1; //~ ERROR
+LL |         x.0 = 1;
    |         ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow captured outer variable in an `Fn` closure as mutable
   --> $DIR/mutability-errors.rs:48:14
    |
-LL |         &mut x; //~ ERROR
+LL |         &mut x;
    |              ^
    |
 help: consider changing this closure to take self by mutable reference
@@ -213,17 +213,17 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       fn_ref(move || {
    |  ____________^
-LL | |         x = (1,); //~ ERROR
-LL | |         x.0 = 1; //~ ERROR
-LL | |         &mut x; //~ ERROR
-LL | |         &mut x.0; //~ ERROR
+LL | |         x = (1,);
+LL | |         x.0 = 1;
+LL | |         &mut x;
+LL | |         &mut x.0;
 LL | |     });
    | |_____^
 
 error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
   --> $DIR/mutability-errors.rs:49:14
    |
-LL |         &mut x.0; //~ ERROR
+LL |         &mut x.0;
    |              ^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable argument `x` as mutable
@@ -231,7 +231,7 @@ error[E0596]: cannot borrow immutable argument `x` as mutable
    |
 LL | fn imm_local(x: (i32,)) {
    |              - help: make this binding mutable: `mut x`
-LL |     &mut x; //~ ERROR
+LL |     &mut x;
    |          ^ cannot borrow mutably
 
 error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
@@ -239,8 +239,8 @@ error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
    |
 LL | fn imm_local(x: (i32,)) {
    |              - help: make this binding mutable: `mut x`
-LL |     &mut x; //~ ERROR
-LL |     &mut x.0; //~ ERROR
+LL |     &mut x;
+LL |     &mut x.0;
    |          ^^^ cannot mutably borrow field of immutable binding
 
 error[E0595]: closure cannot assign to immutable argument `x`
@@ -248,7 +248,7 @@ error[E0595]: closure cannot assign to immutable argument `x`
    |
 LL | fn imm_capture(x: (i32,)) {
    |                - help: make this binding mutable: `mut x`
-LL |     || { //~ ERROR
+LL |     || {
    |     ^^ cannot borrow mutably
 
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
@@ -257,49 +257,49 @@ error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
 LL | fn imm_capture(x: (i32,)) {
    |                - help: consider making `x` mutable: `mut x`
 ...
-LL |         x = (1,); //~ ERROR
+LL |         x = (1,);
    |         ^^^^^^^^
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
   --> $DIR/mutability-errors.rs:67:9
    |
-LL |         x.0 = 1; //~ ERROR
+LL |         x.0 = 1;
    |         ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow captured outer variable in an `FnMut` closure as mutable
   --> $DIR/mutability-errors.rs:68:14
    |
-LL |         &mut x; //~ ERROR
+LL |         &mut x;
    |              ^
 
 error[E0596]: cannot borrow field `x.0` of immutable binding as mutable
   --> $DIR/mutability-errors.rs:69:14
    |
-LL |         &mut x.0; //~ ERROR
+LL |         &mut x.0;
    |              ^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to immutable static item
   --> $DIR/mutability-errors.rs:76:5
    |
-LL |     X = (1,); //~ ERROR
+LL |     X = (1,);
    |     ^^^^^^^^
 
 error[E0594]: cannot assign to field of immutable binding
   --> $DIR/mutability-errors.rs:77:5
    |
-LL |     X.0 = 1; //~ ERROR
+LL |     X.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow immutable static item as mutable
   --> $DIR/mutability-errors.rs:78:10
    |
-LL |     &mut X; //~ ERROR
+LL |     &mut X;
    |          ^
 
 error[E0596]: cannot borrow field of immutable binding as mutable
   --> $DIR/mutability-errors.rs:79:10
    |
-LL |     &mut X.0; //~ ERROR
+LL |     &mut X.0;
    |          ^^^ cannot mutably borrow field of immutable binding
 
 error: aborting due to 35 previous errors

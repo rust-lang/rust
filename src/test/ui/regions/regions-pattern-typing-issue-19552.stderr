@@ -1,7 +1,7 @@
 error[E0597]: `line` does not live long enough
   --> $DIR/regions-pattern-typing-issue-19552.rs:5:14
    |
-LL |     match [&*line] { //~ ERROR `line` does not live long enough
+LL |     match [&*line] {
    |              ^^^^ borrowed value does not live long enough
 ...
 LL | }

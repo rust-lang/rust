@@ -3,7 +3,7 @@ error[E0124]: field `a` is already declared
    |
 LL |             a: u8,
    |             ----- `a` first declared here
-LL |             $a: u8, //~ ERROR field `a` is already declared
+LL |             $a: u8,
    |                 ^^ field already declared
 ...
 LL | legacy!(a);

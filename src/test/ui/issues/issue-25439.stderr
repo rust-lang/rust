@@ -1,7 +1,7 @@
 error[E0644]: closure/generator type that references itself
   --> $DIR/issue-25439.rs:8:9
    |
-LL |     fix(|_, x| x); //~ ERROR closure/generator type that references itself [E0644]
+LL |     fix(|_, x| x);
    |         ^^^^^^^^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;

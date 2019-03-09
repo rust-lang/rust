@@ -1,7 +1,7 @@
 error[E0277]: `F` cannot be shared between threads safely
   --> $DIR/closure-bounds-subtype.rs:13:5
    |
-LL |     take_const_owned(f); //~ ERROR `F` cannot be shared between threads safely [E0277]
+LL |     take_const_owned(f);
    |     ^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `F`

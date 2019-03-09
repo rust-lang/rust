@@ -4,7 +4,7 @@ error[E0428]: the name `A` is defined multiple times
 LL | #[proc_macro_derive(A)]
    |                     - previous definition of the macro `A` here
 ...
-LL | #[proc_macro_derive(A)] //~ ERROR the name `A` is defined multiple times
+LL | #[proc_macro_derive(A)]
    |                     ^ `A` redefined here
    |
    = note: `A` must be defined only once in the macro namespace of this module

@@ -4,7 +4,7 @@ error[E0504]: cannot move `fancy_num` into closure because it is borrowed
 LL |     let fancy_ref = &fancy_num;
    |                      --------- borrow of `fancy_num` occurs here
 ...
-LL |         println!("child function: {}", fancy_num.num); //~ ERROR E0504
+LL |         println!("child function: {}", fancy_num.num);
    |                                        ^^^^^^^^^ move into closure occurs here
 
 error: aborting due to previous error

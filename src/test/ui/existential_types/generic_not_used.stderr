@@ -3,7 +3,7 @@ error: type parameter `V` is part of concrete type but not used in parameter lis
    |
 LL |   fn wrong_generic<U: 'static, V: 'static>(_: U, v: V) -> WrongGeneric<U> {
    |  _________________________________________________________________________^
-LL | | //~^ ERROR type parameter `V` is part of concrete type but not used in parameter list
+LL | |
 LL | |     v
 LL | | }
    | |_^

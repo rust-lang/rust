@@ -1,19 +1,19 @@
 error[E0054]: cannot cast as `bool`
   --> $DIR/cast-as-bool.rs:2:13
    |
-LL |     let u = 5 as bool; //~ ERROR cannot cast as `bool`
+LL |     let u = 5 as bool;
    |             ^^^^^^^^^ help: compare with zero instead: `5 != 0`
 
 error[E0054]: cannot cast as `bool`
   --> $DIR/cast-as-bool.rs:5:13
    |
-LL |     let t = (1 + 2) as bool; //~ ERROR cannot cast as `bool`
+LL |     let t = (1 + 2) as bool;
    |             ^^^^^^^^^^^^^^^ help: compare with zero instead: `(1 + 2) != 0`
 
 error[E0054]: cannot cast as `bool`
   --> $DIR/cast-as-bool.rs:8:13
    |
-LL |     let v = "hello" as bool; //~ ERROR cannot cast as `bool`
+LL |     let v = "hello" as bool;
    |             ^^^^^^^^^^^^^^^ unsupported cast
 
 error: aborting due to 3 previous errors

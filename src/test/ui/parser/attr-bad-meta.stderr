@@ -1,7 +1,7 @@
 error: expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `*`
   --> $DIR/attr-bad-meta.rs:1:7
    |
-LL | #[path*] //~ ERROR expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `*`
+LL | #[path*]
    |       ^ expected one of `(`, `::`, `=`, `[`, `]`, or `{` here
 
 error: aborting due to previous error

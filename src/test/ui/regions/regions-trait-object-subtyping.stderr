@@ -1,7 +1,7 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
-LL |     x //~ ERROR lifetime bound not satisfied
+LL |     x
    |     ^
    |
 note: lifetime parameter instantiated with the lifetime 'a as defined on the function body at 13:9
@@ -18,7 +18,7 @@ LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
 error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to conflicting requirements
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
-LL |     x //~ ERROR lifetime bound not satisfied
+LL |     x
    |     ^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 13:9...
@@ -29,7 +29,7 @@ LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
 note: ...so that reference does not outlive borrowed content
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
-LL |     x //~ ERROR lifetime bound not satisfied
+LL |     x
    |     ^
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 13:12...
   --> $DIR/regions-trait-object-subtyping.rs:13:12
@@ -43,7 +43,7 @@ LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
 error[E0308]: mismatched types
   --> $DIR/regions-trait-object-subtyping.rs:22:5
    |
-LL |     x //~ ERROR mismatched types
+LL |     x
    |     ^ lifetime mismatch
    |
    = note: expected type `Wrapper<&'b mut (dyn Dummy + 'b)>`

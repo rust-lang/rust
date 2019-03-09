@@ -10,7 +10,7 @@ LL | #[allow(test_lint)]
 error: item is named 'lintme'
   --> $DIR/lint-plugin-forbid-attrs.rs:8:1
    |
-LL | fn lintme() { } //~ ERROR item is named 'lintme'
+LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
 note: lint level defined here

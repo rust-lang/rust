@@ -51,7 +51,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |                       --               -- ...and here
    |                       |
@@ -82,7 +82,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &(Either::One(_t), Either::Two(_u))
    |         -----------------------------------
    |         |             |                |
@@ -101,7 +101,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
    |         |             |                |
@@ -120,7 +120,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
    |         |             |                |
@@ -187,7 +187,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           --               -- ...and here
    |                           |
@@ -218,7 +218,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut (Either::One(_t), Either::Two(_u))
    |         ---------------------------------------
    |         |                 |                |
@@ -237,7 +237,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |
@@ -256,7 +256,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |
@@ -275,7 +275,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
    |         |                 |                |

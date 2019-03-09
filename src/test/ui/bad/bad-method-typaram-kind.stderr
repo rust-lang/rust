@@ -1,7 +1,7 @@
 error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/bad-method-typaram-kind.rs:2:7
    |
-LL |     1.bar::<T>(); //~ ERROR `T` cannot be sent between threads safely
+LL |     1.bar::<T>();
    |       ^^^ `T` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `T`

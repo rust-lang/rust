@@ -1,7 +1,7 @@
 error: OK
   --> $DIR/dep-graph-variance-alias.rs:19:1
    |
-LL | #[rustc_then_this_would_need(ItemVariances)] //~ ERROR OK
+LL | #[rustc_then_this_would_need(ItemVariances)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

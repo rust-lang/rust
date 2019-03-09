@@ -4,7 +4,7 @@ error[E0195]: lifetime parameters or bounds on method `bar` do not match the tra
 LL |     fn bar<'b, T: Bar<'b>>(self) -> &'b str;
    |           ---------------- lifetimes in impl do not match this method in trait
 ...
-LL |     fn bar<T: Bar<'a>>(self) -> &'a str { panic!() } //~ ERROR lifetime
+LL |     fn bar<T: Bar<'a>>(self) -> &'a str { panic!() }
    |           ^^^^^^^^^^^^ lifetimes do not match method in trait
 
 error: aborting due to previous error

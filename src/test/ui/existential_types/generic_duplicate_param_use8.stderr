@@ -2,7 +2,7 @@ error: concrete type differs from previous defining existential type use
   --> $DIR/generic_duplicate_param_use8.rs:13:1
    |
 LL | / fn three<T: Debug, U: Debug>(_: T, u: U) -> Two<T, U> {
-LL | | //~^ concrete type differs from previous
+LL | |
 LL | |     (u, 4u32)
 LL | | }
    | |_^ expected `(T, u32)`, got `(U, u32)`

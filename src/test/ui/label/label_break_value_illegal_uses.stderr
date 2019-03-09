@@ -1,13 +1,13 @@
 error: expected one of `extern`, `fn`, or `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:6:12
    |
-LL |     unsafe 'b: {} //~ ERROR expected one of `extern`, `fn`, or `{`
+LL |     unsafe 'b: {}
    |            ^^ expected one of `extern`, `fn`, or `{` here
 
 error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:10:13
    |
-LL |     if true 'b: {} //~ ERROR expected `{`, found `'b`
+LL |     if true 'b: {}
    |     --      ^^----
    |     |       |
    |     |       expected `{`
@@ -17,7 +17,7 @@ LL |     if true 'b: {} //~ ERROR expected `{`, found `'b`
 error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:14:21
    |
-LL |     if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
+LL |     if true {} else 'b: {}
    |                     ^^----
    |                     |
    |                     expected `{`
@@ -26,7 +26,7 @@ LL |     if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
 error: expected one of `.`, `?`, `{`, or an operator, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:18:17
    |
-LL |     match false 'b: {} //~ ERROR expected one of `.`, `?`, `{`, or an operator
+LL |     match false 'b: {}
    |     -----       ^^ expected one of `.`, `?`, `{`, or an operator here
    |     |
    |     while parsing this match expression

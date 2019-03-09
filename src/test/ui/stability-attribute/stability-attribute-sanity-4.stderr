@@ -1,37 +1,37 @@
 error: attribute must be of the form `#[unstable(feature = "name", reason = "...", issue = "N")]`
   --> $DIR/stability-attribute-sanity-4.rs:8:5
    |
-LL |     #[unstable] //~ ERROR attribute must be of the form
+LL |     #[unstable]
    |     ^^^^^^^^^^^
 
 error: attribute must be of the form `#[unstable(feature = "name", reason = "...", issue = "N")]`
   --> $DIR/stability-attribute-sanity-4.rs:11:5
    |
-LL |     #[unstable = "b"] //~ ERROR attribute must be of the form
+LL |     #[unstable = "b"]
    |     ^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[stable(feature = "name", since = "version")]`
   --> $DIR/stability-attribute-sanity-4.rs:14:5
    |
-LL |     #[stable] //~ ERROR attribute must be of the form
+LL |     #[stable]
    |     ^^^^^^^^^
 
 error: attribute must be of the form `#[stable(feature = "name", since = "version")]`
   --> $DIR/stability-attribute-sanity-4.rs:17:5
    |
-LL |     #[stable = "a"] //~ ERROR attribute must be of the form
+LL |     #[stable = "a"]
    |     ^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[rustc_deprecated(since = "version", reason = "...")]`
   --> $DIR/stability-attribute-sanity-4.rs:21:5
    |
-LL |     #[rustc_deprecated] //~ ERROR attribute must be of the form
+LL |     #[rustc_deprecated]
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[rustc_deprecated(since = "version", reason = "...")]`
   --> $DIR/stability-attribute-sanity-4.rs:25:5
    |
-LL |     #[rustc_deprecated = "a"] //~ ERROR attribute must be of the form
+LL |     #[rustc_deprecated = "a"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

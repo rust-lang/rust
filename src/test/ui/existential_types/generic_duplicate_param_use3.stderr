@@ -2,7 +2,7 @@ error: defining existential type use restricts existential type by using the gen
   --> $DIR/generic_duplicate_param_use3.rs:10:1
    |
 LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
-LL | | //~^ defining existential type use restricts existential type
+LL | |
 LL | |     t
 LL | | }
    | |_^
@@ -11,7 +11,7 @@ error: concrete type's generic parameters differ from previous defining use
   --> $DIR/generic_duplicate_param_use3.rs:19:1
    |
 LL | / fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
-LL | | //~^ concrete type's generic parameters differ from previous defining use
+LL | |
 LL | |     u
 LL | | }
    | |_^ expected [`T`], got [`U`]

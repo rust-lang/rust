@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `u.n1`
    |
 LL |             let a = u.n1;
    |                 - value moved here
-LL |             let a = u.n1; //~ ERROR use of moved value: `u.n1`
+LL |             let a = u.n1;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.n1` has type `NonCopy`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of partially moved value: `u`
    |
 LL |             let a = u.n1;
    |                 - value moved here
-LL |             let a = u; //~ ERROR use of partially moved value: `u`
+LL |             let a = u;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ error[E0382]: use of moved value: `u.n2`
    |
 LL |             let a = u.n1;
    |                 - value moved here
-LL |             let a = u.n2; //~ ERROR use of moved value: `u.n2`
+LL |             let a = u.n2;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
@@ -33,7 +33,7 @@ error[E0382]: use of moved value: `u.n`
    |
 LL |             let a = u.n;
    |                 - value moved here
-LL |             let a = u.n; //~ ERROR use of moved value: `u.n`
+LL |             let a = u.n;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.n` has type `NonCopy`, which does not implement the `Copy` trait
@@ -43,7 +43,7 @@ error[E0382]: use of moved value: `u.c`
    |
 LL |             let a = u.n;
    |                 - value moved here
-LL |             let a = u.c; //~ ERROR use of moved value: `u.c`
+LL |             let a = u.c;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.c` has type `[type error]`, which does not implement the `Copy` trait
@@ -53,7 +53,7 @@ error[E0382]: use of partially moved value: `u`
    |
 LL |             let a = u.n;
    |                 - value moved here
-LL |             let a = u; //~ ERROR use of partially moved value: `u`
+LL |             let a = u;
    |                 ^ value used here after move
    |
    = note: move occurs because `u.c` has type `[type error]`, which does not implement the `Copy` trait

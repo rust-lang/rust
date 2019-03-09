@@ -1,7 +1,7 @@
 error[E0614]: type `u32` cannot be dereferenced
   --> $DIR/E0614.rs:3:5
    |
-LL |     *y; //~ ERROR E0614
+LL |     *y;
    |     ^^
 
 error: aborting due to previous error

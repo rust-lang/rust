@@ -1,7 +1,7 @@
 error[E0599]: no method named `foo` found for type `&b::B` in the current scope
   --> $DIR/issue-10465.rs:17:15
    |
-LL |             b.foo(); //~ ERROR: no method named `foo` found
+LL |             b.foo();
    |               ^^^
    |
    = help: items from traits can only be used if the trait is in scope

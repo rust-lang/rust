@@ -3,7 +3,7 @@ error[E0428]: the name `orange` is defined multiple times
    |
 LL |     fn orange(&self);
    |     ----------------- previous definition of the value `orange` here
-LL |     fn orange(&self); //~ ERROR the name `orange` is defined multiple times
+LL |     fn orange(&self);
    |     ^^^^^^^^^^^^^^^^^ `orange` redefined here
    |
    = note: `orange` must be defined only once in the value namespace of this trait

@@ -1,7 +1,7 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/unboxed-closure-region.rs:8:12
    |
-LL |         || x //~ ERROR `x` does not live long enough
+LL |         || x
    |         -- ^ borrowed value does not live long enough
    |         |
    |         capture occurs here

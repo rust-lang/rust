@@ -2,7 +2,7 @@ error: symbol `fail` is already defined
   --> $DIR/dupe-symbols-3.rs:10:1
    |
 LL | / pub fn fail() {
-LL | | //~^ symbol `fail` is already defined
+LL | |
 LL | | }
    | |_^
 

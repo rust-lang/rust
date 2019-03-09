@@ -1,19 +1,19 @@
 error[E0535]: invalid argument
   --> $DIR/invalid-inline.rs:3:10
    |
-LL | #[inline(please_no)] //~ ERROR invalid argument
+LL | #[inline(please_no)]
    |          ^^^^^^^^^
 
 error[E0534]: expected one argument
   --> $DIR/invalid-inline.rs:7:1
    |
-LL | #[inline(please,no)] //~ ERROR expected one argument
+LL | #[inline(please,no)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0534]: expected one argument
   --> $DIR/invalid-inline.rs:11:1
    |
-LL | #[inline()] //~ ERROR expected one argument
+LL | #[inline()]
    | ^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

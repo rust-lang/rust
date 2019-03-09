@@ -57,7 +57,7 @@ warning: label name `'many_used_shadowed` shadows a label name that is already i
    |
 LL |     'many_used_shadowed: for _ in 0..10 {
    |     ------------------- first declared here
-LL |         //~^ WARN unused label
+LL |
 LL |         'many_used_shadowed: for _ in 0..10 {
    |         ^^^^^^^^^^^^^^^^^^^ lifetime 'many_used_shadowed already in scope
 

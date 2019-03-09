@@ -8,7 +8,7 @@ LL | |     C
 LL | | }
    | |_- `A` defined here
 ...
-LL |       match x {   //~ ERROR non-exhaustive patterns
+LL |       match x {
    |             ^ pattern `B { x: Some(_) }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

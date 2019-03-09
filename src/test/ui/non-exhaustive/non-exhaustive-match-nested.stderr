@@ -1,7 +1,7 @@
 error[E0004]: non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
   --> $DIR/non-exhaustive-match-nested.rs:7:11
    |
-LL |     match (l1, l2) { //~ ERROR non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
+LL |     match (l1, l2) {
    |           ^^^^^^^^ pattern `(Some(&[]), Err(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -15,7 +15,7 @@ LL | enum T { A(U), B }
    | |        not covered
    | `T` defined here
 ...
-LL |     match x { //~ ERROR non-exhaustive patterns: `A(C)` not covered
+LL |     match x {
    |           ^ pattern `A(C)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

@@ -1,7 +1,7 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/issue-46036.rs:9:24
    |
-LL |     let foo = Foo { x: &a }; //~ ERROR E0597
+LL |     let foo = Foo { x: &a };
    |                        ^^
    |                        |
    |                        borrowed value does not live long enough

@@ -1,7 +1,7 @@
 error: denote infinite loops with `loop { ... }`
   --> $DIR/lint-impl-fn.rs:10:21
    |
-LL |     fn bar(&self) { while true {} } //~ ERROR: infinite loops
+LL |     fn bar(&self) { while true {} }
    |                     ^^^^^^^^^^ help: use `loop`
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL |     #[deny(while_true)]
 error: denote infinite loops with `loop { ... }`
   --> $DIR/lint-impl-fn.rs:18:25
    |
-LL |         fn foo(&self) { while true {} } //~ ERROR: infinite loops
+LL |         fn foo(&self) { while true {} }
    |                         ^^^^^^^^^^ help: use `loop`
    |
 note: lint level defined here
@@ -25,7 +25,7 @@ LL | #[deny(while_true)]
 error: denote infinite loops with `loop { ... }`
   --> $DIR/lint-impl-fn.rs:27:5
    |
-LL |     while true {} //~ ERROR: infinite loops
+LL |     while true {}
    |     ^^^^^^^^^^ help: use `loop`
    |
 note: lint level defined here

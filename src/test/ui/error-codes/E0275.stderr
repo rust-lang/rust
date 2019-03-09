@@ -1,7 +1,7 @@
 error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/E0275.rs:5:1
    |
-LL | impl<T> Foo for T where Bar<T>: Foo {} //~ ERROR E0275
+LL | impl<T> Foo for T where Bar<T>: Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding a `#![recursion_limit="128"]` attribute to your crate

@@ -15,7 +15,7 @@ LL | | ';
 error: character constant must be escaped: /r
   --> $DIR/bad-char-literals.rs:16:6
    |
-LL |     ''; //~ ERROR: character constant must be escaped: /r
+LL |     '';
    |      ^
 
 error: character constant must be escaped: /t

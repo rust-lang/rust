@@ -3,7 +3,7 @@ error[E0631]: type mismatch in closure arguments
    |
 LL |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
    |                       ----------------------------- found signature of `fn(usize, isize) -> _`
-LL |     //~^ NOTE found signature of `fn(usize, isize) -> _`
+LL |
 LL |     let z = call_it(3, f);
    |             ^^^^^^^ expected signature of `fn(isize, isize) -> _`
    |

@@ -3,7 +3,7 @@ warning: function cannot return without recursing
    |
 LL |     fn bar(self: &mut Self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
-LL |         //~^ WARN function cannot return without recursing
+LL |
 LL |         (&mut self).bar();
    |         ----------------- recursive call site
    |

@@ -1,13 +1,13 @@
 error: no path from `x::<impl Foo for char>` to `TypeckTables`
   --> $DIR/dep-graph-trait-impl-two-traits.rs:31:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
+LL |     #[rustc_then_this_would_need(TypeckTables)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `x::<impl Foo for char>` to `TypeckTables`
   --> $DIR/dep-graph-trait-impl-two-traits.rs:40:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
+LL |     #[rustc_then_this_would_need(TypeckTables)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

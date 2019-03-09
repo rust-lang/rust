@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL |     thread::spawn(move|| {
    |                   ------ value moved (into closure) here
 ...
-LL |     println!("{}", x); //~ ERROR use of moved value
+LL |     println!("{}", x);
    |                    ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait

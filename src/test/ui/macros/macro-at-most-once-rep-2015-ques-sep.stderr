@@ -1,7 +1,7 @@
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
   --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:10:10
    |
-LL |     ($(a)?*) => {} //~WARN using `?` as a separator
+LL |     ($(a)?*) => {}
    |          ^
    |
 note: lint level defined here
@@ -16,7 +16,7 @@ LL | #![warn(rust_2018_compatibility)]
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
   --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:15:10
    |
-LL |     ($(a)?+) => {} //~WARN using `?` as a separator
+LL |     ($(a)?+) => {}
    |          ^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!

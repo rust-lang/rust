@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/closure-reform-bad.rs:11:15
    |
-LL |     call_bare(f)    //~ ERROR mismatched types
+LL |     call_bare(f)
    |               ^ expected fn pointer, found closure
    |
    = note: expected type `for<'r> fn(&'r str)`

@@ -6,7 +6,7 @@ LL |     let x = gimme({
 LL |         let v = (22,);
 LL |         &v
    |         ^^ borrowed value does not live long enough
-LL |         //~^ ERROR `v` does not live long enough [E0597]
+LL |
 LL |     });
    |     - `v` dropped here while still borrowed
 

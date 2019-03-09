@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |     fn drop(&mut self) {
    |                        - expected `()` because of default return type
-LL |         true //~  ERROR mismatched types
+LL |         true
    |         ^^^^ expected (), found bool
    |
    = note: expected type `()`

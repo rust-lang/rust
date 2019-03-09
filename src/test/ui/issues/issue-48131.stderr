@@ -1,19 +1,19 @@
 error: unnecessary `unsafe` block
   --> $DIR/issue-48131.rs:8:9
    |
-LL |         unsafe { /* unnecessary */ } //~ ERROR unnecessary `unsafe`
+LL |         unsafe { /* unnecessary */ }
    |         ^^^^^^ unnecessary `unsafe` block
    |
 note: lint level defined here
   --> $DIR/issue-48131.rs:3:9
    |
-LL | #![deny(unused_unsafe)] //~ NOTE
+LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
   --> $DIR/issue-48131.rs:19:13
    |
-LL |             unsafe { /* unnecessary */ } //~ ERROR unnecessary `unsafe`
+LL |             unsafe { /* unnecessary */ }
    |             ^^^^^^ unnecessary `unsafe` block
 
 error: aborting due to 2 previous errors

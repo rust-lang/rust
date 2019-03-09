@@ -1,7 +1,7 @@
 error[E0368]: binary assignment operation `+=` cannot be applied to type `Foo`
   --> $DIR/assignment-operator-unimplemented.rs:6:3
    |
-LL |   a += *b; //~ Error: binary assignment operation `+=` cannot be applied to type `Foo`
+LL |   a += *b;
    |   -^^^^^^
    |   |
    |   cannot use `+=` on type `Foo`

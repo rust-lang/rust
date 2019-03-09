@@ -1,7 +1,7 @@
 error: no rules expected the token `@`
   --> $DIR/fail-simple.rs:2:12
    |
-LL |     panic!(@); //~ ERROR no rules expected the token `@`
+LL |     panic!(@);
    |            ^ no rules expected this token in macro call
 
 error: aborting due to previous error

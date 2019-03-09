@@ -4,7 +4,7 @@ error[E0428]: the name `foo` is defined multiple times
 LL |     fn foo();
    |     --------- previous definition of the value `foo` here
 LL | 
-LL | /   pub //~ ERROR the name `foo` is defined multiple times
+LL | /   pub
 LL | |   fn foo();
    | |___________^ `foo` redefined here
    |
@@ -16,7 +16,7 @@ error[E0428]: the name `foo` is defined multiple times
 LL |     fn foo();
    |     --------- previous definition of the value `foo` here
 ...
-LL | /   pub //~ ERROR the name `foo` is defined multiple times
+LL | /   pub
 LL | |   static mut foo: u32;
    | |______________________^ `foo` redefined here
    |

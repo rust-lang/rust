@@ -3,7 +3,7 @@ error[E0500]: closure requires unique access to `f` but `*f` is already borrowed
    |
 LL |   f.foo(
    |   - borrow occurs here
-LL |         |a| { //~ ERROR closure requires unique access to `f`
+LL |         |a| {
    |         ^^^ closure construction occurs here
 LL |             f.n.insert(*a);
    |             - borrow occurs due to use of `f` in closure

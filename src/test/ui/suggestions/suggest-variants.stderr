@@ -1,19 +1,19 @@
 error: no variant `Squareee` on enum `Shape`
   --> $DIR/suggest-variants.rs:12:34
    |
-LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});  //~ ERROR no variant `Squareee`
+LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});
    |                                  ^^^^^^^^^^^^^^^ help: did you mean: `Shape::Square`
 
 error: no variant `Circl` on enum `Shape`
   --> $DIR/suggest-variants.rs:13:34
    |
-LL |     println!("My shape is {:?}", Shape::Circl { size: 5}); //~ ERROR no variant `Circl`
+LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
    |                                  ^^^^^^^^^^^^ help: did you mean: `Shape::Circle`
 
 error: no variant `Rombus` on enum `Shape`
   --> $DIR/suggest-variants.rs:14:34
    |
-LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5}); //~ ERROR no variant `Rombus`
+LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
    |                                  ^^^^^^^^^^^^^ unknown variant
 
 error: aborting due to 3 previous errors

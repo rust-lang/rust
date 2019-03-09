@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `true`
   --> $DIR/issue-44406.rs:8:10
    |
-LL |     foo!(true); //~ ERROR expected type, found keyword
+LL |     foo!(true);
    |          ^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
-LL |     foo!(r#true); //~ ERROR expected type, found keyword
+LL |     foo!(r#true);
    |          ^^^^^^
 
 error: expected type, found keyword `true`
@@ -14,7 +14,7 @@ error: expected type, found keyword `true`
 LL |         bar(baz: $rest)
    |                - help: try using a semicolon: `;`
 ...
-LL |     foo!(true); //~ ERROR expected type, found keyword
+LL |     foo!(true);
    |          ^^^^ expecting a type here because of type ascription
 
 error: aborting due to 2 previous errors

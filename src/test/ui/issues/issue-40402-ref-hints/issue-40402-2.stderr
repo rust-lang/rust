@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of indexed content
   --> $DIR/issue-40402-2.rs:5:18
    |
-LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+LL |     let (a, b) = x[0];
    |          -  -    ^^^^ cannot move out of indexed content
    |          |  |
    |          |  ...and here (use `ref b` or `ref mut b`)

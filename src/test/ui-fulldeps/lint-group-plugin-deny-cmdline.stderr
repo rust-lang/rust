@@ -1,7 +1,7 @@
 error: item is named 'lintme'
   --> $DIR/lint-group-plugin-deny-cmdline.rs:8:1
    |
-LL | fn lintme() { } //~ ERROR item is named 'lintme'
+LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
    = note: `-D test-lint` implied by `-D lint-me`
@@ -9,7 +9,7 @@ LL | fn lintme() { } //~ ERROR item is named 'lintme'
 error: item is named 'pleaselintme'
   --> $DIR/lint-group-plugin-deny-cmdline.rs:10:1
    |
-LL | fn pleaselintme() { } //~ ERROR item is named 'pleaselintme'
+LL | fn pleaselintme() { }
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D please-lint` implied by `-D lint-me`

@@ -1,7 +1,7 @@
 error: `extern` block uses type `Foo` which is not FFI-safe: this struct has unspecified layout
   --> $DIR/issue-16250.rs:6:20
    |
-LL |     pub fn foo(x: (Foo)); //~ ERROR unspecified layout
+LL |     pub fn foo(x: (Foo));
    |                    ^^^
    |
 note: lint level defined here

@@ -1,9 +1,9 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-error-with-note.rs:11:11
    |
-LL |     match *f {             //~ ERROR cannot move out of
+LL |     match *f {
    |           ^^ cannot move out of borrowed content
-LL |                            //~| cannot move out
+LL |
 LL |         Foo::Foo1(num1,
    |                   ---- hint: to prevent move, use `ref num1` or `ref mut num1`
 LL |                   num2) => (),
@@ -14,8 +14,8 @@ LL |         Foo::Foo2(num) => (),
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
   --> $DIR/borrowck-move-error-with-note.rs:30:9
    |
-LL | /         S {         //~ ERROR cannot move out of type `S`, which implements the `Drop` trait
-LL | |         //~| cannot move out of here
+LL | /         S {
+LL | |
 LL | |             f: _s,
    | |                -- hint: to prevent move, use `ref _s` or `ref mut _s`
 LL | |             g: _t
@@ -26,9 +26,9 @@ LL | |         } => {}
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-error-with-note.rs:47:11
    |
-LL |     match a.a {           //~ ERROR cannot move out of
+LL |     match a.a {
    |           ^ cannot move out of borrowed content
-LL |                           //~| cannot move out
+LL |
 LL |         n => {
    |         - hint: to prevent move, use `ref n` or `ref mut n`
 

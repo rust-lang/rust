@@ -1,7 +1,7 @@
 error[E0659]: `issue_56596` is ambiguous (name vs any other name during import resolution)
   --> $DIR/issue-56596.rs:12:5
    |
-LL | use issue_56596; //~ ERROR `issue_56596` is ambiguous
+LL | use issue_56596;
    |     ^^^^^^^^^^^ ambiguous name
    |
    = note: `issue_56596` could refer to an extern crate passed with `--extern`

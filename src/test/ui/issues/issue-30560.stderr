@@ -1,7 +1,7 @@
 error: items in traits are not importable.
   --> $DIR/issue-30560.rs:10:5
    |
-LL | use T::*; //~ ERROR items in traits are not importable
+LL | use T::*;
    |     ^^^^
 
 error[E0432]: unresolved import `Alias`

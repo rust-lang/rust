@@ -1,7 +1,7 @@
 error: expected a trait, found type
   --> $DIR/trait-bounds-not-on-impl.rs:8:6
    |
-LL | impl Foo + Owned for Bar { //~ ERROR expected a trait, found type
+LL | impl Foo + Owned for Bar {
    |      ^^^^^^^^^^^
 
 error: aborting due to previous error

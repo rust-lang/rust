@@ -1,19 +1,19 @@
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/single_variant_match_ice.rs:6:5
    |
-LL |     Foo::Prob => 42, //~ ERROR unimplemented expression type
+LL |     Foo::Prob => 42,
    |     ^^^^^^^^^
 
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/single_variant_match_ice.rs:10:5
    |
-LL |     x => 42, //~ ERROR unimplemented expression type
+LL |     x => 42,
    |     ^
 
 error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
   --> $DIR/single_variant_match_ice.rs:18:13
    |
-LL |             Prob => 0x1, //~ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
+LL |             Prob => 0x1,
    |             ^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

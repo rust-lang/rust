@@ -7,7 +7,7 @@ LL |         <S as Tr>::A::f::<u8> => {}
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/qualified-path-params.rs:22:15
    |
-LL |         0 ..= <S as Tr>::A::f::<u8> => {} //~ ERROR only char and numeric types are allowed in range
+LL |         0 ..= <S as Tr>::A::f::<u8> => {}
    |               ^^^^^^^^^^^^^^^^^^^^^ ranges require char or numeric types
    |
    = note: start type: {integer}

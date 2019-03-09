@@ -1,37 +1,37 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `true`
   --> $DIR/raw-literal-keywords.rs:2:10
    |
-LL |     r#if true { } //~ ERROR found `true`
+LL |     r#if true { }
    |          ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
   --> $DIR/raw-literal-keywords.rs:7:14
    |
-LL |     r#struct Test; //~ ERROR found `Test`
+LL |     r#struct Test;
    |              ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
   --> $DIR/raw-literal-keywords.rs:12:13
    |
-LL |     r#union Test; //~ ERROR found `Test`
+LL |     r#union Test;
    |             ^^^^ expected one of 8 possible tokens here
 
 error[E0425]: cannot find value `if` in this scope
   --> $DIR/raw-literal-keywords.rs:2:5
    |
-LL |     r#if true { } //~ ERROR found `true`
+LL |     r#if true { }
    |     ^^^^ not found in this scope
 
 error[E0425]: cannot find value `struct` in this scope
   --> $DIR/raw-literal-keywords.rs:7:5
    |
-LL |     r#struct Test; //~ ERROR found `Test`
+LL |     r#struct Test;
    |     ^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `union` in this scope
   --> $DIR/raw-literal-keywords.rs:12:5
    |
-LL |     r#union Test; //~ ERROR found `Test`
+LL |     r#union Test;
    |     ^^^^^^^ not found in this scope
 
 error: aborting due to 6 previous errors

@@ -4,7 +4,7 @@ error[E0530]: match bindings cannot shadow statics
 LL | static mut a: isize = 3;
    | ------------------------ the static `a` is defined here
 ...
-LL |         a => {} //~ ERROR match bindings cannot shadow statics
+LL |         a => {}
    |         ^ cannot be named the same as a static
 
 error[E0530]: match bindings cannot shadow statics

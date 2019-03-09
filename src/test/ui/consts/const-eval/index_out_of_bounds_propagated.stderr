@@ -1,7 +1,7 @@
 error: index out of bounds: the len is 1 but the index is 1
   --> $DIR/index_out_of_bounds_propagated.rs:3:5
    |
-LL |     array[1]; //~ ERROR index out of bounds
+LL |     array[1];
    |     ^^^^^^^^
    |
    = note: #[deny(const_err)] on by default

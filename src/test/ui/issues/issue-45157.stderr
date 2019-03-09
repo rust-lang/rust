@@ -6,7 +6,7 @@ LL |         let mref = &mut u.s.a;
 ...
 LL |         let nref = &u.z.c;
    |                    ^^^^^^ immutable borrow of `u.z.c` -- which overlaps with `u.s.a` -- occurs here
-LL |         //~^ ERROR cannot borrow `u` (via `u.z.c`) as immutable because it is also borrowed as mutable (via `u.s.a`) [E0502]
+LL |
 LL |         println!("{} {}", mref, nref)
    |                           ---- mutable borrow later used here
    |

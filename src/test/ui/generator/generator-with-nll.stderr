@@ -3,7 +3,7 @@ error[E0626]: borrow may still be in use when generator yields
    |
 LL |         let b = &mut true;
    |                 ^^^^^^^^^
-LL |         //~^ borrow may still be in use when generator yields
+LL |
 LL |         yield ();
    |         -------- possible yield occurs here
 

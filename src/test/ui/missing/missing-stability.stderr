@@ -2,7 +2,7 @@ error: function has missing stability attribute
   --> $DIR/missing-stability.rs:8:1
    |
 LL | / pub fn unmarked() {
-LL | |     //~^ ERROR function has missing stability attribute
+LL | |
 LL | |     ()
 LL | | }
    | |_^

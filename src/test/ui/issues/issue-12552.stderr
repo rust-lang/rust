@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |   match t {
    |         - this match expression has type `std::result::Result<_, {integer}>`
-LL |     Some(k) => match k { //~ ERROR mismatched types
+LL |     Some(k) => match k {
    |     ^^^^^^^ expected enum `std::result::Result`, found enum `std::option::Option`
    |
    = note: expected type `std::result::Result<_, {integer}>`
@@ -12,7 +12,7 @@ LL |     Some(k) => match k { //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/issue-12552.rs:9:5
    |
-LL |     None => () //~ ERROR mismatched types
+LL |     None => ()
    |     ^^^^ expected enum `std::result::Result`, found enum `std::option::Option`
    |
    = note: expected type `std::result::Result<_, {integer}>`

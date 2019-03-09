@@ -11,7 +11,7 @@ note: borrowed value must be valid for the anonymous lifetime #1 defined on the 
    |
 LL | /     fn index(&self, _: usize) -> &Self::Output {
 LL | |         return &Test { s: &self.s};
-LL | |         //~^ ERROR: borrowed value does not live long enough
+LL | |
 LL | |     }
    | |_____^
    = note: consider using a `let` binding to increase its lifetime

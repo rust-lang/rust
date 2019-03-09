@@ -4,7 +4,7 @@ error[E0049]: method `foo` has 0 type parameters but its trait declaration has 1
 LL |     fn foo<T: Default>(x: T) -> Self;
    |     --------------------------------- expected 1 type parameter
 ...
-LL |     fn foo(x: bool) -> Self { Bar } //~ ERROR E0049
+LL |     fn foo(x: bool) -> Self { Bar }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ found 0 type parameters
 
 error: aborting due to previous error

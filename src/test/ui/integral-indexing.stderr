@@ -1,7 +1,7 @@
 error[E0277]: the type `[isize]` cannot be indexed by `u8`
   --> $DIR/integral-indexing.rs:6:5
    |
-LL |     v[3u8];  //~ERROR : the type `[isize]` cannot be indexed by `u8`
+LL |     v[3u8];
    |     ^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `u8`
@@ -10,7 +10,7 @@ LL |     v[3u8];  //~ERROR : the type `[isize]` cannot be indexed by `u8`
 error[E0277]: the type `[isize]` cannot be indexed by `i8`
   --> $DIR/integral-indexing.rs:7:5
    |
-LL |     v[3i8];  //~ERROR : the type `[isize]` cannot be indexed by `i8`
+LL |     v[3i8];
    |     ^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `i8`
@@ -19,7 +19,7 @@ LL |     v[3i8];  //~ERROR : the type `[isize]` cannot be indexed by `i8`
 error[E0277]: the type `[isize]` cannot be indexed by `u32`
   --> $DIR/integral-indexing.rs:8:5
    |
-LL |     v[3u32]; //~ERROR : the type `[isize]` cannot be indexed by `u32`
+LL |     v[3u32];
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `u32`
@@ -28,7 +28,7 @@ LL |     v[3u32]; //~ERROR : the type `[isize]` cannot be indexed by `u32`
 error[E0277]: the type `[isize]` cannot be indexed by `i32`
   --> $DIR/integral-indexing.rs:9:5
    |
-LL |     v[3i32]; //~ERROR : the type `[isize]` cannot be indexed by `i32`
+LL |     v[3i32];
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[isize]>` is not implemented for `i32`
@@ -37,7 +37,7 @@ LL |     v[3i32]; //~ERROR : the type `[isize]` cannot be indexed by `i32`
 error[E0277]: the type `[u8]` cannot be indexed by `u8`
   --> $DIR/integral-indexing.rs:12:5
    |
-LL |     s.as_bytes()[3u8];  //~ERROR : the type `[u8]` cannot be indexed by `u8`
+LL |     s.as_bytes()[3u8];
    |     ^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `u8`
@@ -46,7 +46,7 @@ LL |     s.as_bytes()[3u8];  //~ERROR : the type `[u8]` cannot be indexed by `u8
 error[E0277]: the type `[u8]` cannot be indexed by `i8`
   --> $DIR/integral-indexing.rs:13:5
    |
-LL |     s.as_bytes()[3i8];  //~ERROR : the type `[u8]` cannot be indexed by `i8`
+LL |     s.as_bytes()[3i8];
    |     ^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `i8`
@@ -55,7 +55,7 @@ LL |     s.as_bytes()[3i8];  //~ERROR : the type `[u8]` cannot be indexed by `i8
 error[E0277]: the type `[u8]` cannot be indexed by `u32`
   --> $DIR/integral-indexing.rs:14:5
    |
-LL |     s.as_bytes()[3u32]; //~ERROR : the type `[u8]` cannot be indexed by `u32`
+LL |     s.as_bytes()[3u32];
    |     ^^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `u32`
@@ -64,7 +64,7 @@ LL |     s.as_bytes()[3u32]; //~ERROR : the type `[u8]` cannot be indexed by `u3
 error[E0277]: the type `[u8]` cannot be indexed by `i32`
   --> $DIR/integral-indexing.rs:15:5
    |
-LL |     s.as_bytes()[3i32]; //~ERROR : the type `[u8]` cannot be indexed by `i32`
+LL |     s.as_bytes()[3i32];
    |     ^^^^^^^^^^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[u8]>` is not implemented for `i32`

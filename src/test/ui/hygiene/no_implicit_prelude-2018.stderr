@@ -1,7 +1,7 @@
 error: cannot find macro `print!` in this scope
   --> $DIR/no_implicit_prelude-2018.rs:7:9
    |
-LL |         print!(); //~ ERROR cannot find macro `print!` in this scope
+LL |         print!();
    |         ^^^^^
    |
    = help: have you added the `#[macro_use]` on the module/import?

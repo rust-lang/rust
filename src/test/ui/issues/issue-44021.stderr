@@ -1,7 +1,7 @@
 error: expected one of `:`, `@`, or `|`, found `}`
   --> $DIR/issue-44021.rs:3:18
    |
-LL |     fn f() {|x, y} //~ ERROR expected one of `:`, `@`, or `|`, found `}`
+LL |     fn f() {|x, y}
    |                  ^ expected one of `:`, `@`, or `|` here
 
 error: aborting due to previous error

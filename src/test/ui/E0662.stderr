@@ -1,7 +1,7 @@
 error[E0662]: input operand constraint contains '='
   --> $DIR/E0662.rs:6:12
    |
-LL |          : "=test"("a") //~ ERROR E0662
+LL |          : "=test"("a")
    |            ^^^^^^^
 
 error: aborting due to previous error

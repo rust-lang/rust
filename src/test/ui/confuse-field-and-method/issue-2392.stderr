@@ -4,7 +4,7 @@ error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-LL |     o_closure.closure(); //~ ERROR no method named `closure` found
+LL |     o_closure.closure();
    |               ^^^^^^^ field, not a method
    |
    = help: use `(o_closure.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -26,7 +26,7 @@ error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>`
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-LL |     o_func.closure(); //~ ERROR no method named `closure` found
+LL |     o_func.closure();
    |            ^^^^^^^ field, not a method
    |
    = help: use `(o_func.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -37,7 +37,7 @@ error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the c
 LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this
 ...
-LL |     boxed_fn.boxed_closure();//~ ERROR no method named `boxed_closure` found
+LL |     boxed_fn.boxed_closure();
    |              ^^^^^^^^^^^^^ field, not a method
    |
    = help: use `(boxed_fn.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
@@ -48,7 +48,7 @@ error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the c
 LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this
 ...
-LL |     boxed_closure.boxed_closure();//~ ERROR no method named `boxed_closure` found
+LL |     boxed_closure.boxed_closure();
    |                   ^^^^^^^^^^^^^ field, not a method
    |
    = help: use `(boxed_closure.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
@@ -59,7 +59,7 @@ error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>`
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-LL |     w.wrap.closure();//~ ERROR no method named `closure` found
+LL |     w.wrap.closure();
    |            ^^^^^^^ field, not a method
    |
    = help: use `(w.wrap.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -81,7 +81,7 @@ error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<(dyn
 LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-LL |     check_expression().closure();//~ ERROR no method named `closure` found
+LL |     check_expression().closure();
    |                        ^^^^^^^ field, not a method
    |
    = help: use `(check_expression().closure)(...)` if you meant to call the function stored in the `closure` field
@@ -92,7 +92,7 @@ error[E0599]: no method named `f1` found for type `FuncContainer` in the current
 LL | struct FuncContainer {
    | -------------------- method `f1` not found for this
 ...
-LL |             (*self.container).f1(1); //~ ERROR no method named `f1` found
+LL |             (*self.container).f1(1);
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f1)(...)` if you meant to call the function stored in the `f1` field
@@ -103,7 +103,7 @@ error[E0599]: no method named `f2` found for type `FuncContainer` in the current
 LL | struct FuncContainer {
    | -------------------- method `f2` not found for this
 ...
-LL |             (*self.container).f2(1); //~ ERROR no method named `f2` found
+LL |             (*self.container).f2(1);
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f2)(...)` if you meant to call the function stored in the `f2` field
@@ -114,7 +114,7 @@ error[E0599]: no method named `f3` found for type `FuncContainer` in the current
 LL | struct FuncContainer {
    | -------------------- method `f3` not found for this
 ...
-LL |             (*self.container).f3(1); //~ ERROR no method named `f3` found
+LL |             (*self.container).f3(1);
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f3)(...)` if you meant to call the function stored in the `f3` field

@@ -1,7 +1,7 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-operator-on-main.rs:9:5
    |
-LL |     std::fs::File::open("foo")?; //~ ERROR the `?` operator can only
+LL |     std::fs::File::open("foo")?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
@@ -10,7 +10,7 @@ LL |     std::fs::File::open("foo")?; //~ ERROR the `?` operator can only
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:12:5
    |
-LL |     ()?; //~ ERROR the `?` operator can only
+LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
@@ -19,7 +19,7 @@ LL |     ()?; //~ ERROR the `?` operator can only
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
   --> $DIR/try-operator-on-main.rs:15:5
    |
-LL |     try_trait_generic::<()>(); //~ ERROR the trait bound
+LL |     try_trait_generic::<()>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
    |
 note: required by `try_trait_generic`
@@ -31,7 +31,7 @@ LL | fn try_trait_generic<T: Try>() -> T {
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:22:5
    |
-LL |     ()?; //~ ERROR the `?` operator can only
+LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`

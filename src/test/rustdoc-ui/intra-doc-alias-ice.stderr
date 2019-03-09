@@ -1,7 +1,7 @@
 error: `[TypeAlias::hoge]` cannot be resolved, ignoring it...
   --> $DIR/intra-doc-alias-ice.rs:5:30
    |
-LL | /// [broken cross-reference](TypeAlias::hoge) //~ ERROR
+LL | /// [broken cross-reference](TypeAlias::hoge)
    |                              ^^^^^^^^^^^^^^^ cannot be resolved, ignoring
    |
 note: lint level defined here

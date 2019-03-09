@@ -1,25 +1,25 @@
 error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
   --> $DIR/repr-align.rs:4:8
    |
-LL | #[repr(align(16.0))] //~ ERROR: invalid `repr(align)` attribute: not an unsuffixed integer
+LL | #[repr(align(16.0))]
    |        ^^^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
   --> $DIR/repr-align.rs:7:8
    |
-LL | #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
+LL | #[repr(align(15))]
    |        ^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: larger than 2^29
   --> $DIR/repr-align.rs:10:8
    |
-LL | #[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2^29
+LL | #[repr(align(4294967296))]
    |        ^^^^^^^^^^^^^^^^^
 
 error[E0589]: invalid `repr(align)` attribute: not a power of two
   --> $DIR/repr-align.rs:16:8
    |
-LL | #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
+LL | #[repr(align(15))]
    |        ^^^^^^^^^
 
 error: aborting due to 4 previous errors

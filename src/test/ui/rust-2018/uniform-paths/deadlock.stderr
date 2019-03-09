@@ -1,7 +1,7 @@
 error[E0432]: unresolved import
   --> $DIR/deadlock.rs:4:5
    |
-LL | use foo::bar; //~ ERROR unresolved import
+LL | use foo::bar;
    |     ^^^^^^^^
 
 error: aborting due to previous error

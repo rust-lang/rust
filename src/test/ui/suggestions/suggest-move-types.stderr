@@ -1,7 +1,7 @@
 error: associated type bindings must be declared after generic parameters
   --> $DIR/suggest-move-types.rs:28:20
    |
-LL | struct A<T, M: One<A=(), T>> { //~ ERROR associated type bindings must be declared after generic parameters
+LL | struct A<T, M: One<A=(), T>> {
    |                    ----^^^
    |                    |
    |                    this associated type binding should be moved after the generic parameters
@@ -17,7 +17,7 @@ LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
 error: associated type bindings must be declared after generic parameters
   --> $DIR/suggest-move-types.rs:41:28
    |
-LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> { //~ ERROR associated type bindings must be declared after generic parameters
+LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
    |                            ----^^----^^----^^^^^^^^^
    |                            |     |     |
    |                            |     |     this associated type binding should be moved after the generic parameters
@@ -37,7 +37,7 @@ LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U,
 error: associated type bindings must be declared after generic parameters
   --> $DIR/suggest-move-types.rs:57:28
    |
-LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> { //~ ERROR associated type bindings must be declared after generic parameters
+LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
    |                            ^^^----^^----^^----^^^^^^
    |                               |     |     |
    |                               |     |     this associated type binding should be moved after the generic parameters
@@ -57,7 +57,7 @@ LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=()
 error: associated type bindings must be declared after generic parameters
   --> $DIR/suggest-move-types.rs:73:28
    |
-LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> { //~ ERROR associated type bindings must be declared after generic parameters
+LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
    |                            ^^^----^^----^^^^^----^^^
    |                               |     |        |
    |                               |     |        this associated type binding should be moved after the generic parameters

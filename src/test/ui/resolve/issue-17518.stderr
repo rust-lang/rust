@@ -1,7 +1,7 @@
 error[E0422]: cannot find struct, variant or union type `E` in this scope
   --> $DIR/issue-17518.rs:6:5
    |
-LL |     E { name: "foobar" }; //~ ERROR cannot find struct, variant or union type `E`
+LL |     E { name: "foobar" };
    |     ^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |

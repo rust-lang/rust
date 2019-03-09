@@ -1,31 +1,31 @@
 error: expected identifier, found `)`
   --> $DIR/cfg-attr-parse.rs:4:12
    |
-LL | #[cfg_attr()] //~ error: expected identifier, found `)`
+LL | #[cfg_attr()]
    |            ^ expected identifier
 
 error: expected `,`, found `)`
   --> $DIR/cfg-attr-parse.rs:8:17
    |
-LL | #[cfg_attr(all())] //~ error: expected `,`, found `)`
+LL | #[cfg_attr(all())]
    |                 ^ expected `,`
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:16:18
    |
-LL | #[cfg_attr(all(),,)] //~ ERROR expected identifier
+LL | #[cfg_attr(all(),,)]
    |                  ^ expected identifier
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:28:28
    |
-LL | #[cfg_attr(all(), must_use,,)] //~ ERROR expected identifier
+LL | #[cfg_attr(all(), must_use,,)]
    |                            ^ expected identifier
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:40:40
    |
-LL | #[cfg_attr(all(), must_use, deprecated,,)] //~ ERROR expected identifier
+LL | #[cfg_attr(all(), must_use, deprecated,,)]
    |                                        ^ expected identifier
 
 error: aborting due to 5 previous errors

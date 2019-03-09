@@ -1,7 +1,7 @@
 error[E0658]: non-builtin inner attributes are unstable (see issue #54726)
   --> $DIR/proc-macro-gates.rs:11:5
    |
-LL |     #![a] //~ ERROR: non-builtin inner attributes are unstable
+LL |     #![a]
    |     ^^^^^
    |
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |     #![a] //~ ERROR: non-builtin inner attributes are unstable
 error[E0658]: non-builtin inner attributes are unstable (see issue #54726)
   --> $DIR/proc-macro-gates.rs:18:5
    |
-LL |     #![a] //~ ERROR: custom attributes cannot be applied to modules
+LL |     #![a]
    |     ^^^^^
    |
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     #![a] //~ ERROR: custom attributes cannot be applied to modules
 error[E0658]: custom attributes cannot be applied to modules (see issue #54727)
   --> $DIR/proc-macro-gates.rs:14:1
    |
-LL | #[a] //~ ERROR: custom attributes cannot be applied to modules
+LL | #[a]
    | ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL | #[a] //~ ERROR: custom attributes cannot be applied to modules
 error[E0658]: custom attributes cannot be applied to modules (see issue #54727)
   --> $DIR/proc-macro-gates.rs:18:5
    |
-LL |     #![a] //~ ERROR: custom attributes cannot be applied to modules
+LL |     #![a]
    |     ^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -33,13 +33,13 @@ LL |     #![a] //~ ERROR: custom attributes cannot be applied to modules
 error: custom attribute invocations must be of the form #[foo] or #[foo(..)], the macro name must only be followed by a delimiter token
   --> $DIR/proc-macro-gates.rs:22:1
    |
-LL | #[a = "y"] //~ ERROR: must only be followed by a delimiter token
+LL | #[a = "y"]
    | ^^^^^^^^^^
 
 error[E0658]: custom attributes cannot be applied to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:31:5
    |
-LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
+LL |     #[a]
    |     ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -47,7 +47,7 @@ LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
 error[E0658]: custom attributes cannot be applied to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:35:5
    |
-LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
+LL |     #[a]
    |     ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -55,7 +55,7 @@ LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
 error[E0658]: custom attributes cannot be applied to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:39:5
    |
-LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
+LL |     #[a]
    |     ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -63,7 +63,7 @@ LL |     #[a] //~ ERROR: custom attributes cannot be applied to statements
 error[E0658]: custom attributes cannot be applied to expressions (see issue #54727)
   --> $DIR/proc-macro-gates.rs:43:14
    |
-LL |     let _x = #[a] 2; //~ ERROR: custom attributes cannot be applied to expressions
+LL |     let _x = #[a] 2;
    |              ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -71,7 +71,7 @@ LL |     let _x = #[a] 2; //~ ERROR: custom attributes cannot be applied to expr
 error[E0658]: custom attributes cannot be applied to expressions (see issue #54727)
   --> $DIR/proc-macro-gates.rs:46:15
    |
-LL |     let _x = [#[a] 2]; //~ ERROR: custom attributes cannot be applied to expressions
+LL |     let _x = [#[a] 2];
    |               ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -79,7 +79,7 @@ LL |     let _x = [#[a] 2]; //~ ERROR: custom attributes cannot be applied to ex
 error[E0658]: custom attributes cannot be applied to expressions (see issue #54727)
   --> $DIR/proc-macro-gates.rs:49:14
    |
-LL |     let _x = #[a] println!(); //~ ERROR: custom attributes cannot be applied to expressions
+LL |     let _x = #[a] println!();
    |              ^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -87,7 +87,7 @@ LL |     let _x = #[a] println!(); //~ ERROR: custom attributes cannot be applie
 error[E0658]: procedural macros cannot be expanded to types (see issue #54727)
   --> $DIR/proc-macro-gates.rs:53:13
    |
-LL |     let _x: m!(u32) = 3; //~ ERROR: procedural macros cannot be expanded to types
+LL |     let _x: m!(u32) = 3;
    |             ^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -95,7 +95,7 @@ LL |     let _x: m!(u32) = 3; //~ ERROR: procedural macros cannot be expanded to
 error[E0658]: procedural macros cannot be expanded to patterns (see issue #54727)
   --> $DIR/proc-macro-gates.rs:54:12
    |
-LL |     if let m!(Some(_x)) = Some(3) {} //~ ERROR: procedural macros cannot be expanded to patterns
+LL |     if let m!(Some(_x)) = Some(3) {}
    |            ^^^^^^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -103,7 +103,7 @@ LL |     if let m!(Some(_x)) = Some(3) {} //~ ERROR: procedural macros cannot be
 error[E0658]: procedural macros cannot be expanded to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:56:5
    |
-LL |     m!(struct S;); //~ ERROR: procedural macros cannot be expanded to statements
+LL |     m!(struct S;);
    |     ^^^^^^^^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -111,7 +111,7 @@ LL |     m!(struct S;); //~ ERROR: procedural macros cannot be expanded to state
 error[E0658]: procedural macros cannot be expanded to statements (see issue #54727)
   --> $DIR/proc-macro-gates.rs:57:5
    |
-LL |     m!(let _x = 3;); //~ ERROR: procedural macros cannot be expanded to statements
+LL |     m!(let _x = 3;);
    |     ^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -119,7 +119,7 @@ LL |     m!(let _x = 3;); //~ ERROR: procedural macros cannot be expanded to sta
 error[E0658]: procedural macros cannot be expanded to expressions (see issue #54727)
   --> $DIR/proc-macro-gates.rs:59:14
    |
-LL |     let _x = m!(3); //~ ERROR: procedural macros cannot be expanded to expressions
+LL |     let _x = m!(3);
    |              ^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -127,7 +127,7 @@ LL |     let _x = m!(3); //~ ERROR: procedural macros cannot be expanded to expr
 error[E0658]: procedural macros cannot be expanded to expressions (see issue #54727)
   --> $DIR/proc-macro-gates.rs:60:15
    |
-LL |     let _x = [m!(3)]; //~ ERROR: procedural macros cannot be expanded to expressions
+LL |     let _x = [m!(3)];
    |               ^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable

@@ -3,7 +3,7 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.1` of immutable binding
@@ -11,20 +11,20 @@ error[E0594]: cannot assign to field `x.1` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
-LL |     x.1 = 22; //~ ERROR
+LL |     x.0 = 1;
+LL |     x.1 = 22;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0381]: use of possibly uninitialized variable: `x.0`
   --> $DIR/reassignment_immutable_fields.rs:9:10
    |
-LL |     drop(x.0); //~ ERROR
+LL |     drop(x.0);
    |          ^^^ use of possibly uninitialized `x.0`
 
 error[E0381]: use of possibly uninitialized variable: `x.1`
   --> $DIR/reassignment_immutable_fields.rs:10:10
    |
-LL |     drop(x.1); //~ ERROR
+LL |     drop(x.1);
    |          ^^^ use of possibly uninitialized `x.1`
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
@@ -32,7 +32,7 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.1` of immutable binding
@@ -40,14 +40,14 @@ error[E0594]: cannot assign to field `x.1` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
-LL |     x.1 = 22; //~ ERROR
+LL |     x.0 = 1;
+LL |     x.1 = 22;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0381]: use of possibly uninitialized variable: `x`
   --> $DIR/reassignment_immutable_fields.rs:17:10
    |
-LL |     drop(x); //~ ERROR
+LL |     drop(x);
    |          ^ use of possibly uninitialized `x`
 
 error: aborting due to 7 previous errors

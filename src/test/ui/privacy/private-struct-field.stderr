@@ -1,7 +1,7 @@
 error[E0616]: field `meows` of struct `cat::Cat` is private
   --> $DIR/private-struct-field.rs:13:16
    |
-LL |     assert_eq!(nyan.meows, 52);    //~ ERROR field `meows` of struct `cat::Cat` is private
+LL |     assert_eq!(nyan.meows, 52);
    |                ^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/wf-trait-superbound.rs:9:1
    |
-LL | / trait SomeTrait<T>: ExtraCopy<T> { //~ ERROR E0277
+LL | / trait SomeTrait<T>: ExtraCopy<T> {
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `T`
    |

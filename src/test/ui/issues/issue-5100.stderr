@@ -48,7 +48,7 @@ LL |         &(true, false) => ()
 error[E0618]: expected function, found `(char, char)`
   --> $DIR/issue-5100.rs:48:14
    |
-LL |       let v = [('a', 'b')   //~ ERROR expected function, found `(char, char)`
+LL |       let v = [('a', 'b')
    |  ______________-^^^^^^^^^
 LL | |              ('c', 'd'),
    | |_______________________- call expression requires function
@@ -56,7 +56,7 @@ LL | |              ('c', 'd'),
 error[E0308]: mismatched types
   --> $DIR/issue-5100.rs:55:19
    |
-LL |     let x: char = true; //~  ERROR mismatched types
+LL |     let x: char = true;
    |                   ^^^^ expected char, found bool
 
 error: aborting due to 7 previous errors

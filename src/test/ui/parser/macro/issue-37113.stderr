@@ -1,7 +1,7 @@
 error: expected identifier, found `String`
   --> $DIR/issue-37113.rs:4:16
    |
-LL |             $( $t, )* //~ ERROR expected identifier, found `String`
+LL |             $( $t, )*
    |                ^^ expected identifier
 ...
 LL |     test_macro!(String,);

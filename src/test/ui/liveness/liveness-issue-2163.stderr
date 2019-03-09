@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |       a.iter().all(|_| -> bool {
    |  ______________________________^
-LL | |         //~^ ERROR mismatched types
+LL | |
 LL | |     });
    | |_____^ expected bool, found ()
    |

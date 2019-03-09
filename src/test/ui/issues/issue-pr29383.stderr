@@ -1,13 +1,13 @@
 error[E0532]: expected tuple struct/variant, found unit variant `E::A`
   --> $DIR/issue-pr29383.rs:9:14
    |
-LL |         Some(E::A(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::A`
+LL |         Some(E::A(..)) => {}
    |              ^^^^ not a tuple struct/variant
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::B`
   --> $DIR/issue-pr29383.rs:10:14
    |
-LL |         Some(E::B(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::B`
+LL |         Some(E::B(..)) => {}
    |              ^^^^ not a tuple struct/variant
 
 error: aborting due to 2 previous errors

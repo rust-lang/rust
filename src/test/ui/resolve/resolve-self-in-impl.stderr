@@ -1,7 +1,7 @@
 error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:20>`
   --> $DIR/resolve-self-in-impl.rs:14:13
    |
-LL | impl Tr for Self {} //~ ERROR cycle detected
+LL | impl Tr for Self {}
    |             ^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:20>`, completing the cycle
@@ -20,7 +20,7 @@ LL | | fn main() {}
 error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:23>`
   --> $DIR/resolve-self-in-impl.rs:15:15
    |
-LL | impl Tr for S<Self> {} //~ ERROR cycle detected
+LL | impl Tr for S<Self> {}
    |               ^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:23>`, completing the cycle
@@ -39,7 +39,7 @@ LL | | fn main() {}
 error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:13>`
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
-LL | impl Self {} //~ ERROR cycle detected
+LL | impl Self {}
    |      ^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:13>`, completing the cycle
@@ -58,7 +58,7 @@ LL | | fn main() {}
 error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:16>`
   --> $DIR/resolve-self-in-impl.rs:17:8
    |
-LL | impl S<Self> {} //~ ERROR cycle detected
+LL | impl S<Self> {}
    |        ^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:16>`, completing the cycle
@@ -77,7 +77,7 @@ LL | | fn main() {}
 error[E0391]: cycle detected when processing `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:26>`
   --> $DIR/resolve-self-in-impl.rs:18:1
    |
-LL | impl Tr<Self::A> for S {} //~ ERROR cycle detected
+LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: ...which again requires processing `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:26>`, completing the cycle

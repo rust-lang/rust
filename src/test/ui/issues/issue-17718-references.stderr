@@ -1,13 +1,13 @@
 error[E0013]: constants cannot refer to statics, use a constant instead
   --> $DIR/issue-17718-references.rs:9:28
    |
-LL | const T2: &'static usize = &S; //~ ERROR: constants cannot refer to statics
+LL | const T2: &'static usize = &S;
    |                            ^^
 
 error[E0013]: constants cannot refer to statics, use a constant instead
   --> $DIR/issue-17718-references.rs:14:19
    |
-LL | const T6: usize = S; //~ ERROR: constants cannot refer to statics
+LL | const T6: usize = S;
    |                   ^
 
 error[E0013]: constants cannot refer to statics, use a constant instead

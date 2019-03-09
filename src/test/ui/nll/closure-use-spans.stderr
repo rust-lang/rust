@@ -3,7 +3,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |     let y = &x;
    |             -- borrow of `x` occurs here
-LL |     x = 0; //~ ERROR
+LL |     x = 0;
    |     ^^^^^ assignment to borrowed `x` occurs here
 LL |     || *y;
    |         - borrow later captured here by closure
@@ -13,7 +13,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |     let y = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     x = 0; //~ ERROR
+LL |     x = 0;
    |     ^^^^^ assignment to borrowed `x` occurs here
 LL |     || *y = 1;
    |         - borrow later captured here by closure
@@ -23,7 +23,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |     let y = &x;
    |             -- borrow of `x` occurs here
-LL |     x = 0; //~ ERROR
+LL |     x = 0;
    |     ^^^^^ assignment to borrowed `x` occurs here
 LL |     move || *y;
    |              - borrow later captured here by closure

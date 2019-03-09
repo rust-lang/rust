@@ -4,13 +4,13 @@ error[E0310]: the parameter type `T` may not live long enough
 LL | fn p1<T>(v: T) -> Box<X+'static>
    |       - help: consider adding an explicit lifetime bound `T: 'static`...
 ...
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
    |
 note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/regions-close-param-into-object.rs:6:5
    |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
@@ -19,13 +19,13 @@ error[E0310]: the parameter type `T` may not live long enough
 LL | fn p2<T>(v: Box<T>) -> Box<X+'static>
    |       - help: consider adding an explicit lifetime bound `T: 'static`...
 ...
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
    |
 note: ...so that the type `std::boxed::Box<T>` will meet its required lifetime bounds
   --> $DIR/regions-close-param-into-object.rs:12:5
    |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
 
 error[E0309]: the parameter type `T` may not live long enough
@@ -34,13 +34,13 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | fn p3<'a,T>(v: T) -> Box<X+'a>
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
 ...
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
    |
 note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/regions-close-param-into-object.rs:18:5
    |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
 
 error[E0309]: the parameter type `T` may not live long enough
@@ -49,13 +49,13 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | fn p4<'a,T>(v: Box<T>) -> Box<X+'a>
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
 ...
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
    |
 note: ...so that the type `std::boxed::Box<T>` will meet its required lifetime bounds
   --> $DIR/regions-close-param-into-object.rs:24:5
    |
-LL |     Box::new(v) //~ ERROR parameter type `T` may not live long enough
+LL |     Box::new(v)
    |     ^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

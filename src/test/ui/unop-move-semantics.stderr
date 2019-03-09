@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL |     !x;
    |      - value moved here
 LL | 
-LL |     x.clone();  //~ ERROR: use of moved value
+LL |     x.clone();
    |     ^ value used here after move
    |
    = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
@@ -15,7 +15,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
 LL |     let m = &x;
    |              - borrow of `x` occurs here
 ...
-LL |     !x;  //~ ERROR: cannot move out of `x` because it is borrowed
+LL |     !x;
    |      ^ move out of `x` occurs here
 
 error[E0505]: cannot move out of `y` because it is borrowed
@@ -24,19 +24,19 @@ error[E0505]: cannot move out of `y` because it is borrowed
 LL |     let n = &mut y;
    |                  - borrow of `y` occurs here
 ...
-LL |     !y;  //~ ERROR: cannot move out of `y` because it is borrowed
+LL |     !y;
    |      ^ move out of `y` occurs here
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/unop-move-semantics.rs:24:6
    |
-LL |     !*m;  //~ ERROR: cannot move out of borrowed content
+LL |     !*m;
    |      ^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/unop-move-semantics.rs:26:6
    |
-LL |     !*n;  //~ ERROR: cannot move out of borrowed content
+LL |     !*n;
    |      ^^ cannot move out of borrowed content
 
 error: aborting due to 5 previous errors

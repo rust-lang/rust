@@ -1,7 +1,7 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `<`
   --> $DIR/issue-22712.rs:6:12
    |
-LL |     let Foo<Vec<u8>>  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
+LL |     let Foo<Vec<u8>>
    |            ^ expected one of `:`, `;`, `=`, or `@` here
 
 error: aborting due to previous error

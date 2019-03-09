@@ -1,7 +1,7 @@
 error[E0271]: type mismatch resolving `<Adapter<I> as Iterator>::Item == std::option::Option<T>`
   --> $DIR/associated-types-issue-20346.rs:34:5
    |
-LL |     is_iterator_of::<Option<T>, _>(&adapter); //~ ERROR type mismatch
+LL |     is_iterator_of::<Option<T>, _>(&adapter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter, found enum `std::option::Option`
    |
    = note: expected type `T`

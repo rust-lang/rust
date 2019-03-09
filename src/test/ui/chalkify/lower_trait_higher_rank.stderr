@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_trait_higher_rank.rs:3:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'a, Self, F> { FromEnv(F: std::ops::Fn<(&'a (u8, u16),)>) :- FromEnv(Self: Foo<F>). }

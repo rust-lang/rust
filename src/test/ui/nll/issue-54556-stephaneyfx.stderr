@@ -1,7 +1,7 @@
 error[E0597]: `stmt` does not live long enough
   --> $DIR/issue-54556-stephaneyfx.rs:27:22
    |
-LL |     let rows = Rows(&stmt); //~ ERROR does not live long enough
+LL |     let rows = Rows(&stmt);
    |                      ^^^^ borrowed value does not live long enough
 ...
 LL | }

@@ -3,7 +3,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let f = || x += 1;
    |             -- borrow of `x` occurs here
-LL |     let _y = x; //~ ERROR cannot use `x` because it was mutably borrowed
+LL |     let _y = x;
    |         ^^ use of borrowed `x`
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
   --> $DIR/dyn-trait-underscore.rs:8:20
    |
-LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+LL |     Box::new(items.iter())
    |                    ^^^^
    |
 note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the function body at 6:1...
@@ -9,13 +9,13 @@ note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on th
    |
 LL | / fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
 LL | |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-LL | |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+LL | |     Box::new(items.iter())
 LL | | }
    | |_^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/dyn-trait-underscore.rs:8:14
    |
-LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+LL |     Box::new(items.iter())
    |              ^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the expression is assignable:

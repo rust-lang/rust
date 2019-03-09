@@ -1,7 +1,7 @@
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/E0109.rs:1:14
    |
-LL | type X = u32<i32>; //~ ERROR E0109
+LL | type X = u32<i32>;
    |              ^^^ type argument not allowed
 
 error: aborting due to previous error

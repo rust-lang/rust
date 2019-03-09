@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `i8: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:24:5
    |
-LL |     Foo::<i32>::bar(&1i8); //~ ERROR is not satisfied
+LL |     Foo::<i32>::bar(&1i8);
    |     ^^^^^^^^^^^^^^^ the trait `Foo<i32>` is not implemented for `i8`
    |
    = help: the following implementations were found:
@@ -19,7 +19,7 @@ LL |     fn bar(&self){}
 error[E0277]: the trait bound `u8: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:25:5
    |
-LL |     Foo::<i32>::bar(&1u8); //~ ERROR is not satisfied
+LL |     Foo::<i32>::bar(&1u8);
    |     ^^^^^^^^^^^^^^^ the trait `Foo<i32>` is not implemented for `u8`
    |
    = help: the following implementations were found:
@@ -36,7 +36,7 @@ LL |     fn bar(&self){}
 error[E0277]: the trait bound `bool: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:26:5
    |
-LL |     Foo::<i32>::bar(&true); //~ ERROR is not satisfied
+LL |     Foo::<i32>::bar(&true);
    |     ^^^^^^^^^^^^^^^ the trait `Foo<i32>` is not implemented for `bool`
    |
    = help: the following implementations were found:

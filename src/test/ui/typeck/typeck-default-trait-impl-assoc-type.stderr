@@ -1,7 +1,7 @@
 error[E0277]: `<T as Trait>::AssocType` cannot be sent between threads safely
   --> $DIR/typeck-default-trait-impl-assoc-type.rs:9:5
    |
-LL |     is_send::<T::AssocType>(); //~ ERROR E0277
+LL |     is_send::<T::AssocType>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `<T as Trait>::AssocType` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `<T as Trait>::AssocType`

@@ -1,13 +1,13 @@
 error: expected type, found `0`
   --> $DIR/issue-39616.rs:1:12
    |
-LL | fn foo(a: [0; 1]) {} //~ ERROR expected type, found `0`
+LL | fn foo(a: [0; 1]) {}
    |            ^
 
 error: expected one of `)`, `,`, `->`, `where`, or `{`, found `]`
   --> $DIR/issue-39616.rs:1:16
    |
-LL | fn foo(a: [0; 1]) {} //~ ERROR expected type, found `0`
+LL | fn foo(a: [0; 1]) {}
    |                ^ expected one of `)`, `,`, `->`, `where`, or `{` here
 
 error: aborting due to 2 previous errors

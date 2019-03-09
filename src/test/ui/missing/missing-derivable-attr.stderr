@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `eq`
 LL |     fn eq(&self, other: &Self) -> bool;
    |     ----------------------------------- `eq` from trait
 ...
-LL | impl MyEq for A {}  //~ ERROR not all trait items implemented, missing: `eq`
+LL | impl MyEq for A {}
    | ^^^^^^^^^^^^^^^ missing `eq` in implementation
 
 error: aborting due to previous error

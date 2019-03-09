@@ -1,7 +1,7 @@
 error: only functions may be used as tests
   --> $DIR/issue-28134.rs:3:1
    |
-LL | #![test] //~ ERROR only functions may be used as tests
+LL | #![test]
    | ^^^^^^^^
 
 error: aborting due to previous error

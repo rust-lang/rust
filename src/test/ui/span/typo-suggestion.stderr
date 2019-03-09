@@ -1,13 +1,13 @@
 error[E0425]: cannot find value `bar` in this scope
   --> $DIR/typo-suggestion.rs:5:26
    |
-LL |     println!("Hello {}", bar); //~ ERROR cannot find value
+LL |     println!("Hello {}", bar);
    |                          ^^^ not found in this scope
 
 error[E0425]: cannot find value `fob` in this scope
   --> $DIR/typo-suggestion.rs:8:26
    |
-LL |     println!("Hello {}", fob); //~ ERROR cannot find value
+LL |     println!("Hello {}", fob);
    |                          ^^^ help: a local variable with a similar name exists: `foo`
 
 error: aborting due to 2 previous errors

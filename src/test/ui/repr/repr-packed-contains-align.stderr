@@ -1,31 +1,31 @@
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:19:1
    |
-LL | struct SC(SA); //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | struct SC(SA);
    | ^^^^^^^^^^^^^^
 
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:22:1
    |
-LL | struct SD(SB); //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | struct SD(SB);
    | ^^^^^^^^^^^^^^
 
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:25:1
    |
-LL | struct SE(UA); //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | struct SE(UA);
    | ^^^^^^^^^^^^^^
 
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:28:1
    |
-LL | struct SF(UB); //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | struct SF(UB);
    | ^^^^^^^^^^^^^^
 
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:31:1
    |
-LL | / union UC { //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | / union UC {
 LL | |     a: UA
 LL | | }
    | |_^
@@ -33,7 +33,7 @@ LL | | }
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:36:1
    |
-LL | / union UD { //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | / union UD {
 LL | |     n: UB
 LL | | }
    | |_^
@@ -41,7 +41,7 @@ LL | | }
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:41:1
    |
-LL | / union UE { //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | / union UE {
 LL | |     a: SA
 LL | | }
    | |_^
@@ -49,7 +49,7 @@ LL | | }
 error[E0588]: packed type cannot transitively contain a `[repr(align)]` type
   --> $DIR/repr-packed-contains-align.rs:46:1
    |
-LL | / union UF { //~ ERROR: packed type cannot transitively contain a `[repr(align)]` type
+LL | / union UF {
 LL | |     n: SB
 LL | | }
    | |_^

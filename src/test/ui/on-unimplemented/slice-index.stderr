@@ -1,7 +1,7 @@
 error[E0277]: the type `[i32]` cannot be indexed by `i32`
   --> $DIR/slice-index.rs:11:5
    |
-LL |     x[1i32]; //~ ERROR E0277
+LL |     x[1i32];
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `i32`
@@ -10,7 +10,7 @@ LL |     x[1i32]; //~ ERROR E0277
 error[E0277]: the type `[i32]` cannot be indexed by `std::ops::RangeTo<i32>`
   --> $DIR/slice-index.rs:12:5
    |
-LL |     x[..1i32]; //~ ERROR E0277
+LL |     x[..1i32];
    |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `std::ops::RangeTo<i32>`

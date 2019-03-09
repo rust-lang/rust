@@ -1,7 +1,7 @@
 error: expected expression, found reserved keyword `try`
   --> $DIR/try-block-in-while.rs:6:11
    |
-LL |     while try { false } {} //~ ERROR expected expression, found reserved keyword `try`
+LL |     while try { false } {}
    |           ^^^ expected expression
 
 error: aborting due to previous error

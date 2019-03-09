@@ -14,7 +14,7 @@ error[E0597]: `foo.data` does not live long enough
    |
 LL |     foo.data[1].1.set(Some(&foo.data[0]));
    |                             ^^^^^^^^ borrowed value does not live long enough
-LL |     //~^ ERROR `foo.data` does not live long enough
+LL |
 LL | }
    | - `foo.data` dropped here while still borrowed
    |

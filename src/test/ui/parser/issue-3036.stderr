@@ -3,7 +3,7 @@ error: expected one of `.`, `;`, `?`, or an operator, found `}`
    |
 LL |     let x = 3
    |              - expected one of `.`, `;`, `?`, or an operator here
-LL | } //~ ERROR: expected one of `.`, `;`, `?`, or an operator, found `}`
+LL | }
    | ^ unexpected token
 
 error: aborting due to previous error

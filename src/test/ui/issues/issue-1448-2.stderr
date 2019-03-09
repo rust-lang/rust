@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-1448-2.rs:6:24
    |
-LL |     println!("{}", foo(10i32)); //~ ERROR mismatched types
+LL |     println!("{}", foo(10i32));
    |                        ^^^^^ expected u32, found i32
 
 error: aborting due to previous error

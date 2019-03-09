@@ -34,7 +34,7 @@ error[E0308]: mismatched types
 LL |   fn baz() -> impl std::fmt::Display {
    |               ---------------------- expected because this return type...
 LL | /     if false {
-LL | |     //~^ ERROR mismatched types
+LL | |
 LL | |         return 0i32;
    | |                ---- ...is found to be `i32` here
 LL | |     } else {
@@ -54,7 +54,7 @@ LL | |         0i32
 LL | |     } else {
 LL | |         1u32
    | |         ^^^^ expected i32, found u32
-LL | |         //~^ ERROR if and else have incompatible types
+LL | |
 LL | |     }
    | |_____- if and else have incompatible types
    |

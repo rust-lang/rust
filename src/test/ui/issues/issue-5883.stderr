@@ -12,7 +12,7 @@ LL | fn new_struct(r: A+'static)
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/issue-5883.rs:8:8
    |
-LL |     -> Struct { //~^ ERROR the size for values of type
+LL |     -> Struct {
    |        ^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Struct`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`

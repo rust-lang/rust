@@ -1,7 +1,7 @@
 error[E0658]: unions with non-`Copy` fields are unstable (see issue #32836)
   --> $DIR/feature-gate-untagged_unions.rs:9:1
    |
-LL | / union U3 { //~ ERROR unions with non-`Copy` fields are unstable
+LL | / union U3 {
 LL | |     a: String,
 LL | | }
    | |_^
@@ -11,7 +11,7 @@ LL | | }
 error[E0658]: unions with non-`Copy` fields are unstable (see issue #32836)
   --> $DIR/feature-gate-untagged_unions.rs:13:1
    |
-LL | / union U4<T> { //~ ERROR unions with non-`Copy` fields are unstable
+LL | / union U4<T> {
 LL | |     a: T,
 LL | | }
    | |_^
@@ -21,7 +21,7 @@ LL | | }
 error[E0658]: unions with `Drop` implementations are unstable (see issue #32836)
   --> $DIR/feature-gate-untagged_unions.rs:17:1
    |
-LL | / union U5 { //~ ERROR unions with `Drop` implementations are unstable
+LL | / union U5 {
 LL | |     a: u8,
 LL | | }
    | |_^

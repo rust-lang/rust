@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/keyword-true-as-identifier.rs:2:9
    |
-LL |     let true = 22; //~ error: mismatched types
+LL |     let true = 22;
    |         ^^^^ expected integer, found bool
    |
    = note: expected type `{integer}`

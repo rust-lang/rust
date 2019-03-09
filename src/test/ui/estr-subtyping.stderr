@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/estr-subtyping.rs:10:15
    |
-LL |    wants_uniq(x); //~ ERROR mismatched types
+LL |    wants_uniq(x);
    |               ^
    |               |
    |               expected struct `std::string::String`, found &str

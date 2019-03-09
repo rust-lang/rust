@@ -1,7 +1,7 @@
 error[E0658]: allow_fail attribute is currently unstable (see issue #46488)
   --> $DIR/feature-gate-allow_fail.rs:3:1
    |
-LL | #[allow_fail] //~ ERROR allow_fail attribute is currently unstable
+LL | #[allow_fail]
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(allow_fail)] to the crate attributes to enable

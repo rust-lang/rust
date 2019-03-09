@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     drop(a);
    |          - value moved here
-LL |     a[i] = d(); //~ ERROR use of moved value: `a`
+LL |     a[i] = d();
    |     ^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `a` has type `[D; 4]`, which does not implement the `Copy` trait

@@ -1,7 +1,7 @@
 error: anonymous parameters are deprecated and will be removed in the next edition.
   --> $DIR/future-incompatible-lint-group.rs:4:10
    |
-LL |     fn f(u8) {} //~ ERROR anonymous parameters are deprecated
+LL |     fn f(u8) {}
    |          ^^ help: Try naming the parameter or explicitly ignoring it: `_: u8`
    |
 note: lint level defined here

@@ -6,7 +6,7 @@ LL |     let mut b = || {
 LL |         let a = &mut *x;
    |                       - previous borrow occurs due to use of `x` in closure
 ...
-LL |     println!("{}", x); //~ ERROR
+LL |     println!("{}", x);
    |                    ^ borrow occurs here
 LL |     Pin::new(&mut b).resume();
 LL | }

@@ -1,7 +1,7 @@
 error: macro expansion ignores token `,` and any following
   --> $DIR/macro-incomplete-parse.rs:7:9
    |
-LL |         , //~ ERROR macro expansion ignores token `,`
+LL |         ,
    |         ^
 ...
 LL | ignored_item!();
@@ -12,7 +12,7 @@ LL | ignored_item!();
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
   --> $DIR/macro-incomplete-parse.rs:12:14
    |
-LL |     () => ( 1,  //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+LL |     () => ( 1,
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
 LL |     ignored_expr!();
@@ -21,7 +21,7 @@ LL |     ignored_expr!();
 error: macro expansion ignores token `,` and any following
   --> $DIR/macro-incomplete-parse.rs:18:14
    |
-LL |     () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
+LL |     () => ( 1, 2 )
    |              ^
 ...
 LL |         ignored_pat!() => (),

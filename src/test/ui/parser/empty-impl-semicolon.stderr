@@ -1,7 +1,7 @@
 error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `;`
   --> $DIR/empty-impl-semicolon.rs:1:9
    |
-LL | impl Foo; //~ ERROR expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `;`
+LL | impl Foo;
    |         ^ expected one of 8 possible tokens here
 
 error: aborting due to previous error

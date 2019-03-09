@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:10:1
    |
-LL | enum E where i32: Foo { V } //~ ERROR
+LL | enum E where i32: Foo { V }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
    = help: see issue #48214
@@ -10,7 +10,7 @@ LL | enum E where i32: Foo { V } //~ ERROR
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:12:1
    |
-LL | struct S where i32: Foo; //~ ERROR
+LL | struct S where i32: Foo;
    | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
    = help: see issue #48214
@@ -19,7 +19,7 @@ LL | struct S where i32: Foo; //~ ERROR
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:14:1
    |
-LL | trait T where i32: Foo {} //~ ERROR
+LL | trait T where i32: Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
    = help: see issue #48214
@@ -28,7 +28,7 @@ LL | trait T where i32: Foo {} //~ ERROR
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:16:1
    |
-LL | union U where i32: Foo { f: i32 } //~ ERROR
+LL | union U where i32: Foo { f: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
    = help: see issue #48214
@@ -37,7 +37,7 @@ LL | union U where i32: Foo { f: i32 } //~ ERROR
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:20:1
    |
-LL | / impl Foo for () where i32: Foo { //~ ERROR
+LL | / impl Foo for () where i32: Foo {
 LL | |     fn test(&self) {
 LL | |         3i32.test();
 LL | |         Foo::test(&4i32);
@@ -52,7 +52,7 @@ LL | | }
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:28:1
    |
-LL | / fn f() where i32: Foo //~ ERROR
+LL | / fn f() where i32: Foo
 LL | | {
 LL | |     let s = S;
 LL | |     3i32.test();
@@ -67,7 +67,7 @@ LL | | }
 error[E0277]: the trait bound `std::string::String: std::ops::Neg` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:36:1
    |
-LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> { //~ ERROR
+LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
 LL | |     -s
 LL | | }
    | |_^ the trait `std::ops::Neg` is not implemented for `std::string::String`
@@ -78,7 +78,7 @@ LL | | }
 error[E0277]: `i32` is not an iterator
   --> $DIR/feature-gate-trivial_bounds.rs:40:1
    |
-LL | / fn use_for() where i32: Iterator { //~ ERROR
+LL | / fn use_for() where i32: Iterator {
 LL | |     for _ in 2i32 {}
 LL | | }
    | |_^ `i32` is not an iterator
@@ -91,7 +91,7 @@ LL | | }
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:52:1
    |
-LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
+LL | struct TwoStrs(str, str) where str: Sized;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
@@ -102,7 +102,7 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:55:1
    |
-LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
+LL | / fn unsized_local() where Dst<A>: Sized {
 LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
 LL | | }
    | |_^ doesn't have a size known at compile-time
@@ -116,7 +116,7 @@ LL | | }
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:59:1
    |
-LL | / fn return_str() -> str where str: Sized { //~ ERROR
+LL | / fn return_str() -> str where str: Sized {
 LL | |     *"Sized".to_string().into_boxed_str()
 LL | | }
    | |_^ doesn't have a size known at compile-time

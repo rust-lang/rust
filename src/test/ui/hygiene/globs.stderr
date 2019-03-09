@@ -1,7 +1,7 @@
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:22:9
    |
-LL |         f(); //~ ERROR cannot find function `f` in this scope
+LL |         f();
    |         ^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |
@@ -15,13 +15,13 @@ LL | use foo::f;
 error[E0425]: cannot find function `g` in this scope
   --> $DIR/globs.rs:15:5
    |
-LL |       g(); //~ ERROR cannot find function `g` in this scope
+LL |       g();
    |       ^ not found in this scope
 ...
 LL | /     m! {
 LL | |         use bar::*;
 LL | |         g();
-LL | |         f(); //~ ERROR cannot find function `f` in this scope
+LL | |         f();
 LL | |     }
    | |_____- in this macro invocation
 help: possible candidates are found in other modules, you can import them into scope
@@ -42,7 +42,7 @@ error[E0425]: cannot find function `f` in this scope
 LL | n!(f);
    | ------ in this macro invocation
 ...
-LL |         n!(f); //~ ERROR cannot find function `f` in this scope
+LL |         n!(f);
    |            ^ not found in this scope
 
 error[E0425]: cannot find function `f` in this scope
@@ -51,7 +51,7 @@ error[E0425]: cannot find function `f` in this scope
 LL | n!(f);
    | ------ in this macro invocation
 ...
-LL |                 f //~ ERROR cannot find function `f` in this scope
+LL |                 f
    |                 ^ not found in this scope
 
 error: aborting due to 4 previous errors

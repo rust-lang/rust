@@ -9,7 +9,7 @@ LL |     fn bar() {
 LL | }
    | - ...as it matches this but it has different indentation
 ...
-LL | } //~ ERROR this file contains an un-closed delimiter
+LL | }
    |                                                       ^
 
 error: unexpected token: `;`

@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `x`
   --> $DIR/match-cfg-fake-edges.rs:23:13
    |
-LL |             x; //~ ERROR use of possibly uninitialized variable: `x`
+LL |             x;
    |             ^ use of possibly uninitialized `x`
 
 error[E0382]: use of moved value: `x`
@@ -13,7 +13,7 @@ LL |     let x = String::new();
 LL |         false if { drop(x); true } => 1,
    |                         - value moved here
 LL |         true => {
-LL |             x; //~ ERROR use of moved value: `x`
+LL |             x;
    |             ^ value used here after move
 
 error[E0503]: cannot use `y.1` because it was mutably borrowed
@@ -22,7 +22,7 @@ error[E0503]: cannot use `y.1` because it was mutably borrowed
 LL |     let r = &mut y.1;
    |             -------- borrow of `y.1` occurs here
 ...
-LL |         (false, true) => 1, //~ ERROR cannot use `y.1` because it was mutably borrowed
+LL |         (false, true) => 1,
    |                 ^^^^ use of borrowed `y.1`
 LL |         (true, _) => {
 LL |             r;

@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL | fn fail() -> ! {
    |              - expected `!` because of return type
-LL |     return "wow"; //~ ERROR mismatched types
+LL |     return "wow";
    |            ^^^^^ expected !, found reference
    |
    = note: expected type `!`

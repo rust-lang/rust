@@ -4,13 +4,13 @@ error: expected one of `)` or `,`, found `(`
 LL |         struct S3(pub($t) ());
    |                           ^ expected one of `)` or `,` here
 ...
-LL |     define_struct! { foo } //~ ERROR cannot find type `foo` in this scope
+LL |     define_struct! { foo }
    |     ---------------------- in this macro invocation
 
 error[E0412]: cannot find type `foo` in this scope
   --> $DIR/test3.rs:11:22
    |
-LL |     define_struct! { foo } //~ ERROR cannot find type `foo` in this scope
+LL |     define_struct! { foo }
    |                      ^^^ not found in this scope
 
 error: aborting due to 2 previous errors

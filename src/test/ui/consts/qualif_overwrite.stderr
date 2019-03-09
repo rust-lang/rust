@@ -1,7 +1,7 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
   --> $DIR/qualif_overwrite.rs:10:5
    |
-LL |     &{a} //~ ERROR cannot borrow a constant which may contain interior mutability
+LL |     &{a}
    |     ^^^^
 
 error: aborting due to previous error

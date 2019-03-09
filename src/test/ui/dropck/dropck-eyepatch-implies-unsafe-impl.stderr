@@ -2,7 +2,7 @@ error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attri
   --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:21:1
    |
 LL | / impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
-LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+LL | |
 LL | |
 LL | |     // (unsafe to access self.1  due to #[may_dangle] on A)
 LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
@@ -13,7 +13,7 @@ error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attri
   --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:27:1
    |
 LL | / impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
-LL | |     //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+LL | |
 LL | |
 LL | |     // (unsafe to access self.1 due to #[may_dangle] on 'a)
 LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }

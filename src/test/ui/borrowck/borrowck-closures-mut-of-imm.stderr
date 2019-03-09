@@ -5,7 +5,7 @@ LL |     let mut c1 = || set(&mut *x);
    |                  --           - previous borrow occurs due to use of `x` in closure
    |                  |
    |                  first closure is constructed here
-LL |     //~^ ERROR cannot borrow
+LL |
 LL |     let mut c2 = || set(&mut *x);
    |                  ^^           - borrow occurs due to use of `x` in closure
    |                  |

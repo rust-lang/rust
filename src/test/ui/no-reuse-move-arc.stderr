@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `arc_v`
 LL |     thread::spawn(move|| {
    |                   ------ value moved (into closure) here
 ...
-LL |     assert_eq!((*arc_v)[2], 3); //~ ERROR use of moved value: `arc_v`
+LL |     assert_eq!((*arc_v)[2], 3);
    |                  ^^^^^ value used here after move
    |
    = note: move occurs because `arc_v` has type `std::sync::Arc<std::vec::Vec<i32>>`, which does not implement the `Copy` trait
@@ -15,7 +15,7 @@ error[E0382]: use of moved value: `arc_v`
 LL |     thread::spawn(move|| {
    |                   ------ value moved (into closure) here
 ...
-LL |     println!("{:?}", *arc_v); //~ ERROR use of moved value: `arc_v`
+LL |     println!("{:?}", *arc_v);
    |                       ^^^^^ value used here after move
    |
    = note: move occurs because `arc_v` has type `std::sync::Arc<std::vec::Vec<i32>>`, which does not implement the `Copy` trait

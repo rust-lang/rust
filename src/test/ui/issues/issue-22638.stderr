@@ -2,7 +2,7 @@ error: reached the type-length limit while instantiating `D::matches::$CLOSURE`
   --> $DIR/issue-22638.rs:52:5
    |
 LL | /     pub fn matches<F: Fn()>(&self, f: &F) {
-LL | |         //~^ ERROR reached the type-length limit while instantiating `D::matches::<[closure
+LL | |
 LL | |         let &D(ref a) = self;
 LL | |         a.matches(f)
 LL | |     }

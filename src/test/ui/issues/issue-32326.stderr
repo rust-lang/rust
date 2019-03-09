@@ -1,7 +1,7 @@
 error[E0072]: recursive type `Expr` has infinite size
   --> $DIR/issue-32326.rs:5:1
    |
-LL | enum Expr { //~ ERROR E0072
+LL | enum Expr {
    | ^^^^^^^^^ recursive type has infinite size
 LL |     Plus(Expr, Expr),
    |          ----  ---- recursive without indirection

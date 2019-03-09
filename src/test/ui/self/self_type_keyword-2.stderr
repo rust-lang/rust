@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `self::Self`
   --> $DIR/self_type_keyword-2.rs:1:5
    |
-LL | use self::Self as Foo; //~ ERROR unresolved import `self::Self`
+LL | use self::Self as Foo;
    |     ^^^^^^^^^^^^^^^^^ no `Self` in the root
 
 error[E0531]: cannot find unit struct/variant or constant `Self` in this scope

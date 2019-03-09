@@ -4,7 +4,7 @@ error[E0618]: expected function, found `G`
 LL | struct G;
    | --------- `G` defined here
 ...
-LL |     let g = G(); //~ ERROR: expected function, found `G`
+LL |     let g = G();
    |             ^--
    |             |
    |             call expression requires function

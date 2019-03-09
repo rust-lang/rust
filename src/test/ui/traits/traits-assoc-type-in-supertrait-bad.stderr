@@ -1,7 +1,7 @@
 error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as std::iter::Iterator>::Item == u32`
   --> $DIR/traits-assoc-type-in-supertrait-bad.rs:11:6
    |
-LL | impl Foo for IntoIter<i32> { //~ ERROR type mismatch
+LL | impl Foo for IntoIter<i32> {
    |      ^^^ expected i32, found u32
    |
    = note: expected type `i32`

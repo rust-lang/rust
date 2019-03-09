@@ -1,7 +1,7 @@
 error: extern items cannot be `const`
   --> $DIR/extern-const.rs:15:5
    |
-LL |     const rust_dbg_static_mut: libc::c_int; //~ ERROR extern items cannot be `const`
+LL |     const rust_dbg_static_mut: libc::c_int;
    |     ^^^^^ help: try using a static value: `static`
 
 error: aborting due to previous error

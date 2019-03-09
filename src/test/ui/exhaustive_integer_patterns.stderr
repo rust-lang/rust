@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/exhaustive_integer_patterns.rs:23:9
    |
-LL |         200 => {} //~ ERROR unreachable pattern
+LL |         200 => {}
    |         ^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unreachable_patterns)]
 error[E0004]: non-exhaustive patterns: `128u8..=255u8` not covered
   --> $DIR/exhaustive_integer_patterns.rs:28:11
    |
-LL |     match x { //~ ERROR non-exhaustive patterns
+LL |     match x {
    |           ^ pattern `128u8..=255u8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -21,7 +21,7 @@ LL |     match x { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `11u8..=19u8`, `31u8..=34u8`, `36u8..=69u8` and 1 more not covered
   --> $DIR/exhaustive_integer_patterns.rs:33:11
    |
-LL |     match x { //~ ERROR non-exhaustive patterns
+LL |     match x {
    |           ^ patterns `11u8..=19u8`, `31u8..=34u8`, `36u8..=69u8` and 1 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -29,13 +29,13 @@ LL |     match x { //~ ERROR non-exhaustive patterns
 error: unreachable pattern
   --> $DIR/exhaustive_integer_patterns.rs:44:9
    |
-LL |         -2..=20 => {} //~ ERROR unreachable pattern
+LL |         -2..=20 => {}
    |         ^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `-128i8..=-8i8`, `-6i8`, `121i8..=124i8` and 1 more not covered
   --> $DIR/exhaustive_integer_patterns.rs:41:11
    |
-LL |     match x { //~ ERROR non-exhaustive patterns
+LL |     match x {
    |           ^ patterns `-128i8..=-8i8`, `-6i8`, `121i8..=124i8` and 1 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -43,7 +43,7 @@ LL |     match x { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `-128i8` not covered
   --> $DIR/exhaustive_integer_patterns.rs:82:11
    |
-LL |     match 0i8 { //~ ERROR non-exhaustive patterns
+LL |     match 0i8 {
    |           ^^^ pattern `-128i8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -51,7 +51,7 @@ LL |     match 0i8 { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `0i16` not covered
   --> $DIR/exhaustive_integer_patterns.rs:90:11
    |
-LL |     match 0i16 { //~ ERROR non-exhaustive patterns
+LL |     match 0i16 {
    |           ^^^^ pattern `0i16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -59,7 +59,7 @@ LL |     match 0i16 { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `128u8..=255u8` not covered
   --> $DIR/exhaustive_integer_patterns.rs:108:11
    |
-LL |     match 0u8 { //~ ERROR non-exhaustive patterns
+LL |     match 0u8 {
    |           ^^^ pattern `128u8..=255u8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -67,7 +67,7 @@ LL |     match 0u8 { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `(0u8, Some(_))` and `(2u8..=255u8, Some(_))` not covered
   --> $DIR/exhaustive_integer_patterns.rs:120:11
    |
-LL |     match (0u8, Some(())) { //~ ERROR non-exhaustive patterns
+LL |     match (0u8, Some(())) {
    |           ^^^^^^^^^^^^^^^ patterns `(0u8, Some(_))` and `(2u8..=255u8, Some(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -75,7 +75,7 @@ LL |     match (0u8, Some(())) { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `(126u8..=127u8, false)` not covered
   --> $DIR/exhaustive_integer_patterns.rs:125:11
    |
-LL |     match (0u8, true) { //~ ERROR non-exhaustive patterns
+LL |     match (0u8, true) {
    |           ^^^^^^^^^^^ pattern `(126u8..=127u8, false)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -83,7 +83,7 @@ LL |     match (0u8, true) { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211455u128` not covered
   --> $DIR/exhaustive_integer_patterns.rs:145:11
    |
-LL |     match 0u128 { //~ ERROR non-exhaustive patterns
+LL |     match 0u128 {
    |           ^^^^^ pattern `340282366920938463463374607431768211455u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -91,7 +91,7 @@ LL |     match 0u128 { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `5u128..=340282366920938463463374607431768211455u128` not covered
   --> $DIR/exhaustive_integer_patterns.rs:149:11
    |
-LL |     match 0u128 { //~ ERROR non-exhaustive patterns
+LL |     match 0u128 {
    |           ^^^^^ pattern `5u128..=340282366920938463463374607431768211455u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -99,7 +99,7 @@ LL |     match 0u128 { //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `0u128..=3u128` not covered
   --> $DIR/exhaustive_integer_patterns.rs:153:11
    |
-LL |     match 0u128 { //~ ERROR non-exhaustive patterns
+LL |     match 0u128 {
    |           ^^^^^ pattern `0u128..=3u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

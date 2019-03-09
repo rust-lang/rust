@@ -1,7 +1,7 @@
 error[E0392]: parameter `'a` is never used
   --> $DIR/variance-regions-unused-indirect.rs:3:10
    |
-LL | enum Foo<'a> { //~ ERROR parameter `'a` is never used
+LL | enum Foo<'a> {
    |          ^^ unused type parameter
    |
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
@@ -9,7 +9,7 @@ LL | enum Foo<'a> { //~ ERROR parameter `'a` is never used
 error[E0392]: parameter `'a` is never used
   --> $DIR/variance-regions-unused-indirect.rs:7:10
    |
-LL | enum Bar<'a> { //~ ERROR parameter `'a` is never used
+LL | enum Bar<'a> {
    |          ^^ unused type parameter
    |
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`

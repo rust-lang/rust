@@ -3,7 +3,7 @@ error[E0621]: explicit lifetime required in the type of `ap`
    |
 LL | pub unsafe extern "C" fn no_escape0<'a>(_: usize, ap: ...) -> VaList<'a> {
    |                                                       --- help: add explicit lifetime `'a` to the type of `ap`: `core::ffi::VaList<'a>`
-LL |     ap //~ ERROR: explicit lifetime required
+LL |     ap
    |     ^^ lifetime `'a` required
 
 error[E0621]: explicit lifetime required in the type of `ap`
@@ -11,19 +11,19 @@ error[E0621]: explicit lifetime required in the type of `ap`
    |
 LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
    |                                                   --- help: add explicit lifetime `'static` to the type of `ap`: `core::ffi::VaList<'static>`
-LL |     ap //~ ERROR: explicit lifetime required
+LL |     ap
    |     ^^ lifetime `'static` required
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/variadic-ffi-4.rs:16:28
    |
-LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+LL |     let _ = ap.copy(|ap| { ap });
    |                            ^^
    |
 note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 16:21...
   --> $DIR/variadic-ffi-4.rs:16:21
    |
-LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+LL |     let _ = ap.copy(|ap| { ap });
    |                     ^^^^^^^^^^^
    = note: ...so that the expression is assignable:
            expected core::ffi::VaList<'_>
@@ -31,18 +31,18 @@ LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate li
 note: but, the lifetime must be valid for the method call at 16:13...
   --> $DIR/variadic-ffi-4.rs:16:13
    |
-LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+LL |     let _ = ap.copy(|ap| { ap });
    |             ^^^^^^^^^^^^^^^^^^^^
 note: ...so type `core::ffi::VaList<'_>` of expression is valid during the expression
   --> $DIR/variadic-ffi-4.rs:16:13
    |
-LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+LL |     let _ = ap.copy(|ap| { ap });
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/variadic-ffi-4.rs:20:12
    |
-LL |     *ap0 = ap1; //~ ERROR: mismatched types
+LL |     *ap0 = ap1;
    |            ^^^ lifetime mismatch
    |
    = note: expected type `core::ffi::VaList<'_>`
@@ -51,14 +51,14 @@ note: the anonymous lifetime #3 defined on the function body at 19:1...
   --> $DIR/variadic-ffi-4.rs:19:1
    |
 LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-LL | |     *ap0 = ap1; //~ ERROR: mismatched types
+LL | |     *ap0 = ap1;
 LL | | }
    | |_^
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 19:1
   --> $DIR/variadic-ffi-4.rs:19:1
    |
 LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-LL | |     *ap0 = ap1; //~ ERROR: mismatched types
+LL | |     *ap0 = ap1;
 LL | | }
    | |_^
 
@@ -73,10 +73,10 @@ note: the type is valid for the anonymous lifetime #1 defined on the function bo
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 note: but the borrow lasts for the anonymous lifetime #3 defined on the function body at 23:1
@@ -84,10 +84,10 @@ note: but the borrow lasts for the anonymous lifetime #3 defined on the function
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 
@@ -104,10 +104,10 @@ note: the anonymous lifetime #3 defined on the function body at 23:1...
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 23:1
@@ -115,10 +115,10 @@ note: ...does not necessarily outlive the anonymous lifetime #2 defined on the f
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 
@@ -135,10 +135,10 @@ note: the anonymous lifetime #2 defined on the function body at 23:1...
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 23:1
@@ -146,10 +146,10 @@ note: ...does not necessarily outlive the anonymous lifetime #3 defined on the f
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 
@@ -164,10 +164,10 @@ note: first, the lifetime cannot outlive the anonymous lifetime #3 defined on th
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 note: ...so that the type `core::ffi::VaList<'_>` is not borrowed for too long
@@ -180,10 +180,10 @@ note: but, the lifetime must be valid for the anonymous lifetime #1 defined on t
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
-LL | |     //~^ ERROR: a value of type `core::ffi::VaList<'_>` is borrowed for too long
-LL | |     //~^^ ERROR: mismatched types
-LL | |     //~^^^ ERROR: mismatched types
-LL | |     //~^^^^ ERROR: cannot infer an appropriate lifetime
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 note: ...so that reference does not outlive borrowed content

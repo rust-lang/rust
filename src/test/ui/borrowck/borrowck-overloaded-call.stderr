@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `s` as immutable because it is also borrowed as muta
    |
 LL |     let sp = &mut s;
    |                   - mutable borrow occurs here
-LL |     s(3);   //~ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
+LL |     s(3);
    |     ^ immutable borrow occurs here
 LL |     use_mut(sp);
 LL | }
@@ -15,7 +15,7 @@ error[E0596]: cannot borrow immutable local variable `s` as mutable
 LL |     let s = SFnMut {
    |         - help: make this binding mutable: `mut s`
 ...
-LL |     s(3);   //~ ERROR cannot borrow immutable local variable `s` as mutable
+LL |     s(3);
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `s`
@@ -23,7 +23,7 @@ error[E0382]: use of moved value: `s`
    |
 LL |     s(" world".to_string());
    |     - value moved here
-LL |     s(" world".to_string());    //~ ERROR use of moved value: `s`
+LL |     s(" world".to_string());
    |     ^ value used here after move
    |
    = note: move occurs because `s` has type `SFnOnce`, which does not implement the `Copy` trait

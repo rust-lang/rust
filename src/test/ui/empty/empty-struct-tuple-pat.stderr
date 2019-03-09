@@ -4,7 +4,7 @@ error[E0530]: match bindings cannot shadow tuple structs
 LL | struct Empty2();
    | ---------------- the tuple struct `Empty2` is defined here
 ...
-LL |         Empty2 => () //~ ERROR match bindings cannot shadow tuple structs
+LL |         Empty2 => ()
    |         ^^^^^^ cannot be named the same as a tuple struct
 
 error[E0530]: match bindings cannot shadow tuple structs
@@ -13,7 +13,7 @@ error[E0530]: match bindings cannot shadow tuple structs
 LL | use empty_struct::*;
    |     --------------- the tuple struct `XEmpty6` is imported here
 ...
-LL |         XEmpty6 => () //~ ERROR match bindings cannot shadow tuple structs
+LL |         XEmpty6 => ()
    |         ^^^^^^^ cannot be named the same as a tuple struct
 
 error[E0532]: expected unit struct/variant or constant, found tuple variant `E::Empty4`

@@ -1,7 +1,7 @@
 error[E0624]: method `nap` is private
   --> $DIR/private-method-cross-crate.rs:7:8
    |
-LL |   nyan.nap();   //~ ERROR method `nap` is private
+LL |   nyan.nap();
    |        ^^^
 
 error: aborting due to previous error

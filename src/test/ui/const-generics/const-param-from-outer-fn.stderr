@@ -11,7 +11,7 @@ LL | fn foo<const X: u32>() {
    |              - const variable from outer function
 LL |     fn bar() -> u32 {
    |        --- try adding a local generic parameter in this method instead
-LL |         X //~ ERROR can't use generic parameters from outer function
+LL |         X
    |         ^ use of generic parameter from outer function
 
 error: aborting due to previous error

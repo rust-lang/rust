@@ -1,17 +1,17 @@
 error: expected identifier, found keyword `dyn`
   --> $DIR/dyn-trait-compatibility.rs:4:16
    |
-LL | type A1 = dyn::dyn; //~ERROR expected identifier, found keyword `dyn`
+LL | type A1 = dyn::dyn;
    |                ^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
-LL | type A1 = dyn::r#dyn; //~ERROR expected identifier, found keyword `dyn`
+LL | type A1 = dyn::r#dyn;
    |                ^^^^^
 
 error: expected identifier, found `<`
   --> $DIR/dyn-trait-compatibility.rs:5:14
    |
-LL | type A2 = dyn<dyn, dyn>; //~ERROR expected identifier, found `<`
+LL | type A2 = dyn<dyn, dyn>;
    |              ^ expected identifier
 
 error: aborting due to 2 previous errors

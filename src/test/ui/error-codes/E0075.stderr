@@ -1,7 +1,7 @@
 error[E0075]: SIMD vector cannot be empty
   --> $DIR/E0075.rs:4:1
    |
-LL | struct Bad; //~ ERROR E0075
+LL | struct Bad;
    | ^^^^^^^^^^^
 
 error: aborting due to previous error

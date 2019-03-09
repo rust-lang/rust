@@ -3,7 +3,7 @@ error[E0373]: closure may outlive the current function, but it borrows `y`, whic
    |
 LL |         |z| {
    |         ^^^ may outlive borrowed value `y`
-LL |             //~^ ERROR E0373
+LL |
 LL |             if false { &y } else { z }
    |                         - `y` is borrowed here
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword

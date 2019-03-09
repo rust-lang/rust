@@ -1,7 +1,7 @@
 warning: lint `raw_pointer_derive` has been removed: `using derive with raw pointers is ok`
   --> $DIR/lint-removed.rs:6:8
    |
-LL | #[deny(raw_pointer_derive)] //~ WARN `raw_pointer_derive` has been removed
+LL | #[deny(raw_pointer_derive)]
    |        ^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(renamed_and_removed_lints)] on by default
@@ -9,7 +9,7 @@ LL | #[deny(raw_pointer_derive)] //~ WARN `raw_pointer_derive` has been removed
 error: unused variable: `unused`
   --> $DIR/lint-removed.rs:8:17
    |
-LL | fn main() { let unused = (); } //~ ERROR unused
+LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: consider prefixing with an underscore: `_unused`
    |
 note: lint level defined here

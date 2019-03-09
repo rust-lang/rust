@@ -1,7 +1,7 @@
 error: missing documentation for macro
   --> $DIR/deny-missing-docs-macro.rs:6:1
    |
-LL | macro_rules! foo { //~ ERROR
+LL | macro_rules! foo {
    | ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

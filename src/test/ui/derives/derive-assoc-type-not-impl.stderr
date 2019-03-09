@@ -4,7 +4,7 @@ error[E0599]: no method named `clone` found for type `Bar<NotClone>` in the curr
 LL | struct Bar<T: Foo> {
    | ------------------ method `clone` not found for this
 ...
-LL |     Bar::<NotClone> { x: 1 }.clone(); //~ ERROR
+LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:

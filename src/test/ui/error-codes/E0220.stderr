@@ -1,7 +1,7 @@
 error[E0220]: associated type `F` not found for `Trait`
   --> $DIR/E0220.rs:5:18
    |
-LL | type Foo = Trait<F=i32>; //~ ERROR E0220
+LL | type Foo = Trait<F=i32>;
    |                  ^^^^^ associated type `F` not found
 
 error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) must be specified
@@ -10,7 +10,7 @@ error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) mu
 LL |     type Bar;
    |     --------- `Bar` defined here
 ...
-LL | type Foo = Trait<F=i32>; //~ ERROR E0220
+LL | type Foo = Trait<F=i32>;
    |            ^^^^^^^^^^^^ associated type `Bar` must be specified
 
 error: aborting due to 2 previous errors

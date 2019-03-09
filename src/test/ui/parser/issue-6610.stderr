@@ -1,7 +1,7 @@
 error: expected `;` or `{`, found `}`
   --> $DIR/issue-6610.rs:1:20
    |
-LL | trait Foo { fn a() } //~ ERROR expected `;` or `{`, found `}`
+LL | trait Foo { fn a() }
    |                    ^ expected `;` or `{`
 
 error: aborting due to previous error

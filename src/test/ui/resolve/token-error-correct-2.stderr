@@ -3,8 +3,8 @@ error: incorrect close delimiter: `)`
    |
 LL |     if foo {
    |            - un-closed delimiter
-LL |     //~^ ERROR: cannot find value `foo`
-LL |     ) //~ ERROR: incorrect close delimiter: `)`
+LL |
+LL |     )
    |     ^ incorrect close delimiter
 
 error[E0425]: cannot find value `foo` in this scope

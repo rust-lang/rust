@@ -1,7 +1,7 @@
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
   --> $DIR/move-out-of-slice-1.rs:8:13
    |
-LL |         box [a] => {}, //~ ERROR cannot move out of type `[A]`, a non-copy slice
+LL |         box [a] => {},
    |             ^-^
    |             ||
    |             |hint: to prevent move, use `ref a` or `ref mut a`

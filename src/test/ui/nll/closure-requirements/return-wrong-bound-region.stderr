@@ -23,7 +23,7 @@ note: No external requirements
    |
 LL | / fn test() {
 LL | |     expect_sig(|a, b| b); // ought to return `a`
-LL | |     //~^ ERROR
+LL | |
 LL | | }
    | |_^
    |

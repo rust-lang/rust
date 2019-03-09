@@ -1,7 +1,7 @@
 error: unreachable statement
   --> $DIR/lint-attr-non-item-node.rs:7:9
    |
-LL |         "unreachable"; //~ ERROR unreachable statement
+LL |         "unreachable";
    |         ^^^^^^^^^^^^^^
    |
 note: lint level defined here

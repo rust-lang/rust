@@ -3,7 +3,7 @@ error[E0597]: `y` does not live long enough
    |
 LL |     let foo = Foo(&y);
    |                   ^^ borrowed value does not live long enough
-LL |     //~^ ERROR `y` does not live long enough
+LL |
 LL |     let Foo::<'static>(_z) = foo;
    |         ------------------ type annotation requires that `y` is borrowed for `'static`
 LL | }

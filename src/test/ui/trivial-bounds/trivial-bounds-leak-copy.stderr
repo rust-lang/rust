@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/trivial-bounds-leak-copy.rs:9:5
    |
-LL |     *t //~ ERROR
+LL |     *t
    |     ^^ cannot move out of borrowed content
 
 error: aborting due to previous error

@@ -1,19 +1,19 @@
 error: macro requires a string literal as an argument
   --> $DIR/global-asm.rs:4:5
    |
-LL |     global_asm!();  //~ ERROR requires a string literal as an argument
+LL |     global_asm!();
    |     ^^^^^^^^^^^^^^ string literal required
 
 error: expected expression, found keyword `struct`
   --> $DIR/global-asm.rs:5:17
    |
-LL |     global_asm!(struct); //~ ERROR expected expression
+LL |     global_asm!(struct);
    |                 ^^^^^^ expected expression
 
 error: inline assembly must be a string literal
   --> $DIR/global-asm.rs:6:17
    |
-LL |     global_asm!(123); //~ ERROR inline assembly must be a string literal
+LL |     global_asm!(123);
    |                 ^^^
 
 error: aborting due to 3 previous errors

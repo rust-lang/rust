@@ -1,7 +1,7 @@
 error: expected one of `!` or `::`, found `-`
   --> $DIR/feature-gate-extern_prelude.rs:1:4
    |
-LL | can-only-test-this-in-run-make-fulldeps //~ ERROR expected one of `!` or `::`, found `-`
+LL | can-only-test-this-in-run-make-fulldeps
    |    ^ expected one of `!` or `::` here
 
 error: aborting due to previous error

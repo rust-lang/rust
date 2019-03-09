@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow immutable borrowed content `*buf` as mutable
   --> $DIR/issue-40823.rs:3:5
    |
-LL |     buf.iter_mut(); //~ ERROR cannot borrow immutable borrowed content
+LL |     buf.iter_mut();
    |     ^^^ cannot borrow as mutable
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:4:5
    |
-LL |     Fn::call(&f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     Fn::call(&f, ());
    |     ^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |     Fn::call(&f, ()); //~ ERROR use of unstable library feature 'fn_traits'
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:5:5
    |
-LL |     FnMut::call_mut(&mut f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     FnMut::call_mut(&mut f, ());
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     FnMut::call_mut(&mut f, ()); //~ ERROR use of unstable library feature 
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:6:5
    |
-LL |     FnOnce::call_once(f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     FnOnce::call_once(f, ());
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable

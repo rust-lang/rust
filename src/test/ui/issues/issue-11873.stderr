@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `v` because it is borrowed
    |
 LL |     let mut f = || v.push(2);
    |                 -- borrow of `v` occurs here
-LL |     let _w = v; //~ ERROR: cannot move out of `v`
+LL |     let _w = v;
    |         ^^ move out of `v` occurs here
 
 error: aborting due to previous error

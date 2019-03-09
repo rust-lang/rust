@@ -2,7 +2,7 @@ error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the 
   --> $DIR/regions-free-region-ordering-callee-4.rs:5:1
    |
 LL | / fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
-LL | |     //~^ ERROR reference has a longer lifetime than the data it references
+LL | |
 LL | |     // Do not infer ordering from closure argument types.
 LL | |     let z: Option<&'a &'b usize> = None;
 LL | | }

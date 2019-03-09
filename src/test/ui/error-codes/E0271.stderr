@@ -1,7 +1,7 @@
 error[E0271]: type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
   --> $DIR/E0271.rs:10:5
    |
-LL |     foo(3_i8); //~ ERROR E0271
+LL |     foo(3_i8);
    |     ^^^ expected reference, found u32
    |
    = note: expected type `&'static str`

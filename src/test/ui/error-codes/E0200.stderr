@@ -1,7 +1,7 @@
 error[E0200]: the trait `Bar` requires an `unsafe impl` declaration
   --> $DIR/E0200.rs:5:1
    |
-LL | impl Bar for Foo { } //~ ERROR E0200
+LL | impl Bar for Foo { }
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

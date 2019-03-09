@@ -1,13 +1,13 @@
 error: symbol-name(_ZN5basic4main17h08bcaf310214ed52E)
   --> $DIR/basic.rs:3:1
    |
-LL | #[rustc_symbol_name] //~ ERROR _ZN5basic4main
+LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: item-path(main)
   --> $DIR/basic.rs:4:1
    |
-LL | #[rustc_item_path] //~ ERROR item-path(main)
+LL | #[rustc_item_path]
    | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0616]: field `c` of struct `m::U` is private
   --> $DIR/union-field-privacy-2.rs:14:13
    |
-LL |     let c = u.c; //~ ERROR field `c` of struct `m::U` is private
+LL |     let c = u.c;
    |             ^^^
 
 error: aborting due to previous error

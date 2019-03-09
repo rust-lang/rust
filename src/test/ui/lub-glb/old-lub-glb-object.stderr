@@ -5,7 +5,7 @@ LL |       let z = match 22 {
    |  _____________-
 LL | |         0 => x,
    | |              - this is found to be of type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-LL | |         _ => y, //~ ERROR match arms have incompatible types
+LL | |         _ => y,
    | |              ^ expected bound lifetime parameter 'a, found concrete lifetime
 LL | |     };
    | |_____- `match` arms have incompatible types

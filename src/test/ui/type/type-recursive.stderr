@@ -1,7 +1,7 @@
 error[E0072]: recursive type `T1` has infinite size
   --> $DIR/type-recursive.rs:1:1
    |
-LL | struct T1 { //~ ERROR E0072
+LL | struct T1 {
    | ^^^^^^^^^ recursive type has infinite size
 LL |     foo: isize,
 LL |     foolish: T1

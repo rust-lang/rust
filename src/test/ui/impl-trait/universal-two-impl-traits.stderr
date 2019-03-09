@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/universal-two-impl-traits.rs:5:9
    |
-LL |     a = y; //~ ERROR mismatched
+LL |     a = y;
    |         ^ expected type parameter, found a different type parameter
    |
    = note: expected type `impl Debug` (type parameter)

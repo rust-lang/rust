@@ -1,7 +1,7 @@
 error[E0284]: type annotations required: cannot resolve `<Self as std::iter::Iterator>::Item == i32`
   --> $DIR/associated-types-overridden-binding.rs:4:1
    |
-LL | trait Bar: Foo<Item = u32> {} //~ ERROR type annotations required
+LL | trait Bar: Foo<Item = u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by `Foo`

@@ -1,13 +1,13 @@
 error[E0433]: failed to resolve: not a module `V`
   --> $DIR/resolve-variant-assoc-item.rs:5:8
    |
-LL |     E::V::associated_item; //~ ERROR failed to resolve: not a module `V`
+LL |     E::V::associated_item;
    |        ^ not a module `V`
 
 error[E0433]: failed to resolve: not a module `V`
   --> $DIR/resolve-variant-assoc-item.rs:6:5
    |
-LL |     V::associated_item; //~ ERROR failed to resolve: not a module `V`
+LL |     V::associated_item;
    |     ^ not a module `V`
 
 error: aborting due to 2 previous errors

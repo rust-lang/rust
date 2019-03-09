@@ -1,7 +1,7 @@
 error: expected one of `:` or `@`, found `)`
   --> $DIR/omitted-arg-in-item-fn.rs:1:9
    |
-LL | fn foo(x) { //~ ERROR expected one of `:` or `@`, found `)`
+LL | fn foo(x) {
    |         ^ expected one of `:` or `@` here
 
 error: aborting due to previous error

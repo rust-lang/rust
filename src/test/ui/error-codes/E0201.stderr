@@ -3,7 +3,7 @@ error[E0201]: duplicate definitions with name `bar`:
    |
 LL |     fn bar(&self) -> bool { self.0 > 5 }
    |     ------------------------------------ previous definition of `bar` here
-LL |     fn bar() {} //~ ERROR E0201
+LL |     fn bar() {}
    |     ^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `baz`:
@@ -11,7 +11,7 @@ error[E0201]: duplicate definitions with name `baz`:
    |
 LL |     fn baz(&self) -> bool { true }
    |     ------------------------------ previous definition of `baz` here
-LL |     fn baz(&self) -> bool { self.0 > 5 } //~ ERROR E0201
+LL |     fn baz(&self) -> bool { self.0 > 5 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `Quux`:
@@ -20,7 +20,7 @@ error[E0201]: duplicate definitions with name `Quux`:
 LL |     type Quux = u32;
    |     ---------------- previous definition of `Quux` here
 ...
-LL |     type Quux = u32; //~ ERROR E0201
+LL |     type Quux = u32;
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
 error: aborting due to 3 previous errors

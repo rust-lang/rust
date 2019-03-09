@@ -1,7 +1,7 @@
 error[E0376]: the trait `CoerceUnsized` may only be implemented for a coercion between structures
   --> $DIR/E0376.rs:8:1
    |
-LL | impl<T, U> CoerceUnsized<U> for Foo<T> {} //~ ERROR E0376
+LL | impl<T, U> CoerceUnsized<U> for Foo<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

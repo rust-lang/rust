@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `i`
   --> $DIR/borrowck-init-in-called-fn-expr.rs:4:9
    |
-LL |         i //~ ERROR use of possibly uninitialized variable: `i`
+LL |         i
    |         ^ use of possibly uninitialized `i`
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_array.rs:9:34
    |
-LL |     let x: [usize; 2] = [return, 22]; //~ ERROR unreachable
+LL |     let x: [usize; 2] = [return, 22];
    |                                  ^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unreachable_code)]
 error: unreachable expression
   --> $DIR/expr_array.rs:14:25
    |
-LL |     let x: [usize; 2] = [22, return]; //~ ERROR unreachable
+LL |     let x: [usize; 2] = [22, return];
    |                         ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

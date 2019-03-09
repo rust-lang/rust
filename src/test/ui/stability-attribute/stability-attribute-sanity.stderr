@@ -1,97 +1,97 @@
 error[E0541]: unknown meta item 'reason'
   --> $DIR/stability-attribute-sanity.rs:8:42
    |
-LL |     #[stable(feature = "a", since = "b", reason)] //~ ERROR unknown meta item 'reason' [E0541]
+LL |     #[stable(feature = "a", since = "b", reason)]
    |                                          ^^^^^^ expected one of `since`, `note`
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:11:29
    |
-LL |     #[stable(feature = "a", since)] //~ ERROR incorrect meta item [E0539]
+LL |     #[stable(feature = "a", since)]
    |                             ^^^^^
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:14:14
    |
-LL |     #[stable(feature, since = "a")] //~ ERROR incorrect meta item [E0539]
+LL |     #[stable(feature, since = "a")]
    |              ^^^^^^^
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:17:29
    |
-LL |     #[stable(feature = "a", since(b))] //~ ERROR incorrect meta item [E0539]
+LL |     #[stable(feature = "a", since(b))]
    |                             ^^^^^^^^
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:20:14
    |
-LL |     #[stable(feature(b), since = "a")] //~ ERROR incorrect meta item [E0539]
+LL |     #[stable(feature(b), since = "a")]
    |              ^^^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:25:5
    |
-LL |     #[unstable(issue = "0")] //~ ERROR missing 'feature' [E0546]
+LL |     #[unstable(issue = "0")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0547]: missing 'issue'
   --> $DIR/stability-attribute-sanity.rs:28:5
    |
-LL |     #[unstable(feature = "b")] //~ ERROR missing 'issue' [E0547]
+LL |     #[unstable(feature = "b")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:31:5
    |
-LL |     #[stable(since = "a")] //~ ERROR missing 'feature' [E0546]
+LL |     #[stable(since = "a")]
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity.rs:36:5
    |
-LL |     #[stable(feature = "a")] //~ ERROR missing 'since' [E0542]
+LL |     #[stable(feature = "a")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity.rs:40:5
    |
-LL |     #[rustc_deprecated(reason = "a")] //~ ERROR missing 'since' [E0542]
+LL |     #[rustc_deprecated(reason = "a")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:45:1
    |
-LL | #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
+LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:49:1
    |
-LL | #[unstable(feature = "b", issue = "0")] //~ ERROR multiple stability levels [E0544]
+LL | #[unstable(feature = "b", issue = "0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:53:1
    |
-LL | #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
+LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0540]: multiple rustc_deprecated attributes
   --> $DIR/stability-attribute-sanity.rs:61:1
    |
-LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
+LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0553]: multiple rustc_const_unstable attributes
   --> $DIR/stability-attribute-sanity.rs:61:1
    |
-LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
+LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Invalid stability or deprecation version found
   --> $DIR/stability-attribute-sanity.rs:61:1
    |
-LL | pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
+LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute

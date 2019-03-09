@@ -4,7 +4,7 @@ error[E0530]: match bindings cannot shadow tuple structs
 LL | struct TupleStruct();
    | --------------------- the tuple struct `TupleStruct` is defined here
 ...
-LL |         TupleStruct => {} //~ ERROR match bindings cannot shadow tuple structs
+LL |         TupleStruct => {}
    |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
 
 error[E0530]: match bindings cannot shadow tuple variants
@@ -13,7 +13,7 @@ error[E0530]: match bindings cannot shadow tuple variants
 LL | use E::*;
    |     ---- the tuple variant `TupleVariant` is imported here
 ...
-LL |         TupleVariant => {} //~ ERROR match bindings cannot shadow tuple variants
+LL |         TupleVariant => {}
    |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
 
 error[E0530]: match bindings cannot shadow struct variants
@@ -22,7 +22,7 @@ error[E0530]: match bindings cannot shadow struct variants
 LL | use E::*;
    |     ---- the struct variant `BracedVariant` is imported here
 ...
-LL |         BracedVariant => {} //~ ERROR match bindings cannot shadow struct variants
+LL |         BracedVariant => {}
    |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
 
 error[E0530]: match bindings cannot shadow statics
@@ -31,7 +31,7 @@ error[E0530]: match bindings cannot shadow statics
 LL | static STATIC: () = ();
    | ----------------------- the static `STATIC` is defined here
 ...
-LL |         STATIC => {} //~ ERROR match bindings cannot shadow statics
+LL |         STATIC => {}
    |         ^^^^^^ cannot be named the same as a static
 
 error[E0530]: let bindings cannot shadow tuple structs
@@ -40,7 +40,7 @@ error[E0530]: let bindings cannot shadow tuple structs
 LL | struct TupleStruct();
    | --------------------- the tuple struct `TupleStruct` is defined here
 ...
-LL |     let TupleStruct = doesnt_matter; //~ ERROR let bindings cannot shadow tuple structs
+LL |     let TupleStruct = doesnt_matter;
    |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
 
 error[E0530]: let bindings cannot shadow tuple variants
@@ -49,7 +49,7 @@ error[E0530]: let bindings cannot shadow tuple variants
 LL | use E::*;
    |     ---- the tuple variant `TupleVariant` is imported here
 ...
-LL |     let TupleVariant = doesnt_matter; //~ ERROR let bindings cannot shadow tuple variants
+LL |     let TupleVariant = doesnt_matter;
    |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
 
 error[E0530]: let bindings cannot shadow struct variants
@@ -58,7 +58,7 @@ error[E0530]: let bindings cannot shadow struct variants
 LL | use E::*;
    |     ---- the struct variant `BracedVariant` is imported here
 ...
-LL |     let BracedVariant = doesnt_matter; //~ ERROR let bindings cannot shadow struct variants
+LL |     let BracedVariant = doesnt_matter;
    |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
 
 error[E0530]: let bindings cannot shadow statics
@@ -67,7 +67,7 @@ error[E0530]: let bindings cannot shadow statics
 LL | static STATIC: () = ();
    | ----------------------- the static `STATIC` is defined here
 ...
-LL |     let STATIC = doesnt_matter; //~ ERROR let bindings cannot shadow statics
+LL |     let STATIC = doesnt_matter;
    |         ^^^^^^ cannot be named the same as a static
 
 error: aborting due to 8 previous errors

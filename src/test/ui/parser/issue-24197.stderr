@@ -1,7 +1,7 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `[`
   --> $DIR/issue-24197.rs:2:12
    |
-LL |     let buf[0] = 0; //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `[`
+LL |     let buf[0] = 0;
    |            ^ expected one of `:`, `;`, `=`, or `@` here
 
 error: aborting due to previous error

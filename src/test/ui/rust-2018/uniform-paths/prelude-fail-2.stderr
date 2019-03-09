@@ -1,7 +1,7 @@
 error: cannot use a built-in attribute through an import
   --> $DIR/prelude-fail-2.rs:15:3
    |
-LL | #[imported_inline] //~ ERROR cannot use a built-in attribute through an import
+LL | #[imported_inline]
    |   ^^^^^^^^^^^^^^^
    |
 note: the built-in attribute imported here
@@ -13,13 +13,13 @@ LL | use inline as imported_inline;
 error: cannot use a built-in attribute through an import
   --> $DIR/prelude-fail-2.rs:16:3
    |
-LL | #[builtin::imported_inline] //~ ERROR cannot use a built-in attribute through an import
+LL | #[builtin::imported_inline]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot use a tool module through an import
   --> $DIR/prelude-fail-2.rs:17:3
    |
-LL | #[imported_rustfmt::skip] //~ ERROR cannot use a tool module through an import
+LL | #[imported_rustfmt::skip]
    |   ^^^^^^^^^^^^^^^^
    |
 note: the tool module imported here
@@ -31,7 +31,7 @@ LL | use rustfmt as imported_rustfmt;
 error: cannot use a tool module through an import
   --> $DIR/prelude-fail-2.rs:18:13
    |
-LL | #[tool_mod::imported_rustfmt::skip] //~ ERROR cannot use a tool module through an import
+LL | #[tool_mod::imported_rustfmt::skip]
    |             ^^^^^^^^^^^^^^^^
    |
 note: the tool module imported here

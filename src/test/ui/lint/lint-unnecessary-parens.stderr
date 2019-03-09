@@ -1,7 +1,7 @@
 error: unnecessary parentheses around `return` value
   --> $DIR/lint-unnecessary-parens.rs:10:12
    |
-LL |     return (1); //~ ERROR unnecessary parentheses around `return` value
+LL |     return (1);
    |            ^^^ help: remove these parentheses
    |
 note: lint level defined here
@@ -13,67 +13,67 @@ LL | #![deny(unused_parens)]
 error: unnecessary parentheses around `return` value
   --> $DIR/lint-unnecessary-parens.rs:13:12
    |
-LL |     return (X { y }); //~ ERROR unnecessary parentheses around `return` value
+LL |     return (X { y });
    |            ^^^^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around function argument
   --> $DIR/lint-unnecessary-parens.rs:18:9
    |
-LL |     bar((true)); //~ ERROR unnecessary parentheses around function argument
+LL |     bar((true));
    |         ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `if` condition
   --> $DIR/lint-unnecessary-parens.rs:20:8
    |
-LL |     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
+LL |     if (true) {}
    |        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `while` condition
   --> $DIR/lint-unnecessary-parens.rs:21:11
    |
-LL |     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
+LL |     while (true) {}
    |           ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `match` head expression
   --> $DIR/lint-unnecessary-parens.rs:22:11
    |
-LL |     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
+LL |     match (true) {
    |           ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `if let` head expression
   --> $DIR/lint-unnecessary-parens.rs:25:16
    |
-LL |     if let 1 = (1) {} //~ ERROR unnecessary parentheses around `if let` head expression
+LL |     if let 1 = (1) {}
    |                ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `while let` head expression
   --> $DIR/lint-unnecessary-parens.rs:26:19
    |
-LL |     while let 1 = (2) {} //~ ERROR unnecessary parentheses around `while let` head expression
+LL |     while let 1 = (2) {}
    |                   ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around method argument
   --> $DIR/lint-unnecessary-parens.rs:40:24
    |
-LL |     X { y: false }.foo((true)); //~ ERROR unnecessary parentheses around method argument
+LL |     X { y: false }.foo((true));
    |                        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
   --> $DIR/lint-unnecessary-parens.rs:42:18
    |
-LL |     let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
+LL |     let mut _a = (0);
    |                  ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
   --> $DIR/lint-unnecessary-parens.rs:43:10
    |
-LL |     _a = (0); //~ ERROR unnecessary parentheses around assigned value
+LL |     _a = (0);
    |          ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
   --> $DIR/lint-unnecessary-parens.rs:44:11
    |
-LL |     _a += (1); //~ ERROR unnecessary parentheses around assigned value
+LL |     _a += (1);
    |           ^^^ help: remove these parentheses
 
 error: aborting due to 12 previous errors

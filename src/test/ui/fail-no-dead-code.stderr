@@ -1,7 +1,7 @@
 error: function is never used: `foo`
   --> $DIR/fail-no-dead-code.rs:4:1
    |
-LL | fn foo() { //~ ERROR function is never used
+LL | fn foo() {
    | ^^^^^^^^
    |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::boxed::Box<_>`:
   --> $DIR/issue-41974.rs:7:1
    |
-LL | impl<T> Drop for T where T: A { //~ ERROR E0119
+LL | impl<T> Drop for T where T: A {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
@@ -12,13 +12,13 @@ LL | impl<T> Drop for T where T: A { //~ ERROR E0119
 error[E0120]: the Drop trait may only be implemented on structures
   --> $DIR/issue-41974.rs:7:18
    |
-LL | impl<T> Drop for T where T: A { //~ ERROR E0119
+LL | impl<T> Drop for T where T: A {
    |                  ^ implementing Drop requires a struct
 
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/issue-41974.rs:7:1
    |
-LL | impl<T> Drop for T where T: A { //~ ERROR E0119
+LL | impl<T> Drop for T where T: A {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type
    |
    = note: only traits defined in the current crate can be implemented for a type parameter

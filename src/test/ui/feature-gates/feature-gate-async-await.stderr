@@ -1,7 +1,7 @@
 error[E0658]: async fn is unstable (see issue #50547)
   --> $DIR/feature-gate-async-await.rs:5:1
    |
-LL | async fn foo() {} //~ ERROR async fn is unstable
+LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(async_await)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | async fn foo() {} //~ ERROR async fn is unstable
 error[E0658]: async blocks are unstable (see issue #50547)
   --> $DIR/feature-gate-async-await.rs:8:13
    |
-LL |     let _ = async {}; //~ ERROR async blocks are unstable
+LL |     let _ = async {};
    |             ^^^^^^^^
    |
    = help: add #![feature(async_await)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     let _ = async {}; //~ ERROR async blocks are unstable
 error[E0658]: async closures are unstable (see issue #50547)
   --> $DIR/feature-gate-async-await.rs:9:13
    |
-LL |     let _ = async || {}; //~ ERROR async closures are unstable
+LL |     let _ = async || {};
    |             ^^^^^^^^^^^
    |
    = help: add #![feature(async_await)] to the crate attributes to enable

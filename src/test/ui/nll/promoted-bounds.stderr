@@ -4,7 +4,7 @@ error[E0597]: `l` does not live long enough
 LL |     let ptr = {
    |         --- borrow later stored here
 LL |         let l = 3;
-LL |         let b = &l; //~ ERROR does not live long enough
+LL |         let b = &l;
    |                 ^^ borrowed value does not live long enough
 ...
 LL |     };

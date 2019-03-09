@@ -1,7 +1,7 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-54224.rs:3:39
    |
-LL | const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]); //~ ERROR temporary value dropped while borrowed
+LL | const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]);
    |                                 ------^^^^^^^^^-
    |                                 |     |        |
    |                                 |     |        temporary value is freed at the end of this statement

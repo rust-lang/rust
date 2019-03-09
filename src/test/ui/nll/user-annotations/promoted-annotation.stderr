@@ -8,7 +8,7 @@ LL |     let f = &drop::<&'a i32>;
    |             ---------------- assignment requires that `x` is borrowed for `'a`
 LL |     f(&x);
    |       ^^ borrowed value does not live long enough
-LL |     //~^ ERROR `x` does not live long enough
+LL |
 LL | }
    | - `x` dropped here while still borrowed
 

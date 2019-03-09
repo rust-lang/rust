@@ -1,7 +1,7 @@
 error: this file contains an un-closed delimiter
   --> $DIR/issue-2354.rs:15:66
    |
-LL | fn foo() { //~ NOTE un-closed delimiter
+LL | fn foo() {
    |          - un-closed delimiter
 LL |   match Some(10) {
    |                  - this delimiter might not be properly closed...
@@ -9,7 +9,7 @@ LL |   match Some(10) {
 LL | }
    | - ...as it matches this but it has different indentation
 ...
-LL |              //~ ERROR this file contains an un-closed delimiter
+LL |
    |                                                                  ^
 
 error[E0601]: `main` function not found in crate `issue_2354`
@@ -18,7 +18,7 @@ error[E0601]: `main` function not found in crate `issue_2354`
 note: here is a function named 'main'
   --> $DIR/issue-2354.rs:14:1
    |
-LL | fn main() {} //~ NOTE here is a function named 'main'
+LL | fn main() {}
    | ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

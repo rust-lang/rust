@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-17551.rs:6:15
    |
-LL |     let foo = B(marker::PhantomData); //~ ERROR type annotations needed
+LL |     let foo = B(marker::PhantomData);
    |         ---   ^ cannot infer type for `T`
    |         |
    |         consider giving `foo` a type

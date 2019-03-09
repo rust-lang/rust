@@ -3,7 +3,7 @@ error[E0277]: the trait bound `(): Bar` is not satisfied
    |
 LL | fn foo() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
-LL |     5; //~^ ERROR the trait bound `(): Bar` is not satisfied
+LL |     5;
    |      - consider removing this semicolon
    |
    = note: the return type of a function must have a statically known size

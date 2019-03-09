@@ -23,7 +23,7 @@ LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |     //~^ ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
+LL | |
 LL | | }
    | |_^
    |
@@ -66,7 +66,7 @@ LL | | where
 LL | |     T: Anything<'b, 'c>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~^ ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+LL | |
 LL | | }
    | |_^
    |
@@ -217,7 +217,7 @@ LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |     //~^ ERROR lifetime may not live long enough
+LL | |
 LL | | }
    | |_^
    |

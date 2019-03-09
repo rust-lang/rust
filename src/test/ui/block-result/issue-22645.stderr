@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `{integer}: Scalar` is not satisfied
   --> $DIR/issue-22645.rs:15:5
    |
-LL |   b + 3 //~ ERROR E0277
+LL |   b + 3
    |     ^ the trait `Scalar` is not implemented for `{integer}`
    |
    = help: the following implementations were found:
@@ -14,7 +14,7 @@ error[E0308]: mismatched types
 LL | fn main() {
    |           - expected `()` because of default return type
 LL |   let b = Bob + 3.5;
-LL |   b + 3 //~ ERROR E0277
+LL |   b + 3
    |   ^^^^^ expected (), found struct `Bob`
    |
    = note: expected type `()`

@@ -1,7 +1,7 @@
 error[E0603]: function `fly` is private
   --> $DIR/issue-3993.rs:1:10
    |
-LL | use zoo::fly; //~ ERROR: function `fly` is private
+LL | use zoo::fly;
    |          ^^^
 
 error: aborting due to previous error

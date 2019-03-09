@@ -1,7 +1,7 @@
 error[E0208]: [+, +]
   --> $DIR/variance-trait-bounds.rs:16:1
    |
-LL | / struct TestStruct<U,T:Setter<U>> { //~ ERROR [+, +]
+LL | / struct TestStruct<U,T:Setter<U>> {
 LL | |     t: T, u: U
 LL | | }
    | |_^
@@ -9,7 +9,7 @@ LL | | }
 error[E0208]: [*, +]
   --> $DIR/variance-trait-bounds.rs:21:1
    |
-LL | / enum TestEnum<U,T:Setter<U>> { //~ ERROR [*, +]
+LL | / enum TestEnum<U,T:Setter<U>> {
 LL | |     Foo(T)
 LL | | }
    | |_^
@@ -17,7 +17,7 @@ LL | | }
 error[E0208]: [*, +]
   --> $DIR/variance-trait-bounds.rs:26:1
    |
-LL | / struct TestContraStruct<U,T:Setter<U>> { //~ ERROR [*, +]
+LL | / struct TestContraStruct<U,T:Setter<U>> {
 LL | |     t: T
 LL | | }
    | |_^
@@ -25,7 +25,7 @@ LL | | }
 error[E0208]: [*, +]
   --> $DIR/variance-trait-bounds.rs:31:1
    |
-LL | / struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [*, +]
+LL | / struct TestBox<U,T:Getter<U>+Setter<U>> {
 LL | |     t: T
 LL | | }
    | |_^

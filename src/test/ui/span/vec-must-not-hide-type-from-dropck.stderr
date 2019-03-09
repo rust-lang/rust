@@ -14,7 +14,7 @@ error[E0597]: `c1` does not live long enough
    |
 LL |     c2.v[0].v.set(Some(&c1));
    |                         ^^ borrowed value does not live long enough
-LL |     //~^ ERROR `c1` does not live long enough
+LL |
 LL | }
    | - `c1` dropped here while still borrowed
    |

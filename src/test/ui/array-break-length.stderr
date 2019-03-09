@@ -1,13 +1,13 @@
 error[E0268]: `break` outside of loop
   --> $DIR/array-break-length.rs:3:17
    |
-LL |         |_: [_; break]| {} //~ ERROR: `break` outside of loop
+LL |         |_: [_; break]| {}
    |                 ^^^^^ cannot break outside of a loop
 
 error[E0268]: `continue` outside of loop
   --> $DIR/array-break-length.rs:7:17
    |
-LL |         |_: [_; continue]| {} //~ ERROR: `continue` outside of loop
+LL |         |_: [_; continue]| {}
    |                 ^^^^^^^^ cannot break outside of a loop
 
 error: aborting due to 2 previous errors

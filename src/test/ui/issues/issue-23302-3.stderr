@@ -1,13 +1,13 @@
 error[E0391]: cycle detected when const checking if rvalue is promotable to static `A`
   --> $DIR/issue-23302-3.rs:1:1
    |
-LL | const A: i32 = B; //~ ERROR cycle detected
+LL | const A: i32 = B;
    | ^^^^^^^^^^^^^^^^^
    |
 note: ...which requires checking which parts of `A` are promotable to static...
   --> $DIR/issue-23302-3.rs:1:16
    |
-LL | const A: i32 = B; //~ ERROR cycle detected
+LL | const A: i32 = B;
    |                ^
 note: ...which requires const checking if rvalue is promotable to static `B`...
   --> $DIR/issue-23302-3.rs:3:1

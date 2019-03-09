@@ -1,7 +1,7 @@
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/issue-10291.rs:3:9
    |
-LL |         x //~ ERROR E0312
+LL |         x
    |         ^
    |
 note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 2:65...
@@ -9,7 +9,7 @@ note: ...the reference is valid for the anonymous lifetime #2 defined on the bod
    |
 LL |       drop::<Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
    |  _________________________________________________________________^
-LL | |         x //~ ERROR E0312
+LL | |         x
 LL | |     }));
    | |_____^
 note: ...but the borrowed content is only valid for the lifetime 'x as defined on the function body at 1:9

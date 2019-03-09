@@ -3,7 +3,7 @@ error[E0428]: the name `Foo` is defined multiple times
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
-LL |     mod Foo {} //~ ERROR the name `Foo` is defined multiple times
+LL |     mod Foo {}
    |     ^^^^^^^ `Foo` redefined here
    |
    = note: `Foo` must be defined only once in the type namespace of this module
@@ -13,7 +13,7 @@ error[E0428]: the name `Foo` is defined multiple times
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
-LL |     struct Foo; //~ ERROR the name `Foo` is defined multiple times
+LL |     struct Foo;
    |     ^^^^^^^^^^^ `Foo` redefined here
    |
    = note: `Foo` must be defined only once in the type namespace of this module
@@ -23,7 +23,7 @@ error[E0428]: the name `Foo` is defined multiple times
    |
 LL |     type Foo = ::T;
    |     --------------- previous definition of the type `Foo` here
-LL |     enum Foo {} //~ ERROR the name `Foo` is defined multiple times
+LL |     enum Foo {}
    |     ^^^^^^^^ `Foo` redefined here
    |
    = note: `Foo` must be defined only once in the type namespace of this module
@@ -33,7 +33,7 @@ error[E0428]: the name `Bar` is defined multiple times
    |
 LL |     type Bar<T> = T;
    |     ---------------- previous definition of the type `Bar` here
-LL |     mod Bar {} //~ ERROR the name `Bar` is defined multiple times
+LL |     mod Bar {}
    |     ^^^^^^^ `Bar` redefined here
    |
    = note: `Bar` must be defined only once in the type namespace of this module

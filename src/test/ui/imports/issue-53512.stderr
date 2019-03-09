@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `std::assert`
   --> $DIR/issue-53512.rs:3:5
    |
-LL | use std::assert; //~ ERROR unresolved import `std::assert`
+LL | use std::assert;
    |     ^^^^^^^^^^^ no `assert` in the root
 
 error: aborting due to previous error

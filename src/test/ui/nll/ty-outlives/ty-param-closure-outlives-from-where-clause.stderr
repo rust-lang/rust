@@ -3,7 +3,7 @@ note: External requirements
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
@@ -25,7 +25,7 @@ note: No external requirements
    |
 LL | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 LL | |     with_signature(a, b, |x, y| {
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |         //
 ...  |
 LL | |     })
@@ -41,7 +41,7 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
@@ -95,7 +95,7 @@ note: External requirements
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
 LL | |     })
@@ -133,7 +133,7 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
 LL | |     })

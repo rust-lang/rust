@@ -9,7 +9,7 @@ LL | #[marco_use] // typo
 error: cannot find macro `bar!` in this scope
   --> $DIR/issue-49074.rs:12:4
    |
-LL |    bar!(); //~ ERROR cannot find macro `bar!` in this scope
+LL |    bar!();
    |    ^^^
    |
    = help: have you added the `#[macro_use]` on the module/import?

@@ -1,7 +1,7 @@
 error[E0658]: the `#[fundamental]` attribute is an experimental feature (see issue #29635)
   --> $DIR/feature-gate-fundamental.rs:1:1
    |
-LL | #[fundamental] //~ ERROR the `#[fundamental]` attribute is an experimental feature
+LL | #[fundamental]
    | ^^^^^^^^^^^^^^
    |
    = help: add #![feature(fundamental)] to the crate attributes to enable

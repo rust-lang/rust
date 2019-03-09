@@ -1,7 +1,7 @@
 error[E0623]: lifetime mismatch
   --> $DIR/underscore-lifetime-elison-mismatch.rs:1:49
    |
-LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); } //~ ERROR lifetime mismatch
+LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
    |                    ------      ------           ^ ...but data from `y` flows into `x` here
    |                                |
    |                                these two types are declared with different lifetimes...

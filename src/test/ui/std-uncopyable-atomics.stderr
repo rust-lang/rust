@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:9:13
    |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
+LL |     let x = *&x;
    |             ^^^
    |             |
    |             cannot move out of borrowed content
@@ -10,7 +10,7 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:11:13
    |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
+LL |     let x = *&x;
    |             ^^^
    |             |
    |             cannot move out of borrowed content
@@ -19,7 +19,7 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:13:13
    |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
+LL |     let x = *&x;
    |             ^^^
    |             |
    |             cannot move out of borrowed content
@@ -28,7 +28,7 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:15:13
    |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
+LL |     let x = *&x;
    |             ^^^
    |             |
    |             cannot move out of borrowed content

@@ -1,7 +1,7 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:7:5
    |
-LL |     foo(|_: isize| {}); //~ ERROR type mismatch
+LL |     foo(|_: isize| {});
    |     ^^^ ---------- found signature of `fn(isize) -> _`
    |     |
    |     expected signature of `fn(usize) -> _`
@@ -15,7 +15,7 @@ LL | fn foo<F: Fn(usize)>(_: F) {}
 error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:8:5
    |
-LL |     bar(|_: isize| {}); //~ ERROR type mismatch
+LL |     bar(|_: isize| {});
    |     ^^^ ---------- found signature of `fn(isize) -> _`
    |     |
    |     expected signature of `fn(usize) -> _`
@@ -32,7 +32,7 @@ error[E0631]: type mismatch in function arguments
 LL |     fn f(_: u64) {}
    |     ------------ found signature of `fn(u64) -> _`
 ...
-LL |     foo(f); //~ ERROR type mismatch
+LL |     foo(f);
    |     ^^^ expected signature of `fn(usize) -> _`
    |
 note: required by `foo`
@@ -47,7 +47,7 @@ error[E0631]: type mismatch in function arguments
 LL |     fn f(_: u64) {}
    |     ------------ found signature of `fn(u64) -> _`
 ...
-LL |     bar(f); //~ ERROR type mismatch
+LL |     bar(f);
    |     ^^^ expected signature of `fn(usize) -> _`
    |
 note: required by `bar`

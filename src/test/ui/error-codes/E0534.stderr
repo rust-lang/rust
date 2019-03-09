@@ -1,7 +1,7 @@
 error[E0534]: expected one argument
   --> $DIR/E0534.rs:1:1
    |
-LL | #[inline()] //~ ERROR E0534
+LL | #[inline()]
    | ^^^^^^^^^^^
 
 error: aborting due to previous error

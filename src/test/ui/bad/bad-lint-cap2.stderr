@@ -1,7 +1,7 @@
 error: unused import: `std::option`
   --> $DIR/bad-lint-cap2.rs:6:5
    |
-LL | use std::option; //~ ERROR
+LL | use std::option;
    |     ^^^^^^^^^^^
    |
 note: lint level defined here

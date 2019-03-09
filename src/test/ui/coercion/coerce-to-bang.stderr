@@ -10,7 +10,7 @@ LL |     foo(return, 22, 44);
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:18:13
    |
-LL |     foo(22, 44, return); //~ ERROR mismatched types
+LL |     foo(22, 44, return);
    |             ^^ expected !, found integer
    |
    = note: expected type `!`
@@ -28,7 +28,7 @@ LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverg
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:36:12
    |
-LL |     foo(a, b, c); //~ ERROR mismatched types
+LL |     foo(a, b, c);
    |            ^ expected !, found integer
    |
    = note: expected type `!`
@@ -37,7 +37,7 @@ LL |     foo(a, b, c); //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:45:12
    |
-LL |     foo(a, b, c); //~ ERROR mismatched types
+LL |     foo(a, b, c);
    |            ^ expected !, found integer
    |
    = note: expected type `!`
@@ -46,7 +46,7 @@ LL |     foo(a, b, c); //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:50:21
    |
-LL |     let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
+LL |     let x: [!; 2] = [return, 22];
    |                     ^^^^^^^^^^^^ expected !, found integer
    |
    = note: expected type `[!; 2]`
@@ -55,7 +55,7 @@ LL |     let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:55:22
    |
-LL |     let x: [!; 2] = [22, return]; //~ ERROR mismatched types
+LL |     let x: [!; 2] = [22, return];
    |                      ^^ expected !, found integer
    |
    = note: expected type `!`
@@ -64,7 +64,7 @@ LL |     let x: [!; 2] = [22, return]; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:60:37
    |
-LL |     let x: (usize, !, usize) = (22, 44, 66); //~ ERROR mismatched types
+LL |     let x: (usize, !, usize) = (22, 44, 66);
    |                                     ^^ expected !, found integer
    |
    = note: expected type `!`
@@ -82,7 +82,7 @@ LL |     let x: (usize, !, usize) = (return, 44, 66);
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:76:37
    |
-LL |     let x: (usize, !, usize) = (22, 44, return); //~ ERROR mismatched types
+LL |     let x: (usize, !, usize) = (22, 44, return);
    |                                     ^^ expected !, found integer
    |
    = note: expected type `!`

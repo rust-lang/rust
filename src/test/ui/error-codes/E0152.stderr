@@ -1,7 +1,7 @@
 error[E0152]: duplicate lang item found: `arc`.
   --> $DIR/E0152.rs:4:1
    |
-LL | struct Foo; //~ ERROR E0152
+LL | struct Foo;
    | ^^^^^^^^^^^
    |
    = note: first defined in crate `alloc`.

@@ -2,7 +2,7 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
   --> $DIR/trait-or-new-type-instead.rs:1:1
    |
 LL | / impl<T> Option<T> {
-LL | | //~^ ERROR cannot define inherent `impl` for a type outside of the crate where the type is defined
+LL | |
 LL | |     pub fn foo(&self) { }
 LL | | }
    | |_^ impl for type defined outside of crate.

@@ -4,16 +4,16 @@ error[E0596]: cannot borrow immutable local variable `y` as mutable
 LL |     let y = Int(2);
    |         - help: make this binding mutable: `mut y`
 ...
-LL |     y   //~ error: cannot borrow immutable local variable `y` as mutable
+LL |     y
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `x`
   --> $DIR/augmented-assignments.rs:13:5
    |
-LL |     x   //~ error: use of moved value: `x`
+LL |     x
    |     ^ value used here after move
 ...
-LL |     x;  //~ value moved here
+LL |     x;
    |     - value moved here
    |
    = note: move occurs because `x` has type `Int`, which does not implement the `Copy` trait

@@ -3,22 +3,22 @@ error: expected `(`, found `<eof>`
 error: expected `(`, found `=`
   --> $DIR/malformed-special-attrs.rs:4:12
    |
-LL | #[cfg_attr] //~ ERROR expected `(`, found `<eof>`
+LL | #[cfg_attr]
    | - expected `(`
 ...
-LL | #[cfg_attr = ""] //~ ERROR expected `(`, found `=`
+LL | #[cfg_attr = ""]
    |            ^ unexpected token
 
 error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
   --> $DIR/malformed-special-attrs.rs:7:1
    |
-LL | #[derive] //~ ERROR attribute must be of the form
+LL | #[derive]
    | ^^^^^^^^^
 
 error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
   --> $DIR/malformed-special-attrs.rs:10:1
    |
-LL | #[derive = ""] //~ ERROR attribute must be of the form
+LL | #[derive = ""]
    | ^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

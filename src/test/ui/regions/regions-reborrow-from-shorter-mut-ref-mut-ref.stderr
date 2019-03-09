@@ -5,7 +5,7 @@ LL | fn copy_borrowed_ptr<'a, 'b, 'c>(p: &'a mut &'b mut &'c mut isize) -> &'b m
    |                                     -----------------------------     -------------
    |                                     |
    |                                     this parameter and the return type are declared with different lifetimes...
-LL |     &mut ***p //~ ERROR lifetime mismatch [E0623]
+LL |     &mut ***p
    |     ^^^^^^^^^ ...but data from `p` is returned here
 
 error: aborting due to previous error

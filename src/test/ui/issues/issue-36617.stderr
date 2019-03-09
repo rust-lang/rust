@@ -1,7 +1,7 @@
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-36617.rs:1:1
    |
-LL | #![derive(Copy)] //~ ERROR `derive` may only be applied to structs, enums and unions
+LL | #![derive(Copy)]
    | ^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Copy)]`
 
 error: aborting due to previous error

@@ -13,7 +13,7 @@ LL | #![warn(unused_extern_crates)]
 error: compilation successful
   --> $DIR/no-macro-use-attr.rs:10:1
    |
-LL | fn main() {} //~ ERROR compilation successful
+LL | fn main() {}
    | ^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error: `extern` block uses type `W` which is not FFI-safe: this union has unspecified layout
   --> $DIR/union-repr-c.rs:15:22
    |
-LL |     static FOREIGN2: W; //~ ERROR union has unspecified layout
+LL |     static FOREIGN2: W;
    |                      ^
    |
 note: lint level defined here

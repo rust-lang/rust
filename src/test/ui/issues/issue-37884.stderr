@@ -2,8 +2,8 @@ error[E0308]: method not compatible with trait
   --> $DIR/issue-37884.rs:6:5
    |
 LL | /     fn next(&'a mut self) -> Option<Self::Item>
-LL | |     //~^ ERROR method not compatible with trait
-LL | |     //~| lifetime mismatch
+LL | |
+LL | |
 LL | |     {
 LL | |         Some(&mut self.0)
 LL | |     }
@@ -15,8 +15,8 @@ note: the anonymous lifetime #1 defined on the method body at 6:5...
   --> $DIR/issue-37884.rs:6:5
    |
 LL | /     fn next(&'a mut self) -> Option<Self::Item>
-LL | |     //~^ ERROR method not compatible with trait
-LL | |     //~| lifetime mismatch
+LL | |
+LL | |
 LL | |     {
 LL | |         Some(&mut self.0)
 LL | |     }

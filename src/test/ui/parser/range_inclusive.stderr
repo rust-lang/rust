@@ -1,7 +1,7 @@
 error[E0586]: inclusive range with no end
   --> $DIR/range_inclusive.rs:4:19
    |
-LL |     for _ in 1..= {} //~ERROR inclusive range with no end
+LL |     for _ in 1..= {}
    |                   ^
    |
    = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `Error: std::default::Default` is not satisfied
   --> $DIR/derives-span-Default-struct.rs:8:5
    |
-LL |     x: Error //~ ERROR
+LL |     x: Error
    |     ^^^^^^^^ the trait `std::default::Default` is not implemented for `Error`
    |
    = note: required by `std::default::Default::default`

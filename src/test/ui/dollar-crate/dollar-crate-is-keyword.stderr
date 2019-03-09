@@ -1,7 +1,7 @@
 error: expected identifier, found reserved identifier `$crate`
   --> $DIR/dollar-crate-is-keyword.rs:6:20
    |
-LL |             struct $crate {} //~ ERROR expected identifier, found reserved identifier `$crate`
+LL |             struct $crate {}
    |                    ^^^^^^ expected identifier, found reserved identifier
 ...
 LL | m!();
@@ -10,7 +10,7 @@ LL | m!();
 error: expected identifier, found reserved identifier `$crate`
   --> $DIR/dollar-crate-is-keyword.rs:11:23
    |
-LL |         use $crate as $crate; //~ ERROR expected identifier, found reserved identifier `$crate`
+LL |         use $crate as $crate;
    |                       ^^^^^^ expected identifier, found reserved identifier
 ...
 LL | m!();
@@ -30,7 +30,7 @@ LL | m!();
 warning: `$crate` may not be imported
   --> $DIR/dollar-crate-is-keyword.rs:11:9
    |
-LL |         use $crate as $crate; //~ ERROR expected identifier, found reserved identifier `$crate`
+LL |         use $crate as $crate;
    |         ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m!();

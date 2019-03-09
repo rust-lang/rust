@@ -4,7 +4,7 @@ error[E0623]: lifetime mismatch
 LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
    |                                   ------------      ------------ these two types are declared with different lifetimes...
 LL |     let z = Ref { data: y.data };
-LL |     x.push(z); //~ ERROR lifetime mismatch
+LL |     x.push(z);
    |            ^ ...but data from `y` flows into `x` here
 
 error: aborting due to previous error

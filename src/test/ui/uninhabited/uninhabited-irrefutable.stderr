@@ -9,7 +9,7 @@ LL | |     D(u32),
 LL | | }
    | |_- `Foo` defined here
 ...
-LL |       let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
+LL |       let Foo::D(_y) = x;
    |           ^^^^^^^^^^ pattern `A(_)` not covered
 
 error: aborting due to previous error

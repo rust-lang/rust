@@ -6,7 +6,7 @@ LL | fn use_<'short,'long>(c: Invariant<'long>,
 LL |                       s: &'short isize,
    |                          ------------- these two types are declared with different lifetimes...
 ...
-LL |     let _: Invariant<'short> = c; //~ ERROR E0623
+LL |     let _: Invariant<'short> = c;
    |                                ^ ...but data from `s` flows into `c` here
 
 error: aborting due to previous error

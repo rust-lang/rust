@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
   --> $DIR/union-derive-eq.rs:15:5
    |
-LL |     a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
+LL |     a: PartialEqNotEq,
    |     ^^^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `PartialEqNotEq`
    |
    = note: required by `std::cmp::AssertParamIsEq`

@@ -1,7 +1,7 @@
 error[E0723]: function pointers in const fn are unstable (see issue #57563)
   --> $DIR/issue-37550.rs:3:9
    |
-LL |     let x = || t; //~ ERROR function pointers in const fn are unstable
+LL |     let x = || t;
    |         ^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

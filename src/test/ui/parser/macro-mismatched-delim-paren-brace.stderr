@@ -1,7 +1,7 @@
 error: unexpected close delimiter: `}`
   --> $DIR/macro-mismatched-delim-paren-brace.rs:5:1
    |
-LL | } //~ ERROR unexpected close delimiter: `}`
+LL | }
    | ^ unexpected close delimiter
 
 error: incorrect close delimiter: `}`
@@ -10,7 +10,7 @@ error: incorrect close delimiter: `}`
 LL |     foo! (
    |          - un-closed delimiter
 LL |         bar, "baz", 1, 2.0
-LL |     } //~ ERROR incorrect close delimiter
+LL |     }
    |     ^ incorrect close delimiter
 
 error: aborting due to 2 previous errors

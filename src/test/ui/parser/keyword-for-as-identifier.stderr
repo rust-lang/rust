@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `for`
   --> $DIR/keyword-for-as-identifier.rs:4:9
    |
-LL |     let for = "foo"; //~ error: expected pattern, found keyword `for`
+LL |     let for = "foo";
    |         ^^^ expected pattern
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: could not find `nonexistent` in `existent`
   --> $DIR/custom-attribute-multisegment.rs:7:13
    |
-LL | #[existent::nonexistent] //~ ERROR failed to resolve: could not find `nonexistent` in `existent`
+LL | #[existent::nonexistent]
    |             ^^^^^^^^^^^ could not find `nonexistent` in `existent`
 
 error: aborting due to previous error

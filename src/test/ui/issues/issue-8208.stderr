@@ -1,13 +1,13 @@
 error[E0432]: unresolved import `self::*`
   --> $DIR/issue-8208.rs:1:5
    |
-LL | use self::*; //~ ERROR: unresolved import `self::*` [E0432]
+LL | use self::*;
    |     ^^^^^^^ cannot glob-import a module into itself
 
 error[E0432]: unresolved import `foo::*`
   --> $DIR/issue-8208.rs:5:9
    |
-LL |     use foo::*; //~ ERROR: unresolved import `foo::*` [E0432]
+LL |     use foo::*;
    |         ^^^^^^ cannot glob-import a module into itself
 
 error[E0432]: unresolved import `super::bar::*`

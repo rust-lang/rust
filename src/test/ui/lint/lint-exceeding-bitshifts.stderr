@@ -1,7 +1,7 @@
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:7:15
    |
-LL |       let n = 1u8 << 8;   //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u8 << 8;
    |               ^^^^^^^^
    |
 note: lint level defined here
@@ -13,103 +13,103 @@ LL | #![deny(exceeding_bitshifts, const_err)]
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:9:15
    |
-LL |       let n = 1u16 << 16; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u16 << 16;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:11:15
    |
-LL |       let n = 1u32 << 32; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u32 << 32;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:13:15
    |
-LL |       let n = 1u64 << 64; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u64 << 64;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:15:15
    |
-LL |       let n = 1i8 << 8;   //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1i8 << 8;
    |               ^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:17:15
    |
-LL |       let n = 1i16 << 16; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1i16 << 16;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:19:15
    |
-LL |       let n = 1i32 << 32; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1i32 << 32;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:21:15
    |
-LL |       let n = 1i64 << 64; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1i64 << 64;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:24:15
    |
-LL |       let n = 1u8 >> 8;   //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1u8 >> 8;
    |               ^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:26:15
    |
-LL |       let n = 1u16 >> 16; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1u16 >> 16;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:28:15
    |
-LL |       let n = 1u32 >> 32; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1u32 >> 32;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:30:15
    |
-LL |       let n = 1u64 >> 64; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1u64 >> 64;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:32:15
    |
-LL |       let n = 1i8 >> 8;   //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1i8 >> 8;
    |               ^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:34:15
    |
-LL |       let n = 1i16 >> 16; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1i16 >> 16;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:36:15
    |
-LL |       let n = 1i32 >> 32; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1i32 >> 32;
    |               ^^^^^^^^^^
 
 error: attempt to shift right with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:38:15
    |
-LL |       let n = 1i64 >> 64; //~ ERROR: attempt to shift right with overflow
+LL |       let n = 1i64 >> 64;
    |               ^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:42:15
    |
-LL |       let n = n << 8; //~ ERROR: attempt to shift left with overflow
+LL |       let n = n << 8;
    |               ^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts.rs:44:15
    |
-LL |       let n = 1u8 << -8; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u8 << -8;
    |               ^^^^^^^^^
 
 error: aborting due to 18 previous errors

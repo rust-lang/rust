@@ -1,7 +1,7 @@
 error[E0599]: no method named `test_mut` found for type `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:7:7
    |
-LL |     a.test_mut(); //~ ERROR no method named `test_mut` found
+LL |     a.test_mut();
    |       ^^^^^^^^ help: did you mean: `get_mut`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -11,7 +11,7 @@ LL |     a.test_mut(); //~ ERROR no method named `test_mut` found
 error[E0599]: no method named `test` found for type `std::vec::Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7
    |
-LL |     a.test(); //~ ERROR no method named `test` found
+LL |     a.test();
    |       ^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -21,7 +21,7 @@ LL |     a.test(); //~ ERROR no method named `test` found
 error[E0599]: no method named `test` found for type `[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:10:11
    |
-LL |     ([1]).test(); //~ ERROR no method named `test` found
+LL |     ([1]).test();
    |           ^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -31,7 +31,7 @@ LL |     ([1]).test(); //~ ERROR no method named `test` found
 error[E0599]: no method named `test` found for type `&[{integer}; 1]` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:11:12
    |
-LL |     (&[1]).test(); //~ ERROR no method named `test` found
+LL |     (&[1]).test();
    |            ^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope

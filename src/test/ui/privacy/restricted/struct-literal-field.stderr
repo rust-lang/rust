@@ -1,7 +1,7 @@
 error[E0451]: field `x` of struct `foo::bar::S` is private
   --> $DIR/struct-literal-field.rs:18:9
    |
-LL |     S { x: 0 }; //~ ERROR private
+LL |     S { x: 0 };
    |         ^^^^ field `x` is private
 
 error: aborting due to previous error

@@ -11,7 +11,7 @@ LL |         use a::b::Bar;
 error[E0423]: expected function, found module `foo`
   --> $DIR/issue-4366-2.rs:25:5
    |
-LL |     foo(); //~ ERROR expected function, found module `foo`
+LL |     foo();
    |     ^^^ not a function
 help: possible better candidates are found in other modules, you can import them into scope
    |

@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `foo`
    |
 LL |     drop(foo);
    |          --- value moved here
-LL |     match foo { //~ ERROR use of moved value
+LL |     match foo {
    |           ^^^ value used here after move
    |
    = note: move occurs because `foo` has type `X`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `e`
    |
 LL |     drop(e);
    |          - value moved here
-LL |     match e { //~ ERROR use of moved value
+LL |     match e {
    |           ^ value used here after move
    |
    = note: move occurs because `e` has type `Enum`, which does not implement the `Copy` trait

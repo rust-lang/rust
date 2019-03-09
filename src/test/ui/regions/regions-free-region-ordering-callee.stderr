@@ -6,7 +6,7 @@ LL | fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
    |                         |
    |                         this parameter and the return type are declared with different lifetimes...
 LL |     // However, it is not safe to assume that 'b <= 'a
-LL |     &*y //~ ERROR lifetime mismatch [E0623]
+LL |     &*y
    |     ^^^ ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch

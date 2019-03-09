@@ -2,7 +2,7 @@ error: compilation successful
   --> $DIR/issue-49824.rs:8:1
    |
 LL | / fn main() {
-LL | |     //~^ compilation successful
+LL | |
 LL | |     let mut x = 0;
 LL | |     || {
 ...  |

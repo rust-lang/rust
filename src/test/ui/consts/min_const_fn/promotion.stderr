@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:11:27
    |
-LL |     let x: &'static () = &foo1(); //~ ERROR does not live long enough
+LL |     let x: &'static () = &foo1();
    |                           ^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -12,7 +12,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:12:28
    |
-LL |     let y: &'static i32 = &foo2(42); //~ ERROR does not live long enough
+LL |     let y: &'static i32 = &foo2(42);
    |                            ^^^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -23,7 +23,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:13:28
    |
-LL |     let z: &'static i32 = &foo3(); //~ ERROR does not live long enough
+LL |     let z: &'static i32 = &foo3();
    |                            ^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -34,7 +34,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:14:34
    |
-LL |     let a: &'static Cell<i32> = &foo4();  //~ ERROR does not live long enough
+LL |     let a: &'static Cell<i32> = &foo4();
    |                                  ^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -45,9 +45,9 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:15:42
    |
-LL |     let a: &'static Option<Cell<i32>> = &foo5(); //~ ERROR does not live long enough
+LL |     let a: &'static Option<Cell<i32>> = &foo5();
    |                                          ^^^^^^ temporary value does not live long enough
-LL |     let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR does not live long enough
+LL |     let a: &'static Option<Cell<i32>> = &foo6();
 LL | }
    | - temporary value only lives until here
    |
@@ -56,7 +56,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promotion.rs:16:42
    |
-LL |     let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR does not live long enough
+LL |     let a: &'static Option<Cell<i32>> = &foo6();
    |                                          ^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

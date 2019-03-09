@@ -1,7 +1,7 @@
 error: defining existential type use does not fully define existential type
   --> $DIR/generic_nondefining_use.rs:9:1
    |
-LL | / fn cmp() -> Cmp<u32> { //~ ERROR defining existential type use does not fully define
+LL | / fn cmp() -> Cmp<u32> {
 LL | |     5u32
 LL | | }
    | |_^

@@ -5,7 +5,7 @@ LL |         p = &x;
    |              ^ borrowed value does not live long enough
 LL |     }
    |     - `x` dropped here while still borrowed
-LL |     //~^^ ERROR `x` does not live long enough
+LL |
 LL | }
    | - borrowed value needs to live until here
 

@@ -1,7 +1,7 @@
 error[E0264]: unknown external lang item: `cake`
   --> $DIR/E0264.rs:5:5
    |
-LL |     fn cake(); //~ ERROR E0264
+LL |     fn cake();
    |     ^^^^^^^^^^
 
 error: aborting due to previous error

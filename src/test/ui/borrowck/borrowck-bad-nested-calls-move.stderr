@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `a` because it is borrowed
    |
 LL |         &*a,
    |          -- borrow of `*a` occurs here
-LL |         a); //~ ERROR cannot move
+LL |         a);
    |         ^ move out of `a` occurs here
 
 error[E0505]: cannot move out of `a` because it is borrowed
@@ -11,7 +11,7 @@ error[E0505]: cannot move out of `a` because it is borrowed
    |
 LL |         &*a,
    |          -- borrow of `*a` occurs here
-LL |         a); //~ ERROR cannot move
+LL |         a);
    |         ^ move out of `a` occurs here
 
 error: aborting due to 2 previous errors

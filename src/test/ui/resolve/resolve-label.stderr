@@ -1,7 +1,7 @@
 error[E0426]: use of undeclared label `'l`
   --> $DIR/resolve-label.rs:5:23
    |
-LL |                 break 'l; //~ ERROR use of undeclared label
+LL |                 break 'l;
    |                       ^^ undeclared label `'l`
 
 error: aborting due to previous error

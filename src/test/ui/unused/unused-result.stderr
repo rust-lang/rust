@@ -1,7 +1,7 @@
 error: unused `MustUse` that must be used
   --> $DIR/unused-result.rs:21:5
    |
-LL |     foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
+LL |     foo::<MustUse>();
    |     ^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unused_results, unused_must_use)]
 error: unused `MustUseMsg` that must be used
   --> $DIR/unused-result.rs:22:5
    |
-LL |     foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
+LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: some message
@@ -21,7 +21,7 @@ LL |     foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
 error: unused result
   --> $DIR/unused-result.rs:34:5
    |
-LL |     foo::<isize>(); //~ ERROR: unused result
+LL |     foo::<isize>();
    |     ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -33,13 +33,13 @@ LL | #![deny(unused_results, unused_must_use)]
 error: unused `MustUse` that must be used
   --> $DIR/unused-result.rs:35:5
    |
-LL |     foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
+LL |     foo::<MustUse>();
    |     ^^^^^^^^^^^^^^^^^
 
 error: unused `MustUseMsg` that must be used
   --> $DIR/unused-result.rs:36:5
    |
-LL |     foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
+LL |     foo::<MustUseMsg>();
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: some message

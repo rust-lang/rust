@@ -4,7 +4,7 @@ error[E0594]: cannot assign to `*x` which is behind a `&` reference
 LL | fn f(x: &i32) {
    |         ---- help: consider changing this to be a mutable reference: `&mut i32`
 LL |     let g = &x;
-LL |     *x = 0;     //~ ERROR cannot assign to `*x` which is behind a `&` reference
+LL |     *x = 0;
    |     ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
 error[E0506]: cannot assign to `*x` because it is borrowed
@@ -12,9 +12,9 @@ error[E0506]: cannot assign to `*x` because it is borrowed
    |
 LL |     let g = &x;
    |             -- borrow of `*x` occurs here
-LL |     *x = 0;     //~ ERROR cannot assign to `*x` which is behind a `&` reference
+LL |     *x = 0;
    |     ^^^^^^ assignment to borrowed `*x` occurs here
-LL |                 //~| ERROR cannot assign to `*x` because it is borrowed
+LL |
 LL |     g;
    |     - borrow later used here
 

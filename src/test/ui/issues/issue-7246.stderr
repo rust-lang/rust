@@ -1,7 +1,7 @@
 error: unreachable statement
   --> $DIR/issue-7246.rs:7:5
    |
-LL |     if *ptr::null() {}; //~ ERROR unreachable
+LL |     if *ptr::null() {};
    |     ^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

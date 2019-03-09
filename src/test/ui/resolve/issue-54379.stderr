@@ -1,7 +1,7 @@
 error: expected `}`, found `,`
   --> $DIR/issue-54379.rs:9:22
    |
-LL |         MyStruct { .., Some(_) } => {}, //~ ERROR pattern does not mention field `s1`
+LL |         MyStruct { .., Some(_) } => {},
    |                    --^
    |                    | |
    |                    | expected `}`
@@ -10,13 +10,13 @@ LL |         MyStruct { .., Some(_) } => {}, //~ ERROR pattern does not mention 
 error: expected `,`
   --> $DIR/issue-54379.rs:9:24
    |
-LL |         MyStruct { .., Some(_) } => {}, //~ ERROR pattern does not mention field `s1`
+LL |         MyStruct { .., Some(_) } => {},
    |                        ^^^^
 
 error[E0027]: pattern does not mention field `s1`
   --> $DIR/issue-54379.rs:9:9
    |
-LL |         MyStruct { .., Some(_) } => {}, //~ ERROR pattern does not mention field `s1`
+LL |         MyStruct { .., Some(_) } => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ missing field `s1`
 
 error: aborting due to 3 previous errors

@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `f.moved`
    |
 LL |     let _b = Foo {noncopyable: g, ..f};
    |                                     - value moved here
-LL |     let _c = Foo {noncopyable: h, ..f}; //~ ERROR use of moved value: `f.moved`
+LL |     let _c = Foo {noncopyable: h, ..f};
    |                                     ^ value used here after move
    |
    = note: move occurs because `f.moved` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

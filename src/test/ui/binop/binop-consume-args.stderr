@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs + rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -13,8 +13,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs + rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -24,7 +24,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs - rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -34,8 +34,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs - rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -45,7 +45,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs * rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -55,8 +55,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs * rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -66,7 +66,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs / rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -76,8 +76,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs / rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -87,7 +87,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs % rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -97,8 +97,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs % rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -108,7 +108,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs & rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -118,8 +118,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs & rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -129,7 +129,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs | rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -139,8 +139,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs | rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -150,7 +150,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs ^ rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -160,8 +160,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs ^ rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -171,7 +171,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs << rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -181,8 +181,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs << rhs;
    |            --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
@@ -192,7 +192,7 @@ error[E0382]: use of moved value: `lhs`
    |
 LL |     lhs >> rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
@@ -202,8 +202,8 @@ error[E0382]: use of moved value: `rhs`
    |
 LL |     lhs >> rhs;
    |            --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
    |
    = note: move occurs because `rhs` has type `B`, which does not implement the `Copy` trait

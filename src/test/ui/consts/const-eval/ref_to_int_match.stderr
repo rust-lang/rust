@@ -1,7 +1,7 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ref_to_int_match.rs:23:1
    |
-LL | const BAR: Int = unsafe { Foo { r: &42 }.f }; //~ ERROR it is undefined behavior to use this value
+LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
@@ -9,7 +9,7 @@ LL | const BAR: Int = unsafe { Foo { r: &42 }.f }; //~ ERROR it is undefined beh
 error: could not evaluate constant pattern
   --> $DIR/ref_to_int_match.rs:7:14
    |
-LL |         10..=BAR => {}, //~ ERROR could not evaluate constant pattern
+LL |         10..=BAR => {},
    |              ^^^
 
 error: aborting due to 2 previous errors

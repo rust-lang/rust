@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*f` as immutable because it is also borrowed as mut
    |
 LL |     let p = &mut f[&s];
    |                  - mutable borrow occurs here
-LL |     let q = &f[&s]; //~ ERROR cannot borrow
+LL |     let q = &f[&s];
    |              ^ immutable borrow occurs here
 LL |     p.use_mut();
 LL | }
@@ -14,7 +14,7 @@ error[E0499]: cannot borrow `*f` as mutable more than once at a time
    |
 LL |     let p = &mut f[&s];
    |                  - first mutable borrow occurs here
-LL |     let q = &mut f[&s]; //~ ERROR cannot borrow
+LL |     let q = &mut f[&s];
    |                  ^ second mutable borrow occurs here
 LL |     p.use_mut();
 LL | }
@@ -25,7 +25,7 @@ error[E0499]: cannot borrow `f.foo` as mutable more than once at a time
    |
 LL |     let p = &mut f.foo[&s];
    |                  ----- first mutable borrow occurs here
-LL |     let q = &mut f.foo[&s]; //~ ERROR cannot borrow
+LL |     let q = &mut f.foo[&s];
    |                  ^^^^^ second mutable borrow occurs here
 LL |     p.use_mut();
 LL | }
@@ -36,7 +36,7 @@ error[E0502]: cannot borrow `f.foo` as mutable because it is also borrowed as im
    |
 LL |     let p = &f.foo[&s];
    |              ----- immutable borrow occurs here
-LL |     let q = &mut f.foo[&s]; //~ ERROR cannot borrow
+LL |     let q = &mut f.foo[&s];
    |                  ^^^^^ mutable borrow occurs here
 LL |     p.use_ref();
 LL | }
@@ -47,7 +47,7 @@ error[E0506]: cannot assign to `f.foo` because it is borrowed
    |
 LL |     let p = &f.foo[&s];
    |              ----- borrow of `f.foo` occurs here
-LL |     f.foo = g; //~ ERROR cannot assign
+LL |     f.foo = g;
    |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
 
 error[E0506]: cannot assign to `*f` because it is borrowed
@@ -55,7 +55,7 @@ error[E0506]: cannot assign to `*f` because it is borrowed
    |
 LL |     let p = &f.foo[&s];
    |              ----- borrow of `*f` occurs here
-LL |     *f = g; //~ ERROR cannot assign
+LL |     *f = g;
    |     ^^^^^^ assignment to borrowed `*f` occurs here
 
 error[E0506]: cannot assign to `f.foo` because it is borrowed
@@ -63,7 +63,7 @@ error[E0506]: cannot assign to `f.foo` because it is borrowed
    |
 LL |     let p = &mut f.foo[&s];
    |                  ----- borrow of `f.foo` occurs here
-LL |     f.foo = g; //~ ERROR cannot assign
+LL |     f.foo = g;
    |     ^^^^^^^^^ assignment to borrowed `f.foo` occurs here
 
 error[E0506]: cannot assign to `*f` because it is borrowed
@@ -71,7 +71,7 @@ error[E0506]: cannot assign to `*f` because it is borrowed
    |
 LL |     let p = &mut f.foo[&s];
    |                  ----- borrow of `*f` occurs here
-LL |     *f = g; //~ ERROR cannot assign
+LL |     *f = g;
    |     ^^^^^^ assignment to borrowed `*f` occurs here
 
 error: aborting due to 8 previous errors

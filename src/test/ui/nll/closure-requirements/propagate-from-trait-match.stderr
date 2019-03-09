@@ -3,7 +3,7 @@ note: External requirements
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |
 LL | |         // This function call requires that
 ...  |
@@ -42,7 +42,7 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | |
 LL | |         // This function call requires that
 ...  |

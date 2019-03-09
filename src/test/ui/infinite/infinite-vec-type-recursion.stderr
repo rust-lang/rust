@@ -9,7 +9,7 @@ note: cycle used when collecting item types in top-level module
   --> $DIR/infinite-vec-type-recursion.rs:1:1
    |
 LL | / type X = Vec<X>;
-LL | | //~^ ERROR cycle detected
+LL | |
 LL | |
 LL | | fn main() { let b: X = Vec::new(); }
    | |____________________________________^

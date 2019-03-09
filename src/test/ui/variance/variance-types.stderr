@@ -1,7 +1,7 @@
 error[E0208]: [-, o, o]
   --> $DIR/variance-types.rs:10:1
    |
-LL | / struct InvariantMut<'a,A:'a,B:'a> { //~ ERROR [-, o, o]
+LL | / struct InvariantMut<'a,A:'a,B:'a> {
 LL | |     t: &'a mut (A,B)
 LL | | }
    | |_^
@@ -9,7 +9,7 @@ LL | | }
 error[E0208]: [o]
   --> $DIR/variance-types.rs:15:1
    |
-LL | / struct InvariantCell<A> { //~ ERROR [o]
+LL | / struct InvariantCell<A> {
 LL | |     t: Cell<A>
 LL | | }
    | |_^
@@ -17,7 +17,7 @@ LL | | }
 error[E0208]: [o]
   --> $DIR/variance-types.rs:20:1
    |
-LL | / struct InvariantIndirect<A> { //~ ERROR [o]
+LL | / struct InvariantIndirect<A> {
 LL | |     t: InvariantCell<A>
 LL | | }
    | |_^
@@ -25,7 +25,7 @@ LL | | }
 error[E0208]: [+]
   --> $DIR/variance-types.rs:25:1
    |
-LL | / struct Covariant<A> { //~ ERROR [+]
+LL | / struct Covariant<A> {
 LL | |     t: A, u: fn() -> A
 LL | | }
    | |_^
@@ -33,7 +33,7 @@ LL | | }
 error[E0208]: [-]
   --> $DIR/variance-types.rs:30:1
    |
-LL | / struct Contravariant<A> { //~ ERROR [-]
+LL | / struct Contravariant<A> {
 LL | |     t: fn(A)
 LL | | }
    | |_^
@@ -41,7 +41,7 @@ LL | | }
 error[E0208]: [+, -, o]
   --> $DIR/variance-types.rs:35:1
    |
-LL | / enum Enum<A,B,C> { //~ ERROR [+, -, o]
+LL | / enum Enum<A,B,C> {
 LL | |     Foo(Covariant<A>),
 LL | |     Bar(Contravariant<B>),
 LL | |     Zed(Covariant<C>,Contravariant<C>)

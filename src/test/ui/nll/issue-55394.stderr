@@ -5,7 +5,7 @@ LL |     fn new(bar: &mut Bar) -> Self {
    |                 -            ---- return type is Foo<'2>
    |                 |
    |                 let's call the lifetime of this reference `'1`
-LL |         Foo { bar } //~ERROR lifetime may not live long enough
+LL |         Foo { bar }
    |         ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
 
 error: aborting due to previous error

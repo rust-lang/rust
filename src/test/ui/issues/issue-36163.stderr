@@ -1,7 +1,7 @@
 error[E0391]: cycle detected when processing `Foo::B::{{constant}}`
   --> $DIR/issue-36163.rs:4:9
    |
-LL |     B = A, //~ ERROR E0391
+LL |     B = A,
    |         ^
    |
 note: ...which requires processing `A`...
@@ -13,7 +13,7 @@ LL | const A: isize = Foo::B as isize;
 note: cycle used when const-evaluating `Foo::B::{{constant}}`
   --> $DIR/issue-36163.rs:4:9
    |
-LL |     B = A, //~ ERROR E0391
+LL |     B = A,
    |         ^
 
 error: aborting due to previous error

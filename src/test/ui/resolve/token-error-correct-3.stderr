@@ -12,7 +12,7 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
    |
 LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
-LL |             //~^ ERROR mismatched types
+LL |
 LL |         } else {
    |         ^ unexpected token
 

@@ -1,7 +1,7 @@
 error[E0426]: use of undeclared label `'x`
   --> $DIR/hygienic-label-1.rs:2:19
    |
-LL |     () => { break 'x; } //~ ERROR use of undeclared label `'x`
+LL |     () => { break 'x; }
    |                   ^^ did you mean `'x`?
 ...
 LL |     'x: loop { foo!() }

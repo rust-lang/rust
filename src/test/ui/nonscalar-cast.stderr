@@ -1,7 +1,7 @@
 error[E0605]: non-primitive cast: `Foo` as `isize`
   --> $DIR/nonscalar-cast.rs:7:20
    |
-LL |     println!("{}", Foo { x: 1 } as isize); //~ non-primitive cast: `Foo` as `isize` [E0605]
+LL |     println!("{}", Foo { x: 1 } as isize);
    |                    ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait

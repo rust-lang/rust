@@ -1,7 +1,7 @@
 error[E0609]: no field `f` on type `*const Rec`
   --> $DIR/unsafe-fn-autoderef.rs:19:14
    |
-LL |     return p.f; //~ ERROR no field `f` on type `*const Rec`
+LL |     return p.f;
    |            --^
    |            |
    |            help: `p` is a raw pointer; try dereferencing it: `(*p).f`

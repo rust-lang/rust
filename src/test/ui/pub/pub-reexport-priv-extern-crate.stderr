@@ -1,7 +1,7 @@
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
   --> $DIR/pub-reexport-priv-extern-crate.rs:4:9
    |
-LL | pub use core as reexported_core; //~ ERROR `core` is private, and cannot be re-exported
+LL | pub use core as reexported_core;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(pub_use_of_private_extern_crate)] on by default
@@ -11,7 +11,7 @@ LL | pub use core as reexported_core; //~ ERROR `core` is private, and cannot be
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
   --> $DIR/pub-reexport-priv-extern-crate.rs:12:9
    |
-LL |     use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
+LL |     use foo1::core;
    |         ^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -20,7 +20,7 @@ LL |     use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
   --> $DIR/pub-reexport-priv-extern-crate.rs:20:13
    |
-LL |     pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be re-exported
+LL |     pub use foo2::bar::core;
    |             ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

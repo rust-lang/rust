@@ -1,7 +1,7 @@
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:38:9
    |
-LL | #![warn(x5400)] //~ WARN unknown lint: `x5400`
+LL | #![warn(x5400)]
    |         ^^^^^
    |
 note: lint level defined here
@@ -13,19 +13,19 @@ LL | #![warn(unused_attributes, unknown_lints)]
 warning: unknown lint: `x5300`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:39:10
    |
-LL | #![allow(x5300)] //~ WARN unknown lint: `x5300`
+LL | #![allow(x5300)]
    |          ^^^^^
 
 warning: unknown lint: `x5200`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:40:11
    |
-LL | #![forbid(x5200)] //~ WARN unknown lint: `x5200`
+LL | #![forbid(x5200)]
    |           ^^^^^
 
 warning: unknown lint: `x5100`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:41:9
    |
-LL | #![deny(x5100)] //~ WARN unknown lint: `x5100`
+LL | #![deny(x5100)]
    |         ^^^^^
 
 warning: unknown lint: `x5400`
@@ -1113,25 +1113,25 @@ LL | #[type_length_limit="0100"]
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:43:1
    |
-LL | #![macro_export] //~ WARN unused attribute
+LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:44:1
    |
-LL | #![plugin_registrar] //~ WARN unused attribute
+LL | #![plugin_registrar]
    | ^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:47:1
    |
-LL | #![main] //~ WARN unused attribute
+LL | #![main]
    | ^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:48:1
    |
-LL | #![start] //~ WARN unused attribute
+LL | #![start]
    | ^^^^^^^^^
 
 warning: unused attribute
@@ -1143,37 +1143,37 @@ LL | #![repr()]
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:53:1
    |
-LL | #![path = "3800"] //~ WARN unused attribute
+LL | #![path = "3800"]
    | ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:54:1
    |
-LL | #![automatically_derived] //~ WARN unused attribute
+LL | #![automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:56:1
    |
-LL | #![no_link] //~ WARN unused attribute
+LL | #![no_link]
    | ^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:58:1
    |
-LL | #![should_panic] //~ WARN unused attribute
+LL | #![should_panic]
    | ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:59:1
    |
-LL | #![ignore] //~ WARN unused attribute
+LL | #![ignore]
    | ^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:65:1
    |
-LL | #![proc_macro_derive()] //~ WARN unused attribute
+LL | #![proc_macro_derive()]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid windows subsystem `1000`, only `windows` and `console` are allowed

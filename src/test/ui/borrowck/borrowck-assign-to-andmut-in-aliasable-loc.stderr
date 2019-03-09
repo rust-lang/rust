@@ -3,7 +3,7 @@ error[E0389]: cannot assign to data in a `&` reference
    |
 LL | fn a(s: &S) {
    |         -- use `&mut S` here to make mutable
-LL |     *s.pointer += 1; //~ ERROR cannot assign
+LL |     *s.pointer += 1;
    |     ^^^^^^^^^^^^^^^ assignment into an immutable reference
 
 error[E0389]: cannot assign to data in a `&` reference
@@ -11,7 +11,7 @@ error[E0389]: cannot assign to data in a `&` reference
    |
 LL | fn c(s: & &mut S) {
    |         -------- use `&mut &mut S` here to make mutable
-LL |     *s.pointer += 1; //~ ERROR cannot assign
+LL |     *s.pointer += 1;
    |     ^^^^^^^^^^^^^^^ assignment into an immutable reference
 
 error: aborting due to 2 previous errors

@@ -7,7 +7,7 @@ LL | |     C(PC),
 LL | | }
    | |_- `P` defined here
 ...
-LL |       match proto { //~ ERROR non-exhaustive patterns
+LL |       match proto {
    |             ^^^^^ pattern `C(QA)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

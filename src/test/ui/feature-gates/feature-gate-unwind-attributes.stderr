@@ -1,7 +1,7 @@
 error[E0658]: #[unwind] is experimental (see issue #58760)
   --> $DIR/feature-gate-unwind-attributes.rs:11:5
    |
-LL |     #[unwind(allowed)] //~ ERROR #[unwind] is experimental
+LL |     #[unwind(allowed)]
    |     ^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unwind_attributes)] to the crate attributes to enable

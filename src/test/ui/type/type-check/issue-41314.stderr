@@ -1,13 +1,13 @@
 error[E0026]: variant `X::Y` does not have a field named `number`
   --> $DIR/issue-41314.rs:7:16
    |
-LL |         X::Y { number } => {} //~ ERROR does not have a field named `number`
+LL |         X::Y { number } => {}
    |                ^^^^^^ variant `X::Y` does not have this field
 
 error[E0027]: pattern does not mention field `0`
   --> $DIR/issue-41314.rs:7:9
    |
-LL |         X::Y { number } => {} //~ ERROR does not have a field named `number`
+LL |         X::Y { number } => {}
    |         ^^^^^^^^^^^^^^^ missing field `0`
    |
    = note: trying to match a tuple variant with a struct variant pattern

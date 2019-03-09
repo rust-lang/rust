@@ -3,7 +3,7 @@ error[E0716]: temporary value dropped while borrowed
    |
 LL |         &(v,)
    |          ^^^^ creates a temporary which is freed while still in use
-LL |         //~^ ERROR temporary value dropped while borrowed [E0716]
+LL |
 LL |     });
    |       - temporary value is freed at the end of this statement
 LL |     println!("{:?}", x);

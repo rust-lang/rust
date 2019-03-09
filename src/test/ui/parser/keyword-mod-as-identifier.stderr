@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `mod`
   --> $DIR/keyword-mod-as-identifier.rs:4:9
    |
-LL |     let mod = "foo"; //~ error: expected pattern, found keyword `mod`
+LL |     let mod = "foo";
    |         ^^^ expected pattern
 
 error: aborting due to previous error

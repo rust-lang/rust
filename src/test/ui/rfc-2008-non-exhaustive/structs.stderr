@@ -27,7 +27,7 @@ error[E0639]: cannot create non-exhaustive struct using struct expression
    |
 LL |       let fr = FunctionalRecord {
    |  ______________^
-LL | |     //~^ ERROR cannot create non-exhaustive struct
+LL | |
 LL | |         first_field: 1920,
 LL | |         second_field: 1080,
 LL | |         ..FunctionalRecord::default()

@@ -1,7 +1,7 @@
 error: concrete type differs from previous defining existential type use
   --> $DIR/different_defining_uses.rs:12:1
    |
-LL | / fn bar() -> Foo { //~ ERROR concrete type differs from previous
+LL | / fn bar() -> Foo {
 LL | |     42i32
 LL | | }
    | |_^ expected `&'static str`, got `i32`

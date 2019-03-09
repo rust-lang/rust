@@ -1,7 +1,7 @@
 error[E0537]: invalid predicate `foo`
   --> $DIR/cfg-attr-invalid-predicate.rs:1:7
    |
-LL | #[cfg(foo(bar))] //~ ERROR invalid predicate `foo`
+LL | #[cfg(foo(bar))]
    |       ^^^^^^^^
 
 error: aborting due to previous error

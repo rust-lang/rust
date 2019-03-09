@@ -1,7 +1,7 @@
 error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
   --> $DIR/feature-gate-allow-internal-unstable.rs:3:1
    |
-LL | #[allow_internal_unstable()] //~ ERROR allow_internal_unstable side-steps
+LL | #[allow_internal_unstable()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(allow_internal_unstable)] to the crate attributes to enable

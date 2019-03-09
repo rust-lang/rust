@@ -6,7 +6,7 @@ LL |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
    |                |
    |                this parameter and the return type are declared with different lifetimes...
 LL | 
-LL |         if true { x } else { self } //~ ERROR lifetime mismatch
+LL |         if true { x } else { self }
    |                              ^^^^ ...but data from `self` is returned here
 
 error: aborting due to previous error

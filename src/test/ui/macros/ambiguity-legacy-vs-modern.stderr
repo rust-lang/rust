@@ -1,7 +1,7 @@
 error[E0659]: `m` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/ambiguity-legacy-vs-modern.rs:31:9
    |
-LL |         m!() //~ ERROR `m` is ambiguous
+LL |         m!()
    |         ^ ambiguous name
    |
 note: `m` could refer to the macro defined here
@@ -18,7 +18,7 @@ LL |         macro m() { 0 }
 error[E0659]: `m` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/ambiguity-legacy-vs-modern.rs:43:5
    |
-LL |     m!() //~ ERROR `m` is ambiguous
+LL |     m!()
    |     ^ ambiguous name
    |
 note: `m` could refer to the macro defined here

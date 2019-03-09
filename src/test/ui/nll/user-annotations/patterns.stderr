@@ -3,7 +3,7 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let y: &'static u32;
    |            ------------ type annotation requires that `x` is borrowed for `'static`
-LL |     y = &x; //~ ERROR
+LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
@@ -13,7 +13,7 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let (y, z): (&'static u32, &'static u32);
    |                 ---------------------------- type annotation requires that `x` is borrowed for `'static`
-LL |     y = &x; //~ ERROR
+LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
@@ -21,7 +21,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:22:13
    |
-LL |     let y = &x; //~ ERROR
+LL |     let y = &x;
    |             ^^ borrowed value does not live long enough
 LL |     let ref z: &'static u32 = y;
    |                ------------ type annotation requires that `x` is borrowed for `'static`
@@ -34,7 +34,7 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let Single { value: y }: Single<&'static u32>;
    |                              -------------------- type annotation requires that `x` is borrowed for `'static`
-LL |     y = &x; //~ ERROR
+LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
@@ -44,7 +44,7 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let Single2 { value: mut _y }: Single2<StaticU32>;
    |                                    ------------------ type annotation requires that `x` is borrowed for `'static`
-LL |     _y = &x; //~ ERROR
+LL |     _y = &x;
    |          ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
@@ -52,7 +52,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:58:27
    |
-LL |     let y: &'static u32 = &x; //~ ERROR
+LL |     let y: &'static u32 = &x;
    |            ------------   ^^ borrowed value does not live long enough
    |            |
    |            type annotation requires that `x` is borrowed for `'static`
@@ -62,7 +62,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:63:27
    |
-LL |     let _: &'static u32 = &x; //~ ERROR
+LL |     let _: &'static u32 = &x;
    |            ------------   ^^ borrowed value does not live long enough
    |            |
    |            type annotation requires that `x` is borrowed for `'static`
@@ -100,7 +100,7 @@ LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:77:40
    |
-LL |     let (_, _): (&'static u32, u32) = (&x, 44); //~ ERROR
+LL |     let (_, _): (&'static u32, u32) = (&x, 44);
    |                 -------------------    ^^ borrowed value does not live long enough
    |                 |
    |                 type annotation requires that `x` is borrowed for `'static`
@@ -110,7 +110,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:82:40
    |
-LL |     let (y, _): (&'static u32, u32) = (&x, 44); //~ ERROR
+LL |     let (y, _): (&'static u32, u32) = (&x, 44);
    |                 -------------------    ^^ borrowed value does not live long enough
    |                 |
    |                 type annotation requires that `x` is borrowed for `'static`
@@ -120,7 +120,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:87:69
    |
-LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x }; //~ ERROR
+LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x };
    |                              --------------------                   ^^ borrowed value does not live long enough
    |                              |
    |                              type annotation requires that `x` is borrowed for `'static`
@@ -130,7 +130,7 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:92:69
    |
-LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x }; //~ ERROR
+LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x };
    |                              --------------------                   ^^ borrowed value does not live long enough
    |                              |
    |                              type annotation requires that `x` is borrowed for `'static`
@@ -142,7 +142,7 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let Double { value1: _, value2: _ }: Double<&'static u32> = Double {
    |                                          -------------------- type annotation requires that `x` is borrowed for `'static`
-LL |         value1: &x, //~ ERROR
+LL |         value1: &x,
    |                 ^^ borrowed value does not live long enough
 ...
 LL | }
@@ -154,7 +154,7 @@ error: lifetime may not live long enough
 LL | fn static_to_a_to_static_through_variable<'a>(x: &'a u32) -> &'static u32 {
    |                                           -- lifetime `'a` defined here
 ...
-LL |     y //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -163,7 +163,7 @@ error: lifetime may not live long enough
 LL | fn static_to_a_to_static_through_tuple<'a>(x: &'a u32) -> &'static u32 {
    |                                        -- lifetime `'a` defined here
 ...
-LL |     y //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -172,7 +172,7 @@ error: lifetime may not live long enough
 LL | fn static_to_a_to_static_through_struct<'a>(_x: &'a u32) -> &'static u32 {
    |                                         -- lifetime `'a` defined here
 LL |     let Single { value: y }: Single<&'a u32> = Single { value: &22 };
-LL |     y //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -180,7 +180,7 @@ error: lifetime may not live long enough
    |
 LL | fn a_to_static_then_static<'a>(x: &'a u32) -> &'static u32 {
    |                            -- lifetime `'a` defined here
-LL |     let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
+LL |     let (y, _z): (&'static u32, u32) = (x, 44);
    |                  ^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 19 previous errors

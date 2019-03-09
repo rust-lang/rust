@@ -1,7 +1,7 @@
 error: cannot find macro `printlx!` in this scope
   --> $DIR/macro-name-typo.rs:2:5
    |
-LL |     printlx!("oh noes!"); //~ ERROR cannot find
+LL |     printlx!("oh noes!");
    |     ^^^^^^^ help: you could try the macro: `println`
 
 error: aborting due to previous error

@@ -1,13 +1,13 @@
 error[E0642]: patterns aren't allowed in methods without bodies
   --> $DIR/no-patterns-in-args-2.rs:6:11
    |
-LL |     fn f2(&arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
+LL |     fn f2(&arg: u8);
    |           ^^^^
 
 error: patterns aren't allowed in methods without bodies
   --> $DIR/no-patterns-in-args-2.rs:4:11
    |
-LL |     fn f1(mut arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
+LL |     fn f1(mut arg: u8);
    |           ^^^^^^^
    |
 note: lint level defined here

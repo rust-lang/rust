@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:7:17
    |
-LL |     let ref x = arr: &[u8]; //~ ERROR mismatched types
+LL |     let ref x = arr: &[u8];
    |                 ^^^ expected slice, found array of 3 elements
    |
    = note: expected type `&[u8]`
@@ -10,7 +10,7 @@ LL |     let ref x = arr: &[u8]; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:8:21
    |
-LL |     let ref mut x = arr: &[u8]; //~ ERROR mismatched types
+LL |     let ref mut x = arr: &[u8];
    |                     ^^^ expected slice, found array of 3 elements
    |
    = note: expected type `&[u8]`
@@ -19,7 +19,7 @@ LL |     let ref mut x = arr: &[u8]; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:9:11
    |
-LL |     match arr: &[u8] { //~ ERROR mismatched types
+LL |     match arr: &[u8] {
    |           ^^^ expected slice, found array of 3 elements
    |
    = note: expected type `&[u8]`
@@ -28,7 +28,7 @@ LL |     match arr: &[u8] { //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:12:17
    |
-LL |     let _len = (arr: &[u8]).len(); //~ ERROR mismatched types
+LL |     let _len = (arr: &[u8]).len();
    |                 ^^^ expected slice, found array of 3 elements
    |
    = note: expected type `&[u8]`

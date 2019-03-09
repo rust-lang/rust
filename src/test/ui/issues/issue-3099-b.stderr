@@ -4,7 +4,7 @@ error[E0428]: the name `a` is defined multiple times
 LL | pub mod a {}
    | --------- previous definition of the module `a` here
 LL | 
-LL | pub mod a {} //~ ERROR the name `a` is defined multiple times
+LL | pub mod a {}
    | ^^^^^^^^^ `a` redefined here
    |
    = note: `a` must be defined only once in the type namespace of this module

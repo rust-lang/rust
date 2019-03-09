@@ -1,25 +1,25 @@
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:11:5
    |
-LL |     foo(); //~ ERROR cannot find function `foo` in this scope
+LL |     foo();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `foo` in module `m`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:12:8
    |
-LL |     m::foo(); //~ ERROR cannot find function `foo` in module `m`
+LL |     m::foo();
    |        ^^^ not found in `m`
 
 error[E0425]: cannot find function `bar` in this scope
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:13:5
    |
-LL |     bar(); //~ ERROR cannot find function `bar` in this scope
+LL |     bar();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `bar` in module `m`
   --> $DIR/namespaced-enum-glob-import-no-impls-xcrate.rs:14:8
    |
-LL |     m::bar(); //~ ERROR cannot find function `bar` in module `m`
+LL |     m::bar();
    |        ^^^ not found in `m`
 
 error: aborting due to 4 previous errors

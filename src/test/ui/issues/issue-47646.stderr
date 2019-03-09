@@ -7,7 +7,7 @@ LL |
 LL |     match (borrow, ()) {
    |           ------------ a temporary with access to the mutable borrow is created here ...
 LL |         (Some(_), ()) => {
-LL |             println!("{:?}", heap); //~ ERROR cannot borrow `heap` as immutable
+LL |             println!("{:?}", heap);
    |                              ^^^^ immutable borrow occurs here
 ...
 LL |     };

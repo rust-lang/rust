@@ -1,13 +1,13 @@
 error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
   --> $DIR/unknown-lint-tool-name.rs:1:9
    |
-LL | #![deny(foo::bar)] //~ ERROR an unknown tool name found in scoped lint: `foo::bar`
+LL | #![deny(foo::bar)]
    |         ^^^
 
 error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
   --> $DIR/unknown-lint-tool-name.rs:3:9
    |
-LL | #[allow(foo::bar)] //~ ERROR an unknown tool name found in scoped lint: `foo::bar`
+LL | #[allow(foo::bar)]
    |         ^^^
 
 error: aborting due to 2 previous errors

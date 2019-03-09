@@ -1,7 +1,7 @@
 error[E0277]: the type `[{integer}]` cannot be indexed by `i32`
   --> $DIR/index-help.rs:3:5
    |
-LL |     x[0i32]; //~ ERROR E0277
+LL |     x[0i32];
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `i32`

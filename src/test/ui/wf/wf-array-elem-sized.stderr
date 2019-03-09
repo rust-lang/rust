@@ -1,7 +1,7 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/wf-array-elem-sized.rs:7:5
    |
-LL |     foo: [[u8]], //~ ERROR E0277
+LL |     foo: [[u8]],
    |     ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`

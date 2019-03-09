@@ -1,7 +1,7 @@
 error[E0428]: the name `D` is defined multiple times
   --> $DIR/dollar-crate.rs:27:13
    |
-LL |             struct D($crate::S); //~ ERROR the name `D` is defined multiple times
+LL |             struct D($crate::S);
    |             ^^^^^^^^^^^^^^^^^^^^
    |             |
    |             `D` redefined here
@@ -15,7 +15,7 @@ LL |     local!();
 error[E0428]: the name `D` is defined multiple times
   --> $DIR/dollar-crate.rs:37:5
    |
-LL |     dollar_crate_external::external!(); //~ ERROR the name `D` is defined multiple times
+LL |     dollar_crate_external::external!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |
    |     `D` redefined here

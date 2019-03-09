@@ -1,7 +1,7 @@
 error[E0200]: the trait `lib::Foo` requires an `unsafe impl` declaration
   --> $DIR/trait-safety-trait-impl-cc.rs:9:1
    |
-LL | / impl lib::Foo for Bar { //~ ERROR requires an `unsafe impl` declaration
+LL | / impl lib::Foo for Bar {
 LL | |     fn foo(&self) -> isize {
 LL | |         panic!();
 LL | |     }

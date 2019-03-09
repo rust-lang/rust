@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-31424.rs:7:15
    |
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
+LL |         (&mut self).bar();
    |               ^^^^
    |               |
    |               cannot reborrow mutably
@@ -12,8 +12,8 @@ warning: function cannot return without recursing
    |
 LL |     fn bar(self: &mut Self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
-LL |         //~^ WARN function cannot return without recursing
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
+LL |
+LL |         (&mut self).bar();
    |         ----------------- recursive call site
    |
    = note: #[warn(unconditional_recursion)] on by default
@@ -22,11 +22,11 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-31424.rs:14:15
    |
-LL |         (&mut self).bar(); //~ ERROR cannot borrow
+LL |         (&mut self).bar();
    |               ^^^^ cannot borrow mutably
 help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
    |
-LL |         self.bar(); //~ ERROR cannot borrow
+LL |         self.bar();
    |         ^^^^
 
 error: aborting due to 2 previous errors

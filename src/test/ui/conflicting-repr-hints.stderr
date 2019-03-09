@@ -1,49 +1,49 @@
 warning[E0566]: conflicting representation hints
   --> $DIR/conflicting-repr-hints.rs:9:8
    |
-LL | #[repr(C, u64)] //~ WARNING conflicting representation hints
+LL | #[repr(C, u64)]
    |        ^  ^^^
 
 warning[E0566]: conflicting representation hints
   --> $DIR/conflicting-repr-hints.rs:12:8
    |
-LL | #[repr(u32, u64)] //~ WARNING conflicting representation hints
+LL | #[repr(u32, u64)]
    |        ^^^  ^^^
 
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:19:1
    |
-LL | struct F(i32); //~ ERROR type has conflicting packed and align representation hints
+LL | struct F(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:23:1
    |
-LL | struct G(i32); //~ ERROR type has conflicting packed and align representation hints
+LL | struct G(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:27:1
    |
-LL | struct H(i32); //~ ERROR type has conflicting packed and align representation hints
+LL | struct H(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0634]: type has conflicting packed representation hints
   --> $DIR/conflicting-repr-hints.rs:30:1
    |
-LL | struct I(i32); //~ ERROR type has conflicting packed representation hints
+LL | struct I(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0634]: type has conflicting packed representation hints
   --> $DIR/conflicting-repr-hints.rs:34:1
    |
-LL | struct J(i32); //~ ERROR type has conflicting packed representation hints
+LL | struct J(i32);
    | ^^^^^^^^^^^^^^
 
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:40:1
    |
-LL | / union X { //~ ERROR type has conflicting packed and align representation hints
+LL | / union X {
 LL | |     i: i32
 LL | | }
    | |_^
@@ -51,7 +51,7 @@ LL | | }
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:46:1
    |
-LL | / union Y { //~ ERROR type has conflicting packed and align representation hints
+LL | / union Y {
 LL | |     i: i32
 LL | | }
    | |_^
@@ -59,7 +59,7 @@ LL | | }
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:52:1
    |
-LL | / union Z { //~ ERROR type has conflicting packed and align representation hints
+LL | / union Z {
 LL | |     i: i32
 LL | | }
    | |_^

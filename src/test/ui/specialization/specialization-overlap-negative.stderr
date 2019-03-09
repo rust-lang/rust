@@ -3,7 +3,7 @@ error[E0119]: conflicting implementations of trait `std::marker::Send` for type 
    |
 LL | unsafe impl<T: Clone> Send for TestType<T> {}
    | ------------------------------------------ first implementation here
-LL | impl<T: MyTrait> !Send for TestType<T> {} //~ ERROR E0119
+LL | impl<T: MyTrait> !Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
 
 error: aborting due to previous error

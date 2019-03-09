@@ -1,19 +1,19 @@
 error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
   --> $DIR/synthetic-param.rs:20:5
    |
-LL |     func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+LL |     func::<u8>(42);
    |     ^^^^^^^^^^
 
 error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
   --> $DIR/synthetic-param.rs:23:5
    |
-LL |     Foo::func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+LL |     Foo::func::<u8>(42);
    |     ^^^^^^^^^^^^^^^
 
 error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
   --> $DIR/synthetic-param.rs:26:5
    |
-LL |     Bar::<i8>::func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+LL |     Bar::<i8>::func::<u8>(42);
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

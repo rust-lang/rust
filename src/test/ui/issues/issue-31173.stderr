@@ -10,7 +10,7 @@ LL |         .cloned()
 error[E0599]: no method named `collect` found for type `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>>` in the current scope
   --> $DIR/issue-31173.rs:14:10
    |
-LL |         .collect(); //~ ERROR no method named `collect`
+LL |         .collect();
    |          ^^^^^^^
    |
    = note: the method `collect` exists but the following trait bounds were not satisfied:

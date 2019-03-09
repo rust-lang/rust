@@ -1,7 +1,7 @@
 error[E0606]: casting `E` as `f32` is invalid
   --> $DIR/enum-to-float-cast.rs:13:18
    |
-LL | static C0: f32 = E::L0 as f32; //~ ERROR casting
+LL | static C0: f32 = E::L0 as f32;
    |                  ^^^^^^^^^^^^
    |
    = help: cast through an integer first
@@ -9,7 +9,7 @@ LL | static C0: f32 = E::L0 as f32; //~ ERROR casting
 error[E0606]: casting `F` as `f32` is invalid
   --> $DIR/enum-to-float-cast.rs:14:18
    |
-LL | static C1: f32 = F::H1 as f32; //~ ERROR casting
+LL | static C1: f32 = F::H1 as f32;
    |                  ^^^^^^^^^^^^
    |
    = help: cast through an integer first

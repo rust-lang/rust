@@ -1,7 +1,7 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
   --> $DIR/regions-free-region-ordering-incorrect.rs:17:21
    |
-LL |             None => &self.val //~ ERROR cannot infer
+LL |             None => &self.val
    |                     ^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the method body at 14:12...
@@ -12,7 +12,7 @@ LL |     fn get<'a>(&'a self) -> &'b T {
 note: ...so that reference does not outlive borrowed content
   --> $DIR/regions-free-region-ordering-incorrect.rs:17:21
    |
-LL |             None => &self.val //~ ERROR cannot infer
+LL |             None => &self.val
    |                     ^^^^^^^^^
 note: but, the lifetime must be valid for the lifetime 'b as defined on the impl at 13:6...
   --> $DIR/regions-free-region-ordering-incorrect.rs:13:6
@@ -24,7 +24,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL | /         match self.next {
 LL | |             Some(ref next) => next.get(),
-LL | |             None => &self.val //~ ERROR cannot infer
+LL | |             None => &self.val
 LL | |         }
    | |_________^
 

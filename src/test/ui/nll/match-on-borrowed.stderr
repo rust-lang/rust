@@ -4,7 +4,7 @@ error[E0503]: cannot use `e` because it was mutably borrowed
 LL |         E::V(ref mut x, _) => x,
    |              --------- borrow of `e.0` occurs here
 ...
-LL |         E::V(_, r) => (), //~ ERROR
+LL |         E::V(_, r) => (),
    |         ^^^^^^^^^^ use of borrowed `e.0`
 ...
 LL |     x;
@@ -16,7 +16,7 @@ error[E0503]: cannot use `*f` because it was mutably borrowed
 LL |         E::V(ref mut x, _) => x,
    |              --------- borrow of `f.0` occurs here
 ...
-LL |         E::V(_, r) => (), //~ ERROR
+LL |         E::V(_, r) => (),
    |         ^^^^^^^^^^ use of borrowed `f.0`
 ...
 LL |     x;
@@ -28,7 +28,7 @@ error[E0503]: cannot use `t` because it was mutably borrowed
 LL |     let x = &mut t;
    |             ------ borrow of `t` occurs here
 LL |     match t {
-LL |         true => (), //~ ERROR
+LL |         true => (),
    |         ^^^^ use of borrowed `t`
 ...
 LL |     x;
@@ -37,7 +37,7 @@ LL |     x;
 error[E0381]: use of possibly uninitialized variable: `n`
   --> $DIR/match-on-borrowed.rs:92:11
    |
-LL |     match n {} //~ ERROR
+LL |     match n {}
    |           ^ use of possibly uninitialized `n`
 
 error: aborting due to 4 previous errors

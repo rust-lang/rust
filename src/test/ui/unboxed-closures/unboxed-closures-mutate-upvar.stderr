@@ -3,7 +3,7 @@ error[E0595]: closure cannot assign to immutable local variable `n`
    |
 LL |     let n = 0;
    |         - help: make this binding mutable: `mut n`
-LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
+LL |     let mut f = to_fn_mut(|| {
    |                           ^^ cannot borrow mutably
 
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
@@ -12,13 +12,13 @@ error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
 LL |     let n = 0;
    |         - help: consider making `n` mutable: `mut n`
 ...
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
   --> $DIR/unboxed-closures-mutate-upvar.rs:46:9
    |
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
@@ -27,14 +27,14 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^
-LL | |         n += 1; //~ ERROR cannot assign
+LL | |         n += 1;
 LL | |     });
    | |_____^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
   --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
    |
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
@@ -43,7 +43,7 @@ help: consider changing this closure to take self by mutable reference
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^
-LL | |         n += 1; //~ ERROR cannot assign
+LL | |         n += 1;
 LL | |     });
    | |_____^
 

@@ -1,7 +1,7 @@
 error: any use of this value will cause an error
   --> $DIR/dangling_raw_ptr.rs:1:1
    |
-LL | / const FOO: *const u32 = { //~ ERROR any use of this value will cause an error
+LL | / const FOO: *const u32 = {
 LL | |     let x = 42;
 LL | |     &x
 LL | | };

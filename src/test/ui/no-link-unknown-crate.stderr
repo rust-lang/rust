@@ -1,7 +1,7 @@
 error[E0463]: can't find crate for `doesnt_exist`
   --> $DIR/no-link-unknown-crate.rs:2:1
    |
-LL | extern crate doesnt_exist; //~ ERROR can't find crate
+LL | extern crate doesnt_exist;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
 
 error: aborting due to previous error

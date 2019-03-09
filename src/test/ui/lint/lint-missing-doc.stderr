@@ -1,7 +1,7 @@
 error: missing documentation for a type alias
   --> $DIR/lint-missing-doc.rs:11:1
    |
-LL | pub type PubTypedef = String; //~ ERROR: missing documentation for a type alias
+LL | pub type PubTypedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,109 +13,109 @@ LL | #![deny(missing_docs)]
 error: missing documentation for a struct
   --> $DIR/lint-missing-doc.rs:18:1
    |
-LL | pub struct PubFoo { //~ ERROR: missing documentation for a struct
+LL | pub struct PubFoo {
    | ^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
   --> $DIR/lint-missing-doc.rs:19:5
    |
-LL |     pub a: isize,      //~ ERROR: missing documentation for a struct field
+LL |     pub a: isize,
    |     ^^^^^^^^^^^^
 
 error: missing documentation for a module
   --> $DIR/lint-missing-doc.rs:30:1
    |
-LL | pub mod pub_module_no_dox {} //~ ERROR: missing documentation for a module
+LL | pub mod pub_module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:34:1
    |
-LL | pub fn foo2() {} //~ ERROR: missing documentation for a function
+LL | pub fn foo2() {}
    | ^^^^^^^^^^^^^
 
 error: missing documentation for a trait
   --> $DIR/lint-missing-doc.rs:52:1
    |
-LL | pub trait C { //~ ERROR: missing documentation for a trait
+LL | pub trait C {
    | ^^^^^^^^^^^
 
 error: missing documentation for a trait method
   --> $DIR/lint-missing-doc.rs:53:5
    |
-LL |     fn foo(&self); //~ ERROR: missing documentation for a trait method
+LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 
 error: missing documentation for a trait method
   --> $DIR/lint-missing-doc.rs:54:5
    |
-LL |     fn foo_with_impl(&self) {} //~ ERROR: missing documentation for a trait method
+LL |     fn foo_with_impl(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for an associated type
   --> $DIR/lint-missing-doc.rs:64:5
    |
-LL |     type AssociatedType; //~ ERROR: missing documentation for an associated type
+LL |     type AssociatedType;
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for an associated type
   --> $DIR/lint-missing-doc.rs:65:5
    |
-LL |     type AssociatedTypeDef = Self; //~ ERROR: missing documentation for an associated type
+LL |     type AssociatedTypeDef = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a method
   --> $DIR/lint-missing-doc.rs:81:5
    |
-LL |     pub fn foo() {} //~ ERROR: missing documentation for a method
+LL |     pub fn foo() {}
    |     ^^^^^^^^^^^^
 
 error: missing documentation for an enum
   --> $DIR/lint-missing-doc.rs:118:1
    |
-LL | pub enum PubBaz { //~ ERROR: missing documentation for an enum
+LL | pub enum PubBaz {
    | ^^^^^^^^^^^^^^^
 
 error: missing documentation for a variant
   --> $DIR/lint-missing-doc.rs:119:5
    |
-LL |     PubBazA { //~ ERROR: missing documentation for a variant
+LL |     PubBazA {
    |     ^^^^^^^
 
 error: missing documentation for a struct field
   --> $DIR/lint-missing-doc.rs:120:9
    |
-LL |         a: isize, //~ ERROR: missing documentation for a struct field
+LL |         a: isize,
    |         ^^^^^^^^
 
 error: missing documentation for a constant
   --> $DIR/lint-missing-doc.rs:151:1
    |
-LL | pub const FOO4: u32 = 0; //~ ERROR: missing documentation for a const
+LL | pub const FOO4: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
   --> $DIR/lint-missing-doc.rs:161:1
    |
-LL | pub static BAR4: u32 = 0; //~ ERROR: missing documentation for a static
+LL | pub static BAR4: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:167:5
    |
-LL |     pub fn undocumented1() {} //~ ERROR: missing documentation for a function
+LL |     pub fn undocumented1() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:168:5
    |
-LL |     pub fn undocumented2() {} //~ ERROR: missing documentation for a function
+LL |     pub fn undocumented2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:174:9
    |
-LL |         pub fn also_undocumented1() {} //~ ERROR: missing documentation for a function
+LL |         pub fn also_undocumented1() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 19 previous errors

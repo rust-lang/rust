@@ -1,7 +1,7 @@
 error[E0658]: type ascription is experimental (see issue #23416)
   --> $DIR/feature-gate-type_ascription.rs:4:13
    |
-LL |     let a = 10: u8; //~ ERROR type ascription is experimental
+LL |     let a = 10: u8;
    |             ^^^^^^
    |
    = help: add #![feature(type_ascription)] to the crate attributes to enable

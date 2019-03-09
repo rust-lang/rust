@@ -1,7 +1,7 @@
 warning: type `snake_case` should have an upper camel case name
   --> $DIR/lint-group-nonstandard-style.rs:22:16
    |
-LL |         struct snake_case; //~ WARN should have an upper camel
+LL |         struct snake_case;
    |                ^^^^^^^^^^ help: convert the identifier to upper camel case: `SnakeCase`
    |
 note: lint level defined here
@@ -14,7 +14,7 @@ LL |         #![warn(nonstandard_style)]
 error: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:4:4
    |
-LL | fn CamelCase() {} //~ ERROR should have a snake
+LL | fn CamelCase() {}
    |    ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here
@@ -27,7 +27,7 @@ LL | #![deny(nonstandard_style)]
 error: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:12:12
    |
-LL |         fn CamelCase() {} //~ ERROR should have a snake
+LL |         fn CamelCase() {}
    |            ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here
@@ -40,7 +40,7 @@ LL |     #[forbid(nonstandard_style)]
 error: static variable `bad` should have an upper case name
   --> $DIR/lint-group-nonstandard-style.rs:14:16
    |
-LL |         static bad: isize = 1; //~ ERROR should have an upper
+LL |         static bad: isize = 1;
    |                ^^^ help: convert the identifier to upper case: `BAD`
    |
 note: lint level defined here
@@ -53,7 +53,7 @@ LL |     #[forbid(nonstandard_style)]
 warning: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:20:12
    |
-LL |         fn CamelCase() {} //~ WARN should have a snake
+LL |         fn CamelCase() {}
    |            ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
    |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error: proc-macro derive panicked
   --> $DIR/issue-36935.rs:6:15
    |
-LL | #[derive(Foo, Bar)] //~ ERROR proc-macro derive panicked
+LL | #[derive(Foo, Bar)]
    |               ^^^
    |
    = help: message: lolnope

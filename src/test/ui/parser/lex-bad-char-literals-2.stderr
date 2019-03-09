@@ -1,7 +1,7 @@
 error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-2.rs:3:5
    |
-LL |     'nope' //~ ERROR: character literal may only contain one codepoint
+LL |     'nope'
    |     ^^^^^^
 
 error[E0601]: `main` function not found in crate `lex_bad_char_literals_2`

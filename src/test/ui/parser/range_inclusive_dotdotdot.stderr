@@ -1,57 +1,57 @@
 error: unexpected token: `...`
   --> $DIR/range_inclusive_dotdotdot.rs:8:12
    |
-LL |     return ...1; //~ERROR unexpected token: `...`
+LL |     return ...1;
    |            ^^^
 help: use `..` for an exclusive range
    |
-LL |     return ..1; //~ERROR unexpected token: `...`
+LL |     return ..1;
    |            ^^
 help: or `..=` for an inclusive range
    |
-LL |     return ..=1; //~ERROR unexpected token: `...`
+LL |     return ..=1;
    |            ^^^
 
 error: unexpected token: `...`
   --> $DIR/range_inclusive_dotdotdot.rs:14:13
    |
-LL |     let x = ...0;    //~ERROR unexpected token: `...`
+LL |     let x = ...0;
    |             ^^^
 help: use `..` for an exclusive range
    |
-LL |     let x = ..0;    //~ERROR unexpected token: `...`
+LL |     let x = ..0;
    |             ^^
 help: or `..=` for an inclusive range
    |
-LL |     let x = ..=0;    //~ERROR unexpected token: `...`
+LL |     let x = ..=0;
    |             ^^^
 
 error: unexpected token: `...`
   --> $DIR/range_inclusive_dotdotdot.rs:18:14
    |
-LL |     let x = 5...5;   //~ERROR unexpected token: `...`
+LL |     let x = 5...5;
    |              ^^^
 help: use `..` for an exclusive range
    |
-LL |     let x = 5..5;   //~ERROR unexpected token: `...`
+LL |     let x = 5..5;
    |              ^^
 help: or `..=` for an inclusive range
    |
-LL |     let x = 5..=5;   //~ERROR unexpected token: `...`
+LL |     let x = 5..=5;
    |              ^^^
 
 error: unexpected token: `...`
   --> $DIR/range_inclusive_dotdotdot.rs:22:15
    |
-LL |     for _ in 0...1 {} //~ERROR unexpected token: `...`
+LL |     for _ in 0...1 {}
    |               ^^^
 help: use `..` for an exclusive range
    |
-LL |     for _ in 0..1 {} //~ERROR unexpected token: `...`
+LL |     for _ in 0..1 {}
    |               ^^
 help: or `..=` for an inclusive range
    |
-LL |     for _ in 0..=1 {} //~ERROR unexpected token: `...`
+LL |     for _ in 0..=1 {}
    |               ^^^
 
 error: aborting due to 4 previous errors

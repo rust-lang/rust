@@ -1,13 +1,13 @@
 error[E0433]: failed to resolve: use of undeclared type or module `E`
   --> $DIR/pattern-error-continue.rs:35:9
    |
-LL |         E::V => {} //~ ERROR failed to resolve: use of undeclared type or module `E`
+LL |         E::V => {}
    |         ^ use of undeclared type or module `E`
 
 error[E0532]: expected tuple struct/variant, found unit variant `A::D`
   --> $DIR/pattern-error-continue.rs:18:9
    |
-LL |         A::D(_) => (),       //~ ERROR expected tuple struct/variant, found unit variant `A::D`
+LL |         A::D(_) => (),
    |         ^^^-
    |            |
    |            help: a tuple variant with a similar name exists: `B`
@@ -15,7 +15,7 @@ LL |         A::D(_) => (),       //~ ERROR expected tuple struct/variant, found
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pattern-error-continue.rs:17:9
    |
-LL |         A::B(_, _, _) => (), //~ ERROR this pattern has 3 fields, but
+LL |         A::B(_, _, _) => (),
    |         ^^^^^^^^^^^^^ expected 2 fields, found 3
 
 error[E0308]: mismatched types

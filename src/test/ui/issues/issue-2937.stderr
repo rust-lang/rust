@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `m::f`
   --> $DIR/issue-2937.rs:1:5
    |
-LL | use m::f as x; //~ ERROR unresolved import `m::f` [E0432]
+LL | use m::f as x;
    |     ^^^^^^^^^ no `f` in `m`
 
 error: aborting due to previous error

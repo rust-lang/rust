@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x` (Ast)
    |
 LL |     drop(x);
    |          - value moved here
-LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
+LL |     let _ = (1,x);
    |                ^ value used here after move
    |
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -16,7 +16,7 @@ LL |     let mut x = Box::new(0);
 ...
 LL |     drop(x);
    |          - value moved here
-LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
+LL |     let _ = (1,x);
    |                ^ value used here after move
 
 error: aborting due to 2 previous errors

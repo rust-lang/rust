@@ -19,7 +19,7 @@ LL |     log(debug, m1::arguments);
 error[E0580]: main function has wrong type
   --> $DIR/bad-expr-path2.rs:5:1
    |
-LL | fn main(arguments: Vec<String>) { //~ ERROR main function has wrong type
+LL | fn main(arguments: Vec<String>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
    = note: expected type `fn()`

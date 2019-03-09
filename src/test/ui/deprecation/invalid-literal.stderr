@@ -1,7 +1,7 @@
 error: attribute must be of the form `#[deprecated]` or `#[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason)]` or `#[deprecated = "reason"]`
   --> $DIR/invalid-literal.rs:1:1
    |
-LL | #[deprecated = b"test"] //~ ERROR attribute must be of the form
+LL | #[deprecated = b"test"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0659]: `Ambiguous` is ambiguous (name vs any other name during import resolution)
   --> $DIR/edition-imports-virtual-2015-ambiguity.rs:15:9
    |
-LL |         edition_imports_2015::gen_ambiguous!(); //~ ERROR `Ambiguous` is ambiguous
+LL |         edition_imports_2015::gen_ambiguous!();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ambiguous name
    |
 note: `Ambiguous` could refer to the struct defined here
@@ -21,7 +21,7 @@ LL |     pub struct Ambiguous {}
 error[E0659]: `edition_imports_2015` is ambiguous (name in the crate root vs extern crate during absolute path resolution)
   --> $DIR/edition-imports-virtual-2015-ambiguity.rs:15:9
    |
-LL |         edition_imports_2015::gen_ambiguous!(); //~ ERROR `Ambiguous` is ambiguous
+LL |         edition_imports_2015::gen_ambiguous!();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ambiguous name
    |
    = note: `edition_imports_2015` could refer to an extern crate passed with `--extern`

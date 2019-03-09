@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/E0001.rs:8:9
    |
-LL |         _ => {/* ... */} //~ ERROR unreachable pattern
+LL |         _ => {/* ... */}
    |         ^
    |
 note: lint level defined here

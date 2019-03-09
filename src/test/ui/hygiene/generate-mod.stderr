@@ -1,19 +1,19 @@
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:35:13
    |
-LL |     genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
+LL |     genmod!(FromOutside, Outer);
    |             ^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:35:26
    |
-LL |     genmod!(FromOutside, Outer); //~ ERROR cannot find type `FromOutside` in this scope
+LL |     genmod!(FromOutside, Outer);
    |                          ^^^^^ not found in this scope
 
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:19:18
    |
-LL |         type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
+LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
@@ -22,7 +22,7 @@ LL |     genmod_transparent!();
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:20:22
    |
-LL |         type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
+LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
@@ -31,7 +31,7 @@ LL |     genmod_transparent!();
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:28:18
    |
-LL |         type A = FromOutside; //~ ERROR cannot find type `FromOutside` in this scope
+LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();
@@ -40,7 +40,7 @@ LL |     genmod_legacy!();
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:29:22
    |
-LL |         type Inner = Outer; //~ ERROR cannot find type `Outer` in this scope
+LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();

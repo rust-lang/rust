@@ -4,13 +4,13 @@ error[E0433]: failed to resolve: use of undeclared type or module `Vec`
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
-LL |         Vec::new(); //~ ERROR failed to resolve
+LL |         Vec::new();
    |         ^^^ use of undeclared type or module `Vec`
 
 error: cannot find macro `print!` in this scope
   --> $DIR/no_implicit_prelude.rs:16:9
    |
-LL |         println!(); //~ ERROR cannot find macro `print!` in this scope
+LL |         println!();
    |         ^^^^^^^^^^^
    |
    = help: have you added the `#[macro_use]` on the module/import?
@@ -22,7 +22,7 @@ error[E0599]: no method named `clone` found for type `()` in the current scope
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
-LL |         ().clone() //~ ERROR no method named `clone` found
+LL |         ().clone()
    |            ^^^^^
    |
    = help: items from traits can only be used if the trait is in scope

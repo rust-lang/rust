@@ -1,7 +1,7 @@
 error[E0407]: method `method` is not a member of trait `Tr`
   --> $DIR/assoc_item_ctxt.rs:35:13
    |
-LL |             fn method() {} //~ ERROR method `method` is not a member of trait `Tr`
+LL |             fn method() {}
    |             ^^^^^^^^^^^^^^ not a member of trait `Tr`
 ...
 LL |     mac_trait_impl!();
@@ -13,7 +13,7 @@ error[E0046]: not all trait items implemented, missing: `method`
 LL |         fn method();
    |         ------------ `method` from trait
 ...
-LL |         impl Tr for u8 { //~ ERROR not all trait items implemented, missing: `method`
+LL |         impl Tr for u8 {
    |         ^^^^^^^^^^^^^^ missing `method` in implementation
 ...
 LL |     mac_trait_impl!();

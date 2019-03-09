@@ -4,7 +4,7 @@ note: No external requirements
 LL |       foo(cell, |cell_a, cell_x| {
    |  _______________^
 LL | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-LL | |         //~^ ERROR
+LL | |
 LL | |     })
    | |_____^
    |
@@ -59,7 +59,7 @@ note: No external requirements
 LL | / fn case2() {
 LL | |     let a = 0;
 LL | |     let cell = Cell::new(&a);
-LL | |     //~^ ERROR `a` does not live long enough
+LL | |
 ...  |
 LL | |     })
 LL | | }

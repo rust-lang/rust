@@ -9,7 +9,7 @@ error[E0701]: attribute can only be applied to a struct or enum
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
-LL | //~^ ERROR attribute can only be applied to a struct or enum [E0701]
+LL |
 LL | trait Bar { }
    | ------------- not a struct or enum
 
@@ -18,7 +18,7 @@ error[E0701]: attribute can only be applied to a struct or enum
    |
 LL |   #[non_exhaustive]
    |   ^^^^^^^^^^^^^^^^^
-LL |   //~^ ERROR attribute can only be applied to a struct or enum [E0701]
+LL |
 LL | / union Baz {
 LL | |     f1: u16,
 LL | |     f2: u16
