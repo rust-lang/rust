@@ -1,5 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
+use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
 use if_chain::if_chain;
 use regex_syntax;
 use rustc::hir::*;
@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprKind::Call(ref fun, ref args) = expr.node;
             if let ExprKind::Path(ref qpath) = fun.node;
             if args.len() == 1;
-            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, fun.hir_id));
+            if let Some(def_id) = cx.tables.qpath_def(qpath, fun.hir_id).opt_def_id();
             then {
                 if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
                    match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {

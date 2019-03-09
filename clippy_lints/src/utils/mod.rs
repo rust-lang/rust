@@ -845,10 +845,6 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
     }
 }
 
-pub fn opt_def_id(def: Def) -> Option<DefId> {
-    def.opt_def_id()
-}
-
 pub fn is_self(slf: &Arg) -> bool {
     if let PatKind::Binding(.., name, _) = slf.pat.node {
         name.name == keywords::SelfLower.name()
