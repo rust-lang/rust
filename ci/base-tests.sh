@@ -4,7 +4,7 @@ echo "Running clippy base tests"
 
 PATH=$PATH:./node_modules/.bin
 if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-  remark -f *.md > /dev/null
+  remark -f *.md -f doc/*.md > /dev/null
 fi
 # build clippy in debug mode and run tests
 cargo build --features debugging

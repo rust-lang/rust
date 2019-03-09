@@ -107,13 +107,13 @@ script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
   - cargo clippy -- -D warnings
-  # in order to also check tests and none-default crate features, use
+  # in order to also check tests and non-default crate features, use
   - cargo clippy --all-targets --all-features -- -D warnings
   - cargo test
   # etc.
 ```
 
-It might happen that Clippy is not available for a certain nightly release.
+If you are on nightly, It might happen that Clippy is not available for a certain nightly release.
 In this case you can try to conditionally install Clippy from the git repo.
 
 ```yaml
