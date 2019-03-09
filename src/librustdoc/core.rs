@@ -277,7 +277,7 @@ impl DocAccessLevels for AccessLevels<DefId> {
 /// will be created for the handler.
 pub fn new_handler(error_format: ErrorOutputType,
                    source_map: Option<Lrc<source_map::SourceMap>>,
-                   treat_err_as_bug: bool,
+                   treat_err_as_bug: Option<usize>,
                    ui_testing: bool,
 ) -> errors::Handler {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so

@@ -379,9 +379,22 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     let body = ir.tcx.hir().body(body_id);
 
     for arg in &body.arguments {
+        let is_shorthand = match arg.pat.node {
+            crate::hir::PatKind::Struct(..) => true,
+            _ => false,
+        };
         arg.pat.each_binding(|_bm, hir_id, _x, ident| {
             debug!("adding argument {:?}", hir_id);
-            fn_maps.add_variable(Arg(hir_id, ident.name));
+            let var = if is_shorthand {
+                Local(LocalInfo {
+                    id: hir_id,
+                    name: ident.name,
+                    is_shorthand: true,
+                })
+            } else {
+                Arg(hir_id, ident.name)
+            };
+            fn_maps.add_variable(var);
         })
     };
 

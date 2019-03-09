@@ -673,6 +673,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                         .zip(state_tys)
                         .enumerate()
                         .filter_map(move |(i, (decl, ty))| {
+                            let ty = fx.monomorphize(&ty);
                             decl.name.map(|name| (i + upvar_count + 1, name, false, ty))
                         })
                 }).into_iter().flatten();

@@ -54,7 +54,7 @@ impl ParseSess {
         let cm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
-                                                false,
+                                                None,
                                                 Some(cm.clone()));
         ParseSess::with_span_handler(handler, cm)
     }

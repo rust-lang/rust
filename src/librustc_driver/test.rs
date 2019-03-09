@@ -113,7 +113,7 @@ fn test_env_with_pool<F>(
 ) where
     F: FnOnce(Env),
 {
-    let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
+    let diagnostic_handler = errors::Handler::with_emitter(true, None, emitter);
     let sess = session::build_session_(
         options,
         None,

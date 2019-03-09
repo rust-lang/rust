@@ -1818,7 +1818,7 @@ impl<'a> Parser<'a> {
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds(None)?);
+            bounds.append(&mut self.parse_generic_bounds(Some(self.prev_span))?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -5538,6 +5538,7 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
         let mut last_plus_span = None;
+        let mut was_negative = false;
         loop {
             // This needs to be synchronized with `Token::can_begin_bound`.
             let is_bound_start = self.check_path() || self.check_lifetime() ||
@@ -5582,9 +5583,10 @@ impl<'a> Parser<'a> {
                     }
                     let poly_span = lo.to(self.prev_span);
                     if is_negative {
-                        negative_bounds.push(
-                            last_plus_span.or(colon_span).unwrap()
-                                .to(poly_span));
+                        was_negative = true;
+                        if let Some(sp) = last_plus_span.or(colon_span) {
+                            negative_bounds.push(sp.to(poly_span));
+                        }
                     } else {
                         let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
                         let modifier = if question.is_some() {
@@ -5606,26 +5608,28 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if !negative_bounds.is_empty() {
+        if !negative_bounds.is_empty() || was_negative {
             let plural = negative_bounds.len() > 1;
             let mut err = self.struct_span_err(negative_bounds,
                                                "negative trait bounds are not supported");
-            let bound_list = colon_span.unwrap().to(self.prev_span);
-            let mut new_bound_list = String::new();
-            if !bounds.is_empty() {
-                let mut snippets = bounds.iter().map(|bound| bound.span())
-                    .map(|span| self.sess.source_map().span_to_snippet(span));
-                while let Some(Ok(snippet)) = snippets.next() {
-                    new_bound_list.push_str(" + ");
-                    new_bound_list.push_str(&snippet);
+            if let Some(bound_list) = colon_span {
+                let bound_list = bound_list.to(self.prev_span);
+                let mut new_bound_list = String::new();
+                if !bounds.is_empty() {
+                    let mut snippets = bounds.iter().map(|bound| bound.span())
+                        .map(|span| self.sess.source_map().span_to_snippet(span));
+                    while let Some(Ok(snippet)) = snippets.next() {
+                        new_bound_list.push_str(" + ");
+                        new_bound_list.push_str(&snippet);
+                    }
+                    new_bound_list = new_bound_list.replacen(" +", ":", 1);
                 }
-                new_bound_list = new_bound_list.replacen(" +", ":", 1);
+                err.span_suggestion_short(bound_list,
+                                        &format!("remove the trait bound{}",
+                                                if plural { "s" } else { "" }),
+                                        new_bound_list,
+                                        Applicability::MachineApplicable);
             }
-            err.span_suggestion_short(bound_list,
-                                      &format!("remove the trait bound{}",
-                                              if plural { "s" } else { "" }),
-                                      new_bound_list,
-                                      Applicability::MachineApplicable);
             err.emit();
         }
 
@@ -5661,7 +5665,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(None)?
+            self.parse_generic_bounds(Some(self.prev_span))?
         } else {
             Vec::new()
         };
@@ -6106,7 +6110,7 @@ impl<'a> Parser<'a> {
                 // or with mandatory equality sign and the second type.
                 let ty = self.parse_ty()?;
                 if self.eat(&token::Colon) {
-                    let bounds = self.parse_generic_bounds(None)?;
+                    let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
                     where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                         ast::WhereBoundPredicate {
                             span: lo.to(self.prev_span),
@@ -7665,7 +7669,7 @@ impl<'a> Parser<'a> {
         tps.where_clause = self.parse_where_clause()?;
         let alias = if existential {
             self.expect(&token::Colon)?;
-            let bounds = self.parse_generic_bounds(None)?;
+            let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
             AliasKind::Existential(bounds)
         } else {
             self.expect(&token::Eq)?;

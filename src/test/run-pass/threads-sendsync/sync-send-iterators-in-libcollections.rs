@@ -53,6 +53,7 @@ fn main() {
     is_sync_send!(BTreeSet::<usize>::new(), union(&BTreeSet::<usize>::new()));
 
     all_sync_send!(HashMap::<usize, usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
+    is_sync_send!(HashMap::<usize, usize>::new(), entry(0));
     all_sync_send!(HashSet::<usize>::new(), iter, drain, into_iter);
     is_sync_send!(HashSet::<usize>::new(), difference(&HashSet::<usize>::new()));
     is_sync_send!(HashSet::<usize>::new(), symmetric_difference(&HashSet::<usize>::new()));
