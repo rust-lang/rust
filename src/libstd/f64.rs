@@ -884,6 +884,7 @@ impl f64 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(clamp)]
     /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
     /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
     /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);

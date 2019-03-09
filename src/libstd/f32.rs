@@ -962,6 +962,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// #![feature(clamp)]
     /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
     /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
     /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
