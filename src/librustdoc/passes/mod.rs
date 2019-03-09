@@ -45,6 +45,9 @@ pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 mod check_code_block_syntax;
 pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 
+mod calculate_doc_coverage;
+pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
+
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
@@ -67,6 +70,7 @@ pub const PASSES: &'static [Pass] = &[
     COLLECT_INTRA_DOC_LINKS,
     CHECK_CODE_BLOCK_SYNTAX,
     COLLECT_TRAIT_IMPLS,
+    CALCULATE_DOC_COVERAGE,
 ];
 
 /// The list of passes run by default.
@@ -94,12 +98,29 @@ pub const DEFAULT_PRIVATE_PASSES: &[&str] = &[
     "propagate-doc-cfg",
 ];
 
+/// The list of default passes run when `--doc-coverage` is passed to rustdoc.
+pub const DEFAULT_COVERAGE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
+    "strip-hidden",
+    "strip-private",
+    "calculate-doc-coverage",
+];
+
+/// The list of default passes run when `--doc-coverage --document-private-items` is passed to
+/// rustdoc.
+pub const PRIVATE_COVERAGE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
+    "calculate-doc-coverage",
+];
+
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` or `--document-private-items`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DefaultPassOption {
     Default,
     Private,
+    Coverage,
+    PrivateCoverage,
     None,
 }
 
@@ -108,6 +129,8 @@ pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
+        DefaultPassOption::Coverage => DEFAULT_COVERAGE_PASSES,
+        DefaultPassOption::PrivateCoverage => PRIVATE_COVERAGE_PASSES,
         DefaultPassOption::None => &[],
     }
 }

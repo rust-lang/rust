@@ -617,10 +617,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             info!("Executing passes");
 
-            for pass in &passes {
-                match passes::find_pass(pass).map(|p| p.pass) {
-                    Some(pass) => krate = pass(krate, &ctxt),
-                    None => error!("unknown pass {}, skipping", *pass),
+            for pass_name in &passes {
+                match passes::find_pass(pass_name).map(|p| p.pass) {
+                    Some(pass) => {
+                        debug!("running pass {}", pass_name);
+                        krate = pass(krate, &ctxt);
+                    }
+                    None => error!("unknown pass {}, skipping", *pass_name),
                 }
             }
 
