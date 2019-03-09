@@ -32,15 +32,11 @@ help: to link to the function, add parentheses
 LL | /// [ambiguous()] is ambiguous.
    |      ^^^^^^^^^^^
 
-error: `multi_conflict` is a macro, a struct, and a function
+error: `multi_conflict` is a struct, a function, and a macro
   --> $DIR/intra-links-ambiguity.rs:31:6
    |
 LL | /// [`multi_conflict`] is a three-way conflict.
    |      ^^^^^^^^^^^^^^^^ ambiguous link
-help: to link to the macro, prefix with the item type
-   |
-LL | /// [`macro@multi_conflict`] is a three-way conflict.
-   |      ^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the struct, prefix with the item type
    |
 LL | /// [`struct@multi_conflict`] is a three-way conflict.
@@ -49,6 +45,10 @@ help: to link to the function, add parentheses
    |
 LL | /// [`multi_conflict()`] is a three-way conflict.
    |      ^^^^^^^^^^^^^^^^^^
+help: to link to the macro, prefix with the item type
+   |
+LL | /// [`macro@multi_conflict`] is a three-way conflict.
+   |      ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `type_and_value` is both a module and a constant
   --> $DIR/intra-links-ambiguity.rs:33:16
