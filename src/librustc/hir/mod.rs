@@ -122,15 +122,15 @@ impl fmt::Display for HirId {
 // hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
 mod item_local_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
-    /// An `ItemLocalId` uniquely identifies something within a given "item-like",
-    /// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
-    /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
-    /// the node's position within the owning item in any way, but there is a
-    /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
-    /// integers starting at zero, so a mapping that maps all or most nodes within
-    /// an "item-like" to something else can be implement by a `Vec` instead of a
-    /// tree or hash map.
     newtype_index! {
+        /// An `ItemLocalId` uniquely identifies something within a given "item-like",
+        /// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
+        /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
+        /// the node's position within the owning item in any way, but there is a
+        /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+        /// integers starting at zero, so a mapping that maps all or most nodes within
+        /// an "item-like" to something else can be implement by a `Vec` instead of a
+        /// tree or hash map.
         pub struct ItemLocalId { .. }
     }
 }

@@ -36,7 +36,7 @@ use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::ast::Expr;
-use syntax::attr;
+use syntax::attr::{self, HasAttrs};
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeTemplate, AttributeType};
@@ -802,27 +802,81 @@ impl LintPass for UnusedDocComment {
 }
 
 impl UnusedDocComment {
-    fn warn_if_doc<'a, 'tcx,
-                   I: Iterator<Item=&'a ast::Attribute>,
-                   C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
-        if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
-            cx.struct_span_lint(UNUSED_DOC_COMMENTS, attr.span, "doc comment not used by rustdoc")
-              .emit();
+    fn warn_if_doc(
+        &self,
+        cx: &EarlyContext<'_>,
+        node_span: Span,
+        node_kind: &str,
+        is_macro_expansion: bool,
+        attrs: &[ast::Attribute]
+    ) {
+        let mut attrs = attrs.into_iter().peekable();
+
+        // Accumulate a single span for sugared doc comments.
+        let mut sugared_span: Option<Span> = None;
+
+        while let Some(attr) = attrs.next() {
+            if attr.is_sugared_doc {
+                sugared_span = Some(
+                    sugared_span.map_or_else(
+                        || attr.span,
+                        |span| span.with_hi(attr.span.hi()),
+                    ),
+                );
+            }
+
+            if attrs.peek().map(|next_attr| next_attr.is_sugared_doc).unwrap_or_default() {
+                continue;
+            }
+
+            let span = sugared_span.take().unwrap_or_else(|| attr.span);
+
+            if attr.name() == "doc" {
+                let mut err = cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, "unused doc comment");
+
+                err.span_label(
+                    node_span,
+                    format!("rustdoc does not generate documentation for {}", node_kind)
+                );
+
+                if is_macro_expansion {
+                    err.help("to document an item produced by a macro, \
+                              the macro must produce the documentation as part of its expansion");
+                }
+
+                err.emit();
+            }
         }
     }
 }
 
 impl EarlyLintPass for UnusedDocComment {
-    fn check_local(&mut self, cx: &EarlyContext<'_>, decl: &ast::Local) {
-        self.warn_if_doc(decl.attrs.iter(), cx);
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::Mac(..) = item.node {
+            self.warn_if_doc(cx, item.span, "macro expansions", true, &item.attrs);
+        }
+    }
+
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
+        let (kind, is_macro_expansion) = match stmt.node {
+            ast::StmtKind::Local(..) => ("statements", false),
+            ast::StmtKind::Item(..) => ("inner items", false),
+            ast::StmtKind::Mac(..) => ("macro expansions", true),
+            // expressions will be reported by `check_expr`.
+            ast::StmtKind::Semi(..) |
+            ast::StmtKind::Expr(..) => return,
+        };
+
+        self.warn_if_doc(cx, stmt.span, kind, is_macro_expansion, stmt.node.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        self.warn_if_doc(arm.attrs.iter(), cx);
+        let arm_span = arm.pats[0].span.with_hi(arm.body.span.hi());
+        self.warn_if_doc(cx, arm_span, "match arms", false, &arm.attrs);
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        self.warn_if_doc(expr.attrs.iter(), cx);
+        self.warn_if_doc(cx, expr.span, "expressions", false, &expr.attrs);
     }
 }
 

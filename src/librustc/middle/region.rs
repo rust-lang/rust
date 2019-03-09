@@ -132,25 +132,24 @@ pub enum ScopeData {
     Remainder(FirstStatementIndex)
 }
 
-/// Represents a subscope of `block` for a binding that is introduced
-/// by `block.stmts[first_statement_index]`. Such subscopes represent
-/// a suffix of the block. Note that each subscope does not include
-/// the initializer expression, if any, for the statement indexed by
-/// `first_statement_index`.
-///
-/// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
-///
-/// * The subscope with `first_statement_index == 0` is scope of both
-///   `a` and `b`; it does not include EXPR_1, but does include
-///   everything after that first `let`. (If you want a scope that
-///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
-///   but instead another `Scope` that encompasses the whole block,
-///   e.g., `Scope::Node`.
-///
-/// * The subscope with `first_statement_index == 1` is scope of `c`,
-///   and thus does not include EXPR_2, but covers the `...`.
-
 newtype_index! {
+    /// Represents a subscope of `block` for a binding that is introduced
+    /// by `block.stmts[first_statement_index]`. Such subscopes represent
+    /// a suffix of the block. Note that each subscope does not include
+    /// the initializer expression, if any, for the statement indexed by
+    /// `first_statement_index`.
+    ///
+    /// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
+    ///
+    /// * The subscope with `first_statement_index == 0` is scope of both
+    ///   `a` and `b`; it does not include EXPR_1, but does include
+    ///   everything after that first `let`. (If you want a scope that
+    ///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
+    ///   but instead another `Scope` that encompasses the whole block,
+    ///   e.g., `Scope::Node`.
+    ///
+    /// * The subscope with `first_statement_index == 1` is scope of `c`,
+    ///   and thus does not include EXPR_2, but covers the `...`.
     pub struct FirstStatementIndex { .. }
 }
 
