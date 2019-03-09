@@ -45,10 +45,10 @@ help: to link to the function, add parentheses
    |
 LL | /// [`multi_conflict()`] is a three-way conflict.
    |      ^^^^^^^^^^^^^^^^^^
-help: to link to the macro, prefix with the item type
+help: to link to the macro, add an exclamation mark
    |
-LL | /// [`macro@multi_conflict`] is a three-way conflict.
-   |      ^^^^^^^^^^^^^^^^^^^^^^
+LL | /// [`multi_conflict!`] is a three-way conflict.
+   |      ^^^^^^^^^^^^^^^^^
 
 error: `type_and_value` is both a module and a constant
   --> $DIR/intra-links-ambiguity.rs:33:16
