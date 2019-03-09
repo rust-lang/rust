@@ -4,6 +4,12 @@ error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A`
 LL | impl Foo for FooStruct {
    |      ^^^
 
-error: aborting due to previous error
+error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A`
+  --> $DIR/issue-21946.rs:9:5
+   |
+LL |     type A = <FooStruct as Foo>::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

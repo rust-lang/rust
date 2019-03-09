@@ -1766,18 +1766,14 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         privacy_access_levels,
+        check_private_in_public,
         check_mod_privacy,
         ..*providers
     };
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
-    tcx.privacy_access_levels(LOCAL_CRATE)
-}
-
 fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
-
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
@@ -1809,18 +1805,6 @@ fn privacy_access_levels<'tcx>(
 ) -> Lrc<AccessLevels> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let krate = tcx.hir().krate();
-
-    for &module in krate.modules.keys() {
-        tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
-    }
-
-    let private_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_private.iter()
-        .flat_map(|c| {
-            tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
-        }).collect();
-
-
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
@@ -1830,7 +1814,7 @@ fn privacy_access_levels<'tcx>(
         changed: false,
     };
     loop {
-        intravisit::walk_crate(&mut visitor, krate);
+        intravisit::walk_crate(&mut visitor, tcx.hir().krate());
         if visitor.changed {
             visitor.changed = false;
         } else {
@@ -1839,36 +1823,46 @@ fn privacy_access_levels<'tcx>(
     }
     visitor.update(hir::CRATE_HIR_ID, Some(AccessLevel::Public));
 
-    {
-        let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
-            tcx,
-            access_levels: &visitor.access_levels,
-            in_variant: false,
-            old_error_set: Default::default(),
-        };
-        intravisit::walk_crate(&mut visitor, krate);
-
-
-        let has_pub_restricted = {
-            let mut pub_restricted_visitor = PubRestrictedVisitor {
-                tcx,
-                has_pub_restricted: false
-            };
-            intravisit::walk_crate(&mut pub_restricted_visitor, krate);
-            pub_restricted_visitor.has_pub_restricted
-        };
-
-        // Check for private types and traits in public interfaces.
-        let mut visitor = PrivateItemsInPublicInterfacesVisitor {
-            tcx,
-            has_pub_restricted,
-            old_error_set: &visitor.old_error_set,
-            private_crates
-        };
-        krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
-    }
-
     Lrc::new(visitor.access_levels)
+}
+
+fn check_private_in_public<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {
+    assert_eq!(krate, LOCAL_CRATE);
+
+    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+
+    let krate = tcx.hir().krate();
+
+    let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
+        tcx,
+        access_levels: &access_levels,
+        in_variant: false,
+        old_error_set: Default::default(),
+    };
+    intravisit::walk_crate(&mut visitor, krate);
+
+    let has_pub_restricted = {
+        let mut pub_restricted_visitor = PubRestrictedVisitor {
+            tcx,
+            has_pub_restricted: false
+        };
+        intravisit::walk_crate(&mut pub_restricted_visitor, krate);
+        pub_restricted_visitor.has_pub_restricted
+    };
+
+    let private_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_private.iter()
+        .flat_map(|c| {
+            tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
+        }).collect();
+
+    // Check for private types and traits in public interfaces.
+    let mut visitor = PrivateItemsInPublicInterfacesVisitor {
+        tcx,
+        has_pub_restricted,
+        old_error_set: &visitor.old_error_set,
+        private_crates
+    };
+    krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

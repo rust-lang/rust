@@ -65,6 +65,7 @@ cfg_if! {
         }
 
         use std::ops::Add;
+        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         #[derive(Debug)]
         pub struct Atomic<T: Copy>(Cell<T>);
@@ -130,7 +131,21 @@ cfg_if! {
         #[macro_export]
         macro_rules! parallel {
             ($($blocks:tt),*) => {
-                $($blocks)*;
+                // We catch panics here ensuring that all the blocks execute.
+                // This makes behavior consistent with the parallel compiler.
+                let mut panic = None;
+                $(
+                    if let Err(p) = ::std::panic::catch_unwind(
+                        ::std::panic::AssertUnwindSafe(|| $blocks)
+                    ) {
+                        if panic.is_none() {
+                            panic = Some(p);
+                        }
+                    }
+                )*
+                if let Some(panic) = panic {
+                    ::std::panic::resume_unwind(panic);
+                }
             }
         }
 
@@ -138,6 +153,26 @@ cfg_if! {
 
         pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
             t.into_iter()
+        }
+
+        pub fn par_for_each_in<T: IntoIterator>(
+            t: T,
+            for_each:
+                impl Fn(<<T as IntoIterator>::IntoIter as Iterator>::Item) + Sync + Send
+        ) {
+            // We catch panics here ensuring that all the loop iterations execute.
+            // This makes behavior consistent with the parallel compiler.
+            let mut panic = None;
+            t.into_iter().for_each(|i| {
+                if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
+                    if panic.is_none() {
+                        panic = Some(p);
+                    }
+                }
+            });
+            if let Some(panic) = panic {
+                resume_unwind(panic);
+            }
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
@@ -278,23 +313,26 @@ cfg_if! {
         use std::thread;
         pub use rayon::{join, scope};
 
+        /// Runs a list of blocks in parallel. The first block is executed immediately on
+        /// the current thread. Use that for the longest running block.
         #[macro_export]
         macro_rules! parallel {
-            (impl [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
-                parallel!(impl [$block, $($c,)*] [$($rest),*])
+            (impl $fblock:tt [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
+                parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
-            (impl [$($blocks:tt,)*] []) => {
+            (impl $fblock:tt [$($blocks:tt,)*] []) => {
                 ::rustc_data_structures::sync::scope(|s| {
                     $(
                         s.spawn(|_| $blocks);
                     )*
+                    $fblock;
                 })
             };
-            ($($blocks:tt),*) => {
-                // Reverse the order of the blocks since Rayon executes them in reverse order
+            ($fblock:tt, $($blocks:tt),*) => {
+                // Reverse the order of the later blocks since Rayon executes them in reverse order
                 // when using a single thread. This ensures the execution order matches that
                 // of a single threaded rustc
-                parallel!(impl [] [$($blocks),*]);
+                parallel!(impl $fblock [] [$($blocks),*]);
             };
         }
 
@@ -305,6 +343,15 @@ cfg_if! {
 
         pub fn par_iter<T: IntoParallelIterator>(t: T) -> T::Iter {
             t.into_par_iter()
+        }
+
+        pub fn par_for_each_in<T: IntoParallelIterator>(
+            t: T,
+            for_each: impl Fn(
+                <<T as IntoParallelIterator>::Iter as ParallelIterator>::Item
+            ) + Sync + Send
+        ) {
+            t.into_par_iter().for_each(for_each)
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
