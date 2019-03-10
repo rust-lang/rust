@@ -342,14 +342,12 @@ pub fn run_compiler(
         }
 
         if sess.opts.debugging_opts.save_analysis {
-            let expanded_crate = compiler.expansion()?.take().0;
-
+            let expanded_crate = &compiler.expansion()?.peek().0;
             let crate_name = compiler.crate_name()?.peek().clone();
             compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(LOCAL_CRATE);
 
                 time(sess, "save analysis", || {
-                    // FIXME: Should this run even with analysis errors?
                     save::process_crate(
                         tcx,
                         &expanded_crate,
@@ -361,15 +359,22 @@ pub fn run_compiler(
                 });
 
                 result
+                // AST will be dropped *after* the `after_analysis` callback
+                // (needed by the RLS)
             })?;
         } else {
             // Drop AST after creating GlobalCtxt to free memory
             mem::drop(compiler.expansion()?.take());
         }
+
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
         if !callbacks.after_analysis(compiler) {
             return sess.compile_status();
+        }
+
+        if sess.opts.debugging_opts.save_analysis {
+            mem::drop(compiler.expansion()?.take());
         }
 
         compiler.ongoing_codegen()?;
