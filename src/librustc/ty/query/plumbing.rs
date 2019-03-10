@@ -2,12 +2,13 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNodeIndex, DepNode, DepConstructor, DepKind, SerializedDepNodeIndex};
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Query;
 use crate::ty::query::config::{QueryConfig, QueryDescription};
 use crate::ty::query::job::{QueryJob, QueryResult, QueryInfo};
+use crate::hir::def_id::LOCAL_CRATE;
 
 use crate::util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
@@ -1187,14 +1188,28 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         ($query:ident, $key:expr) => { force_ex!(tcx, $query, $key) }
     };
 
+    let force_hir_map = || {
+        tcx.force_query::<crate::ty::query::queries::hir_map<'_>>(
+            LOCAL_CRATE,
+            DUMMY_SP,
+            DepNode::new(tcx, DepConstructor::hir_map(LOCAL_CRATE)),
+        );
+    };
+
     rustc_dep_node_force!([dep_node, tcx]
+        // Created by the Hir map query
+        DepKind::AllLocalTraitImpls |
+        DepKind::Krate => force_hir_map(),
+        DepKind::HirBody |
+        DepKind::Hir => {
+            // Ensure the def_id exists
+            def_id!();
+            force_hir_map();
+        }
+
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already
-        DepKind::AllLocalTraitImpls |
-        DepKind::Krate |
         DepKind::CrateMetadata |
-        DepKind::HirBody |
-        DepKind::Hir |
 
         // This are anonymous nodes
         DepKind::TraitSelect |

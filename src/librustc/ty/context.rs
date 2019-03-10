@@ -54,8 +54,9 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::SyncDroplessArena;
+use rustc_data_structures::cold_path;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal, AtomicCell};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -1035,7 +1036,7 @@ pub struct GlobalCtxt<'tcx> {
     global_interners: CtxtInterners<'tcx>,
     local_interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx CrateStoreDyn,
+    pub(crate) cstore: &'tcx CrateStoreDyn,
 
     pub sess: &'tcx Session,
 
@@ -1062,7 +1063,11 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
-    hir_map: hir_map::Map<'tcx>,
+    pub hir_forest: hir::map::Forest,
+
+    pub hir_defs: hir::map::Definitions,
+
+    hir_map: AtomicCell<Option<&'tcx hir_map::Map<'tcx>>>,
 
     /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1131,7 +1136,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        &self.hir_map
+        let value = self.hir_map.load();
+        if unlikely!(value.is_none()) {
+            // We can use `with_ignore` here because the hir map does its own tracking
+            cold_path(|| self.dep_graph.with_ignore(|| {
+                let map = self.hir_map(LOCAL_CRATE);
+                self.hir_map.store(Some(map));
+                map
+            }))
+        } else {
+            value.unwrap()
+        }
     }
 
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
@@ -1221,7 +1236,8 @@ impl<'tcx> TyCtxt<'tcx> {
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
         resolutions: ty::Resolutions,
-        hir: hir_map::Map<'tcx>,
+        hir_forest: hir::map::Forest,
+        hir_defs: hir::map::Definitions,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
         tx: mpsc::Sender<Box<dyn Any + Send>>,
@@ -1241,7 +1257,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
-        let dep_graph = hir.dep_graph.clone();
+        let dep_graph = hir_forest.dep_graph.clone();
         let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
@@ -1257,7 +1273,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 upstream_def_path_tables
                     .iter()
                     .map(|&(cnum, ref rc)| (cnum, &**rc))
-                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
+                    .chain(iter::once((LOCAL_CRATE, hir_defs.def_path_table())))
             };
 
             // Precompute the capacity of the hashmap so we don't have to
@@ -1280,7 +1296,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in resolutions.trait_map {
-            let hir_id = hir.node_to_hir_id(k);
+            let hir_id = hir_defs.node_to_hir_id(k);
             let map = trait_map.entry(hir_id.owner).or_default();
             map.insert(hir_id.local_id, StableVec::new(v));
         }
@@ -1299,25 +1315,27 @@ impl<'tcx> TyCtxt<'tcx> {
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
                 let exports: Vec<_> = v.into_iter().map(|e| {
-                    e.map_id(|id| hir.node_to_hir_id(id))
+                    e.map_id(|id| hir_defs.node_to_hir_id(id))
                 }).collect();
                 (k, exports)
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
                     .into_iter()
-                    .map(|id| hir.local_def_id(id))
+                    .map(|id| hir_defs.local_def_id(id))
                     .collect(),
             maybe_unused_extern_crates:
                 resolutions.maybe_unused_extern_crates
                     .into_iter()
-                    .map(|(id, sp)| (hir.local_def_id(id), sp))
+                    .map(|(id, sp)| (hir_defs.local_def_id(id), sp))
                     .collect(),
             glob_map: resolutions.glob_map.into_iter().map(|(id, names)| {
-                (hir.local_def_id(id), names)
+                (hir_defs.local_def_id(id), names)
             }).collect(),
             extern_prelude: resolutions.extern_prelude,
-            hir_map: hir,
+            hir_forest,
+            hir_defs,
+            hir_map: AtomicCell::new(None),
             def_path_hash_to_def_id,
             queries: query::Queries::new(
                 providers,
@@ -1431,7 +1449,9 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {
-            self.hir().definitions().def_path_hash(def_id.index)
+            // This is used when creating dep nodes, which happens when executing queries,
+            // so we can't use hir() here
+            self.hir_defs.def_path_hash(def_id.index)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -1470,12 +1490,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.hir_map.forest.untracked_krate();
-
-        StableHashingContext::new(self.sess,
-                                  krate,
-                                  self.hir().definitions(),
-                                  self.cstore)
+        // This is used when executing queries. Also used when dealing with query cycles
+        StableHashingContext::new(
+            self.sess,
+            self.hir_forest.untracked_krate(),
+            &self.hir_defs,
+            self.cstore
+        )
     }
 
     // This method makes sure that we have a DepNode and a Fingerprint for

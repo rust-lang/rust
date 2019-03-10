@@ -761,6 +761,7 @@ pub fn prepare_outputs(
 
 pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
+    providers.hir_map = hir_map;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
@@ -806,7 +807,7 @@ impl BoxedGlobalCtxt {
 
 pub fn create_global_ctxt(
     compiler: &Compiler,
-    mut hir_forest: hir::map::Forest,
+    hir_forest: hir::map::Forest,
     defs: hir::map::Definitions,
     resolutions: Resolutions,
     outputs: OutputFilenames,
@@ -824,11 +825,6 @@ pub fn create_global_ctxt(
 
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
-
-        // Construct the HIR map
-        let hir_map = time(sess, "indexing hir", || {
-            hir::map::map_crate(sess, cstore, &mut hir_forest, &defs)
-        });
 
         let query_result_on_disk_cache = time(sess, "load query result cache", || {
             rustc_incremental::load_query_result_cache(sess)
@@ -849,7 +845,8 @@ pub fn create_global_ctxt(
             extern_providers,
             &arenas,
             resolutions,
-            hir_map,
+            hir_forest,
+            defs,
             query_result_on_disk_cache,
             &crate_name,
             tx,
@@ -874,6 +871,20 @@ pub fn create_global_ctxt(
     });
 
     result
+}
+
+fn hir_map<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cnum: CrateNum,
+) -> &'tcx hir::map::Map<'tcx> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
+    // Construct the HIR map
+    let hir_map = time(tcx.sess, "indexing hir", || {
+        hir::map::map_crate(tcx)
+    });
+
+    tcx.arena.alloc(hir_map)
 }
 
 /// Runs the resolution, type-checking, region checking and other

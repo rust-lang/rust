@@ -8,8 +8,6 @@ use crate::dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
 use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId};
 
-use crate::middle::cstore::CrateStoreDyn;
-
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -24,10 +22,12 @@ use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir::print::Nested;
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
+use crate::ich::StableHashingContext;
 
 use std::io;
 use std::result::Result::Err;
 use crate::ty::query::Providers;
+use crate::ty::TyCtxt;
 
 pub mod blocks;
 mod collector;
@@ -1257,45 +1257,48 @@ impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
-pub fn map_crate<'hir>(sess: &crate::session::Session,
-                       cstore: &CrateStoreDyn,
-                       forest: &'hir Forest,
-                       definitions: &'hir Definitions)
-                       -> Map<'hir> {
+pub fn map_crate(tcx: TyCtxt<'_>) -> Map<'_> {
     // Build the reverse mapping of `node_to_hir_id`.
-    let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
+    let hir_to_node_id = tcx.hir_defs.node_to_hir_id.iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
 
     let (map, crate_hash) = {
-        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+        let krate = tcx.hir_forest.untracked_krate();
+        let hcx = StableHashingContext::new(
+            tcx.sess,
+            krate,
+            &tcx.hir_defs,
+            tcx.cstore
+        );
+        let mut collector = NodeCollector::root(
+            tcx.sess,
+            krate,
+            &tcx.dep_graph,
+            &tcx.hir_defs,
+            &hir_to_node_id,
+            hcx
+        );
+        intravisit::walk_crate(&mut collector, krate);
 
-        let mut collector = NodeCollector::root(sess,
-                                                &forest.krate,
-                                                &forest.dep_graph,
-                                                &definitions,
-                                                &hir_to_node_id,
-                                                hcx);
-        intravisit::walk_crate(&mut collector, &forest.krate);
-
-        let crate_disambiguator = sess.local_crate_disambiguator();
-        let cmdline_args = sess.opts.dep_tracking_hash();
+        let crate_disambiguator = tcx.sess.local_crate_disambiguator();
+        let cmdline_args = tcx.sess.opts.dep_tracking_hash();
         collector.finalize_and_compute_crate_hash(
             crate_disambiguator,
-            cstore,
+            tcx.cstore,
             cmdline_args
         )
     };
 
     let map = Map {
-        forest,
-        dep_graph: forest.dep_graph.clone(),
+        forest: &tcx.hir_forest,
+        dep_graph: tcx.dep_graph.clone(),
         crate_hash,
         map,
         hir_to_node_id,
-        definitions,
+        definitions: &tcx.hir_defs,
     };
 
-    time(sess, "validate hir map", || {
+    time(tcx.sess, "validate hir map", || {
         hir_id_validator::check_crate(&map);
     });
 

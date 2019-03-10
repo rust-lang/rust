@@ -31,6 +31,12 @@ use syntax_pos::symbol::InternedString;
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
     Other {
+        query hir_map(_: CrateNum) -> &'tcx hir::map::Map<'tcx> {
+            no_hash
+            eval_always
+            desc { "indexing HIR" }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache { key.is_local() }
