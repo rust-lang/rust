@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 log = "0.4"
 rustc-rayon = "0.1.1"
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
-scoped-tls = { version = "0.1.1", features = ["nightly"] }
+scoped-tls = "1.0"
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
