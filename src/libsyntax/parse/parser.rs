@@ -118,23 +118,22 @@ enum BlockMode {
 /// `token::Interpolated` tokens.
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
-        if let token::Interpolated(nt) = $p.token.clone() {
-            match *nt {
-                token::NtExpr(ref e) | token::NtLiteral(ref e) => {
+        if let token::Interpolated(nt) = &$p.token {
+            match &**nt {
+                token::NtExpr(e) | token::NtLiteral(e) => {
+                    let e = e.clone();
                     $p.bump();
-                    return Ok((*e).clone());
+                    return Ok(e);
                 }
-                token::NtPath(ref path) => {
+                token::NtPath(path) => {
+                    let path = path.clone();
                     $p.bump();
-                    let span = $p.span;
-                    let kind = ExprKind::Path(None, (*path).clone());
-                    return Ok($p.mk_expr(span, kind, ThinVec::new()));
+                    return Ok($p.mk_expr($p.span, ExprKind::Path(None, path), ThinVec::new()));
                 }
-                token::NtBlock(ref block) => {
+                token::NtBlock(block) => {
+                    let block = block.clone();
                     $p.bump();
-                    let span = $p.span;
-                    let kind = ExprKind::Block((*block).clone(), None);
-                    return Ok($p.mk_expr(span, kind, ThinVec::new()));
+                    return Ok($p.mk_expr($p.span, ExprKind::Block(block, None), ThinVec::new()));
                 }
                 _ => {},
             };
@@ -145,8 +144,9 @@ macro_rules! maybe_whole_expr {
 /// As maybe_whole_expr, but for things other than expressions
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = $p.token.clone() {
-            if let token::$constructor($x) = (*nt).clone() {
+        if let token::Interpolated(nt) = &$p.token {
+            if let token::$constructor(x) = &**nt {
+                let $x = x.clone();
                 $p.bump();
                 return Ok($e);
             }
