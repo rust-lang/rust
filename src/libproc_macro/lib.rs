@@ -237,7 +237,7 @@ mod quote;
 
 /// A region of source code, along with macro expansion information.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Span(bridge::client::Span);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -690,7 +690,7 @@ impl fmt::Debug for Group {
 /// Multi-character operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Punct(bridge::client::Punct);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -700,7 +700,7 @@ impl !Sync for Punct {}
 
 /// Whether an `Punct` is followed immediately by another `Punct` or
 /// followed by another token or whitespace.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
     /// e.g., `+` is `Alone` in `+ =`, `+ident` or `+()`.
@@ -782,7 +782,7 @@ impl fmt::Debug for Punct {
 }
 
 /// An identifier (`ident`).
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Ident(bridge::client::Ident);
 
