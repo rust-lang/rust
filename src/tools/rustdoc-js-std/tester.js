@@ -219,6 +219,32 @@ function lookForEntry(entry, data) {
     return null;
 }
 
+function findFile(dir, name, extension) {
+    var entries = fs.readdirSync(dir);
+    for (var i = 0; i < entries.length; ++i) {
+        var entry = entries[i];
+        var file_type = fs.statSync(dir + entry);
+        if (file_type.isDirectory()) {
+            continue;
+        }
+        if (entry.startsWith(name) && entry.endsWith(extension)) {
+            return entry;
+        }
+    }
+    return null;
+}
+
+function readFileMatching(dir, name, extension) {
+    if (dir.endsWith("/") === false) {
+        dir += "/";
+    }
+    var f = findFile(dir, name, extension);
+    if (f === null) {
+        return "";
+    }
+    return readFile(dir + f);
+}
+
 function main(argv) {
     if (argv.length !== 3) {
         console.error("Expected toolchain to check as argument (for example \
@@ -227,9 +253,10 @@ function main(argv) {
     }
     var toolchain = argv[2];
 
-    var mainJs = readFile("build/" + toolchain + "/doc/main.js");
-    var ALIASES = readFile("build/" + toolchain + "/doc/aliases.js");
-    var searchIndex = readFile("build/" + toolchain + "/doc/search-index.js").split("\n");
+    var mainJs = readFileMatching("build/" + toolchain + "/doc/", "main", ".js");
+    var ALIASES = readFileMatching("build/" + toolchain + "/doc/", "aliases", ".js");
+    var searchIndex = readFileMatching("build/" + toolchain + "/doc/",
+                                       "search-index", ".js").split("\n");
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
     }
