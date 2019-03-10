@@ -90,7 +90,6 @@ pub struct LoweringContext<'a> {
     exported_macros: Vec<hir::MacroDef>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
-    trait_auto_impl: BTreeMap<DefId, NodeId>,
 
     modules: BTreeMap<NodeId, hir::ModuleItems>,
 
@@ -233,7 +232,6 @@ pub fn lower_crate(
         impl_items: BTreeMap::new(),
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
-        trait_auto_impl: BTreeMap::new(),
         modules: BTreeMap::new(),
         exported_macros: Vec::new(),
         catch_scopes: Vec::new(),
@@ -514,7 +512,6 @@ impl<'a> LoweringContext<'a> {
             bodies: self.bodies,
             body_ids,
             trait_impls: self.trait_impls,
-            trait_auto_impl: self.trait_auto_impl,
             modules: self.modules,
         }
     }
