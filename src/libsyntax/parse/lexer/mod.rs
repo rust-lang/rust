@@ -1423,15 +1423,17 @@ impl<'a> StringReader<'a> {
 
                 // If the character is an ident start not followed by another single
                 // quote, then this is a lifetime name:
-                if ident_start(Some(c2)) && !self.ch_is('\'') {
+                if (ident_start(Some(c2)) || c2.is_numeric()) && !self.ch_is('\'') {
                     while ident_continue(self.ch) {
                         self.bump();
                     }
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        self.err_span_(start_with_quote, self.next_pos,
-                                "character literal may only contain one codepoint");
+                        self.err_span_(
+                            start_with_quote,
+                            self.next_pos,
+                            "character literal may only contain one codepoint");
                         self.bump();
                         return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
 
@@ -1443,6 +1445,15 @@ impl<'a> StringReader<'a> {
                     let ident = self.with_str_from(start, |lifetime_name| {
                         self.mk_ident(&format!("'{}", lifetime_name))
                     });
+
+                    if c2.is_numeric() {
+                        // this is a recovered lifetime written `'1`, error but accept it
+                        self.err_span_(
+                            start_with_quote,
+                            self.pos,
+                            "lifetimes cannot start with a number",
+                        );
+                    }
 
                     return Ok(token::Lifetime(ident));
                 }
@@ -1873,6 +1884,7 @@ fn is_block_doc_comment(s: &str) -> bool {
     res
 }
 
+/// Determine whether `c` is a valid start for an ident.
 fn ident_start(c: Option<char>) -> bool {
     let c = match c {
         Some(c) => c,

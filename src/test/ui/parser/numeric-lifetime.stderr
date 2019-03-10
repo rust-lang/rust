@@ -1,0 +1,24 @@
+error: lifetimes cannot start with a number
+  --> $DIR/numeric-lifetime.rs:1:10
+   |
+LL | struct S<'1> { s: &'1 usize }
+   |          ^^
+
+error: lifetimes cannot start with a number
+  --> $DIR/numeric-lifetime.rs:1:20
+   |
+LL | struct S<'1> { s: &'1 usize }
+   |                    ^^
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-lifetime.rs:6:20
+   |
+LL |     let x: usize = "";
+   |                    ^^ expected usize, found reference
+   |
+   = note: expected type `usize`
+              found type `&'static str`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
