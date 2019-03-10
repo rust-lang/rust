@@ -49,7 +49,6 @@ unsafe impl GlobalAlloc for System {
 
 #[cfg(target_feature = "atomics")]
 mod lock {
-    use crate::arch::wasm32;
     use crate::sync::atomic::{AtomicI32, Ordering::SeqCst};
 
     static LOCKED: AtomicI32 = AtomicI32::new(0);
@@ -61,14 +60,76 @@ mod lock {
             if LOCKED.swap(1, SeqCst) == 0 {
                 return DropLock
             }
-            unsafe {
-                let r = wasm32::i32_atomic_wait(
-                    &LOCKED as *const AtomicI32 as *mut i32,
-                    1,  // expected value
-                    -1, // timeout
-                );
-                debug_assert!(r == 0 || r == 1);
-            }
+            // Ok so here's where things get a little depressing. At this point
+            // in time we need to synchronously acquire a lock, but we're
+            // contending with some other thread. Typically we'd execute some
+            // form of `i32.atomic.wait` like so:
+            //
+            //     unsafe {
+            //         let r = core::arch::wasm32::i32_atomic_wait(
+            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             1,  //     expected value
+            //             -1, //     timeout
+            //         );
+            //         debug_assert!(r == 0 || r == 1);
+            //     }
+            //
+            // Unfortunately though in doing so we would cause issues for the
+            // main thread. The main thread in a web browser *cannot ever
+            // block*, no exceptions. This means that the main thread can't
+            // actually execute the `i32.atomic.wait` instruction.
+            //
+            // As a result if we want to work within the context of browsers we
+            // need to figure out some sort of allocation scheme for the main
+            // thread where when there's contention on the global malloc lock we
+            // do... something.
+            //
+            // Possible ideas include:
+            //
+            // 1. Attempt to acquire the global lock. If it fails, fall back to
+            //    memory allocation via `memory.grow`. Later just ... somehow
+            //    ... inject this raw page back into the main allocator as it
+            //    gets sliced up over time. This strategy has the downside of
+            //    forcing allocation of a page to happen whenever the main
+            //    thread contents with other threads, which is unfortunate.
+            //
+            // 2. Maintain a form of "two level" allocator scheme where the main
+            //    thread has its own allocator. Somehow this allocator would
+            //    also be balanced with a global allocator, not only to have
+            //    allocations cross between threads but also to ensure that the
+            //    two allocators stay "balanced" in terms of free'd memory and
+            //    such. This, however, seems significantly complicated.
+            //
+            // Out of a lack of other ideas, the current strategy implemented
+            // here is to simply spin. Typical spin loop algorithms have some
+            // form of "hint" here to the CPU that it's what we're doing to
+            // ensure that the CPU doesn't get too hot, but wasm doesn't have
+            // such an instruction.
+            //
+            // To be clear, spinning here is not a great solution.
+            // Another thread with the lock may take quite a long time to wake
+            // up. For example it could be in `memory.grow` or it could be
+            // evicted from the CPU for a timeslice like 10ms. For these periods
+            // of time our thread will "helpfully" sit here and eat CPU time
+            // until it itself is evicted or the lock holder finishes. This
+            // means we're just burning and wasting CPU time to no one's
+            // benefit.
+            //
+            // Spinning does have the nice properties, though, of being
+            // semantically correct, being fair to all threads for memory
+            // allocation, and being simple enough to implement.
+            //
+            // This will surely (hopefully) be replaced in the future with a
+            // real memory allocator that can handle the restriction of the main
+            // thread.
+            //
+            //
+            // FIXME: We can also possibly add an optimization here to detect
+            // when a thread is the main thread or not and block on all
+            // non-main-thread threads. Currently, however, we have no way
+            // of knowing which wasm thread is on the browser main thread, but
+            // if we could figure out we could at least somewhat mitigate the
+            // cost of this spinning.
         }
     }
 
@@ -76,12 +137,16 @@ mod lock {
         fn drop(&mut self) {
             let r = LOCKED.swap(0, SeqCst);
             debug_assert_eq!(r, 1);
-            unsafe {
-                wasm32::atomic_notify(
-                    &LOCKED as *const AtomicI32 as *mut i32,
-                    1, // only one thread
-                );
-            }
+
+            // Note that due to the above logic we don't actually need to wake
+            // anyone up, but if we did it'd likely look something like this:
+            //
+            //     unsafe {
+            //         core::arch::wasm32::atomic_notify(
+            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             1, //     only one thread
+            //         );
+            //     }
         }
     }
 }
