@@ -8,10 +8,10 @@ error[E0599]: no function or associated item named `bitor` found for type `dyn s
   --> $DIR/issue-28344.rs:4:25
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                 --------^^^^^
-   |                 |
-   |                 function or associated item not found in `dyn std::ops::BitXor<_>`
-   |                 help: did you mean: `bitxor`
+   |                         ^^^^^
+   |                         |
+   |                         function or associated item not found in `dyn std::ops::BitXor<_>`
+   |                         help: did you mean: `bitxor`
 
 error[E0191]: the value of the associated type `Output` (from the trait `std::ops::BitXor`) must be specified
   --> $DIR/issue-28344.rs:8:13
@@ -23,10 +23,10 @@ error[E0599]: no function or associated item named `bitor` found for type `dyn s
   --> $DIR/issue-28344.rs:8:21
    |
 LL |     let g = BitXor::bitor;
-   |             --------^^^^^
-   |             |
-   |             function or associated item not found in `dyn std::ops::BitXor<_>`
-   |             help: did you mean: `bitxor`
+   |                     ^^^^^
+   |                     |
+   |                     function or associated item not found in `dyn std::ops::BitXor<_>`
+   |                     help: did you mean: `bitxor`
 
 error: aborting due to 4 previous errors
 

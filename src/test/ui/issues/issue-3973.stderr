@@ -14,9 +14,7 @@ LL | struct Point {
    | ------------ function or associated item `new` not found for this
 ...
 LL |     let p = Point::new(0.0, 0.0);
-   |             -------^^^
-   |             |
-   |             function or associated item not found in `Point`
+   |                    ^^^ function or associated item not found in `Point`
 
 error: aborting due to 2 previous errors
 
