@@ -3,7 +3,7 @@
 
 use core::borrow::Borrow;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
-use core::cmp::{min, max};
+use core::cmp::max;
 use core::fmt::{self, Debug};
 use core::iter::{Peekable, FromIterator, FusedIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
@@ -163,18 +163,34 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`intersection`]: struct.BTreeSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Intersection<'a, T: 'a> {
-    a: Peekable<Iter<'a, T>>,
-    b: Peekable<Iter<'a, T>>,
+pub enum Intersection<'a, T: 'a> {
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "benchmarks for pull #58577", issue = "0")]
+    Stitch {
+        a_iter: Iter<'a, T>, // for size_hint, should be the smaller of the sets
+        b_iter: Iter<'a, T>,
+    },
+    #[doc(hidden)]
+    #[unstable(feature = "benches_btree_set", reason = "benchmarks for pull #58577", issue = "0")]
+    Search {
+        a_iter: Iter<'a, T>, // for size_hint, should be the smaller of the sets
+        b_set: &'a BTreeSet<T>,
+    },
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Intersection")
-         .field(&self.a)
-         .field(&self.b)
-         .finish()
+        match self {
+            Intersection::Stitch { a_iter, b_iter } => f
+                .debug_tuple("Intersection")
+                .field(&a_iter)
+                .field(&b_iter)
+                .finish(),
+            Intersection::Search { a_iter, b_set: _ } => {
+                f.debug_tuple("Intersection").field(&a_iter).finish()
+            }
+        }
     }
 }
 
@@ -326,9 +342,22 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T> {
-        Intersection {
-            a: self.iter().peekable(),
-            b: other.iter().peekable(),
+        let (a_set, b_set) = if self.len() <= other.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
+        if a_set.len() > b_set.len() / 16 {
+            Intersection::Stitch {
+                a_iter: a_set.iter(),
+                b_iter: b_set.iter(),
+            }
+        } else {
+            // Iterate small set only and find matches in large set.
+            Intersection::Search {
+                a_iter: a_set.iter(),
+                b_set,
+            }
         }
     }
 
@@ -1072,9 +1101,15 @@ impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Intersection<'_, T> {
     fn clone(&self) -> Self {
-        Intersection {
-            a: self.a.clone(),
-            b: self.b.clone(),
+        match self {
+            Intersection::Stitch { a_iter, b_iter } => Intersection::Stitch {
+                a_iter: a_iter.clone(),
+                b_iter: b_iter.clone(),
+            },
+            Intersection::Search { a_iter, b_set } => Intersection::Search {
+                a_iter: a_iter.clone(),
+                b_set,
+            },
         }
     }
 }
@@ -1083,24 +1118,33 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        loop {
-            match Ord::cmp(self.a.peek()?, self.b.peek()?) {
-                Less => {
-                    self.a.next();
-                }
-                Equal => {
-                    self.b.next();
-                    return self.a.next();
-                }
-                Greater => {
-                    self.b.next();
+        match self {
+            Intersection::Stitch { a_iter, b_iter } => {
+                let mut a_next = a_iter.next()?;
+                let mut b_next = b_iter.next()?;
+                loop {
+                    match Ord::cmp(a_next, b_next) {
+                        Less => a_next = a_iter.next()?,
+                        Greater => b_next = b_iter.next()?,
+                        Equal => return Some(a_next),
+                    }
                 }
             }
+            Intersection::Search { a_iter, b_set } => loop {
+                let a_next = a_iter.next()?;
+                if b_set.contains(&a_next) {
+                    return Some(a_next);
+                }
+            },
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(min(self.a.len(), self.b.len())))
+        let max_size = match self {
+            Intersection::Stitch { a_iter, .. } => a_iter.len(),
+            Intersection::Search { a_iter, .. } => a_iter.len(),
+        };
+        (0, Some(max_size))
     }
 }
 
