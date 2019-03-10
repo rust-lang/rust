@@ -4,10 +4,10 @@ error[E0599]: no variant named `A` found for type `SomeEnum` in the current scop
 LL | pub enum SomeEnum {
    | ----------------- variant `A` not found here
 LL |     B = SomeEnum::A,
-   |         ----------^
-   |         |         |
-   |         |         help: did you mean: `B`
-   |         variant not found in `SomeEnum`
+   |                   ^
+   |                   |
+   |                   variant not found in `SomeEnum`
+   |                   help: did you mean: `B`
 
 error: aborting due to previous error
 

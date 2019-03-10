@@ -5,9 +5,7 @@ LL | enum Delicious {
    | -------------- variant `PIE` not found here
 ...
 LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
-   |                                            -----------^^^
-   |                                            |
-   |                                            variant not found in `Delicious`
+   |                                                       ^^^ variant not found in `Delicious`
 
 error: aborting due to previous error
 
