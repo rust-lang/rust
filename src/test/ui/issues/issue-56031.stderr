@@ -1,0 +1,8 @@
+error: missing trait in a trait impl
+  --> $DIR/issue-56031.rs:3:5
+   |
+LL | impl for T {}
+   |     ^
+
+error: aborting due to previous error
+
