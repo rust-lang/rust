@@ -6,7 +6,7 @@
 # script will then copy that output and replace the "expected output"
 # files. You can then commit the changes.
 #
-# If you find yourself manually editing a foo.stderr file, you're
+# If you find yourself manually editing a `foo.stderr` file, you're
 # doing it wrong.
 
 if [[ "$1" == "--help" || "$1" == "-h" || "$1" == "" || "$2" == "" ]]; then
