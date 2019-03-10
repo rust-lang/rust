@@ -7713,11 +7713,7 @@ impl<'a> Parser<'a> {
             variants.push(respan(vlo.to(self.prev_span), vr));
 
             if !self.eat(&token::Comma) {
-                if self.token.is_ident() &&
-                    !self.token.is_special_ident() &&
-                    !self.token.is_used_keyword() &&
-                    !self.token.is_unused_keyword()
-                {
+                if self.token.is_ident() && !self.token.is_reserved_ident() {
                     let sp = self.sess.source_map().next_point(self.prev_span);
                     let mut err = self.struct_span_err(sp, "missing comma");
                     err.span_suggestion_short(
