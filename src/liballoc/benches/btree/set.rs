@@ -96,8 +96,8 @@ intersection_bench! {intersect_random_100_vs_10k_actual,random(100, 10_000)}
 intersection_bench! {intersect_random_100_vs_10k_search,random(100, 10_000), intersection_search}
 intersection_bench! {intersect_random_100_vs_10k_stitch,random(100, 10_000), intersection_stitch}
 intersection_bench! {intersect_random_10k_vs_10k_actual,random(10_000, 10_000)}
-intersection_bench! {intersect_random_10k_vs_10k_search,random(10_000, 10_000)}
-intersection_bench! {intersect_random_10k_vs_10k_stitch,random(10_000, 10_000)}
+intersection_bench! {intersect_random_10k_vs_10k_search,random(10_000, 10_000), intersection_search}
+intersection_bench! {intersect_random_10k_vs_10k_stitch,random(10_000, 10_000), intersection_stitch}
 intersection_bench! {intersect_stagger_100_actual,      stagger(100, 1)}
 intersection_bench! {intersect_stagger_100_search,      stagger(100, 1), intersection_search}
 intersection_bench! {intersect_stagger_100_stitch,      stagger(100, 1), intersection_stitch}
