@@ -10,12 +10,12 @@ use syntax::ast::LitKind;
 use syntax::source_map::{ExpnFormat, Span};
 
 use crate::consts::{constant, Constant};
+use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then, walk_ptrs_ty,
     SpanlessEq,
 };
-use crate::utils::sugg::Sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for function arguments and let bindings denoted as

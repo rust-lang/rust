@@ -8,7 +8,6 @@
 /// This should not compile-fail with:
 ///
 ///      error[E0277]: the trait bound `T: Foo` is not satisfied
-///
 // See rust-lang/rust-clippy#2760.
 
 trait Foo {

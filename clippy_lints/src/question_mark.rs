@@ -1,14 +1,14 @@
 use if_chain::if_chain;
-use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ptr::P;
 
-use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
 use crate::utils::paths::*;
 use crate::utils::sugg::Sugg;
+use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
