@@ -12,7 +12,7 @@ pub const PROPAGATE_DOC_CFG: Pass = Pass {
     description: "propagates `#[doc(cfg(...))]` to child items",
 };
 
-pub fn propagate_doc_cfg(cr: Crate, _: &DocContext<'_, '_, '_>) -> Crate {
+pub fn propagate_doc_cfg(cr: Crate, _: &DocContext<'_>) -> Crate {
     CfgPropagator { parent_cfg: None }.fold_crate(cr)
 }
 

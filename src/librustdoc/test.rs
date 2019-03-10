@@ -1,21 +1,16 @@
-use errors::{self, FatalError};
-use errors::emitter::ColorConfig;
 use rustc_data_structures::sync::Lrc;
-use rustc_lint;
-use rustc_driver::{self, driver, Compilation};
-use rustc_driver::driver::phase_2_configure_and_expand;
-use rustc_metadata::cstore::CStore;
-use rustc_interface::util;
+use rustc_interface::interface;
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::session::{self, CompileIncomplete, config};
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::session::{self, config, DiagnosticOutput};
 use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
 use rustc::session::search_paths::SearchPath;
+use rustc::util::common::ErrorReported;
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::with_globals;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use tempfile::Builder as TempFileBuilder;
 use testing;
@@ -23,8 +18,8 @@ use testing;
 use std::env;
 use std::io::prelude::*;
 use std::io;
-use std::path::PathBuf;
 use std::panic::{self, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -44,7 +39,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(mut options: Options) -> isize {
+pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
     let sessopts = config::Options {
@@ -63,52 +58,31 @@ pub fn run(mut options: Options) -> isize {
         edition: options.edition,
         ..config::Options::default()
     };
-    driver::spawn_thread_pool(sessopts, |sessopts| {
-        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
-        let handler =
-            errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                            true, None,
-                                            Some(source_map.clone()));
 
-        let mut sess = session::build_session_(
-            sessopts, Some(options.input), handler, source_map.clone(), Default::default(),
-        );
-        let codegen_backend = util::get_codegen_backend(&sess);
-        let cstore = CStore::new(codegen_backend.metadata_loader());
-        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    let config = interface::Config {
+        opts: sessopts,
+        crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
+        input,
+        input_path: None,
+        output_file: None,
+        output_dir: None,
+        file_loader: None,
+        diagnostic_output: DiagnosticOutput::Default,
+        stderr: None,
+        crate_name: options.crate_name.clone(),
+        lint_caps: Default::default(),
+    };
 
-        let mut cfg = config::build_configuration(&sess,
-                                                  config::parse_cfgspecs(options.cfgs.clone()));
-        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
-        sess.parse_sess.config = cfg;
+    let mut test_args = options.test_args.clone();
+    let display_warnings = options.display_warnings;
 
-        let krate =
-            match driver::phase_1_parse_input(&driver::CompileController::basic(), &sess, &input) {
-                Ok(krate) => krate,
-                Err(mut e) => {
-                    e.emit();
-                    FatalError.raise();
-                }
-            };
-        let driver::ExpansionResult { defs, mut hir_forest, .. } = {
-            phase_2_configure_and_expand(
-                &sess,
-                &cstore,
-                krate,
-                None,
-                "rustdoc-test",
-                None,
-                |_| Ok(()),
-            ).expect("phase_2_configure_and_expand aborted in rustdoc!")
-        };
+    let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
+        let lower_to_hir = compiler.lower_to_hir()?;
 
-        let crate_name = options.crate_name.unwrap_or_else(|| {
-            ::rustc_codegen_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
-        });
-        let mut opts = scrape_test_config(hir_forest.krate());
+        let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
         opts.display_warnings |= options.display_warnings;
         let mut collector = Collector::new(
-            crate_name,
+            compiler.crate_name()?.peek().to_string(),
             options.cfgs,
             options.libs,
             options.codegen_options,
@@ -116,34 +90,40 @@ pub fn run(mut options: Options) -> isize {
             false,
             opts,
             options.maybe_sysroot,
-            Some(source_map),
+            Some(compiler.source_map().clone()),
             None,
             options.linker,
             options.edition,
             options.persist_doctests,
         );
 
-        {
-            let map = hir::map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
-            let krate = map.krate();
+        let mut global_ctxt = compiler.global_ctxt()?.take();
+        global_ctxt.enter(|tcx| {
+            let krate = tcx.hir().krate();
             let mut hir_collector = HirCollector {
-                sess: &sess,
+                sess: compiler.session(),
                 collector: &mut collector,
-                map: &map,
-                codes: ErrorCodes::from(sess.opts.unstable_features.is_nightly_build()),
+                map: tcx.hir(),
+                codes: ErrorCodes::from(compiler.session().opts
+                                                .unstable_features.is_nightly_build()),
             };
             hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
                 intravisit::walk_crate(this, krate);
             });
-        }
+        });
 
-        options.test_args.insert(0, "rustdoctest".to_string());
+        Ok(collector.tests)
+    }).expect("compiler aborted in rustdoc!");
 
-        testing::test_main(&options.test_args,
-                        collector.tests.into_iter().collect(),
-                        testing::Options::new().display_output(options.display_warnings));
-        0
-    })
+    test_args.insert(0, "rustdoctest".to_string());
+
+    testing::test_main(
+        &test_args,
+        tests,
+        testing::Options::new().display_output(display_warnings)
+    );
+
+    0
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
@@ -239,16 +219,18 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         }
         fn flush(&mut self) -> io::Result<()> { Ok(()) }
     }
-    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<dyn Write+Send>);
+    struct Bomb(Arc<Mutex<Vec<u8>>>, Option<Box<dyn Write+Send>>);
     impl Drop for Bomb {
         fn drop(&mut self) {
-            let _ = self.1.write_all(&self.0.lock().unwrap());
+            let mut old = self.1.take().unwrap();
+            let _ = old.write_all(&self.0.lock().unwrap());
+            io::set_panic(Some(old));
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
 
     let old = io::set_panic(Some(box Sink(data.clone())));
-    let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
+    let _bomb = Bomb(data.clone(), Some(old.unwrap_or(box io::stdout())));
 
     enum DirState {
         Temp(tempfile::TempDir),
@@ -264,91 +246,67 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         }
     }
 
-    let (outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
-        let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                        Some(source_map.clone()),
-                                                        false,
-                                                        false);
-
-        // Compile the code
-        let diagnostic_handler = errors::Handler::with_emitter(true, None, box emitter);
-
-        let mut sess = session::build_session_(
-            sessopts, None, diagnostic_handler, source_map, Default::default(),
+    let outdir = if let Some(mut path) = persist_doctests {
+        path.push(format!("{}_{}",
+            filename
+                .to_string()
+                .rsplit('/')
+                .next()
+                .unwrap()
+                .replace(".", "_"),
+                line)
         );
-        let codegen_backend = util::get_codegen_backend(&sess);
-        let cstore = CStore::new(codegen_backend.metadata_loader());
-        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        std::fs::create_dir_all(&path)
+            .expect("Couldn't create directory for doctest executables");
 
-        let outdir = Mutex::new(
-            if let Some(mut path) = persist_doctests {
-                path.push(format!("{}_{}",
-                    filename
-                        .to_string()
-                        .rsplit('/')
-                        .next()
-                        .unwrap()
-                        .replace(".", "_"),
-                        line)
-                );
-                std::fs::create_dir_all(&path)
-                    .expect("Couldn't create directory for doctest executables");
+        DirState::Perm(path)
+    } else {
+        DirState::Temp(TempFileBuilder::new()
+                        .prefix("rustdoctest")
+                        .tempdir()
+                        .expect("rustdoc needs a tempdir"))
+    };
+    let output_file = outdir.path().join("rust_out");
 
-                DirState::Perm(path)
+    let config = interface::Config {
+        opts: sessopts,
+        crate_cfg: config::parse_cfgspecs(cfgs),
+        input,
+        input_path: None,
+        output_file: Some(output_file.clone()),
+        output_dir: None,
+        file_loader: None,
+        diagnostic_output: DiagnosticOutput::Raw(box Sink(data.clone())),
+        stderr: Some(data.clone()),
+        crate_name: None,
+        lint_caps: Default::default(),
+    };
+
+    let compile_result = panic::catch_unwind(AssertUnwindSafe(|| {
+        interface::run_compiler(config, |compiler| {
+            if no_run {
+                compiler.global_ctxt().and_then(|global_ctxt| global_ctxt.take().enter(|tcx| {
+                    tcx.analysis(LOCAL_CRATE)
+                })).ok();
             } else {
-                DirState::Temp(TempFileBuilder::new()
-                                .prefix("rustdoctest")
-                                .tempdir()
-                                .expect("rustdoc needs a tempdir"))
-            }
-        );
-        let mut control = driver::CompileController::basic();
-
-        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
-        sess.parse_sess.config = cfg;
-
-        let out = Some(outdir.lock().unwrap().path().join("rust_out"));
-
-        if no_run {
-            control.after_analysis.stop = Compilation::Stop;
-        }
-
-        let res = panic::catch_unwind(AssertUnwindSafe(|| {
-            driver::compile_input(
-                codegen_backend,
-                &sess,
-                &cstore,
-                &None,
-                &input,
-                &None,
-                &out,
-                None,
-                &control
-            )
-        }));
-
-        let compile_result = match res {
-            Ok(Ok(())) | Ok(Err(CompileIncomplete::Stopped)) => Ok(()),
-            Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
-        };
-
-        (outdir, compile_result)
-    });
+                compiler.compile().ok();
+            };
+            compiler.session().compile_status()
+        })
+    })).map_err(|_| ()).and_then(|s| s.map_err(|_| ()));
 
     match (compile_result, compile_fail) {
         (Ok(()), true) => {
             panic!("test compiled while it wasn't supposed to")
         }
         (Ok(()), false) => {}
-        (Err(()), true) => {
+        (Err(_), true) => {
             if error_codes.len() > 0 {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
                 error_codes.retain(|err| !out.contains(err));
             }
         }
-        (Err(()), false) => {
+        (Err(_), false) => {
             panic!("couldn't compile the test")
         }
     }
@@ -360,7 +318,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     if no_run { return }
 
     // Run the code!
-    let mut cmd = Command::new(&outdir.lock().unwrap().path().join("rust_out"));
+    let mut cmd = Command::new(output_file);
+
     match cmd.output() {
         Err(e) => panic!("couldn't run the test: {}{}", e,
                         if e.kind() == io::ErrorKind::PermissionDenied {
@@ -735,35 +694,26 @@ impl Tester for Collector {
                 allow_fail: config.allow_fail,
             },
             testfn: testing::DynTestFn(box move || {
-                let panic = io::set_panic(None);
-                let print = io::set_print(None);
-                match {
-                    rustc_driver::in_named_rustc_thread(name, move || with_globals(move || {
-                        io::set_panic(panic);
-                        io::set_print(print);
-                        run_test(&test,
-                                 &cratename,
-                                 &filename,
-                                 line,
-                                 cfgs,
-                                 libs,
-                                 cg,
-                                 externs,
-                                 config.should_panic,
-                                 config.no_run,
-                                 config.test_harness,
-                                 config.compile_fail,
-                                 config.error_codes,
-                                 &opts,
-                                 maybe_sysroot,
-                                 linker,
-                                 edition,
-                                 persist_doctests)
-                    }))
-                } {
-                    Ok(()) => (),
-                    Err(err) => panic::resume_unwind(err),
-                }
+                run_test(
+                    &test,
+                    &cratename,
+                    &filename,
+                    line,
+                    cfgs,
+                    libs,
+                    cg,
+                    externs,
+                    config.should_panic,
+                    config.no_run,
+                    config.test_harness,
+                    config.compile_fail,
+                    config.error_codes,
+                    &opts,
+                    maybe_sysroot,
+                    linker,
+                    edition,
+                    persist_doctests
+                )
             }),
         });
     }

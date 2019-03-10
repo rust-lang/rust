@@ -23,14 +23,13 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
+extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
-extern crate rustc_interface;
 extern crate serialize;
 extern crate syntax;
 extern crate syntax_pos;
@@ -91,11 +90,11 @@ pub fn main() {
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
-        syntax::with_globals(move || {
+        rustc_interface::interface::default_thread_pool(move || {
             get_args().map(|args| main_args(&args)).unwrap_or(1)
         })
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
-    process::exit(res as i32);
+    process::exit(res);
 }
 
 fn get_args() -> Option<Vec<String>> {
@@ -364,7 +363,7 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
-fn main_args(args: &[String]) -> isize {
+fn main_args(args: &[String]) -> i32 {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
@@ -441,7 +440,7 @@ where R: 'static + Send,
 
     let (tx, rx) = channel();
 
-    let result = rustc_driver::monitor(move || syntax::with_globals(move || {
+    let result = rustc_driver::report_ices_to_stderr_if_any(move || syntax::with_globals(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
         let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);

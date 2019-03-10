@@ -11,12 +11,12 @@ use super::*;
 
 use self::def_ctor::{get_def_from_def_id, get_def_from_hir_id};
 
-pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a> {
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+pub struct BlanketImplFinder<'a, 'tcx> {
+    pub cx: &'a core::DocContext<'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
+    pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
         BlanketImplFinder { cx }
     }
 

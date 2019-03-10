@@ -13,7 +13,7 @@ pub const UNINDENT_COMMENTS: Pass = Pass {
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 
-pub fn unindent_comments(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {
+pub fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 

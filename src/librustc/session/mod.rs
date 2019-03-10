@@ -311,7 +311,7 @@ impl Session {
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
-    pub fn compile_status(&self) -> Result<(), CompileIncomplete> {
+    pub fn compile_status(&self) -> Result<(), ErrorReported> {
         compile_result_from_err_count(self.err_count())
     }
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorReported>
@@ -1124,7 +1124,7 @@ pub fn build_session_with_source_map(
     build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
 }
 
-pub fn build_session_(
+fn build_session_(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
@@ -1334,22 +1334,12 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum CompileIncomplete {
-    Stopped,
-    Errored(ErrorReported),
-}
-impl From<ErrorReported> for CompileIncomplete {
-    fn from(err: ErrorReported) -> CompileIncomplete {
-        CompileIncomplete::Errored(err)
-    }
-}
-pub type CompileResult = Result<(), CompileIncomplete>;
+pub type CompileResult = Result<(), ErrorReported>;
 
 pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     if err_count == 0 {
         Ok(())
     } else {
-        Err(CompileIncomplete::Errored(ErrorReported))
+        Err(ErrorReported)
     }
 }

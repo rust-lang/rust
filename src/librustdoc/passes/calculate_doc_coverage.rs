@@ -15,7 +15,7 @@ pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
     description: "counts the number of items with and without documentation",
 };
 
-fn calculate_doc_coverage(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {
+fn calculate_doc_coverage(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     let mut calc = CoverageCalculator::default();
     let krate = calc.fold_crate(krate);
 

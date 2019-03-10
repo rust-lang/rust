@@ -54,7 +54,7 @@ pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 #[derive(Copy, Clone)]
 pub struct Pass {
     pub name: &'static str,
-    pub pass: fn(clean::Crate, &DocContext<'_, '_, '_>) -> clean::Crate,
+    pub pass: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
     pub description: &'static str,
 }
 
@@ -308,8 +308,8 @@ impl DocFolder for ImportStripper {
     }
 }
 
-pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+pub fn look_for_tests<'tcx>(
+    cx: &DocContext<'tcx>,
     dox: &str,
     item: &Item,
     check_missing_code: bool,
@@ -370,7 +370,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
 /// attributes are not all sugared doc comments. It's difficult to calculate the correct span in
 /// that case due to escaping and other source features.
 crate fn source_span_for_markdown_range(
-    cx: &DocContext<'_, '_, '_>,
+    cx: &DocContext<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     attrs: &clean::Attributes,

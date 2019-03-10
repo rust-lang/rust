@@ -78,7 +78,6 @@ use crate::hir;
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,
     pub interner: SyncDroplessArena,
-    global_ctxt: Option<GlobalCtxt<'tcx>>,
 }
 
 impl<'tcx> AllArenas<'tcx> {
@@ -86,7 +85,6 @@ impl<'tcx> AllArenas<'tcx> {
         AllArenas {
             global: WorkerLocal::new(|_| GlobalArenas::default()),
             interner: SyncDroplessArena::default(),
-            global_ctxt: None,
         }
     }
 }
@@ -1182,20 +1180,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
-    pub fn create_and_enter<F, R>(s: &'tcx Session,
-                                  cstore: &'tcx CrateStoreDyn,
-                                  local_providers: ty::query::Providers<'tcx>,
-                                  extern_providers: ty::query::Providers<'tcx>,
-                                  arenas: &'tcx mut AllArenas<'tcx>,
-                                  resolutions: ty::Resolutions,
-                                  hir: hir_map::Map<'tcx>,
-                                  on_disk_query_result_cache: query::OnDiskCache<'tcx>,
-                                  crate_name: &str,
-                                  tx: mpsc::Sender<Box<dyn Any + Send>>,
-                                  output_filenames: &OutputFilenames,
-                                  f: F) -> R
-                                  where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
-    {
+    pub fn create_global_ctxt(
+        s: &'tcx Session,
+        cstore: &'tcx CrateStoreDyn,
+        local_providers: ty::query::Providers<'tcx>,
+        extern_providers: ty::query::Providers<'tcx>,
+        arenas: &'tcx AllArenas<'tcx>,
+        resolutions: ty::Resolutions,
+        hir: hir_map::Map<'tcx>,
+        on_disk_query_result_cache: query::OnDiskCache<'tcx>,
+        crate_name: &str,
+        tx: mpsc::Sender<Box<dyn Any + Send>>,
+        output_filenames: &OutputFilenames,
+    ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
@@ -1247,7 +1244,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      Lrc::new(StableVec::new(v)));
         }
 
-        arenas.global_ctxt = Some(GlobalCtxt {
+        GlobalCtxt {
             sess: s,
             cstore,
             global_arenas: &arenas.global,
@@ -1293,15 +1290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
-        });
-
-        let gcx = arenas.global_ctxt.as_ref().unwrap();
-
-        let r = tls::enter_global(gcx, f);
-
-        gcx.queries.record_computed_queries(s);
-
-        r
+        }
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
@@ -1985,31 +1974,29 @@ pub mod tls {
     pub fn enter_global<'gcx, F, R>(gcx: &'gcx GlobalCtxt<'gcx>, f: F) -> R
         where F: FnOnce(TyCtxt<'gcx, 'gcx, 'gcx>) -> R
     {
-        with_thread_locals(|| {
-            // Update GCX_PTR to indicate there's a GlobalCtxt available
-            GCX_PTR.with(|lock| {
-                *lock.lock() = gcx as *const _ as usize;
-            });
-            // Set GCX_PTR back to 0 when we exit
-            let _on_drop = OnDrop(move || {
-                GCX_PTR.with(|lock| *lock.lock() = 0);
-            });
+        // Update GCX_PTR to indicate there's a GlobalCtxt available
+        GCX_PTR.with(|lock| {
+            *lock.lock() = gcx as *const _ as usize;
+        });
+        // Set GCX_PTR back to 0 when we exit
+        let _on_drop = OnDrop(move || {
+            GCX_PTR.with(|lock| *lock.lock() = 0);
+        });
 
-            let tcx = TyCtxt {
-                gcx,
-                interners: &gcx.global_interners,
-                dummy: PhantomData,
-            };
-            let icx = ImplicitCtxt {
-                tcx,
-                query: None,
-                diagnostics: None,
-                layout_depth: 0,
-                task_deps: None,
-            };
-            enter_context(&icx, |_| {
-                f(tcx)
-            })
+        let tcx = TyCtxt {
+            gcx,
+            interners: &gcx.global_interners,
+            dummy: PhantomData,
+        };
+        let icx = ImplicitCtxt {
+            tcx,
+            query: None,
+            diagnostics: None,
+            layout_depth: 0,
+            task_deps: None,
+        };
+        enter_context(&icx, |_| {
+            f(tcx)
         })
     }
 

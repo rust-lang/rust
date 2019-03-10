@@ -36,7 +36,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) -> isize {
+pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) -> i32 {
     let mut output = options.output;
     output.push(input.file_stem().unwrap());
     output.set_extension("html");
@@ -126,7 +126,7 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
+pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
     let input_str = match load_string(&options.input, diag) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,

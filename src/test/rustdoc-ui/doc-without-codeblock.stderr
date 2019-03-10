@@ -24,3 +24,5 @@ error: Missing code example in this documentation
 LL |     /// Or maybe not because she saved herself!
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 4 previous errors
+

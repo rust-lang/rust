@@ -12,7 +12,7 @@ pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
     description: "retrieves trait impls for items in the crate",
 };
 
-pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
+pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
     let mut krate = synth.fold_crate(krate);
 
@@ -138,13 +138,13 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
     krate
 }
 
-struct SyntheticImplCollector<'a, 'tcx: 'a, 'rcx: 'a> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+struct SyntheticImplCollector<'a, 'tcx> {
+    cx: &'a DocContext<'tcx>,
     impls: Vec<Item>,
 }
 
-impl<'a, 'tcx, 'rcx> SyntheticImplCollector<'a, 'tcx, 'rcx> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> SyntheticImplCollector<'a, 'tcx> {
+    fn new(cx: &'a DocContext<'tcx>) -> Self {
         SyntheticImplCollector {
             cx,
             impls: Vec::new(),
@@ -152,7 +152,7 @@ impl<'a, 'tcx, 'rcx> SyntheticImplCollector<'a, 'tcx, 'rcx> {
     }
 }
 
-impl<'a, 'tcx, 'rcx> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             if let (Some(hir_id), Some(name)) =

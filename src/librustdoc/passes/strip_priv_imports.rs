@@ -9,6 +9,6 @@ pub const STRIP_PRIV_IMPORTS: Pass = Pass {
     description: "strips all private import statements (`use`, `extern crate`) from a crate",
 };
 
-pub fn strip_priv_imports(krate: clean::Crate, _: &DocContext<'_, '_, '_>)  -> clean::Crate {
+pub fn strip_priv_imports(krate: clean::Crate, _: &DocContext<'_>)  -> clean::Crate {
     ImportStripper.fold_crate(krate)
 }
