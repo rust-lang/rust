@@ -10,38 +10,51 @@
       "problemMatcher": {
         "owner": "typescript",
         "pattern": "$tsc",
-        "fileLocation": ["relative", "${workspaceRoot}/editors/code"]
+        "fileLocation": [
+          "relative",
+          "${workspaceRoot}/editors/code"
+        ]
       },
       "path": "editors/code/"
     },
     {
       "label": "Build Lsp",
       "type": "shell",
-      "command": "cargo build",
-      "problemMatcher": {
-        "owner": "rust",
-        "fileLocation": ["relative", "${workspaceRoot}"],
-        "pattern": [
-          {
-            "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
-            "severity": 1,
-            "code": 2,
-            "message": 3
-          },
-          {
-            "regexp": "^[\\s->=]*(.*?):(\\d*):(\\d*)\\s*$",
-            "file": 1,
-            "line": 2,
-            "column": 3
-          }
-        ]
-      }
+      "command": "cargo check",
+      "problemMatcher": "$rustc"
     },
     {
       "label": "Build All",
       "group": "build",
-      "dependsOn": ["Build Extension", "Build Lsp"],
+      "dependsOn": [
+        "Build Extension",
+        "Build Lsp"
+      ],
       "problemMatcher": []
+    },
+    {
+      "label": "cargo watch",
+      "group": "build",
+      "isBackground": true,
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "watch"
+      ],
+      "problemMatcher": "$rustc-watch"
+    },
+    {
+      "label": "cargo watch tests",
+      "group": "build",
+      "isBackground": true,
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "watch",
+        "-x",
+        "check --tests"
+      ],
+      "problemMatcher": "$rustc-watch"
     }
   ]
 }
