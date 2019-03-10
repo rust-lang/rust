@@ -35,7 +35,7 @@ impl Iterator for LookupHost {
     }
 }
 
-impl<'a> TryFrom<&'a str> for LookupHost {
+impl TryFrom<&str> for LookupHost {
     type Error = io::Error;
 
     fn try_from(s: &str) -> io::Result<LookupHost> {

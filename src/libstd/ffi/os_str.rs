@@ -357,8 +357,8 @@ impl From<String> for OsString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for OsString {
-    fn from(s: &'a T) -> OsString {
+impl<T: ?Sized + AsRef<OsStr>> From<&T> for OsString {
+    fn from(s: &T) -> OsString {
         s.as_ref().to_os_string()
     }
 }
@@ -421,8 +421,8 @@ impl PartialEq<OsString> for str {
 }
 
 #[stable(feature = "os_str_str_ref_eq", since = "1.29.0")]
-impl<'a> PartialEq<&'a str> for OsString {
-    fn eq(&self, other: &&'a str) -> bool {
+impl PartialEq<&str> for OsString {
+    fn eq(&self, other: &&str) -> bool {
         **self == **other
     }
 }
@@ -656,8 +656,8 @@ impl OsStr {
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
-impl<'a> From<&'a OsStr> for Box<OsStr> {
-    fn from(s: &'a OsStr) -> Box<OsStr> {
+impl From<&OsStr> for Box<OsStr> {
+    fn from(s: &OsStr) -> Box<OsStr> {
         let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
         unsafe { Box::from_raw(rw) }
     }
@@ -707,7 +707,7 @@ impl From<OsString> for Arc<OsStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a OsStr> for Arc<OsStr> {
+impl From<&OsStr> for Arc<OsStr> {
     #[inline]
     fn from(s: &OsStr) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -729,7 +729,7 @@ impl From<OsString> for Rc<OsStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a OsStr> for Rc<OsStr> {
+impl From<&OsStr> for Rc<OsStr> {
     #[inline]
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
