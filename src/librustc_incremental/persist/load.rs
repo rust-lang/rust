@@ -21,7 +21,6 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     tcx.allocate_metadata_dep_nodes();
-    tcx.precompute_in_scope_traits_hashes();
 }
 
 type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
