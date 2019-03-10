@@ -8,10 +8,11 @@
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 #[allow(unused_extern_crates)]
+extern crate rustc_interface;
+#[allow(unused_extern_crates)]
 extern crate rustc_plugin;
-use self::rustc_driver::{driver::CompileController, Compilation};
 
-use std::convert::TryInto;
+use rustc_interface::interface;
 use std::path::Path;
 use std::process::{exit, Command};
 
@@ -60,10 +61,62 @@ fn test_arg_value() {
 }
 
 #[allow(clippy::too_many_lines)]
+
+struct ClippyCallbacks;
+
+impl rustc_driver::Callbacks for ClippyCallbacks {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
+        let sess = compiler.session();
+        let mut registry = rustc_plugin::registry::Registry::new(
+            sess,
+            compiler
+                .parse()
+                .expect(
+                    "at this compilation stage \
+                     the crate must be parsed",
+                )
+                .peek()
+                .span,
+        );
+        registry.args_hidden = Some(Vec::new());
+
+        let conf = clippy_lints::read_conf(&registry);
+        clippy_lints::register_plugins(&mut registry, &conf);
+
+        let rustc_plugin::registry::Registry {
+            early_lint_passes,
+            late_lint_passes,
+            lint_groups,
+            llvm_passes,
+            attributes,
+            ..
+        } = registry;
+        let mut ls = sess.lint_store.borrow_mut();
+        for pass in early_lint_passes {
+            ls.register_early_pass(Some(sess), true, false, pass);
+        }
+        for pass in late_lint_passes {
+            ls.register_late_pass(Some(sess), true, pass);
+        }
+
+        for (name, (to, deprecated_name)) in lint_groups {
+            ls.register_group(Some(sess), true, name, deprecated_name, to);
+        }
+        clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
+        clippy_lints::register_renamed(&mut ls);
+
+        sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
+        sess.plugin_attributes.borrow_mut().extend(attributes);
+
+        // Continue execution
+        true
+    }
+}
+
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     exit(
-        rustc_driver::run(move || {
+        rustc_driver::report_ices_to_stderr_if_any(move || {
             use std::env;
 
             if std::env::args().any(|a| a == "--version" || a == "-V") {
@@ -144,58 +197,14 @@ pub fn main() {
                 }
             }
 
-            let mut controller = CompileController::basic();
-            if clippy_enabled {
-                controller.after_parse.callback = Box::new(move |state| {
-                    let mut registry = rustc_plugin::registry::Registry::new(
-                        state.session,
-                        state
-                            .krate
-                            .as_ref()
-                            .expect(
-                                "at this compilation stage \
-                                 the crate must be parsed",
-                            )
-                            .span,
-                    );
-                    registry.args_hidden = Some(Vec::new());
-
-                    let conf = clippy_lints::read_conf(&registry);
-                    clippy_lints::register_plugins(&mut registry, &conf);
-
-                    let rustc_plugin::registry::Registry {
-                        early_lint_passes,
-                        late_lint_passes,
-                        lint_groups,
-                        llvm_passes,
-                        attributes,
-                        ..
-                    } = registry;
-                    let sess = &state.session;
-                    let mut ls = sess.lint_store.borrow_mut();
-                    for pass in early_lint_passes {
-                        ls.register_early_pass(Some(sess), true, false, pass);
-                    }
-                    for pass in late_lint_passes {
-                        ls.register_late_pass(Some(sess), true, pass);
-                    }
-
-                    for (name, (to, deprecated_name)) in lint_groups {
-                        ls.register_group(Some(sess), true, name, deprecated_name, to);
-                    }
-                    clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
-                    clippy_lints::register_renamed(&mut ls);
-
-                    sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
-                    sess.plugin_attributes.borrow_mut().extend(attributes);
-                });
-            }
-            controller.compilation_done.stop = Compilation::Stop;
-
+            let mut clippy = ClippyCallbacks;
+            let mut default = rustc_driver::DefaultCallbacks;
+            let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
+                if clippy_enabled { &mut clippy } else { &mut default };
             let args = args;
-            rustc_driver::run_compiler(&args, Box::new(controller), None, None)
+            rustc_driver::run_compiler(&args, callbacks, None, None)
         })
-        .try_into()
-        .expect("exit code too large"),
+        .and_then(|result| result)
+        .is_err() as i32,
     )
 }
