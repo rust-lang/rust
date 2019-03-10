@@ -1,3 +1,4 @@
-fn self_test(r#self: u32) {
-    //~^ ERROR `r#self` is not currently supported.
+fn main() {
+    let r#self;
+    //~^ ERROR `self` cannot be a raw identifier
 }

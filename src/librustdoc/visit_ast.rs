@@ -178,9 +178,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Some(kind) => {
                 let name = if kind == MacroKind::Derive {
                     item.attrs.lists("proc_macro_derive")
-                              .filter_map(|mi| mi.name())
+                              .filter_map(|mi| mi.ident())
                               .next()
                               .expect("proc-macro derives require a name")
+                              .name
                 } else {
                     name
                 };
@@ -193,8 +194,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                     if let Some(list) = mi.meta_item_list() {
                         for inner_mi in list {
-                            if let Some(name) = inner_mi.name() {
-                                helpers.push(name);
+                            if let Some(ident) = inner_mi.ident() {
+                                helpers.push(ident.name);
                             }
                         }
                     }

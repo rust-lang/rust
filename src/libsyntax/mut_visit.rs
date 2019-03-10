@@ -539,16 +539,14 @@ pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T
 }
 
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
-    let Spanned { node, span } = li;
-    match node {
-        NestedMetaItemKind::MetaItem(mi) => vis.visit_meta_item(mi),
-        NestedMetaItemKind::Literal(_lit) => {}
+    match li {
+        NestedMetaItem::MetaItem(mi) => vis.visit_meta_item(mi),
+        NestedMetaItem::Literal(_lit) => {}
     }
-    vis.visit_span(span);
 }
 
 pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
-    let MetaItem { ident: _, node, span } = mi;
+    let MetaItem { path: _, node, span } = mi;
     match node {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_vec(mis, |mi| vis.visit_meta_list_item(mi)),
@@ -1340,4 +1338,3 @@ mod tests {
         })
     }
 }
-

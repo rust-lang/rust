@@ -601,7 +601,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 res
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
+                self.cx.span_err(attr.span, &format!("`{}` is a derive macro", attr.path));
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(attr.span)
             }
@@ -822,7 +822,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             ProcMacroDerive(..) | BuiltinDerive(..) => {
-                self.cx.span_err(path.span, &format!("`{}` is a derive mode", path));
+                self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
@@ -929,7 +929,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    ident: Path::from_ident(keywords::Invalid.ident()),
+                    path: Path::from_ident(keywords::Invalid.ident()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -1520,23 +1520,23 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             self.cx.source_map().new_source_file(filename.into(), src);
 
                             let include_info = vec![
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::from_str("file"),
                                         dummy_spanned(file),
                                     ),
-                                )),
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                ),
+                                ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::from_str("contents"),
                                         dummy_spanned(src_interned),
                                     ),
-                                )),
+                                ),
                             ];
 
                             let include_ident = Ident::from_str("include");
                             let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
-                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
+                            items.push(ast::NestedMetaItem::MetaItem(item));
                         }
                         Err(e) => {
                             let lit = it
@@ -1569,7 +1569,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     }
                 } else {
                     let mut err = self.cx.struct_span_err(
-                        it.span,
+                        it.span(),
                         &format!("expected path to external documentation"),
                     );
 
@@ -1590,7 +1590,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     };
 
                     err.span_suggestion(
-                        it.span,
+                        it.span(),
                         "provide a file path with `=`",
                         format!("include = \"{}\"", path),
                         applicability,

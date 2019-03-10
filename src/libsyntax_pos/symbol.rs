@@ -484,11 +484,16 @@ impl Ident {
         self.name == keywords::DollarCrate.name()
     }
 
-    // We see this identifier in a normal identifier position, like variable name or a type.
-    // How was it written originally? Did it use the raw form? Let's try to guess.
-    pub fn is_raw_guess(self) -> bool {
+    /// This identifier can be a raw identifier.
+    pub fn can_be_raw(self) -> bool {
         self.name != keywords::Invalid.name() && self.name != keywords::Underscore.name() &&
-        self.is_reserved() && !self.is_path_segment_keyword()
+        !self.is_path_segment_keyword()
+    }
+
+    /// We see this identifier in a normal identifier position, like variable name or a type.
+    /// How was it written originally? Did it use the raw form? Let's try to guess.
+    pub fn is_raw_guess(self) -> bool {
+        self.can_be_raw() && self.is_reserved()
     }
 }
 

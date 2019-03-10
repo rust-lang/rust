@@ -380,9 +380,14 @@ pub fn compile(
             .map(|attr| attr
                 .meta_item_list()
                 .map(|list| list.iter()
-                    .map(|it| it.name().unwrap_or_else(|| sess.span_diagnostic.span_bug(
-                        it.span, "allow internal unstable expects feature names",
-                    )))
+                    .filter_map(|it| {
+                        let name = it.ident().map(|ident| ident.name);
+                        if name.is_none() {
+                            sess.span_diagnostic.span_err(it.span(),
+                                "allow internal unstable expects feature names")
+                        }
+                        name
+                    })
                     .collect::<Vec<Symbol>>().into()
                 )
                 .unwrap_or_else(|| {

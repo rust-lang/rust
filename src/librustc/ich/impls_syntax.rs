@@ -197,7 +197,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         let filtered: SmallVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_sugared_doc && !hcx.is_ignored_attr(attr.name())
+                !attr.is_sugared_doc &&
+                !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
 
@@ -224,7 +225,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         // Make sure that these have been filtered out.
-        debug_assert!(!hcx.is_ignored_attr(self.name()));
+        debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
         debug_assert!(!self.is_sugared_doc);
 
         let ast::Attribute {
@@ -359,15 +360,13 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
     }
 }
 
-impl_stable_hash_for_spanned!(::syntax::ast::NestedMetaItemKind);
-
-impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItemKind {
+impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
     MetaItem(meta_item),
     Literal(lit)
 });
 
 impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
-    ident,
+    path,
     node,
     span
 });

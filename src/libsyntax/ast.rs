@@ -443,14 +443,11 @@ pub struct Crate {
     pub span: Span,
 }
 
-/// A spanned compile-time attribute list item.
-pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
-
 /// Possible values inside of compile-time attribute lists.
 ///
 /// E.g., the '..' in `#[name(..)]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum NestedMetaItemKind {
+pub enum NestedMetaItem {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
     /// A literal.
@@ -464,7 +461,7 @@ pub enum NestedMetaItemKind {
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MetaItem {
-    pub ident: Path,
+    pub path: Path,
     pub node: MetaItemKind,
     pub span: Span,
 }
@@ -2207,7 +2204,7 @@ pub struct Item {
 impl Item {
     /// Return the span that encompasses the attributes.
     pub fn span_with_attributes(&self) -> Span {
-        self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span()))
+        self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span))
     }
 }
 

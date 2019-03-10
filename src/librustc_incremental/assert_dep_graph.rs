@@ -99,12 +99,12 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
-            match list_item.word() {
-                Some(word) if value.is_none() =>
-                    value = Some(word.name()),
+            match list_item.ident() {
+                Some(ident) if list_item.is_word() && value.is_none() =>
+                    value = Some(ident.name),
                 _ =>
                     // FIXME better-encapsulate meta_item (don't directly access `node`)
-                    span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item.node),
+                    span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item),
             }
         }
         value
