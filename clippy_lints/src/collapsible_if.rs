@@ -68,7 +68,7 @@ declare_clippy_lint! {
     /// ```
     pub COLLAPSIBLE_IF,
     style,
-    "`if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)"
+    "`if`s that can be collapsed (e.g., `if x { if y { ... } }` and `else { if x { ... } }`)"
 }
 
 #[derive(Copy, Clone)]

@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ```
     pub SHADOW_SAME,
     restriction,
-    "rebinding a name to itself, e.g. `let mut x = &mut x`"
+    "rebinding a name to itself, e.g., `let mut x = &mut x`"
 }
 
 declare_clippy_lint! {
@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// ```
     pub SHADOW_REUSE,
     restriction,
-    "rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`"
+    "rebinding a name to an expression that re-uses the original value, e.g., `let x = x + 1`"
 }
 
 declare_clippy_lint! {

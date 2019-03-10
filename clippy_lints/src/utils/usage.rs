@@ -1,7 +1,6 @@
-use rustc::lint::LateContext;
-
 use rustc::hir::def::Def;
 use rustc::hir::*;
+use rustc::lint::LateContext;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
@@ -9,7 +8,7 @@ use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::source_map::Span;
 
-/// Returns a set of mutated local variable ids or None if mutations could not be determined.
+/// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
     let mut delegate = MutVarsDelegate {
         used_mutably: FxHashSet::default(),

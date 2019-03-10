@@ -286,7 +286,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
 /// A visitor that looks for reads from a variable.
 struct ReadVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    /// The id of the variable we're looking for.
+    /// The ID of the variable we're looking for.
     var: ast::NodeId,
     /// The expressions where the write to the variable occurred (for reporting
     /// in the lint).
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
     }
 }
 
-/// Returns true if `expr` is the LHS of an assignment, like `expr = ...`.
+/// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, _) = parent.node {

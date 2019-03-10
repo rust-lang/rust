@@ -49,19 +49,20 @@ impl T {
         true
     }
 
-    // no error, self is a ref
+    // No error; self is a ref.
     fn sub(&self, other: T) -> &T {
         self
     }
 
-    // no error, different #arguments
+    // No error; different number of arguments.
     fn div(self) -> T {
         self
     }
 
-    fn rem(self, other: T) {} // no error, wrong return type
+    // No error; wrong return type.
+    fn rem(self, other: T) {}
 
-    // fine
+    // Fine
     fn into_u32(self) -> u32 {
         0
     }
@@ -84,7 +85,7 @@ struct Lt<'a> {
 }
 
 impl<'a> Lt<'a> {
-    // The lifetime is different, but that’s irrelevant, see #734
+    // The lifetime is different, but that’s irrelevant; see issue #734.
     #[allow(clippy::needless_lifetimes)]
     pub fn new<'b>(s: &'b str) -> Lt<'b> {
         unimplemented!()
@@ -96,7 +97,7 @@ struct Lt2<'a> {
 }
 
 impl<'a> Lt2<'a> {
-    // The lifetime is different, but that’s irrelevant, see #734
+    // The lifetime is different, but that’s irrelevant; see issue #734.
     pub fn new(s: &str) -> Lt2 {
         unimplemented!()
     }
@@ -107,7 +108,7 @@ struct Lt3<'a> {
 }
 
 impl<'a> Lt3<'a> {
-    // The lifetime is different, but that’s irrelevant, see #734
+    // The lifetime is different, but that’s irrelevant; see issue #734.
     pub fn new() -> Lt3<'static> {
         unimplemented!()
     }
@@ -120,7 +121,7 @@ impl U {
     fn new() -> Self {
         U
     }
-    // ok because U is Copy
+    // Ok because `U` is `Copy`.
     fn to_something(self) -> u32 {
         0
     }
@@ -138,7 +139,7 @@ impl<T> V<T> {
 
 impl Mul<T> for T {
     type Output = T;
-    // no error, obviously
+    // No error, obviously.
     fn mul(self, other: T) -> T {
         self
     }
@@ -152,12 +153,12 @@ impl Mul<T> for T {
 fn option_methods() {
     let opt = Some(1);
 
-    // Check OPTION_MAP_UNWRAP_OR
-    // single line case
+    // Check `OPTION_MAP_UNWRAP_OR`.
+    // Single line case.
     let _ = opt.map(|x| x + 1)
-
-               .unwrap_or(0); // should lint even though this call is on a separate line
-    // multi line cases
+                // Should lint even though this call is on a separate line.
+               .unwrap_or(0);
+    // Multi-line cases.
     let _ = opt.map(|x| {
                         x + 1
                     }
@@ -166,9 +167,9 @@ fn option_methods() {
                .unwrap_or({
                     0
                 });
-    // single line `map(f).unwrap_or(None)` case
+    // Single line `map(f).unwrap_or(None)` case.
     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
-    // multiline `map(f).unwrap_or(None)` cases
+    // Multi-line `map(f).unwrap_or(None)` cases.
     let _ = opt.map(|x| {
         Some(x + 1)
     }
@@ -189,9 +190,9 @@ fn option_methods() {
     // Check OPTION_MAP_UNWRAP_OR_ELSE
     // single line case
     let _ = opt.map(|x| x + 1)
-
-               .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
-    // multi line cases
+                // Should lint even though this call is on a separate line.
+               .unwrap_or_else(|| 0);
+    // Multi-line cases.
     let _ = opt.map(|x| {
                         x + 1
                     }
@@ -200,20 +201,21 @@ fn option_methods() {
                .unwrap_or_else(||
                     0
                 );
-    // macro case
-    let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0); // should not lint
+    // Macro case.
+    // Should not lint.
+    let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0);
 
-    // Check OPTION_MAP_OR_NONE
-    // single line case
+    // Check `OPTION_MAP_OR_NONE`.
+    // Single line case.
     let _ = opt.map_or(None, |x| Some(x + 1));
-    // multi line case
+    // Multi-line case.
     let _ = opt.map_or(None, |x| {
                         Some(x + 1)
                        }
                 );
 }
 
-/// Struct to generate false positives for things with .iter()
+/// Struct to generate false positives for things with `.iter()`.
 #[derive(Copy, Clone)]
 struct HasIter;
 
@@ -227,65 +229,65 @@ impl HasIter {
     }
 }
 
-/// Checks implementation of `FILTER_NEXT` lint
+/// Checks implementation of `FILTER_NEXT` lint.
 #[rustfmt::skip]
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
-    // check single-line case
+    // Single-line case.
     let _ = v.iter().filter(|&x| *x < 0).next();
 
-    // check multi-line case
+    // Multi-line case.
     let _ = v.iter().filter(|&x| {
                                 *x < 0
                             }
                    ).next();
 
-    // check that we don't lint if the caller is not an Iterator
+    // Check that hat we don't lint if the caller is not an `Iterator`.
     let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.filter().next();
 }
 
-/// Checks implementation of `SEARCH_IS_SOME` lint
+/// Checks implementation of `SEARCH_IS_SOME` lint.
 #[rustfmt::skip]
 fn search_is_some() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
-    // check `find().is_some()`, single-line
+    // Check `find().is_some()`, single-line case.
     let _ = v.iter().find(|&x| *x < 0).is_some();
 
-    // check `find().is_some()`, multi-line
+    // Check `find().is_some()`, multi-line case.
     let _ = v.iter().find(|&x| {
                               *x < 0
                           }
                    ).is_some();
 
-    // check `position().is_some()`, single-line
+    // Check `position().is_some()`, single-line case.
     let _ = v.iter().position(|&x| x < 0).is_some();
 
-    // check `position().is_some()`, multi-line
+    // Check `position().is_some()`, multi-line case.
     let _ = v.iter().position(|&x| {
                                   x < 0
                               }
                    ).is_some();
 
-    // check `rposition().is_some()`, single-line
+    // Check `rposition().is_some()`, single-line case.
     let _ = v.iter().rposition(|&x| x < 0).is_some();
 
-    // check `rposition().is_some()`, multi-line
+    // Check `rposition().is_some()`, multi-line case.
     let _ = v.iter().rposition(|&x| {
                                    x < 0
                                }
                    ).is_some();
 
-    // check that we don't lint if the caller is not an Iterator
+    // Check that we don't lint if the caller is not an `Iterator`.
     let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.find().is_some();
     let _ = foo.position().is_some();
     let _ = foo.rposition().is_some();
 }
 
-/// Checks implementation of the `OR_FUN_CALL` lint
+/// Checks implementation of the `OR_FUN_CALL` lint.
 fn or_fun_call() {
     struct Foo;
 
@@ -348,14 +350,14 @@ fn or_fun_call() {
     let _ = stringy.unwrap_or("".to_owned());
 }
 
-/// Checks implementation of `ITER_NTH` lint
+/// Checks implementation of `ITER_NTH` lint.
 fn iter_nth() {
     let mut some_vec = vec![0, 1, 2, 3];
     let mut boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
     let mut some_vec_deque: VecDeque<_> = some_vec.iter().cloned().collect();
 
     {
-        // Make sure we lint `.iter()` for relevant types
+        // Make sure we lint `.iter()` for relevant types.
         let bad_vec = some_vec.iter().nth(3);
         let bad_slice = &some_vec[..].iter().nth(3);
         let bad_boxed_slice = boxed_slice.iter().nth(3);
@@ -363,7 +365,7 @@ fn iter_nth() {
     }
 
     {
-        // Make sure we lint `.iter_mut()` for relevant types
+        // Make sure we lint `.iter_mut()` for relevant types.
         let bad_vec = some_vec.iter_mut().nth(3);
     }
     {
@@ -373,7 +375,7 @@ fn iter_nth() {
         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     }
 
-    // Make sure we don't lint for non-relevant types
+    // Make sure we don't lint for non-relevant types.
     let false_positive = HasIter;
     let ok = false_positive.iter().nth(3);
     let ok_mut = false_positive.iter_mut().nth(3);

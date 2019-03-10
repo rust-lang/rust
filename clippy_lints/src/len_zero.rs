@@ -274,9 +274,9 @@ fn check_len(
     }
 }
 
-/// Check if this type has an `is_empty` method.
+/// Checks if this type has an `is_empty` method.
 fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    /// Get an `AssociatedItem` and return true if it matches `is_empty(self)`.
+    /// Gets an `AssociatedItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if item.ident.name == "is_empty" {
@@ -291,7 +291,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         }
     }
 
-    /// Check the inherent impl's items for an `is_empty(self)` method.
+    /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_, '_>, id: DefId) -> bool {
         cx.tcx
             .inherent_impls(id)

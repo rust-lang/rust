@@ -485,7 +485,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     }
 }
 
-/// Get the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is
+/// Gets the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is
 /// not available , use
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`

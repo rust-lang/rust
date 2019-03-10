@@ -9,12 +9,12 @@ macro_rules! test_macro {
     }};
 }
 
-/// Test that we lint if we use a binding with a single leading underscore
+/// Tests that we lint if we use a binding with a single leading underscore
 fn prefix_underscore(_foo: u32) -> u32 {
     _foo + 1
 }
 
-/// Test that we lint if we use a `_`-variable defined outside within a macro expansion
+/// Tests that we lint if we use a `_`-variable defined outside within a macro expansion
 fn in_macro(_foo: u32) {
     println!("{}", _foo);
     assert_eq!(_foo, _foo);
@@ -27,23 +27,23 @@ struct StructFieldTest {
     _underscore_field: u32,
 }
 
-/// Test that we lint the use of a struct field which is prefixed with an underscore
+/// Tests that we lint the use of a struct field which is prefixed with an underscore
 fn in_struct_field() {
     let mut s = StructFieldTest { _underscore_field: 0 };
     s._underscore_field += 1;
 }
 
-/// Test that we do not lint if the underscore is not a prefix
+/// Tests that we do not lint if the underscore is not a prefix
 fn non_prefix_underscore(some_foo: u32) -> u32 {
     some_foo + 1
 }
 
-/// Test that we do not lint if we do not use the binding (simple case)
+/// Tests that we do not lint if we do not use the binding (simple case)
 fn unused_underscore_simple(_foo: u32) -> u32 {
     1
 }
 
-/// Test that we do not lint if we do not use the binding (complex case). This checks for
+/// Tests that we do not lint if we do not use the binding (complex case). This checks for
 /// compatibility with the built-in `unused_variables` lint.
 fn unused_underscore_complex(mut _foo: u32) -> u32 {
     _foo += 1;
@@ -64,7 +64,7 @@ enum _EnumTest {
     _Value(_StructTest),
 }
 
-/// Test that we do not lint for non-variable bindings
+/// Tests that we do not lint for non-variable bindings
 fn non_variables() {
     _fn_test();
     let _s = _StructTest;

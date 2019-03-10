@@ -90,7 +90,7 @@ declare_deprecated_lint! {
 /// counterparts, so this lint may suggest a change in behavior or the code may not compile.
 declare_deprecated_lint! {
     pub ASSIGN_OPS,
-    "using compound assignment operators (e.g. `+=`) is harmless"
+    "using compound assignment operators (e.g., `+=`) is harmless"
 }
 
 /// **What it does:** Nothing. This lint has been deprecated.

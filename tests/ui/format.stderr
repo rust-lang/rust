@@ -15,13 +15,13 @@ LL |     format!("{}", "foo");
 error: useless use of `format!`
   --> $DIR/format.rs:19:5
    |
-LL |     format!("{:+}", "foo"); // warn when the format makes no difference
+LL |     format!("{:+}", "foo"); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
 
 error: useless use of `format!`
   --> $DIR/format.rs:20:5
    |
-LL |     format!("{:<}", "foo"); // warn when the format makes no difference
+LL |     format!("{:<}", "foo"); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string();`
 
 error: useless use of `format!`
@@ -33,13 +33,13 @@ LL |     format!("{}", arg);
 error: useless use of `format!`
   --> $DIR/format.rs:29:5
    |
-LL |     format!("{:+}", arg); // warn when the format makes no difference
+LL |     format!("{:+}", arg); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string();`
 
 error: useless use of `format!`
   --> $DIR/format.rs:30:5
    |
-LL |     format!("{:<}", arg); // warn when the format makes no difference
+LL |     format!("{:<}", arg); // Warn when the format makes no difference.
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string();`
 
 error: useless use of `format!`

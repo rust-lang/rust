@@ -1,4 +1,3 @@
-use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_tool_lint, lint_array};
@@ -7,6 +6,8 @@ use syntax::ast;
 use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
+
+use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -69,7 +70,7 @@ declare_clippy_lint! {
     /// statement look like a function call.
     ///
     /// **Known problems:** The lint currently misses unit return types in types,
-    /// e.g. the `F` in `fn generic_unit<F: Fn() -> ()>(f: F) { .. }`.
+    /// e.g., the `F` in `fn generic_unit<F: Fn() -> ()>(f: F) { .. }`.
     ///
     /// **Example:**
     /// ```rust

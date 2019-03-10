@@ -176,7 +176,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             //
             // * Exclude a type that is specifically bounded by `Borrow`.
-            // * Exclude a type whose reference also fulfills its bound. (e.g. `std::convert::AsRef`,
+            // * Exclude a type whose reference also fulfills its bound. (e.g., `std::convert::AsRef`,
             //   `serde::Serialize`)
             let (implements_borrow_trait, all_borrowable_trait) = {
                 let preds = preds

@@ -1,10 +1,11 @@
-use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
+
+use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function};
 
 pub struct EtaPass;
 
@@ -19,18 +20,17 @@ declare_clippy_lint! {
     /// **Known problems:** If creating the closure inside the closure has a side-
     /// effect then moving the closure creation out will change when that side-
     /// effect runs.
-    /// See https://github.com/rust-lang/rust-clippy/issues/1439 for more
-    /// details.
+    /// See rust-lang/rust-clippy#1439 for more details.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// xs.map(|x| foo(x))
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.
     pub REDUNDANT_CLOSURE,
     style,
-    "redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)"
+    "redundant closures, i.e., `|a| foo(a)` (which can be written as just `foo`)"
 }
 
 impl LintPass for EtaPass {

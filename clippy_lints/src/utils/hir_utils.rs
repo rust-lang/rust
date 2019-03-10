@@ -40,7 +40,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    /// Check whether two statements are the same.
+    /// Checks whether two statements are the same.
     pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
         match (&left.node, &right.node) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
@@ -55,7 +55,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    /// Check whether two blocks are the same.
+    /// Checks whether two blocks are the same.
     pub fn eq_block(&mut self, left: &Block, right: &Block) -> bool {
         over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r))
             && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
@@ -186,7 +186,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         left.name == right.name
     }
 
-    /// Check whether two patterns are the same.
+    /// Checks whether two patterns are the same.
     pub fn eq_pat(&mut self, left: &Pat, right: &Pat) -> bool {
         match (&left.node, &right.node) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
@@ -328,7 +328,7 @@ fn swap_binop<'a>(binop: BinOpKind, lhs: &'a Expr, rhs: &'a Expr) -> Option<(Bin
     }
 }
 
-/// Check if the two `Option`s are both `None` or some equal values as per
+/// Checks if the two `Option`s are both `None` or some equal values as per
 /// `eq_fn`.
 fn both<X, F>(l: &Option<X>, r: &Option<X>, mut eq_fn: F) -> bool
 where
@@ -338,7 +338,7 @@ where
         .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
 }
 
-/// Check if two slices are equal as per `eq_fn`.
+/// Checks if two slices are equal as per `eq_fn`.
 fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
 where
     F: FnMut(&X, &X) -> bool,

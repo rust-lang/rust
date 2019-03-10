@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```
     pub NEEDLESS_BOOL,
     complexity,
-    "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
+    "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`"
 }
 
 declare_clippy_lint! {
@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// ```
     pub BOOL_COMPARISON,
     complexity,
-    "comparing a variable to a boolean, e.g. `if x == true` or `if x != true`"
+    "comparing a variable to a boolean, e.g., `if x == true` or `if x != true`"
 }
 
 #[derive(Copy, Clone)]

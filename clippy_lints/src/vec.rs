@@ -106,7 +106,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
     );
 }
 
-/// Return the item type of the vector (ie. the `T` in `Vec<T>`).
+/// Returns the item type of the vector (i.e., the `T` in `Vec<T>`).
 fn vec_type(ty: Ty<'_>) -> Ty<'_> {
     if let ty::Adt(_, substs) = ty.sty {
         substs.type_at(0)

@@ -7,13 +7,13 @@ fn zero() {
 #[warn(clippy::unicode_not_nfc)]
 fn canon() {
     print!("̀àh?");
-    print!("a\u{0300}h?"); // also okay
+    print!("a\u{0300}h?"); // also ok
 }
 
 #[warn(clippy::non_ascii_literal)]
 fn uni() {
     print!("Üben!");
-    print!("\u{DC}ben!"); // this is okay
+    print!("\u{DC}ben!"); // this is ok
 }
 
 fn main() {

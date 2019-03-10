@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// ```
     pub MUT_MUT,
     pedantic,
-    "usage of double-mut refs, e.g. `&mut &mut ...`"
+    "usage of double-mut refs, e.g., `&mut &mut ...`"
 }
 
 #[derive(Copy, Clone)]

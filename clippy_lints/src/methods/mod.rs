@@ -1,3 +1,22 @@
+mod option_map_unwrap_or;
+mod unnecessary_filter_map;
+
+use std::borrow::Cow;
+use std::fmt;
+use std::iter;
+
+use if_chain::if_chain;
+use matches::matches;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
+use rustc::ty::{self, Predicate, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast;
+use syntax::source_map::{BytePos, Span};
+use syntax::symbol::LocalInternedString;
+
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
@@ -7,23 +26,6 @@ use crate::utils::{
     single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
     span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
-use if_chain::if_chain;
-use matches::matches;
-use rustc::hir;
-use rustc::hir::def::Def;
-use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
-use rustc::ty::{self, Predicate, Ty};
-use rustc::{declare_tool_lint, lint_array};
-use rustc_errors::Applicability;
-use std::borrow::Cow;
-use std::fmt;
-use std::iter;
-use syntax::ast;
-use syntax::source_map::{BytePos, Span};
-use syntax::symbol::LocalInternedString;
-
-mod option_map_unwrap_or;
-mod unnecessary_filter_map;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -55,7 +57,7 @@ declare_clippy_lint! {
     /// and propagate errors upwards with `try!`.
     ///
     /// Even if you want to panic on errors, not all `Error`s implement good
-    /// messages on display.  Therefore it may be beneficial to look at the places
+    /// messages on display. Therefore, it may be beneficial to look at the places
     /// where they may get displayed. Activate this lint to do just that.
     ///
     /// **Known problems:** None.
@@ -399,7 +401,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `.clone()` on a ref-counted pointer,
     /// (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
-    /// function syntax instead (e.g. `Rc::clone(foo)`).
+    /// function syntax instead (e.g., `Rc::clone(foo)`).
     ///
     /// **Why is this bad?** Calling '.clone()' on an Rc, Arc, or Weak
     /// can obscure the fact that only the pointer is being cloned, not the underlying
@@ -458,7 +460,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string methods that receive a single-character
-    /// `str` as an argument, e.g. `_.split("x")`.
+    /// `str` as an argument, e.g., `_.split("x")`.
     ///
     /// **Why is this bad?** Performing these methods using a `char` is faster than
     /// using a `str`.
@@ -469,7 +471,7 @@ declare_clippy_lint! {
     /// `_.split("x")` could be `_.split('x')`
     pub SINGLE_CHAR_PATTERN,
     perf,
-    "using a single-character str where a char could be used, e.g. `_.split(\"x\")`"
+    "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
 declare_clippy_lint! {
@@ -1008,7 +1010,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
 fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
-    /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
+    /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
         cx: &LateContext<'_, '_>,
         name: &str,
@@ -1057,7 +1059,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
         false
     }
 
-    /// Check for `*or(foo())`.
+    /// Checks for `*or(foo())`.
     #[allow(clippy::too_many_arguments)]
     fn check_general_case(
         cx: &LateContext<'_, '_>,
@@ -1546,7 +1548,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                     cx,
                     UNNECESSARY_FOLD,
                     fold_span,
-                    // TODO #2371 don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
+                    // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
                     "this `.fold` can be written more succinctly using another method",
                     "try",
                     sugg,
@@ -2348,7 +2350,7 @@ impl SelfKind {
         // Self types in the HIR are desugared to explicit self types. So it will
         // always be `self:
         // SomeType`,
-        // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if
+        // where SomeType can be `Self` or an explicit impl self type (e.g., `Foo` if
         // the impl is on `Foo`)
         // Thus, we only need to test equality against the impl self type or if it is
         // an explicit

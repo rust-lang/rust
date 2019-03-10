@@ -70,7 +70,7 @@ declare_clippy_lint! {
     /// ```
     pub INEFFECTIVE_BIT_MASK,
     correctness,
-    "expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`"
+    "expressions where a bit mask will be rendered useless by a comparison, e.g., `(x | 1) > 2`"
 }
 
 declare_clippy_lint! {

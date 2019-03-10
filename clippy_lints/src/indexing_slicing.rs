@@ -103,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
         if let ExprKind::Index(ref array, ref index) = &expr.node {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
-                // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
+                // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.sty {
                     let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
 
@@ -149,7 +149,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 
                 utils::span_help_and_lint(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
             } else {
-                // Catchall non-range index, i.e. [n] or [n << m]
+                // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.sty {
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.tables, index) {

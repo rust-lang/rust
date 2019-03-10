@@ -1,13 +1,14 @@
-use crate::utils::{
-    get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
-};
-use crate::utils::{higher, sugg};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
+
+use crate::utils::{
+    get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
+};
+use crate::utils::{higher, sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
@@ -19,9 +20,10 @@ declare_clippy_lint! {
     /// implementations that differ from the regular `Op` impl.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
     /// let mut a = 5;
-    /// ...
+    /// let b = 0;
+    /// // ...
     /// a = a + b;
     /// ```
     pub ASSIGN_OP_PATTERN,
@@ -36,12 +38,12 @@ declare_clippy_lint! {
     /// op= b`.
     ///
     /// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
-    /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore it suggests both.
+    /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
     /// If `a op= a op b` is really the correct behaviour it should be
     /// written as `a = a op a op b` as it's less confusing.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
     /// let mut a = 5;
     /// ...
     /// a += a + b;

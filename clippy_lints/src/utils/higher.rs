@@ -9,7 +9,7 @@ use rustc::lint::LateContext;
 use rustc::{hir, ty};
 use syntax::ast;
 
-/// Convert a hir binary operator to the corresponding `ast` type.
+/// Converts a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
     match op {
         hir::BinOpKind::Eq => ast::BinOpKind::Eq,
@@ -46,7 +46,7 @@ pub struct Range<'a> {
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
-    /// Find the field named `name` in the field. Always return `Some` for
+    /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;

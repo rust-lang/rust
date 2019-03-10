@@ -10,13 +10,13 @@ impl PubOne {
 }
 
 impl PubOne {
-    // A second impl for this struct - the error span shouldn't mention this
+    // A second impl for this struct -- the error span shouldn't mention this.
     pub fn irrelevant(self: &Self) -> bool {
         false
     }
 }
 
-// Identical to PubOne, but with an allow attribute on the impl complaining len
+// Identical to `PubOne`, but with an `allow` attribute on the impl complaining `len`.
 pub struct PubAllowed;
 
 #[allow(clippy::len_without_is_empty)]
@@ -26,8 +26,8 @@ impl PubAllowed {
     }
 }
 
-// No allow attribute on this impl block, but that doesn't matter - we only require one on the
-// impl containing len.
+// No `allow` attribute on this impl block, but that doesn't matter -- we only require one on the
+// impl containing `len`.
 impl PubAllowed {
     pub fn irrelevant(self: &Self) -> bool {
         false
@@ -38,7 +38,7 @@ struct NotPubOne;
 
 impl NotPubOne {
     pub fn len(self: &Self) -> isize {
-        // no error, len is pub but `NotPubOne` is not exported anyway
+        // No error; `len` is pub but `NotPubOne` is not exported anyway.
         1
     }
 }
@@ -47,7 +47,7 @@ struct One;
 
 impl One {
     fn len(self: &Self) -> isize {
-        // no error, len is private, see #1085
+        // No error; `len` is private; see issue #1085.
         1
     }
 }
@@ -63,7 +63,8 @@ impl PubTraitsToo for One {
 }
 
 trait TraitsToo {
-    fn len(self: &Self) -> isize; // no error, len is private, see #1085
+    fn len(self: &Self) -> isize;
+    // No error; `len` is private; see issue #1085.
 }
 
 impl TraitsToo for One {
@@ -130,7 +131,7 @@ pub trait Empty {
 }
 
 pub trait InheritingEmpty: Empty {
-    //must not trigger LEN_WITHOUT_IS_EMPTY
+    // Must not trigger `LEN_WITHOUT_IS_EMPTY`.
     fn len(&self) -> isize;
 }
 
@@ -144,13 +145,13 @@ fn main() {
 
     let y = One;
     if y.len() == 0 {
-        //no error because One does not have .is_empty()
+        // No error; `One` does not have `.is_empty()`.
         println!("This should not happen either!");
     }
 
     let z: &TraitsToo = &y;
     if z.len() > 0 {
-        //no error, because TraitsToo has no .is_empty() method
+        // No error; `TraitsToo` has no `.is_empty()` method.
         println!("Nor should this!");
     }
 
@@ -171,11 +172,11 @@ fn main() {
         println!("Or this!");
     }
     if has_is_empty.len() > 1 {
-        // no error
+        // No error.
         println!("This can happen.");
     }
     if has_is_empty.len() <= 1 {
-        // no error
+        // No error.
         println!("This can happen.");
     }
     if 0 == has_is_empty.len() {
@@ -194,11 +195,11 @@ fn main() {
         println!("Or this!");
     }
     if 1 < has_is_empty.len() {
-        // no error
+        // No error.
         println!("This can happen.");
     }
     if 1 >= has_is_empty.len() {
-        // no error
+        // No error.
         println!("This can happen.");
     }
     assert!(!has_is_empty.is_empty());
@@ -211,7 +212,7 @@ fn main() {
 
     let has_wrong_is_empty = HasWrongIsEmpty;
     if has_wrong_is_empty.len() == 0 {
-        //no error as HasWrongIsEmpty does not have .is_empty()
+        // No error; `HasWrongIsEmpty` does not have `.is_empty()`.
         println!("Or this!");
     }
 }
@@ -220,7 +221,7 @@ fn test_slice(b: &[u8]) {
     if b.len() != 0 {}
 }
 
-// this used to ICE
+// This used to ICE.
 pub trait Foo: Sized {}
 
 pub trait DependsOnFoo: Foo {

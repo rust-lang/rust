@@ -1,4 +1,3 @@
-use crate::utils::span_lint;
 use rustc::hir::intravisit as visit;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -9,6 +8,8 @@ use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
+
+use crate::utils::span_lint;
 
 pub struct Pass {
     pub too_large_for_stack: u64,
@@ -67,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         hir_id: HirId,
     ) {
-        // If the method is an impl for a trait, don't warn
+        // If the method is an impl for a trait, don't warn.
         let parent_id = cx.tcx.hir().get_parent_item(hir_id);
         let parent_node = cx.tcx.hir().find_by_hir_id(parent_id);
 
@@ -102,7 +103,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if let Move(DirectRefMove) = mode {
-                // moved out or in. clearly can't be localized
+                // Moved out or in. Clearly can't be localized.
                 self.set.remove(&lid);
             }
         }
@@ -158,20 +159,20 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     ) {
         if let Categorization::Local(lid) = cmt.cat {
             match loan_cause {
-                // x.foo()
-                // Used without autodereffing (i.e. x.clone())
+                // `x.foo()`
+                // Used without autoderef-ing (i.e., `x.clone()`).
                 LoanCause::AutoRef |
 
-                // &x
-                // foo(&x) where no extra autoreffing is happening
+                // `&x`
+                // `foo(&x)` where no extra autoref-ing is happening.
                 LoanCause::AddrOf |
 
-                // `match x` can move
+                // `match x` can move.
                 LoanCause::MatchDiscriminant => {
                     self.set.remove(&lid);
                 }
 
-                // do nothing for matches, etc. These can't escape
+                // Do nothing for matches, etc. These can't escape.
                 _ => {}
             }
         }
@@ -182,8 +183,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
     fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
-        // Large types need to be boxed to avoid stack
-        // overflows.
+        // Large types need to be boxed to avoid stack overflows.
         if ty.is_box() {
             self.cx.layout_of(ty.boxed_ty()).ok().map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
         } else {

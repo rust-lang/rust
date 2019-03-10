@@ -11,7 +11,7 @@
 #![feature(crate_visibility_modifier)]
 
 // FIXME: switch to something more ergonomic here, once available.
-// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+// (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
 extern crate fmt_macros;
 #[allow(unused_extern_crates)]
@@ -407,7 +407,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     );
     store.register_removed(
         "assign_ops",
-        "using compound assignment operators (e.g. `+=`) is harmless",
+        "using compound assignment operators (e.g., `+=`) is harmless",
     );
     store.register_removed(
         "if_let_redundant_pattern_matching",

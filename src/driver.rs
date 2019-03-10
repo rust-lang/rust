@@ -4,7 +4,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 
 // FIXME: switch to something more ergonomic here, once available.
-// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+// (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 #[allow(unused_extern_crates)]
