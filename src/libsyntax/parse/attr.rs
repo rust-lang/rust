@@ -267,8 +267,6 @@ impl<'a> Parser<'a> {
 
     /// matches meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
-        let lo = self.span;
-
         match self.parse_unsuffixed_lit() {
             Ok(lit) => {
                 return Ok(ast::NestedMetaItem::Literal(lit))

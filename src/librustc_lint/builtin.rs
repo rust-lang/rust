@@ -831,7 +831,7 @@ impl UnusedDocComment {
 
             let span = sugared_span.take().unwrap_or_else(|| attr.span);
 
-            if attr.name() == "doc" {
+            if attr.check_name("doc") {
                 let mut err = cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, "unused doc comment");
 
                 err.span_label(
