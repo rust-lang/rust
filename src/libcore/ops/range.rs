@@ -692,7 +692,7 @@ pub enum Bound<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
-/// by range syntax like `..`, `a..`, `..b` or `c..d`.
+/// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
 pub trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///
