@@ -1397,6 +1397,7 @@ fn test_box_slice_clone() {
 #[test]
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
 #[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg(not(miri))] // Miri does not support threads nor entropy
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1588,6 +1589,7 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
+#[cfg(not(miri))] // Miri does not support threads nor entropy
 fn panic_safe() {
     let prev = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
