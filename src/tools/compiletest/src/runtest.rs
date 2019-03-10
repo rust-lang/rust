@@ -4,7 +4,7 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
-use crate::common::{Incremental, MirOpt, RunMake, Ui};
+use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
@@ -275,6 +275,7 @@ impl<'test> TestCx<'test> {
             RunMake => self.run_rmake_test(),
             RunPass | Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
+            JsDocTest => self.run_js_doc_test(),
         }
     }
 
@@ -291,6 +292,7 @@ impl<'test> TestCx<'test> {
         match self.config.mode {
             CompileFail => self.props.compile_pass,
             RunPass => true,
+            JsDocTest => true,
             Ui => self.props.compile_pass,
             Incremental => {
                 let revision = self.revision
@@ -1712,7 +1714,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
-        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui");
+        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
+                         self.config.src_base.ends_with("rustdoc-js");
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
@@ -1802,7 +1805,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg(dir_opt);
             }
             RunFail | RunPassValgrind | Pretty | DebugInfoBoth | DebugInfoGdb | DebugInfoLldb
-            | Codegen | Rustdoc | RunMake | CodegenUnits => {
+            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -2708,6 +2711,27 @@ impl<'test> TestCx<'test> {
             }
         }
         fs::remove_dir(path)
+    }
+
+    fn run_js_doc_test(&self) {
+        if let Some(nodejs) = &self.config.nodejs {
+            let out_dir = self.output_base_dir();
+
+            self.document(&out_dir);
+
+            let root = self.config.find_rust_src_root().unwrap();
+            let res = self.cmd2procres(
+                Command::new(&nodejs)
+                    .arg(root.join("src/tools/rustdoc-js/tester.js"))
+                    .arg(out_dir.parent().expect("no parent"))
+                    .arg(&self.testpaths.file.file_stem().expect("couldn't get file stem")),
+            );
+            if !res.status.success() {
+                self.fatal_proc_rec("rustdoc-js test failed!", &res);
+            }
+        } else {
+            self.fatal("no nodeJS");
+        }
     }
 
     fn run_ui_test(&self) {
