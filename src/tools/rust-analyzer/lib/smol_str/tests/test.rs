@@ -66,3 +66,10 @@ fn test_serde() {
     let s: SmolStr = serde_json::from_str(&s).unwrap();
     assert_eq!(s, "Hello, World");
 }
+
+#[test]
+fn test_search_in_hashmap() {
+    let mut m = ::std::collections::HashMap::<SmolStr, i32>::new();
+    m.insert("aaa".into(), 17);
+    assert_eq!(17, *m.get("aaa").unwrap());
+}

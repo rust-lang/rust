@@ -1,4 +1,4 @@
-use std::{fmt, hash, ops::Deref, sync::Arc};
+use std::{borrow::Borrow, fmt, hash, ops::Deref, sync::Arc};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -145,6 +145,12 @@ where
 impl From<SmolStr> for String {
     fn from(text: SmolStr) -> Self {
         text.to_string()
+    }
+}
+
+impl Borrow<str> for SmolStr {
+    fn borrow(&self) -> &str {
+        self.as_str()
     }
 }
 
