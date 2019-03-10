@@ -69,7 +69,6 @@ fn test_option_dance() {
 }
 
 #[test] #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_option_too_much_dance() {
     struct A;
     let mut y = Some(A);
@@ -130,7 +129,6 @@ fn test_unwrap() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_unwrap_panic1() {
     let x: Option<isize> = None;
     x.unwrap();
@@ -138,7 +136,6 @@ fn test_unwrap_panic1() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_unwrap_panic2() {
     let x: Option<String> = None;
     x.unwrap();
