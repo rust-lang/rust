@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// struct X {
     ///     values: Box<Vec<Foo>>,
     /// }
@@ -48,7 +48,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// struct X {
     ///     values: Vec<Foo>,
     /// }
@@ -101,6 +101,7 @@ declare_clippy_lint! {
     /// fn x() -> Option<Option<u32>> {
     ///     None
     /// }
+    /// ```
     pub OPTION_OPTION,
     complexity,
     "usage of `Option<Option<T>>`"
@@ -150,13 +151,13 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// fn foo(bar: &Box<T>) { ... }
     /// ```
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// fn foo(bar: &T) { ... }
     /// ```
     pub BORROWED_BOX,
@@ -1537,7 +1538,7 @@ declare_clippy_lint! {
     /// like `#[cfg(target_pointer_width = "64")] ..` instead.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// vec.len() <= 0
     /// 100 > std::i32::MAX
     /// ```

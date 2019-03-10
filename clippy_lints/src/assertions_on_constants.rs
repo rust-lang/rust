@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// assert!(false)
     /// // or
     /// assert!(true)

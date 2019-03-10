@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// fn foo(ref x: u8) -> bool {
-    ///     ..
+    ///     true
     /// }
     /// ```
     pub TOPLEVEL_REF_ARG,

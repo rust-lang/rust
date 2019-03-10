@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// See rust-lang/rust-clippy#1439 for more details.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// xs.map(|x| foo(x))
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of

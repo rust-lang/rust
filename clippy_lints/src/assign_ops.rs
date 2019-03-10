@@ -22,7 +22,8 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let mut a = 5;
-    /// ...
+    /// let b = 0;
+    /// // ...
     /// a = a + b;
     /// ```
     pub ASSIGN_OP_PATTERN,

@@ -17,9 +17,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// let x = 1;
     /// 0 / x;
     /// 0 * x;
-    /// x & 0
+    /// x & 0;
     /// ```
     pub ERASING_OP,
     correctness,
