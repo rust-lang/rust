@@ -79,9 +79,9 @@ impl fmt::Debug for VaListImpl {
                      all supported platforms",
            issue = "44930")]
 struct VaListImpl {
-    stack: *mut (),
-    gr_top: *mut (),
-    vr_top: *mut (),
+    stack: *mut c_void,
+    gr_top: *mut c_void,
+    vr_top: *mut c_void,
     gr_offs: i32,
     vr_offs: i32,
 }
@@ -98,8 +98,8 @@ struct VaListImpl {
     gpr: u8,
     fpr: u8,
     reserved: u16,
-    overflow_arg_area: *mut (),
-    reg_save_area: *mut (),
+    overflow_arg_area: *mut c_void,
+    reg_save_area: *mut c_void,
 }
 
 /// x86_64 ABI implementation of a `va_list`.
@@ -113,8 +113,8 @@ struct VaListImpl {
 struct VaListImpl {
     gp_offset: i32,
     fp_offset: i32,
-    overflow_arg_area: *mut (),
-    reg_save_area: *mut (),
+    overflow_arg_area: *mut c_void,
+    reg_save_area: *mut c_void,
 }
 
 /// A wrapper for a `va_list`
