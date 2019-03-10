@@ -1413,7 +1413,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
     }
 }
 
-/// Checks for `for` loops over `Option`s and `Results`
+/// Checks for `for` loops over `Option`s and `Result`s.
 fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
     let ty = cx.tables.expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
@@ -1673,7 +1673,7 @@ fn check_for_mutation(
     delegate.mutation_span()
 }
 
-/// Returns `true` if the pattern is a `PatWild` or an ident prefixed with `'_'`.
+/// Returns `true` if the pattern is a `PatWild` or an ident prefixed with `_`.
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
@@ -2336,7 +2336,7 @@ fn path_name(e: &Expr) -> Option<Name> {
 
 fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, expr: &'tcx Expr) {
     if constant(cx, cx.tables, cond).is_some() {
-        // A pure constant condition (e.g., while false) is not linted.
+        // A pure constant condition (e.g., `while false`) is not linted.
         return;
     }
 

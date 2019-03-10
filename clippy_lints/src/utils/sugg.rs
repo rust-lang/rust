@@ -241,12 +241,12 @@ impl<'a> Sugg<'a> {
     }
 
     /// Adds parenthesis to any expression that might need them. Suitable to the
-    /// `self` argument of
-    /// a method call (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
+    /// `self` argument of a method call
+    /// (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
     pub fn maybe_par(self) -> Self {
         match self {
             Sugg::NonParen(..) => self,
-            // (x) and (x).y() both don't need additional parens
+            // `(x)` and `(x).y()` both don't need additional parens.
             Sugg::MaybeParen(sugg) => {
                 if sugg.starts_with('(') && sugg.ends_with(')') {
                     Sugg::MaybeParen(sugg)
@@ -282,7 +282,7 @@ impl<'a> std::ops::Not for Sugg<'a> {
 
 /// Helper type to display either `foo` or `(foo)`.
 struct ParenHelper<T> {
-    /// Whether parenthesis are needed.
+    /// `true` if parentheses are needed.
     paren: bool,
     /// The main thing to display.
     wrapped: T,
@@ -320,12 +320,13 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
 /// often confusing so
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
-    /// Whether the operator is a shift operator `<<` or `>>`.
+    /// Returns `true` if the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
-    /// Whether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
+    /// Returns `true` if the operator is a arithmetic operator
+    /// (i.e., `+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
         matches!(
             *op,
@@ -333,9 +334,8 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
         )
     }
 
-    /// Whether the operator `op` needs parenthesis with the operator `other`
-    /// in the direction
-    /// `dir`.
+    /// Returns `true` if the operator `op` needs parenthesis with the operator
+    /// `other` in the direction `dir`.
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence()
             || (other.precedence() == op.precedence()
@@ -414,9 +414,8 @@ enum Associativity {
 }
 
 /// Returns the associativity/fixity of an operator. The difference with
-/// `AssocOp::fixity` is that
-/// an operator can be both left and right associative (such as `+`:
-/// `a + b + c == (a + b) + c == a + (b + c)`.
+/// `AssocOp::fixity` is that an operator can be both left and right associative
+/// (such as `+`: `a + b + c == (a + b) + c == a + (b + c)`.
 ///
 /// Chained `as` and explicit `:` type coercion never need inner parenthesis so
 /// they are considered

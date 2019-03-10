@@ -197,7 +197,7 @@ struct VectorInitializationVisitor<'a, 'tcx: 'a> {
     /// Contains the information.
     vec_alloc: VecAllocation<'tcx>,
 
-    /// Contains, the slow initialization expression, if one was found.
+    /// Contains the slow initialization expression, if one was found.
     slow_expression: Option<InitializationType<'tcx>>,
 
     /// `true` if the initialization of the vector has been found on the visited block.

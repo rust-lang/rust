@@ -147,7 +147,7 @@ pub fn get_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Vec<&'static str>
         .collect()
 }
 
-/// Checks if type is struct, enum or union type with given def path.
+/// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
@@ -155,7 +155,7 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     }
 }
 
-/// Checks if the method call given in `expr` belongs to given trait.
+/// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
     let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.trait_of_item(method_call.def_id());
@@ -434,7 +434,7 @@ pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     }
 }
 
-/// Gets the name of a `Pat`, if any
+/// Gets the name of a `Pat`, if any.
 pub fn get_pat_name(pat: &Pat) -> Option<Name> {
     match pat.node {
         PatKind::Binding(.., ref spname, _) => Some(spname.name),
@@ -614,7 +614,7 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
     }
 }
 
-/// Gets a parent expressions if any – this is useful to constrain a lint.
+/// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.hir();
     let hir_id = e.hir_id;
@@ -727,7 +727,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Returns the pre-expansion span if is this directly comes from an expansion
+/// Returns the pre-expansion span if the span directly comes from an expansion
 /// of the macro `name`.
 /// The difference with `is_expn_of` is that in
 /// ```rust,ignore
@@ -749,7 +749,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Convenience function to get the return type of a function
+/// Convenience function to get the return type of a function.
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
@@ -759,9 +759,9 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> T
 /// Checks if two types are the same.
 ///
 /// This discards any lifetime annotations, too.
-// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for
-// <'b> Foo<'b>` but
-// not for type parameters.
+//
+// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` ==
+// `for <'b> Foo<'b>`, but not for type parameters).
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
     let a = cx.tcx.erase_late_bound_regions(&Binder::bind(a));
     let b = cx.tcx.erase_late_bound_regions(&Binder::bind(b));
@@ -871,8 +871,8 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<I
     (0..decl.inputs.len()).map(move |i| &body.arguments[i])
 }
 
-/// Checks if a given expression is a match expression
-/// expanded from `?` operator or `try` macro.
+/// Checks if a given expression is a match expression expanded from the `?`
+/// operator or the `try` macro.
 pub fn is_try<'a>(cx: &'_ LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
     fn is_ok(cx: &'_ LateContext<'_, '_>, arm: &Arm) -> bool {
         if_chain! {

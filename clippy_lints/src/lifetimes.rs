@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// them leads to more readable code.
     ///
     /// **Known problems:** Potential false negatives: we bail out if the function
-    /// has a where-clause where lifetimes are mentioned.
+    /// has a `where` clause where lifetimes are mentioned.
     ///
     /// **Example:**
     /// ```rust
@@ -385,7 +385,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     }
 }
 
-/// Are any lifetimes mentioned in the where-clause? If yes, we don't try to
+/// Are any lifetimes mentioned in the `where` clause? If so, we don't try to
 /// reason about elision.
 fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &'tcx WhereClause) -> bool {
     for predicate in &where_clause.predicates {

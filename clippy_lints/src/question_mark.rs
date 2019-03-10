@@ -52,7 +52,7 @@ impl Pass {
     ///
     /// ```ignore
     /// if option.is_none() {
-    ///    return `None`;
+    ///    return None;
     /// }
     /// ```
     ///

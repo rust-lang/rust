@@ -26,8 +26,7 @@ declare_clippy_lint! {
     /// ```
     pub ASSERTIONS_ON_CONSTANTS,
     style,
-    "`assert!(true)` / `assert!(false)` will be optimized out by the compiler, \
-     and should probably be replaced by a `panic!()` or `unreachable!()`"
+    "`assert!(true)` / `assert!(false)` will be optimized out by the compiler, and should probably be replaced by a `panic!()` or `unreachable!()`"
 }
 
 pub struct AssertionsOnConstants;

@@ -6,7 +6,7 @@
 struct Foo(pub String);
 
 macro_rules! foo {
-  ($($t:tt)*) => (Foo(format!($($t)*)))
+    ($($t:tt)*) => (Foo(format!($($t)*)))
 }
 
 fn main() {
@@ -49,8 +49,8 @@ fn main() {
     foo!("should not warn");
 
     // Precision on string means slicing without panicking on size.
-    format!("{:.1}", "foo"); // could be `"foo"[..1]`
-    format!("{:.10}", "foo"); // could not be `"foo"[..10]`
+    format!("{:.1}", "foo"); // Could be `"foo"[..1]`
+    format!("{:.10}", "foo"); // Could not be `"foo"[..10]`
     format!("{:.prec$}", "foo", prec = 1);
     format!("{:.prec$}", "foo", prec = 10);
 

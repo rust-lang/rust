@@ -322,7 +322,7 @@ fn check_single_match_opt_like(
     ty: Ty<'_>,
     els: Option<&Expr>,
 ) {
-    // list of candidate Enums we know will never get any more members
+    // list of candidate `Enum`s we know will never get any more members
     let candidates = &[
         (&paths::COW, "Borrowed"),
         (&paths::COW, "Cow::Borrowed"),
@@ -335,7 +335,7 @@ fn check_single_match_opt_like(
 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, ref inner, _) => {
-            // contains any non wildcard patterns? e.g., Err(err)
+            // Contains any non wildcard patterns (e.g., `Err(err)`)?
             if !inner.iter().all(is_wild) {
                 return;
             }
@@ -354,7 +354,7 @@ fn check_single_match_opt_like(
 }
 
 fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
-    // type of expression == bool
+    // Type of expression is `bool`.
     if cx.tables.expr_ty(ex).sty == ty::Bool {
         span_lint_and_then(
             cx,
