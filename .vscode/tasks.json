@@ -20,7 +20,7 @@
     {
       "label": "Build Lsp",
       "type": "shell",
-      "command": "cargo check",
+      "command": "cargo build",
       "problemMatcher": "$rustc"
     },
     {
