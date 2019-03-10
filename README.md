@@ -61,8 +61,8 @@ You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
 +nightly miri run -- -Zmiri-disable-validation` runs the program without
 validation of basic type invariants and references.  `cargo +nightly miri test
--- -- filter` passes `filter` to the test suite the same way `cargo test filter`
-would.
+-- -- -Zunstable-options --exclude-should-panic` skips `#[should_panic]` tests,
+which is a good idea because Miri does not support unwinding or catching panics.
 
 When running code via `cargo miri`, the `miri` config flag is set.  You can
 use this to exclude test cases that will fail under Miri because they do things
