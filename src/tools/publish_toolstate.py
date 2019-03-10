@@ -22,7 +22,10 @@ MAINTAINERS = {
     'nomicon': '@frewsxcv @Gankro',
     'reference': '@steveklabnik @Havvy @matthewjasper @alercah',
     'rust-by-example': '@steveklabnik @marioidival @projektir',
-    'embedded-book': '@adamgreig @andre-richter @jamesmunns @korken89 @ryankurte @thejpster @therealprof',
+    'embedded-book': (
+        '@adamgreig @andre-richter @jamesmunns @korken89 '
+        '@ryankurte @thejpster @therealprof'
+    ),
 }
 
 REPOS = {
