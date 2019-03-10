@@ -850,7 +850,7 @@ impl<T, S> Default for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
     where T: Eq + Hash + Clone,
           S: BuildHasher + Default
 {
@@ -882,7 +882,7 @@ impl<'a, 'b, T, S> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
     where T: Eq + Hash + Clone,
           S: BuildHasher + Default
 {
@@ -914,7 +914,7 @@ impl<'a, 'b, T, S> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
     where T: Eq + Hash + Clone,
           S: BuildHasher + Default
 {
@@ -946,7 +946,7 @@ impl<'a, 'b, T, S> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
+impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
     where T: Eq + Hash + Clone,
           S: BuildHasher + Default
 {

@@ -37,21 +37,21 @@ macro_rules! forward_ref_binop {
         }
 
         #[$attr]
-        impl<'a> $imp<&'a $u> for $t {
+        impl $imp<&$u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(self, *other)
             }
         }
 
         #[$attr]
-        impl<'a, 'b> $imp<&'a $u> for &'b $t {
+        impl $imp<&$u> for &$t {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
-            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
                 $imp::$method(*self, *other)
             }
         }
@@ -67,9 +67,9 @@ macro_rules! forward_ref_op_assign {
     };
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
-        impl<'a> $imp<&'a $u> for $t {
+        impl $imp<&$u> for $t {
             #[inline]
-            fn $method(&mut self, other: &'a $u) {
+            fn $method(&mut self, other: &$u) {
                 $imp::$method(self, *other);
             }
         }
