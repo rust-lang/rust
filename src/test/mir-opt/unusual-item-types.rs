@@ -7,11 +7,18 @@ impl A {
     const ASSOCIATED_CONSTANT: i32 = 2;
 }
 
+// See #59021
+enum Test {
+    X(usize),
+    Y { a: usize },
+}
+
 enum E {
     V = 5,
 }
 
 fn main() {
+    let f = Test::X as fn(usize) -> Test;
     let v = Vec::<i32>::new();
 }
 
@@ -64,3 +71,14 @@ fn main() {
 //     _3 = const std::ops::Drop::drop(move _2) -> [return: bb6, unwind: bb5];
 // }
 // END rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
+
+// START rustc.Test-X.mir_map.0.mir
+// fn Test::X(_1: usize) -> Test {
+//     let mut _0: Test;
+//
+//     bb0: {
+//         _0 = Test::X(move _1,);
+//         return;
+//     }
+// }
+// END rustc.Test-X.mir_map.0.mir
