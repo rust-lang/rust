@@ -5,13 +5,12 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
+use crate::hir::HirId;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
-
-use syntax::ast;
 
 mod builtin;
 mod inherent_impls;
@@ -19,8 +18,8 @@ mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
 
-fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
-    let impl_def_id = tcx.hir().local_def_id(node_id);
+fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_id: HirId) {
+    let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
 
     // If there are no traits, then this implementation must have a
     // base type.
@@ -160,8 +159,8 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 /// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
-fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
-    let impl_def_id = tcx.hir().local_def_id(node_id);
+fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_id: HirId) {
+    let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
     let trait_def_id = trait_ref.def_id;
 

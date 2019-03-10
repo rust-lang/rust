@@ -37,7 +37,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                let impl_def_id = self.tcx.hir().local_def_id(impl_id);
+                let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(impl_id);
                 f(self.tcx, impl_def_id);
             }
         }

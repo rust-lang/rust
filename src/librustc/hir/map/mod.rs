@@ -555,7 +555,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
+    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [HirId] {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // N.B., intentionally bypass `self.forest.krate()` so that we

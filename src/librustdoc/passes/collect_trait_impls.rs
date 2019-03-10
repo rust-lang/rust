@@ -119,7 +119,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     // doesn't work with it anyway, so pull them from the HIR map instead
     for &trait_did in cx.all_traits.iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
-            let impl_did = cx.tcx.hir().local_def_id(impl_node);
+            let impl_did = cx.tcx.hir().local_def_id_from_hir_id(impl_node);
             inline::build_impl(cx, impl_did, &mut new_items);
         }
     }
