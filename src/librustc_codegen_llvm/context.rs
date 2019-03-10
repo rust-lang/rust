@@ -372,7 +372,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
     fn eh_unwind_resume(&self) -> &'ll Value {
-        use crate::attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
             return llfn;

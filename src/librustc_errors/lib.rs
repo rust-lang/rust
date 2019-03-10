@@ -155,7 +155,7 @@ impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
     pub fn splice_lines(&self, cm: &SourceMapperDyn)
                         -> Vec<(String, Vec<SubstitutionPart>)> {
-        use syntax_pos::{CharPos, Loc, Pos};
+        use syntax_pos::{CharPos, Pos};
 
         fn push_trailing(buf: &mut String,
                          line_opt: Option<&Cow<'_, str>>,
