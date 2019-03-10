@@ -574,12 +574,52 @@ impl Step for RustdocTheme {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocJS {
+pub struct RustdocJSStd {
     pub host: Interned<String>,
     pub target: Interned<String>,
 }
 
-impl Step for RustdocJS {
+impl Step for RustdocJSStd {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/test/rustdoc-js-std")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustdocJSStd {
+            host: run.host,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        if let Some(ref nodejs) = builder.config.nodejs {
+            let mut command = Command::new(nodejs);
+            command.args(&["src/tools/rustdoc-js-std/tester.js", &*self.host]);
+            builder.ensure(crate::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+            });
+            builder.run(&mut command);
+        } else {
+            builder.info(
+                "No nodejs found, skipping \"src/test/rustdoc-js-std\" tests"
+            );
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocJSNotStd {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocJSNotStd {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -589,21 +629,24 @@ impl Step for RustdocJS {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJS {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        run.builder.ensure(RustdocJSNotStd {
             host: run.host,
             target: run.target,
+            compiler,
         });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if let Some(ref nodejs) = builder.config.nodejs {
-            let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
-            builder.ensure(crate::doc::Std {
+        if builder.config.nodejs.is_some() {
+            builder.ensure(Compiletest {
+                compiler: self.compiler,
                 target: self.target,
-                stage: builder.top_stage,
+                mode: "js-doc-test",
+                suite: "rustdoc-js",
+                path: None,
+                compare_mode: None,
             });
-            builder.run(&mut command);
         } else {
             builder.info(
                 "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
@@ -990,12 +1033,13 @@ impl Step for Compiletest {
             .arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
-        let is_rustdoc_ui = suite.ends_with("rustdoc-ui");
+        let is_rustdoc = suite.ends_with("rustdoc-ui") || suite.ends_with("rustdoc-js");
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
             || (mode == "run-make" && suite.ends_with("fulldeps"))
-            || (mode == "ui" && is_rustdoc_ui)
+            || (mode == "ui" && is_rustdoc)
+            || mode == "js-doc-test"
         {
             cmd.arg("--rustdoc-path")
                 .arg(builder.rustdoc(compiler.host));
@@ -1029,12 +1073,12 @@ impl Step for Compiletest {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        let mut flags = if is_rustdoc_ui {
+        let mut flags = if is_rustdoc {
             Vec::new()
         } else {
             vec!["-Crpath".to_string()]
         };
-        if !is_rustdoc_ui {
+        if !is_rustdoc {
             if builder.config.rust_optimize_tests {
                 flags.push("-O".to_string());
             }

@@ -24,6 +24,7 @@ pub enum Mode {
     Incremental,
     RunMake,
     Ui,
+    JsDocTest,
     MirOpt,
 }
 
@@ -59,6 +60,7 @@ impl FromStr for Mode {
             "incremental" => Ok(Incremental),
             "run-make" => Ok(RunMake),
             "ui" => Ok(Ui),
+            "js-doc-test" => Ok(JsDocTest),
             "mir-opt" => Ok(MirOpt),
             _ => Err(()),
         }
@@ -82,6 +84,7 @@ impl fmt::Display for Mode {
             Incremental => "incremental",
             RunMake => "run-make",
             Ui => "ui",
+            JsDocTest => "js-doc-test",
             MirOpt => "mir-opt",
         };
         fmt::Display::fmt(s, f)
