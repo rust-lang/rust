@@ -1,16 +1,10 @@
-error: you should put `DOC_MARKDOWN` between ticks in the documentation
-  --> $DIR/doc.rs:1:29
-   |
-LL | //! This file tests for the DOC_MARKDOWN lint
-   |                             ^^^^^^^^^^^^
-   |
-   = note: `-D clippy::doc-markdown` implied by `-D warnings`
-
 error: you should put `foo_bar` between ticks in the documentation
   --> $DIR/doc.rs:8:9
    |
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
    |         ^^^^^^^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
 error: you should put `foo::bar` between ticks in the documentation
   --> $DIR/doc.rs:8:51
@@ -19,9 +13,9 @@ LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot t
    |                                                   ^^^^^^^^
 
 error: you should put `Foo::some_fun` between ticks in the documentation
-  --> $DIR/doc.rs:9:84
+  --> $DIR/doc.rs:9:83
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
+LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not Foo::some_fun
    |                                                                                   ^^^^^^^^^^^^^
 
 error: you should put `a::global:path` between ticks in the documentation
@@ -115,10 +109,10 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `FooBar` between ticks in the documentation
-  --> $DIR/doc.rs:110:42
+  --> $DIR/doc.rs:110:43
    |
-LL | /** E.g. serialization of an empty list: FooBar
-   |                                          ^^^^^^
+LL | /** E.g., serialization of an empty list: FooBar
+   |                                           ^^^^^^
 
 error: you should put `BarQuz` between ticks in the documentation
   --> $DIR/doc.rs:115:5
@@ -133,10 +127,10 @@ LL | be_sure_we_got_to_the_end_of_it
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should put `FooBar` between ticks in the documentation
-  --> $DIR/doc.rs:121:42
+  --> $DIR/doc.rs:121:43
    |
-LL | /** E.g. serialization of an empty list: FooBar
-   |                                          ^^^^^^
+LL | /** E.g., serialization of an empty list: FooBar
+   |                                           ^^^^^^
 
 error: you should put `BarQuz` between ticks in the documentation
   --> $DIR/doc.rs:126:5
@@ -186,5 +180,5 @@ error: you should put `mycrate::Collection` between ticks in the documentation
 LL | /// An iterator over mycrate::Collection's values.
    |                      ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 31 previous errors
+error: aborting due to 30 previous errors
 
