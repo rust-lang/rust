@@ -329,11 +329,8 @@ fn in_cargo_miri() {
             "badly formatted cargo metadata: target::kind is an empty array",
         );
         // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
-        // change to add additional flags. `FLAGS` is set to identify
+        // change to add additional arguments. `FLAGS` is set to identify
         // this target.  The user gets to control what gets actually passed to Miri.
-        // However, we need to add a flag to what gets passed to rustc for the finaly
-        // binary, so that we know to interpret that with Miri.
-        // So after the first `--`, we add `-Zcargo-miri-marker`.
         let mut cmd = Command::new("cargo");
         cmd.arg("rustc");
         match (subcommand, kind.as_str()) {
@@ -363,7 +360,8 @@ fn in_cargo_miri() {
             cmd.arg(arg);
         }
         // Add `--` (to end the `cargo` flags), and then the user flags. We add markers around the
-        // user flags to be able to identify them later.
+        // user flags to be able to identify them later.  "cargo rustc" adds more stuff after this,
+        // so we have to mark both the beginning and the end.
         cmd
             .arg("--")
             .arg("cargo-miri-marker-begin")
