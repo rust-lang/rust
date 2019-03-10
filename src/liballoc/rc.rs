@@ -1145,7 +1145,7 @@ impl<T> From<T> for Rc<T> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
+impl<T: Clone> From<&[T]> for Rc<[T]> {
     #[inline]
     fn from(v: &[T]) -> Rc<[T]> {
         <Self as RcFromSlice<T>>::from_slice(v)
@@ -1153,7 +1153,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a> From<&'a str> for Rc<str> {
+impl From<&str> for Rc<str> {
     #[inline]
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());

@@ -1456,8 +1456,8 @@ impl PathBuf {
 }
 
 #[stable(feature = "box_from_path", since = "1.17.0")]
-impl<'a> From<&'a Path> for Box<Path> {
-    fn from(path: &'a Path) -> Box<Path> {
+impl From<&Path> for Box<Path> {
+    fn from(path: &Path) -> Box<Path> {
         let boxed: Box<OsStr> = path.inner.into();
         let rw = Box::into_raw(boxed) as *mut Path;
         unsafe { Box::from_raw(rw) }
@@ -1494,8 +1494,8 @@ impl Clone for Box<Path> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
-    fn from(s: &'a T) -> PathBuf {
+impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
+    fn from(s: &T) -> PathBuf {
         PathBuf::from(s.as_ref().to_os_string())
     }
 }
@@ -1630,7 +1630,7 @@ impl From<PathBuf> for Arc<Path> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a Path> for Arc<Path> {
+impl From<&Path> for Arc<Path> {
     /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
@@ -1650,7 +1650,7 @@ impl From<PathBuf> for Rc<Path> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a Path> for Rc<Path> {
+impl From<&Path> for Rc<Path> {
     /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
     #[inline]
     fn from(s: &Path) -> Rc<Path> {
