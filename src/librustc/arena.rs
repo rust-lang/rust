@@ -31,6 +31,7 @@ macro_rules! arena_types {
                 rustc::hir::def_id::DefId,
                 rustc::ty::subst::SubstsRef<$tcx>
             )>,
+            [few] hir_map: rustc::hir::map::Map<$tcx>,
             [few, decode] mir_keys: rustc::util::nodemap::DefIdSet,
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
             [] region_scope_tree: rustc::middle::region::ScopeTree,

@@ -674,8 +674,6 @@ impl DepGraph {
                         }
                     } else {
                         match dep_dep_node.kind {
-                            DepKind::Hir |
-                            DepKind::HirBody |
                             DepKind::CrateMetadata => {
                                 if dep_dep_node.extract_def_id(tcx).is_none() {
                                     // If the node does not exist anymore, we
@@ -719,7 +717,7 @@ impl DepGraph {
                             None => {
                                 if !tcx.sess.has_errors() {
                                     bug!("try_mark_previous_green() - Forcing the DepNode \
-                                          should have set its color")
+                                          should have set its color - dep node {:?}", dep_dep_node)
                                 } else {
                                     // If the query we just forced has resulted
                                     // in some kind of compilation error, we
