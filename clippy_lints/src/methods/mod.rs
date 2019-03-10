@@ -579,7 +579,7 @@ declare_clippy_lint! {
     /// some_vec[0] = 1;
     /// ```
     pub GET_UNWRAP,
-    style,
+    restriction,
     "using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead"
 }
 
