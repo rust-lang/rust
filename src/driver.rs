@@ -8,9 +8,9 @@
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 #[allow(unused_extern_crates)]
-extern crate rustc_plugin;
-#[allow(unused_extern_crates)]
 extern crate rustc_interface;
+#[allow(unused_extern_crates)]
+extern crate rustc_plugin;
 
 use rustc_interface::interface;
 use std::path::Path;
@@ -69,10 +69,14 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let sess = compiler.session();
         let mut registry = rustc_plugin::registry::Registry::new(
             sess,
-            compiler.parse().expect(
-                "at this compilation stage \
-                    the crate must be parsed",
-            ).peek().span,
+            compiler
+                .parse()
+                .expect(
+                    "at this compilation stage \
+                     the crate must be parsed",
+                )
+                .peek()
+                .span,
         );
         registry.args_hidden = Some(Vec::new());
 
@@ -195,13 +199,12 @@ pub fn main() {
 
             let mut clippy = ClippyCallbacks;
             let mut default = rustc_driver::DefaultCallbacks;
-            let callbacks: &mut (dyn rustc_driver::Callbacks + Send) = if clippy_enabled {
-                &mut clippy
-            } else {
-                &mut default
-            };
+            let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
+                if clippy_enabled { &mut clippy } else { &mut default };
             let args = args;
             rustc_driver::run_compiler(&args, callbacks, None, None)
-        }).and_then(|result| result).is_err() as i32
+        })
+        .and_then(|result| result)
+        .is_err() as i32,
     )
 }
