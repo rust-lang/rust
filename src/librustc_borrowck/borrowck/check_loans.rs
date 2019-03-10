@@ -177,6 +177,22 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) { }
+
+    fn nested_body(&mut self, body_id: hir::BodyId) {
+        // rust-lang/rust#58776: MIR and AST borrow check disagree on where
+        // certain closure errors are reported. As such migrate borrowck has to
+        // operate at the level of items, rather than bodies. Check if the
+        // contained closure had any errors and set `signalled_any_error` if it
+        // has.
+        let bccx = self.bccx;
+        if bccx.tcx.migrate_borrowck() {
+            if let SignalledError::NoErrorsSeen = bccx.signalled_any_error.get() {
+                let closure_def_id = bccx.tcx.hir().body_owner_def_id(body_id);
+
+                bccx.signalled_any_error.set(bccx.tcx.borrowck(closure_def_id).signalled_any_error);
+            }
+        }
+    }
 }
 
 pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
