@@ -215,8 +215,8 @@
                     "${workspaceRoot}"
                 ],
                 "background": {
-                    "beginsPattern": "^\\[Running ",
-                    "endsPattern": "^(\\[Finished running\\]|To learn more, run the command again with --verbose\\.)$"
+                    "beginsPattern": "^\\[Running\\b",
+                    "endsPattern": "^\\[Finished running\\b"
                 },
                 "pattern": "$rustc"
             }
