@@ -66,6 +66,7 @@ pub enum SyntaxKind {
     SHR,
     SHLEQ,
     SHREQ,
+    ASYNC_KW,
     USE_KW,
     FN_KW,
     STRUCT_KW,
@@ -233,6 +234,7 @@ use self::SyntaxKind::*;
 impl SyntaxKind {
     pub fn is_keyword(self) -> bool {
         match self {
+            | ASYNC_KW
             | USE_KW
             | FN_KW
             | STRUCT_KW
@@ -403,6 +405,7 @@ impl SyntaxKind {
             SHR => &SyntaxInfo { name: "SHR" },
             SHLEQ => &SyntaxInfo { name: "SHLEQ" },
             SHREQ => &SyntaxInfo { name: "SHREQ" },
+            ASYNC_KW => &SyntaxInfo { name: "ASYNC_KW" },
             USE_KW => &SyntaxInfo { name: "USE_KW" },
             FN_KW => &SyntaxInfo { name: "FN_KW" },
             STRUCT_KW => &SyntaxInfo { name: "STRUCT_KW" },
@@ -570,6 +573,7 @@ impl SyntaxKind {
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
+            "async" => ASYNC_KW,
             "use" => USE_KW,
             "fn" => FN_KW,
             "struct" => STRUCT_KW,
