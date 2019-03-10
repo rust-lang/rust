@@ -42,8 +42,12 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
+            let mut config = self.miri_config.clone();
 
-            miri::eval_main(tcx, entry_def_id, self.miri_config.clone());
+            // Add filename to `miri` arguments.
+            config.args.insert(0, compiler.input().filestem().to_string());
+
+            miri::eval_main(tcx, entry_def_id, config);
         });
 
         compiler.session().abort_if_errors();
