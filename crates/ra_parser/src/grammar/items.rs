@@ -88,7 +88,8 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     let mut has_mods = false;
 
     // modifiers
-
+    // test_err async_without_semicolon
+    // fn foo() { let _ = async {} }
     has_mods |= p.eat(CONST_KW);
     if p.at(ASYNC_KW) && p.nth(1) != L_CURLY {
         p.eat(ASYNC_KW);
