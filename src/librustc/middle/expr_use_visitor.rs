@@ -82,6 +82,9 @@ pub trait Delegate<'tcx> {
               assignment_span: Span,
               assignee_cmt: &mc::cmt_<'tcx>,
               mode: MutateMode);
+
+    // A nested closure or generator - only one layer deep.
+    fn nested_body(&mut self, _body_id: hir::BodyId) {}
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -531,8 +534,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&base);
             }
 
-            hir::ExprKind::Closure(.., fn_decl_span, _) => {
-                self.walk_captures(expr, fn_decl_span)
+            hir::ExprKind::Closure(_, _, body_id, fn_decl_span, _) => {
+                self.delegate.nested_body(body_id);
+                self.walk_captures(expr, fn_decl_span);
             }
 
             hir::ExprKind::Box(ref base) => {

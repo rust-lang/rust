@@ -153,6 +153,24 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                      .node_type(id);
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
+
+    fn nested_body(&mut self, body_id: hir::BodyId) {
+        debug!("nested_body(body_id={:?})", body_id);
+        // rust-lang/rust#58776: MIR and AST borrow check disagree on where
+        // certain closure errors are reported. As such migrate borrowck has to
+        // operate at the level of items, rather than bodies. Check if the
+        // contained closure had any errors and set `signalled_any_error` if it
+        // has.
+        let bccx = self.bccx;
+        if bccx.tcx.migrate_borrowck() {
+            if let SignalledError::NoErrorsSeen = bccx.signalled_any_error.get() {
+                let closure_def_id = bccx.tcx.hir().body_owner_def_id(body_id);
+                debug!("checking closure: {:?}", closure_def_id);
+
+                bccx.signalled_any_error.set(bccx.tcx.borrowck(closure_def_id).signalled_any_error);
+            }
+        }
+    }
 }
 
 /// Implements the A-* rules in README.md.
