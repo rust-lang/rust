@@ -26,7 +26,6 @@ struct FailStruct2 { }
 
 impl<'a: 'b, 'b> Anything<'a, 'b> for FailStruct2 {
     const AC: Option<&'a str> = None;
-    //~^ ERROR: mismatched types
 }
 
 fn main() {}

@@ -1,11 +1,15 @@
-error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/associated-const-generic-obligations.rs:14:5
+error[E0326]: implemented const `FROM` has an incompatible type for trait
+  --> $DIR/associated-const-generic-obligations.rs:14:17
    |
+LL |     const FROM: Self::Out;
+   |                 --------- type in trait
+...
 LL |     const FROM: &'static str = "foo";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |                 ^^^^^^^^^^^^ expected associated type, found reference
    |
-   = help: consider adding a `where T: Foo` bound
+   = note: expected type `<T as Foo>::Out`
+              found type `&'static str`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0326`.
