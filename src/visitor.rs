@@ -6,7 +6,8 @@ use syntax::{ast, visit};
 
 use crate::attr::*;
 use crate::comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
-use crate::config::{BraceStyle, Config};
+use crate::config::{BraceStyle, Config, Version};
+use crate::expr::{format_expr, ExprType};
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
     rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
@@ -20,7 +21,7 @@ use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
-    rewrite_ident, DEPR_SKIP_ANNOTATION,
+    rewrite_ident, stmt_expr, DEPR_SKIP_ANNOTATION,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
 
@@ -177,7 +178,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.walk_block_stmts(b);
 
         if !b.stmts.is_empty() {
-            if let Some(expr) = utils::stmt_expr(&b.stmts[b.stmts.len() - 1]) {
+            if let Some(expr) = stmt_expr(&b.stmts[b.stmts.len() - 1]) {
                 if utils::semicolon_for_expr(&self.get_context(), expr) {
                     self.push_str(";");
                 }
@@ -694,8 +695,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .collect();
 
         if items.is_empty() {
-            self.visit_stmt(&stmts[0]);
-            self.walk_stmts(&stmts[1..]);
+            // The `if` expression at the end of the block should be formatted in a single
+            // line if possible.
+            if self.config.version() == Version::Two
+                && stmts.len() == 1
+                && crate::expr::stmt_is_if(&stmts[0])
+                && !contains_skip(get_attrs_from_stmt(&stmts[0]))
+            {
+                let shape = self.shape();
+                let rewrite = self.with_context(|ctx| {
+                    format_expr(stmt_expr(&stmts[0])?, ExprType::SubExpression, ctx, shape)
+                });
+                self.push_rewrite(stmts[0].span(), rewrite);
+            } else {
+                self.visit_stmt(&stmts[0]);
+                self.walk_stmts(&stmts[1..]);
+            }
         } else {
             self.visit_items_with_reordering(&items);
             self.walk_stmts(&stmts[items.len()..]);

@@ -664,11 +664,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
 }
 
 fn choose_matcher(pats: &[&ast::Pat]) -> &'static str {
-    if pats.is_empty() {
-        ""
-    } else {
-        "let"
-    }
+    if pats.is_empty() { "" } else { "let" }
 }
 
 impl<'a> ControlFlow<'a> {
@@ -1178,6 +1174,16 @@ pub fn is_empty_block(
 pub fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Expr(..) => true,
+        _ => false,
+    }
+}
+
+pub(crate) fn stmt_is_if(stmt: &ast::Stmt) -> bool {
+    match stmt.node {
+        ast::StmtKind::Expr(ref e) => match e.node {
+            ast::ExprKind::If(..) => true,
+            _ => false,
+        },
         _ => false,
     }
 }
