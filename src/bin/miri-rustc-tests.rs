@@ -9,19 +9,15 @@ extern crate rustc_codegen_utils;
 extern crate rustc_interface;
 extern crate syntax;
 
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::io::Write;
 use std::sync::{Mutex, Arc};
 use std::io;
 
 
-use rustc::session::Session;
 use rustc_interface::interface;
-use rustc_metadata::cstore::CStore;
-use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
-use syntax::ast;
 use rustc::hir::def_id::LOCAL_CRATE;
 
 use miri::MiriConfig;
@@ -32,7 +28,7 @@ struct MiriCompilerCalls {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn after_parsing(&mut self, compiler: &interface::Compiler<'_>) -> bool {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
         let attr = (
             String::from("miri"),
             syntax::feature_gate::AttributeType::Whitelisted,
@@ -43,7 +39,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         true
     }
 
-    fn after_analysis(&mut self, compiler: &interface::Compiler<'_>) -> bool {
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
         compiler.session().abort_if_errors();
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             if std::env::args().any(|arg| arg == "--test") {
@@ -146,7 +142,7 @@ fn main() {
         let buf = BufWriter::default();
         let output = buf.clone();
         let result = std::panic::catch_unwind(|| {
-            rustc_driver::run_compiler(&args, &mut MiriCompilerCalls { host_target }, None, Some(Box::new(buf)));
+            let _ = rustc_driver::run_compiler(&args, &mut MiriCompilerCalls { host_target }, None, Some(Box::new(buf)));
         });
 
         match result {
