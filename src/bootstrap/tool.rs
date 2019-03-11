@@ -699,7 +699,7 @@ impl<'a> Builder<'a> {
         add_lib_path(lib_paths, cmd);
     }
 
-fn llvm_bin_path(&self) -> Option<PathBuf> {
+    fn llvm_bin_path(&self) -> Option<PathBuf> {
         if self.config.llvm_enabled() {
             let llvm_config = self.ensure(native::Llvm {
                 target: self.config.build,
