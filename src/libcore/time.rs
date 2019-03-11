@@ -638,8 +638,10 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_000));
-    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
+    /// // note that due to rounding errors result is slightly different
+    /// // from 8.478
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 64_000_000));
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
@@ -679,7 +681,9 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_611));
+    /// // note that due to rounding errors result is slightly
+    /// // different from 0.859_872_611
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_576));
     /// // note that truncation is used, not rounding
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
     /// ```
@@ -698,7 +702,7 @@ impl Duration {
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
-    /// assert_eq!(dur1.div_duration(dur2), 0.5);
+    /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
@@ -715,7 +719,7 @@ impl Duration {
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
-    /// assert_eq!(dur1.div_duration(dur2), 0.5);
+    /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
