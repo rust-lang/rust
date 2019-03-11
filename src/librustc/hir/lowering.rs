@@ -62,6 +62,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::source_map::{respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
@@ -4115,31 +4116,46 @@ impl<'a> LoweringContext<'a> {
             }
             // More complicated than you might expect because the else branch
             // might be `if let`.
-            ExprKind::If(ref cond, ref blk, ref else_opt) => {
-                let else_opt = else_opt.as_ref().map(|els| {
-                    match els.node {
+            ExprKind::If(ref cond, ref then, ref else_opt) => {
+                // `true => then`:
+                let then_pat = self.pat_bool(e.span, true);
+                let then_blk = self.lower_block(then, false);
+                let then_expr = self.expr_block(then_blk, ThinVec::new());
+                let then_arm = self.arm(hir_vec![then_pat], P(then_expr));
+
+                // `_ => else_block` where `else_block` is `{}` if there's `None`:
+                let else_pat = self.pat_wild(e.span);
+                let else_expr = match else_opt {
+                    None => self.expr_block_empty(e.span),
+                    Some(els) => match els.node {
                         ExprKind::IfLet(..) => {
                             // Wrap the `if let` expr in a block.
-                            let span = els.span;
-                            let els = P(self.lower_expr(els));
-                            let blk = P(hir::Block {
-                                stmts: hir_vec![],
-                                expr: Some(els),
-                                hir_id: self.next_id(),
-                                rules: hir::DefaultBlock,
-                                span,
-                                targeted_by_break: false,
-                            });
-                            P(self.expr_block(blk, ThinVec::new()))
+                            let els = self.lower_expr(els);
+                            let blk = self.block_all(els.span, hir_vec![], Some(P(els)));
+                            self.expr_block(P(blk), ThinVec::new())
                         }
-                        _ => P(self.lower_expr(els)),
+                        _ => self.lower_expr(els),
                     }
-                });
+                };
+                let else_arm = self.arm(hir_vec![else_pat], P(else_expr));
 
-                let then_blk = self.lower_block(blk, false);
-                let then_expr = self.expr_block(then_blk, ThinVec::new());
+                // Lower condition:
+                let span_block = self
+                    .sess
+                    .source_map()
+                    .mark_span_with_reason(IfTemporary, cond.span, None);
+                let cond = self.lower_expr(cond);
+                // Wrap in a construct equivalent to `{ let _t = $cond; _t }` to preserve drop
+                // semantics since `if cond { ... }` don't let temporaries live outside of `cond`.
+                let cond = self.expr_drop_temps(span_block, P(cond), ThinVec::new());
 
-                hir::ExprKind::If(P(self.lower_expr(cond)), P(then_expr), else_opt)
+                hir::ExprKind::Match(
+                    P(cond),
+                    vec![then_arm, else_arm].into(),
+                    hir::MatchSource::IfDesugar {
+                        contains_else_clause: else_opt.is_some()
+                    },
+                )
             }
             ExprKind::While(ref cond, ref body, opt_label) => self.with_loop_scope(e.id, |this| {
                 hir::ExprKind::While(
@@ -4486,16 +4502,16 @@ impl<'a> LoweringContext<'a> {
                     arms.push(self.arm(pats, body_expr));
                 }
 
-                // _ => [<else_opt>|()]
+                // _ => [<else_opt>|{}]
                 {
                     let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
                     let wildcard_pattern = self.pat_wild(e.span);
                     let body = if let Some(else_expr) = wildcard_arm {
-                        P(self.lower_expr(else_expr))
+                        self.lower_expr(else_expr)
                     } else {
-                        P(self.expr_tuple(e.span, hir_vec![]))
+                        self.expr_block_empty(e.span)
                     };
-                    arms.push(self.arm(hir_vec![wildcard_pattern], body));
+                    arms.push(self.arm(hir_vec![wildcard_pattern], P(body)));
                 }
 
                 let contains_else_clause = else_opt.is_some();
@@ -4658,11 +4674,7 @@ impl<'a> LoweringContext<'a> {
                         ThinVec::new(),
                     ))
                 };
-                let match_stmt = hir::Stmt {
-                    hir_id: self.next_id(),
-                    node: hir::StmtKind::Expr(match_expr),
-                    span: head_sp,
-                };
+                let match_stmt = self.stmt(head_sp, hir::StmtKind::Expr(match_expr));
 
                 let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
 
@@ -4685,11 +4697,7 @@ impl<'a> LoweringContext<'a> {
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
-                let body_stmt = hir::Stmt {
-                    hir_id: self.next_id(),
-                    node: hir::StmtKind::Expr(body_expr),
-                    span: body.span,
-                };
+                let body_stmt = self.stmt(body.span, hir::StmtKind::Expr(body_expr));
 
                 let loop_block = P(self.block_all(
                     e.span,
@@ -4869,12 +4877,7 @@ impl<'a> LoweringContext<'a> {
                     .into_iter()
                     .map(|item_id| {
                         let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
-
-                        hir::Stmt {
-                            hir_id: self.next_id(),
-                            node: hir::StmtKind::Item(item_id),
-                            span: s.span,
-                        }
+                        self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();
                 ids.push({
@@ -5174,28 +5177,32 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
+        hir::Stmt { span, node, hir_id: self.next_id() }
+    }
+
     fn stmt_let_pat(
         &mut self,
-        sp: Span,
-        ex: Option<P<hir::Expr>>,
+        span: Span,
+        init: Option<P<hir::Expr>>,
         pat: P<hir::Pat>,
         source: hir::LocalSource,
     ) -> hir::Stmt {
         let local = hir::Local {
             pat,
             ty: None,
-            init: ex,
+            init,
             hir_id: self.next_id(),
-            span: sp,
-            attrs: ThinVec::new(),
+            span,
             source,
+            attrs: ThinVec::new()
         };
+        self.stmt(span, hir::StmtKind::Local(P(local)))
+    }
 
-        hir::Stmt {
-            hir_id: self.next_id(),
-            node: hir::StmtKind::Local(P(local)),
-            span: sp
-        }
+    fn expr_block_empty(&mut self, span: Span) -> hir::Expr {
+        let blk = self.block_all(span, hir_vec![], None);
+        self.expr_block(P(blk), ThinVec::new())
     }
 
     fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {
@@ -5233,6 +5240,13 @@ impl<'a> LoweringContext<'a> {
             }), None),
             ThinVec::new(),
         )
+    }
+
+    /// Constructs a `true` or `false` literal pattern.
+    fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat> {
+        let lit = Spanned { span, node: LitKind::Bool(val) };
+        let expr = self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new());
+        self.pat(span, hir::PatKind::Lit(P(expr)))
     }
 
     fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
@@ -5622,15 +5636,7 @@ impl<'a> LoweringContext<'a> {
                 &["task", "Poll", "Pending"],
                 hir_vec![],
             );
-            let empty_block = P(hir::Block {
-                stmts: hir_vec![],
-                expr: None,
-                hir_id: self.next_id(),
-                rules: hir::DefaultBlock,
-                span,
-                targeted_by_break: false,
-            });
-            let empty_block = P(self.expr_block(empty_block, ThinVec::new()));
+            let empty_block = P(self.expr_block_empty(span));
             self.arm(hir_vec![pending_pat], empty_block)
         };
 

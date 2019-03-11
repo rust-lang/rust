@@ -185,11 +185,6 @@ pub enum ExprKind<'tcx> {
         cast: PointerCast,
         source: ExprRef<'tcx>,
     },
-    If {
-        condition: ExprRef<'tcx>,
-        then: ExprRef<'tcx>,
-        otherwise: Option<ExprRef<'tcx>>,
-    },
     Loop {
         condition: Option<ExprRef<'tcx>>,
         body: ExprRef<'tcx>,

@@ -424,14 +424,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::If(ref cond_expr, ref then_expr, ref opt_else_expr) => {
-                self.consume_expr(&cond_expr);
-                self.walk_expr(&then_expr);
-                if let Some(ref else_expr) = *opt_else_expr {
-                    self.consume_expr(&else_expr);
-                }
-            }
-
             hir::ExprKind::Match(ref discr, ref arms, _) => {
                 let discr_cmt = Rc::new(return_if_err!(self.mc.cat_expr(&discr)));
                 let r = self.tcx().lifetimes.re_empty;
