@@ -639,9 +639,9 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly different
-    /// // from 8.478
+    /// // from 8.478 anf 847800.0
     /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
-    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 64_000_000));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847799, 969_120_256));
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
