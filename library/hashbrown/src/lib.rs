@@ -23,7 +23,6 @@
     )
 )]
 #![warn(missing_docs)]
-#![cfg_attr(hashbrown_deny_warnings, deny(warnings))]
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(test)]

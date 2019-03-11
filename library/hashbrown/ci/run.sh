@@ -7,7 +7,7 @@ set -ex
 FEATURES="rayon,serde"
 if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
     FEATURES="${FEATURES},nightly"
-    export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
+    export RUSTFLAGS="$RUSTFLAGS -D warnings"
 fi
 
 CARGO=cargo
@@ -25,7 +25,7 @@ export RUSTFLAGS="$RUSTFLAGS --cfg hashbrown_deny_warnings"
 "${CARGO}" -vv test --target="${TARGET}" --features "${FEATURES}"
 
 "${CARGO}" -vv test --target="${TARGET}" --release
-"${CARGO}" -vv test --target="${TARGET}" --features "${FEATURES}"
+"${CARGO}" -vv test --target="${TARGET}" --release --features "${FEATURES}"
 
 if [ "${TRAVIS_RUST_VERSION}" = "nightly" ]; then
     # Run benchmark on native targets, build them on non-native ones:
