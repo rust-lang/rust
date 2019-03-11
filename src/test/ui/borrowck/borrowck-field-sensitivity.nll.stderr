@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     drop(x.b);
    |          --- value moved here
-LL |     drop(*x.b); //~ ERROR use of moved value: `*x.b`
+LL |     drop(*x.b);
    |          ^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     let y = A { a: 3, .. x };
    |             ---------------- value moved here
-LL |     drop(*x.b); //~ ERROR use of moved value: `*x.b`
+LL |     drop(*x.b);
    |          ^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ error[E0382]: borrow of moved value: `x.b`
    |
 LL |     drop(x.b);
    |          --- value moved here
-LL |     let p = &x.b; //~ ERROR use of moved value: `x.b`
+LL |     let p = &x.b;
    |             ^^^^ value borrowed here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -33,7 +33,7 @@ error[E0382]: borrow of moved value: `x.b`
    |
 LL |     let _y = A { a: 3, .. x };
    |              ---------------- value moved here
-LL |     let p = &x.b; //~ ERROR use of moved value: `x.b`
+LL |     let p = &x.b;
    |             ^^^^ value borrowed here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -43,7 +43,7 @@ error[E0505]: cannot move out of `x.b` because it is borrowed
    |
 LL |     let p = &x.b;
    |             ---- borrow of `x.b` occurs here
-LL |     drop(x.b); //~ ERROR cannot move out of `x.b` because it is borrowed
+LL |     drop(x.b);
    |          ^^^ move out of `x.b` occurs here
 LL |     drop(**p);
    |          --- borrow later used here
@@ -53,7 +53,7 @@ error[E0505]: cannot move out of `x.b` because it is borrowed
    |
 LL |     let p = &x.b;
    |             ---- borrow of `x.b` occurs here
-LL |     let _y = A { a: 3, .. x }; //~ ERROR cannot move out of `x.b` because it is borrowed
+LL |     let _y = A { a: 3, .. x };
    |              ^^^^^^^^^^^^^^^^ move out of `x.b` occurs here
 LL |     drop(**p);
    |          --- borrow later used here
@@ -63,7 +63,7 @@ error[E0499]: cannot borrow `x.a` as mutable more than once at a time
    |
 LL |     let p = &mut x.a;
    |             -------- first mutable borrow occurs here
-LL |     let q = &mut x.a; //~ ERROR cannot borrow `x.a` as mutable more than once at a time
+LL |     let q = &mut x.a;
    |             ^^^^^^^^ second mutable borrow occurs here
 LL |     drop(*p);
    |          -- first borrow later used here
@@ -73,7 +73,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     drop(x.b);
    |          --- value moved here
-LL |     drop(x.b);  //~ ERROR use of moved value: `x.b`
+LL |     drop(x.b);
    |          ^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -83,7 +83,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     let _y = A { a: 3, .. x };
    |              ---------------- value moved here
-LL |     drop(x.b);  //~ ERROR use of moved value: `x.b`
+LL |     drop(x.b);
    |          ^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -93,7 +93,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     drop(x.b);
    |          --- value moved here
-LL |     let _z = A { a: 3, .. x };  //~ ERROR use of moved value: `x.b`
+LL |     let _z = A { a: 3, .. x };
    |              ^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -103,7 +103,7 @@ error[E0382]: use of moved value: `x.b`
    |
 LL |     let _y = A { a: 3, .. x };
    |              ---------------- value moved here
-LL |     let _z = A { a: 4, .. x };  //~ ERROR use of moved value: `x.b`
+LL |     let _z = A { a: 4, .. x };
    |              ^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

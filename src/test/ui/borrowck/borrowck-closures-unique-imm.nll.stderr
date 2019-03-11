@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `this.x` as mutable because it is also borrowed as i
    |
 LL |         let p = &this.x;
    |                 ------- immutable borrow occurs here
-LL |         &mut this.x; //~ ERROR cannot borrow
+LL |         &mut this.x;
    |         ^^^^^^^^^^^ mutable borrow occurs here
 LL |         p.use_ref();
    |         - immutable borrow later used here

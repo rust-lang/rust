@@ -3,8 +3,8 @@ error[E0502]: cannot borrow `x` as immutable because it is also borrowed as muta
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
-LL |     //~^ mutable borrow occurs here
-LL |     let z = &x; //~ ERROR cannot borrow
+LL |
+LL |     let z = &x;
    |             ^^ immutable borrow occurs here
 ...
 LL |     y.use_mut();
@@ -15,8 +15,8 @@ error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immuta
    |
 LL |             let y = &x;
    |                     -- immutable borrow occurs here
-LL |             //~^ immutable borrow occurs here
-LL |             let z = &mut x; //~ ERROR cannot borrow
+LL |
+LL |             let z = &mut x;
    |                     ^^^^^^ mutable borrow occurs here
 ...
 LL |             y.use_ref();
@@ -27,8 +27,8 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
    |
 LL |         let y = &mut x;
    |                 ------ first mutable borrow occurs here
-LL |         //~^ first mutable borrow occurs here
-LL |         let z = &mut x; //~ ERROR cannot borrow
+LL |
+LL |         let z = &mut x;
    |                 ^^^^^^ second mutable borrow occurs here
 ...
 LL |         y.use_mut();

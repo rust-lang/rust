@@ -3,7 +3,7 @@ error[E0503]: cannot use `*y.pointer` because it was mutably borrowed
    |
 LL |         let z = copy_borrowed_ptr(&mut y);
    |                                   ------ borrow of `y` occurs here
-LL |         *y.pointer += 1; //~ ERROR cannot assign
+LL |         *y.pointer += 1;
    |         ^^^^^^^^^^^^^^^ use of borrowed `y`
 LL |         *z.pointer += 1;
    |         --------------- borrow later used here
@@ -13,7 +13,7 @@ error[E0506]: cannot assign to `*y.pointer` because it is borrowed
    |
 LL |         let z = copy_borrowed_ptr(&mut y);
    |                                   ------ borrow of `*y.pointer` occurs here
-LL |         *y.pointer += 1; //~ ERROR cannot assign
+LL |         *y.pointer += 1;
    |         ^^^^^^^^^^^^^^^ assignment to borrowed `*y.pointer` occurs here
 LL |         *z.pointer += 1;
    |         --------------- borrow later used here

@@ -18,7 +18,7 @@ error[E0597]: `ref_` does not live long enough
 LL |     gen = || {
    |           -- value captured here by generator
 LL |         // but the generator can use it to drop a `Ref<'a, i32>`.
-LL |         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
+LL |         let _d = ref_.take();
    |                  ^^^^ borrowed value does not live long enough
 ...
 LL | }

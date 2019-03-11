@@ -5,7 +5,7 @@ LL | fn foo(b: Box<[i32;5]>) {
    |        - move occurs because `b` has type `std::boxed::Box<[i32; 5]>`, which does not implement the `Copy` trait
 LL |     consume(b);
    |             - value moved here
-LL |     consume(b); //~ ERROR use of moved value
+LL |     consume(b);
    |             ^ value used here after move
 
 error: aborting due to previous error

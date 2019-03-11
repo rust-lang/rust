@@ -3,9 +3,9 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
-LL |     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
+LL |     while x < 10 {
    |           ^ use of borrowed `x`
-LL |         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
+LL |         let mut z = x;
 LL |         _y.push(&mut z);
    |         -- borrow later used here
 
@@ -14,8 +14,8 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
-LL |     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
-LL |         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
+LL |     while x < 10 {
+LL |         let mut z = x;
    |                     ^ use of borrowed `x`
 LL |         _y.push(&mut z);
    |         -- borrow later used here
@@ -39,8 +39,8 @@ LL |     let mut _y = vec![&mut x];
 ...
 LL |         _y.push(&mut z);
    |         -- borrow later used here
-LL |         //~^ ERROR `z` does not live long enough
-LL |         x += 1; //~ ERROR cannot assign
+LL |
+LL |         x += 1;
    |         ^^^^^^ use of borrowed `x`
 
 error: aborting due to 4 previous errors

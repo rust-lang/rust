@@ -7,7 +7,7 @@ LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs + rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -19,8 +19,8 @@ LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs + rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -32,7 +32,7 @@ LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs - rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -44,8 +44,8 @@ LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs - rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -57,7 +57,7 @@ LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs * rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -69,8 +69,8 @@ LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs * rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -82,7 +82,7 @@ LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs / rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -94,8 +94,8 @@ LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs / rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -107,7 +107,7 @@ LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs % rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -119,8 +119,8 @@ LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs % rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -132,7 +132,7 @@ LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |           consider adding a `Copy` constraint to this type argument
 LL |     lhs & rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -144,8 +144,8 @@ LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    consider adding a `Copy` constraint to this type argument
 LL |     lhs & rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -157,7 +157,7 @@ LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |          consider adding a `Copy` constraint to this type argument
 LL |     lhs | rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -169,8 +169,8 @@ LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                  consider adding a `Copy` constraint to this type argument
 LL |     lhs | rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -182,7 +182,7 @@ LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |           consider adding a `Copy` constraint to this type argument
 LL |     lhs ^ rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -194,8 +194,8 @@ LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    consider adding a `Copy` constraint to this type argument
 LL |     lhs ^ rhs;
    |           --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -207,7 +207,7 @@ LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs << rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -219,8 +219,8 @@ LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs << rhs;
    |            --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `lhs`
@@ -232,7 +232,7 @@ LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     lhs >> rhs;
    |     --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
+LL |     drop(lhs);
    |          ^^^ value used here after move
 
 error[E0382]: use of moved value: `rhs`
@@ -244,8 +244,8 @@ LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              consider adding a `Copy` constraint to this type argument
 LL |     lhs >> rhs;
    |            --- value moved here
-LL |     drop(lhs);  //~ ERROR use of moved value: `lhs`
-LL |     drop(rhs);  //~ ERROR use of moved value: `rhs`
+LL |     drop(lhs);
+LL |     drop(rhs);
    |          ^^^ value used here after move
 
 error: aborting due to 20 previous errors

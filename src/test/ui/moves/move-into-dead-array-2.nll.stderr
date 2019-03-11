@@ -5,7 +5,7 @@ LL | fn foo(mut a: [D; 4], i: usize) {
    |        ----- move occurs because `a` has type `[D; 4]`, which does not implement the `Copy` trait
 LL |     drop(a);
    |          - value moved here
-LL |     a[i] = d(); //~ ERROR use of moved value: `a`
+LL |     a[i] = d();
    |     ^^^^ value used here after move
 
 error: aborting due to previous error

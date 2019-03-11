@@ -4,7 +4,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
    |      -- lifetime `'a` defined here
 ...
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
    |             |           mutable borrow starts here in previous iteration of loop
@@ -16,7 +16,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
    |      -- lifetime `'a` defined here
 ...
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
    |             |           mutable borrow starts here in previous iteration of loop
@@ -28,7 +28,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
 LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
    |      -- lifetime `'a` defined here
 ...
-LL |             (self.func)(arg) //~ ERROR cannot borrow
+LL |             (self.func)(arg)
    |             ------------^^^-
    |             |           |
    |             |           mutable borrow starts here in previous iteration of loop

@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `s` as immutable because it is also borrowed as muta
    |
 LL |     let sp = &mut s;
    |              ------ mutable borrow occurs here
-LL |     s(3);   //~ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
+LL |     s(3);
    |     ^ immutable borrow occurs here
 LL |     use_mut(sp);
    |             -- mutable borrow later used here
@@ -14,7 +14,7 @@ error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
 LL |     let s = SFnMut {
    |         - help: consider changing this to be mutable: `mut s`
 ...
-LL |     s(3);   //~ ERROR cannot borrow immutable local variable `s` as mutable
+LL |     s(3);
    |     ^ cannot borrow as mutable
 
 error[E0382]: use of moved value: `s`
@@ -25,7 +25,7 @@ LL |     let s = SFnOnce {
 ...
 LL |     s(" world".to_string());
    |     - value moved here
-LL |     s(" world".to_string());    //~ ERROR use of moved value: `s`
+LL |     s(" world".to_string());
    |     ^ value used here after move
 
 error: aborting due to 3 previous errors

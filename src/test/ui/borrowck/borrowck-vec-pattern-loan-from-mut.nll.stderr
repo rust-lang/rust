@@ -4,7 +4,7 @@ error[E0499]: cannot borrow `v` as mutable more than once at a time
 LL |     let vb: &mut [isize] = &mut v;
    |                            ------ first mutable borrow occurs here
 ...
-LL |             v.push(tail[0] + tail[1]); //~ ERROR cannot borrow
+LL |             v.push(tail[0] + tail[1]);
    |             ^      ------- first borrow later used here
    |             |
    |             second mutable borrow occurs here

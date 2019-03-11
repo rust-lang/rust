@@ -9,7 +9,7 @@ LL |     c.push(Box::new(|| y = 0));
    |                     ^^ - second borrow occurs due to use of `y` in closure
    |                     |
    |                     second mutable borrow occurs here
-LL | //~^ ERROR cannot borrow `y` as mutable more than once at a time
+LL |
 LL | }
    | - first borrow might be used here, when `c` is dropped and runs the destructor for type `std::cell::RefCell<std::vec::Vec<std::boxed::Box<dyn std::ops::FnMut()>>>`
 
@@ -24,7 +24,7 @@ LL |     Push::push(&c, Box::new(|| y = 0));
    |                             ^^ - second borrow occurs due to use of `y` in closure
    |                             |
    |                             second mutable borrow occurs here
-LL | //~^ ERROR cannot borrow `y` as mutable more than once at a time
+LL |
 LL | }
    | - first borrow might be used here, when `c` is dropped and runs the destructor for type `std::cell::RefCell<std::vec::Vec<std::boxed::Box<dyn std::ops::FnMut()>>>`
 

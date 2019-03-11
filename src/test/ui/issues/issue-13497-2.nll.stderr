@@ -1,7 +1,7 @@
 error[E0515]: cannot return value referencing local variable `rawLines`
   --> $DIR/issue-13497-2.rs:3:5
    |
-LL |       rawLines //~ ERROR `rawLines` does not live long enough
+LL |       rawLines
    |       ^-------
    |       |
    |  _____`rawLines` is borrowed here

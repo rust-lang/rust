@@ -5,7 +5,7 @@ LL |     add(
    |     --- borrow later used by call
 LL |         &*a,
    |         --- borrow of `*a` occurs here
-LL |         a); //~ ERROR cannot move
+LL |         a);
    |         ^ move out of `a` occurs here
 
 error[E0505]: cannot move out of `a` because it is borrowed
@@ -15,7 +15,7 @@ LL |     add(
    |     --- borrow later used by call
 LL |         &*a,
    |         --- borrow of `*a` occurs here
-LL |         a); //~ ERROR cannot move
+LL |         a);
    |         ^ move out of `a` occurs here
 
 error: aborting due to 2 previous errors

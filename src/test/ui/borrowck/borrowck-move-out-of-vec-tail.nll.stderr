@@ -20,9 +20,9 @@ LL |                   Foo { string: b }] => {
 help: consider removing the `&`
    |
 LL |                 [Foo { string: a },
-LL |                 //~^ ERROR cannot move out of type `[Foo]`
-LL |                 //~| cannot move out
-LL |                 //~| to prevent move
+LL |
+LL |
+LL |
 LL |                   Foo { string: b }] => {
    |
 

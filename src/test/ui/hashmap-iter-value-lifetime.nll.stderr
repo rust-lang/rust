@@ -4,7 +4,7 @@ error[E0502]: cannot borrow `my_stuff` as mutable because it is also borrowed as
 LL |     let (_, thing) = my_stuff.iter().next().unwrap();
    |                      -------- immutable borrow occurs here
 LL | 
-LL |     my_stuff.clear(); //~ ERROR cannot borrow
+LL |     my_stuff.clear();
    |     ^^^^^^^^^^^^^^^^ mutable borrow occurs here
 LL | 
 LL |     println!("{}", *thing);

@@ -7,7 +7,7 @@ LL |     for &x in &vector {
    |               immutable borrow occurs here
    |               immutable borrow later used here
 LL |         let cap = vector.capacity();
-LL |         vector.extend(repeat(0));      //~ ERROR cannot borrow
+LL |         vector.extend(repeat(0));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `vector` as mutable because it is also borrowed as immutable
@@ -19,7 +19,7 @@ LL |     for &x in &vector {
    |               immutable borrow occurs here
    |               immutable borrow later used here
 ...
-LL |         vector[1] = 5;   //~ ERROR cannot borrow
+LL |         vector[1] = 5;
    |         ^^^^^^ mutable borrow occurs here
 
 error: aborting due to 2 previous errors

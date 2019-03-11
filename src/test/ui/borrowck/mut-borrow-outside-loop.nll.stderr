@@ -3,7 +3,7 @@ error[E0499]: cannot borrow `void` as mutable more than once at a time
    |
 LL |     let first = &mut void;
    |                 --------- first mutable borrow occurs here
-LL |     let second = &mut void; //~ ERROR cannot borrow
+LL |     let second = &mut void;
    |                  ^^^^^^^^^ second mutable borrow occurs here
 LL |     first.use_mut();
    |     ----- first borrow later used here
@@ -13,7 +13,7 @@ error[E0499]: cannot borrow `inner_void` as mutable more than once at a time
    |
 LL |         let inner_first = &mut inner_void;
    |                           --------------- first mutable borrow occurs here
-LL |         let inner_second = &mut inner_void; //~ ERROR cannot borrow
+LL |         let inner_second = &mut inner_void;
    |                            ^^^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |         inner_second.use_mut();
 LL |         inner_first.use_mut();

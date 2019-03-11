@@ -5,7 +5,7 @@ LL |     f.foo(
    |     ^ --- first borrow later used by call
    |  ___|
    | |
-LL | |         |a| { //~ ERROR closure requires unique access to `f`
+LL | |         |a| {
    | |         --- closure construction occurs here
 LL | |             f.n.insert(*a);
    | |             - first borrow occurs due to use of `f` in closure
@@ -19,7 +19,7 @@ LL |   f.foo(
    |   - --- first borrow later used by call
    |   |
    |   borrow occurs here
-LL |         |a| { //~ ERROR closure requires unique access to `f`
+LL |         |a| {
    |         ^^^ closure construction occurs here
 LL |             f.n.insert(*a);
    |             - second borrow occurs due to use of `f` in closure

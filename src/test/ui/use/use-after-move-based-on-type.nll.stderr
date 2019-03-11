@@ -5,7 +5,7 @@ LL |     let x = "Hello!".to_string();
    |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = x;
    |              - value moved here
-LL |     println!("{}", x); //~ ERROR use of moved value
+LL |     println!("{}", x);
    |                    ^ value borrowed here after move
 
 error: aborting due to previous error

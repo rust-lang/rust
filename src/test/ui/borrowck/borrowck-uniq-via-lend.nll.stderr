@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mut
    |
 LL |     let w = &mut v;
    |             ------ mutable borrow occurs here
-LL |     borrow(&*v); //~ ERROR cannot borrow `*v`
+LL |     borrow(&*v);
    |            ^^^ immutable borrow occurs here
 LL |     w.use_mut();
    |     - mutable borrow later used here
@@ -13,7 +13,7 @@ error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mut
    |
 LL |     x = &mut v;
    |         ------ mutable borrow occurs here
-LL |     borrow(&*v); //~ ERROR cannot borrow `*v`
+LL |     borrow(&*v);
    |            ^^^ immutable borrow occurs here
 LL |     x.use_mut();
    |     - mutable borrow later used here

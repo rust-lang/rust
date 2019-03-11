@@ -5,7 +5,7 @@ LL |     borrow(&*v,
    |     ------ --- immutable borrow occurs here
    |     |
    |     immutable borrow later used by call
-LL |            |w| { //~ ERROR cannot borrow `v` as mutable
+LL |            |w| {
    |            ^^^ mutable borrow occurs here
 LL |             v = box 4;
    |             - second borrow occurs due to use of `v` in closure

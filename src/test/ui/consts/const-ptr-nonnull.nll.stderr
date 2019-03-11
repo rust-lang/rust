@@ -16,7 +16,7 @@ LL |     let x: &'static NonNull<u32> = &(non_null.cast());
    |            ---------------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
-LL |     //~^ ERROR borrowed value does not live long enough
+LL |
 LL | }
    | - temporary value is freed at the end of this statement
 

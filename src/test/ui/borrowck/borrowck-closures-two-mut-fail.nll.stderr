@@ -5,7 +5,7 @@ LL |     let c1 = to_fn_mut(|| x = 4);
    |                        -- - first borrow occurs due to use of `x` in closure
    |                        |
    |                        first mutable borrow occurs here
-LL |     let c2 = to_fn_mut(|| x = 5); //~ ERROR cannot borrow `x` as mutable more than once
+LL |     let c2 = to_fn_mut(|| x = 5);
    |                        ^^ - second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
@@ -19,7 +19,7 @@ LL |     let c1 = to_fn_mut(|| set(&mut x));
    |                        --          - first borrow occurs due to use of `x` in closure
    |                        |
    |                        first mutable borrow occurs here
-LL |     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as mutable more than once
+LL |     let c2 = to_fn_mut(|| set(&mut x));
    |                        ^^          - second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
@@ -33,7 +33,7 @@ LL |     let c1 = to_fn_mut(|| x = 5);
    |                        -- - first borrow occurs due to use of `x` in closure
    |                        |
    |                        first mutable borrow occurs here
-LL |     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as mutable more than once
+LL |     let c2 = to_fn_mut(|| set(&mut x));
    |                        ^^          - second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
@@ -51,7 +51,7 @@ LL |     let c2 = to_fn_mut(|| { let _y = to_fn_mut(|| set(&mut x)); }); // (nes
    |                        ^^                                  - second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
-LL |     //~^ ERROR cannot borrow `x` as mutable more than once
+LL |
 LL |     c1;
    |     -- first borrow later used here
 
@@ -66,7 +66,7 @@ LL |     let c2 = to_fn_mut(|| set(&mut *x.f));
    |                        ^^           - second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
-LL |     //~^ ERROR cannot borrow `x` as mutable more than once
+LL |
 LL |     c1;
    |     -- first borrow later used here
 

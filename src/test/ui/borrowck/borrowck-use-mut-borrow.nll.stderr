@@ -3,7 +3,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     drop(x); //~ ERROR cannot use `x` because it was mutably borrowed
+LL |     drop(x);
    |          ^ use of borrowed `x`
 LL |     *p = 2;
    |     ------ borrow later used here
@@ -13,7 +13,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
-LL |     drop(x); //~ ERROR cannot use `x` because it was mutably borrowed
+LL |     drop(x);
    |          ^ use of borrowed `x.a`
 LL |     *p = 3;
    |     ------ borrow later used here
@@ -23,7 +23,7 @@ error[E0503]: cannot use `x.a` because it was mutably borrowed
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     drop(x.a); //~ ERROR cannot use `x.a` because it was mutably borrowed
+LL |     drop(x.a);
    |          ^^^ use of borrowed `x`
 LL |     p.a = 3;
    |     ------- borrow later used here
@@ -33,7 +33,7 @@ error[E0503]: cannot use `x.a` because it was mutably borrowed
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
-LL |     drop(x.a); //~ ERROR cannot use `x.a` because it was mutably borrowed
+LL |     drop(x.a);
    |          ^^^ use of borrowed `x.a`
 LL |     *p = 3;
    |     ------ borrow later used here
@@ -43,7 +43,7 @@ error[E0503]: cannot use `x.a` because it was mutably borrowed
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     let y = A { b: 3, .. x }; //~ ERROR cannot use `x.a` because it was mutably borrowed
+LL |     let y = A { b: 3, .. x };
    |             ^^^^^^^^^^^^^^^^ use of borrowed `x`
 LL |     drop(y);
 LL |     p.a = 4;
@@ -54,7 +54,7 @@ error[E0503]: cannot use `x.a` because it was mutably borrowed
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
-LL |     let y = A { b: 3, .. x }; //~ ERROR cannot use `x.a` because it was mutably borrowed
+LL |     let y = A { b: 3, .. x };
    |             ^^^^^^^^^^^^^^^^ use of borrowed `x.a`
 LL |     drop(y);
 LL |     *p = 4;
@@ -65,7 +65,7 @@ error[E0503]: cannot use `*x` because it was mutably borrowed
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     drop(*x); //~ ERROR cannot use `*x` because it was mutably borrowed
+LL |     drop(*x);
    |          ^^ use of borrowed `x`
 LL |     **p = 2;
    |     ------- borrow later used here
@@ -75,7 +75,7 @@ error[E0503]: cannot use `*x.b` because it was mutably borrowed
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     drop(*x.b); //~ ERROR cannot use `*x.b` because it was mutably borrowed
+LL |     drop(*x.b);
    |          ^^^^ use of borrowed `x`
 LL |     p.a = 3;
    |     ------- borrow later used here
@@ -85,7 +85,7 @@ error[E0503]: cannot use `*x.b` because it was mutably borrowed
    |
 LL |     let p = &mut x.b;
    |             -------- borrow of `x.b` occurs here
-LL |     drop(*x.b); //~ ERROR cannot use `*x.b` because it was mutably borrowed
+LL |     drop(*x.b);
    |          ^^^^ use of borrowed `x.b`
 LL |     **p = 3;
    |     ------- borrow later used here

@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/moves-based-on-type-block-bad.rs:24:19
    |
-LL |             match hellothere.x { //~ ERROR cannot move out
+LL |             match hellothere.x {
    |                   ^^^^^^^^^^^^
    |                   |
    |                   cannot move out of borrowed content

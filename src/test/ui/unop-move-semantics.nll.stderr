@@ -8,7 +8,7 @@ LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
 LL |     !x;
    |      - value moved here
 LL | 
-LL |     x.clone();  //~ ERROR: use of moved value
+LL |     x.clone();
    |     ^ value borrowed here after move
 
 error[E0505]: cannot move out of `x` because it is borrowed
@@ -17,7 +17,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
 LL |     let m = &x;
    |             -- borrow of `x` occurs here
 ...
-LL |     !x;  //~ ERROR: cannot move out of `x` because it is borrowed
+LL |     !x;
    |      ^ move out of `x` occurs here
 ...
 LL |     use_mut(n); use_imm(m);
@@ -29,7 +29,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
 LL |     let n = &mut y;
    |             ------ borrow of `y` occurs here
 ...
-LL |     !y;  //~ ERROR: cannot move out of `y` because it is borrowed
+LL |     !y;
    |      ^ move out of `y` occurs here
 LL |     use_mut(n); use_imm(m);
    |             - borrow later used here
@@ -37,13 +37,13 @@ LL |     use_mut(n); use_imm(m);
 error[E0507]: cannot move out of borrowed content
   --> $DIR/unop-move-semantics.rs:24:6
    |
-LL |     !*m;  //~ ERROR: cannot move out of borrowed content
+LL |     !*m;
    |      ^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/unop-move-semantics.rs:26:6
    |
-LL |     !*n;  //~ ERROR: cannot move out of borrowed content
+LL |     !*n;
    |      ^^ cannot move out of borrowed content
 
 error: aborting due to 5 previous errors

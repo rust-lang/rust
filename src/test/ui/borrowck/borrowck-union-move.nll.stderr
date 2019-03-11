@@ -5,7 +5,7 @@ LL |             let mut u = Unn { n1: NonCopy };
    |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
    |                     ---- value moved here
-LL |             let a = u.n1; //~ ERROR use of moved value: `u.n1`
+LL |             let a = u.n1;
    |                     ^^^^ value used here after move
 
 error[E0382]: use of moved value: `u`
@@ -15,7 +15,7 @@ LL |             let mut u = Unn { n1: NonCopy };
    |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
    |                     ---- value moved here
-LL |             let a = u; //~ ERROR use of partially moved value: `u`
+LL |             let a = u;
    |                     ^ value used here after move
 
 error[E0382]: use of moved value: `u`
@@ -25,7 +25,7 @@ LL |             let mut u = Unn { n1: NonCopy };
    |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
    |                     ---- value moved here
-LL |             let a = u.n2; //~ ERROR use of moved value: `u.n2`
+LL |             let a = u.n2;
    |                     ^^^^ value used here after move
 
 error[E0382]: use of moved value: `u`
@@ -35,7 +35,7 @@ LL |             let mut u = Ucn { c: Copy };
    |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
    |                     --- value moved here
-LL |             let a = u.n; //~ ERROR use of moved value: `u.n`
+LL |             let a = u.n;
    |                     ^^^ value used here after move
 
 error[E0382]: use of moved value: `u`
@@ -45,7 +45,7 @@ LL |             let mut u = Ucn { c: Copy };
    |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
    |                     --- value moved here
-LL |             let a = u.c; //~ ERROR use of moved value: `u.c`
+LL |             let a = u.c;
    |                     ^^^ value used here after move
 
 error[E0382]: use of moved value: `u`
@@ -55,7 +55,7 @@ LL |             let mut u = Ucn { c: Copy };
    |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
    |                     --- value moved here
-LL |             let a = u; //~ ERROR use of partially moved value: `u`
+LL |             let a = u;
    |                     ^ value used here after move
 
 error: aborting due to 6 previous errors

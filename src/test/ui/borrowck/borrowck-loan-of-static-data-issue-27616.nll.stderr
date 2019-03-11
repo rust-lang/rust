@@ -6,7 +6,7 @@ LL |     let alias: &'static mut String = s;
    |                |
    |                type annotation requires that `*s` is borrowed for `'static`
 ...
-LL |     *s = String::new(); //~ ERROR cannot assign
+LL |     *s = String::new();
    |     ^^ assignment to borrowed `*s` occurs here
 
 error: aborting due to previous error

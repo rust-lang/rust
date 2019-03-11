@@ -3,7 +3,7 @@ error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
    |
 LL | fn f(b: &mut i32) {
    |      - help: consider changing this to be mutable: `mut b`
-LL |     g(&mut b) //~ ERROR cannot borrow
+LL |     g(&mut b)
    |       ^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error

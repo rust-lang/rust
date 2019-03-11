@@ -1,18 +1,18 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:8:28
    |
-LL |     let _: &'static u32 = &foo(); //~ ERROR does not live long enough
+LL |     let _: &'static u32 = &foo();
    |            ------------    ^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
-LL |     let _x: &'static u32 = &foo(); //~ ERROR does not live long enough
+LL |     let _x: &'static u32 = &foo();
 LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:9:29
    |
-LL |     let _x: &'static u32 = &foo(); //~ ERROR does not live long enough
+LL |     let _x: &'static u32 = &foo();
    |             ------------    ^^^^^ creates a temporary which is freed while still in use
    |             |
    |             type annotation requires that borrow lasts for `'static`

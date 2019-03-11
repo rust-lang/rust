@@ -1,7 +1,7 @@
 error[E0502]: cannot borrow `v` as immutable because it is also borrowed as mutable
   --> $DIR/regions-adjusted-lvalue-op.rs:14:16
    |
-LL |     v[0].oh_no(&v); //~ ERROR cannot borrow `v` as immutable because
+LL |     v[0].oh_no(&v);
    |     -    ----- ^^ immutable borrow occurs here
    |     |    |
    |     |    mutable borrow later used by call
@@ -10,7 +10,7 @@ LL |     v[0].oh_no(&v); //~ ERROR cannot borrow `v` as immutable because
 error[E0502]: cannot borrow `v` as immutable because it is also borrowed as mutable
   --> $DIR/regions-adjusted-lvalue-op.rs:15:16
    |
-LL |     (*v).oh_no(&v); //~ ERROR cannot borrow `v` as immutable because
+LL |     (*v).oh_no(&v);
    |       -  ----- ^^ immutable borrow occurs here
    |       |  |
    |       |  mutable borrow later used by call

@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `t0` as mutable because it is also borrowed as immut
    |
 LL |     let p: &isize = &*t0;     // Freezes `*t0`
    |                     ---- immutable borrow occurs here
-LL |     let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
+LL |     let mut t2 = &mut t0;
    |                  ^^^^^^^ mutable borrow occurs here
 LL |     **t2 += 1;              // Mutates `*t0`
 LL |     p.use_ref();
@@ -14,7 +14,7 @@ error[E0499]: cannot borrow `t0` as mutable more than once at a time
    |
 LL |     let p: &mut isize = &mut *t0; // Claims `*t0`
    |                         -------- first mutable borrow occurs here
-LL |     let mut t2 = &mut t0;       //~ ERROR cannot borrow `t0`
+LL |     let mut t2 = &mut t0;
    |                  ^^^^^^^ second mutable borrow occurs here
 LL |     **t2 += 1;                  // Mutates `*t0` but not through `*p`
 LL |     p.use_mut();
