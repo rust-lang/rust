@@ -6,6 +6,11 @@ macro_rules! foo {
     ($a:ident, $b:ident, $c:ident, $d:ident, $e:ident) => ();
 }
 
+macro_rules! bar {
+    ($lvl:expr, $($arg:tt)+) => {}
+}
+
+
 fn main() {
     println!("{}" a);
     //~^ ERROR expected token: `,`
@@ -17,4 +22,6 @@ fn main() {
     //~^ ERROR no rules expected the token `d`
     foo!(a, b, c d e);
     //~^ ERROR no rules expected the token `d`
+    bar!(Level::Error, );
+    //~^ ERROR unexpected end of macro invocation
 }
