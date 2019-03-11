@@ -1,11 +1,17 @@
 error: any use of this value will cause an error
   --> $DIR/dangling-alloc-id-ice.rs:8:1
    |
-LL | / const FOO: &() = {
-LL | |     let y = ();
-LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
-LL | | };
-   | |__^ type validation failed: encountered dangling pointer in final constant
+LL |    const FOO: &() = {
+   |   _^
+   |  |_|
+   | ||
+LL | ||     let y = ();
+LL | ||     unsafe { Foo { y: &y }.long_live_the_unit }
+LL | || };
+   | ||  ^
+   | ||__|
+   | |___type validation failed: encountered dangling pointer in final constant
+   | 
    |
    = note: #[deny(const_err)] on by default
 

@@ -50,11 +50,15 @@ warning: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 1/(false as u32));
-   |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^^^^^^^^^^
+   |                    |
+   |                    attempt to divide by zero
 
 warning: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
-   |                    ^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^
+   |                    |
+   |                    attempt to divide by zero
 

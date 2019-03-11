@@ -237,6 +237,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                             self.ecx.tcx,
                             "this expression will panic at runtime",
                             lint_root,
+                            None,
                         );
                     }
                 }

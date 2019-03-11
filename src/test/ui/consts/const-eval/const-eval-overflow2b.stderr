@@ -1,12 +1,12 @@
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:14:1
+  --> $DIR/const-eval-overflow2b.rs:16:6
    |
 LL | / const VALS_I8: (i8,) =
 LL | |     (
 LL | |      i8::MAX + 1,
-   | |      ----------- attempt to add with overflow
+   | |      ^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
    |
 note: lint level defined here
   --> $DIR/const-eval-overflow2b.rs:8:9
@@ -15,72 +15,72 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:19:1
+  --> $DIR/const-eval-overflow2b.rs:22:6
    |
 LL | / const VALS_I16: (i16,) =
 LL | |     (
 LL | |      i16::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:24:1
+  --> $DIR/const-eval-overflow2b.rs:28:6
    |
 LL | / const VALS_I32: (i32,) =
 LL | |     (
 LL | |      i32::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:29:1
+  --> $DIR/const-eval-overflow2b.rs:34:6
    |
 LL | / const VALS_I64: (i64,) =
 LL | |     (
 LL | |      i64::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:34:1
+  --> $DIR/const-eval-overflow2b.rs:40:6
    |
 LL | / const VALS_U8: (u8,) =
 LL | |     (
 LL | |      u8::MAX + 1,
-   | |      ----------- attempt to add with overflow
+   | |      ^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:39:1
+  --> $DIR/const-eval-overflow2b.rs:45:6
    |
 LL | / const VALS_U16: (u16,) = (
 LL | |      u16::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:43:1
+  --> $DIR/const-eval-overflow2b.rs:50:6
    |
 LL | / const VALS_U32: (u32,) = (
 LL | |      u32::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: any use of this value will cause an error
-  --> $DIR/const-eval-overflow2b.rs:47:1
+  --> $DIR/const-eval-overflow2b.rs:56:6
    |
 LL | / const VALS_U64: (u64,) =
 LL | |     (
 LL | |      u64::MAX + 1,
-   | |      ------------ attempt to add with overflow
+   | |      ^^^^^^^^^^^^ attempt to add with overflow
 LL | |      );
-   | |_______^
+   | |_______-
 
 error: aborting due to 8 previous errors
 
