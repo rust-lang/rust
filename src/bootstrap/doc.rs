@@ -343,12 +343,10 @@ fn invoke_rustdoc(
         .arg("--html-before-content").arg(&version_info)
         .arg("--html-in-header").arg(&favicon)
         .arg("--markdown-no-toc")
-        .arg("--markdown-playground-url")
-        .arg("https://play.rust-lang.org/")
-        .arg("-o").arg(&out)
-        .arg(&path)
-        .arg("--markdown-css")
-        .arg("../rust.css");
+        .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
+        .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
+        .arg("-o").arg(&out).arg(&path)
+        .arg("--markdown-css").arg("../rust.css");
 
     builder.run(&mut cmd);
 }
@@ -430,9 +428,9 @@ impl Step for Standalone {
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
                .arg("--markdown-no-toc")
+               .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
-               .arg("--markdown-playground-url")
-               .arg("https://play.rust-lang.org/")
+               .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
                .arg(&path);
 
@@ -523,6 +521,7 @@ impl Step for Std {
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
                  .arg("--generate-redirect-pages")
+                 .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
