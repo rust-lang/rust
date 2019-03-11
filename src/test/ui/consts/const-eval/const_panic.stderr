@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:4:1
+  --> $DIR/const_panic.rs:4:19
    |
 LL | pub const Z: () = panic!("cheese");
-   | ^^^^^^^^^^^^^^^^^^----------------^
+   | ------------------^^^^^^^^^^^^^^^^-
    |                   |
    |                   the evaluated program panicked at 'cheese', $DIR/const_panic.rs:4:19
    |
@@ -10,20 +10,20 @@ LL | pub const Z: () = panic!("cheese");
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:7:1
+  --> $DIR/const_panic.rs:7:19
    |
 LL | pub const Y: () = unreachable!();
-   | ^^^^^^^^^^^^^^^^^^--------------^
+   | ------------------^^^^^^^^^^^^^^-
    |                   |
    |                   the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:7:19
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:10:1
+  --> $DIR/const_panic.rs:10:19
    |
 LL | pub const X: () = unimplemented!();
-   | ^^^^^^^^^^^^^^^^^^----------------^
+   | ------------------^^^^^^^^^^^^^^^^-
    |                   |
    |                   the evaluated program panicked at 'not yet implemented', $DIR/const_panic.rs:10:19
    |

@@ -7,28 +7,28 @@ LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:27:5
+  --> $DIR/const-pointer-values-in-various-types.rs:27:43
    |
 LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
    |
    = note: #[deny(const_err)] on by default
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:30:5
+  --> $DIR/const-pointer-values-in-various-types.rs:30:45
    |
 LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
    |                                             a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:33:5
+  --> $DIR/const-pointer-values-in-various-types.rs:33:45
    |
 LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
    |                                             a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -49,26 +49,26 @@ LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.u
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:42:5
+  --> $DIR/const-pointer-values-in-various-types.rs:42:43
    |
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:45:5
+  --> $DIR/const-pointer-values-in-various-types.rs:45:45
    |
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
    |                                             a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:48:5
+  --> $DIR/const-pointer-values-in-various-types.rs:48:45
    |
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
    |                                             a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -89,10 +89,10 @@ LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.i
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:57:5
+  --> $DIR/const-pointer-values-in-various-types.rs:57:45
    |
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------^^^
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
    |                                             a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -105,42 +105,42 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:63:5
+  --> $DIR/const-pointer-values-in-various-types.rs:63:47
    |
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------------^^^
+   |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                               |
    |                                               a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:66:5
+  --> $DIR/const-pointer-values-in-various-types.rs:66:47
    |
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------------^^^
+   |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                               |
    |                                               a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:69:5
+  --> $DIR/const-pointer-values-in-various-types.rs:69:39
    |
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                       |
    |                                       a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:72:5
+  --> $DIR/const-pointer-values-in-various-types.rs:72:41
    |
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
    |                                         a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:75:5
+  --> $DIR/const-pointer-values-in-various-types.rs:75:41
    |
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
    |                                         a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -153,34 +153,34 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:81:5
+  --> $DIR/const-pointer-values-in-various-types.rs:81:43
    |
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:84:5
+  --> $DIR/const-pointer-values-in-various-types.rs:84:39
    |
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------^^^
+   |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                       |
    |                                       a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:87:5
+  --> $DIR/const-pointer-values-in-various-types.rs:87:41
    |
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
    |                                         a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:90:5
+  --> $DIR/const-pointer-values-in-various-types.rs:90:41
    |
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------^^^
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
    |                                         a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -193,18 +193,18 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:96:5
+  --> $DIR/const-pointer-values-in-various-types.rs:96:43
    |
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:99:5
+  --> $DIR/const-pointer-values-in-various-types.rs:99:41
    |
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------^^^
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
    |                                         a raw memory access tried to access part of a pointer value as raw bytes
 
@@ -217,18 +217,18 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:105:5
+  --> $DIR/const-pointer-values-in-various-types.rs:105:43
    |
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:108:5
+  --> $DIR/const-pointer-values-in-various-types.rs:108:43
    |
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^^^
+   |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
    |                                           a raw memory access tried to access part of a pointer value as raw bytes
 

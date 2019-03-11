@@ -668,6 +668,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                         tcx.at(tcx.def_span(def_id)),
                         "any use of this value will cause an error",
                         hir_id,
+                        Some(err.span),
                     )
                 },
                 // promoting runtime code is only allowed to error if it references broken constants
@@ -684,6 +685,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                             tcx.at(span),
                             "reaching this expression at runtime will panic or abort",
                             tcx.hir().as_local_hir_id(def_id).unwrap(),
+                            Some(err.span),
                         )
                     }
                 // anything else (array lengths, enum initializers, constant patterns) are reported

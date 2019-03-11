@@ -1,11 +1,17 @@
 error: any use of this value will cause an error
   --> $DIR/dangling_raw_ptr.rs:1:1
    |
-LL | / const FOO: *const u32 = {
-LL | |     let x = 42;
-LL | |     &x
-LL | | };
-   | |__^ type validation failed: encountered dangling pointer in final constant
+LL |    const FOO: *const u32 = {
+   |   _^
+   |  |_|
+   | ||
+LL | ||     let x = 42;
+LL | ||     &x
+LL | || };
+   | ||  ^
+   | ||__|
+   | |___type validation failed: encountered dangling pointer in final constant
+   | 
    |
    = note: #[deny(const_err)] on by default
 
