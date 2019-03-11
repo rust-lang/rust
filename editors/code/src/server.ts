@@ -12,19 +12,17 @@ export class Server {
     public static start(
         notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
     ) {
-
         // '.' Is the fallback if no folder is open
         // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
         let folder: string = '.';
         if (workspace.workspaceFolders !== undefined) {
+            folder = workspace.workspaceFolders[0].uri.fsPath.toString();
 
-            folder = workspace
-                .workspaceFolders[0].uri.fsPath
-                .toString();
-            
             if (workspace.workspaceFolders.length > 1) {
                 // Tell the user that we do not support multi-root workspaces yet
-                window.showWarningMessage('Multi-root workspaces are not currently supported');
+                window.showWarningMessage(
+                    'Multi-root workspaces are not currently supported'
+                );
             }
         }
 
