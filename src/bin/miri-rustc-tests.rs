@@ -6,115 +6,72 @@ extern crate rustc_metadata;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_codegen_utils;
+extern crate rustc_interface;
 extern crate syntax;
 
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::io::Write;
 use std::sync::{Mutex, Arc};
 use std::io;
 
 
-use rustc::session::Session;
-use rustc_metadata::cstore::CStore;
-use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
-use rustc_driver::driver::{CompileState, CompileController};
-use rustc::session::config::{self, Input, ErrorOutputType};
+use rustc_interface::interface;
 use rustc::hir::{self, itemlikevisit};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::ty::TyCtxt;
-use syntax::ast;
 use rustc::hir::def_id::LOCAL_CRATE;
 
 use miri::MiriConfig;
 
 struct MiriCompilerCalls {
-    default: Box<RustcDefaultCalls>,
     /// whether we are building for the host
     host_target: bool,
 }
 
-impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
-    fn early_callback(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        descriptions: &rustc_errors::registry::Registry,
-        output: ErrorOutputType
-    ) -> Compilation {
-        self.default.early_callback(matches, sopts, cfg, descriptions, output)
-    }
-    fn no_input(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-        descriptions: &rustc_errors::registry::Registry
-    ) -> Option<(Input, Option<PathBuf>)> {
-        self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
-    }
-    fn late_callback(
-        &mut self,
-        trans: &CodegenBackend,
-        matches: &getopts::Matches,
-        sess: &Session,
-        cstore: &CStore,
-        input: &Input,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-    ) -> Compilation {
-        self.default.late_callback(trans, matches, sess, cstore, input, odir, ofile)
-    }
-    fn build_controller(self: Box<Self>, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
-        let this = *self;
-        let mut control = this.default.build_controller(sess, matches);
-        control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        control.after_analysis.callback = Box::new(after_analysis);
-        if !this.host_target {
-            // only fully compile targets on the host
-            control.after_analysis.stop = Compilation::Stop;
-        }
-        control
-    }
-}
+impl rustc_driver::Callbacks for MiriCompilerCalls {
+    fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
+        let attr = (
+            String::from("miri"),
+            syntax::feature_gate::AttributeType::Whitelisted,
+        );
+        compiler.session().plugin_attributes.borrow_mut().push(attr);
 
-fn after_hir_lowering(state: &mut CompileState) {
-    let attr = (String::from("miri"), syntax::feature_gate::AttributeType::Whitelisted);
-    state.session.plugin_attributes.borrow_mut().push(attr);
-}
+        // Continue execution
+        true
+    }
 
-fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
-    state.session.abort_if_errors();
-
-    let tcx = state.tcx.unwrap();
-
-    if std::env::args().any(|arg| arg == "--test") {
-        struct Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, &'a CompileState<'a, 'tcx>);
-        impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
-            fn visit_item(&mut self, i: &'hir hir::Item) {
-                if let hir::ItemKind::Fn(.., body_id) = i.node {
-                    if i.attrs.iter().any(|attr| attr.name() == "test") {
-                        let config = MiriConfig { validate: true, args: vec![] };
-                        let did = self.0.hir().body_owner_def_id(body_id);
-                        println!("running test: {}", self.0.def_path_debug_str(did));
-                        miri::eval_main(self.0, did, config);
-                        self.1.session.abort_if_errors();
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+        compiler.session().abort_if_errors();
+        compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+            if std::env::args().any(|arg| arg == "--test") {
+                struct Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>);
+                impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
+                    fn visit_item(&mut self, i: &'hir hir::Item) {
+                        if let hir::ItemKind::Fn(.., body_id) = i.node {
+                            if i.attrs.iter().any(|attr| attr.name() == "test") {
+                                let config = MiriConfig { validate: true, args: vec![] };
+                                let did = self.0.hir().body_owner_def_id(body_id);
+                                println!("running test: {}", self.0.def_path_debug_str(did));
+                                miri::eval_main(self.0, did, config);
+                                self.0.sess.abort_if_errors();
+                            }
+                        }
                     }
+                    fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
+                    fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
                 }
-            }
-            fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
-            fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
-        }
-        state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(tcx, state));
-    } else if let Some((entry_def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
-        let config = MiriConfig { validate: true, args: vec![] };
-        miri::eval_main(tcx, entry_def_id, config);
+                tcx.hir().krate().visit_all_item_likes(&mut Visitor(tcx));
+            } else if let Some((entry_def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
+                let config = MiriConfig { validate: true, args: vec![] };
+                miri::eval_main(tcx, entry_def_id, config);
 
-        state.session.abort_if_errors();
-    } else {
-        println!("no main function found, assuming auxiliary build");
+                compiler.session().abort_if_errors();
+            } else {
+                println!("no main function found, assuming auxiliary build");
+            }
+        });
+
+        // Continue execution on host target
+        self.host_target
     }
 }
 
@@ -185,10 +142,7 @@ fn main() {
         let buf = BufWriter::default();
         let output = buf.clone();
         let result = std::panic::catch_unwind(|| {
-            rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
-                default: Box::new(RustcDefaultCalls),
-                host_target,
-            }), None, Some(Box::new(buf)));
+            let _ = rustc_driver::run_compiler(&args, &mut MiriCompilerCalls { host_target }, None, Some(Box::new(buf)));
         });
 
         match result {
