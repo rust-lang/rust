@@ -116,7 +116,9 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                     // point to the `const` statement as a secondary span
                     // they don't have any label
                     for sp in primary_spans {
-                        lint.span_label(sp, "");
+                        if sp != span {
+                            lint.span_label(sp, "");
+                        }
                     }
                 }
                 lint.emit();
