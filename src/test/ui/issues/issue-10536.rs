@@ -12,7 +12,7 @@ pub fn main() {
     foo!();
 
     assert!({one! two()});
-    //~^ ERROR macros that expand to items must either be surrounded with braces or followed by a
+    //~^ ERROR macros that expand to items
     //~| ERROR cannot find macro `one!` in this scope
     //~| ERROR mismatched types
 
