@@ -1,4 +1,4 @@
-//! Types which pin data to its location in memory
+//! Types that pin data to its location in memory.
 //!
 //! It is sometimes useful to have objects that are guaranteed to not move,
 //! in the sense that their placement in memory does not change, and can thus be relied upon.

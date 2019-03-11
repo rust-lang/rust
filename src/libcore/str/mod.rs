@@ -2968,7 +2968,7 @@ impl str {
     ///
     /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
     /// allows a reverse search and forward/reverse search yields the same
-    /// elements. This is true for, eg, [`char`] but not for `&str`.
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
@@ -3143,7 +3143,7 @@ impl str {
     ///
     /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
     /// allows a reverse search and forward/reverse search yields the same
-    /// elements. This is true for, eg, [`char`] but not for `&str`.
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
@@ -3326,7 +3326,7 @@ impl str {
     ///
     /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
     /// allows a reverse search and forward/reverse search yields the same
-    /// elements. This is true for, eg, [`char`] but not for `&str`.
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
@@ -3402,7 +3402,7 @@ impl str {
     ///
     /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
     /// allows a reverse search and forward/reverse search yields the same
-    /// elements. This is true for, eg, [`char`] but not for `&str`.
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
