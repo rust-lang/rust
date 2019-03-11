@@ -958,6 +958,10 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
     }
+    pub fn pointee_info_at<C>(self, cx: &C, offset: Size, param_env: Ty::ParamEnv) -> Option<PointeeInfo> 
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+        Ty::pointee_info_at(self, cx, offset, param_env)
+    }
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
