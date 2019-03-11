@@ -108,7 +108,6 @@ fn test_index() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {

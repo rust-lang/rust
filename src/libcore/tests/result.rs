@@ -117,7 +117,6 @@ fn test_unwrap_or_else() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 pub fn test_unwrap_or_else_panic() {
     fn handler(msg: &'static str) -> isize {
         if msg == "I got this." {
@@ -139,7 +138,6 @@ pub fn test_expect_ok() {
 }
 #[test]
 #[should_panic(expected="Got expected error: \"All good\"")]
-#[cfg(not(miri))] // Miri does not support panics
 pub fn test_expect_err() {
     let err: Result<isize, &'static str> = Err("All good");
     err.expect("Got expected error");
@@ -153,7 +151,6 @@ pub fn test_expect_err_err() {
 }
 #[test]
 #[should_panic(expected="Got expected ok: \"All good\"")]
-#[cfg(not(miri))] // Miri does not support panics
 pub fn test_expect_err_ok() {
     let err: Result<&'static str, isize> = Ok("All good");
     err.expect_err("Got expected ok");
