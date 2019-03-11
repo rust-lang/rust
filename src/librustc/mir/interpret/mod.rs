@@ -434,3 +434,9 @@ pub fn truncate(value: u128, size: Size) -> u128 {
     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
     (value << shift) >> shift
 }
+
+pub fn mask(size: Size) -> u128 {
+    let size = size.bits();
+    let shift = 128 - size;
+    !0u128 >> shift
+}
