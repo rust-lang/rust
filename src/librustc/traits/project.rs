@@ -594,7 +594,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
             // Once we have inferred everything we need to know, we
             // can ignore the `obligations` from that point on.
-            if !infcx.any_unresolved_type_vars(&ty.value) {
+            if infcx.unresolved_type_vars(&ty.value).is_none() {
                 infcx.projection_cache.borrow_mut().complete_normalized(cache_key, &ty);
                 // No need to extend `obligations`.
             } else {
@@ -704,7 +704,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                                                  result: &NormalizedTy<'tcx>)
                                                  -> NormalizedTy<'tcx> {
-    if !infcx.any_unresolved_type_vars(&result.value) {
+    if infcx.unresolved_type_vars(&result.value).is_none() {
         return NormalizedTy { value: result.value, obligations: vec![] };
     }
 
@@ -722,7 +722,7 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
                   // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
                   // ?0>`).
                   ty::Predicate::Projection(ref data) =>
-                      infcx.any_unresolved_type_vars(&data.ty()),
+                      infcx.unresolved_type_vars(&data.ty()).is_some(),
 
                   // We are only interested in `T: Foo<X = U>` predicates, whre
                   // `U` references one of `unresolved_type_vars`. =)

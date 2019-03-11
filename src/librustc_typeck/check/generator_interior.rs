@@ -54,12 +54,16 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
             debug!("type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
                    expr, scope, ty, self.expr_count, yield_span);
 
-            if self.fcx.any_unresolved_type_vars(&ty) {
-                let mut err = struct_span_err!(self.fcx.tcx.sess, source_span, E0698,
-                    "type inside generator must be known in this context");
-                err.span_note(yield_span,
-                              "the type is part of the generator because of this `yield`");
-                err.emit();
+            if let Some((unresolved_type, unresolved_type_span)) =
+                self.fcx.unresolved_type_vars(&ty)
+            {
+                // If unresolved type isn't a ty_var then unresolved_type_span is None
+                self.fcx.need_type_info_err_in_generator(
+                    unresolved_type_span.unwrap_or(yield_span),
+                    unresolved_type)
+                    .span_note(yield_span,
+                               "the type is part of the generator because of this `yield`")
+                    .emit();
             } else {
                 // Map the type to the number of types added before it
                 let entries = self.types.len();
