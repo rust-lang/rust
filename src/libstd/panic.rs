@@ -12,7 +12,7 @@ use crate::panicking;
 use crate::ptr::{Unique, NonNull};
 use crate::rc::Rc;
 use crate::sync::{Arc, Mutex, RwLock, atomic};
-use crate::task::{Waker, Poll};
+use crate::task::{Context, Poll};
 use crate::thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -323,9 +323,9 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
 impl<F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
-        F::poll(pinned_field, waker)
+        F::poll(pinned_field, cx)
     }
 }
 

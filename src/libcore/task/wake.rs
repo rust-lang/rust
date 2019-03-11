@@ -3,7 +3,7 @@
             issue = "50547")]
 
 use fmt;
-use marker::Unpin;
+use marker::{PhantomData, Unpin};
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// which provides customized wakeup behavior.
@@ -36,6 +36,10 @@ impl RawWaker {
     /// The `vtable` customizes the behavior of a `Waker` which gets created
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
+    #[rustc_promotable]
+    #[unstable(feature = "futures_api",
+            reason = "futures in libcore are unstable",
+            issue = "50547")]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker {
             data,
@@ -63,21 +67,105 @@ pub struct RawWakerVTable {
     /// required for this additional instance of a [`RawWaker`] and associated
     /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
     /// of the same task that would have been awoken by the original [`RawWaker`].
-    pub clone: unsafe fn(*const ()) -> RawWaker,
+    clone: unsafe fn(*const ()) -> RawWaker,
 
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
     ///
     /// The implemention of this function must not consume the provided data
     /// pointer.
-    pub wake: unsafe fn(*const ()),
+    wake: unsafe fn(*const ()),
 
     /// This function gets called when a [`RawWaker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
-    pub drop: unsafe fn(*const ()),
+    drop: unsafe fn(*const ()),
+}
+
+impl RawWakerVTable {
+    /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`, and
+    /// `drop` functions.
+    ///
+    /// # `clone`
+    ///
+    /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
+    /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
+    ///
+    /// The implementation of this function must retain all resources that are
+    /// required for this additional instance of a [`RawWaker`] and associated
+    /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
+    /// of the same task that would have been awoken by the original [`RawWaker`].
+    ///
+    /// # `wake`
+    ///
+    /// This function will be called when `wake` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// The implemention of this function must not consume the provided data
+    /// pointer.
+    ///
+    /// # `drop`
+    ///
+    /// This function gets called when a [`RawWaker`] gets dropped.
+    ///
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    #[rustc_promotable]
+    #[unstable(feature = "futures_api",
+            reason = "futures in libcore are unstable",
+            issue = "50547")]
+    pub const fn new(
+        clone: unsafe fn(*const ()) -> RawWaker,
+        wake: unsafe fn(*const ()),
+        drop: unsafe fn(*const ()),
+    ) -> Self {
+        Self {
+            clone,
+            wake,
+            drop,
+        }
+    }
+}
+
+/// The `Context` of an asynchronous task.
+///
+/// Currently, `Context` only serves to provide access to a `&Waker`
+/// which can be used to wake the current task.
+pub struct Context<'a> {
+    waker: &'a Waker,
+    // Ensure we future-proof against variance changes by forcing
+    // the lifetime to be invariant (argument-position lifetimes
+    // are contravariant while return-position lifetimes are
+    // covariant).
+    _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+}
+
+impl<'a> Context<'a> {
+    /// Create a new `Context` from a `&Waker`.
+    #[inline]
+    pub fn from_waker(waker: &'a Waker) -> Self {
+        Context {
+            waker,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Returns a reference to the `Waker` for the current task.
+    #[inline]
+    pub fn waker(&self) -> &'a Waker {
+        &self.waker
+    }
+}
+
+impl fmt::Debug for Context<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Context")
+            .field("waker", &self.waker)
+            .finish()
+    }
 }
 
 /// A `Waker` is a handle for waking up a task by notifying its executor that it
@@ -98,6 +186,7 @@ unsafe impl Sync for Waker {}
 
 impl Waker {
     /// Wake up the task associated with this `Waker`.
+    #[inline]
     pub fn wake(&self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
@@ -115,6 +204,7 @@ impl Waker {
     /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
     ///
     /// This function is primarily used for optimization purposes.
+    #[inline]
     pub fn will_wake(&self, other: &Waker) -> bool {
         self.waker == other.waker
     }
@@ -124,6 +214,7 @@ impl Waker {
     /// The behavior of the returned `Waker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
+    #[inline]
     pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
         Waker {
             waker,
@@ -132,6 +223,7 @@ impl Waker {
 }
 
 impl Clone for Waker {
+    #[inline]
     fn clone(&self) -> Self {
         Waker {
             // SAFETY: This is safe because `Waker::new_unchecked` is the only way
@@ -143,6 +235,7 @@ impl Clone for Waker {
 }
 
 impl Drop for Waker {
+    #[inline]
     fn drop(&mut self) {
         // SAFETY: This is safe because `Waker::new_unchecked` is the only way
         // to initialize `drop` and `data` requiring the user to acknowledge

@@ -1,19 +1,19 @@
 // edition:2018
 
-#![feature(arbitrary_self_types, futures_api)]
+#![feature(futures_api)]
 
 use std::sync::Arc;
 use std::task::{
-    Poll, Waker, RawWaker, RawWakerVTable,
+    Waker, RawWaker, RawWakerVTable,
 };
 
 macro_rules! waker_vtable {
     ($ty:ident) => {
-        &RawWakerVTable {
-            clone: clone_arc_raw::<$ty>,
-            drop: drop_arc_raw::<$ty>,
-            wake: wake_arc_raw::<$ty>,
-        }
+        &RawWakerVTable::new(
+            clone_arc_raw::<$ty>,
+            wake_arc_raw::<$ty>,
+            drop_arc_raw::<$ty>,
+        )
     };
 }
 
