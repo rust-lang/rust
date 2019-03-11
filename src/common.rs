@@ -396,8 +396,8 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 dst_layout,
             ),
             CPlace::NoPlace(layout) => {
-                assert!(layout.size.bytes() == 0);
-                assert!(from.layout().size.bytes() == 0);
+                assert_eq!(layout.size.bytes(), 0);
+                assert_eq!(from.layout().size.bytes(), 0);
                 return;
             }
             CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),

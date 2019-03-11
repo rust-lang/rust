@@ -16,7 +16,7 @@ index f928d40..6a146f5 100644
              #[inline]
              pub const fn swap_bytes(self) -> Self {
 -                intrinsics::bswap(self as $ActualT) as Self
-+                0 // bswap is unsupported by cg_clif
++                42 // bswap is unsupported by cg_clif
              }
          }
  
