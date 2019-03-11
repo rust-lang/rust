@@ -421,6 +421,9 @@
 # development of NLL
 #test-compare-mode = false
 
+# Use LLVM libunwind as the implementation for Rust's unwinder.
+#llvm-libunwind = false
+
 # =============================================================================
 # Options for specific targets
 #

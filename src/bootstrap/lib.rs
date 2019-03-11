@@ -506,6 +506,9 @@ impl Build {
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
 
+        if self.config.llvm_libunwind {
+            features.push_str(" llvm-libunwind");
+        }
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
