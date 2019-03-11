@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:85:24
    |
-LL |     let _seetype: () = z; //~ ERROR mismatched types
+LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
    |
    = note: expected type `()`
@@ -10,7 +10,7 @@ LL |     let _seetype: () = z; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:102:24
    |
-LL |     let _seetype: () = z; //~ ERROR mismatched types
+LL |     let _seetype: () = z;
    |                        ^ expected (), found u64
    |
    = note: expected type `()`
@@ -19,7 +19,7 @@ LL |     let _seetype: () = z; //~ ERROR mismatched types
 error[E0034]: multiple applicable items in scope
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:120:15
    |
-LL |     let z = x.foo(); //~ ERROR multiple applicable items in scope
+LL |     let z = x.foo();
    |               ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `internal::X` for the type `_`
@@ -42,7 +42,7 @@ LL |     fn foo(&self) -> u8;
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:137:24
    |
-LL |     let _seetype: () = z; //~ ERROR mismatched types
+LL |     let _seetype: () = z;
    |                        ^ expected (), found u8
    |
    = note: expected type `()`
@@ -51,7 +51,7 @@ LL |     let _seetype: () = z; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:155:24
    |
-LL |     let _seetype: () = z; //~ ERROR mismatched types
+LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
    |
    = note: expected type `()`
@@ -60,7 +60,7 @@ LL |     let _seetype: () = z; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:172:24
    |
-LL |     let _seetype: () = z; //~ ERROR mismatched types
+LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
    |
    = note: expected type `()`

@@ -1,7 +1,7 @@
 error: unused variable: `x`
   --> $DIR/issue-17999.rs:5:13
    |
-LL |         let x = (); //~ ERROR: unused variable: `x`
+LL |         let x = ();
    |             ^ help: consider prefixing with an underscore: `_x`
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unused_variables)]
 error: unused variable: `a`
   --> $DIR/issue-17999.rs:7:13
    |
-LL |             a => {} //~ ERROR: unused variable: `a`
+LL |             a => {}
    |             ^ help: consider prefixing with an underscore: `_a`
 
 error: aborting due to 2 previous errors

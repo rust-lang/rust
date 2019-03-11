@@ -1,7 +1,7 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
   --> $DIR/const-fn-not-safe-for-const.rs:14:5
    |
-LL |     random() //~ ERROR E0015
+LL |     random()
    |     ^^^^^^^^
 
 error[E0013]: constant functions cannot refer to statics, use a constant instead

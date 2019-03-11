@@ -1,7 +1,7 @@
 error[E0106]: missing lifetime specifier
   --> $DIR/in-fn-return-illegal.rs:5:30
    |
-LL | fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } } //~ ERROR missing lifetime specifier
+LL | fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } }
    |                              ^^ expected lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `x` or `y`

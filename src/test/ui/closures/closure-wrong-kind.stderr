@@ -1,7 +1,7 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
   --> $DIR/closure-wrong-kind.rs:10:19
    |
-LL |     let closure = |_| foo(x);  //~ ERROR E0525
+LL |     let closure = |_| foo(x);
    |                   ^^^^^^^^-^
    |                   |       |
    |                   |       closure is `FnOnce` because it moves the variable `x` out of its environment

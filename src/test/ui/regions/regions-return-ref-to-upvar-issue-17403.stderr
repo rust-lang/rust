@@ -1,18 +1,18 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:24
    |
-LL |         let mut f = || &mut x; //~ ERROR cannot infer
+LL |         let mut f = || &mut x;
    |                        ^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime  as defined on the body at 7:21...
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:21
    |
-LL |         let mut f = || &mut x; //~ ERROR cannot infer
+LL |         let mut f = || &mut x;
    |                     ^^^^^^^^^
 note: ...so that closure can access `x`
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:7:24
    |
-LL |         let mut f = || &mut x; //~ ERROR cannot infer
+LL |         let mut f = || &mut x;
    |                        ^^^^^^
 note: but, the lifetime must be valid for the call at 9:17...
   --> $DIR/regions-return-ref-to-upvar-issue-17403.rs:9:17

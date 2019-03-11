@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `__test`
   --> $DIR/inaccessible-test-modules.rs:5:5
    |
-LL | use __test as x; //~ ERROR unresolved import `__test`
+LL | use __test as x;
    |     ------^^^^^
    |     |
    |     no `__test` in the root
@@ -10,7 +10,7 @@ LL | use __test as x; //~ ERROR unresolved import `__test`
 error[E0432]: unresolved import `__test_reexports`
   --> $DIR/inaccessible-test-modules.rs:6:5
    |
-LL | use __test_reexports as y; //~ ERROR unresolved import `__test_reexports`
+LL | use __test_reexports as y;
    |     ----------------^^^^^
    |     |
    |     no `__test_reexports` in the root

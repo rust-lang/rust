@@ -1,7 +1,7 @@
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:15:41
    |
-LL | const unsafe fn bar() -> u32 { unsafe { foo() } } //~ ERROR can only call other `min_const_fn`
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
    |                                         ^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | const unsafe fn bar() -> u32 { unsafe { foo() } } //~ ERROR can only call o
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:22:42
    |
-LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR can only call other `min_const_fn`
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
    |                                          ^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR can only call
 error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:26:33
    |
-LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` op
+LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
    |                                 ^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, 
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability.rs:34:48
    |
-LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } } //~ ERROR can only call other
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
    |                                                ^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

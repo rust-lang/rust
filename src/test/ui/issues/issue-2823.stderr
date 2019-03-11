@@ -4,7 +4,7 @@ error[E0599]: no method named `clone` found for type `C` in the current scope
 LL | struct C {
    | -------- method `clone` not found for this
 ...
-LL |     let _d = c.clone(); //~ ERROR no method named `clone` found
+LL |     let _d = c.clone();
    |                ^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope

@@ -1,7 +1,7 @@
 error[E0597]: `*x` does not live long enough
   --> $DIR/region-object-lifetime-5.rs:11:5
    |
-LL |     x.borrowed() //~ ERROR `*x` does not live long enough
+LL |     x.borrowed()
    |     ^ borrowed value does not live long enough
 LL | }
    | - borrowed value only lives until here

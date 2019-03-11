@@ -1,7 +1,7 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/double_check2.rs:15:1
    |
-LL | / static FOO: (&Foo, &Bar) = unsafe {( //~ undefined behavior
+LL | / static FOO: (&Foo, &Bar) = unsafe {(
 LL | |     Union { u8: &BAR }.foo,
 LL | |     Union { u8: &BAR }.bar,
 LL | | )};

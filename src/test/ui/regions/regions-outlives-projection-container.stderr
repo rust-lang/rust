@@ -52,7 +52,7 @@ LL | fn call_with_assoc<'a,'b>() {
 error[E0491]: in type `&'a WithoutAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
   --> $DIR/regions-outlives-projection-container.rs:74:12
    |
-LL |     call::<&'a WithoutAssoc<TheType<'b>>>(); //~ ERROR reference has a longer lifetime
+LL |     call::<&'a WithoutAssoc<TheType<'b>>>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime 'a as defined on the function body at 71:23

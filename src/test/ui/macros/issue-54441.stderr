@@ -1,7 +1,7 @@
 error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found `let`
   --> $DIR/issue-54441.rs:5:9
    |
-LL |         let //~ ERROR expected
+LL |         let
    |         ^^^ unexpected token
 ...
 LL |     m!();

@@ -21,7 +21,7 @@ LL | #[allow(test_group)]
 warning: unknown lint: `this_lint_does_not_exist`
   --> $DIR/lint_tool_test.rs:27:8
    |
-LL | #[deny(this_lint_does_not_exist)] //~ WARNING unknown lint: `this_lint_does_not_exist`
+LL | #[deny(this_lint_does_not_exist)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(unknown_lints)] on by default
@@ -35,7 +35,7 @@ LL | #![cfg_attr(foo, warn(test_lint))]
 error: item is named 'lintme'
   --> $DIR/lint_tool_test.rs:14:1
    |
-LL | fn lintme() { } //~ ERROR item is named 'lintme'
+LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -48,7 +48,7 @@ LL | #![deny(clippy_group)]
 error: item is named 'lintmetoo'
   --> $DIR/lint_tool_test.rs:22:5
    |
-LL |     fn lintmetoo() { } //~ ERROR item is named 'lintmetoo'
+LL |     fn lintmetoo() { }
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

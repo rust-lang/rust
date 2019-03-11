@@ -4,13 +4,13 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 LL |     foo: Vec<u32>,
    |     ------------- this field does not implement `Copy`
 ...
-LL | impl Copy for Foo { } //~ ERROR may not be implemented for this type
+LL | impl Copy for Foo { }
    |      ^^^^
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0204.rs:7:10
    |
-LL | #[derive(Copy)] //~ ERROR may not be implemented for this type
+LL | #[derive(Copy)]
    |          ^^^^
 LL | struct Foo2<'a> {
 LL |     ty: &'a mut bool,
@@ -22,13 +22,13 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 LL |     Bar { x: Vec<u32> },
    |           ----------- this field does not implement `Copy`
 ...
-LL | impl Copy for EFoo { } //~ ERROR may not be implemented for this type
+LL | impl Copy for EFoo { }
    |      ^^^^
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0204.rs:19:10
    |
-LL | #[derive(Copy)] //~ ERROR may not be implemented for this type
+LL | #[derive(Copy)]
    |          ^^^^
 LL | enum EFoo2<'a> {
 LL |     Bar(&'a mut bool),

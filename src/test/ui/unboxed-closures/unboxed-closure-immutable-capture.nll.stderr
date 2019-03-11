@@ -3,7 +3,7 @@ error[E0594]: cannot assign to `x`, as it is not declared as mutable
    |
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
-LL |     move || x = 1; //~ ERROR cannot assign
+LL |     move || x = 1;
    |             ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
@@ -11,8 +11,8 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
    |
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
-LL |     move || x = 1; //~ ERROR cannot assign
-LL |     move || set(&mut x); //~ ERROR cannot borrow
+LL |     move || x = 1;
+LL |     move || set(&mut x);
    |                 ^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
@@ -21,7 +21,7 @@ error[E0594]: cannot assign to `x`, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     move || x = 1; //~ ERROR cannot assign
+LL |     move || x = 1;
    |             ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
@@ -30,7 +30,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     move || set(&mut x); //~ ERROR cannot borrow
+LL |     move || set(&mut x);
    |                 ^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
@@ -39,7 +39,7 @@ error[E0594]: cannot assign to `x`, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     || x = 1; //~ ERROR cannot assign
+LL |     || x = 1;
    |        ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
@@ -48,7 +48,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     || set(&mut x); //~ ERROR cannot assign
+LL |     || set(&mut x);
    |            ^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
@@ -57,7 +57,7 @@ error[E0594]: cannot assign to `x`, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     || x = 1; //~ ERROR cannot assign
+LL |     || x = 1;
    |        ^^^^^ cannot assign
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
@@ -66,7 +66,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL |     let x = 0;
    |         - help: consider changing this to be mutable: `mut x`
 ...
-LL |     || set(&mut x); //~ ERROR cannot assign
+LL |     || set(&mut x);
    |            ^^^^^^ cannot borrow as mutable
 
 error: aborting due to 8 previous errors

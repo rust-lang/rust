@@ -14,7 +14,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     *lock.lock().unwrap() = &*y;
    |                              -- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 
 error[E0597]: `z` does not live long enough
@@ -33,7 +33,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     *lock.write().unwrap() = &*y;
    |                               -- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 
 error[E0597]: `z` does not live long enough
@@ -52,7 +52,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     tx.send(&*y);
    |              -- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 
 error: aborting due to 6 previous errors

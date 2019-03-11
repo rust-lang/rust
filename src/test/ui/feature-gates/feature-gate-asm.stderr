@@ -1,7 +1,7 @@
 error[E0658]: inline assembly is not stable enough for use and is subject to change (see issue #29722)
   --> $DIR/feature-gate-asm.rs:3:9
    |
-LL |         asm!(""); //~ ERROR inline assembly is not stable enough
+LL |         asm!("");
    |         ^^^^^^^^^
    |
    = help: add #![feature(asm)] to the crate attributes to enable

@@ -3,7 +3,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `u8`:
    |
 LL | impl<T> Foo for T {}
    | ----------------- first implementation here
-LL | impl !Foo for u8 {} //~ ERROR E0119
+LL | impl !Foo for u8 {}
    | ^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
 error[E0119]: conflicting implementations of trait `Bar` for type `u8`:
@@ -11,7 +11,7 @@ error[E0119]: conflicting implementations of trait `Bar` for type `u8`:
    |
 LL | impl<T> !Bar for T {}
    | ------------------ first implementation here
-LL | impl Bar for u8 {} //~ ERROR E0119
+LL | impl Bar for u8 {}
    | ^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
 error: aborting due to 2 previous errors

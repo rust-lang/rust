@@ -1,7 +1,7 @@
 error: index out of bounds: the len is 1 but the index is 1
   --> $DIR/const-prop-ice2.rs:4:20
    |
-LL |     println!("{}", xs[Enum::One as usize]); //~ ERROR the len is 1 but the index is 1
+LL |     println!("{}", xs[Enum::One as usize]);
    |                    ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(const_err)] on by default

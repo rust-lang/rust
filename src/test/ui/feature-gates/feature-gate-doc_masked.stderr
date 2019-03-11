@@ -1,7 +1,7 @@
 error[E0658]: #[doc(masked)] is experimental (see issue #44027)
   --> $DIR/feature-gate-doc_masked.rs:1:1
    |
-LL | #[doc(masked)] //~ ERROR: #[doc(masked)] is experimental
+LL | #[doc(masked)]
    | ^^^^^^^^^^^^^^
    |
    = help: add #![feature(doc_masked)] to the crate attributes to enable

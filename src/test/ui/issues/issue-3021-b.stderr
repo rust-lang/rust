@@ -1,7 +1,7 @@
 error[E0434]: can't capture dynamic environment in a fn item
   --> $DIR/issue-3021-b.rs:9:22
    |
-LL |            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dynamic environment
+LL |            self.v0 = k0 ^ 0x736f6d6570736575;
    |                      ^^
    |
    = help: use the `|| { ... }` closure form instead

@@ -1,7 +1,7 @@
 error: unions cannot have zero fields
   --> $DIR/union-empty.rs:1:1
    |
-LL | union U {} //~ ERROR unions cannot have zero fields
+LL | union U {}
    | ^^^^^^^^^^
 
 error: aborting due to previous error

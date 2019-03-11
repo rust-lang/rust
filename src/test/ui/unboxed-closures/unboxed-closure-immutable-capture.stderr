@@ -4,7 +4,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
 LL |     let x = 0;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |     || x = 1; //~ ERROR cannot assign
+LL |     || x = 1;
    |     ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable local variable `x`
@@ -13,7 +13,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
 LL |     let x = 0;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |     || set(&mut x); //~ ERROR cannot assign
+LL |     || set(&mut x);
    |     ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable local variable `x`
@@ -22,7 +22,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
 LL |     let x = 0;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |     || x = 1; //~ ERROR cannot assign
+LL |     || x = 1;
    |     ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable local variable `x`
@@ -31,7 +31,7 @@ error[E0595]: closure cannot assign to immutable local variable `x`
 LL |     let x = 0;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |     || set(&mut x); //~ ERROR cannot assign
+LL |     || set(&mut x);
    |     ^^ cannot borrow mutably
 
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
@@ -39,13 +39,13 @@ error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
    |
 LL |     let x = 0;
    |         - help: consider making `x` mutable: `mut x`
-LL |     move || x = 1; //~ ERROR cannot assign
+LL |     move || x = 1;
    |             ^^^^^
 
 error[E0596]: cannot borrow captured outer variable in an `FnMut` closure as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:10:22
    |
-LL |     move || set(&mut x); //~ ERROR cannot borrow
+LL |     move || set(&mut x);
    |                      ^
 
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
@@ -54,13 +54,13 @@ error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
 LL |     let x = 0;
    |         - help: consider making `x` mutable: `mut x`
 ...
-LL |     move || x = 1; //~ ERROR cannot assign
+LL |     move || x = 1;
    |             ^^^^^
 
 error[E0596]: cannot borrow captured outer variable in an `FnMut` closure as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:12:22
    |
-LL |     move || set(&mut x); //~ ERROR cannot borrow
+LL |     move || set(&mut x);
    |                      ^
 
 error: aborting due to 8 previous errors

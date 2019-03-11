@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `t0` because it is borrowed
    |
 LL |     let p: &isize = &*t0; // Freezes `*t0`
    |                     ---- borrow of `*t0` occurs here
-LL |     let t1 = t0;        //~ ERROR cannot move out of `t0`
+LL |     let t1 = t0;
    |              ^^ move out of `t0` occurs here
 LL |     *t1 = 22;
 LL |     p.use_ref();

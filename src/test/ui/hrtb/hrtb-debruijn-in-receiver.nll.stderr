@@ -3,7 +3,7 @@ error[E0499]: cannot borrow `foo` as mutable more than once at a time
    |
 LL |     foo.insert();
    |     --- first mutable borrow occurs here
-LL |     foo.insert(); //~ ERROR cannot borrow
+LL |     foo.insert();
    |     ^^^
    |     |
    |     second mutable borrow occurs here

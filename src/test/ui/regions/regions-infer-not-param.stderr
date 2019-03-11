@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/regions-infer-not-param.rs:15:54
    |
-LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types
+LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                                                      ^ lifetime mismatch
    |
    = note: expected type `Direct<'b>`
@@ -9,18 +9,18 @@ LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatch
 note: the lifetime 'a as defined on the function body at 15:16...
   --> $DIR/regions-infer-not-param.rs:15:16
    |
-LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types
+LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                ^^
 note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 15:19
   --> $DIR/regions-infer-not-param.rs:15:19
    |
-LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types
+LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                   ^^
 
 error[E0308]: mismatched types
   --> $DIR/regions-infer-not-param.rs:19:63
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                                                               ^ lifetime mismatch
    |
    = note: expected type `Indirect2<'b>`
@@ -28,18 +28,18 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR
 note: the lifetime 'a as defined on the function body at 19:19...
   --> $DIR/regions-infer-not-param.rs:19:19
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   ^^
 note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 19:22
   --> $DIR/regions-infer-not-param.rs:19:22
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                      ^^
 
 error[E0308]: mismatched types
   --> $DIR/regions-infer-not-param.rs:19:63
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                                                               ^ lifetime mismatch
    |
    = note: expected type `Indirect2<'b>`
@@ -47,12 +47,12 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR
 note: the lifetime 'b as defined on the function body at 19:22...
   --> $DIR/regions-infer-not-param.rs:19:22
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                      ^^
 note: ...does not necessarily outlive the lifetime 'a as defined on the function body at 19:19
   --> $DIR/regions-infer-not-param.rs:19:19
    |
-LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   ^^
 
 error: aborting due to 3 previous errors

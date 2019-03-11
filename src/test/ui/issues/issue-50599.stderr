@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `LOG10_2` in module `std::f64`
   --> $DIR/issue-50599.rs:3:48
    |
-LL |     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize; //~ ERROR cannot find value
+LL |     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
    |                                                ^^^^^^^ not found in `std::f64`
 help: possible candidates are found in other modules, you can import them into scope
    |

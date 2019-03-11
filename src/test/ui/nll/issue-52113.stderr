@@ -6,7 +6,7 @@ LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> i
    |                |
    |                lifetime `'a` defined here
 ...
-LL |     x //~ ERROR lifetime may not live long enough
+LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: aborting due to previous error

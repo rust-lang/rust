@@ -1,7 +1,7 @@
 error: expected one of `)` or `,`, found `pat`
   --> $DIR/pat-tuple-4.rs:3:13
    |
-LL |         (.. pat) => {} //~ ERROR expected one of `)` or `,`, found `pat`
+LL |         (.. pat) => {}
    |             ^^^ expected one of `)` or `,` here
 
 error: aborting due to previous error

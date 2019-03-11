@@ -4,7 +4,7 @@ error[E0530]: match bindings cannot shadow statics
 LL | static A1: usize = 1;
    | --------------------- the static `A1` is defined here
 ...
-LL |         A1 => {} //~ ERROR: match bindings cannot shadow statics
+LL |         A1 => {}
    |         ^^ cannot be named the same as a static
 
 error[E0530]: match bindings cannot shadow statics
@@ -13,7 +13,7 @@ error[E0530]: match bindings cannot shadow statics
 LL | static mut A2: usize = 1;
    | ------------------------- the static `A2` is defined here
 ...
-LL |         A2 => {} //~ ERROR: match bindings cannot shadow statics
+LL |         A2 => {}
    |         ^^ cannot be named the same as a static
 
 error: aborting due to 2 previous errors

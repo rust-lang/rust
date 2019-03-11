@@ -1,7 +1,7 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-borrowed-uniq-rvalue.rs:10:28
    |
-LL |     buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not live long enough
+LL |     buggy_map.insert(42, &*Box::new(1));
    |                            ^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                            |
    |                            creates a temporary which is freed while still in use

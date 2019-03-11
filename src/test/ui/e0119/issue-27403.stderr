@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `std::convert::Into<_>` for type `GenX<_>`:
   --> $DIR/issue-27403.rs:5:1
    |
-LL | impl<S> Into<S> for GenX<S> { //~ ERROR conflicting implementations
+LL | impl<S> Into<S> for GenX<S> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:

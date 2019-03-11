@@ -4,7 +4,7 @@ error[E0596]: cannot borrow field `(x as std::prelude::v1::Some).0` of immutable
 LL | fn destructure(x: Option<isize>) -> isize {
    |                - help: make this binding mutable: `mut x`
 ...
-LL |       Some(ref mut v) => *v //~ ERROR cannot borrow
+LL |       Some(ref mut v) => *v
    |            ^^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ error: unnecessary `unsafe` block
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
 LL |         let f = |v: &mut Vec<_>| {
-LL |             unsafe { //~ ERROR unnecessary `unsafe`
+LL |             unsafe {
    |             ^^^^^^ unnecessary `unsafe` block
    |
 note: lint level defined here
@@ -19,7 +19,7 @@ error: unnecessary `unsafe` block
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
 ...
-LL |                 |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
+LL |                 |w: &mut Vec<u32>| { unsafe {
    |                                      ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
@@ -28,7 +28,7 @@ error: unnecessary `unsafe` block
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
 ...
-LL |             |x: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
+LL |             |x: &mut Vec<u32>| { unsafe {
    |                                  ^^^^^^ unnecessary `unsafe` block
 
 error: aborting due to 3 previous errors

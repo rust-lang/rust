@@ -3,7 +3,7 @@ error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
    |
 LL |     let y = true;
    |         - help: consider making `y` mutable: `mut y`
-LL |     foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
+LL |     foo(Box::new(move || y = false) as Box<_>);
    |                          ^^^^^^^^^
 
 error: aborting due to previous error

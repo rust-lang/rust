@@ -1,55 +1,55 @@
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:5:1
    |
-LL | async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL | async fn foo() {}
    | ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:7:12
    |
-LL | fn baz() { async fn foo() {} } //~ ERROR `async fn` is not permitted in the 2015 edition
+LL | fn baz() { async fn foo() {} }
    |            ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:10:5
    |
-LL |     async fn bar() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |     async fn bar() {}
    |     ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:9:1
    |
-LL | async fn async_baz() { //~ ERROR `async fn` is not permitted in the 2015 edition
+LL | async fn async_baz() {
    | ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:32:9
    |
-LL |         async fn bar() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |         async fn bar() {}
    |         ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:28:9
    |
-LL |         async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |         async fn foo() {}
    |         ^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:16:5
    |
-LL |     async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |     async fn foo() {}
    |     ^^^^^
 
 error[E0706]: trait fns cannot be declared `async`
   --> $DIR/edition-deny-async-fns-2015.rs:20:5
    |
-LL |     async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |     async fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/edition-deny-async-fns-2015.rs:20:5
    |
-LL |     async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL |     async fn foo() {}
    |     ^^^^^
 
 error: aborting due to 9 previous errors

@@ -1,13 +1,13 @@
 error: return type should be `!`
   --> $DIR/alloc-error-handler-bad-signature-1.rs:12:6
    |
-LL | ) -> () //~ ERROR return type should be `!`
+LL | ) -> ()
    |      ^^
 
 error: argument should be `Layout`
   --> $DIR/alloc-error-handler-bad-signature-1.rs:11:11
    |
-LL |     info: &Layout, //~ ERROR argument should be `Layout`
+LL |     info: &Layout,
    |           ^^^^^^^
 
 error: aborting due to 2 previous errors

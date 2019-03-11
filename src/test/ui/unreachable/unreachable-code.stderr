@@ -1,7 +1,7 @@
 error: unreachable statement
   --> $DIR/unreachable-code.rs:7:3
    |
-LL |   let a = 3; //~ ERROR: unreachable statement
+LL |   let a = 3;
    |   ^^^^^^^^^^
    |
 note: lint level defined here

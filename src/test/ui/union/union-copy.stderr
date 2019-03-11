@@ -4,7 +4,7 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 LL |     a: String
    |     --------- this field does not implement `Copy`
 ...
-LL | impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for this type
+LL | impl Copy for W {}
    |      ^^^^
 
 error: aborting due to previous error

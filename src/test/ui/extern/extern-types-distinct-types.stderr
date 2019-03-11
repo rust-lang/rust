@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/extern-types-distinct-types.rs:9:5
    |
-LL |     r //~ ERROR mismatched types
+LL |     r
    |     ^ expected extern type `B`, found extern type `A`
    |
    = note: expected type `&B`

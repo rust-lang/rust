@@ -1,7 +1,7 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/type_ascription_static_lifetime.rs:7:19
    |
-LL |     let y: &u32 = &x: &'static u32; //~ ERROR E0597
+LL |     let y: &u32 = &x: &'static u32;
    |                   ^^--------------
    |                   |
    |                   borrowed value does not live long enough

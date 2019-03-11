@@ -19,37 +19,37 @@ LL | use std::option::Option::{Some, None};
 error: unused import: `test::A`
   --> $DIR/lint-unused-imports.rs:15:5
    |
-LL | use test::A;       //~ ERROR unused import: `test::A`
+LL | use test::A;
    |     ^^^^^^^
 
 error: unused import: `bar`
   --> $DIR/lint-unused-imports.rs:24:18
    |
-LL | use test2::{foo, bar}; //~ ERROR unused import: `bar`
+LL | use test2::{foo, bar};
    |                  ^^^
 
 error: unused import: `foo::Square`
   --> $DIR/lint-unused-imports.rs:52:13
    |
-LL |         use foo::Square; //~ ERROR unused import: `foo::Square`
+LL |         use foo::Square;
    |             ^^^^^^^^^^^
 
 error: unused import: `self::g`
   --> $DIR/lint-unused-imports.rs:68:9
    |
-LL |     use self::g; //~ ERROR unused import: `self::g`
+LL |     use self::g;
    |         ^^^^^^^
 
 error: unused import: `test2::foo`
   --> $DIR/lint-unused-imports.rs:77:9
    |
-LL |     use test2::foo; //~ ERROR unused import: `test2::foo`
+LL |     use test2::foo;
    |         ^^^^^^^^^^
 
 error: unused import: `test::B2`
   --> $DIR/lint-unused-imports.rs:20:5
    |
-LL | use test::B2; //~ ERROR unused import: `test::B2`
+LL | use test::B2;
    |     ^^^^^^^^
 
 error: aborting due to 8 previous errors

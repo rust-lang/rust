@@ -1,7 +1,7 @@
 error[E0659]: `panic` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/shadow_builtin_macros.rs:15:14
    |
-LL |     fn f() { panic!(); } //~ ERROR ambiguous
+LL |     fn f() { panic!(); }
    |              ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
@@ -16,7 +16,7 @@ LL |     use foo::*;
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/shadow_builtin_macros.rs:20:14
    |
-LL |     fn f() { panic!(); } //~ ERROR ambiguous
+LL |     fn f() { panic!(); }
    |              ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
@@ -30,7 +30,7 @@ LL |     ::two_macros::m!(use foo::panic;);
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/shadow_builtin_macros.rs:33:5
    |
-LL |     panic!(); //~ ERROR `panic` is ambiguous
+LL |     panic!();
    |     ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
@@ -46,7 +46,7 @@ LL |     m!();
 error[E0659]: `n` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/shadow_builtin_macros.rs:49:5
    |
-LL |     n!(); //~ ERROR ambiguous
+LL |     n!();
    |     ^ ambiguous name
    |
 note: `n` could refer to the macro imported here

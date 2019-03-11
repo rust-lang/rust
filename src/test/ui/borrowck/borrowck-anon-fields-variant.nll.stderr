@@ -19,7 +19,7 @@ error[E0503]: cannot use `y` because it was mutably borrowed
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- borrow of `y.0` occurs here
 ...
-LL |       Foo::Y(ref mut b, _) => b, //~ ERROR cannot borrow
+LL |       Foo::Y(ref mut b, _) => b,
    |       ^^^^^^^^^^^^^^^^^^^^ use of borrowed `y.0`
 ...
 LL |     *a += 1;
@@ -31,7 +31,7 @@ error[E0499]: cannot borrow `y.0` as mutable more than once at a time
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- first mutable borrow occurs here
 ...
-LL |       Foo::Y(ref mut b, _) => b, //~ ERROR cannot borrow
+LL |       Foo::Y(ref mut b, _) => b,
    |              ^^^^^^^^^ second mutable borrow occurs here
 ...
 LL |     *a += 1;

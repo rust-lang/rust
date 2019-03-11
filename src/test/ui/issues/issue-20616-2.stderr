@@ -1,7 +1,7 @@
 error: expected one of `,` or `>`, found `(`
   --> $DIR/issue-20616-2.rs:12:31
    |
-LL | type Type_2 = Type_1_<'static ()>; //~ error: expected one of `,` or `>`, found `(`
+LL | type Type_2 = Type_1_<'static ()>;
    |                               ^ expected one of `,` or `>` here
 
 error: aborting due to previous error

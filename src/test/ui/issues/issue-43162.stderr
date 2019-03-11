@@ -1,13 +1,13 @@
 error[E0268]: `break` outside of loop
   --> $DIR/issue-43162.rs:3:5
    |
-LL |     break true; //~ ERROR E0268
+LL |     break true;
    |     ^^^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `break` outside of loop
   --> $DIR/issue-43162.rs:7:5
    |
-LL |     break {}; //~ ERROR E0268
+LL |     break {};
    |     ^^^^^^^^ cannot break outside of a loop
 
 error[E0308]: mismatched types
@@ -17,8 +17,8 @@ LL | fn foo() -> bool {
    |    ---      ^^^^ expected bool, found ()
    |    |
    |    this function's body doesn't return
-LL |     //~^ ERROR E0308
-LL |     break true; //~ ERROR E0268
+LL |
+LL |     break true;
    |               - help: consider removing this semicolon
    |
    = note: expected type `bool`

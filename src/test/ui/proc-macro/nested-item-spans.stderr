@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/nested-item-spans.rs:10:22
    |
-LL |         let x: u32 = "x"; //~ ERROR: mismatched types
+LL |         let x: u32 = "x";
    |                      ^^^ expected u32, found reference
    |
    = note: expected type `u32`
@@ -10,7 +10,7 @@ LL |         let x: u32 = "x"; //~ ERROR: mismatched types
 error[E0308]: mismatched types
   --> $DIR/nested-item-spans.rs:19:22
    |
-LL |         let x: u32 = "x"; //~ ERROR: mismatched types
+LL |         let x: u32 = "x";
    |                      ^^^ expected u32, found reference
    |
    = note: expected type `u32`

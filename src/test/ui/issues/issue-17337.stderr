@@ -1,7 +1,7 @@
 error: use of deprecated item 'Foo::foo': text
   --> $DIR/issue-17337.rs:16:6
    |
-LL |     .foo(); //~ ERROR use of deprecated item
+LL |     .foo();
    |      ^^^
    |
 note: lint level defined here

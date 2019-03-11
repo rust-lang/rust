@@ -11,7 +11,7 @@ LL |     x.unwrap().method_that_could_exist_on_some_type();
 error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:12:5
    |
-LL | /     data.iter() //~ ERROR type annotations needed
+LL | /     data.iter()
 LL | |         .sum::<_>()
    | |___________________^ cannot infer type
    |

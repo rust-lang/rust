@@ -3,7 +3,7 @@ error[E0597]: borrowed value does not live long enough
    |
 LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
    |                                     ^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |     //~^ ERROR value does not live long enough
+LL |
 LL | }
    | - temporary value only lives until here
    |

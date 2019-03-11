@@ -1,7 +1,7 @@
 error: expected expression, found reserved keyword `try`
   --> $DIR/try-block-in-match.rs:6:11
    |
-LL |     match try { false } { _ => {} } //~ ERROR expected expression, found reserved keyword `try`
+LL |     match try { false } { _ => {} }
    |     ----- ^^^ expected expression
    |     |
    |     while parsing this match expression

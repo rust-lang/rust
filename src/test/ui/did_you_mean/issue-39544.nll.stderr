@@ -3,7 +3,7 @@ error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
    |
 LL |     let z = Z { x: X::Y };
    |         - help: consider changing this to be mutable: `mut z`
-LL |     let _ = &mut z.x; //~ ERROR cannot borrow
+LL |     let _ = &mut z.x;
    |             ^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
@@ -11,7 +11,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
    |
 LL |     fn foo<'z>(&'z self) {
    |                -------- help: consider changing this to be a mutable reference: `&'z mut self`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
@@ -19,7 +19,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
    |
 LL |     fn foo1(&self, other: &Z) {
    |             ----- help: consider changing this to be a mutable reference: `&mut self`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
@@ -27,8 +27,8 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
    |
 LL |     fn foo1(&self, other: &Z) {
    |                           -- help: consider changing this to be a mutable reference: `&mut Z`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
-LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
+LL |         let _ = &mut other.x;
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
@@ -36,7 +36,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
    |                 -------- help: consider changing this to be a mutable reference: `&'a mut self`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
@@ -44,8 +44,8 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
    |                                  -- help: consider changing this to be a mutable reference: `&mut Z`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
-LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
+LL |         let _ = &mut other.x;
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
@@ -53,7 +53,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
    |                       -------- help: consider changing this to be a mutable reference: `&'a mut Self`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
@@ -61,8 +61,8 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
    |                                        -- help: consider changing this to be a mutable reference: `&mut Z`
-LL |         let _ = &mut self.x; //~ ERROR cannot borrow
-LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+LL |         let _ = &mut self.x;
+LL |         let _ = &mut other.x;
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
@@ -70,7 +70,7 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
    |
 LL |     fn foo4(other: &Z) {
    |                    -- help: consider changing this to be a mutable reference: `&mut Z`
-LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+LL |         let _ = &mut other.x;
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
@@ -78,7 +78,7 @@ error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
    |                 - help: consider changing this to be mutable: `mut z`
-LL |     let _ = &mut z.x; //~ ERROR cannot borrow
+LL |     let _ = &mut z.x;
    |             ^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `w.x` as mutable, as it is behind a `&` reference
@@ -86,8 +86,8 @@ error[E0596]: cannot borrow `w.x` as mutable, as it is behind a `&` reference
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
    |                          -- help: consider changing this to be a mutable reference: `&mut Z`
-LL |     let _ = &mut z.x; //~ ERROR cannot borrow
-LL |     let _ = &mut w.x; //~ ERROR cannot borrow
+LL |     let _ = &mut z.x;
+LL |     let _ = &mut w.x;
    |             ^^^^^^^^ `w` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0594]: cannot assign to `*x.0` which is behind a `&` reference

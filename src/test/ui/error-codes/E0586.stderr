@@ -1,7 +1,7 @@
 error[E0586]: inclusive range with no end
   --> $DIR/E0586.rs:3:22
    |
-LL |     let x = &tmp[1..=]; //~ ERROR E0586
+LL |     let x = &tmp[1..=];
    |                      ^
    |
    = help: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)

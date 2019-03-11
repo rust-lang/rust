@@ -1,13 +1,13 @@
 error[E0390]: only a single inherent implementation marked with `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
   --> $DIR/E0390.rs:5:1
    |
-LL | impl *mut Foo {} //~ ERROR E0390
+LL | impl *mut Foo {}
    | ^^^^^^^^^^^^^^^^
    |
 help: consider using a trait to implement these methods
   --> $DIR/E0390.rs:5:1
    |
-LL | impl *mut Foo {} //~ ERROR E0390
+LL | impl *mut Foo {}
    | ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

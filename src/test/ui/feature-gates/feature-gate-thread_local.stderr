@@ -1,7 +1,7 @@
 error[E0658]: `#[thread_local]` is an experimental feature, and does not currently handle destructors. (see issue #29594)
   --> $DIR/feature-gate-thread_local.rs:8:1
    |
-LL | #[thread_local] //~ ERROR `#[thread_local]` is an experimental feature
+LL | #[thread_local]
    | ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(thread_local)] to the crate attributes to enable

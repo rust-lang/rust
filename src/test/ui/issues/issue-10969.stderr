@@ -3,7 +3,7 @@ error[E0618]: expected function, found `i32`
    |
 LL | fn func(i: i32) {
    |         - `i32` defined here
-LL |     i(); //~ERROR expected function, found `i32`
+LL |     i();
    |     ^--
    |     |
    |     call expression requires function
@@ -13,7 +13,7 @@ error[E0618]: expected function, found `i32`
    |
 LL |     let i = 0i32;
    |         - `i32` defined here
-LL |     i(); //~ERROR expected function, found `i32`
+LL |     i();
    |     ^--
    |     |
    |     call expression requires function

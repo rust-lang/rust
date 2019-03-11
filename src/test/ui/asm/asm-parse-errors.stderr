@@ -1,67 +1,67 @@
 error: macro requires a string literal as an argument
   --> $DIR/asm-parse-errors.rs:4:5
    |
-LL |     asm!(); //~ ERROR requires a string literal as an argument
+LL |     asm!();
    |     ^^^^^^^ string literal required
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:5:18
    |
-LL |     asm!("nop" : struct); //~ ERROR expected string literal
+LL |     asm!("nop" : struct);
    |                  ^^^^^^ expected string literal
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:6:30
    |
-LL |     asm!("mov %eax, $$0x2" : struct); //~ ERROR expected string literal
+LL |     asm!("mov %eax, $$0x2" : struct);
    |                              ^^^^^^ expected string literal
 
 error: expected `(`, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:7:39
    |
-LL |     asm!("mov %eax, $$0x2" : "={eax}" struct); //~ ERROR expected `(`
+LL |     asm!("mov %eax, $$0x2" : "={eax}" struct);
    |                                       ^^^^^^ expected `(`
 
 error: expected expression, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:8:39
    |
-LL |     asm!("mov %eax, $$0x2" : "={eax}"(struct)); //~ ERROR expected expression
+LL |     asm!("mov %eax, $$0x2" : "={eax}"(struct));
    |                                       ^^^^^^ expected expression
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:9:44
    |
-LL |     asm!("in %dx, %al" : "={al}"(result) : struct); //~ ERROR expected string literal
+LL |     asm!("in %dx, %al" : "={al}"(result) : struct);
    |                                            ^^^^^^ expected string literal
 
 error: expected `(`, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:10:51
    |
-LL |     asm!("in %dx, %al" : "={al}"(result) : "{dx}" struct); //~ ERROR expected `(`
+LL |     asm!("in %dx, %al" : "={al}"(result) : "{dx}" struct);
    |                                                   ^^^^^^ expected `(`
 
 error: expected expression, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:11:51
    |
-LL |     asm!("in %dx, %al" : "={al}"(result) : "{dx}"(struct)); //~ ERROR expected expression
+LL |     asm!("in %dx, %al" : "={al}"(result) : "{dx}"(struct));
    |                                                   ^^^^^^ expected expression
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:12:36
    |
-LL |     asm!("mov $$0x200, %eax" : : : struct); //~ ERROR expected string literal
+LL |     asm!("mov $$0x200, %eax" : : : struct);
    |                                    ^^^^^^ expected string literal
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:13:45
    |
-LL |     asm!("mov eax, 2" : "={eax}"(foo) : : : struct); //~ ERROR expected string literal
+LL |     asm!("mov eax, 2" : "={eax}"(foo) : : : struct);
    |                                             ^^^^^^ expected string literal
 
 error: inline assembly must be a string literal
   --> $DIR/asm-parse-errors.rs:14:10
    |
-LL |     asm!(123); //~ ERROR inline assembly must be a string literal
+LL |     asm!(123);
    |          ^^^
 
 error: aborting due to 11 previous errors

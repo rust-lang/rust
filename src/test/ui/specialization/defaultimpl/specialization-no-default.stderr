@@ -7,7 +7,7 @@ LL | |     fn bar(&self) {}
 LL | | }
    | |_- parent `impl` is here
 ...
-LL |       fn foo(&self) {} //~ ERROR E0520
+LL |       fn foo(&self) {}
    |       ^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
@@ -21,7 +21,7 @@ LL | |     fn bar(&self) {}
 LL | | }
    | |_- parent `impl` is here
 ...
-LL |       fn bar(&self) {} //~ ERROR E0520
+LL |       fn bar(&self) {}
    |       ^^^^^^^^^^^^^^^^ cannot specialize default item `bar`
    |
    = note: to specialize, `bar` in the parent `impl` must be marked `default`
@@ -34,7 +34,7 @@ LL | |     type T = u8;
 LL | | }
    | |_- parent `impl` is here
 ...
-LL |       type T = (); //~ ERROR E0520
+LL |       type T = ();
    |       ^^^^^^^^^^^^ cannot specialize default item `T`
    |
    = note: to specialize, `T` in the parent `impl` must be marked `default`
@@ -47,7 +47,7 @@ LL | |     fn baz(&self) {}
 LL | | }
    | |_- parent `impl` is here
 ...
-LL |       fn baz(&self) {} //~ ERROR E0520
+LL |       fn baz(&self) {}
    |       ^^^^^^^^^^^^^^^^ cannot specialize default item `baz`
    |
    = note: to specialize, `baz` in the parent `impl` must be marked `default`
@@ -60,7 +60,7 @@ LL | |     fn redundant(&self) {}
 LL | | }
    | |_- parent `impl` is here
 ...
-LL |       fn redundant(&self) {} //~ ERROR E0520
+LL |       fn redundant(&self) {}
    |       ^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
    |
    = note: to specialize, `redundant` in the parent `impl` must be marked `default`

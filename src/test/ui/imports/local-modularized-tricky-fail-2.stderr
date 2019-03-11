@@ -4,7 +4,7 @@ error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
 LL | exported!();
    | ------------ in this macro invocation
 ...
-LL |                 () => ( struct Б; ) //~ ERROR non-ascii idents are not fully supported
+LL |                 () => ( struct Б; )
    |                                ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -15,7 +15,7 @@ error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
 LL |     panic!();
    |     --------- in this macro invocation
 ...
-LL |         () => ( struct Г; ) //~ ERROR non-ascii idents are not fully supported
+LL |         () => ( struct Г; )
    |                        ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -26,7 +26,7 @@ error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
 LL | include!();
    | ----------- in this macro invocation
 ...
-LL |         () => ( struct Д; ) //~ ERROR non-ascii idents are not fully supported
+LL |         () => ( struct Д; )
    |                        ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable

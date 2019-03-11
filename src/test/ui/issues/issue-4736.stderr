@@ -1,7 +1,7 @@
 error[E0560]: struct `NonCopyable` has no field named `p`
   --> $DIR/issue-4736.rs:4:26
    |
-LL |     let z = NonCopyable{ p: () }; //~ ERROR struct `NonCopyable` has no field named `p`
+LL |     let z = NonCopyable{ p: () };
    |                          ^ help: a field with a similar name exists: `0`
 
 error: aborting due to previous error

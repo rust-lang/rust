@@ -9,7 +9,7 @@ note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on th
    |
 LL | /     fn bar(&self) {
 LL | |         self.foo();
-LL | |         //~^ ERROR cannot infer
+LL | |
 LL | |     }
    | |_____^
 note: ...so that reference does not outlive borrowed content

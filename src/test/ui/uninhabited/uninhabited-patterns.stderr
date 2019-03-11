@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:27:9
    |
-LL |         &[..] => (),    //~ ERROR unreachable pattern
+LL |         &[..] => (),
    |         ^^^^^
    |
 note: lint level defined here
@@ -13,19 +13,19 @@ LL | #![deny(unreachable_patterns)]
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:32:9
    |
-LL |         Ok(box _) => (),    //~ ERROR unreachable pattern
+LL |         Ok(box _) => (),
    |         ^^^^^^^^^
 
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:34:9
    |
-LL |         Err(&[..]) => (),   //~ ERROR unreachable pattern
+LL |         Err(&[..]) => (),
    |         ^^^^^^^^^^
 
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:41:9
    |
-LL |         Err(Ok(_y)) => (),  //~ ERROR unreachable pattern
+LL |         Err(Ok(_y)) => (),
    |         ^^^^^^^^^^^
 
 error: unreachable pattern

@@ -1,7 +1,7 @@
 error: the trait `X` cannot be made into an object
   --> $DIR/issue-50781.rs:6:5
    |
-LL |     fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
+LL |     fn foo(&self) where Self: Trait;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

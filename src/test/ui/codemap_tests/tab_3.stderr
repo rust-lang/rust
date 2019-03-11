@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `some_vec`
 LL |     some_vec.into_iter();
    |     -------- value moved here
 LL |     {
-LL |         println!("{:?}", some_vec); //~ ERROR use of moved
+LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value used here after move
    |
    = note: move occurs because `some_vec` has type `std::vec::Vec<&str>`, which does not implement the `Copy` trait

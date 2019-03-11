@@ -9,7 +9,7 @@ LL |     let y = {return; 22} as !;
 error[E0605]: non-primitive cast: `i32` as `!`
   --> $DIR/coerce-to-bang-cast.rs:11:13
    |
-LL |     let y = 22 as !; //~ ERROR non-primitive cast
+LL |     let y = 22 as !;
    |             ^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait

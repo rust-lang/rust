@@ -4,7 +4,7 @@ error: incorrect close delimiter: `)`
 LL |     foo! {
    |          - un-closed delimiter
 LL |         bar, "baz", 1, 2.0
-LL |     ) //~ ERROR incorrect close delimiter
+LL |     )
    |     ^ incorrect close delimiter
 
 error: aborting due to previous error

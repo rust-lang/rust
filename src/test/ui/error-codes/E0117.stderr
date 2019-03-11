@@ -1,13 +1,13 @@
 error[E0120]: the Drop trait may only be implemented on structures
   --> $DIR/E0117.rs:1:15
    |
-LL | impl Drop for u32 {} //~ ERROR E0117
+LL | impl Drop for u32 {}
    |               ^^^ implementing Drop requires a struct
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/E0117.rs:1:1
    |
-LL | impl Drop for u32 {} //~ ERROR E0117
+LL | impl Drop for u32 {}
    | ^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
    = note: the impl does not reference only types defined in this crate

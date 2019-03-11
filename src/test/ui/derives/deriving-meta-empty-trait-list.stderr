@@ -1,6 +1,6 @@
 warning: empty trait list in `derive`
   --> $DIR/deriving-meta-empty-trait-list.rs:3:1
    |
-LL | #[derive()] //~ WARNING empty trait list in `derive`
+LL | #[derive()]
    | ^^^^^^^^^^^
 

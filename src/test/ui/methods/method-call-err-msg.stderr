@@ -4,7 +4,7 @@ error[E0061]: this function takes 0 parameters but 1 parameter was supplied
 LL |     fn zero(self) -> Foo { self }
    |     -------------------- defined here
 ...
-LL |     x.zero(0)   //~ ERROR this function takes 0 parameters but 1 parameter was supplied
+LL |     x.zero(0)
    |       ^^^^ expected 0 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
@@ -13,7 +13,7 @@ error[E0061]: this function takes 1 parameter but 0 parameters were supplied
 LL |     fn one(self, _: isize) -> Foo { self }
    |     ----------------------------- defined here
 ...
-LL |      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
+LL |      .one()
    |       ^^^ expected 1 parameter
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
@@ -22,7 +22,7 @@ error[E0061]: this function takes 2 parameters but 1 parameter was supplied
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |     --------------------------------------- defined here
 ...
-LL |      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
+LL |      .two(0);
    |       ^^^ expected 2 parameters
 
 error[E0599]: no method named `take` found for type `Foo` in the current scope
@@ -31,7 +31,7 @@ error[E0599]: no method named `take` found for type `Foo` in the current scope
 LL | pub struct Foo;
    | --------------- method `take` not found for this
 ...
-LL |      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
+LL |      .take()
    |       ^^^^
    |
    = note: the method `take` exists but the following trait bounds were not satisfied:

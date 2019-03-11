@@ -1,19 +1,19 @@
 error[E0005]: refutable pattern in local binding: `0u8..=1u8` not covered
   --> $DIR/const-pattern-irrefutable.rs:12:9
    |
-LL |     let a = 4; //~ ERROR refutable pattern in local binding: `0u8..=1u8` not covered
+LL |     let a = 4;
    |         ^ interpreted as a constant pattern, not new variable
 
 error[E0005]: refutable pattern in local binding: `0u8..=1u8` not covered
   --> $DIR/const-pattern-irrefutable.rs:13:9
    |
-LL |     let c = 4; //~ ERROR refutable pattern in local binding: `0u8..=1u8` not covered
+LL |     let c = 4;
    |         ^ interpreted as a constant pattern, not new variable
 
 error[E0005]: refutable pattern in local binding: `0u8..=1u8` not covered
   --> $DIR/const-pattern-irrefutable.rs:14:9
    |
-LL |     let d = 4; //~ ERROR refutable pattern in local binding: `0u8..=1u8` not covered
+LL |     let d = 4;
    |         ^ interpreted as a constant pattern, not new variable
 
 error: aborting due to 3 previous errors

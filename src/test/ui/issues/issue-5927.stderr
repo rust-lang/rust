@@ -1,13 +1,13 @@
 error[E0531]: cannot find tuple struct/variant `x` in this scope
   --> $DIR/issue-5927.rs:3:9
    |
-LL |         x(1) => x(1) //~ ERROR cannot find tuple struct/variant `x` in this scope
+LL |         x(1) => x(1)
    |         ^ not found in this scope
 
 error[E0425]: cannot find function `x` in this scope
   --> $DIR/issue-5927.rs:3:17
    |
-LL |         x(1) => x(1) //~ ERROR cannot find tuple struct/variant `x` in this scope
+LL |         x(1) => x(1)
    |                 ^ not found in this scope
 
 error: aborting due to 2 previous errors

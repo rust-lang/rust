@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `foobar`
   --> $DIR/local-path-suggestions-2015.rs:24:5
    |
-LL | use foobar::Baz; //~ ERROR unresolved import `foobar`
+LL | use foobar::Baz;
    |     ^^^^^^
    |     |
    |     unresolved import

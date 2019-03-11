@@ -1,19 +1,19 @@
 error: macro requires a cfg-pattern as an argument
   --> $DIR/cfg.rs:2:5
    |
-LL |     cfg!(); //~ ERROR macro requires a cfg-pattern
+LL |     cfg!();
    |     ^^^^^^^ cfg-pattern required
 
 error: expected identifier, found `123`
   --> $DIR/cfg.rs:3:10
    |
-LL |     cfg!(123); //~ ERROR expected identifier
+LL |     cfg!(123);
    |          ^^^ expected identifier
 
 error[E0565]: literal in `cfg` predicate value must be a string
   --> $DIR/cfg.rs:4:16
    |
-LL |     cfg!(foo = 123); //~ ERROR literal in `cfg` predicate value must be a string
+LL |     cfg!(foo = 123);
    |                ^^^
 
 error: aborting due to 3 previous errors

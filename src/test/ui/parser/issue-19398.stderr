@@ -1,7 +1,7 @@
 error: expected `fn`, found `unsafe`
   --> $DIR/issue-19398.rs:2:19
    |
-LL |     extern "Rust" unsafe fn foo(); //~ ERROR expected `fn`, found `unsafe`
+LL |     extern "Rust" unsafe fn foo();
    |                   ^^^^^^ expected `fn` here
 
 error: aborting due to previous error

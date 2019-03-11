@@ -1,7 +1,7 @@
 error: lifetime `'FooBar` should have a snake case name
   --> $DIR/lint-non-snake-case-lifetimes.rs:4:6
    |
-LL | fn f<'FooBar>( //~ ERROR lifetime `'FooBar` should have a snake case name
+LL | fn f<'FooBar>(
    |      ^^^^^^^ help: convert the identifier to snake case: `'foo_bar`
    |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error[E0658]: #[alloc_error_handler] is an unstable feature (see issue #51540)
   --> $DIR/feature-gate-alloc-error-handler.rs:8:1
    |
-LL | #[alloc_error_handler] //~ ERROR #[alloc_error_handler] is an unstable feature (see issue #51540)
+LL | #[alloc_error_handler]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(alloc_error_handler)] to the crate attributes to enable

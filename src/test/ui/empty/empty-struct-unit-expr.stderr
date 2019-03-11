@@ -4,7 +4,7 @@ error[E0618]: expected function, found `Empty2`
 LL | struct Empty2;
    | -------------- `Empty2` defined here
 ...
-LL |     let e2 = Empty2(); //~ ERROR expected function, found `Empty2`
+LL |     let e2 = Empty2();
    |              ^^^^^^--
    |              |
    |              call expression requires function
@@ -27,7 +27,7 @@ LL |     let e4 = E::Empty4;
 error[E0618]: expected function, found `empty_struct::XEmpty2`
   --> $DIR/empty-struct-unit-expr.rs:18:15
    |
-LL |     let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
+LL |     let xe2 = XEmpty2();
    |               ^^^^^^^--
    |               |
    |               call expression requires function

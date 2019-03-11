@@ -1,7 +1,7 @@
 error[E0197]: inherent impls cannot be unsafe
   --> $DIR/E0197.rs:3:1
    |
-LL | unsafe impl Foo { } //~ ERROR E0197
+LL | unsafe impl Foo { }
    | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

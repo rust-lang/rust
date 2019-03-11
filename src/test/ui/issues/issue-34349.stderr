@@ -1,7 +1,7 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
   --> $DIR/issue-34349.rs:16:17
    |
-LL |     let diary = || { //~ ERROR E0525
+LL |     let diary = || {
    |                 ^^ this closure implements `FnMut`, not `Fn`
 LL |         farewell.push_str("!!!");
    |         -------- closure is `FnMut` because it mutates the variable `farewell` here

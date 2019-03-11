@@ -5,7 +5,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x,
    |  _______________________________________________^
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ ERROR lifetime may not live long enough
+LL | |
 LL | |     });
    | |_____^
    |
@@ -25,7 +25,7 @@ LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ ERROR lifetime may not live long enough
+LL | |
 LL | |     });
 LL | | }
    | |_^

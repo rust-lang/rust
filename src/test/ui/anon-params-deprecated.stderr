@@ -1,7 +1,7 @@
 warning: anonymous parameters are deprecated and will be removed in the next edition.
   --> $DIR/anon-params-deprecated.rs:9:12
    |
-LL |     fn foo(i32); //~ WARNING anonymous parameters are deprecated
+LL |     fn foo(i32);
    |            ^^^ help: Try naming the parameter or explicitly ignoring it: `_: i32`
    |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error[E0658]: const generics are unstable (see issue #44580)
   --> $DIR/feature-gate-const_generics.rs:1:14
    |
-LL | fn foo<const X: ()>() {} //~ ERROR const generics are unstable
+LL | fn foo<const X: ()>() {}
    |              ^
    |
    = help: add #![feature(const_generics)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | fn foo<const X: ()>() {} //~ ERROR const generics are unstable
 error[E0658]: const generics are unstable (see issue #44580)
   --> $DIR/feature-gate-const_generics.rs:3:18
    |
-LL | struct Foo<const X: usize>([(); X]); //~ ERROR const generics are unstable
+LL | struct Foo<const X: usize>([(); X]);
    |                  ^
    |
    = help: add #![feature(const_generics)] to the crate attributes to enable

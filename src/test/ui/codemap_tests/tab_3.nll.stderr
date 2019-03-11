@@ -6,7 +6,7 @@ LL |     let some_vec = vec!["hi"];
 LL |     some_vec.into_iter();
    |     -------- value moved here
 LL |     {
-LL |         println!("{:?}", some_vec); //~ ERROR use of moved
+LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value borrowed here after move
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL | fn uninit<'a>() {
    |           -- lifetime `'a` defined here
 LL |     return;
-LL |     let x: &'static &'a ();                         //~ ERROR lifetime may not live long enough
+LL |     let x: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -13,7 +13,7 @@ error: lifetime may not live long enough
 LL | fn var_type<'a>() {
    |             -- lifetime `'a` defined here
 LL |     return;
-LL |     let x: &'static &'a () = &&();                  //~ ERROR lifetime may not live long enough
+LL |     let x: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -21,7 +21,7 @@ error: lifetime may not live long enough
    |
 LL | fn uninit_infer<'a>() {
    |                 -- lifetime `'a` defined here
-LL |     let x: &'static &'a _;                          //~ ERROR lifetime may not live long enough
+LL |     let x: &'static &'a _;
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -30,7 +30,7 @@ error: lifetime may not live long enough
 LL | fn infer<'a>() {
    |          -- lifetime `'a` defined here
 LL |     return;
-LL |     let x: &'static &'a _ = &&();                   //~ ERROR lifetime may not live long enough
+LL |     let x: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -39,7 +39,7 @@ error: lifetime may not live long enough
 LL | fn uninit_no_var<'a>() {
    |                  -- lifetime `'a` defined here
 LL |     return;
-LL |     let _: &'static &'a ();                         //~ ERROR lifetime may not live long enough
+LL |     let _: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -48,7 +48,7 @@ error: lifetime may not live long enough
 LL | fn no_var<'a>() {
    |           -- lifetime `'a` defined here
 LL |     return;
-LL |     let _: &'static &'a () = &&();                  //~ ERROR lifetime may not live long enough
+LL |     let _: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -57,7 +57,7 @@ error: lifetime may not live long enough
 LL | fn infer_no_var<'a>() {
    |                 -- lifetime `'a` defined here
 LL |     return;
-LL |     let _: &'static &'a _ = &&();                   //~ ERROR lifetime may not live long enough
+LL |     let _: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -66,7 +66,7 @@ error: lifetime may not live long enough
 LL | fn required_substs<'a>() {
    |                    -- lifetime `'a` defined here
 LL |     return;
-LL |     let _: C<'static, 'a, _> = C((), &(), &());     //~ ERROR lifetime may not live long enough
+LL |     let _: C<'static, 'a, _> = C((), &(), &());
    |            ^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 8 previous errors

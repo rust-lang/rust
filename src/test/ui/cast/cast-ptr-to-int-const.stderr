@@ -1,7 +1,7 @@
 error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
   --> $DIR/cast-ptr-to-int-const.rs:5:9
    |
-LL |         main as u32 //~ ERROR casting pointers to integers in constants is unstable
+LL |         main as u32
    |         ^^^^^^^^^^^
    |
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |         main as u32 //~ ERROR casting pointers to integers in constants is 
 error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
   --> $DIR/cast-ptr-to-int-const.rs:9:9
    |
-LL |         &Y as *const u32 as u32 //~ ERROR is unstable
+LL |         &Y as *const u32 as u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable

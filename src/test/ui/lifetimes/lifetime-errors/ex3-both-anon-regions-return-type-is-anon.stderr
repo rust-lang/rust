@@ -5,7 +5,7 @@ LL |   fn foo<'a>(&self, x: &i32) -> &i32 {
    |                        ----     ----
    |                        |
    |                        this parameter and the return type are declared with different lifetimes...
-LL |     x //~ ERROR lifetime mismatch
+LL |     x
    |     ^ ...but data from `x` is returned here
 
 error: aborting due to previous error

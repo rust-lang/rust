@@ -3,7 +3,7 @@ error: functions generic over types or consts must be mangled
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | pub fn foo<T>() {} //~ ERROR functions generic over types or consts must be mangled
+LL | pub fn foo<T>() {}
    | ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -17,7 +17,7 @@ error: functions generic over types or consts must be mangled
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | pub extern fn bar<T>() {} //~ ERROR functions generic over types or consts must be mangled
+LL | pub extern fn bar<T>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

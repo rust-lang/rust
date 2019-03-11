@@ -5,7 +5,7 @@ LL | / fn bar() {
 LL | | }
    | |_- first #[main] function
 ...
-LL | / fn foo() { //~ ERROR multiple functions with a #[main] attribute
+LL | / fn foo() {
 LL | | }
    | |_^ additional #[main] function
 

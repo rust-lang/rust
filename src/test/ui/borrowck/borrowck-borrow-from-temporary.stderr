@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-borrow-from-temporary.rs:9:24
    |
-LL |     let &Foo(ref x) = &id(Foo(3)); //~ ERROR borrowed value does not live long enough
+LL |     let &Foo(ref x) = &id(Foo(3));
    |                        ^^^^^^^^^^ temporary value does not live long enough
 LL |     x
 LL | }

@@ -4,7 +4,7 @@ error[E0504]: cannot move `x1` into closure because it is borrowed
 LL |     let p1 = &x1;
    |               -- borrow of `x1` occurs here
 ...
-LL |         drop(x1); //~ ERROR cannot move `x1` into closure because it is borrowed
+LL |         drop(x1);
    |              ^^ move into closure occurs here
 
 error[E0504]: cannot move `x2` into closure because it is borrowed
@@ -13,7 +13,7 @@ error[E0504]: cannot move `x2` into closure because it is borrowed
 LL |     let p2 = &x2;
    |               -- borrow of `x2` occurs here
 ...
-LL |         drop(x2); //~ ERROR cannot move `x2` into closure because it is borrowed
+LL |         drop(x2);
    |              ^^ move into closure occurs here
 
 error[E0382]: capture of moved value: `x1`
@@ -22,7 +22,7 @@ error[E0382]: capture of moved value: `x1`
 LL |     drop(x1);
    |          -- value moved here
 ...
-LL |         drop(x1); //~ ERROR capture of moved value: `x1`
+LL |         drop(x1);
    |              ^^ value captured here after move
    |
    = note: move occurs because `x1` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -33,7 +33,7 @@ error[E0382]: capture of moved value: `x2`
 LL |     drop(x2);
    |          -- value moved here
 ...
-LL |         drop(x2); //~ ERROR capture of moved value: `x2`
+LL |         drop(x2);
    |              ^^ value captured here after move
    |
    = note: move occurs because `x2` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -44,15 +44,15 @@ error[E0504]: cannot move `x` into closure because it is borrowed
 LL |     let p = &x;
    |              - borrow of `x` occurs here
 LL |     thread::spawn(move|| {
-LL |         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
+LL |         drop(x);
    |              ^ move into closure occurs here
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-multiple-captures.rs:36:14
    |
-LL |         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
+LL |         drop(x);
    |              - value moved here
-LL |         drop(x); //~ ERROR use of moved value: `x`
+LL |         drop(x);
    |              ^ value used here after move
    |
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -63,7 +63,7 @@ error[E0382]: capture of moved value: `x`
 LL |     drop(x);
    |          - value moved here
 LL |     thread::spawn(move|| {
-LL |         drop(x); //~ ERROR capture of moved value: `x`
+LL |         drop(x);
    |              ^ value captured here after move
    |
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -71,9 +71,9 @@ LL |         drop(x); //~ ERROR capture of moved value: `x`
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-multiple-captures.rs:46:14
    |
-LL |         drop(x); //~ ERROR capture of moved value: `x`
+LL |         drop(x);
    |              - value moved here
-LL |         drop(x); //~ ERROR use of moved value: `x`
+LL |         drop(x);
    |              ^ value used here after move
    |
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait

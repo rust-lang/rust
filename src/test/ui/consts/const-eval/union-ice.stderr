@@ -1,7 +1,7 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ice.rs:13:1
    |
-LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR it is undefined behavior to use this value
+LL | const FIELD3: Field3 = unsafe { UNION.field3 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
@@ -9,7 +9,7 @@ LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR it is undefined b
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ice.rs:15:1
    |
-LL | / const FIELD_PATH: Struct = Struct { //~ ERROR it is undefined behavior to use this value
+LL | / const FIELD_PATH: Struct = Struct {
 LL | |     a: 42,
 LL | |     b: unsafe { UNION.field3 },
 LL | | };
@@ -20,7 +20,7 @@ LL | | };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ice.rs:25:1
    |
-LL | / const FIELD_PATH2: Struct2 = Struct2 { //~ ERROR it is undefined behavior to use this value
+LL | / const FIELD_PATH2: Struct2 = Struct2 {
 LL | |     b: [
 LL | |         21,
 LL | |         unsafe { UNION.field3 },

@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/pattern-ident-path-generics.rs:3:9
    |
-LL |         None::<isize> => {}   //~ ERROR mismatched types
+LL |         None::<isize> => {}
    |         ^^^^^^^^^^^^^ expected &str, found isize
    |
    = note: expected type `std::option::Option<&str>`

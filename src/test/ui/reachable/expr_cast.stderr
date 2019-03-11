@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_cast.rs:9:13
    |
-LL |     let x = {return} as !; //~ ERROR unreachable
+LL |     let x = {return} as !;
    |             ^^^^^^^^^^^^^
    |
 note: lint level defined here

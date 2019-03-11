@@ -3,10 +3,10 @@ error[E0317]: if may be missing an else clause
    |
 LL |       } else if false {
    |  ____________^
-LL | | //~^ ERROR if may be missing an else clause
-LL | | //~| expected type `()`
-LL | | //~| found type `{integer}`
-LL | | //~| expected (), found integer
+LL | |
+LL | |
+LL | |
+LL | |
 LL | |         1
 LL | |     };
    | |_____^ expected (), found integer

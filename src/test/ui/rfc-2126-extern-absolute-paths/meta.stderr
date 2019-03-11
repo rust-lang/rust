@@ -1,7 +1,7 @@
 error[E0463]: can't find crate for `meta`
   --> $DIR/meta.rs:5:5
    |
-LL | use meta; //~ ERROR can't find crate for `meta`
+LL | use meta;
    |     ^^^^ can't find crate
 
 error: aborting due to previous error

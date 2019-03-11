@@ -1,37 +1,37 @@
 error: attribute must be of the form `#[proc_macro]`
   --> $DIR/invalid-attributes.rs:10:1
    |
-LL | #[proc_macro = "test"] //~ ERROR attribute must be of the form
+LL | #[proc_macro = "test"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro]`
   --> $DIR/invalid-attributes.rs:13:1
    |
-LL | #[proc_macro()] //~ ERROR attribute must be of the form
+LL | #[proc_macro()]
    | ^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro]`
   --> $DIR/invalid-attributes.rs:16:1
    |
-LL | #[proc_macro(x)] //~ ERROR attribute must be of the form
+LL | #[proc_macro(x)]
    | ^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro_attribute]`
   --> $DIR/invalid-attributes.rs:19:1
    |
-LL | #[proc_macro_attribute = "test"] //~ ERROR attribute must be of the form
+LL | #[proc_macro_attribute = "test"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro_attribute]`
   --> $DIR/invalid-attributes.rs:22:1
    |
-LL | #[proc_macro_attribute()] //~ ERROR attribute must be of the form
+LL | #[proc_macro_attribute()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[proc_macro_attribute]`
   --> $DIR/invalid-attributes.rs:25:1
    |
-LL | #[proc_macro_attribute(x)] //~ ERROR attribute must be of the form
+LL | #[proc_macro_attribute(x)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

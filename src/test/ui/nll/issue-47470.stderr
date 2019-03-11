@@ -1,7 +1,7 @@
 error[E0515]: cannot return reference to local variable `local`
   --> $DIR/issue-47470.rs:17:9
    |
-LL |         &local //~ ERROR cannot return reference to local variable `local`
+LL |         &local
    |         ^^^^^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error

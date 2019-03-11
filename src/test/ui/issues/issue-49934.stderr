@@ -9,31 +9,31 @@ LL |     #[derive(Debug)]
 warning: unused attribute
   --> $DIR/issue-49934.rs:6:8
    |
-LL | fn foo<#[derive(Debug)] T>() { //~ WARN unused attribute
+LL | fn foo<#[derive(Debug)] T>() {
    |        ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/issue-49934.rs:4:9
    |
-LL | #![warn(unused_attributes)] //~ NOTE lint level defined here
+LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-49934.rs:8:9
    |
-LL |         #[derive(Debug)] //~ WARN unused attribute
+LL |         #[derive(Debug)]
    |         ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-49934.rs:26:5
    |
-LL |     #[derive(Debug)] //~ WARN unused attribute
+LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/issue-49934.rs:30:5
    |
-LL |     #[derive(Debug)] //~ WARN unused attribute
+LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
@@ -45,6 +45,6 @@ LL |     let _ = #[derive(Debug)] "Hello, world!";
 warning: unused attribute
   --> $DIR/issue-49934.rs:39:9
    |
-LL |         #[derive(Debug)] //~ WARN unused attribute
+LL |         #[derive(Debug)]
    |         ^^^^^^^^^^^^^^^^
 

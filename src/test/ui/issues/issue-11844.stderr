@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |     match a {
    |           - this match expression has type `std::option::Option<std::boxed::Box<{integer}>>`
-LL |         Ok(a) => //~ ERROR: mismatched types
+LL |         Ok(a) =>
    |         ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
    = note: expected type `std::option::Option<std::boxed::Box<{integer}>>`

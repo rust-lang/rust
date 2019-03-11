@@ -3,7 +3,7 @@ error[E0069]: `return;` in a function whose return type is not `()`
    |
 LL | fn fail() -> ! {
    |              - expected `!` because of this return type
-LL |     return; //~ ERROR in a function whose return type is not
+LL |     return;
    |     ^^^^^^ return type is not `()`
 
 error: aborting due to previous error

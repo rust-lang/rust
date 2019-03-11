@@ -1,7 +1,7 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/method-ufcs-2.rs:32:7
    |
-LL |     x(&a, b, c); //~ ERROR
+LL |     x(&a, b, c);
    |     --^^-------
    |     | |
    |     | borrowed value does not live long enough
@@ -15,7 +15,7 @@ error[E0597]: `b` does not live long enough
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
 ...
-LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c); //~ ERROR
+LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c);
    |     ----------------------------------^^----
    |     |                                 |
    |     |                                 borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
 LL |     let _closure = || {
    |                    -- value captured here
 LL |         let c = 66;
-LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c); //~ ERROR
+LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c);
    |         -----------------------------------^----
    |         |                                  |
    |         |                                  borrowed value does not live long enough

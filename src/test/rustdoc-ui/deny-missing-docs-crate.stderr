@@ -1,21 +1,21 @@
 error: missing documentation for crate
   --> $DIR/deny-missing-docs-crate.rs:1:1
    |
-LL | / #![deny(missing_docs)] //~ ERROR
+LL | / #![deny(missing_docs)]
 LL | |
-LL | | pub struct Foo; //~ ERROR
+LL | | pub struct Foo;
    | |_______________^
    |
 note: lint level defined here
   --> $DIR/deny-missing-docs-crate.rs:1:9
    |
-LL | #![deny(missing_docs)] //~ ERROR
+LL | #![deny(missing_docs)]
    |         ^^^^^^^^^^^^
 
 error: missing documentation for a struct
   --> $DIR/deny-missing-docs-crate.rs:3:1
    |
-LL | pub struct Foo; //~ ERROR
+LL | pub struct Foo;
    | ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
   --> $DIR/wf-enum-bound.rs:9:1
    |
-LL | / enum SomeEnum<T,U> //~ ERROR E0277
+LL | / enum SomeEnum<T,U>
 LL | |     where T: ExtraCopy<U>
 LL | | {
 LL | |     SomeVariant(T,U)

@@ -1,7 +1,7 @@
 error[E0423]: expected function, found enum `Option`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:4:13
    |
-LL |     let x = Option(1); //~ ERROR expected function, found enum
+LL |     let x = Option(1);
    |             ^^^^^^
    |
    = note: did you mean to use one of the following variants?
@@ -11,7 +11,7 @@ LL |     let x = Option(1); //~ ERROR expected function, found enum
 error[E0532]: expected tuple struct/variant, found enum `Option`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:6:12
    |
-LL |     if let Option(_) = x { //~ ERROR expected tuple struct/variant, found enum
+LL |     if let Option(_) = x {
    |            ^^^^^^
    |
    = note: did you mean to use one of the following variants?
@@ -21,7 +21,7 @@ LL |     if let Option(_) = x { //~ ERROR expected tuple struct/variant, found e
 error[E0532]: expected tuple struct/variant, found enum `Example`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:12:12
    |
-LL |     if let Example(_) = y { //~ ERROR expected tuple struct/variant, found enum
+LL |     if let Example(_) = y {
    |            ^^^^^^^
    |
    = note: did you mean to use one of the following variants?

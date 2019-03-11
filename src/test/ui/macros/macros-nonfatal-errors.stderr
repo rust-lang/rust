@@ -1,89 +1,89 @@
 error[E0665]: `Default` cannot be derived for enums, only structs
   --> $DIR/macros-nonfatal-errors.rs:9:10
    |
-LL | #[derive(Default)] //~ ERROR
+LL | #[derive(Default)]
    |          ^^^^^^^
 
 error: inline assembly must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:13:10
    |
-LL |     asm!(invalid); //~ ERROR
+LL |     asm!(invalid);
    |          ^^^^^^^
 
 error: concat_idents! requires ident args.
   --> $DIR/macros-nonfatal-errors.rs:15:5
    |
-LL |     concat_idents!("not", "idents"); //~ ERROR
+LL |     concat_idents!("not", "idents");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:17:17
    |
-LL |     option_env!(invalid); //~ ERROR
+LL |     option_env!(invalid);
    |                 ^^^^^^^
 
 error: expected string literal
   --> $DIR/macros-nonfatal-errors.rs:18:10
    |
-LL |     env!(invalid); //~ ERROR
+LL |     env!(invalid);
    |          ^^^^^^^
 
 error: expected string literal
   --> $DIR/macros-nonfatal-errors.rs:19:10
    |
-LL |     env!(foo, abr, baz); //~ ERROR
+LL |     env!(foo, abr, baz);
    |          ^^^
 
 error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
   --> $DIR/macros-nonfatal-errors.rs:20:5
    |
-LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST"); //~ ERROR
+LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: format argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:22:13
    |
-LL |     format!(invalid); //~ ERROR
+LL |     format!(invalid);
    |             ^^^^^^^
 help: you might be missing a string literal to format with
    |
-LL |     format!("{}", invalid); //~ ERROR
+LL |     format!("{}", invalid);
    |             ^^^^^
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:24:14
    |
-LL |     include!(invalid); //~ ERROR
+LL |     include!(invalid);
    |              ^^^^^^^
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:26:18
    |
-LL |     include_str!(invalid); //~ ERROR
+LL |     include_str!(invalid);
    |                  ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
   --> $DIR/macros-nonfatal-errors.rs:27:5
    |
-LL |     include_str!("i'd be quite surprised if a file with this name existed"); //~ ERROR
+LL |     include_str!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:28:20
    |
-LL |     include_bytes!(invalid); //~ ERROR
+LL |     include_bytes!(invalid);
    |                    ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
   --> $DIR/macros-nonfatal-errors.rs:29:5
    |
-LL |     include_bytes!("i'd be quite surprised if a file with this name existed"); //~ ERROR
+LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/macros-nonfatal-errors.rs:31:5
    |
-LL |     trace_macros!(invalid); //~ ERROR
+LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors

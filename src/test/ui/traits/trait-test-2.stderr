@@ -1,13 +1,13 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/trait-test-2.rs:9:14
    |
-LL |     10.dup::<i32>(); //~ ERROR wrong number of type arguments: expected 0, found 1
+LL |     10.dup::<i32>();
    |              ^^^ unexpected type argument
 
 error[E0107]: wrong number of type arguments: expected 1, found 2
   --> $DIR/trait-test-2.rs:10:20
    |
-LL |     10.blah::<i32, i32>(); //~ ERROR wrong number of type arguments: expected 1, found 2
+LL |     10.blah::<i32, i32>();
    |                    ^^^ unexpected type argument
 
 error[E0038]: the trait `bar` cannot be made into an object

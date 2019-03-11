@@ -1,7 +1,7 @@
 error: expected item after attributes
   --> $DIR/attrs-after-extern-mod.rs:10:19
    |
-LL |     #[cfg(stage37)] //~ ERROR expected item after attributes
+LL |     #[cfg(stage37)]
    |                   ^
 
 error: aborting due to previous error

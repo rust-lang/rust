@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:5:9
    |
-LL |     let ref mut x = 1234543; //~ ERROR
+LL |     let ref mut x = 1234543;
    |         ^^^^^^^^^ temporary value does not live long enough
 LL |     x
 LL | }
@@ -12,7 +12,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:10:10
    |
-LL |     let (ref mut x, ) = (1234543, ); //~ ERROR
+LL |     let (ref mut x, ) = (1234543, );
    |          ^^^^^^^^^ borrowed value does not live long enough
 LL |     x
 LL | }
@@ -23,7 +23,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:16:9
    |
-LL |         ref mut x => x //~ ERROR
+LL |         ref mut x => x
    |         ^^^^^^^^^ temporary value does not live long enough
 LL |     }
 LL | }
@@ -34,7 +34,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:22:10
    |
-LL |         (ref mut x,) => x, //~ ERROR
+LL |         (ref mut x,) => x,
    |          ^^^^^^^^^ borrowed value does not live long enough
 LL |     }
 LL | }
@@ -45,7 +45,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote-ref-mut-in-let-issue-46557.rs:27:10
    |
-LL |     &mut 1234543 //~ ERROR
+LL |     &mut 1234543
    |          ^^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

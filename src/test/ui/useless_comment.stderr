@@ -1,7 +1,7 @@
 error: unused doc comment
   --> $DIR/useless_comment.rs:9:1
    |
-LL | /// foo //~ ERROR unused doc comment
+LL | /// foo
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | mac!();
    | ------- rustdoc does not generate documentation for macro expansions
@@ -16,7 +16,7 @@ LL | #![deny(unused_doc_comments)]
 error: unused doc comment
   --> $DIR/useless_comment.rs:13:5
    |
-LL |     /// a //~ ERROR unused doc comment
+LL |     /// a
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
@@ -24,12 +24,12 @@ LL |     let x = 12;
 error: unused doc comment
   --> $DIR/useless_comment.rs:16:5
    |
-LL | /     /// multi-line //~ unused doc comment
+LL | /     /// multi-line
 LL | |     /// doc comment
 LL | |     /// that is unused
    | |______________________^
 LL | /     match x {
-LL | |         /// c //~ ERROR unused doc comment
+LL | |         /// c
 LL | |         1 => {},
 LL | |         _ => {}
 LL | |     }
@@ -38,7 +38,7 @@ LL | |     }
 error: unused doc comment
   --> $DIR/useless_comment.rs:20:9
    |
-LL |         /// c //~ ERROR unused doc comment
+LL |         /// c
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |         1 => {},
    |         ------- rustdoc does not generate documentation for match arms
@@ -46,7 +46,7 @@ LL |         1 => {},
 error: unused doc comment
   --> $DIR/useless_comment.rs:25:5
    |
-LL |     /// foo //~ ERROR unused doc comment
+LL |     /// foo
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     unsafe {}
    |     --------- rustdoc does not generate documentation for expressions
@@ -54,16 +54,16 @@ LL |     unsafe {}
 error: unused doc comment
   --> $DIR/useless_comment.rs:28:5
    |
-LL |     #[doc = "foo"] //~ ERROR unused doc comment
+LL |     #[doc = "foo"]
    |     ^^^^^^^^^^^^^^
-LL |     #[doc = "bar"] //~ ERROR unused doc comment
+LL |     #[doc = "bar"]
 LL |     3;
    |     - rustdoc does not generate documentation for expressions
 
 error: unused doc comment
   --> $DIR/useless_comment.rs:29:5
    |
-LL |     #[doc = "bar"] //~ ERROR unused doc comment
+LL |     #[doc = "bar"]
    |     ^^^^^^^^^^^^^^
 LL |     3;
    |     - rustdoc does not generate documentation for expressions
@@ -71,7 +71,7 @@ LL |     3;
 error: unused doc comment
   --> $DIR/useless_comment.rs:32:5
    |
-LL |     /// bar //~ ERROR unused doc comment
+LL |     /// bar
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     mac!();
    |     ------- rustdoc does not generate documentation for macro expansions
@@ -81,13 +81,13 @@ LL |     mac!();
 error: unused doc comment
   --> $DIR/useless_comment.rs:35:13
    |
-LL |     let x = /** comment */ 47; //~ ERROR unused doc comment
+LL |     let x = /** comment */ 47;
    |             ^^^^^^^^^^^^^^ -- rustdoc does not generate documentation for expressions
 
 error: unused doc comment
   --> $DIR/useless_comment.rs:37:5
    |
-LL |       /// dox //~ ERROR unused doc comment
+LL |       /// dox
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | /     {
 LL | |

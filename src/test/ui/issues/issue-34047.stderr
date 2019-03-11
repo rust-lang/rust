@@ -4,7 +4,7 @@ error[E0530]: match bindings cannot shadow constants
 LL | const C: u8 = 0;
    | ---------------- the constant `C` is defined here
 ...
-LL |         mut C => {} //~ ERROR match bindings cannot shadow constants
+LL |         mut C => {}
    |             ^ cannot be named the same as a constant
 
 error: aborting due to previous error

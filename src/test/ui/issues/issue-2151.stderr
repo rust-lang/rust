@@ -3,7 +3,7 @@ error[E0282]: type annotations needed
    |
 LL |     let x = panic!();
    |         - consider giving `x` a type
-LL |     x.clone(); //~ ERROR type annotations needed
+LL |     x.clone();
    |     ^ cannot infer type
    |
    = note: type must be known at this point

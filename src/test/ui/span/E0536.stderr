@@ -1,7 +1,7 @@
 error[E0536]: expected 1 cfg-pattern
   --> $DIR/E0536.rs:1:7
    |
-LL | #[cfg(not())] //~ ERROR E0536
+LL | #[cfg(not())]
    |       ^^^^^
 
 error: aborting due to previous error

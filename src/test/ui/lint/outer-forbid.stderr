@@ -4,7 +4,7 @@ error[E0453]: allow(unused_variables) overruled by outer forbid(unused)
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
 LL | 
-LL | #[allow(unused_variables)] //~ ERROR overruled
+LL | #[allow(unused_variables)]
    |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(unused) overruled by outer forbid(unused)
@@ -13,7 +13,7 @@ error[E0453]: allow(unused) overruled by outer forbid(unused)
 LL | #![forbid(unused, non_snake_case)]
    |           ------ `forbid` level set here
 ...
-LL | #[allow(unused)] //~ ERROR overruled
+LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
 error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
@@ -22,7 +22,7 @@ error[E0453]: allow(nonstandard_style) overruled by outer forbid(non_snake_case)
 LL | #![forbid(unused, non_snake_case)]
    |                   -------------- `forbid` level set here
 ...
-LL | #[allow(nonstandard_style)] //~ ERROR overruled
+LL | #[allow(nonstandard_style)]
    |         ^^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error: aborting due to 3 previous errors

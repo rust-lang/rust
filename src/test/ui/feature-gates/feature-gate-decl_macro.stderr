@@ -1,7 +1,7 @@
 error[E0658]: `macro` is experimental (see issue #39412)
   --> $DIR/feature-gate-decl_macro.rs:3:1
    |
-LL | macro m() {} //~ ERROR `macro` is experimental (see issue #39412)
+LL | macro m() {}
    | ^^^^^^^^^^^^
    |
    = help: add #![feature(decl_macro)] to the crate attributes to enable

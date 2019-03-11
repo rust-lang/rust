@@ -6,7 +6,7 @@ LL |     let fancy_ref = &fancy_num;
 LL | 
 LL |     let x = move || {
    |             ^^^^^^^ move out of `fancy_num` occurs here
-LL |         println!("child function: {}", fancy_num.num); //~ ERROR E0504
+LL |         println!("child function: {}", fancy_num.num);
    |                                        --------- move occurs due to use in closure
 ...
 LL |     println!("main function: {}", fancy_ref.num);

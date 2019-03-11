@@ -1,7 +1,7 @@
 error[E0434]: can't capture dynamic environment in a fn item
   --> $DIR/issue-6642.rs:5:13
    |
-LL |             self.m() //~ ERROR can't capture dynamic environment in a fn item
+LL |             self.m()
    |             ^^^^
    |
    = help: use the `|| { ... }` closure form instead

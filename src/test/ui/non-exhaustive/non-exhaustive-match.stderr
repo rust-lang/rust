@@ -7,7 +7,7 @@ LL | enum T { A, B }
    | |        not covered
    | `T` defined here
 ...
-LL |     match x { T::B => { } } //~ ERROR non-exhaustive patterns: `A` not covered
+LL |     match x { T::B => { } }
    |           ^ pattern `A` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -15,7 +15,7 @@ LL |     match x { T::B => { } } //~ ERROR non-exhaustive patterns: `A` not cove
 error[E0004]: non-exhaustive patterns: `false` not covered
   --> $DIR/non-exhaustive-match.rs:9:11
    |
-LL |     match true { //~ ERROR non-exhaustive patterns: `false` not covered
+LL |     match true {
    |           ^^^^ pattern `false` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -23,7 +23,7 @@ LL |     match true { //~ ERROR non-exhaustive patterns: `false` not covered
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/non-exhaustive-match.rs:12:11
    |
-LL |     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
+LL |     match Some(10) {
    |           ^^^^^^^^ pattern `Some(_)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -31,7 +31,7 @@ LL |     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not cover
 error[E0004]: non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)` and `(_, _, 5i32..=2147483647i32)` not covered
   --> $DIR/non-exhaustive-match.rs:15:11
    |
-LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)`
+LL |     match (2, 3, 4) {
    |           ^^^^^^^^^ patterns `(_, _, -2147483648i32..=3i32)` and `(_, _, 5i32..=2147483647i32)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -39,7 +39,7 @@ LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -214748364
 error[E0004]: non-exhaustive patterns: `(A, A)` not covered
   --> $DIR/non-exhaustive-match.rs:19:11
    |
-LL |     match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered
+LL |     match (T::A, T::A) {
    |           ^^^^^^^^^^^^ pattern `(A, A)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -53,7 +53,7 @@ LL | enum T { A, B }
    | |           not covered
    | `T` defined here
 ...
-LL |     match T::A { //~ ERROR non-exhaustive patterns: `B` not covered
+LL |     match T::A {
    |           ^^^^ pattern `B` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -61,7 +61,7 @@ LL |     match T::A { //~ ERROR non-exhaustive patterns: `B` not covered
 error[E0004]: non-exhaustive patterns: `[]` not covered
   --> $DIR/non-exhaustive-match.rs:34:11
    |
-LL |     match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
+LL |     match *vec {
    |           ^^^^ pattern `[]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -69,7 +69,7 @@ LL |     match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
 error[E0004]: non-exhaustive patterns: `[_, _, _, _]` not covered
   --> $DIR/non-exhaustive-match.rs:47:11
    |
-LL |     match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
+LL |     match *vec {
    |           ^^^^ pattern `[_, _, _, _]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

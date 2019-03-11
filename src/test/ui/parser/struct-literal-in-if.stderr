@@ -1,19 +1,19 @@
 error: expected type, found `3`
   --> $DIR/struct-literal-in-if.rs:13:12
    |
-LL |         x: 3    //~ ERROR expected type, found `3`
+LL |         x: 3
    |            ^ expecting a type here because of type ascription
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
   --> $DIR/struct-literal-in-if.rs:14:12
    |
-LL |     }.hi() { //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
+LL |     }.hi() {
    |            ^ expected one of `.`, `;`, `?`, `}`, or an operator here
 
 error[E0423]: expected value, found struct `Foo`
   --> $DIR/struct-literal-in-if.rs:12:8
    |
-LL |     if Foo { //~ ERROR expected value, found struct `Foo`
+LL |     if Foo {
    |        ^^^ did you mean `(Foo { /* fields */ })`?
 
 error: aborting due to 3 previous errors

@@ -2,7 +2,7 @@ error: functions using `#[should_panic]` must return `()`
   --> $DIR/termination-trait-in-test-should-panic.rs:11:1
    |
 LL | / fn not_a_num() -> Result<(), ParseIntError> {
-LL | |     //~^ ERROR functions using `#[should_panic]` must return `()`
+LL | |
 LL | |     let _: u32 = "abc".parse()?;
 LL | |     Ok(())
 LL | | }

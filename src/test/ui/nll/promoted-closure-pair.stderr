@@ -1,7 +1,7 @@
 error[E0515]: cannot return value referencing local variable `z`
   --> $DIR/promoted-closure-pair.rs:9:5
    |
-LL |     p.1(&z)         //~ ERROR cannot return
+LL |     p.1(&z)
    |     ^^^^--^
    |     |   |
    |     |   `z` is borrowed here

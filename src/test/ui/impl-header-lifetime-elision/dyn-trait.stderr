@@ -1,7 +1,7 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/dyn-trait.rs:20:16
    |
-LL |     static_val(x); //~ ERROR cannot infer
+LL |     static_val(x);
    |                ^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 19:26...

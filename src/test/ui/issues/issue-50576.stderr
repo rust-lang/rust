@@ -13,7 +13,7 @@ LL |     |bool: [u8; break 'L]| 0;
 error[E0268]: `break` outside of loop
   --> $DIR/issue-50576.rs:5:16
    |
-LL |     Vec::<[u8; break]>::new(); //~ ERROR [E0268]
+LL |     Vec::<[u8; break]>::new();
    |                ^^^^^ cannot break outside of a loop
 
 error: aborting due to 3 previous errors

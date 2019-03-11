@@ -5,7 +5,7 @@ LL |     let mut f = || v.push(2);
    |                 -- - borrow occurs due to use in closure
    |                 |
    |                 borrow of `v` occurs here
-LL |     let _w = v; //~ ERROR: cannot move out of `v`
+LL |     let _w = v;
    |              ^ move out of `v` occurs here
 LL | 
 LL |     f();

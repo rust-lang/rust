@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |     default fn generate(self) -> Self::Output {
    |                                  ------------ expected `<T as Example>::Output` because of return type
-LL |         Box::new(self) //~ ERROR mismatched types
+LL |         Box::new(self)
    |         ^^^^^^^^^^^^^^ expected associated type, found struct `std::boxed::Box`
    |
    = note: expected type `<T as Example>::Output`
@@ -14,7 +14,7 @@ error[E0308]: mismatched types
    |
 LL | fn trouble<T>(t: T) -> Box<T> {
    |                        ------ expected `std::boxed::Box<T>` because of return type
-LL |     Example::generate(t) //~ ERROR mismatched types
+LL |     Example::generate(t)
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found associated type
    |
    = note: expected type `std::boxed::Box<T>`

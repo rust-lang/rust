@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_struct.rs:3:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'a, T> { FromEnv(T: std::marker::Sized) :- FromEnv(Foo<'a, T>). }

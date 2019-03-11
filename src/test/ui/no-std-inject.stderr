@@ -1,13 +1,13 @@
 error[E0259]: the name `core` is defined multiple times
   --> $DIR/no-std-inject.rs:4:1
    |
-LL | extern crate core; //~ ERROR: the name `core` is defined multiple times
+LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ `core` reimported here
    |
    = note: `core` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | extern crate core as other_core; //~ ERROR: the name `core` is defined multiple times
+LL | extern crate core as other_core;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

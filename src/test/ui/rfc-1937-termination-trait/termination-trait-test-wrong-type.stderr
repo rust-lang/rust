@@ -1,7 +1,7 @@
 error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseIntError>`
   --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
-LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> { //~ ERROR
+LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> {
 LL | |     "0".parse()
 LL | | }
    | |_^ `main` can only return types that implement `std::process::Termination`

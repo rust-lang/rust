@@ -3,7 +3,7 @@ error[E0252]: the name `a` is defined multiple times
    |
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
-LL | use issue_52891::a; //~ ERROR `a` is defined multiple times
+LL | use issue_52891::a;
    | ----^^^^^^^^^^^^^^-
    | |   |
    | |   `a` reimported here
@@ -17,7 +17,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
-LL | use issue_52891::{a, b, c}; //~ ERROR `a` is defined multiple times
+LL | use issue_52891::{a, b, c};
    |                   ^--
    |                   |
    |                   `a` reimported here
@@ -31,7 +31,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
-LL | use issue_52891::{d, a, e}; //~ ERROR `a` is defined multiple times
+LL | use issue_52891::{d, a, e};
    |                      ^--
    |                      |
    |                      `a` reimported here
@@ -45,7 +45,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
-LL | use issue_52891::{f, g, a}; //~ ERROR `a` is defined multiple times
+LL | use issue_52891::{f, g, a};
    |                       --^
    |                       | |
    |                       | `a` reimported here
@@ -59,7 +59,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
-LL | use issue_52891::{a, //~ ERROR `a` is defined multiple times
+LL | use issue_52891::{a,
    |                   ^--
    |                   |
    |                   `a` reimported here
@@ -73,7 +73,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
-LL |     a, //~ ERROR `a` is defined multiple times
+LL |     a,
    |     ^--
    |     |
    |     `a` reimported here
@@ -89,7 +89,7 @@ LL |   use issue_52891::a;
 ...
 LL |       m,
    |  ______-
-LL | |     a}; //~ ERROR `a` is defined multiple times
+LL | |     a};
    | |     ^
    | |     |
    | |_____`a` reimported here
@@ -102,13 +102,13 @@ error[E0252]: the name `inner` is defined multiple times
    |
 LL | use issue_52891::a::inner;
    |     --------------------- previous import of the module `inner` here
-LL | use issue_52891::b::inner; //~ ERROR `inner` is defined multiple times
+LL | use issue_52891::b::inner;
    |     ^^^^^^^^^^^^^^^^^^^^^ `inner` reimported here
    |
    = note: `inner` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use issue_52891::b::inner as other_inner; //~ ERROR `inner` is defined multiple times
+LL | use issue_52891::b::inner as other_inner;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0254]: the name `issue_52891` is defined multiple times
@@ -134,7 +134,7 @@ LL | use issue_52891::n;
    | |   previous import of the module `n` here
    | help: remove unnecessary import
 LL | #[macro_use]
-LL | use issue_52891::n; //~ ERROR `n` is defined multiple times
+LL | use issue_52891::n;
    |     ^^^^^^^^^^^^^^ `n` reimported here
    |
    = note: `n` must be defined only once in the type namespace of this module

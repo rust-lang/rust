@@ -3,7 +3,7 @@ error[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn get_dangling<'a>(v: VecWrapper<'a>) -> &'a u32 {
    |                 -- lifetime `'a` defined here
-LL |     let s_inner: &'a S = &*v.0; //~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     let s_inner: &'a S = &*v.0;
    |                  -----   ^^^^^
    |                  |
    |                  type annotation requires that `*v.0` is borrowed for `'a`

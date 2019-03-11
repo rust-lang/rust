@@ -1,7 +1,7 @@
 error[E0515]: cannot return value referencing local variable `vec`
   --> $DIR/borrowck-vec-pattern-element-loan.rs:10:5
    |
-LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+LL |     let vec: &[isize] = &vec;
    |                         ---- `vec` is borrowed here
 ...
 LL |     tail
@@ -10,7 +10,7 @@ LL |     tail
 error[E0515]: cannot return value referencing local variable `vec`
   --> $DIR/borrowck-vec-pattern-element-loan.rs:20:5
    |
-LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+LL |     let vec: &[isize] = &vec;
    |                         ---- `vec` is borrowed here
 ...
 LL |     init
@@ -19,7 +19,7 @@ LL |     init
 error[E0515]: cannot return value referencing local variable `vec`
   --> $DIR/borrowck-vec-pattern-element-loan.rs:30:5
    |
-LL |     let vec: &[isize] = &vec; //~ ERROR does not live long enough
+LL |     let vec: &[isize] = &vec;
    |                         ---- `vec` is borrowed here
 ...
 LL |     slice

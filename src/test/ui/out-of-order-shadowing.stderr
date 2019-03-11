@@ -1,7 +1,7 @@
 error[E0659]: `bar` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/out-of-order-shadowing.rs:5:1
    |
-LL | bar!(); //~ ERROR `bar` is ambiguous
+LL | bar!();
    | ^^^ ambiguous name
    |
 note: `bar` could refer to the macro defined here

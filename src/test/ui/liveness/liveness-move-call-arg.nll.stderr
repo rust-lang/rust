@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL |     let x: Box<isize> = box 25;
    |         - move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 LL |     loop {
-LL |         take(x); //~ ERROR use of moved value: `x`
+LL |         take(x);
    |              ^ value moved here, in previous iteration of loop
 
 error: aborting due to previous error

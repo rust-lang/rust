@@ -1,7 +1,7 @@
 error: unexpected token: `$`
   --> $DIR/macro-attribute.rs:1:7
    |
-LL | #[doc = $not_there] //~ ERROR unexpected token: `$`
+LL | #[doc = $not_there]
    |       ^
 
 error: aborting due to previous error

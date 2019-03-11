@@ -1,7 +1,7 @@
 error[E0616]: field `len` of struct `sub::S` is private
   --> $DIR/issue-26472.rs:11:13
    |
-LL |     let v = s.len; //~ ERROR field `len` of struct `sub::S` is private
+LL |     let v = s.len;
    |             ^^---
    |               |
    |               help: a method `len` also exists, call it with parentheses: `len()`
@@ -9,7 +9,7 @@ LL |     let v = s.len; //~ ERROR field `len` of struct `sub::S` is private
 error[E0616]: field `len` of struct `sub::S` is private
   --> $DIR/issue-26472.rs:12:5
    |
-LL |     s.len = v; //~ ERROR field `len` of struct `sub::S` is private
+LL |     s.len = v;
    |     ^^^^^
 
 error: aborting due to 2 previous errors

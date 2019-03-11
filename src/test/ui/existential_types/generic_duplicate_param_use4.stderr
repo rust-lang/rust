@@ -2,7 +2,7 @@ error: defining existential type use restricts existential type by using the gen
   --> $DIR/generic_duplicate_param_use4.rs:10:1
    |
 LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
-LL | | //~^ ERROR defining existential type use restricts existential type
+LL | |
 LL | |     t
 LL | | }
    | |_^

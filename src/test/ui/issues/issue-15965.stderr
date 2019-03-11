@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-15965.rs:3:9
    |
 LL | /         { return () }
-LL | | //~^ ERROR type annotations needed [E0282]
+LL | |
 LL | |     ()
    | |______^ cannot infer type
    |

@@ -1,7 +1,7 @@
 error: use of deprecated item 'deprecation_lint::deprecated': text
   --> $DIR/deprecation-lint.rs:17:9
    |
-LL |         deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::deprecated'
+LL |         deprecated();
    |         ^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,127 +13,127 @@ LL | #![deny(deprecated)]
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:22:9
    |
-LL |         Trait::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         Trait::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:24:9
    |
-LL |         <Foo as Trait>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         <Foo as Trait>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::deprecated_text': text
   --> $DIR/deprecation-lint.rs:26:9
    |
-LL |         deprecated_text(); //~ ERROR use of deprecated item 'deprecation_lint::deprecated_text': text
+LL |         deprecated_text();
    |         ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:31:9
    |
-LL |         Trait::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         Trait::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:33:9
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         <Foo as Trait>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedStruct': text
   --> $DIR/deprecation-lint.rs:35:17
    |
-LL |         let _ = DeprecatedStruct { //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedStruct': text
+LL |         let _ = DeprecatedStruct {
    |                 ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedUnitStruct': text
   --> $DIR/deprecation-lint.rs:39:17
    |
-LL |         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedUnitStruct': text
+LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Enum::DeprecatedVariant': text
   --> $DIR/deprecation-lint.rs:41:17
    |
-LL |         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item 'deprecation_lint::Enum::DeprecatedVariant': text
+LL |         let _ = Enum::DeprecatedVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedTupleStruct': text
   --> $DIR/deprecation-lint.rs:43:17
    |
-LL |         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedTupleStruct': text
+LL |         let _ = DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::nested::DeprecatedStruct': text
   --> $DIR/deprecation-lint.rs:45:17
    |
-LL |         let _ = nested::DeprecatedStruct { //~ ERROR use of deprecated item 'deprecation_lint::nested::DeprecatedStruct': text
+LL |         let _ = nested::DeprecatedStruct {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::nested::DeprecatedUnitStruct': text
   --> $DIR/deprecation-lint.rs:49:17
    |
-LL |         let _ = nested::DeprecatedUnitStruct; //~ ERROR use of deprecated item 'deprecation_lint::nested::DeprecatedUnitStruct': text
+LL |         let _ = nested::DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::nested::Enum::DeprecatedVariant': text
   --> $DIR/deprecation-lint.rs:51:17
    |
-LL |         let _ = nested::Enum::DeprecatedVariant; //~ ERROR use of deprecated item 'deprecation_lint::nested::Enum::DeprecatedVariant': text
+LL |         let _ = nested::Enum::DeprecatedVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::nested::DeprecatedTupleStruct': text
   --> $DIR/deprecation-lint.rs:53:17
    |
-LL |         let _ = nested::DeprecatedTupleStruct (1); //~ ERROR use of deprecated item 'deprecation_lint::nested::DeprecatedTupleStruct': text
+LL |         let _ = nested::DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::deprecated_text': text
   --> $DIR/deprecation-lint.rs:60:25
    |
-LL |         macro_test_arg!(deprecated_text()); //~ ERROR use of deprecated item 'deprecation_lint::deprecated_text': text
+LL |         macro_test_arg!(deprecated_text());
    |                         ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::deprecated_text': text
   --> $DIR/deprecation-lint.rs:61:41
    |
-LL |         macro_test_arg!(macro_test_arg!(deprecated_text())); //~ ERROR use of deprecated item 'deprecation_lint::deprecated_text': text
+LL |         macro_test_arg!(macro_test_arg!(deprecated_text()));
    |                                         ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:66:9
    |
-LL |         Trait::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         Trait::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:68:9
    |
-LL |         <Foo as Trait>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         <Foo as Trait>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:70:9
    |
-LL |         Trait::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         Trait::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:72:9
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         <Foo as Trait>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedTrait': text
   --> $DIR/deprecation-lint.rs:82:10
    |
-LL |     impl DeprecatedTrait for S {} //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedTrait': text
+LL |     impl DeprecatedTrait for S {}
    |          ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedTrait': text
   --> $DIR/deprecation-lint.rs:83:24
    |
-LL |     trait LocalTrait : DeprecatedTrait { } //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedTrait': text
+LL |     trait LocalTrait : DeprecatedTrait { }
    |                        ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Deprecated': text
@@ -175,55 +175,55 @@ LL |         let Deprecated2
 error: use of deprecated item 'deprecation_lint::deprecated_mod::deprecated': text
   --> $DIR/deprecation-lint.rs:163:9
    |
-LL |         deprecated_mod::deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::deprecated_mod::deprecated': text
+LL |         deprecated_mod::deprecated();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::deprecated': text
   --> $DIR/deprecation-lint.rs:246:9
    |
-LL |         deprecated(); //~ ERROR use of deprecated item 'this_crate::deprecated'
+LL |         deprecated();
    |         ^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:251:9
    |
-LL |         Trait::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         Trait::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:253:9
    |
-LL |         <Foo as Trait>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         <Foo as Trait>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::deprecated_text': text
   --> $DIR/deprecation-lint.rs:255:9
    |
-LL |         deprecated_text(); //~ ERROR use of deprecated item 'this_crate::deprecated_text': text
+LL |         deprecated_text();
    |         ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:260:9
    |
-LL |         Trait::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         Trait::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:262:9
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         <Foo as Trait>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::deprecated_future': text
   --> $DIR/deprecation-lint.rs:265:9
    |
-LL |         deprecated_future(); //~ ERROR use of deprecated item
+LL |         deprecated_future();
    |         ^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::deprecated_future_text': text
   --> $DIR/deprecation-lint.rs:266:9
    |
-LL |         deprecated_future_text(); //~ ERROR use of deprecated item
+LL |         deprecated_future_text();
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::DeprecatedStruct': text
@@ -235,19 +235,19 @@ LL |         let _ = DeprecatedStruct {
 error: use of deprecated item 'this_crate::DeprecatedUnitStruct': text
   --> $DIR/deprecation-lint.rs:273:17
    |
-LL |         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item 'this_crate::DeprecatedUnitStruct': text
+LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Enum::DeprecatedVariant': text
   --> $DIR/deprecation-lint.rs:275:17
    |
-LL |         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item 'this_crate::Enum::DeprecatedVariant': text
+LL |         let _ = Enum::DeprecatedVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::DeprecatedTupleStruct': text
   --> $DIR/deprecation-lint.rs:277:17
    |
-LL |         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item 'this_crate::DeprecatedTupleStruct': text
+LL |         let _ = DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::nested::DeprecatedStruct': text
@@ -259,61 +259,61 @@ LL |         let _ = nested::DeprecatedStruct {
 error: use of deprecated item 'this_crate::nested::DeprecatedUnitStruct': text
   --> $DIR/deprecation-lint.rs:284:17
    |
-LL |         let _ = nested::DeprecatedUnitStruct; //~ ERROR use of deprecated item 'this_crate::nested::DeprecatedUnitStruct': text
+LL |         let _ = nested::DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::nested::Enum::DeprecatedVariant': text
   --> $DIR/deprecation-lint.rs:286:17
    |
-LL |         let _ = nested::Enum::DeprecatedVariant; //~ ERROR use of deprecated item 'this_crate::nested::Enum::DeprecatedVariant': text
+LL |         let _ = nested::Enum::DeprecatedVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::nested::DeprecatedTupleStruct': text
   --> $DIR/deprecation-lint.rs:288:17
    |
-LL |         let _ = nested::DeprecatedTupleStruct (1); //~ ERROR use of deprecated item 'this_crate::nested::DeprecatedTupleStruct': text
+LL |         let _ = nested::DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:293:9
    |
-LL |         Trait::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         Trait::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:295:9
    |
-LL |         <Foo as Trait>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         <Foo as Trait>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:297:9
    |
-LL |         Trait::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         Trait::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:299:9
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         <Foo as Trait>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::test_fn_closure_body::{{closure}}::bar'
   --> $DIR/deprecation-lint.rs:317:13
    |
-LL |             bar(); //~ ERROR use of deprecated item 'this_crate::test_fn_closure_body::{{closure}}::bar'
+LL |             bar();
    |             ^^^
 
 error: use of deprecated item 'this_crate::DeprecatedTrait': text
   --> $DIR/deprecation-lint.rs:336:10
    |
-LL |     impl DeprecatedTrait for S { } //~ ERROR use of deprecated item 'this_crate::DeprecatedTrait': text
+LL |     impl DeprecatedTrait for S { }
    |          ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::DeprecatedTrait': text
   --> $DIR/deprecation-lint.rs:338:24
    |
-LL |     trait LocalTrait : DeprecatedTrait { } //~ ERROR use of deprecated item 'this_crate::DeprecatedTrait': text
+LL |     trait LocalTrait : DeprecatedTrait { }
    |                        ^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate2::Deprecated': text
@@ -355,109 +355,109 @@ LL |         let Deprecated2
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:18:13
    |
-LL |         foo.method_deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated'
+LL |         foo.method_deprecated();
    |             ^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:19:9
    |
-LL |         Foo::method_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated'
+LL |         Foo::method_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:20:9
    |
-LL |         <Foo>::method_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated'
+LL |         <Foo>::method_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:21:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:23:9
    |
-LL |         <Foo>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         <Foo>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:27:13
    |
-LL |         foo.method_deprecated_text(); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
+LL |         foo.method_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:28:9
    |
-LL |         Foo::method_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
+LL |         Foo::method_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:29:9
    |
-LL |         <Foo>::method_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::MethodTester::method_deprecated_text': text
+LL |         <Foo>::method_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:30:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:32:9
    |
-LL |         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         <Foo>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::DeprecatedStruct::i': text
   --> $DIR/deprecation-lint.rs:36:13
    |
-LL |             i: 0 //~ ERROR use of deprecated item 'deprecation_lint::DeprecatedStruct::i': text
+LL |             i: 0
    |             ^^^^
 
 error: use of deprecated item 'deprecation_lint::nested::DeprecatedStruct::i': text
   --> $DIR/deprecation-lint.rs:46:13
    |
-LL |             i: 0 //~ ERROR use of deprecated item 'deprecation_lint::nested::DeprecatedStruct::i': text
+LL |             i: 0
    |             ^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:65:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:67:9
    |
-LL |         <Foo>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         <Foo>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:69:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:71:9
    |
-LL |         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         <Foo>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:76:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:77:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'deprecation_lint::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'deprecation_lint::Stable::override2': text
@@ -547,109 +547,109 @@ LL |              _)
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:247:13
    |
-LL |         foo.method_deprecated(); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated'
+LL |         foo.method_deprecated();
    |             ^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:248:9
    |
-LL |         Foo::method_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated'
+LL |         Foo::method_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated': text
   --> $DIR/deprecation-lint.rs:249:9
    |
-LL |         <Foo>::method_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated'
+LL |         <Foo>::method_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:250:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:252:9
    |
-LL |         <Foo>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         <Foo>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:256:13
    |
-LL |         foo.method_deprecated_text(); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+LL |         foo.method_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:257:9
    |
-LL |         Foo::method_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+LL |         Foo::method_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
   --> $DIR/deprecation-lint.rs:258:9
    |
-LL |         <Foo>::method_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::MethodTester::method_deprecated_text': text
+LL |         <Foo>::method_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:259:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:261:9
    |
-LL |         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         <Foo>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::DeprecatedStruct::i': text
   --> $DIR/deprecation-lint.rs:270:13
    |
-LL |             i: 0 //~ ERROR use of deprecated item 'this_crate::DeprecatedStruct::i': text
+LL |             i: 0
    |             ^^^^
 
 error: use of deprecated item 'this_crate::nested::DeprecatedStruct::i': text
   --> $DIR/deprecation-lint.rs:281:13
    |
-LL |             i: 0 //~ ERROR use of deprecated item 'this_crate::nested::DeprecatedStruct::i': text
+LL |             i: 0
    |             ^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:292:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:294:9
    |
-LL |         <Foo>::trait_deprecated(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         <Foo>::trait_deprecated(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:296:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:298:9
    |
-LL |         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         <Foo>::trait_deprecated_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated': text
   --> $DIR/deprecation-lint.rs:303:13
    |
-LL |         foo.trait_deprecated(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated'
+LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
   --> $DIR/deprecation-lint.rs:304:13
    |
-LL |         foo.trait_deprecated_text(); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated item 'this_crate2::Stable::override2': text

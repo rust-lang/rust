@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL |     x
    |     - value moved here
 LL |     +
-LL |     x;  //~ ERROR: use of moved value
+LL |     x;
    |     ^ value used here after move
    |
    = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
@@ -15,7 +15,7 @@ error[E0382]: use of moved value: `x`
 LL |     x
    |     - value moved here
 LL |     +
-LL |     x.clone();  //~ ERROR: use of moved value
+LL |     x.clone();
    |     ^ value used here after move
    |
    = note: move occurs because `x` has type `T`, which does not implement the `Copy` trait
@@ -26,7 +26,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
 LL |     let m = &x;
    |              - borrow of `x` occurs here
 ...
-LL |     x  //~ ERROR: cannot move out of `x` because it is borrowed
+LL |     x
    |     ^ move out of `x` occurs here
 
 error[E0505]: cannot move out of `y` because it is borrowed
@@ -35,19 +35,19 @@ error[E0505]: cannot move out of `y` because it is borrowed
 LL |     let n = &mut y;
    |                  - borrow of `y` occurs here
 ...
-LL |     y;  //~ ERROR: cannot move out of `y` because it is borrowed
+LL |     y;
    |     ^ move out of `y` occurs here
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/binop-move-semantics.rs:30:5
    |
-LL |     *m  //~ ERROR: cannot move out of borrowed content
+LL |     *m
    |     ^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/binop-move-semantics.rs:32:5
    |
-LL |     *n;  //~ ERROR: cannot move out of borrowed content
+LL |     *n;
    |     ^^ cannot move out of borrowed content
 
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
@@ -56,7 +56,7 @@ error[E0502]: cannot borrow `f` as immutable because it is also borrowed as muta
 LL |     &mut f
    |          - mutable borrow occurs here
 LL |     +
-LL |     &f;  //~ ERROR: cannot borrow `f` as immutable because it is also borrowed as mutable
+LL |     &f;
    |      ^
    |      |
    |      immutable borrow occurs here
@@ -68,7 +68,7 @@ error[E0502]: cannot borrow `f` as mutable because it is also borrowed as immuta
 LL |     &f
    |      - immutable borrow occurs here
 LL |     +
-LL |     &mut f;  //~ ERROR: cannot borrow `f` as mutable because it is also borrowed as immutable
+LL |     &mut f;
    |          ^
    |          |
    |          mutable borrow occurs here

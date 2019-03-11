@@ -4,13 +4,13 @@ error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
 LL |     let x: (u32, u32);
    |         - help: consider changing this to be mutable: `mut x`
 LL |     x = (22, 44);
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot assign
 
 error[E0381]: assign to part of possibly uninitialized variable: `x`
   --> $DIR/reassignment_immutable_fields_twice.rs:12:5
    |
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ use of possibly uninitialized `x`
 
 error: aborting due to 2 previous errors

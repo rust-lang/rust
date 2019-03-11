@@ -3,7 +3,7 @@ error[E0596]: cannot borrow field `f.v` of immutable binding as mutable
    |
 LL |     let f = Foo { v: Vec::new() };
    |         - help: make this binding mutable: `mut f`
-LL |     f.v.push("cat".to_string()); //~ ERROR cannot borrow
+LL |     f.v.push("cat".to_string());
    |     ^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `s.x` of immutable binding
@@ -11,7 +11,7 @@ error[E0594]: cannot assign to field `s.x` of immutable binding
    |
 LL |     let s = S { x: 42 };
    |         - help: make this binding mutable: `mut s`
-LL |     s.x += 1; //~ ERROR cannot assign
+LL |     s.x += 1;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `s.x` of immutable binding
@@ -19,7 +19,7 @@ error[E0594]: cannot assign to field `s.x` of immutable binding
    |
 LL | fn bar(s: S) {
    |        - help: make this binding mutable: `mut s`
-LL |     s.x += 1; //~ ERROR cannot assign
+LL |     s.x += 1;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error: aborting due to 3 previous errors

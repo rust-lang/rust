@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: there are too many initial `super`s.
   --> $DIR/super-at-top-level.rs:1:5
    |
-LL | use super::f; //~ ERROR there are too many initial `super`s
+LL | use super::f;
    |     ^^^^^ there are too many initial `super`s.
 
 error: aborting due to previous error

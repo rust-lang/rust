@@ -2,7 +2,7 @@ error: reached the recursion limit while instantiating `function::<std::option::
   --> $DIR/infinite-instantiation.rs:23:1
    |
 LL | / fn function<T:ToOpt + Clone>(counter: usize, t: T) {
-LL | | //~^ ERROR reached the recursion limit while instantiating `function::<std::option::Option<
+LL | |
 LL | |     if counter > 0 {
 LL | |         function(counter - 1, t.to_option());
 ...  |

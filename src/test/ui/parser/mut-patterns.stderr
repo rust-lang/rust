@@ -1,7 +1,7 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `{`
   --> $DIR/mut-patterns.rs:5:17
    |
-LL |     let mut Foo { x: x } = Foo { x: 3 }; //~ ERROR: expected one of `:`, `;`, `=`, or `@`, found `{`
+LL |     let mut Foo { x: x } = Foo { x: 3 };
    |                 ^ expected one of `:`, `;`, `=`, or `@` here
 
 error: aborting due to previous error

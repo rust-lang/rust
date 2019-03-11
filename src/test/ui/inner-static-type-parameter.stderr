@@ -11,7 +11,7 @@ LL |     static a: Bar<T> = Bar::What;
 error[E0392]: parameter `T` is never used
   --> $DIR/inner-static-type-parameter.rs:3:10
    |
-LL | enum Bar<T> { What } //~ ERROR parameter `T` is never used
+LL | enum Bar<T> { What }
    |          ^ unused type parameter
    |
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`

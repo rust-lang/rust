@@ -5,7 +5,7 @@ LL |     let foo = X(1);
    |         --- move occurs because `foo` has type `X`, which does not implement the `Copy` trait
 LL |     drop(foo);
    |          --- value moved here
-LL |     match foo { //~ ERROR use of moved value
+LL |     match foo {
 LL |         X(1) => (),
    |           ^ value used here after move
 
@@ -16,7 +16,7 @@ LL |     let e = Enum::Variant2;
    |         - move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
 LL |     drop(e);
    |          - value moved here
-LL |     match e { //~ ERROR use of moved value
+LL |     match e {
    |           ^ value used here after move
 
 error: aborting due to 2 previous errors

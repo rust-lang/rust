@@ -1,7 +1,7 @@
 warning: unnecessary lifetime parameter `'a`
   --> $DIR/static-lifetime-bound.rs:1:6
    |
-LL | fn f<'a: 'static>(_: &'a i32) {} //~WARN unnecessary lifetime parameter `'a`
+LL | fn f<'a: 'static>(_: &'a i32) {}
    |      ^^^^^^^^^^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
@@ -9,7 +9,7 @@ LL | fn f<'a: 'static>(_: &'a i32) {} //~WARN unnecessary lifetime parameter `'a
 error[E0597]: `x` does not live long enough
   --> $DIR/static-lifetime-bound.rs:5:8
    |
-LL |     f(&x); //~ERROR does not live long enough
+LL |     f(&x);
    |        ^ borrowed value does not live long enough
 LL | }
    | - borrowed value only lives until here

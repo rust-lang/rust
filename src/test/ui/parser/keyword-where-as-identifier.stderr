@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `where`
   --> $DIR/keyword-where-as-identifier.rs:4:9
    |
-LL |     let where = "foo"; //~ error: expected pattern, found keyword `where`
+LL |     let where = "foo";
    |         ^^^^^ expected pattern
 
 error: aborting due to previous error

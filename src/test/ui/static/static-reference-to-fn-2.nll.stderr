@@ -37,7 +37,7 @@ error[E0515]: cannot return value referencing temporary value
 LL | /     StateMachineIter {
 LL | |         statefn: &id(state1 as StateMachineFunc)
    | |                   ------------------------------ temporary value created here
-LL | |         //~^ ERROR borrowed value does not live long enough
+LL | |
 LL | |     }
    | |_____^ returns a value referencing data owned by the current function
 

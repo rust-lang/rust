@@ -3,7 +3,7 @@ error[E0503]: cannot use `u.c` because it was mutably borrowed
    |
 LL |             let ra = &mut u.s.a;
    |                      ---------- borrow of `u.s.a` occurs here
-LL |             let b = u.c; //~ ERROR cannot use `u.c` because it was mutably borrowed
+LL |             let b = u.c;
    |                     ^^^ use of borrowed `u.s.a`
 LL |             ra.use_mut();
    |             -- borrow later used here

@@ -1,7 +1,7 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-var-type-out-of-scope.rs:9:14
    |
-LL |         x = &id(3); //~ ERROR borrowed value does not live long enough
+LL |         x = &id(3);
    |              ^^^^^- temporary value is freed at the end of this statement
    |              |
    |              creates a temporary which is freed while still in use

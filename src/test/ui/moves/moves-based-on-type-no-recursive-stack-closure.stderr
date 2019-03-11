@@ -12,7 +12,7 @@ error[E0382]: use of moved value: `f`
    |
 LL |     let mut r = R {c: Box::new(f)};
    |                                - value moved here
-LL |     f(&mut r, false) //~ ERROR use of moved value
+LL |     f(&mut r, false)
    |     ^ value used here after move
    |
    = note: move occurs because `f` has type `F`, which does not implement the `Copy` trait

@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `v`
   --> $DIR/borrowck-init-op-equal.rs:3:5
    |
-LL |     v += 1; //~ ERROR use of possibly uninitialized variable: `v`
+LL |     v += 1;
    |     ^^^^^^ use of possibly uninitialized `v`
 
 error: aborting due to previous error

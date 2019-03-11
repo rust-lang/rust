@@ -1,7 +1,7 @@
 error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
   --> $DIR/overloaded-calls-nontuple.rs:26:10
    |
-LL |     drop(s(3))  //~ ERROR cannot use call notation
+LL |     drop(s(3))
    |          ^^^^
 
 error: aborting due to previous error

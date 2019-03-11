@@ -420,7 +420,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t)
    |         ----------------
    |         |            |
@@ -438,7 +438,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t) => (),
    |         ----------------
    |         |            |
@@ -456,7 +456,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t) => (),
    |         ----------------
    |         |            |
@@ -519,7 +519,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |                          -- data moved here
 ...
@@ -548,7 +548,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |
@@ -566,7 +566,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |
@@ -584,7 +584,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |
@@ -644,7 +644,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match (&e.clone(),) {
    |           ^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         (&Either::One(_t),)
    |                       -- data moved here
    |
@@ -701,7 +701,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match (&mut em.clone(),) {
    |           ^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         (&mut Either::One(_t),) => (),
    |                           -- data moved here
 LL |         (&mut Either::Two(_t),) => (),
@@ -765,7 +765,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t)
    |         ----------------
    |         |            |
@@ -783,7 +783,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t) => (),
    |         ----------------
    |         |            |
@@ -801,7 +801,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &Either::One(_t) => (),
    |         ----------------
    |         |            |
@@ -864,7 +864,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t)
    |         --------------------
    |         |                |
@@ -882,7 +882,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |
@@ -900,7 +900,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |
@@ -918,7 +918,7 @@ error[E0507]: cannot move out of borrowed content
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
-LL |         //~^ ERROR cannot move
+LL |
 LL |         &mut Either::One(_t) => (),
    |         --------------------
    |         |                |

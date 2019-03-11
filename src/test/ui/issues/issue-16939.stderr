@@ -1,7 +1,7 @@
 error[E0057]: this function takes 0 parameters but 1 parameter was supplied
   --> $DIR/issue-16939.rs:5:9
    |
-LL |     |t| f(t); //~ ERROR E0057
+LL |     |t| f(t);
    |         ^^^^ expected 0 parameters
 
 error: aborting due to previous error

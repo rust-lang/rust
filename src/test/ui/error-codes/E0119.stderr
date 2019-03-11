@@ -4,7 +4,7 @@ error[E0119]: conflicting implementations of trait `MyTrait` for type `Foo`:
 LL | impl<T> MyTrait for T {
    | --------------------- first implementation here
 ...
-LL | impl MyTrait for Foo { //~ ERROR E0119
+LL | impl MyTrait for Foo {
    | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Foo`
 
 error: aborting due to previous error

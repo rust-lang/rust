@@ -1,7 +1,7 @@
 error[E0004]: non-exhaustive patterns: `-2147483648i32..=0i32` and `2i32..=2147483647i32` not covered
   --> $DIR/match-non-exhaustive.rs:2:11
    |
-LL |     match 0 { 1 => () } //~ ERROR non-exhaustive patterns
+LL |     match 0 { 1 => () }
    |           ^ patterns `-2147483648i32..=0i32` and `2i32..=2147483647i32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -9,7 +9,7 @@ LL |     match 0 { 1 => () } //~ ERROR non-exhaustive patterns
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/match-non-exhaustive.rs:3:11
    |
-LL |     match 0 { 0 if false => () } //~ ERROR non-exhaustive patterns
+LL |     match 0 { 0 if false => () }
    |           ^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

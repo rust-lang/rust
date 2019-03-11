@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let x;
    |         - consider giving `x` a type
 ...
-LL |         (..) => {} //~ ERROR type annotations needed
+LL |         (..) => {}
    |         ^^^^ cannot infer type
    |
    = note: type must be known at this point
@@ -12,7 +12,7 @@ LL |         (..) => {} //~ ERROR type annotations needed
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-bad-type.rs:10:9
    |
-LL |         (..) => {} //~ ERROR mismatched types
+LL |         (..) => {}
    |         ^^^^ expected u8, found ()
    |
    = note: expected type `u8`

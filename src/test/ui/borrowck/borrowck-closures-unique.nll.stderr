@@ -5,7 +5,7 @@ LL |     let c1 = || get(x);
    |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
-LL |     let c2 = || set(x); //~ ERROR closure requires unique access to `x`
+LL |     let c2 = || set(x);
    |              ^^     - second borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
@@ -19,7 +19,7 @@ LL |     let c1 = || get(x);
    |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
-LL |     let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
+LL |     let c2 = || { get(x); set(x); };
    |              ^^       - second borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
@@ -33,7 +33,7 @@ LL |     let c1 = || set(x);
    |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              first closure is constructed here
-LL |     let c2 = || set(x); //~ ERROR two closures require unique access to `x` at the same time
+LL |     let c2 = || set(x);
    |              ^^     - second borrow occurs due to use of `x` in closure
    |              |
    |              second closure is constructed here
@@ -45,7 +45,7 @@ error[E0594]: cannot assign to `x`, as it is not declared as mutable
    |
 LL | fn e(x: &'static mut isize) {
    |      - help: consider changing this to be mutable: `mut x`
-LL |     let c1 = |y: &'static mut isize| x = y; //~ ERROR closure cannot assign to immutable argument
+LL |     let c1 = |y: &'static mut isize| x = y;
    |                                      ^^^^^ cannot assign
 
 error: aborting due to 4 previous errors

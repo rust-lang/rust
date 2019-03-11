@@ -1,7 +1,7 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-28576.rs:7:12
    |
-LL | /            Bar //~ ERROR the trait `Bar` cannot be made into an object
+LL | /            Bar
 LL | |               <Assoc=()>
    | |________________________^ the trait `Bar` cannot be made into an object
    |

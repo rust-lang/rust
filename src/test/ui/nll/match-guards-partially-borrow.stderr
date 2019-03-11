@@ -4,7 +4,7 @@ error[E0510]: cannot assign `q` in match guard
 LL |     match q {
    |           - value is immutable in match guard
 ...
-LL |             q = true; //~ ERROR
+LL |             q = true;
    |             ^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `r` in match guard
@@ -13,7 +13,7 @@ error[E0510]: cannot assign `r` in match guard
 LL |     match r {
    |           - value is immutable in match guard
 ...
-LL |             r = true; //~ ERROR
+LL |             r = true;
    |             ^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `t` in match guard
@@ -22,7 +22,7 @@ error[E0510]: cannot assign `t` in match guard
 LL |     match t {
    |           - value is immutable in match guard
 ...
-LL |             t = true; //~ ERROR
+LL |             t = true;
    |             ^^^^^^^^ cannot assign
 
 error[E0510]: cannot mutably borrow `x.0` in match guard
@@ -31,7 +31,7 @@ error[E0510]: cannot mutably borrow `x.0` in match guard
 LL |     match x {
    |           - value is immutable in match guard
 ...
-LL |                 Some(ref mut r) => *r = None, //~ ERROR
+LL |                 Some(ref mut r) => *r = None,
    |                      ^^^^^^^^^ cannot mutably borrow
 
 error[E0506]: cannot assign to `t` because it is borrowed
@@ -39,7 +39,7 @@ error[E0506]: cannot assign to `t` because it is borrowed
    |
 LL |         s if {
    |         - borrow of `t` occurs here
-LL |             t = !t; //~ ERROR
+LL |             t = !t;
    |             ^^^^^^ assignment to borrowed `t` occurs here
 LL |             false
 LL |         } => (), // What value should `s` have in the arm?
@@ -51,7 +51,7 @@ error[E0510]: cannot assign `y` in match guard
 LL |     match *y {
    |           -- value is immutable in match guard
 ...
-LL |             y = &true; //~ ERROR
+LL |             y = &true;
    |             ^^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `z` in match guard
@@ -60,7 +60,7 @@ error[E0510]: cannot assign `z` in match guard
 LL |     match z {
    |           - value is immutable in match guard
 ...
-LL |             z = &true; //~ ERROR
+LL |             z = &true;
    |             ^^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `a` in match guard
@@ -69,7 +69,7 @@ error[E0510]: cannot assign `a` in match guard
 LL |     match a {
    |           - value is immutable in match guard
 ...
-LL |             a = &true; //~ ERROR
+LL |             a = &true;
    |             ^^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `b` in match guard
@@ -78,7 +78,7 @@ error[E0510]: cannot assign `b` in match guard
 LL |     match b {
    |           - value is immutable in match guard
 ...
-LL |             b = &true; //~ ERROR
+LL |             b = &true;
    |             ^^^^^^^^^ cannot assign
 
 error: aborting due to 9 previous errors

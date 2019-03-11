@@ -7,7 +7,7 @@ LL |         self.state = x;
 error[E0017]: references in constants may only refer to immutable values
   --> $DIR/const_let_assign3.rs:16:5
    |
-LL |     s.foo(3); //~ ERROR references in constants may only refer to immutable values
+LL |     s.foo(3);
    |     ^ constants require immutable values
 
 error[E0017]: references in constants may only refer to immutable values

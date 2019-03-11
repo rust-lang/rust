@@ -1,7 +1,7 @@
 error[E0381]: borrow of possibly uninitialized variable: `v`
   --> $DIR/borrowck-while-break.rs:7:20
    |
-LL |     println!("{}", v); //~ ERROR use of possibly uninitialized variable: `v`
+LL |     println!("{}", v);
    |                    ^ use of possibly uninitialized `v`
 
 error: aborting due to previous error

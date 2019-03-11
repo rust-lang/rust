@@ -2,7 +2,7 @@ error: compilation successful
   --> $DIR/rustc-error.rs:4:1
    |
 LL | / fn main() {
-LL | |     //~^ ERROR compilation successful
+LL | |
 LL | | }
    | |_^
 

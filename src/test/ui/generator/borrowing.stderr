@@ -5,7 +5,7 @@ LL |         Pin::new(&mut || yield &a).resume()
    |                       --        ^ borrowed value does not live long enough
    |                       |
    |                       capture occurs here
-LL |         //~^ ERROR: `a` does not live long enough
+LL |
 LL |     };
    |     - borrowed value only lives until here
 ...

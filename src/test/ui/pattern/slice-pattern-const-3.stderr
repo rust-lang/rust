@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/slice-pattern-const-3.rs:28:9
    |
-LL |         FOO => (), //~ ERROR unreachable pattern
+LL |         FOO => (),
    |         ^^^
    |
 note: lint level defined here

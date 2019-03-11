@@ -1,7 +1,7 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/issue-28625.rs:12:14
    |
-LL |     unsafe { std::mem::transmute(a) } //~ ERROR cannot transmute between types of different sizes
+LL |     unsafe { std::mem::transmute(a) }
    |              ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `&ArrayPeano<T>` (N bits)

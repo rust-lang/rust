@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable-thread-local.rs:9:32
    |
-LL | thread_local!(static BAR: () = internal_unstable::unstable()); //~ ERROR use of unstable
+LL | thread_local!(static BAR: () = internal_unstable::unstable());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(function)] to the crate attributes to enable

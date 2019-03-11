@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `loop`
   --> $DIR/keyword-loop-as-identifier.rs:4:9
    |
-LL |     let loop = "foo"; //~ error: expected pattern, found keyword `loop`
+LL |     let loop = "foo";
    |         ^^^^ expected pattern
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error: rustc_outlives
   --> $DIR/infer-static.rs:5:1
    |
-LL | / struct Foo<U> { //~ ERROR rustc_outlives
+LL | / struct Foo<U> {
 LL | |     bar: Bar<U>
 LL | | }
    | |_^

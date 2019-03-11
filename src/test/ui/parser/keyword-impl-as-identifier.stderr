@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `impl`
   --> $DIR/keyword-impl-as-identifier.rs:4:9
    |
-LL |     let impl = "foo"; //~ error: expected pattern, found keyword `impl`
+LL |     let impl = "foo";
    |         ^^^^ expected pattern
 
 error: aborting due to previous error

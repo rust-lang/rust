@@ -1,7 +1,7 @@
 error: OK
   --> $DIR/dep-graph-assoc-type-codegen.rs:28:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+LL |     #[rustc_then_this_would_need(TypeckTables)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

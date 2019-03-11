@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-23046.rs:17:15
    |
-LL |     let ex = |x| { //~ ERROR type annotations needed
+LL |     let ex = |x| {
    |               ^ consider giving this closure parameter a type
 
 error: aborting due to previous error

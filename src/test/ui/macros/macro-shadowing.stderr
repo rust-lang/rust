@@ -1,7 +1,7 @@
 error: `macro_two` is already in scope
   --> $DIR/macro-shadowing.rs:12:5
    |
-LL |     #[macro_use] //~ ERROR `macro_two` is already in scope
+LL |     #[macro_use]
    |     ^^^^^^^^^^^^
 ...
 LL | m1!();
@@ -12,7 +12,7 @@ LL | m1!();
 error[E0659]: `foo` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/macro-shadowing.rs:17:1
    |
-LL | foo!(); //~ ERROR `foo` is ambiguous
+LL | foo!();
    | ^^^ ambiguous name
    |
 note: `foo` could refer to the macro defined here

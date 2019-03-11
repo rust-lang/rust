@@ -1,7 +1,7 @@
 error: an inner attribute is not permitted in this context
   --> $DIR/attr.rs:5:3
    |
-LL | #![lang = "foo"] //~ ERROR an inner attribute is not permitted in this context
+LL | #![lang = "foo"]
    |   ^
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
@@ -9,7 +9,7 @@ LL | #![lang = "foo"] //~ ERROR an inner attribute is not permitted in this cont
 error[E0522]: definition of an unknown language item: `foo`
   --> $DIR/attr.rs:5:1
    |
-LL | #![lang = "foo"] //~ ERROR an inner attribute is not permitted in this context
+LL | #![lang = "foo"]
    | ^^^^^^^^^^^^^^^^ definition of unknown language item `foo`
 
 error: aborting due to 2 previous errors

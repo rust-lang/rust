@@ -10,11 +10,11 @@ note: the anonymous lifetime #2 defined on the method body at 6:5...
   --> $DIR/issue-17740.rs:6:5
    |
 LL | /     fn bar(self: &mut Foo) {
-LL | |     //~^ mismatched method receiver
-LL | |     //~| expected type `Foo<'a>`
-LL | |     //~| found type `Foo<'_>`
+LL | |
+LL | |
+LL | |
 ...  |
-LL | |     //~| lifetime mismatch
+LL | |
 LL | |     }
    | |_____^
 note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 5:7
@@ -40,11 +40,11 @@ note: ...does not necessarily outlive the anonymous lifetime #2 defined on the m
   --> $DIR/issue-17740.rs:6:5
    |
 LL | /     fn bar(self: &mut Foo) {
-LL | |     //~^ mismatched method receiver
-LL | |     //~| expected type `Foo<'a>`
-LL | |     //~| found type `Foo<'_>`
+LL | |
+LL | |
+LL | |
 ...  |
-LL | |     //~| lifetime mismatch
+LL | |
 LL | |     }
    | |_____^
 

@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: use of undeclared type or module `m`
   --> $DIR/macro_path_as_generic_bound.rs:7:6
    |
-LL | foo!(m::m2::A); //~ ERROR failed to resolve
+LL | foo!(m::m2::A);
    |      ^ use of undeclared type or module `m`
 
 error: aborting due to previous error

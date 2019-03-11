@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL | fn foo<'a>(x: i32) {
    |        -- lifetime `'a` defined here
 ...
-LL |         A::<'a>::X..=A::<'static>::X => (), //~ ERROR lifetime may not live long enough
+LL |         A::<'a>::X..=A::<'static>::X => (),
    |         ^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
@@ -13,7 +13,7 @@ error: lifetime may not live long enough
 LL | fn bar<'a>(x: i32) {
    |        -- lifetime `'a` defined here
 ...
-LL |         A::<'static>::X..=A::<'a>::X => (), //~ ERROR lifetime may not live long enough
+LL |         A::<'static>::X..=A::<'a>::X => (),
    |                           ^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error: attribute must be of the form `#[crate_type = "bin|lib|..."]`
   --> $DIR/invalid_crate_type_syntax.rs:2:1
    |
-LL | #![crate_type(lib)]  //~ ERROR attribute must be of the form
+LL | #![crate_type(lib)]
    | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

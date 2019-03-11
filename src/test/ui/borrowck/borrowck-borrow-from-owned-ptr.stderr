@@ -3,7 +3,7 @@ error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
    |
 LL |     let bar1 = &mut foo.bar1;
    |                     -------- first mutable borrow occurs here
-LL |     let _bar2 = &mut foo.bar1;  //~ ERROR cannot borrow
+LL |     let _bar2 = &mut foo.bar1;
    |                      ^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -14,7 +14,7 @@ error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed 
    |
 LL |     let bar1 = &mut foo.bar1;
    |                     -------- mutable borrow occurs here
-LL |     let _bar2 = &foo.bar1;  //~ ERROR cannot borrow
+LL |     let _bar2 = &foo.bar1;
    |                  ^^^^^^^^ immutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -25,7 +25,7 @@ error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as
    |
 LL |     let bar1 = &foo.bar1;
    |                 -------- immutable borrow occurs here
-LL |     let _bar2 = &mut foo.bar1;  //~ ERROR cannot borrow
+LL |     let _bar2 = &mut foo.bar1;
    |                      ^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -36,7 +36,7 @@ error[E0499]: cannot borrow `foo` (via `foo.bar2`) as mutable more than once at 
    |
 LL |     let bar1 = &mut foo.bar1;
    |                     -------- first mutable borrow occurs here (via `foo.bar1`)
-LL |     let _bar2 = &mut foo.bar2; //~ ERROR cannot borrow
+LL |     let _bar2 = &mut foo.bar2;
    |                      ^^^^^^^^ second mutable borrow occurs here (via `foo.bar2`)
 LL |     *bar1;
 LL | }
@@ -49,7 +49,7 @@ LL |         Foo { bar1: ref mut _bar1, bar2: ref mut _bar2 } => {}
    |                     -------------        ^^^^^^^^^^^^^ second mutable borrow occurs here (via `foo.bar2`)
    |                     |
    |                     first mutable borrow occurs here (via `foo.bar1`)
-LL |         //~^ ERROR cannot borrow
+LL |
 LL |     }
    |     - first borrow ends here
 
@@ -70,7 +70,7 @@ error[E0502]: cannot borrow `foo.bar1` as immutable because `foo.bar1.int1` is a
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                     ------------- mutable borrow occurs here
-LL |     let _foo1 = &foo.bar1; //~ ERROR cannot borrow
+LL |     let _foo1 = &foo.bar1;
    |                  ^^^^^^^^ immutable borrow occurs here
 ...
 LL | }
@@ -81,8 +81,8 @@ error[E0502]: cannot borrow `*foo` as immutable because `foo.bar1.int1` is also 
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                     ------------- mutable borrow occurs here
-LL |     let _foo1 = &foo.bar1; //~ ERROR cannot borrow
-LL |     let _foo2 = &*foo; //~ ERROR cannot borrow
+LL |     let _foo1 = &foo.bar1;
+LL |     let _foo2 = &*foo;
    |                  ^^^^ immutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -93,7 +93,7 @@ error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                     ------------- first mutable borrow occurs here
-LL |     let _foo1 = &mut foo.bar1; //~ ERROR cannot borrow
+LL |     let _foo1 = &mut foo.bar1;
    |                      ^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -104,7 +104,7 @@ error[E0499]: cannot borrow `*foo` as mutable more than once at a time
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                     ------------- first mutable borrow occurs here
-LL |     let _foo2 = &mut *foo; //~ ERROR cannot borrow
+LL |     let _foo2 = &mut *foo;
    |                      ^^^^ second mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -115,7 +115,7 @@ error[E0502]: cannot borrow `foo.bar1` as mutable because `foo.bar1.int1` is als
    |
 LL |     let bar1 = &foo.bar1.int1;
    |                 ------------- immutable borrow occurs here
-LL |     let _foo1 = &mut foo.bar1; //~ ERROR cannot borrow
+LL |     let _foo1 = &mut foo.bar1;
    |                      ^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -126,7 +126,7 @@ error[E0502]: cannot borrow `*foo` as mutable because `foo.bar1.int1` is also bo
    |
 LL |     let bar1 = &foo.bar1.int1;
    |                 ------------- immutable borrow occurs here
-LL |     let _foo2 = &mut *foo; //~ ERROR cannot borrow
+LL |     let _foo2 = &mut *foo;
    |                      ^^^^ mutable borrow occurs here
 LL |     *bar1;
 LL | }
@@ -137,7 +137,7 @@ error[E0502]: cannot borrow `foo` (via `foo.bar2`) as immutable because `foo` is
    |
 LL |     let bar1 = &mut foo.bar1;
    |                     -------- mutable borrow occurs here (via `foo.bar1`)
-LL |     let _foo1 = &foo.bar2; //~ ERROR cannot borrow
+LL |     let _foo1 = &foo.bar2;
    |                  ^^^^^^^^ immutable borrow of `foo.bar2` -- which overlaps with `foo.bar1` -- occurs here
 LL |     *bar1;
 LL | }
@@ -148,7 +148,7 @@ error[E0596]: cannot borrow field `foo.bar1` of immutable binding as mutable
    |
 LL |     let foo = make_foo();
    |         --- help: make this binding mutable: `mut foo`
-LL |     let bar1 = &mut foo.bar1; //~ ERROR cannot borrow
+LL |     let bar1 = &mut foo.bar1;
    |                     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0499]: cannot borrow `foo` (via `foo.bar2.int2`) as mutable more than once at a time
@@ -156,7 +156,7 @@ error[E0499]: cannot borrow `foo` (via `foo.bar2.int2`) as mutable more than onc
    |
 LL |     let bar1 = &mut foo.bar1.int1;
    |                     ------------- first mutable borrow occurs here (via `foo.bar1.int1`)
-LL |     let foo1 = &mut foo.bar2.int2; //~ ERROR cannot borrow
+LL |     let foo1 = &mut foo.bar2.int2;
    |                     ^^^^^^^^^^^^^ second mutable borrow occurs here (via `foo.bar2.int2`)
 ...
 LL | }

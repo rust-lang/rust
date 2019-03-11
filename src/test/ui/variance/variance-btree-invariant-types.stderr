@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:4:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, &'new (), _>`
@@ -16,7 +16,7 @@ LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:7:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, _, &'new ()>`
@@ -31,7 +31,7 @@ LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:10:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, &'static (), _>`
@@ -46,7 +46,7 @@ LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:13:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::IterMut<'_, _, &'static ()>`
@@ -61,7 +61,7 @@ LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:18:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
@@ -76,7 +76,7 @@ LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:22:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
@@ -91,7 +91,7 @@ LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:26:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
@@ -106,7 +106,7 @@ LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:30:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
@@ -121,7 +121,7 @@ LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:35:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
@@ -136,7 +136,7 @@ LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:39:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
@@ -151,7 +151,7 @@ LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:43:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
@@ -166,7 +166,7 @@ LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-btree-invariant-types.rs:47:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`

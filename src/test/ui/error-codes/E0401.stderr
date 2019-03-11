@@ -3,7 +3,7 @@ error[E0401]: can't use generic parameters from outer function
    |
 LL | fn foo<T>(x: T) {
    |        - type variable from outer function
-LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) { //~ ERROR E0401
+LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
    |        ---------------------------    ^ use of generic parameter from outer function
    |        |
    |        help: try using a local generic parameter instead: `bfnr<U, V: Baz<U>, W: Fn(), T>`
@@ -17,7 +17,7 @@ LL | fn foo<T>(x: T) {
 LL |     fn baz<U,
    |        --- try adding a local generic parameter in this method instead
 ...
-LL |            (y: T) { //~ ERROR E0401
+LL |            (y: T) {
    |                ^ use of generic parameter from outer function
 
 error[E0401]: can't use generic parameters from outer function
@@ -26,7 +26,7 @@ error[E0401]: can't use generic parameters from outer function
 LL | impl<T> Iterator for A<T> {
    | ---- `Self` type implicitly declared here, by this `impl`
 ...
-LL |         fn helper(sel: &Self) -> u8 { //~ ERROR E0401
+LL |         fn helper(sel: &Self) -> u8 {
    |                         ^^^^
    |                         |
    |                         use of generic parameter from outer function

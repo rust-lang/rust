@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/issue-17545.rs:7:10
    |
-LL |         &id(()), //~ ERROR borrowed value does not live long enough
+LL |         &id(()),
    |          ^^^^^^ temporary value does not live long enough
 LL |     ));
    |       - temporary value only lives until here

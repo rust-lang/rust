@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/variance-use-invariant-struct-1.rs:12:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `SomeStruct<&'min ()>`
@@ -20,7 +20,7 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
 error[E0308]: mismatched types
   --> $DIR/variance-use-invariant-struct-1.rs:19:5
    |
-LL |     v //~ ERROR mismatched types
+LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected type `SomeStruct<&'max ()>`

@@ -3,7 +3,7 @@ error[E0384]: cannot assign twice to immutable variable `x` (Ast)
    |
 LL |         x = 2;
    |         ----- first assignment to `x`
-LL |         x = 3;      //~ ERROR (Ast) [E0384]
+LL |         x = 3;
    |         ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
@@ -11,22 +11,22 @@ error[E0384]: cannot assign twice to immutable variable `x` (Ast)
    |
 LL |             x = 2;
    |             ----- first assignment to `x`
-LL |             x = 3;      //~ ERROR (Ast) [E0384]
+LL |             x = 3;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
   --> $DIR/liveness-assign-imm-local-notes.rs:35:13
    |
-LL |             x = 1;      //~ ERROR (Ast) [E0384]
+LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
   --> $DIR/liveness-assign-imm-local-notes.rs:38:13
    |
-LL |             x = 1;      //~ ERROR (Ast) [E0384]
+LL |             x = 1;
    |             ----- first assignment to `x`
 ...
-LL |             x = 2;      //~ ERROR (Ast) [E0384]
+LL |             x = 2;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
@@ -37,7 +37,7 @@ LL |     let x;
 ...
 LL |         x = 2;
    |         ----- first assignment to `x`
-LL |         x = 3;      //~ ERROR (Ast) [E0384]
+LL |         x = 3;
    |         ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
@@ -48,7 +48,7 @@ LL |         let x;
 ...
 LL |             x = 2;
    |             ----- first assignment to `x`
-LL |             x = 3;      //~ ERROR (Ast) [E0384]
+LL |             x = 3;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
@@ -57,7 +57,7 @@ error[E0384]: cannot assign twice to immutable variable `x` (Mir)
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |             x = 1;      //~ ERROR (Ast) [E0384]
+LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
@@ -66,10 +66,10 @@ error[E0384]: cannot assign twice to immutable variable `x` (Mir)
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
 ...
-LL |             x = 1;      //~ ERROR (Ast) [E0384]
+LL |             x = 1;
    |             ----- first assignment to `x`
 ...
-LL |             x = 2;      //~ ERROR (Ast) [E0384]
+LL |             x = 2;
    |             ^^^^^ cannot assign twice to immutable variable
 
 error: aborting due to 8 previous errors

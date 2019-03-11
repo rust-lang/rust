@@ -1,7 +1,7 @@
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:106:17
    |
-LL |                 m!(); //~ ERROR `m` is ambiguous
+LL |                 m!();
    |                 ^ ambiguous name
 ...
 LL | include!();
@@ -27,7 +27,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:149:33
    |
-LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
+LL |             macro gen_invoc() { m!() }
    |                                 ^ ambiguous name
 ...
 LL | include!();
@@ -53,7 +53,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:158:13
    |
-LL |             m!(); //~ ERROR `m` is ambiguous
+LL |             m!();
    |             ^ ambiguous name
 ...
 LL | include!();
@@ -79,7 +79,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:174:13
    |
-LL |             m!(); //~ ERROR `m` is ambiguous
+LL |             m!();
    |             ^ ambiguous name
 ...
 LL | include!();
@@ -105,7 +105,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:192:17
    |
-LL |                 m!(); //~ ERROR `m` is ambiguous
+LL |                 m!();
    |                 ^ ambiguous name
 ...
 LL | include!();
@@ -131,7 +131,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-modern.rs:235:33
    |
-LL |             macro gen_invoc() { m!() } //~ ERROR `m` is ambiguous
+LL |             macro gen_invoc() { m!() }
    |                                 ^ ambiguous name
 ...
 LL | include!();

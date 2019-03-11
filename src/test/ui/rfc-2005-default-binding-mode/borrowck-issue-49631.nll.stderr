@@ -5,7 +5,7 @@ LL |     while let Some(Ok(string)) = foo.get() {
    |                                  --- immutable borrow occurs here
 LL |         foo.mutate();
    |         ^^^^^^^^^^^^ mutable borrow occurs here
-LL |         //~^ ERROR cannot borrow `foo` as mutable
+LL |
 LL |         println!("foo={:?}", *string);
    |                              ------- immutable borrow later used here
 

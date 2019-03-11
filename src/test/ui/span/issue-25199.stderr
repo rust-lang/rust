@@ -14,7 +14,7 @@ error[E0597]: `container` does not live long enough
    |
 LL |     container.store(test);
    |     ^^^^^^^^^ borrowed value does not live long enough
-LL |     //~^ ERROR `container` does not live long enough
+LL |
 LL | }
    | - `container` dropped here while still borrowed
    |

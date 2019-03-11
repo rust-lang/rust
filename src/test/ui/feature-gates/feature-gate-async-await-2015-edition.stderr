@@ -1,25 +1,25 @@
 error[E0670]: `async fn` is not permitted in the 2015 edition
   --> $DIR/feature-gate-async-await-2015-edition.rs:5:1
    |
-LL | async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL | async fn foo() {}
    | ^^^^^
 
 error[E0422]: cannot find struct, variant or union type `async` in this scope
   --> $DIR/feature-gate-async-await-2015-edition.rs:9:13
    |
-LL |     let _ = async {}; //~ ERROR cannot find struct, variant or union type `async`
+LL |     let _ = async {};
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `async` in this scope
   --> $DIR/feature-gate-async-await-2015-edition.rs:10:13
    |
-LL |     let _ = async || { true }; //~ ERROR cannot find value `async` in this scope
+LL |     let _ = async || { true };
    |             ^^^^^ not found in this scope
 
 error[E0658]: async fn is unstable (see issue #50547)
   --> $DIR/feature-gate-async-await-2015-edition.rs:5:1
    |
-LL | async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
+LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(async_await)] to the crate attributes to enable

@@ -3,7 +3,7 @@ error[E0597]: `y` does not live long enough
    |
 LL |     x.x = Some(&y);
    |                ^^ borrowed value does not live long enough
-LL |     //~^ `y` does not live long enough [E0597]
+LL |
 LL | }
    | -
    | |

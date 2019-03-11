@@ -6,7 +6,7 @@ LL |         *a.borrow() + 1
    |          |
    |          borrowed value does not live long enough
    |          a temporary with access to the borrow is created here ...
-LL |     }; //~^ ERROR `*a` does not live long enough
+LL |     };
    |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `std::cell::Ref<'_, i32>`
    |     |
    |     `*a` dropped here while still borrowed

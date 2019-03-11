@@ -1,7 +1,7 @@
 error[E0599]: no method named `homura` found for type `&'static str` in the current scope
   --> $DIR/issue-19521.rs:2:8
    |
-LL |     "".homura()(); //~ ERROR no method named `homura` found
+LL |     "".homura()();
    |        ^^^^^^
 
 error: aborting due to previous error

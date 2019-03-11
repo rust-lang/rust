@@ -1,7 +1,7 @@
 error: expected expression, found `)`
   --> $DIR/issue-32505.rs:4:12
    |
-LL |     foo(|_|) //~ ERROR expected expression, found `)`
+LL |     foo(|_|)
    |            ^ expected expression
 
 error: aborting due to previous error

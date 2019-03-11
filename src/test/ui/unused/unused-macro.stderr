@@ -1,7 +1,7 @@
 error: unused macro definition
   --> $DIR/unused-macro.rs:5:1
    |
-LL | / macro unused { //~ ERROR: unused macro definition
+LL | / macro unused {
 LL | |     () => {}
 LL | | }
    | |_^
@@ -15,7 +15,7 @@ LL | #![deny(unused_macros)]
 error: unused macro definition
   --> $DIR/unused-macro.rs:15:5
    |
-LL | /     macro unused { //~ ERROR: unused macro definition
+LL | /     macro unused {
 LL | |         () => {}
 LL | |     }
    | |_____^
@@ -29,7 +29,7 @@ LL |     #[deny(unused_macros)]
 error: unused macro definition
   --> $DIR/unused-macro.rs:21:5
    |
-LL | /     pub(crate) macro unused { //~ ERROR: unused macro definition
+LL | /     pub(crate) macro unused {
 LL | |         () => {}
 LL | |     }
    | |_____^

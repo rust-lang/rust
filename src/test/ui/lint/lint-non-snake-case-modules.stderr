@@ -1,7 +1,7 @@
 error: module `FooBar` should have a snake case name
   --> $DIR/lint-non-snake-case-modules.rs:4:5
    |
-LL | mod FooBar { //~ ERROR module `FooBar` should have a snake case name
+LL | mod FooBar {
    |     ^^^^^^ help: convert the identifier to snake case: `foo_bar`
    |
 note: lint level defined here

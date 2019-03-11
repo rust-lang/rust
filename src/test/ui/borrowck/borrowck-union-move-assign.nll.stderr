@@ -5,7 +5,7 @@ LL |             let mut u = U { a: A };
    |                 ----- move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |             let a = u.a;
    |                     --- value moved here
-LL |             let a = u.a; //~ ERROR use of moved value: `u.a`
+LL |             let a = u.a;
    |                     ^^^ value used here after move
 
 error: aborting due to previous error

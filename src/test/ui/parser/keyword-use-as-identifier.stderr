@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `use`
   --> $DIR/keyword-use-as-identifier.rs:4:9
    |
-LL |     let use = "foo"; //~ error: expected pattern, found keyword `use`
+LL |     let use = "foo";
    |         ^^^ expected pattern
 
 error: aborting due to previous error

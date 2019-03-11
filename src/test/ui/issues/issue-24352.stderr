@@ -1,7 +1,7 @@
 error[E0277]: cannot subtract `{integer}` from `f64`
   --> $DIR/issue-24352.rs:3:12
    |
-LL |     1.0f64 - 1 //~ ERROR E0277
+LL |     1.0f64 - 1
    |            ^ no implementation for `f64 - {integer}`
    |
    = help: the trait `std::ops::Sub<{integer}>` is not implemented for `f64`

@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL | fn a() -> Foo {
    |           --- expected `Foo` because of return type
-LL |     Some(Foo { bar: 1 }) //~ ERROR mismatched types
+LL |     Some(Foo { bar: 1 })
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
    |
    = note: expected type `Foo`
@@ -14,7 +14,7 @@ error[E0308]: mismatched types
    |
 LL | fn a2() -> Foo {
    |            --- expected `Foo` because of return type
-LL |     Ok(Foo { bar: 1}) //~ ERROR mismatched types
+LL |     Ok(Foo { bar: 1})
    |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
    |
    = note: expected type `Foo`
@@ -25,7 +25,7 @@ error[E0308]: mismatched types
    |
 LL | fn b() -> Option<Foo> {
    |           ----------- expected `std::option::Option<Foo>` because of return type
-LL |     Foo { bar: 1 } //~ ERROR mismatched types
+LL |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
    |
    = note: expected type `std::option::Option<Foo>`
@@ -36,7 +36,7 @@ error[E0308]: mismatched types
    |
 LL | fn c() -> Result<Foo, Bar> {
    |           ---------------- expected `std::result::Result<Foo, Bar>` because of return type
-LL |     Foo { bar: 1 } //~ ERROR mismatched types
+LL |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
    |
    = note: expected type `std::result::Result<Foo, Bar>`
@@ -48,7 +48,7 @@ error[E0308]: mismatched types
 LL | fn d() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
-LL |     x //~ ERROR mismatched types
+LL |     x
    |     ^ expected struct `std::string::String`, found integer
    |
    = note: expected type `X<X<_, std::string::String>, std::string::String>`
@@ -60,7 +60,7 @@ error[E0308]: mismatched types
 LL | fn e() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
-LL |     x //~ ERROR mismatched types
+LL |     x
    |     ^ expected struct `std::string::String`, found integer
    |
    = note: expected type `X<X<_, std::string::String>, _>`

@@ -1,133 +1,133 @@
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:3:14
    |
-LL | let x: isize<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: isize<isize>;
    |              ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:4:11
    |
-LL | let x: i8<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: i8<isize>;
    |           ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:5:12
    |
-LL | let x: i16<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: i16<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:6:12
    |
-LL | let x: i32<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: i32<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:7:12
    |
-LL | let x: i64<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: i64<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:8:14
    |
-LL | let x: usize<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: usize<isize>;
    |              ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:9:11
    |
-LL | let x: u8<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: u8<isize>;
    |           ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:10:12
    |
-LL | let x: u16<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: u16<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:11:12
    |
-LL | let x: u32<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: u32<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:12:12
    |
-LL | let x: u64<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: u64<isize>;
    |            ^^^^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:13:13
    |
-LL | let x: char<isize>; //~ ERROR type arguments are not allowed on this entity
+LL | let x: char<isize>;
    |             ^^^^^ type argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:15:14
    |
-LL | let x: isize<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: isize<'static>;
    |              ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:16:11
    |
-LL | let x: i8<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: i8<'static>;
    |           ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:17:12
    |
-LL | let x: i16<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: i16<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:18:12
    |
-LL | let x: i32<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: i32<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:19:12
    |
-LL | let x: i64<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: i64<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:20:14
    |
-LL | let x: usize<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: usize<'static>;
    |              ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:21:11
    |
-LL | let x: u8<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: u8<'static>;
    |           ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:22:12
    |
-LL | let x: u16<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: u16<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:23:12
    |
-LL | let x: u32<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: u32<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:24:12
    |
-LL | let x: u64<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: u64<'static>;
    |            ^^^^^^^ lifetime argument not allowed
 
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/prim-with-args.rs:25:13
    |
-LL | let x: char<'static>; //~ ERROR lifetime arguments are not allowed on this entity
+LL | let x: char<'static>;
    |             ^^^^^^^ lifetime argument not allowed
 
 error: aborting due to 22 previous errors

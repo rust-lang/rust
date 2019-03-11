@@ -1,7 +1,7 @@
 error[E0609]: no field `x` on type `*mut A`
   --> $DIR/issue-11004.rs:7:21
    |
-LL |     let x : i32 = n.x; //~ no field `x` on type `*mut A`
+LL |     let x : i32 = n.x;
    |                   --^
    |                   |
    |                   help: `n` is a raw pointer; try dereferencing it: `(*n).x`
@@ -9,7 +9,7 @@ LL |     let x : i32 = n.x; //~ no field `x` on type `*mut A`
 error[E0609]: no field `y` on type `*mut A`
   --> $DIR/issue-11004.rs:8:21
    |
-LL |     let y : f64 = n.y; //~ no field `y` on type `*mut A`
+LL |     let y : f64 = n.y;
    |                   --^
    |                   |
    |                   help: `n` is a raw pointer; try dereferencing it: `(*n).y`

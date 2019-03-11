@@ -1,7 +1,7 @@
 error[E0072]: recursive type `U` has infinite size
   --> $DIR/union-nonrepresentable.rs:3:1
    |
-LL | union U { //~ ERROR recursive type `U` has infinite size
+LL | union U {
    | ^^^^^^^ recursive type has infinite size
 LL |     a: u8,
 LL |     b: U,

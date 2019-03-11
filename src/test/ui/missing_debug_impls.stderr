@@ -1,7 +1,7 @@
 error: type does not implement `fmt::Debug`; consider adding #[derive(Debug)] or a manual implementation
   --> $DIR/missing_debug_impls.rs:7:1
    |
-LL | pub enum A {} //~ ERROR type does not implement `fmt::Debug`
+LL | pub enum A {}
    | ^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(missing_debug_implementations)]
 error: type does not implement `fmt::Debug`; consider adding #[derive(Debug)] or a manual implementation
   --> $DIR/missing_debug_impls.rs:20:1
    |
-LL | pub struct Foo; //~ ERROR type does not implement `fmt::Debug`
+LL | pub struct Foo;
    | ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

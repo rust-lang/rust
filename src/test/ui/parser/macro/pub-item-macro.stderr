@@ -1,7 +1,7 @@
 error: can't qualify macro invocation with `pub`
   --> $DIR/pub-item-macro.rs:8:5
    |
-LL |     pub priv_x!(); //~ ERROR can't qualify macro invocation with `pub`
+LL |     pub priv_x!();
    |     ^^^
 ...
 LL |     pub_x!();
@@ -12,7 +12,7 @@ LL |     pub_x!();
 error[E0603]: static `x` is private
   --> $DIR/pub-item-macro.rs:17:23
    |
-LL |     let y: u32 = foo::x; //~ ERROR static `x` is private
+LL |     let y: u32 = foo::x;
    |                       ^
 
 error: aborting due to 2 previous errors

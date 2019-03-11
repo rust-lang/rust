@@ -1,7 +1,7 @@
 error: macro attributes must be placed before `#[derive]`
   --> $DIR/attribute-order-restricted.rs:11:1
    |
-LL | #[attr_proc_macro] //~ ERROR macro attributes must be placed before `#[derive]`
+LL | #[attr_proc_macro]
    | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

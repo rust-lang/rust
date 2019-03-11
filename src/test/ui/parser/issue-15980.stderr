@@ -3,7 +3,7 @@ error: expected identifier, found keyword `return`
    |
 LL |         Err(ref e) if e.kind == io::EndOfFile {
    |                                 ------------- while parsing this struct
-LL |             //~^ NOTE while parsing this struct
+LL |
 LL |             return
    |             ^^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
@@ -16,7 +16,7 @@ error: expected one of `.`, `=>`, `?`, or an operator, found `_`
    |
 LL |         }
    |          - expected one of `.`, `=>`, `?`, or an operator here
-LL |         //~^ NOTE expected one of `.`, `=>`, `?`, or an operator here
+LL |
 LL |         _ => {}
    |         ^ unexpected token
 

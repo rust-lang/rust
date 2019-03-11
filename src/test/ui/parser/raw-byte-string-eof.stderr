@@ -1,7 +1,7 @@
 error: unterminated raw string
   --> $DIR/raw-byte-string-eof.rs:2:6
    |
-LL |     br##"a"#;  //~ unterminated raw string
+LL |     br##"a"#;
    |      ^ unterminated raw string
    |
    = note: this raw string should be terminated with `"##`

@@ -1,7 +1,7 @@
 error[E0624]: method `f` is private
   --> $DIR/private-method-inherited.rs:13:7
    |
-LL |     x.f();  //~ ERROR method `f` is private
+LL |     x.f();
    |       ^
 
 error: aborting due to previous error

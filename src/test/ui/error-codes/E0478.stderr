@@ -1,7 +1,7 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/E0478.rs:4:5
    |
-LL |     child: Box<Wedding<'kiss> + 'SnowWhite>, //~ ERROR E0478
+LL |     child: Box<Wedding<'kiss> + 'SnowWhite>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'SnowWhite as defined on the struct at 3:22

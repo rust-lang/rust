@@ -1,7 +1,7 @@
 error[E0658]: exclusive range pattern syntax is experimental (see issue #37854)
   --> $DIR/feature-gate-exclusive-range-pattern.rs:3:9
    |
-LL |         0 .. 3 => {} //~ ERROR exclusive range pattern syntax is experimental
+LL |         0 .. 3 => {}
    |         ^^^^^^
    |
    = help: add #![feature(exclusive_range_pattern)] to the crate attributes to enable

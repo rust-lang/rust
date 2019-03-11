@@ -17,7 +17,7 @@ LL | #[attr2mac2]
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
   --> $DIR/more-gates.rs:16:1
    |
-LL | mac2mac1!(); //~ ERROR: cannot expand to macro definitions
+LL | mac2mac1!();
    | ^^^^^^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL | mac2mac1!(); //~ ERROR: cannot expand to macro definitions
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
   --> $DIR/more-gates.rs:17:1
    |
-LL | mac2mac2!(); //~ ERROR: cannot expand to macro definitions
+LL | mac2mac2!();
    | ^^^^^^^^^^^^
    |
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable

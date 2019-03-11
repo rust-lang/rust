@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-33504.rs:7:13
    |
-LL |         let Test = 1; //~ ERROR mismatched types
+LL |         let Test = 1;
    |             ^^^^ expected integer, found struct `Test`
    |
    = note: expected type `{integer}`

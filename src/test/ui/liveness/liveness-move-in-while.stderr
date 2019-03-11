@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `y`
   --> $DIR/liveness-move-in-while.rs:7:24
    |
-LL |         println!("{}", y); //~ ERROR use of moved value: `y`
+LL |         println!("{}", y);
    |                        ^ value used here after move
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |                                                    - value moved here

@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `fn`
   --> $DIR/keyword-fn-as-identifier.rs:4:9
    |
-LL |     let fn = "foo"; //~ error: expected pattern, found keyword `fn`
+LL |     let fn = "foo";
    |         ^^ expected pattern
 
 error: aborting due to previous error

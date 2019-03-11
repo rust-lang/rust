@@ -1,7 +1,7 @@
 error[E0618]: expected function, found `!`
   --> $DIR/issue-18532.rs:6:5
    |
-LL |     (return)((),()); //~ ERROR expected function, found `!`
+LL |     (return)((),());
    |     ^^^^^^^^-------
    |     |
    |     call expression requires function

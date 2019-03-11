@@ -1,7 +1,7 @@
 error: expected `}`, found `,`
   --> $DIR/issue-10392-2.rs:6:15
    |
-LL |     let A { .., } = a(); //~ ERROR: expected `}`
+LL |     let A { .., } = a();
    |             --^
    |             | |
    |             | expected `}`

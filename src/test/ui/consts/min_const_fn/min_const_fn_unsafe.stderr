@@ -1,7 +1,7 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
   --> $DIR/min_const_fn_unsafe.rs:50:77
    |
-LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
+LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
    |                                                                             ^^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
@@ -33,7 +33,7 @@ LL |     Foo { x: () }.y
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
   --> $DIR/min_const_fn_unsafe.rs:50:77
    |
-LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
+LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
    |                                                                             ^^^ dereference of raw pointer
    |
    = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior

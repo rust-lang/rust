@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immuta
    |
 LL |         &v[0],
    |          - immutable borrow occurs here
-LL |         || { //~ ERROR cannot borrow `v` as mutable
+LL |         || {
    |         ^^ mutable borrow occurs here
 LL |             v[1] = 4;
    |             - borrow occurs due to use of `v` in closure

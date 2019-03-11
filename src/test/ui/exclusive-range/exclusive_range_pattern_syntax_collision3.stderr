@@ -1,7 +1,7 @@
 error: expected one of `,` or `]`, found `9`
   --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:12
    |
-LL |         [..9, 99..100, _] => {}, //~ ERROR expected one of `,` or `]`, found `9`
+LL |         [..9, 99..100, _] => {},
    |            ^ expected one of `,` or `]` here
 
 error: aborting due to previous error

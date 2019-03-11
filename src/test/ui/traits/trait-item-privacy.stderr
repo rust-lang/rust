@@ -4,7 +4,7 @@ error[E0599]: no method named `a` found for type `S` in the current scope
 LL | struct S;
    | --------- method `a` not found for this
 ...
-LL |     S.a(); //~ ERROR no method named `a` found for type `S` in the current scope
+LL |     S.a();
    |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -17,7 +17,7 @@ error[E0599]: no method named `b` found for type `S` in the current scope
 LL | struct S;
    | --------- method `b` not found for this
 ...
-LL |     S.b(); //~ ERROR no method named `b` found for type `S` in the current scope
+LL |     S.b();
    |       ^
    |
    = help: items from traits can only be used if the trait is in scope
@@ -29,7 +29,7 @@ LL | use method::B;
 error[E0624]: method `a` is private
   --> $DIR/trait-item-privacy.rs:72:7
    |
-LL |     c.a(); //~ ERROR method `a` is private
+LL |     c.a();
    |       ^
 
 error[E0599]: no function or associated item named `a` found for type `S` in the current scope
@@ -67,7 +67,7 @@ LL | use method::B;
 error[E0624]: method `a` is private
   --> $DIR/trait-item-privacy.rs:84:5
    |
-LL |     C::a(&S); //~ ERROR method `a` is private
+LL |     C::a(&S);
    |     ^^^^
 
 error[E0599]: no associated item named `A` found for type `S` in the current scope
@@ -76,7 +76,7 @@ error[E0599]: no associated item named `A` found for type `S` in the current sco
 LL | struct S;
    | --------- associated item `A` not found for this
 ...
-LL |     S::A; //~ ERROR no associated item named `A` found for type `S` in the current scope
+LL |     S::A;
    |     ---^
    |     |
    |     associated item not found in `S`
@@ -91,7 +91,7 @@ error[E0599]: no associated item named `B` found for type `S` in the current sco
 LL | struct S;
    | --------- associated item `B` not found for this
 ...
-LL |     S::B; //~ ERROR no associated item named `B` found for type `S` in the current scope
+LL |     S::B;
    |     ---^
    |     |
    |     associated item not found in `S`
@@ -105,13 +105,13 @@ LL | use assoc_const::B;
 error[E0624]: associated constant `A` is private
   --> $DIR/trait-item-privacy.rs:101:5
    |
-LL |     C::A; //~ ERROR associated constant `A` is private
+LL |     C::A;
    |     ^^^^
 
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
   --> $DIR/trait-item-privacy.rs:101:5
    |
-LL |     C::A; //~ ERROR associated constant `A` is private
+LL |     C::A;
    |     ^^^^ the trait `assoc_const::C` cannot be made into an object
    |
    = note: the trait cannot contain associated consts like `C`
@@ -121,31 +121,31 @@ LL |     C::A; //~ ERROR associated constant `A` is private
 error[E0223]: ambiguous associated type
   --> $DIR/trait-item-privacy.rs:115:12
    |
-LL |     let _: S::A; //~ ERROR ambiguous associated type
+LL |     let _: S::A;
    |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
   --> $DIR/trait-item-privacy.rs:116:12
    |
-LL |     let _: S::B; //~ ERROR ambiguous associated type
+LL |     let _: S::B;
    |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::B`
 
 error[E0223]: ambiguous associated type
   --> $DIR/trait-item-privacy.rs:117:12
    |
-LL |     let _: S::C; //~ ERROR ambiguous associated type
+LL |     let _: S::C;
    |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::C`
 
 error: associated type `A` is private
   --> $DIR/trait-item-privacy.rs:119:12
    |
-LL |     let _: T::A; //~ ERROR associated type `A` is private
+LL |     let _: T::A;
    |            ^^^^
 
 error: associated type `A` is private
   --> $DIR/trait-item-privacy.rs:128:9
    |
-LL |         A = u8, //~ ERROR associated type `A` is private
+LL |         A = u8,
    |         ^^^^^^
 
 error: aborting due to 15 previous errors

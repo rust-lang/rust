@@ -1,13 +1,13 @@
 error[E0423]: expected value, found type alias `m1::S`
   --> $DIR/namespace-mix.rs:34:11
    |
-LL |     check(m1::S); //~ ERROR expected value, found type alias `m1::S`
+LL |     check(m1::S);
    |           ^^^^^
    |
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
-LL |     check(m1::TS); //~ ERROR expected value, found type alias `m1::S`
+LL |     check(m1::TS);
    |               ^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
@@ -19,13 +19,13 @@ LL | use namespace_mix::xm2::S;
 error[E0423]: expected value, found type alias `xm1::S`
   --> $DIR/namespace-mix.rs:40:11
    |
-LL |     check(xm1::S); //~ ERROR expected value, found type alias `xm1::S`
+LL |     check(xm1::S);
    |           ^^^^^^
    |
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
-LL |     check(xm1::TS); //~ ERROR expected value, found type alias `xm1::S`
+LL |     check(xm1::TS);
    |                ^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
@@ -37,11 +37,11 @@ LL | use namespace_mix::xm2::S;
 error[E0423]: expected value, found struct variant `m7::V`
   --> $DIR/namespace-mix.rs:100:11
    |
-LL |     check(m7::V); //~ ERROR expected value, found struct variant `m7::V`
+LL |     check(m7::V);
    |           ^^^^^ did you mean `m7::V { /* fields */ }`?
 help: a tuple variant with a similar name exists
    |
-LL |     check(m7::TV); //~ ERROR expected value, found struct variant `m7::V`
+LL |     check(m7::TV);
    |               ^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
@@ -53,11 +53,11 @@ LL | use namespace_mix::xm8::V;
 error[E0423]: expected value, found struct variant `xm7::V`
   --> $DIR/namespace-mix.rs:106:11
    |
-LL |     check(xm7::V); //~ ERROR expected value, found struct variant `xm7::V`
+LL |     check(xm7::V);
    |           ^^^^^^ did you mean `xm7::V { /* fields */ }`?
 help: a tuple variant with a similar name exists
    |
-LL |     check(xm7::TV); //~ ERROR expected value, found struct variant `xm7::V`
+LL |     check(xm7::TV);
    |                ^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
@@ -69,7 +69,7 @@ LL | use namespace_mix::xm8::V;
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:33:5
    |
-LL |     check(m1::S{}); //~ ERROR c::Item
+LL |     check(m1::S{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -81,7 +81,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::S: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:35:5
    |
-LL |     check(m2::S{}); //~ ERROR c::S
+LL |     check(m2::S{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::S`
    |
 note: required by `check`
@@ -93,7 +93,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:36:5
    |
-LL |     check(m2::S); //~ ERROR c::Item
+LL |     check(m2::S);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -105,7 +105,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:39:5
    |
-LL |     check(xm1::S{}); //~ ERROR c::Item
+LL |     check(xm1::S{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -117,7 +117,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::S: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:41:5
    |
-LL |     check(xm2::S{}); //~ ERROR c::S
+LL |     check(xm2::S{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::S`
    |
 note: required by `check`
@@ -129,7 +129,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:42:5
    |
-LL |     check(xm2::S); //~ ERROR c::Item
+LL |     check(xm2::S);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -141,7 +141,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:55:5
    |
-LL |     check(m3::TS{}); //~ ERROR c::Item
+LL |     check(m3::TS{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -153,7 +153,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `fn() -> c::TS {c::TS}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:56:5
    |
-LL |     check(m3::TS); //~ ERROR c::TS
+LL |     check(m3::TS);
    |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> c::TS {c::TS}`
    |
 note: required by `check`
@@ -165,7 +165,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::TS: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:57:5
    |
-LL |     check(m4::TS{}); //~ ERROR c::TS
+LL |     check(m4::TS{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::TS`
    |
 note: required by `check`
@@ -177,7 +177,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:58:5
    |
-LL |     check(m4::TS); //~ ERROR c::Item
+LL |     check(m4::TS);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -189,7 +189,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:61:5
    |
-LL |     check(xm3::TS{}); //~ ERROR c::Item
+LL |     check(xm3::TS{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -201,7 +201,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:62:5
    |
-LL |     check(xm3::TS); //~ ERROR c::TS
+LL |     check(xm3::TS);
    |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
    |
 note: required by `check`
@@ -213,7 +213,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::TS: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:63:5
    |
-LL |     check(xm4::TS{}); //~ ERROR c::TS
+LL |     check(xm4::TS{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::TS`
    |
 note: required by `check`
@@ -225,7 +225,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:64:5
    |
-LL |     check(xm4::TS); //~ ERROR c::Item
+LL |     check(xm4::TS);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -237,7 +237,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:77:5
    |
-LL |     check(m5::US{}); //~ ERROR c::Item
+LL |     check(m5::US{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -249,7 +249,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::US: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:78:5
    |
-LL |     check(m5::US); //~ ERROR c::US
+LL |     check(m5::US);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::US`
    |
 note: required by `check`
@@ -261,7 +261,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::US: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:79:5
    |
-LL |     check(m6::US{}); //~ ERROR c::US
+LL |     check(m6::US{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::US`
    |
 note: required by `check`
@@ -273,7 +273,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:80:5
    |
-LL |     check(m6::US); //~ ERROR c::Item
+LL |     check(m6::US);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -285,7 +285,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:83:5
    |
-LL |     check(xm5::US{}); //~ ERROR c::Item
+LL |     check(xm5::US{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -297,7 +297,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::US: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:84:5
    |
-LL |     check(xm5::US); //~ ERROR c::US
+LL |     check(xm5::US);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::US`
    |
 note: required by `check`
@@ -309,7 +309,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::US: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:85:5
    |
-LL |     check(xm6::US{}); //~ ERROR c::US
+LL |     check(xm6::US{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::US`
    |
 note: required by `check`
@@ -321,7 +321,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:86:5
    |
-LL |     check(xm6::US); //~ ERROR c::Item
+LL |     check(xm6::US);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -333,7 +333,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:99:5
    |
-LL |     check(m7::V{}); //~ ERROR c::Item
+LL |     check(m7::V{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -345,7 +345,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:101:5
    |
-LL |     check(m8::V{}); //~ ERROR c::E
+LL |     check(m8::V{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::E`
    |
 note: required by `check`
@@ -357,7 +357,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:102:5
    |
-LL |     check(m8::V); //~ ERROR c::Item
+LL |     check(m8::V);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -369,7 +369,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:105:5
    |
-LL |     check(xm7::V{}); //~ ERROR c::Item
+LL |     check(xm7::V{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -381,7 +381,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:107:5
    |
-LL |     check(xm8::V{}); //~ ERROR c::E
+LL |     check(xm8::V{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::E`
    |
 note: required by `check`
@@ -393,7 +393,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:108:5
    |
-LL |     check(xm8::V); //~ ERROR c::Item
+LL |     check(xm8::V);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -405,7 +405,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:121:5
    |
-LL |     check(m9::TV{}); //~ ERROR c::Item
+LL |     check(m9::TV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -417,7 +417,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `fn() -> c::E {c::E::TV}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:122:5
    |
-LL |     check(m9::TV); //~ ERROR c::E
+LL |     check(m9::TV);
    |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> c::E {c::E::TV}`
    |
 note: required by `check`
@@ -429,7 +429,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:123:5
    |
-LL |     check(mA::TV{}); //~ ERROR c::E
+LL |     check(mA::TV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::E`
    |
 note: required by `check`
@@ -441,7 +441,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:124:5
    |
-LL |     check(mA::TV); //~ ERROR c::Item
+LL |     check(mA::TV);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -453,7 +453,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:127:5
    |
-LL |     check(xm9::TV{}); //~ ERROR c::Item
+LL |     check(xm9::TV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -465,7 +465,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `fn() -> namespace_mix::c::E {namespace_mix::c::E::TV}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:128:5
    |
-LL |     check(xm9::TV); //~ ERROR c::E
+LL |     check(xm9::TV);
    |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::E {namespace_mix::c::E::TV}`
    |
 note: required by `check`
@@ -477,7 +477,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:129:5
    |
-LL |     check(xmA::TV{}); //~ ERROR c::E
+LL |     check(xmA::TV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::E`
    |
 note: required by `check`
@@ -489,7 +489,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:130:5
    |
-LL |     check(xmA::TV); //~ ERROR c::Item
+LL |     check(xmA::TV);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -501,7 +501,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:143:5
    |
-LL |     check(mB::UV{}); //~ ERROR c::Item
+LL |     check(mB::UV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -513,7 +513,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:144:5
    |
-LL |     check(mB::UV); //~ ERROR c::E
+LL |     check(mB::UV);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::E`
    |
 note: required by `check`
@@ -525,7 +525,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:145:5
    |
-LL |     check(mC::UV{}); //~ ERROR c::E
+LL |     check(mC::UV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `c::E`
    |
 note: required by `check`
@@ -537,7 +537,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:146:5
    |
-LL |     check(mC::UV); //~ ERROR c::Item
+LL |     check(mC::UV);
    |     ^^^^^ the trait `Impossible` is not implemented for `c::Item`
    |
 note: required by `check`
@@ -549,7 +549,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:149:5
    |
-LL |     check(xmB::UV{}); //~ ERROR c::Item
+LL |     check(xmB::UV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`
@@ -561,7 +561,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:150:5
    |
-LL |     check(xmB::UV); //~ ERROR c::E
+LL |     check(xmB::UV);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::E`
    |
 note: required by `check`
@@ -573,7 +573,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::E: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:151:5
    |
-LL |     check(xmC::UV{}); //~ ERROR c::E
+LL |     check(xmC::UV{});
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::E`
    |
 note: required by `check`
@@ -585,7 +585,7 @@ LL | fn check<T: Impossible>(_: T) {}
 error[E0277]: the trait bound `namespace_mix::c::Item: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:152:5
    |
-LL |     check(xmC::UV); //~ ERROR c::Item
+LL |     check(xmC::UV);
    |     ^^^^^ the trait `Impossible` is not implemented for `namespace_mix::c::Item`
    |
 note: required by `check`

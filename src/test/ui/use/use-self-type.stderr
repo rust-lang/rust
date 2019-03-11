@@ -1,13 +1,13 @@
 error[E0433]: failed to resolve: use of undeclared type or module `Self`
   --> $DIR/use-self-type.rs:7:16
    |
-LL |         pub(in Self::f) struct Z; //~ ERROR use of undeclared type or module `Self`
+LL |         pub(in Self::f) struct Z;
    |                ^^^^ use of undeclared type or module `Self`
 
 error[E0432]: unresolved import `Self`
   --> $DIR/use-self-type.rs:6:13
    |
-LL |         use Self::f; //~ ERROR unresolved import
+LL |         use Self::f;
    |             ^^^^ use of undeclared type or module `Self`
 
 error: aborting due to 2 previous errors

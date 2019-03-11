@@ -8,7 +8,7 @@ LL | | {
 LL | | }
    | |_- first implementation here
 LL | 
-LL |   impl IntoPyDictPointer for () //~ ERROR conflicting implementations
+LL |   impl IntoPyDictPointer for ()
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
    |
    = note: upstream crates may add new impl of trait `std::iter::Iterator` for type `()` in future versions

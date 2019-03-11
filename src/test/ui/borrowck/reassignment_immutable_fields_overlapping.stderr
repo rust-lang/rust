@@ -3,7 +3,7 @@ error[E0594]: cannot assign to field `x.a` of immutable binding
    |
 LL |     let x: Foo;
    |         - help: make this binding mutable: `mut x`
-LL |     x.a = 1;  //~ ERROR
+LL |     x.a = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.b` of immutable binding
@@ -11,8 +11,8 @@ error[E0594]: cannot assign to field `x.b` of immutable binding
    |
 LL |     let x: Foo;
    |         - help: make this binding mutable: `mut x`
-LL |     x.a = 1;  //~ ERROR
-LL |     x.b = 22; //~ ERROR
+LL |     x.a = 1;
+LL |     x.b = 22;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error: aborting due to 2 previous errors

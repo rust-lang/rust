@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `u8: Tr` is not satisfied
   --> $DIR/issue-29595.rs:6:17
    |
-LL |     let a: u8 = Tr::C; //~ ERROR the trait bound `u8: Tr` is not satisfied
+LL |     let a: u8 = Tr::C;
    |                 ^^^^^ the trait `Tr` is not implemented for `u8`
    |
 note: required by `Tr::C`

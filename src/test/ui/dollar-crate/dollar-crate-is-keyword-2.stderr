@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:6:16
    |
-LL |         use a::$crate::b; //~ ERROR `$crate` in paths can only be used in start position
+LL |         use a::$crate::b;
    |                ^^^^^^ `$crate` in paths can only be used in start position
 ...
 LL | m!();
@@ -10,7 +10,7 @@ LL | m!();
 error[E0432]: unresolved import `a::$crate`
   --> $DIR/dollar-crate-is-keyword-2.rs:5:13
    |
-LL |         use a::$crate; //~ ERROR unresolved import `a::$crate`
+LL |         use a::$crate;
    |             ^^^^^^^^^ no `$crate` in `a`
 ...
 LL | m!();
@@ -19,7 +19,7 @@ LL | m!();
 error[E0433]: failed to resolve: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:7:21
    |
-LL |         type A = a::$crate; //~ ERROR `$crate` in paths can only be used in start position
+LL |         type A = a::$crate;
    |                     ^^^^^^ `$crate` in paths can only be used in start position
 ...
 LL | m!();

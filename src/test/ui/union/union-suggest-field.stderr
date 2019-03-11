@@ -7,13 +7,13 @@ LL |     let u = U { principle: 0 };
 error[E0609]: no field `principial` on type `U`
   --> $DIR/union-suggest-field.rs:14:15
    |
-LL |     let w = u.principial; //~ ERROR no field `principial` on type `U`
+LL |     let w = u.principial;
    |               ^^^^^^^^^^ help: a field with a similar name exists: `principal`
 
 error[E0615]: attempted to take value of method `calculate` on type `U`
   --> $DIR/union-suggest-field.rs:18:15
    |
-LL |     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
+LL |     let y = u.calculate;
    |               ^^^^^^^^^ help: use parentheses to call the method: `calculate()`
 
 error: aborting due to 3 previous errors

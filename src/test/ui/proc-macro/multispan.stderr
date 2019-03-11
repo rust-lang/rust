@@ -1,85 +1,85 @@
 error: hello to you, too!
   --> $DIR/multispan.rs:14:5
    |
-LL |     hello!(hi); //~ ERROR hello to you, too!
+LL |     hello!(hi);
    |     ^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:14:12
    |
-LL |     hello!(hi); //~ ERROR hello to you, too!
+LL |     hello!(hi);
    |            ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:17:5
    |
-LL |     hello!(hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hi);
    |     ^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:17:12
    |
-LL |     hello!(hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hi);
    |            ^^ ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:20:5
    |
-LL |     hello!(hi hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hi hi);
    |     ^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:20:12
    |
-LL |     hello!(hi hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hi hi);
    |            ^^ ^^ ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:23:5
    |
-LL |     hello!(hi hey hi yo hi beep beep hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:23:12
    |
-LL |     hello!(hi hey hi yo hi beep beep hi hi); //~ ERROR hello to you, too!
+LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |            ^^     ^^    ^^           ^^ ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:24:5
    |
-LL |     hello!(hi there, hi how are you? hi... hi.); //~ ERROR hello to you, too!
+LL |     hello!(hi there, hi how are you? hi... hi.);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:24:12
    |
-LL |     hello!(hi there, hi how are you? hi... hi.); //~ ERROR hello to you, too!
+LL |     hello!(hi there, hi how are you? hi... hi.);
    |            ^^        ^^              ^^    ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:25:5
    |
-LL |     hello!(whoah. hi di hi di ho); //~ ERROR hello to you, too!
+LL |     hello!(whoah. hi di hi di ho);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:25:19
    |
-LL |     hello!(whoah. hi di hi di ho); //~ ERROR hello to you, too!
+LL |     hello!(whoah. hi di hi di ho);
    |                   ^^    ^^
 
 error: hello to you, too!
   --> $DIR/multispan.rs:26:5
    |
-LL |     hello!(hi good hi and good bye); //~ ERROR hello to you, too!
+LL |     hello!(hi good hi and good bye);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:26:12
    |
-LL |     hello!(hi good hi and good bye); //~ ERROR hello to you, too!
+LL |     hello!(hi good hi and good bye);
    |            ^^      ^^
 
 error: aborting due to 7 previous errors

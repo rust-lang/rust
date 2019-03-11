@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_assign.rs:10:5
    |
-LL |     x = return; //~ ERROR unreachable
+LL |     x = return;
    |     ^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,13 +13,13 @@ LL | #![deny(unreachable_code)]
 error: unreachable expression
   --> $DIR/expr_assign.rs:20:14
    |
-LL |         *p = return; //~ ERROR unreachable
+LL |         *p = return;
    |              ^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_assign.rs:26:15
    |
-LL |     *{return; &mut i} = 22; //~ ERROR unreachable
+LL |     *{return; &mut i} = 22;
    |               ^^^^^^
 
 error: aborting due to 3 previous errors

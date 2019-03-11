@@ -3,13 +3,13 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL | impl<'a, T> Foo<'a> for T {
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
-LL |     type Bar = &'a T; //~ ERROR E0309
+LL |     type Bar = &'a T;
    |     ^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a T` does not outlive the data it points at
   --> $DIR/wf-impl-associated-type-region.rs:10:5
    |
-LL |     type Bar = &'a T; //~ ERROR E0309
+LL |     type Bar = &'a T;
    |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -3,7 +3,7 @@ error: expected one of `)` or `,`, found `label`
    |
 LL |     message="the message"
    |                          - expected one of `)` or `,` here
-LL |     label="the label" //~ ERROR expected one of `)` or `,`, found `label`
+LL |     label="the label"
    |     ^^^^^ unexpected token
 
 error: aborting due to previous error

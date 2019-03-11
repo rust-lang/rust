@@ -10,9 +10,9 @@ error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<N
   --> $DIR/issue-20413.rs:8:1
    |
 LL | / impl<T> Foo for T where NoData<T>: Foo {
-LL | | //~^ ERROR: overflow evaluating the requirement
+LL | |
 LL | |   fn answer(self) {
-LL | |   //~^ ERROR: overflow evaluating the requirement
+LL | |
 LL | |     let val: NoData<T> = NoData;
 LL | |   }
 LL | | }
@@ -92,7 +92,7 @@ error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<N
   --> $DIR/issue-20413.rs:10:3
    |
 LL | /   fn answer(self) {
-LL | |   //~^ ERROR: overflow evaluating the requirement
+LL | |
 LL | |     let val: NoData<T> = NoData;
 LL | |   }
    | |___^

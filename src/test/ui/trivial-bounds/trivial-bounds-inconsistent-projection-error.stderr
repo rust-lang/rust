@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn global_bound_is_hidden() -> u8
    |                                -- expected `u8` because of return type
 ...
-LL |     B::get_x() //~ ERROR
+LL |     B::get_x()
    |     ^^^^^^^^^^ expected u8, found i32
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0597]: `p` does not live long enough
   --> $DIR/issue-18118.rs:4:9
    |
-LL |         &p //~ ERROR `p` does not live long enough
+LL |         &p
    |         ^^
    |         |
    |         borrowed value does not live long enough

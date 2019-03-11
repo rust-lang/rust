@@ -1,7 +1,7 @@
 error: invalid macro matcher; matchers must be contained in balanced delimiters
   --> $DIR/invalid-macro-matcher.rs:4:5
    |
-LL |     _ => (); //~ ERROR invalid macro matcher
+LL |     _ => ();
    |     ^
 
 error: aborting due to previous error

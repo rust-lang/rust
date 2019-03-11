@@ -1,13 +1,13 @@
 error[E0107]: wrong number of lifetime arguments: expected 1, found 2
   --> $DIR/generic-arg-mismatch-recover.rs:6:20
    |
-LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arguments
+LL |     Foo::<'static, 'static, ()>(&0);
    |                    ^^^^^^^ unexpected lifetime argument
 
 error[E0308]: mismatched types
   --> $DIR/generic-arg-mismatch-recover.rs:6:33
    |
-LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arguments
+LL |     Foo::<'static, 'static, ()>(&0);
    |                                 ^^ expected (), found integer
    |
    = note: expected type `&'static ()`
@@ -16,13 +16,13 @@ LL |     Foo::<'static, 'static, ()>(&0); //~ ERROR wrong number of lifetime arg
 error[E0107]: wrong number of lifetime arguments: expected 1, found 2
   --> $DIR/generic-arg-mismatch-recover.rs:9:20
    |
-LL |     Bar::<'static, 'static, ()>(&()); //~ ERROR wrong number of lifetime arguments
+LL |     Bar::<'static, 'static, ()>(&());
    |                    ^^^^^^^ unexpected lifetime argument
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/generic-arg-mismatch-recover.rs:9:29
    |
-LL |     Bar::<'static, 'static, ()>(&()); //~ ERROR wrong number of lifetime arguments
+LL |     Bar::<'static, 'static, ()>(&());
    |                             ^^ unexpected type argument
 
 error: aborting due to 4 previous errors

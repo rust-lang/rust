@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x.0`
    |
 LL |     let y = x.0;
    |         - value moved here
-LL |     let z = x.0; //~ ERROR use of moved value: `x.0`
+LL |     let z = x.0;
    |         ^ value used here after move
    |
    = note: move occurs because `x.0` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `x.0`
    |
 LL |     let y = x.0;
    |         - value moved here
-LL |     let z = x.0; //~ ERROR use of moved value: `x.0`
+LL |     let z = x.0;
    |         ^ value used here after move
    |
    = note: move occurs because `x.0` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

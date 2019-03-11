@@ -1,7 +1,7 @@
 error[E0597]: `vec` does not live long enough
   --> $DIR/borrowck-vec-pattern-tail-element-loan.rs:5:26
    |
-LL |     let vec: &[isize] = &vec; //~ ERROR `vec` does not live long enough
+LL |     let vec: &[isize] = &vec;
    |                          ^^^ borrowed value does not live long enough
 ...
 LL | }

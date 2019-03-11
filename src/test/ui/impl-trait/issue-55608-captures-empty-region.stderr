@@ -1,7 +1,7 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/issue-55608-captures-empty-region.rs:6:16
    |
-LL | fn server() -> impl FilterBase2 { //~ ERROR [E0700]
+LL | fn server() -> impl FilterBase2 {
    |                ^^^^^^^^^^^^^^^^
    |
    = note: hidden type `Map2<[closure@$DIR/issue-55608-captures-empty-region.rs:7:36: 7:41]>` captures an empty lifetime

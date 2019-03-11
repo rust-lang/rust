@@ -7,13 +7,13 @@ LL |                 b: &'b MyBox<SomeTrait>)
 LL |                 -> &'b MyBox<SomeTrait>
    |                    --------------------
 LL | {
-LL |     a //~ ERROR lifetime mismatch
+LL |     a
    |     ^ ...but data from `a` is returned here
 
 error[E0308]: mismatched types
   --> $DIR/object-lifetime-default-mybox.rs:31:11
    |
-LL |     load0(ss) //~ ERROR mismatched types
+LL |     load0(ss)
    |           ^^ lifetime mismatch
    |
    = note: expected type `&MyBox<(dyn SomeTrait + 'static)>`

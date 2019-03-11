@@ -1,7 +1,7 @@
 error: expected one of `)`, `,`, or `@`, found `[`
   --> $DIR/pat-lt-bracket-6.rs:2:19
    |
-LL |     let Test(&desc[..]) = x; //~ ERROR: expected one of `)`, `,`, or `@`, found `[`
+LL |     let Test(&desc[..]) = x;
    |                   ^ expected one of `)`, `,`, or `@` here
 
 error: aborting due to previous error

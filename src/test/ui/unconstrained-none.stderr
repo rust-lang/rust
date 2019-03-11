@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/unconstrained-none.rs:4:5
    |
-LL |     None; //~ ERROR type annotations needed [E0282]
+LL |     None;
    |     ^^^^ cannot infer type for `T`
 
 error: aborting due to previous error

@@ -3,7 +3,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `std::vec::Vec
    |
 LL | impl<T: Clone> Foo for T {}
    | ------------------------ first implementation here
-LL | impl<T> Foo for Vec<T> {} //~ ERROR E0119
+LL | impl<T> Foo for Vec<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::vec::Vec<_>`
 
 error[E0119]: conflicting implementations of trait `Bar` for type `(u8, u8)`:
@@ -11,7 +11,7 @@ error[E0119]: conflicting implementations of trait `Bar` for type `(u8, u8)`:
    |
 LL | impl<T> Bar for (T, u8) {}
    | ----------------------- first implementation here
-LL | impl<T> Bar for (u8, T) {} //~ ERROR E0119
+LL | impl<T> Bar for (u8, T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(u8, u8)`
 
 error[E0119]: conflicting implementations of trait `Baz<u8>` for type `u8`:
@@ -19,7 +19,7 @@ error[E0119]: conflicting implementations of trait `Baz<u8>` for type `u8`:
    |
 LL | impl<T> Baz<T> for u8 {}
    | --------------------- first implementation here
-LL | impl<T> Baz<u8> for T {} //~ ERROR E0119
+LL | impl<T> Baz<u8> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
 error[E0119]: conflicting implementations of trait `Qux`:
@@ -27,7 +27,7 @@ error[E0119]: conflicting implementations of trait `Qux`:
    |
 LL | impl<T: Clone> Qux for T {}
    | ------------------------ first implementation here
-LL | impl<T: Eq> Qux for T {} //~ ERROR E0119
+LL | impl<T: Eq> Qux for T {}
    | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error: aborting due to 4 previous errors

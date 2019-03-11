@@ -1,11 +1,11 @@
 error[E0596]: cannot borrow immutable argument `b` as mutable
   --> $DIR/mut-borrow-of-mut-ref.rs:8:12
    |
-LL |     g(&mut b) //~ ERROR cannot borrow
+LL |     g(&mut b)
    |            ^ cannot borrow mutably
 help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
    |
-LL |     g(b) //~ ERROR cannot borrow
+LL |     g(b)
    |       ^
 
 error: aborting due to previous error

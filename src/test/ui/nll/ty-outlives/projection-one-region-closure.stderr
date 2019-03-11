@@ -23,7 +23,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
 ...  |
-LL | |     //~| ERROR
+LL | |
 LL | | }
    | |_^
    |
@@ -76,7 +76,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR
+LL | |
 LL | | }
    | |_^
    |

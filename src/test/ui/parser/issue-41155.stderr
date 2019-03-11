@@ -3,7 +3,7 @@ error: expected one of `(`, `async`, `const`, `default`, `existential`, `extern`
    |
 LL |     pub
    |        - expected one of 9 possible tokens here
-LL | } //~ ERROR expected one of
+LL | }
    | ^ unexpected token
 
 error: aborting due to previous error

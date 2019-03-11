@@ -7,7 +7,7 @@ LL | fn foo<F:FnOnce()>(blk: F) {
    |        consider adding a `Copy` constraint to this type argument
 LL |     blk();
    |     --- value moved here
-LL |     blk(); //~ ERROR use of moved value
+LL |     blk();
    |     ^^^ value used here after move
 
 error: aborting due to previous error

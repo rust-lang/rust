@@ -1,7 +1,7 @@
 error[E0658]: #[doc(keyword = "...")] is experimental (see issue #51315)
   --> $DIR/feature-gate-doc_keyword.rs:1:1
    |
-LL | #[doc(keyword = "match")] //~ ERROR: #[doc(keyword = "...")] is experimental
+LL | #[doc(keyword = "match")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(doc_keyword)] to the crate attributes to enable

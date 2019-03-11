@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `false`
   --> $DIR/bad-value-ident-false.rs:1:4
    |
-LL | fn false() { } //~ ERROR expected identifier, found keyword `false`
+LL | fn false() { }
    |    ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
-LL | fn r#false() { } //~ ERROR expected identifier, found keyword `false`
+LL | fn r#false() { }
    |    ^^^^^^^
 
 error: aborting due to previous error

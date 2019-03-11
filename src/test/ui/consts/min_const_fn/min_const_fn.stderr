@@ -1,7 +1,7 @@
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:37:25
    |
-LL |     const fn into_inner(self) -> T { self.0 } //~ destructors cannot be evaluated
+LL |     const fn into_inner(self) -> T { self.0 }
    |                         ^^^^ constant functions cannot evaluate destructors
 
 error[E0723]: mutable references in const fn are unstable (see issue #57563)
@@ -15,7 +15,7 @@ LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:44:28
    |
-LL |     const fn into_inner_lt(self) -> T { self.0 } //~ destructors cannot be evaluated
+LL |     const fn into_inner_lt(self) -> T { self.0 }
    |                            ^^^^ constant functions cannot evaluate destructors
 
 error[E0723]: mutable references in const fn are unstable (see issue #57563)
@@ -29,7 +29,7 @@ LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:51:27
    |
-LL |     const fn into_inner_s(self) -> T { self.0 } //~ ERROR destructors
+LL |     const fn into_inner_s(self) -> T { self.0 }
    |                           ^^^^ constant functions cannot evaluate destructors
 
 error[E0723]: mutable references in const fn are unstable (see issue #57563)
@@ -99,7 +99,7 @@ LL | const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
 error[E0723]: cannot access `static` items in const fn (see issue #57563)
   --> $DIR/min_const_fn.rs:90:27
    |
-LL | const fn foo25() -> u32 { BAR } //~ ERROR cannot access `static` items in const fn
+LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -107,7 +107,7 @@ LL | const fn foo25() -> u32 { BAR } //~ ERROR cannot access `static` items in c
 error[E0723]: cannot access `static` items in const fn (see issue #57563)
   --> $DIR/min_const_fn.rs:91:36
    |
-LL | const fn foo26() -> &'static u32 { &BAR } //~ ERROR cannot access `static` items
+LL | const fn foo26() -> &'static u32 { &BAR }
    |                                    ^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -155,7 +155,7 @@ LL | const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
 error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
   --> $DIR/min_const_fn.rs:102:29
    |
-LL | const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
+LL | const fn foo30_5(b: bool) { while b { } }
    |                             ^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -227,7 +227,7 @@ LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
   --> $DIR/min_const_fn.rs:133:22
    |
-LL | const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
+LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -235,7 +235,7 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other 
 error[E0723]: `impl Trait` in const fn is unstable (see issue #57563)
   --> $DIR/min_const_fn.rs:134:23
    |
-LL | const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn is unstable
+LL | const fn no_rpit() -> impl std::fmt::Debug {}
    |                       ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -243,7 +243,7 @@ LL | const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in con
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
   --> $DIR/min_const_fn.rs:135:23
    |
-LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
+LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

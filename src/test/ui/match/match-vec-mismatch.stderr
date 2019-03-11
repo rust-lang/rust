@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `does_not_exist` in this scope
   --> $DIR/match-vec-mismatch.rs:28:11
    |
-LL |     match does_not_exist { //~ ERROR cannot find value `does_not_exist` in this scope
+LL |     match does_not_exist {
    |           ^^^^^^^^^^^^^^ not found in this scope
 
 error[E0529]: expected an array or slice, found `std::string::String`
@@ -13,19 +13,19 @@ LL |         ['f', 'o', ..] => {}
 error[E0527]: pattern requires 1 elements but array has 3
   --> $DIR/match-vec-mismatch.rs:20:9
    |
-LL |         [0] => {}, //~ ERROR pattern requires
+LL |         [0] => {},
    |         ^^^ expected 3 elements
 
 error[E0528]: pattern requires at least 4 elements but array has 3
   --> $DIR/match-vec-mismatch.rs:25:9
    |
-LL |         [0, 1, 2, 3, x..] => {} //~ ERROR pattern requires
+LL |         [0, 1, 2, 3, x..] => {}
    |         ^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
 
 error[E0282]: type annotations needed
   --> $DIR/match-vec-mismatch.rs:36:9
    |
-LL |         [] => {}  //~ ERROR type annotations needed
+LL |         [] => {}
    |         ^^ cannot infer type
    |
    = note: type must be known at this point

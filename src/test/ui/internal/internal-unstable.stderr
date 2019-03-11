@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:33:25
    |
-LL |     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of unstable
+LL |     pass_through_allow!(internal_unstable::unstable());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(function)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of un
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:35:27
    |
-LL |     pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of unstable
+LL |     pass_through_noallow!(internal_unstable::unstable());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(function)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of 
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:39:22
    |
-LL |     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unstable
+LL |     println!("{:?}", internal_unstable::unstable());
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(function)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL |     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unsta
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:41:10
    |
-LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
+LL |     bar!(internal_unstable::unstable());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(function)] to the crate attributes to enable
@@ -33,10 +33,10 @@ LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
 error[E0658]: use of unstable library feature 'function'
   --> $DIR/internal-unstable.rs:12:9
    |
-LL |         internal_unstable::unstable(); //~ ERROR use of unstable
+LL |         internal_unstable::unstable();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
+LL |     bar!(internal_unstable::unstable());
    |     ------------------------------------ in this macro invocation
    |
    = help: add #![feature(function)] to the crate attributes to enable

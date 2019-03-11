@@ -1,7 +1,7 @@
 error[E0658]: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand (see issue #29721)
   --> $DIR/feature-gate-no-debug.rs:3:1
    |
-LL | #[no_debug] //~ ERROR the `#[no_debug]` attribute was
+LL | #[no_debug]
    | ^^^^^^^^^^^
    |
    = help: add #![feature(no_debug)] to the crate attributes to enable

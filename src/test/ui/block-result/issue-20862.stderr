@@ -14,7 +14,7 @@ error[E0618]: expected function, found `()`
    |
 LL | / fn foo(x: i32) {
 LL | |     |y| x + y
-LL | | //~^ ERROR: mismatched types
+LL | |
 LL | | }
    | |_- `foo` defined here returns `()`
 ...

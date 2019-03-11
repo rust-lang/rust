@@ -7,7 +7,7 @@ LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
 error[E0432]: unresolved import `prelude`
   --> $DIR/issue-55897.rs:1:5
    |
-LL | use prelude::*; //~ ERROR unresolved import `prelude`
+LL | use prelude::*;
    |     ^^^^^^^
    |     |
    |     unresolved import

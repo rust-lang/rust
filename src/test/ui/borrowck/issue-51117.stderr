@@ -3,7 +3,7 @@ error[E0499]: cannot borrow `*bar` as mutable more than once at a time
    |
 LL |         Some(baz) => {
    |              --- first mutable borrow occurs here
-LL |             bar.take(); //~ ERROR cannot borrow
+LL |             bar.take();
    |             ^^^ second mutable borrow occurs here
 ...
 LL |     }

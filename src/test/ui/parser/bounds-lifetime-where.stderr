@@ -1,7 +1,7 @@
 error: expected one of `=`, lifetime, or type, found `,`
   --> $DIR/bounds-lifetime-where.rs:8:14
    |
-LL | type A where , = u8; //~ ERROR expected one of `=`, lifetime, or type, found `,`
+LL | type A where , = u8;
    |              ^ expected one of `=`, lifetime, or type here
 
 error: aborting due to previous error

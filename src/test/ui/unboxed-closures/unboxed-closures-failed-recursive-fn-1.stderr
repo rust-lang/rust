@@ -16,7 +16,7 @@ error[E0373]: closure may outlive the current function, but it borrows `factoria
    |
 LL |     let f = |x: u32| -> u32 {
    |             ^^^^^^^^^^^^^^^ may outlive borrowed value `factorial`
-LL |         //~^ ERROR closure may outlive the current function, but it borrows `factorial`
+LL |
 LL |         let g = factorial.as_ref().unwrap();
    |                 --------- `factorial` is borrowed here
 help: to force the closure to take ownership of `factorial` (and any other referenced variables), use the `move` keyword

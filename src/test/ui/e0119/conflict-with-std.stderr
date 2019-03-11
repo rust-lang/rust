@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `std::convert::AsRef<Q>` for type `std::boxed::Box<Q>`:
   --> $DIR/conflict-with-std.rs:6:1
    |
-LL | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
+LL | impl AsRef<Q> for Box<Q> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
@@ -11,7 +11,7 @@ LL | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
 error[E0119]: conflicting implementations of trait `std::convert::From<S>` for type `S`:
   --> $DIR/conflict-with-std.rs:13:1
    |
-LL | impl From<S> for S { //~ ERROR conflicting implementations
+LL | impl From<S> for S {
    | ^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
@@ -20,7 +20,7 @@ LL | impl From<S> for S { //~ ERROR conflicting implementations
 error[E0119]: conflicting implementations of trait `std::convert::TryFrom<X>` for type `X`:
   --> $DIR/conflict-with-std.rs:20:1
    |
-LL | impl TryFrom<X> for X { //~ ERROR conflicting implementations
+LL | impl TryFrom<X> for X {
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:

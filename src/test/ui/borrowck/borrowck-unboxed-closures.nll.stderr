@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `f` as immutable because it is also borrowed as muta
    |
 LL |     let g = &mut f;
    |             ------ mutable borrow occurs here
-LL |     f(1, 2);    //~ ERROR cannot borrow `f` as immutable
+LL |     f(1, 2);
    |     ^ immutable borrow occurs here
 LL |     use_mut(g);
    |             - mutable borrow later used here
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
    |
 LL | fn b<F:FnMut(isize, isize) -> isize>(f: F) {
    |                                      - help: consider changing this to be mutable: `mut f`
-LL |     f(1, 2);    //~ ERROR cannot borrow immutable argument
+LL |     f(1, 2);
    |     ^ cannot borrow as mutable
 
 error[E0382]: use of moved value: `f`
@@ -25,7 +25,7 @@ LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
    |      consider adding a `Copy` constraint to this type argument
 LL |     f(1, 2);
    |     - value moved here
-LL |     f(1, 2);    //~ ERROR use of moved value
+LL |     f(1, 2);
    |     ^ value used here after move
 
 error: aborting due to 3 previous errors

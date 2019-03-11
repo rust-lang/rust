@@ -4,7 +4,7 @@ error[E0594]: cannot assign to `**t1` which is behind a `&` reference
 LL |     let t1 = t0;
    |         -- help: consider changing this to be a mutable reference: `&mut &mut isize`
 LL |     let p: &isize = &**t0;
-LL |     **t1 = 22; //~ ERROR cannot assign
+LL |     **t1 = 22;
    |     ^^^^^^^^^ `t1` is a `&` reference, so the data it refers to cannot be written
 
 error[E0502]: cannot borrow `**t0` as immutable because it is also borrowed as mutable
@@ -12,7 +12,7 @@ error[E0502]: cannot borrow `**t0` as immutable because it is also borrowed as m
    |
 LL |     let t1 = &mut *t0;
    |              -------- mutable borrow occurs here
-LL |     let p: &isize = &**t0; //~ ERROR cannot borrow
+LL |     let p: &isize = &**t0;
    |                     ^^^^^ immutable borrow occurs here
 LL |     **t1 = 22;
    |     --------- mutable borrow later used here
@@ -22,7 +22,7 @@ error[E0596]: cannot borrow `**t0` as mutable, as it is behind a `&` reference
    |
 LL | fn foo4(t0: & &mut isize) {
    |             ------------ help: consider changing this to be a mutable reference: `&mut &mut isize`
-LL |     let x:  &mut isize = &mut **t0; //~ ERROR cannot borrow
+LL |     let x:  &mut isize = &mut **t0;
    |                          ^^^^^^^^^ `t0` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 3 previous errors

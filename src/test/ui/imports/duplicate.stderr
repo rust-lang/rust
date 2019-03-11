@@ -3,7 +3,7 @@ error[E0252]: the name `foo` is defined multiple times
    |
 LL |     use a::foo;
    |         ------ previous import of the value `foo` here
-LL |     use a::foo; //~ ERROR the name `foo` is defined multiple times
+LL |     use a::foo;
    |     ----^^^^^^-
    |     |   |
    |     |   `foo` reimported here
@@ -14,7 +14,7 @@ LL |     use a::foo; //~ ERROR the name `foo` is defined multiple times
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/duplicate.rs:46:15
    |
-LL |     use self::foo::bar; //~ ERROR `foo` is ambiguous
+LL |     use self::foo::bar;
    |               ^^^ ambiguous name
    |
 note: `foo` could refer to the module imported here
@@ -33,7 +33,7 @@ LL |     use self::m2::*;
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/duplicate.rs:35:8
    |
-LL |     f::foo(); //~ ERROR `foo` is ambiguous
+LL |     f::foo();
    |        ^^^ ambiguous name
    |
 note: `foo` could refer to the function imported here
@@ -52,7 +52,7 @@ LL |     pub use b::*;
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/duplicate.rs:49:9
    |
-LL |         foo::bar(); //~ ERROR `foo` is ambiguous
+LL |         foo::bar();
    |         ^^^ ambiguous name
    |
 note: `foo` could refer to the module imported here

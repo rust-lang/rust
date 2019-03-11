@@ -1,7 +1,7 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:7:7
    |
-LL |     (&x).clone() //~ ERROR `x` does not live long enough
+LL |     (&x).clone()
    |       ^ borrowed value does not live long enough
 LL | }
    | - borrowed value only lives until here

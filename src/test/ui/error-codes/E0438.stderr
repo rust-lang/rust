@@ -1,7 +1,7 @@
 error[E0438]: const `BAR` is not a member of trait `Bar`
   --> $DIR/E0438.rs:4:5
    |
-LL |     const BAR: bool = true; //~ ERROR E0438
+LL |     const BAR: bool = true;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Bar`
 
 error: aborting due to previous error

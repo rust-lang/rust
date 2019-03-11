@@ -1,7 +1,7 @@
 error[E0184]: the trait `Copy` may not be implemented for this type; the type has a destructor
   --> $DIR/E0184.rs:1:10
    |
-LL | #[derive(Copy)] //~ ERROR E0184
+LL | #[derive(Copy)]
    |          ^^^^ Copy not allowed on types with destructors
 
 error: aborting due to previous error

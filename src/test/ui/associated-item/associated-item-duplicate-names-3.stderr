@@ -3,7 +3,7 @@ error[E0201]: duplicate definitions with name `Bar`:
    |
 LL |     type Bar = i16;
    |     --------------- previous definition of `Bar` here
-LL |     type Bar = u16; //~ ERROR duplicate definitions
+LL |     type Bar = u16;
    |     ^^^^^^^^^^^^^^^ duplicate definition
 
 error: aborting due to previous error

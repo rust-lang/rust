@@ -6,7 +6,7 @@ LL |     let x: Box<_> = box 1;
 ...
 LL |         (1, _) if take(x) => (),
    |                        - value moved here
-LL |         (_, 2) if take(x) => (), //~ ERROR use of moved value: `x`
+LL |         (_, 2) if take(x) => (),
    |                        ^ value used here after move
 
 error: aborting due to previous error

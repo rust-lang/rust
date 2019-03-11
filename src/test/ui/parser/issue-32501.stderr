@@ -1,7 +1,7 @@
 error: expected identifier, found reserved identifier `_`
   --> $DIR/issue-32501.rs:7:13
    |
-LL |     let mut _ = 0; //~ ERROR expected identifier, found reserved identifier `_`
+LL |     let mut _ = 0;
    |             ^ expected identifier, found reserved identifier
 
 error: aborting due to previous error

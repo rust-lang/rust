@@ -1,7 +1,7 @@
 error[E0658]: the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable
   --> $DIR/feature-gate-profiler-runtime.rs:1:1
    |
-LL | #![profiler_runtime] //~ ERROR the `#[profiler_runtime]` attribute is
+LL | #![profiler_runtime]
    | ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(profiler_runtime)] to the crate attributes to enable

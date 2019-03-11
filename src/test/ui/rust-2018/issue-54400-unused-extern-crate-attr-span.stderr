@@ -1,7 +1,7 @@
 error: unused extern crate
   --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:12:1
    |
-LL | / #[cfg(blandiloquence)] //~ HELP remove it
+LL | / #[cfg(blandiloquence)]
 LL | | extern crate edition_lint_paths;
    | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    | |________________________________|

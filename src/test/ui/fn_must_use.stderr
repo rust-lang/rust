@@ -1,7 +1,7 @@
 warning: unused return value of `need_to_use_this_value` that must be used
   --> $DIR/fn_must_use.rs:55:5
    |
-LL |     need_to_use_this_value(); //~ WARN unused return value
+LL |     need_to_use_this_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -14,7 +14,7 @@ LL | #![warn(unused_must_use)]
 warning: unused return value of `MyStruct::need_to_use_this_method_value` that must be used
   --> $DIR/fn_must_use.rs:60:5
    |
-LL |     m.need_to_use_this_method_value(); //~ WARN unused return value
+LL |     m.need_to_use_this_method_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused return value of `EvenNature::is_even` that must be used
@@ -34,24 +34,24 @@ LL |     MyStruct::need_to_use_this_associated_function_value();
 warning: unused return value of `std::cmp::PartialEq::eq` that must be used
   --> $DIR/fn_must_use.rs:70:5
    |
-LL |     2.eq(&3); //~ WARN unused return value
+LL |     2.eq(&3);
    |     ^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` that must be used
   --> $DIR/fn_must_use.rs:71:5
    |
-LL |     m.eq(&n); //~ WARN unused return value
+LL |     m.eq(&n);
    |     ^^^^^^^^^
 
 warning: unused comparison that must be used
   --> $DIR/fn_must_use.rs:74:5
    |
-LL |     2 == 3; //~ WARN unused comparison
+LL |     2 == 3;
    |     ^^^^^^
 
 warning: unused comparison that must be used
   --> $DIR/fn_must_use.rs:75:5
    |
-LL |     m == n; //~ WARN unused comparison
+LL |     m == n;
    |     ^^^^^^
 

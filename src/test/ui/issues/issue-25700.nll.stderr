@@ -5,7 +5,7 @@ LL |     let t = S::<()>(None);
    |         - move occurs because `t` has type `S<()>`, which does not implement the `Copy` trait
 LL |     drop(t);
    |          - value moved here
-LL |     drop(t); //~ ERROR use of moved value
+LL |     drop(t);
    |          ^ value used here after move
 
 error: aborting due to previous error

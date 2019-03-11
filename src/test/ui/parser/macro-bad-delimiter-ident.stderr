@@ -1,7 +1,7 @@
 error: expected `(` or `{`, found `<`
   --> $DIR/macro-bad-delimiter-ident.rs:2:14
    |
-LL |     foo! bar < //~ ERROR expected `(` or `{`, found `<`
+LL |     foo! bar <
    |              ^ expected `(` or `{`
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error: expected item, found `;`
   --> $DIR/issue-49040.rs:1:28
    |
-LL | #![allow(unused_variables)]; //~ ERROR expected item, found `;`
+LL | #![allow(unused_variables)];
    |                            ^ help: remove this semicolon
 
 error[E0601]: `main` function not found in crate `issue_49040`

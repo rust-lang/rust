@@ -1,7 +1,7 @@
 error[E0046]: not all trait items implemented, missing: `partial_cmp`
   --> $DIR/issue-3344.rs:3:1
    |
-LL | impl PartialOrd for Thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
+LL | impl PartialOrd for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `partial_cmp` in implementation
    |
    = note: `partial_cmp` from trait: `fn(&Self, &Rhs) -> std::option::Option<std::cmp::Ordering>`

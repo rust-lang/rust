@@ -1,7 +1,7 @@
 error[E0392]: parameter `T` is never used
   --> $DIR/E0392.rs:1:10
    |
-LL | enum Foo<T> { Bar } //~ ERROR E0392
+LL | enum Foo<T> { Bar }
    |          ^ unused type parameter
    |
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`

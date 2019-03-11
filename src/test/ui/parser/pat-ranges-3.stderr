@@ -1,7 +1,7 @@
 error: expected one of `:`, `;`, or `=`, found `+`
   --> $DIR/pat-ranges-3.rs:4:19
    |
-LL |     let 10 ..= 10 + 3 = 12; //~ expected one of `:`, `;`, or `=`, found `+`
+LL |     let 10 ..= 10 + 3 = 12;
    |                   ^ expected one of `:`, `;`, or `=` here
 
 error: aborting due to previous error

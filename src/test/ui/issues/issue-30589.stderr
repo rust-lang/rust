@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `DecoderError` in this scope
   --> $DIR/issue-30589.rs:3:23
    |
-LL | impl fmt::Display for DecoderError { //~ ERROR cannot find type `DecoderError` in this scope
+LL | impl fmt::Display for DecoderError {
    |                       ^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to previous error

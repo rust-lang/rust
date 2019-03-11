@@ -1,7 +1,7 @@
 warning: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
   --> $DIR/suggestions-not-always-applicable.rs:17:5
    |
-LL |     #[foo] //~ WARN: absolute paths must start with
+LL |     #[foo]
    |     ^^^^^^
    |
 note: lint level defined here
@@ -16,7 +16,7 @@ LL | #![warn(rust_2018_compatibility)]
 warning: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
   --> $DIR/suggestions-not-always-applicable.rs:17:5
    |
-LL |     #[foo] //~ WARN: absolute paths must start with
+LL |     #[foo]
    |     ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!

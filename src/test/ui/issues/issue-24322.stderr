@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-24322.rs:8:29
    |
-LL |     let x: &fn(&B) -> u32 = &B::func; //~ ERROR mismatched types
+LL |     let x: &fn(&B) -> u32 = &B::func;
    |                             ^^^^^^^^ expected fn pointer, found fn item
    |
    = note: expected type `&for<'r> fn(&'r B) -> u32`

@@ -5,7 +5,7 @@ LL | fn shared_to_const<'a, 'b>(x: &&'a i32) -> *const &'b i32 {
    |                    --  -- lifetime `'b` defined here
    |                    |
    |                    lifetime `'a` defined here
-LL |     x   //~ ERROR
+LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -15,7 +15,7 @@ LL | fn unique_to_const<'a, 'b>(x: &mut &'a i32) -> *const &'b i32 {
    |                    --  -- lifetime `'b` defined here
    |                    |
    |                    lifetime `'a` defined here
-LL |     x   //~ ERROR
+LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -26,7 +26,7 @@ LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
    |                  |
    |                  lifetime `'a` defined here
 LL |     // Two errors because *mut is invariant
-LL |     x   //~ ERROR
+LL |     x
    |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
 
 error: lifetime may not live long enough
@@ -37,7 +37,7 @@ LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
    |                  |
    |                  lifetime `'a` defined here
 LL |     // Two errors because *mut is invariant
-LL |     x   //~ ERROR
+LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -47,7 +47,7 @@ LL | fn mut_to_const<'a, 'b>(x: *mut &'a i32) -> *const &'b i32 {
    |                 --  -- lifetime `'b` defined here
    |                 |
    |                 lifetime `'a` defined here
-LL |     x   //~ ERROR
+LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -58,7 +58,7 @@ LL | fn array_elem<'a, 'b>(x: &'a i32) -> *const &'b i32 {
    |               |
    |               lifetime `'a` defined here
 ...
-LL |     y   //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -69,7 +69,7 @@ LL | fn array_coerce<'a, 'b>(x: &'a i32) -> *const [&'b i32; 3] {
    |                 |
    |                 lifetime `'a` defined here
 ...
-LL |     y   //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: lifetime may not live long enough
@@ -80,7 +80,7 @@ LL | fn nested_array<'a, 'b>(x: &'a i32) -> *const [&'b i32; 2] {
    |                 |
    |                 lifetime `'a` defined here
 ...
-LL |     y   //~ ERROR
+LL |     y
    |     ^ returning this value requires that `'a` must outlive `'b`
 
 error: aborting due to 8 previous errors

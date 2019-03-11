@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/loop-labeled-break-value.rs:3:29
    |
-LL |         let _: i32 = loop { break }; //~ ERROR mismatched types
+LL |         let _: i32 = loop { break };
    |                             ^^^^^ expected (), found i32
    |
    = note: expected type `()`
@@ -10,7 +10,7 @@ LL |         let _: i32 = loop { break }; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/loop-labeled-break-value.rs:6:37
    |
-LL |         let _: i32 = 'inner: loop { break 'inner }; //~ ERROR mismatched types
+LL |         let _: i32 = 'inner: loop { break 'inner };
    |                                     ^^^^^^^^^^^^ expected (), found i32
    |
    = note: expected type `()`
@@ -19,7 +19,7 @@ LL |         let _: i32 = 'inner: loop { break 'inner }; //~ ERROR mismatched ty
 error[E0308]: mismatched types
   --> $DIR/loop-labeled-break-value.rs:9:45
    |
-LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 } }; //~ ERROR mismatched types
+LL |         let _: i32 = 'inner2: loop { loop { break 'inner2 } };
    |                                             ^^^^^^^^^^^^^ expected (), found i32
    |
    = note: expected type `()`

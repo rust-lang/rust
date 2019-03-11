@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `a` as mutable because `*a` is also borrowed as immu
    |
 LL |         &*a,
    |          -- immutable borrow occurs here
-LL |         rewrite(&mut a)); //~ ERROR cannot borrow
+LL |         rewrite(&mut a));
    |                      ^ - immutable borrow ends here
    |                      |
    |                      mutable borrow occurs here
@@ -13,7 +13,7 @@ error[E0502]: cannot borrow `a` as mutable because `*a` is also borrowed as immu
    |
 LL |         &*a,
    |          -- immutable borrow occurs here
-LL |         rewrite(&mut a)); //~ ERROR cannot borrow
+LL |         rewrite(&mut a));
    |                      ^ - immutable borrow ends here
    |                      |
    |                      mutable borrow occurs here

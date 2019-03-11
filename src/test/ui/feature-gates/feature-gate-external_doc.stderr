@@ -1,7 +1,7 @@
 error[E0658]: #[doc(include = "...")] is experimental (see issue #44732)
   --> $DIR/feature-gate-external_doc.rs:1:1
    |
-LL | #[doc(include="asdf.md")] //~ ERROR: #[doc(include = "...")] is experimental
+LL | #[doc(include="asdf.md")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(external_doc)] to the crate attributes to enable

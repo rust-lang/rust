@@ -1,7 +1,7 @@
 error[E0469]: imported macro not found
   --> $DIR/macro-use-undef.rs:3:24
    |
-LL | #[macro_use(macro_two, no_way)] //~ ERROR imported macro not found
+LL | #[macro_use(macro_two, no_way)]
    |                        ^^^^^^
 
 error: aborting due to previous error

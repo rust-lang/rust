@@ -1,7 +1,7 @@
 error[E0626]: borrow may still be in use when generator yields
   --> $DIR/yield-while-iterating.rs:13:19
    |
-LL |         for p in &x { //~ ERROR
+LL |         for p in &x {
    |                   ^
 LL |             yield();
    |             ------- possible yield occurs here
@@ -14,7 +14,7 @@ LL |     let mut b = || {
 LL |         for p in &mut x {
    |                       - previous borrow occurs due to use of `x` in closure
 ...
-LL |     println!("{}", x[0]); //~ ERROR
+LL |     println!("{}", x[0]);
    |                    ^ immutable borrow occurs here
 LL |     Pin::new(&mut b).resume();
 LL | }

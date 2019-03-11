@@ -3,7 +3,7 @@ error[E0061]: this function takes 1 parameter but 2 parameters were supplied
    |
 LL | fn foo(a: usize) {}
    | ---------------- defined here
-LL | //~^ defined here
+LL |
 LL | fn main() { foo(5, 6) }
    |             ^^^^^^^^^ expected 1 parameter
 

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
   --> $DIR/wf-struct-field.rs:12:5
    |
-LL |     data: IsCopy<A> //~ ERROR E0277
+LL |     data: IsCopy<A>
    |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
    |
    = help: consider adding a `where A: std::marker::Copy` bound

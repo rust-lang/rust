@@ -3,7 +3,7 @@ error[E0201]: duplicate definitions with name `bar`:
    |
 LL |     fn bar(&self) -> isize {1}
    |     -------------------------- previous definition of `bar` here
-LL |     fn bar(&self) -> isize {2} //~ ERROR duplicate definitions
+LL |     fn bar(&self) -> isize {2}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error: aborting due to previous error

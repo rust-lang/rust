@@ -22,7 +22,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
 LL | |     with_signature(cell, t, |cell, t| require(cell, t));
-LL | |     //~^ ERROR
+LL | |
 LL | | }
    | |_^
    |
@@ -66,7 +66,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~^ ERROR
+LL | |
 LL | | }
    | |_^
    |

@@ -1,7 +1,7 @@
 warning: item is named 'lintme'
   --> $DIR/lint-plugin.rs:8:1
    |
-LL | fn lintme() { } //~ WARNING item is named 'lintme'
+LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
    = note: #[warn(test_lint)] on by default

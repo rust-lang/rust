@@ -6,7 +6,7 @@ LL |       let sq =  || { *x * *x };
    |                 |
    |                 borrow of `x` occurs here
 LL | 
-LL |       twice(x); //~ ERROR: cannot move out of
+LL |       twice(x);
    |             ^ move out of `x` occurs here
 LL |       invoke(sq);
    |              -- borrow later used here

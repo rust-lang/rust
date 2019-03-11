@@ -10,7 +10,7 @@ LL | define_other_core!();
 error[E0659]: `Vec` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:13:9
    |
-LL |         Vec::panic!(); //~ ERROR `Vec` is ambiguous
+LL |         Vec::panic!();
    |         ^^^ ambiguous name
    |
    = note: `Vec` could refer to a struct from prelude

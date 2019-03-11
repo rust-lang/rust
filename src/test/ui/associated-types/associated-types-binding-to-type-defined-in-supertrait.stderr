@@ -1,7 +1,7 @@
 error[E0271]: type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:37:10
    |
-LL | fn b() { blue_car(ModelT); } //~ ERROR type mismatch
+LL | fn b() { blue_car(ModelT); }
    |          ^^^^^^^^ expected struct `Black`, found struct `Blue`
    |
    = note: expected type `Black`
@@ -15,7 +15,7 @@ LL | fn blue_car<C:Car<Color=Blue>>(c: C) {
 error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:38:10
    |
-LL | fn c() { black_car(ModelU); } //~ ERROR type mismatch
+LL | fn c() { black_car(ModelU); }
    |          ^^^^^^^^^ expected struct `Blue`, found struct `Black`
    |
    = note: expected type `Blue`

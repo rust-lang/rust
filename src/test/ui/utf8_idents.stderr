@@ -1,7 +1,7 @@
 error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/utf8_idents.rs:2:5
    |
-LL |     'β, //~ ERROR non-ascii idents are not fully supported
+LL |     'β,
    |     ^^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |     'β, //~ ERROR non-ascii idents are not fully supported
 error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/utf8_idents.rs:3:5
    |
-LL |     γ  //~ ERROR non-ascii idents are not fully supported
+LL |     γ
    |     ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     γ  //~ ERROR non-ascii idents are not fully supported
 error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/utf8_idents.rs:8:5
    |
-LL |     δ: usize //~ ERROR non-ascii idents are not fully supported
+LL |     δ: usize
    |     ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL |     δ: usize //~ ERROR non-ascii idents are not fully supported
 error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/utf8_idents.rs:12:9
    |
-LL |     let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
+LL |     let α = 0.00001f64;
    |         ^
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
@@ -33,7 +33,7 @@ LL |     let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
 warning: type parameter `γ` should have an upper camel case name
   --> $DIR/utf8_idents.rs:3:5
    |
-LL |     γ  //~ ERROR non-ascii idents are not fully supported
+LL |     γ
    |     ^ help: convert the identifier to upper camel case: `Γ`
    |
    = note: #[warn(non_camel_case_types)] on by default

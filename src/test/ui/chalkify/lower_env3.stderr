@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_env3.rs:5:5
    |
-LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+LL |     #[rustc_dump_env_program_clauses]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'^0, ^1> { TypeOutlives(^1: '^0) :- FromEnv(&^1). }
@@ -10,7 +10,7 @@ LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
 error: program clause dump
   --> $DIR/lower_env3.rs:10:5
    |
-LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+LL |     #[rustc_dump_env_program_clauses]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'^0, ^1> { TypeOutlives(^1: '^0) :- FromEnv(&^1). }

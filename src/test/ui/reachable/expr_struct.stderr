@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_struct.rs:14:13
    |
-LL |     let x = Foo { a: 22, b: 33, ..return }; //~ ERROR unreachable
+LL |     let x = Foo { a: 22, b: 33, ..return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,19 +13,19 @@ LL | #![deny(unreachable_code)]
 error: unreachable expression
   --> $DIR/expr_struct.rs:19:33
    |
-LL |     let x = Foo { a: return, b: 33, ..return }; //~ ERROR unreachable
+LL |     let x = Foo { a: return, b: 33, ..return };
    |                                 ^^
 
 error: unreachable expression
   --> $DIR/expr_struct.rs:24:39
    |
-LL |     let x = Foo { a: 22, b: return, ..return }; //~ ERROR unreachable
+LL |     let x = Foo { a: 22, b: return, ..return };
    |                                       ^^^^^^
 
 error: unreachable expression
   --> $DIR/expr_struct.rs:29:13
    |
-LL |     let x = Foo { a: 22, b: return }; //~ ERROR unreachable
+LL |     let x = Foo { a: 22, b: return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

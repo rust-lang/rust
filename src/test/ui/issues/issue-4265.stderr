@@ -6,7 +6,7 @@ LL | |         Foo { baz: 0 }.bar();
 LL | |     }
    | |_____- previous definition of `bar` here
 LL | 
-LL | /     fn bar() { //~ ERROR duplicate definitions
+LL | /     fn bar() {
 LL | |     }
    | |_____^ duplicate definition
 

@@ -1,7 +1,7 @@
 error: unknown lint: `clippy`
   --> $DIR/tool_lints-fail.rs:6:9
    |
-LL | #![deny(clippy)] //~ ERROR: unknown lint: `clippy`
+LL | #![deny(clippy)]
    |         ^^^^^^
    |
 note: lint level defined here

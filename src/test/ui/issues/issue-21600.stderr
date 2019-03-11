@@ -1,7 +1,7 @@
 error[E0387]: cannot borrow data mutably in a captured outer variable in an `Fn` closure
   --> $DIR/issue-21600.rs:14:17
    |
-LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
+LL |         call_it(|| x.gen_mut());
    |                 ^^
    |
 help: consider changing this to accept closures that implement `FnMut`
@@ -10,21 +10,21 @@ help: consider changing this to accept closures that implement `FnMut`
 LL |       call_it(|| {
    |  _____________^
 LL | |         call_it(|| x.gen());
-LL | |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
-LL | |         //~^ ERROR cannot borrow data mutably in a captured outer
+LL | |         call_it(|| x.gen_mut());
+LL | |
 LL | |     });
    | |_____^
 
 error[E0387]: cannot borrow data mutably in a captured outer variable in an `Fn` closure
   --> $DIR/issue-21600.rs:14:20
    |
-LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
+LL |         call_it(|| x.gen_mut());
    |                    ^
    |
 help: consider changing this closure to take self by mutable reference
   --> $DIR/issue-21600.rs:14:17
    |
-LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
+LL |         call_it(|| x.gen_mut());
    |                 ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

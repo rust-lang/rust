@@ -1,7 +1,7 @@
 error[E0054]: cannot cast as `bool`
   --> $DIR/E0054.rs:3:24
    |
-LL |     let x_is_nonzero = x as bool; //~ ERROR E0054
+LL |     let x_is_nonzero = x as bool;
    |                        ^^^^^^^^^ help: compare with zero instead: `x != 0`
 
 error: aborting due to previous error

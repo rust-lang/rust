@@ -1,7 +1,7 @@
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/E0084.rs:1:1
    |
-LL | #[repr(i32)] //~ ERROR: E0084
+LL | #[repr(i32)]
    | ^^^^^^^^^^^^
 LL | enum Foo {}
    | ----------- zero-variant enum

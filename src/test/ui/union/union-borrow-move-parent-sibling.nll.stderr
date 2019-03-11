@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borr
    |
 LL |     let a = &mut u.x.0;
    |             ---------- mutable borrow occurs here (via `u.x.0`)
-LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
+LL |     let b = &u.y;
    |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x.0` -- occurs here
 LL |     use_borrow(a);
    |                - mutable borrow later used here
@@ -17,7 +17,7 @@ LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
    |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = u.x.0;
    |             ----- value moved here
-LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
+LL |     let b = u.y;
    |             ^^^ value used here after move
 
 error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0.0`)
@@ -25,7 +25,7 @@ error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borr
    |
 LL |     let a = &mut (u.x.0).0;
    |             -------------- mutable borrow occurs here (via `u.x.0.0`)
-LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
+LL |     let b = &u.y;
    |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x.0.0` -- occurs here
 LL |     use_borrow(a);
    |                - mutable borrow later used here
@@ -39,7 +39,7 @@ LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
    |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = (u.x.0).0;
    |             --------- value moved here
-LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
+LL |     let b = u.y;
    |             ^^^ value used here after move
 
 error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `*u.y`)
@@ -47,7 +47,7 @@ error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borr
    |
 LL |     let a = &mut *u.y;
    |             --------- mutable borrow occurs here (via `*u.y`)
-LL |     let b = &u.x; //~ ERROR cannot borrow `u` (via `u.x`)
+LL |     let b = &u.x;
    |             ^^^^ immutable borrow of `u.x` -- which overlaps with `*u.y` -- occurs here
 LL |     use_borrow(a);
    |                - mutable borrow later used here
@@ -61,7 +61,7 @@ LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
    |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = *u.y;
    |             ---- value moved here
-LL |     let b = u.x; //~ ERROR use of moved value: `u.x`
+LL |     let b = u.x;
    |             ^^^ value used here after move
 
 error: aborting due to 6 previous errors

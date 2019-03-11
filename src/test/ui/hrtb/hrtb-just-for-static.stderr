@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
-LL |     want_hrtb::<StaticInt>() //~ ERROR
+LL |     want_hrtb::<StaticInt>()
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
    |
    = help: the following implementations were found:
@@ -18,7 +18,7 @@ LL | | }
 error[E0277]: the trait bound `for<'a> &'a u32: Foo<&'a isize>` is not satisfied
   --> $DIR/hrtb-just-for-static.rs:30:5
    |
-LL |     want_hrtb::<&'a u32>() //~ ERROR
+LL |     want_hrtb::<&'a u32>()
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `&'a u32`
    |
    = help: the following implementations were found:

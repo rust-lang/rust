@@ -5,7 +5,7 @@ LL |   trait Private<P, R> {
    |   - `Private<<Self as Public>::P, <Self as Public>::R>` declared as private
 ...
 LL | / pub trait Public: Private<
-LL | | //~^ ERROR private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
+LL | |
 LL | |     <Self as Public>::P,
 LL | |     <Self as Public>::R
 ...  |

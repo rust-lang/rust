@@ -3,7 +3,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn foo(mut y: Ref, x: &u32) {
    |               ---     ---- these two types are declared with different lifetimes...
-LL |     y.b = x; //~ ERROR lifetime mismatch
+LL |     y.b = x;
    |           ^ ...but data from `x` flows into `y` here
 
 error: aborting due to previous error

@@ -1,13 +1,13 @@
 error: unexpected token: `;`
   --> $DIR/parse-error-correct.rs:8:15
    |
-LL |     let x = y.;  //~ ERROR unexpected token
+LL |     let x = y.;
    |               ^
 
 error: unexpected token: `(`
   --> $DIR/parse-error-correct.rs:9:15
    |
-LL |     let x = y.();  //~ ERROR unexpected token
+LL |     let x = y.();
    |               ^
 
 error[E0618]: expected function, found `{integer}`
@@ -15,8 +15,8 @@ error[E0618]: expected function, found `{integer}`
    |
 LL |     let y = 42;
    |         - `{integer}` defined here
-LL |     let x = y.;  //~ ERROR unexpected token
-LL |     let x = y.();  //~ ERROR unexpected token
+LL |     let x = y.;
+LL |     let x = y.();
    |             ^---
    |             |
    |             call expression requires function
@@ -24,7 +24,7 @@ LL |     let x = y.();  //~ ERROR unexpected token
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/parse-error-correct.rs:11:15
    |
-LL |     let x = y.foo; //~ ERROR `{integer}` is a primitive type and therefore doesn't have fields [E061
+LL |     let x = y.foo;
    |               ^^^
 
 error: aborting due to 4 previous errors

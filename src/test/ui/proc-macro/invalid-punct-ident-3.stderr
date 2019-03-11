@@ -1,7 +1,7 @@
 error: proc macro panicked
   --> $DIR/invalid-punct-ident-3.rs:6:1
    |
-LL | invalid_raw_ident!(); //~ ERROR proc macro panicked
+LL | invalid_raw_ident!();
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: message: `"self"` is not a valid raw identifier

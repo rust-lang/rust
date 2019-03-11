@@ -3,7 +3,7 @@ error[E0621]: explicit lifetime required in the type of `ap`
    |
 LL | pub unsafe extern "C" fn no_escape0<'a>(_: usize, ap: ...) -> VaList<'a> {
    |                                                       --- help: add explicit lifetime `'a` to the type of `ap`: `core::ffi::VaList<'a>`
-LL |     ap //~ ERROR: explicit lifetime required
+LL |     ap
    |     ^^ lifetime `'a` required
 
 error[E0621]: explicit lifetime required in the type of `ap`
@@ -11,13 +11,13 @@ error[E0621]: explicit lifetime required in the type of `ap`
    |
 LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
    |                                                   --- help: add explicit lifetime `'static` to the type of `ap`: `core::ffi::VaList<'static>`
-LL |     ap //~ ERROR: explicit lifetime required
+LL |     ap
    |     ^^ lifetime `'static` required
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-5.rs:19:28
    |
-LL |     let _ = ap.copy(|ap| { ap }); //~ ERROR: lifetime may not live long enough
+LL |     let _ = ap.copy(|ap| { ap });
    |                      ---   ^^ returning this value requires that `'1` must outlive `'2`
    |                      | |
    |                      | return type of closure is core::ffi::VaList<'2>
@@ -30,7 +30,7 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, ap0: &mut VaList, mut ap1: ..
    |                                               ---               ------- has type `core::ffi::VaList<'1>`
    |                                               |
    |                                               has type `&mut core::ffi::VaList<'2>`
-LL |     *ap0 = ap1; //~ ERROR: lifetime may not live long enough
+LL |     *ap0 = ap1;
    |     ^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: lifetime may not live long enough

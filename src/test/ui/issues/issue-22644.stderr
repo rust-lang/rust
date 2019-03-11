@@ -1,7 +1,7 @@
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:8:31
    |
-LL |     println!("{}", a as usize < long_name); //~ ERROR `<` is interpreted as a start of generic
+LL |     println!("{}", a as usize < long_name);
    |                    ---------- ^ --------- interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
@@ -19,7 +19,7 @@ LL |     println!("{}{}", a as usize < long_name, long_name);
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:11:31
    |
-LL |     println!("{}", a as usize < 4); //~ ERROR `<` is interpreted as a start of generic
+LL |     println!("{}", a as usize < 4);
    |                    ---------- ^ - interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
@@ -37,7 +37,7 @@ LL |     println!("{}{}", a: usize < long_name, long_name);
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:15:29
    |
-LL |     println!("{}", a: usize < 4); //~ ERROR `<` is interpreted as a start of generic
+LL |     println!("{}", a: usize < 4);
    |                    -------- ^ - interpreted as generic arguments
    |                    |        |
    |                    |        not interpreted as comparison
@@ -46,7 +46,7 @@ LL |     println!("{}", a: usize < 4); //~ ERROR `<` is interpreted as a start o
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:20:20
    |
-LL |                    < //~ ERROR `<` is interpreted as a start of generic
+LL |                    <
    |                    ^ not interpreted as comparison
 LL |                    4);
    |                    - interpreted as generic arguments
@@ -60,7 +60,7 @@ LL |                    usize)
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:29:20
    |
-LL |                    < //~ ERROR `<` is interpreted as a start of generic
+LL |                    <
    |                    ^ not interpreted as comparison
 LL |                    5);
    |                    - interpreted as generic arguments
@@ -77,7 +77,7 @@ LL |
 error: `<` is interpreted as a start of generic arguments for `usize`, not a shift
   --> $DIR/issue-22644.rs:32:31
    |
-LL |     println!("{}", a as usize << long_name); //~ ERROR `<` is interpreted as a start of generic
+LL |     println!("{}", a as usize << long_name);
    |                    ---------- ^^ --------- interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as shift
@@ -86,7 +86,7 @@ LL |     println!("{}", a as usize << long_name); //~ ERROR `<` is interpreted a
 error: expected type, found `4`
   --> $DIR/issue-22644.rs:34:28
    |
-LL |     println!("{}", a: &mut 4); //~ ERROR expected type, found `4`
+LL |     println!("{}", a: &mut 4);
    |                            ^ expecting a type here because of type ascription
 
 error: aborting due to 9 previous errors

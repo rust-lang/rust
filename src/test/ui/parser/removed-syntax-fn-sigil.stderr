@@ -1,7 +1,7 @@
 error: expected `(`, found `~`
   --> $DIR/removed-syntax-fn-sigil.rs:2:14
    |
-LL |     let x: fn~() = || (); //~ ERROR expected `(`, found `~`
+LL |     let x: fn~() = || ();
    |         -    ^ expected `(`
    |         |
    |         while parsing the type for `x`

@@ -1,7 +1,7 @@
 error[E0439]: invalid `simd_shuffle`, needs length: `simd_shuffle`
   --> $DIR/E0439.rs:4:5
    |
-LL |     fn simd_shuffle<A,B>(a: A, b: A, c: [u32; 8]) -> B; //~ ERROR E0439
+LL |     fn simd_shuffle<A,B>(a: A, b: A, c: [u32; 8]) -> B;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

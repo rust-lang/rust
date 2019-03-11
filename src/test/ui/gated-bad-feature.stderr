@@ -13,19 +13,19 @@ LL |     foo = "baz"
 error[E0557]: feature has been removed
   --> $DIR/gated-bad-feature.rs:12:12
    |
-LL | #![feature(test_removed_feature)] //~ ERROR: feature has been removed
+LL | #![feature(test_removed_feature)]
    |            ^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of the form `#[feature(name1, name1, ...)]`
   --> $DIR/gated-bad-feature.rs:9:1
    |
-LL | #![feature] //~ ERROR: attribute must be of the form
+LL | #![feature]
    | ^^^^^^^^^^^
 
 error: attribute must be of the form `#[feature(name1, name1, ...)]`
   --> $DIR/gated-bad-feature.rs:10:1
    |
-LL | #![feature = "foo"] //~ ERROR: attribute must be of the form
+LL | #![feature = "foo"]
    | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

@@ -1,13 +1,13 @@
 error[E0568]: auto traits cannot have super traits
   --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:7:1
    |
-LL | auto trait Magic: Copy {} //~ ERROR E0568
+LL | auto trait Magic: Copy {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `NoClone: std::marker::Copy` is not satisfied
   --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:15:18
    |
-LL |     let (a, b) = copy(NoClone); //~ ERROR
+LL |     let (a, b) = copy(NoClone);
    |                  ^^^^ the trait `std::marker::Copy` is not implemented for `NoClone`
    |
    = note: required because of the requirements on the impl of `Magic` for `NoClone`

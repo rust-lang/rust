@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     consume(x.into_iter().next().unwrap());
    |             - value moved here
-LL |     touch(&x[0]); //~ ERROR use of moved value: `x`
+LL |     touch(&x[0]);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait

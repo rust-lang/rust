@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
    |
 LL |         let _ref_to_val: &Value = &x;
    |                                    - borrow of `x` occurs here
-LL |         eat(x); //~ ERROR E0505
+LL |         eat(x);
    |             ^ move out of `x` occurs here
 
 error: aborting due to previous error

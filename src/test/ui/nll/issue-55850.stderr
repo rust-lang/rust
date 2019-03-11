@@ -1,7 +1,7 @@
 error[E0597]: `s` does not live long enough
   --> $DIR/issue-55850.rs:28:16
    |
-LL |         yield &s[..] //~ ERROR `s` does not live long enough [E0597]
+LL |         yield &s[..]
    |                ^ borrowed value does not live long enough
 LL |     })
    |     - borrowed value only lives until here

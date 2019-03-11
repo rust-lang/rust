@@ -3,7 +3,7 @@ error[E0597]: `y` does not live long enough
    |
 LL |         |z| {
    |         --- value captured here
-LL |             //~^ ERROR E0373
+LL |
 LL |             if false { &y } else { z }
    |                        -^
    |                        ||

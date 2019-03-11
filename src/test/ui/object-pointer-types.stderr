@@ -1,7 +1,7 @@
 error[E0599]: no method named `owned` found for type `&dyn Foo` in the current scope
   --> $DIR/object-pointer-types.rs:11:7
    |
-LL |     x.owned(); //~ ERROR no method named `owned` found
+LL |     x.owned();
    |       ^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -11,7 +11,7 @@ LL |     x.owned(); //~ ERROR no method named `owned` found
 error[E0599]: no method named `owned` found for type `&mut dyn Foo` in the current scope
   --> $DIR/object-pointer-types.rs:17:7
    |
-LL |     x.owned(); //~ ERROR no method named `owned` found
+LL |     x.owned();
    |       ^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -21,7 +21,7 @@ LL |     x.owned(); //~ ERROR no method named `owned` found
 error[E0599]: no method named `managed` found for type `std::boxed::Box<(dyn Foo + 'static)>` in the current scope
   --> $DIR/object-pointer-types.rs:23:7
    |
-LL |     x.managed();  //~ ERROR no method named `managed` found
+LL |     x.managed();
    |       ^^^^^^^
 
 error: aborting due to 3 previous errors

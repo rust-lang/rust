@@ -1,7 +1,7 @@
 error: circular modules: $DIR/circular_modules_hello.rs -> $DIR/circular_modules_main.rs -> $DIR/circular_modules_hello.rs
   --> $DIR/circular_modules_main.rs:2:5
    |
-LL | mod circular_modules_hello; //~ ERROR: circular modules
+LL | mod circular_modules_hello;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

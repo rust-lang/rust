@@ -1,7 +1,7 @@
 error: unused variable: `a`
   --> $DIR/issue-22599.rs:8:19
    |
-LL |     v = match 0 { a => 0 }; //~ ERROR: unused variable: `a`
+LL |     v = match 0 { a => 0 };
    |                   ^ help: consider prefixing with an underscore: `_a`
    |
 note: lint level defined here

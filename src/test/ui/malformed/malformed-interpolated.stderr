@@ -1,7 +1,7 @@
 error: suffixed literals are not allowed in attributes
   --> $DIR/malformed-interpolated.rs:5:21
    |
-LL |         #[my_attr = $expr] //~ ERROR suffixed literals are not allowed in attributes
+LL |         #[my_attr = $expr]
    |                     ^^^^^
 ...
 LL | check!(0u8); // ERROR, see above
@@ -12,7 +12,7 @@ LL | check!(0u8); // ERROR, see above
 error: unexpected token: `-0`
   --> $DIR/malformed-interpolated.rs:5:19
    |
-LL |         #[my_attr = $expr] //~ ERROR suffixed literals are not allowed in attributes
+LL |         #[my_attr = $expr]
    |                   ^
 ...
 LL | check!(-0); // ERROR, see above
@@ -21,7 +21,7 @@ LL | check!(-0); // ERROR, see above
 error: unexpected token: `0 + 0`
   --> $DIR/malformed-interpolated.rs:5:19
    |
-LL |         #[my_attr = $expr] //~ ERROR suffixed literals are not allowed in attributes
+LL |         #[my_attr = $expr]
    |                   ^
 ...
 LL | check!(0 + 0); // ERROR, see above

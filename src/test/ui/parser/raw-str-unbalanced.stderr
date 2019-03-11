@@ -1,7 +1,7 @@
 error: expected one of `.`, `;`, `?`, or an operator, found `#`
   --> $DIR/raw-str-unbalanced.rs:3:9
    |
-LL |       "## //~ ERROR expected one of `.`, `;`, `?`, or an operator, found `#`
+LL |       "##
    |         ^ expected one of `.`, `;`, `?`, or an operator here
 
 error: aborting due to previous error

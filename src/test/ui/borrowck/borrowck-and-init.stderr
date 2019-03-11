@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `i`
   --> $DIR/borrowck-and-init.rs:5:20
    |
-LL |     println!("{}", i); //~ ERROR use of possibly uninitialized variable: `i`
+LL |     println!("{}", i);
    |                    ^ use of possibly uninitialized `i`
 
 error: aborting due to previous error

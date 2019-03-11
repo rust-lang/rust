@@ -1,7 +1,7 @@
 error: expected one of `=>`, `@`, `if`, or `|`, found `[`
   --> $DIR/issue-24375.rs:6:12
    |
-LL |         tmp[0] => {} //~ ERROR expected one of `=>`, `@`, `if`, or `|`, found `[`
+LL |         tmp[0] => {}
    |            ^ expected one of `=>`, `@`, `if`, or `|` here
 
 error: aborting due to previous error

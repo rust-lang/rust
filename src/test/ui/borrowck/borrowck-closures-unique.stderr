@@ -5,7 +5,7 @@ LL |     let c1 = || get(x);
    |              --     - previous borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
-LL |     let c2 = || set(x); //~ ERROR closure requires unique access to `x`
+LL |     let c2 = || set(x);
    |              ^^     - borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
@@ -20,7 +20,7 @@ LL |     let c1 = || get(x);
    |              --     - previous borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
-LL |     let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
+LL |     let c2 = || { get(x); set(x); };
    |              ^^       - borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
@@ -35,7 +35,7 @@ LL |     let c1 = || set(x);
    |              --     - previous borrow occurs due to use of `x` in closure
    |              |
    |              first closure is constructed here
-LL |     let c2 = || set(x); //~ ERROR two closures require unique access to `x` at the same time
+LL |     let c2 = || set(x);
    |              ^^     - borrow occurs due to use of `x` in closure
    |              |
    |              second closure is constructed here
@@ -46,21 +46,21 @@ LL | }
 error[E0595]: closure cannot assign to immutable argument `x`
   --> $DIR/borrowck-closures-unique.rs:47:14
    |
-LL |     let c1 = |y: &'static mut isize| x = y; //~ ERROR closure cannot assign to immutable argument
+LL |     let c1 = |y: &'static mut isize| x = y;
    |              ^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow mutably
 help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
    |
-LL |     x //~ ERROR closure cannot assign to immutable argument
+LL |     x
    |     ^
 
 error[E0595]: closure cannot assign to immutable argument `x`
   --> $DIR/borrowck-closures-unique.rs:52:14
    |
-LL |     let c1 = || x = panic!(); //~ ERROR closure cannot assign to immutable argument
+LL |     let c1 = || x = panic!();
    |              ^^ cannot borrow mutably
 help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
    |
-LL |     x //~ ERROR closure cannot assign to immutable argument
+LL |     x
    |     ^
 
 error: aborting due to 5 previous errors

@@ -3,7 +3,7 @@ error[E0597]: `arena` does not live long enough
    |
 LL |     f(&arena);
    |        ^^^^^ borrowed value does not live long enough
-LL | } //~^ ERROR `arena` does not live long enough
+LL | }
    | - `arena` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created

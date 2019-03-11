@@ -4,7 +4,7 @@ error[E0506]: cannot assign to `*s` because it is borrowed
 LL |     let t = &mut *s; // this borrow should last for the entire function
    |             ------- borrow of `*s` occurs here
 LL |     let x = &t.0;
-LL |     *s = (2,); //~ ERROR cannot assign to `*s`
+LL |     *s = (2,);
    |     ^^^^^^^^^ assignment to borrowed `*s` occurs here
 LL |     *x
    |     -- borrow later used here
@@ -15,7 +15,7 @@ error[E0621]: explicit lifetime required in the type of `s`
 LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
    |           ------------ help: add explicit lifetime `'static` to the type of `s`: `&'static std::boxed::Box<(i32,)>`
 LL |     // FIXME(#46983): error message should be better
-LL |     &s.0 //~ ERROR explicit lifetime required in the type of `s` [E0621]
+LL |     &s.0
    |     ^^^^ lifetime `'static` required
 
 error: aborting due to 2 previous errors

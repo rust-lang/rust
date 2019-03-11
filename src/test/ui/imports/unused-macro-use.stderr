@@ -1,7 +1,7 @@
 error: unused `#[macro_use]` import
   --> $DIR/unused-macro-use.rs:3:1
    |
-LL | #[macro_use] //~ ERROR unused `#[macro_use]` import
+LL | #[macro_use]
    | ^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -14,7 +14,7 @@ LL | #![deny(unused)]
 error: unused `#[macro_use]` import
   --> $DIR/unused-macro-use.rs:7:5
    |
-LL |     panic //~ ERROR unused `#[macro_use]` import
+LL |     panic
    |     ^^^^^
 
 error: aborting due to 2 previous errors

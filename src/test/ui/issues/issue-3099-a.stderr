@@ -4,7 +4,7 @@ error[E0428]: the name `A` is defined multiple times
 LL | enum A { B, C }
    | ------ previous definition of the type `A` here
 LL | 
-LL | enum A { D, E } //~ ERROR the name `A` is defined multiple times
+LL | enum A { D, E }
    | ^^^^^^ `A` redefined here
    |
    = note: `A` must be defined only once in the type namespace of this module

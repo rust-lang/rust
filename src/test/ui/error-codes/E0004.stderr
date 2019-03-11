@@ -8,7 +8,7 @@ LL | |     TalkToMyHand,
 LL | | }
    | |_- `Terminator` defined here
 ...
-LL |       match x { //~ ERROR E0004
+LL |       match x {
    |             ^ pattern `HastaLaVistaBaby` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms

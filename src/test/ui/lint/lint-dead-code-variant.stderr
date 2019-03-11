@@ -1,7 +1,7 @@
 error: variant is never constructed: `Variant1`
   --> $DIR/lint-dead-code-variant.rs:5:5
    |
-LL |     Variant1, //~ ERROR: variant is never constructed
+LL |     Variant1,
    |     ^^^^^^^^
    |
 note: lint level defined here

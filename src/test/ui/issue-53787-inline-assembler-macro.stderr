@@ -1,7 +1,7 @@
 error[E0669]: invalid value for constraint in inline assembly
   --> $DIR/issue-53787-inline-assembler-macro.rs:21:16
    |
-LL |     fake_jump!("FirstFunc"); //~ ERROR invalid value for constraint in inline assembly
+LL |     fake_jump!("FirstFunc");
    |                ^^^^^^^^^^^
 
 error: aborting due to previous error

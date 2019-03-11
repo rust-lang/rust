@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `Path` in this scope
   --> $DIR/use_suggestion_placement.rs:17:16
    |
-LL |     type Bar = Path; //~ ERROR cannot find
+LL |     type Bar = Path;
    |                ^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
@@ -11,7 +11,7 @@ LL |     use std::path::Path;
 error[E0425]: cannot find value `A` in this scope
   --> $DIR/use_suggestion_placement.rs:22:13
    |
-LL |     let _ = A; //~ ERROR cannot find
+LL |     let _ = A;
    |             ^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
@@ -21,7 +21,7 @@ LL | use m::A;
 error[E0412]: cannot find type `HashMap` in this scope
   --> $DIR/use_suggestion_placement.rs:27:23
    |
-LL |     type Dict<K, V> = HashMap<K, V>; //~ ERROR cannot find
+LL |     type Dict<K, V> = HashMap<K, V>;
    |                       ^^^^^^^ not found in this scope
 help: possible candidates are found in other modules, you can import them into scope
    |

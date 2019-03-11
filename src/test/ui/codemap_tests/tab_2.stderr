@@ -1,7 +1,7 @@
 error: unterminated double quote string
   --> $DIR/tab_2.rs:4:7
    |
-LL |                   """; //~ ERROR unterminated double quote
+LL |                   """;
    |  ___________________^
 LL | | }
    | |__^

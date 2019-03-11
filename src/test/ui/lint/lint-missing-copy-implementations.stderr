@@ -1,7 +1,7 @@
 error: type could implement `Copy`; consider adding `impl Copy`
   --> $DIR/lint-missing-copy-implementations.rs:6:5
    |
-LL | /     pub struct Foo { //~ ERROR type could implement `Copy`; consider adding `impl Copy`
+LL | /     pub struct Foo {
 LL | |         pub field: i32
 LL | |     }
    | |_____^

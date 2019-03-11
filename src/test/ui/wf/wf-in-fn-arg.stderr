@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/wf-in-fn-arg.rs:10:1
    |
-LL | / fn bar<T>(_: &MustBeCopy<T>) //~ ERROR E0277
+LL | / fn bar<T>(_: &MustBeCopy<T>)
 LL | | {
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `T`

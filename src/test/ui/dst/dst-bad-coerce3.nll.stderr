@@ -4,7 +4,7 @@ error[E0597]: `f1` does not live long enough
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |     let f2: &Fat<[isize; 3]> = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &Fat<[isize; 3]> = &f1;
    |                                ^^^ borrowed value does not live long enough
 LL |     let f3: &'a Fat<[isize]> = f2;
    |             ---------------- type annotation requires that `f1` is borrowed for `'a`
@@ -18,7 +18,7 @@ error[E0597]: `f1` does not live long enough
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &Fat<Foo> = &f1;
    |                         ^^^ borrowed value does not live long enough
 LL |     let f3: &'a Fat<Bar> = f2;
    |             ------------ type annotation requires that `f1` is borrowed for `'a`
@@ -32,7 +32,7 @@ error[E0597]: `f1` does not live long enough
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |     let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &([isize; 3],) = &f1;
    |                              ^^^ borrowed value does not live long enough
 LL |     let f3: &'a ([isize],) = f2;
    |             -------------- type annotation requires that `f1` is borrowed for `'a`
@@ -46,7 +46,7 @@ error[E0597]: `f1` does not live long enough
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |     let f2: &(Foo,) = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &(Foo,) = &f1;
    |                       ^^^ borrowed value does not live long enough
 LL |     let f3: &'a (Bar,) = f2;
    |             ---------- type annotation requires that `f1` is borrowed for `'a`

@@ -1,7 +1,7 @@
 error[E0403]: the name `T` is already used for a generic parameter in this list of generic parameters
   --> $DIR/E0403.rs:1:11
    |
-LL | fn foo<T, T>(s: T, u: T) {} //~ ERROR E0403
+LL | fn foo<T, T>(s: T, u: T) {}
    |        -  ^ already used
    |        |
    |        first use of `T`

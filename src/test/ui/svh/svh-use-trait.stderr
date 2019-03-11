@@ -1,7 +1,7 @@
 error[E0460]: found possibly newer version of crate `uta` which `utb` depends on
   --> $DIR/svh-use-trait.rs:15:1
    |
-LL | extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
+LL | extern crate utb;
    | ^^^^^^^^^^^^^^^^^
    |
    = note: perhaps that crate needs to be recompiled?

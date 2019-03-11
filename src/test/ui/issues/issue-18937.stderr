@@ -6,7 +6,7 @@ LL | |         where F: fmt::Debug + 'a,
 LL | |               Self: Sized;
    | |__________________________- definition of `foo` from trait
 ...
-LL | /     fn foo<F>(&mut self, f: F) //~ ERROR impl has stricter
+LL | /     fn foo<F>(&mut self, f: F)
 LL | |         where F: fmt::Debug + 'static,
 LL | |     {
 LL | |         self.list.push(Box::new(f));

@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `S: std::clone::Clone` is not satisfied in `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`
   --> $DIR/not-clone-closure.rs:11:23
    |
-LL |     let hello = hello.clone(); //~ ERROR the trait bound `S: std::clone::Clone` is not satisfied
+LL |     let hello = hello.clone();
    |                       ^^^^^ within `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`, the trait `std::clone::Clone` is not implemented for `S`
    |
    = note: required because it appears within the type `[closure@$DIR/not-clone-closure.rs:7:17: 9:6 a:S]`

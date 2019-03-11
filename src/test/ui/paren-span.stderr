@@ -1,7 +1,7 @@
 error[E0616]: field `x` of struct `m::S` is private
   --> $DIR/paren-span.rs:19:12
    |
-LL |     paren!(s.x); //~ ERROR field `x` of struct `m::S` is private
+LL |     paren!(s.x);
    |            ^^^
 
 error: aborting due to previous error

@@ -5,7 +5,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ ERROR
+LL | |
 LL | |     });
    | |_____^
    |
@@ -34,7 +34,7 @@ LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ ERROR
+LL | |
 LL | |     });
 LL | | }
    | |_^

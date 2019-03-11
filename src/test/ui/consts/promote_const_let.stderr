@@ -1,7 +1,7 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/promote_const_let.rs:4:10
    |
-LL |         &y //~ ERROR does not live long enough
+LL |         &y
    |          ^ borrowed value does not live long enough
 LL |     };
    |     - borrowed value only lives until here
@@ -11,7 +11,7 @@ LL |     };
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promote_const_let.rs:6:28
    |
-LL |       let x: &'static u32 = &{ //~ ERROR does not live long enough
+LL |       let x: &'static u32 = &{
    |  ____________________________^
 LL | |         let y = 42;
 LL | |         y

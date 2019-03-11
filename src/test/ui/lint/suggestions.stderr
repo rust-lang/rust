@@ -59,7 +59,7 @@ warning: functions generic over types or consts must be mangled
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
-LL | //~^ HELP remove this attribute
+LL |
 LL | pub fn defiant<T>(_t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

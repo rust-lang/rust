@@ -1,7 +1,7 @@
 error: expected `*` or `+`
   --> $DIR/macro-at-most-once-rep-2015-ques-rep.rs:6:10
    |
-LL |     ($(a)?) => {} //~ERROR expected `*` or `+`
+LL |     ($(a)?) => {}
    |          ^
    |
    = note: `?` is not a macro repetition operator in the 2015 edition, but is accepted in the 2018 edition
@@ -9,7 +9,7 @@ LL |     ($(a)?) => {} //~ERROR expected `*` or `+`
 error: expected `*` or `+`
   --> $DIR/macro-at-most-once-rep-2015-ques-rep.rs:10:11
    |
-LL |     ($(a),?) => {} //~ERROR expected `*` or `+`
+LL |     ($(a),?) => {}
    |           ^
    |
    = note: `?` is not a macro repetition operator in the 2015 edition, but is accepted in the 2018 edition

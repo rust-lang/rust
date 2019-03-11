@@ -5,7 +5,7 @@ LL |     pub fn foo(self) -> isize {
    |                ---- move occurs because `self` has type `S`, which does not implement the `Copy` trait
 LL |         self.bar();
    |         ---- value moved here
-LL |         return self.x;  //~ ERROR use of moved value: `self.x`
+LL |         return self.x;
    |                ^^^^^^ value used here after move
 
 error: aborting due to previous error

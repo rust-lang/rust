@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |    let f = move || { let y = x; };
    |            ------- value moved (into closure) here
-LL |    //~^ NOTE value moved (into closure) here
+LL |
 LL |    let z = x;
    |        ^ value used here after move
    |

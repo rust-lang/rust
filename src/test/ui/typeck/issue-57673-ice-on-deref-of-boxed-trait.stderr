@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL | fn ice(x: Box<dyn Iterator<Item=()>>) {
    |                                       - possibly return type missing here?
-LL |     *x //~ ERROR mismatched types [E0308]
+LL |     *x
    |     ^^ expected (), found trait std::iter::Iterator
    |
    = note: expected type `()`

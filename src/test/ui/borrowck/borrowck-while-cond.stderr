@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `x`
   --> $DIR/borrowck-while-cond.rs:3:11
    |
-LL |     while x { } //~ ERROR use of possibly uninitialized variable: `x`
+LL |     while x { }
    |           ^ use of possibly uninitialized `x`
 
 error: aborting due to previous error

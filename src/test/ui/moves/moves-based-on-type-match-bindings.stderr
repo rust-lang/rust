@@ -4,7 +4,7 @@ error[E0382]: use of partially moved value: `x`
 LL |         Foo {f} => {}
    |              - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of partially moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x.f` has type `std::string::String`, which does not implement the `Copy` trait

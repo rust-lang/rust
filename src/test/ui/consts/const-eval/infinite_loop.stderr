@@ -1,9 +1,9 @@
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/infinite_loop.rs:7:9
    |
-LL | /         while n != 0 { //~ ERROR constant contains unimplemented expression type
+LL | /         while n != 0 {
 LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-LL | |             //~^ ERROR evaluation of constant value failed
+LL | |
 LL | |         }
    | |_________^
 
@@ -12,9 +12,9 @@ warning: Constant evaluating a complex constant, this might take some time
    |
 LL |       let _ = [(); {
    |  __________________^
-LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |
 LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
-LL | |         while n != 0 { //~ ERROR constant contains unimplemented expression type
+LL | |         while n != 0 {
 ...  |
 LL | |         n
 LL | |     }];

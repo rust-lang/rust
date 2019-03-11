@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _ = dbg!(a);
    |             ------- value moved here
-LL |     let _ = dbg!(a); //~ ERROR use of moved value
+LL |     let _ = dbg!(a);
    |                  ^ value used here after move
    |
    = note: move occurs because `a` has type `NoCopy`, which does not implement the `Copy` trait
@@ -14,7 +14,7 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _ = dbg!(a);
    |             ------- value moved here
-LL |     let _ = dbg!(a); //~ ERROR use of moved value
+LL |     let _ = dbg!(a);
    |             ^^^^^^^ value used here after move
    |
    = note: move occurs because `a` has type `NoCopy`, which does not implement the `Copy` trait

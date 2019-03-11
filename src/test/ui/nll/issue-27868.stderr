@@ -8,7 +8,7 @@ LL |       vecvec[0] += {
    | |
 LL | |         vecvec = vec![];
    | |         ^^^^^^ assignment to borrowed `vecvec` occurs here
-LL | |         //~^ ERROR cannot assign to `vecvec` because it is borrowed [E0506]
+LL | |
 LL | |         0
 LL | |     };
    | |_____- borrow later used here

@@ -6,7 +6,7 @@ LL |     let mut out: &mut &'static [i32] = &mut (&[1] as _);
 LL |     once(|mut z: &[i32], mut out_val: &mut &[i32]| {
    |          ----------------------------------------- value captured here
 ...
-LL |         z = &local_arr; //~ ERROR
+LL |         z = &local_arr;
    |              ^^^^^^^^^ borrowed value does not live long enough
 ...
 LL | }

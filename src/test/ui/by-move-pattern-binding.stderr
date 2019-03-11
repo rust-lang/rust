@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/by-move-pattern-binding.rs:16:9
    |
-LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+LL |         &E::Bar(identifier) => f(identifier.clone())
    |         ^^^^^^^^----------^
    |         |       |
    |         |       hint: to prevent move, use `ref identifier` or `ref mut identifier`

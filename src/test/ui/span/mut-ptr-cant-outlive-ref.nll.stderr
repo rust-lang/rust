@@ -5,7 +5,7 @@ LL |         p = &*b;
    |               ^ borrowed value does not live long enough
 LL |     }
    |     - `b` dropped here while still borrowed
-LL |     //~^^ ERROR `b` does not live long enough
+LL |
 LL |     p.use_ref();
    |     - borrow later used here
 

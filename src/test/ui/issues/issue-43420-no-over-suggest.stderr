@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-43420-no-over-suggest.rs:8:9
    |
-LL |     foo(&a); //~ ERROR mismatched types
+LL |     foo(&a);
    |         ^^ expected slice, found struct `std::vec::Vec`
    |
    = note: expected type `&[u16]`

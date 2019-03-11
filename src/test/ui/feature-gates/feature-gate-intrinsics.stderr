@@ -1,8 +1,8 @@
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:1:1
    |
-LL | / extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
-LL | |     fn bar(); //~ ERROR unrecognized intrinsic function: `bar`
+LL | / extern "rust-intrinsic" {
+LL | |     fn bar();
 LL | | }
    | |_^
    |
@@ -11,7 +11,7 @@ LL | | }
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:5:1
    |
-LL | extern "rust-intrinsic" fn baz() {} //~ ERROR intrinsics are subject to change
+LL | extern "rust-intrinsic" fn baz() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(intrinsics)] to the crate attributes to enable
@@ -19,7 +19,7 @@ LL | extern "rust-intrinsic" fn baz() {} //~ ERROR intrinsics are subject to cha
 error[E0093]: unrecognized intrinsic function: `bar`
   --> $DIR/feature-gate-intrinsics.rs:2:5
    |
-LL |     fn bar(); //~ ERROR unrecognized intrinsic function: `bar`
+LL |     fn bar();
    |     ^^^^^^^^^ unrecognized intrinsic
 
 error: aborting due to 3 previous errors

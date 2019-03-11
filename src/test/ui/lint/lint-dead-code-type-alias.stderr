@@ -1,7 +1,7 @@
 error: type alias is never used: `Unused`
   --> $DIR/lint-dead-code-type-alias.rs:4:1
    |
-LL | type Unused = u8; //~ ERROR type alias is never used
+LL | type Unused = u8;
    | ^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

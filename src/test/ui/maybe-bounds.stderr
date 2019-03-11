@@ -1,7 +1,7 @@
 error: `?Trait` is not permitted in supertraits
   --> $DIR/maybe-bounds.rs:1:11
    |
-LL | trait Tr: ?Sized {} //~ ERROR `?Trait` is not permitted in supertraits
+LL | trait Tr: ?Sized {}
    |           ^^^^^^
    |
    = note: traits are `?Sized` by default
@@ -9,13 +9,13 @@ LL | trait Tr: ?Sized {} //~ ERROR `?Trait` is not permitted in supertraits
 error: `?Trait` is not permitted in trait object types
   --> $DIR/maybe-bounds.rs:3:16
    |
-LL | type A1 = Tr + (?Sized); //~ ERROR `?Trait` is not permitted in trait object types
+LL | type A1 = Tr + (?Sized);
    |                ^^^^^^^^
 
 error: `?Trait` is not permitted in trait object types
   --> $DIR/maybe-bounds.rs:4:24
    |
-LL | type A2 = for<'a> Tr + (?Sized); //~ ERROR `?Trait` is not permitted in trait object types
+LL | type A2 = for<'a> Tr + (?Sized);
    |                        ^^^^^^^^
 
 error: aborting due to 3 previous errors

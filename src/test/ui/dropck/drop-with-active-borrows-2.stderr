@@ -3,7 +3,7 @@ error[E0597]: `raw_lines` does not live long enough
    |
 LL |     raw_lines.iter().map(|l| l.trim()).collect()
    |     ^^^^^^^^^ borrowed value does not live long enough
-LL |     //~^ ERROR `raw_lines` does not live long enough
+LL |
 LL | }
    | - borrowed value only lives until here
    |

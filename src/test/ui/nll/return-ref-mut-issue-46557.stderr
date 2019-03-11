@@ -3,7 +3,7 @@ error[E0515]: cannot return value referencing temporary value
    |
 LL |     let ref mut x = 1234543;
    |                     ------- temporary value created here
-LL |     x //~ ERROR cannot return value referencing temporary value [E0515]
+LL |     x
    |     ^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error

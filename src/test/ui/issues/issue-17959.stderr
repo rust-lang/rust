@@ -2,7 +2,7 @@ error[E0367]: The requirement `T: std::marker::Sized` is added only by the Drop 
   --> $DIR/issue-17959.rs:11:1
    |
 LL | / impl<T> Drop for G<T> {
-LL | | //~^ ERROR: The requirement `T: std::marker::Sized` is added only by the Drop impl. [E0367]
+LL | |
 LL | |     fn drop(&mut self) {
 LL | |         if !self._ptr.is_null() {
 LL | |         }
