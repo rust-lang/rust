@@ -1,13 +1,13 @@
 //! # Debug Info Module
 //!
 //! This module serves the purpose of generating debug symbols. We use LLVM's
-//! [source level debugging](http://!llvm.org/docs/SourceLevelDebugging.html)
+//! [source level debugging](https://llvm.org/docs/SourceLevelDebugging.html)
 //! features for generating the debug information. The general principle is
 //! this:
 //!
 //! Given the right metadata in the LLVM IR, the LLVM code generator is able to
 //! create DWARF debug symbols for the given code. The
-//! [metadata](http://!llvm.org/docs/LangRef.html#metadata-type) is structured
+//! [metadata](https://llvm.org/docs/LangRef.html#metadata-type) is structured
 //! much like DWARF *debugging information entries* (DIE), representing type
 //! information such as datatype layout, function signatures, block layout,
 //! variable location and scope information, etc. It is the purpose of this
@@ -15,7 +15,7 @@
 //!
 //! As the exact format of metadata trees may change between different LLVM
 //! versions, we now use LLVM
-//! [DIBuilder](http://!llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html)
+//! [DIBuilder](https://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html)
 //! to create metadata where possible. This will hopefully ease the adaption of
 //! this module to future LLVM versions.
 //!
