@@ -690,8 +690,8 @@ impl<'a> From<Cow<'a, CStr>> for CString {
 }
 
 #[stable(feature = "box_from_c_str", since = "1.17.0")]
-impl<'a> From<&'a CStr> for Box<CStr> {
-    fn from(s: &'a CStr) -> Box<CStr> {
+impl From<&CStr> for Box<CStr> {
+    fn from(s: &CStr) -> Box<CStr> {
         let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
@@ -767,7 +767,7 @@ impl From<CString> for Arc<CStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a CStr> for Arc<CStr> {
+impl From<&CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
@@ -789,7 +789,7 @@ impl From<CString> for Rc<CStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a CStr> for Rc<CStr> {
+impl From<&CStr> for Rc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
@@ -1268,8 +1268,8 @@ impl ToOwned for CStr {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl<'a> From<&'a CStr> for CString {
-    fn from(s: &'a CStr) -> CString {
+impl From<&CStr> for CString {
+    fn from(s: &CStr) -> CString {
         s.to_owned()
     }
 }
