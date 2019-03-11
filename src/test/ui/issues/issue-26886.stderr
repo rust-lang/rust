@@ -7,7 +7,6 @@ LL | use std::sync::Arc;
    |     ^^^^^^^^^^^^^^ `Arc` reimported here
    |
    = note: `Arc` must be defined only once in the type namespace of this module
-   = help: remove unnecessary import
 
 error[E0252]: the name `sync` is defined multiple times
   --> $DIR/issue-26886.rs:4:5
@@ -19,7 +18,6 @@ LL | use std::sync;
    |     ^^^^^^^^^ `sync` reimported here
    |
    = note: `sync` must be defined only once in the type namespace of this module
-   = help: remove unnecessary import
 
 error: aborting due to 2 previous errors
 

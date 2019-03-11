@@ -7,7 +7,6 @@ LL |     use a::foo;
    |         ^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
-   = help: remove unnecessary import
 
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/duplicate.rs:46:15

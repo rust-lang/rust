@@ -4932,7 +4932,7 @@ impl<'a> Resolver<'a> {
             Some((directive, _, true)) if should_remove_import && !directive.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
-                err.span_suggestion_hidden(
+                err.tool_only_span_suggestion(
                     directive.use_span_with_attributes,
                     "remove unnecessary import",
                     String::new(),
