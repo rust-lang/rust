@@ -638,7 +638,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
                 //                          ^            ^ this gets resolved in the scope of
                 //                                         the exist_ty generics
-                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).node {
+                let (generics, bounds) = match self.tcx.hir().expect_item_by_hir_id(item_id.id).node
+                {
                     // named existential types are reached via TyKind::Path
                     // this arm is for `impl Trait` in the types of statics, constants and locals
                     hir::ItemKind::Existential(hir::ExistTy {
@@ -678,8 +679,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
                                 let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
                                 let krate = self.tcx.hir().forest.krate();
-                                let parent_node_id = self.tcx.hir().hir_to_node_id(parent_id);
-                                if !(krate.items.contains_key(&parent_node_id)
+
+                                if !(krate.items.contains_key(&parent_id)
                                     || krate.impl_items.contains_key(&parent_impl_id)
                                     || krate.trait_items.contains_key(&parent_trait_id))
                                 {

@@ -472,8 +472,8 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
              {
                 if let hir::ItemKind::Mod(m) = &item.node {
                     for item_id in m.item_ids.as_ref() {
-                        let item = self.tcx.hir().expect_item(item_id.id);
-                        let def_id = self.tcx.hir().local_def_id(item_id.id);
+                        let item = self.tcx.hir().expect_item_by_hir_id(item_id.id);
+                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item_id.id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) { continue; }
                         if let hir::ItemKind::Use(..) = item.node {
                             self.update(item.hir_id, Some(AccessLevel::Exported));
@@ -737,8 +737,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 unreachable!()
             };
             for id in &module.item_ids {
-                let hir_id = self.tcx.hir().node_to_hir_id(id.id);
-                self.update(hir_id, level);
+                self.update(id.id, level);
             }
             let def_id = self.tcx.hir().local_def_id_from_hir_id(module_id);
             if let Some(exports) = self.tcx.module_exports(def_id) {

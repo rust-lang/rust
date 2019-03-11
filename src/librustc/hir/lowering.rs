@@ -82,7 +82,7 @@ pub struct LoweringContext<'a> {
     resolver: &'a mut dyn Resolver,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<NodeId, hir::Item>,
+    items: BTreeMap<hir::HirId, hir::Item>,
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
@@ -321,7 +321,7 @@ enum AnonymousLifetimeMode {
     PassThrough,
 }
 
-struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[hir::ItemId; 1]> }
+struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[NodeId; 1]> }
 
 impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -330,7 +330,7 @@ impl<'a, 'b> Visitor<'a> for ImplTraitTypeIdVisitor<'b> {
             | TyKind::BareFn(_)
             => return,
 
-            TyKind::ImplTrait(id, _) => self.ids.push(hir::ItemId { id }),
+            TyKind::ImplTrait(id, _) => self.ids.push(id),
             _ => {},
         }
         visit::walk_ty(self, ty);
@@ -434,17 +434,16 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_item(&mut self, item: &'lcx Item) {
-                let mut item_lowered = true;
+                let mut item_hir_id = None;
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
                     if let Some(hir_item) = lctx.lower_item(item) {
-                        lctx.insert_item(item.id, hir_item);
-                    } else {
-                        item_lowered = false;
+                        item_hir_id = Some(hir_item.hir_id);
+                        lctx.insert_item(hir_item);
                     }
                 });
 
-                if item_lowered {
-                    let item_generics = match self.lctx.items.get(&item.id).unwrap().node {
+                if let Some(hir_id) = item_hir_id {
+                    let item_generics = match self.lctx.items.get(&hir_id).unwrap().node {
                         hir::ItemKind::Impl(_, _, _, ref generics, ..)
                         | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                             generics.params.clone()
@@ -516,7 +515,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn insert_item(&mut self, id: NodeId, item: hir::Item) {
+    fn insert_item(&mut self, item: hir::Item) {
+        let id = item.hir_id;
         self.items.insert(id, item);
         self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
     }
@@ -1422,10 +1422,10 @@ impl<'a> LoweringContext<'a> {
             // Insert the item into the global list. This usually happens
             // automatically for all AST items. But this existential type item
             // does not actually exist in the AST.
-            lctx.insert_item(exist_ty_id.node_id, exist_ty_item);
+            lctx.insert_item(exist_ty_item);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::Def(hir::ItemId { id: exist_ty_id.node_id }, lifetimes)
+            hir::TyKind::Def(hir::ItemId { id: exist_ty_id.hir_id }, lifetimes)
         })
     }
 
@@ -2002,9 +2002,9 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
-    fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[hir::ItemId; 1]>) {
+    fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[NodeId; 1]>) {
         let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(l.id);
-        let mut ids = SmallVec::<[hir::ItemId; 1]>::new();
+        let mut ids = SmallVec::<[NodeId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
                 let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
@@ -3114,7 +3114,6 @@ impl<'a> LoweringContext<'a> {
                         let vis = respan(vis.span, vis_kind);
 
                         this.insert_item(
-                            new_id.node_id,
                             hir::Item {
                                 hir_id: new_id.hir_id,
                                 ident,
@@ -3219,7 +3218,6 @@ impl<'a> LoweringContext<'a> {
                         let vis = respan(vis.span, vis_kind);
 
                         this.insert_item(
-                            new_id,
                             hir::Item {
                                 hir_id: new_hir_id,
                                 ident,
@@ -3443,17 +3441,17 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        match i.node {
+        let node_ids = match i.node {
             ItemKind::Use(ref use_tree) => {
-                let mut vec = smallvec![hir::ItemId { id: i.id }];
+                let mut vec = smallvec![i.id];
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
                 vec
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) |
-            ItemKind::Impl(.., None, _, _) => smallvec![hir::ItemId { id: i.id }],
+            ItemKind::Impl(.., None, _, _) => smallvec![i.id],
             ItemKind::Static(ref ty, ..) => {
-                let mut ids = smallvec![hir::ItemId { id: i.id }];
+                let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
                     visitor.visit_ty(ty);
@@ -3461,25 +3459,29 @@ impl<'a> LoweringContext<'a> {
                 ids
             },
             ItemKind::Const(ref ty, ..) => {
-                let mut ids = smallvec![hir::ItemId { id: i.id }];
+                let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
                     visitor.visit_ty(ty);
                 }
                 ids
             },
-            _ => smallvec![hir::ItemId { id: i.id }],
-        }
+            _ => smallvec![i.id],
+        };
+
+        node_ids.into_iter()
+                .map(|node_id| hir::ItemId { id: self.lower_node_id(node_id).hir_id })
+                .collect()
     }
 
     fn lower_item_id_use_tree(&mut self,
                               tree: &UseTree,
                               base_id: NodeId,
-                              vec: &mut SmallVec<[hir::ItemId; 1]>)
+                              vec: &mut SmallVec<[NodeId; 1]>)
     {
         match tree.kind {
             UseTreeKind::Nested(ref nested_vec) => for &(ref nested, id) in nested_vec {
-                vec.push(hir::ItemId { id });
+                vec.push(id);
                 self.lower_item_id_use_tree(nested, id, vec);
             },
             UseTreeKind::Glob => {}
@@ -3488,7 +3490,7 @@ impl<'a> LoweringContext<'a> {
                                     .skip(1)
                                     .zip([id1, id2].iter())
                 {
-                    vec.push(hir::ItemId { id });
+                    vec.push(id);
                 }
             },
         }
@@ -4604,6 +4606,7 @@ impl<'a> LoweringContext<'a> {
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
+                        let item_id = hir::ItemId { id: self.lower_node_id(item_id).hir_id };
                         let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
                         hir::Stmt {

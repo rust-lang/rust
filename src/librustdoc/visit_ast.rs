@@ -247,7 +247,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
         for i in &m.item_ids {
-            let item = self.cx.tcx.hir().expect_item(i.id);
+            let item = self.cx.tcx.hir().expect_item_by_hir_id(i.id);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -344,7 +344,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
-                    let i = self.cx.tcx.hir().expect_item(i.id);
+                    let i = self.cx.tcx.hir().expect_item_by_hir_id(i.id);
                     self.visit_item(i, None, om);
                 }
                 self.inlining = prev;
