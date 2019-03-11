@@ -21,8 +21,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
-const MAX_NANOS_F32: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f32;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -554,6 +552,8 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn from_secs_f64(secs: f64) -> Duration {
+        const MAX_NANOS_F64: f64 =
+            ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
         let nanos =  secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
             panic!("got non-finite value when converting float to duration");
@@ -588,6 +588,8 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn from_secs_f32(secs: f32) -> Duration {
+        const MAX_NANOS_F32: f32 =
+            ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f32;
         let nanos =  secs * (NANOS_PER_SEC as f32);
         if !nanos.is_finite() {
             panic!("got non-finite value when converting float to duration");
