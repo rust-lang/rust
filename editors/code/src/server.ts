@@ -24,7 +24,7 @@ export class Server {
             
             if (workspace.workspaceFolders.length > 1) {
                 // Tell the user that we do not support multi-root workspaces yet
-                window.showWarningMessage("Multi-root workspaces are not currently supported");
+                window.showWarningMessage('Multi-root workspaces are not currently supported');
             }
         }
 
