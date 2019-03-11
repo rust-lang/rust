@@ -7,7 +7,6 @@ LL | use core;
    |     ^^^^ `core` reimported here
    |
    = note: `core` must be defined only once in the type namespace of this module
-   = help: remove unnecessary import
 
 error: aborting due to previous error
 
