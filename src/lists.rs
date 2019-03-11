@@ -622,8 +622,12 @@ pub fn extract_post_comment(
     } else {
         post_snippet
     };
-
-    if !post_snippet_trimmed.is_empty() {
+    // FIXME(#3441): post_snippet includes 'const' now
+    // it should not include here
+    let removed_newline_snippet = post_snippet_trimmed.trim();
+    if !post_snippet_trimmed.is_empty()
+        && (removed_newline_snippet.starts_with("//") || removed_newline_snippet.starts_with("/*"))
+    {
         Some(post_snippet_trimmed.to_owned())
     } else {
         None
