@@ -22,11 +22,9 @@ use std::sync::mpsc;
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::mir::mono::{Linkage as RLinkage, Visibility};
-use rustc::session::{
-    config::{DebugInfo, OutputFilenames, OutputType},
-    CompileIncomplete,
-};
+use rustc::session::config::{DebugInfo, OutputFilenames, OutputType};
 use rustc::ty::query::Providers;
+use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -157,7 +155,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             match *cty {
                 CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {}
                 _ => {
-                    sess.err(&format!(
+                    sess.warn(&format!(
                         "Rustc codegen cranelift doesn't support output type {}",
                         cty
                     ));
@@ -365,7 +363,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
-    ) -> Result<(), CompileIncomplete> {
+    ) -> Result<(), ErrorReported> {
         let res = *res
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
