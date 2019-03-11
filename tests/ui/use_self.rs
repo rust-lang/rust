@@ -249,6 +249,16 @@ mod nesting {
                     Bar { foo: Foo {} }
                 }
             }
+
+            // Can't use Self here
+            fn baz() -> Foo {
+                Foo {}
+            }
+        }
+
+        // Should lint here
+        fn baz() -> Foo {
+            Foo {}
         }
     }
 
