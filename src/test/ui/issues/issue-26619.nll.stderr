@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing function parameter
+  --> $DIR/issue-26619.rs:7:76
+   |
+LL |         for s in vec!["1|2".to_string()].into_iter().filter_map(|ref line| self.make_entry(line)) {
+   |                                                                  --------  ^^^^^^^^^^^^^^^^^^^^^ returns a value referencing data owned by the current function
+   |                                                                  |
+   |                                                                  function parameter borrowed here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0515`.
