@@ -1,6 +1,6 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
-#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns)]
+#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns, never_type, linkage)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -192,4 +192,18 @@ fn main() {
     }
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
+
+    extern {
+        #[linkage = "weak"]
+        static ABC: *const u8;
+    }
+
+    {
+        extern {
+            #[linkage = "weak"]
+            static ABC: *const u8;
+        }
+    }
+
+    unsafe { assert_eq!(ABC as usize, 0); }
 }

@@ -46,7 +46,8 @@ pub fn codegen_static_ref<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     static_: &Static<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id, Linkage::Import);
+    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, static_.def_id);
+    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id, linkage);
     cplace_for_dataid(fx, static_.ty, data_id)
 }
 
@@ -188,9 +189,32 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
         !tcx.type_of(def_id)
             .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
     };
-    module
+
+    let data_id = module
         .declare_data(&*symbol_name, linkage, is_mutable)
-        .unwrap()
+        .unwrap();
+
+    if linkage == Linkage::Preemptible {
+        if let ty::RawPtr(_) = tcx.type_of(def_id).sty {
+        } else {
+            tcx.sess.span_fatal(tcx.def_span(def_id), "must have type `*const T` or `*mut T`")
+        }
+
+        let mut data_ctx = DataContext::new();
+        let zero_bytes = std::iter::repeat(0)
+            .take(pointer_ty(tcx).bytes() as usize)
+            .collect::<Vec<u8>>()
+            .into_boxed_slice();
+        data_ctx.define(zero_bytes);
+        match module.define_data(data_id, &data_ctx) {
+            // Everytime a weak static is referenced, there will be a zero pointer definition,
+            // so duplicate definitions are expected and allowed.
+            Err(ModuleError::DuplicateDefinition(_)) => {}
+            res => res.unwrap(),
+        }
+    }
+
+    data_id
 }
 
 fn cplace_for_dataid<'a, 'tcx: 'a>(
@@ -222,6 +246,11 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             }
             TodoItem::Static(def_id) => {
                 //println!("static {:?}", def_id);
+
+                if tcx.is_foreign_item(def_id) {
+                    continue;
+                }
+
                 let instance = ty::Instance::mono(tcx, def_id);
                 let cid = GlobalId {
                     instance,
@@ -234,6 +263,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
+                // FIXME set correct linkage
                 let data_id = data_id_for_static(tcx, module, def_id, Linkage::Export);
                 (data_id, alloc)
             }
@@ -271,7 +301,8 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                 }
                 AllocKind::Static(def_id) => {
                     cx.todo.insert(TodoItem::Static(def_id));
-                    data_id_for_static(tcx, module, def_id, Linkage::Import)
+                    let linkage = crate::linkage::get_static_ref_linkage(tcx, def_id);
+                    data_id_for_static(tcx, module, def_id, linkage)
                 }
             };
 

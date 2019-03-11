@@ -29,6 +29,7 @@ use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::out_filename;
+use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -47,6 +48,7 @@ mod debuginfo;
 mod intrinsics;
 mod link;
 mod link_copied;
+mod linkage;
 mod main_shim;
 mod metadata;
 mod pretty_clif;
@@ -368,7 +370,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
-        for &crate_type in sess.opts.crate_types.iter() {
+        for &crate_type in sess.crate_types.borrow().iter() {
             let output_name = out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
             match crate_type {
                 CrateType::Rlib => link::link_rlib(sess, &res, output_name),
@@ -423,9 +425,8 @@ fn codegen_cgus<'a, 'tcx: 'a>(
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
         .iter()
-        .map(|cgu| cgu.items().iter())
+        .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
         .flatten()
-        .map(|(&mono_item, &(linkage, vis))| (mono_item, (linkage, vis)))
         .collect::<FxHashMap<_, (_, _)>>();
 
     codegen_mono_items(tcx, module, debug.as_mut(), log, mono_items);
@@ -442,16 +443,9 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
 ) {
     let mut cx = CodegenCx::new(tcx, module, debug_context);
     time("codegen mono items", move || {
-        for (mono_item, (linkage, vis)) in mono_items {
+        for (mono_item, (linkage, visibility)) in mono_items {
             unimpl::try_unimpl(tcx, log, || {
-                let linkage = match (linkage, vis) {
-                    (RLinkage::External, Visibility::Default) => Linkage::Export,
-                    (RLinkage::Internal, Visibility::Default) => Linkage::Local,
-                    // FIXME this should get external linkage, but hidden visibility,
-                    // not internal linkage and default visibility
-                    (RLinkage::External, Visibility::Hidden) => Linkage::Export,
-                    _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, vis),
-                };
+                let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                 base::trans_mono_item(&mut cx, mono_item, linkage);
             });
         }
