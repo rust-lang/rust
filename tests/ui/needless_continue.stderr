@@ -1,6 +1,6 @@
 error: This else block is redundant.
 
-  --> $DIR/needless_continue.rs:27:16
+  --> $DIR/needless_continue.rs:28:16
    |
 LL |           } else {
    |  ________________^
@@ -37,7 +37,7 @@ LL | |         }
 
 error: There is no need for an explicit `else` block for this `if` expression
 
-  --> $DIR/needless_continue.rs:42:9
+  --> $DIR/needless_continue.rs:43:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 LL | |             continue;
@@ -55,5 +55,47 @@ LL | |         }
            println!("Jabber");
            ...
 
-error: aborting due to 2 previous errors
+error: This else block is redundant.
+
+  --> $DIR/needless_continue.rs:100:24
+   |
+LL |                   } else {
+   |  ________________________^
+LL | |                     continue 'inner; // should lint here
+LL | |                 }
+   | |_________________^
+   |
+   = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
+           if condition() {
+           println!("bar-3");
+           // Merged code follows...println!("bar-4");
+           update_condition();
+           if condition() {
+               continue; // should lint here
+           } else {
+               println!("bar-5");
+           }
+           println!("bar-6");
+           }
+           
+
+error: There is no need for an explicit `else` block for this `if` expression
+
+  --> $DIR/needless_continue.rs:106:17
+   |
+LL | /                 if condition() {
+LL | |                     continue; // should lint here
+LL | |                 } else {
+LL | |                     println!("bar-5");
+LL | |                 }
+   | |_________________^
+   |
+   = help: Consider dropping the else clause, and moving out the code in the else block, like so:
+           if condition() {
+               continue;
+           }
+           println!("bar-5");
+           ...
+
+error: aborting due to 4 previous errors
 
