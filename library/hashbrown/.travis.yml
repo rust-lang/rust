@@ -32,7 +32,7 @@ matrix:
       rust: stable
       env: TARGET=x86_64-unknown-linux-gnu
     - name: "x86_64-unknown-linux-gnu (Rust 1.29.0)"
-      rust: 1.29.0
+      rust: 1.31.0
       env: TARGET=x86_64-unknown-linux-gnu
     - name: "i686-unknown-linux-gnu"
       env: TARGET=i686-unknown-linux-gnu CROSS=1
