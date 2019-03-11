@@ -9,3 +9,13 @@ use proc_macro::TokenStream;
 pub fn foo(_input: TokenStream) -> TokenStream {
     unimplemented!()
 }
+
+#[proc_macro]
+pub fn bar(_input: TokenStream) -> TokenStream {
+    unimplemented!()
+}
+
+#[proc_macro_attribute]
+pub fn baz(_args: TokenStream, _input: TokenStream) -> TokenStream {
+    unimplemented!()
+}
