@@ -5,7 +5,7 @@
 use marker::Unpin;
 use ops;
 use pin::Pin;
-use task::{Poll, Waker};
+use task::{Context, Poll};
 
 /// A future represents an asynchronous computation.
 ///
@@ -44,8 +44,9 @@ pub trait Future {
     /// Once a future has finished, clients should not `poll` it again.
     ///
     /// When a future is not ready yet, `poll` returns `Poll::Pending` and
-    /// stores a clone of the [`Waker`] to be woken once the future can
-    /// make progress. For example, a future waiting for a socket to become
+    /// stores a clone of the [`Waker`] copied from the current [`Context`].
+    /// This [`Waker`] is then woken once the future can make progress.
+    /// For example, a future waiting for a socket to become
     /// readable would call `.clone()` on the [`Waker`] and store it.
     /// When a signal arrives elsewhere indicating that the socket is readable,
     /// `[Waker::wake]` is called and the socket future's task is awoken.
@@ -88,16 +89,17 @@ pub trait Future {
     ///
     /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
     /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
+    /// [`Context`]: ../task/struct.Context.html
     /// [`Waker`]: ../task/struct.Waker.html
     /// [`Waker::wake`]: ../task/struct.Waker.html#method.wake
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output>;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 }
 
 impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut **self), waker)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut **self), cx)
     }
 }
 
@@ -108,7 +110,7 @@ where
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;
 
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
-        Pin::get_mut(self).as_mut().poll(waker)
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Pin::get_mut(self).as_mut().poll(cx)
     }
 }
