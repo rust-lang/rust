@@ -380,8 +380,7 @@ impl MissingDoc {
         // It's an option so the crate root can also use this function (it doesn't
         // have a NodeId).
         if let Some(id) = id {
-            let node_id = cx.tcx.hir().hir_to_node_id(id);
-            if !cx.access_levels.is_exported(node_id) {
+            if !cx.access_levels.is_exported(id) {
                 return;
             }
         }
@@ -557,8 +556,7 @@ impl LintPass for MissingCopyImplementations {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        let node_id = cx.tcx.hir().hir_to_node_id(item.hir_id);
-        if !cx.access_levels.is_reachable(node_id) {
+        if !cx.access_levels.is_reachable(item.hir_id) {
             return;
         }
         let (def, ty) = match item.node {
@@ -629,8 +627,7 @@ impl LintPass for MissingDebugImplementations {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
-        let node_id = cx.tcx.hir().hir_to_node_id(item.hir_id);
-        if !cx.access_levels.is_reachable(node_id) {
+        if !cx.access_levels.is_reachable(item.hir_id) {
             return;
         }
 
@@ -1169,9 +1166,8 @@ impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext<'_, '_>, what: &str, id: hir::HirId,
                     vis: &hir::Visibility, span: Span, exportable: bool) {
         let mut applicability = Applicability::MachineApplicable;
-        let node_id = cx.tcx.hir().hir_to_node_id(id);
         match vis.node {
-            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(node_id) => {
+            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
                 if span.ctxt().outer().expn_info().is_some() {
                     applicability = Applicability::MaybeIncorrect;
                 }
