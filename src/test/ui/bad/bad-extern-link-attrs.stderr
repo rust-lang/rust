@@ -11,10 +11,10 @@ LL | #[link(name = "")]
    | ^^^^^^^^^^^^^^^^^^ empty name given
 
 error[E0458]: unknown kind: `bar`
-  --> $DIR/bad-extern-link-attrs.rs:4:1
+  --> $DIR/bad-extern-link-attrs.rs:4:22
    |
 LL | #[link(name = "foo", kind = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^------------^^
+   | ---------------------^^^^^^^^^^^^--
    |                      |
    |                      unknown kind
 

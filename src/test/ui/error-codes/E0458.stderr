@@ -1,8 +1,8 @@
 error[E0458]: unknown kind: `wonderful_unicorn`
-  --> $DIR/E0458.rs:1:1
+  --> $DIR/E0458.rs:1:8
    |
 LL | #[link(kind = "wonderful_unicorn")] extern {}
-   | ^^^^^^^--------------------------^^
+   | -------^^^^^^^^^^^^^^^^^^^^^^^^^^--
    |        |
    |        unknown kind
 
