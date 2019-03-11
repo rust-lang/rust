@@ -5112,7 +5112,7 @@ impl<'a> Resolver<'a> {
                         // extra for the comma.
                         span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
                     ));
-                    err.span_suggestion(
+                    err.tool_only_span_suggestion(
                         span, message, String::new(), Applicability::MaybeIncorrect,
                     );
                     return;
