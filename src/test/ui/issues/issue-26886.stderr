@@ -4,12 +4,10 @@ error[E0252]: the name `Arc` is defined multiple times
 LL | use std::sync::{self, Arc};
    |                       --- previous import of the type `Arc` here
 LL | use std::sync::Arc;
-   | ----^^^^^^^^^^^^^^-
-   | |   |
-   | |   `Arc` reimported here
-   | help: remove unnecessary import
+   |     ^^^^^^^^^^^^^^ `Arc` reimported here
    |
    = note: `Arc` must be defined only once in the type namespace of this module
+   = help: remove unnecessary import
 
 error[E0252]: the name `sync` is defined multiple times
   --> $DIR/issue-26886.rs:4:5
@@ -18,12 +16,10 @@ LL | use std::sync::{self, Arc};
    |                 ---- previous import of the module `sync` here
 ...
 LL | use std::sync;
-   | ----^^^^^^^^^-
-   | |   |
-   | |   `sync` reimported here
-   | help: remove unnecessary import
+   |     ^^^^^^^^^ `sync` reimported here
    |
    = note: `sync` must be defined only once in the type namespace of this module
+   = help: remove unnecessary import
 
 error: aborting due to 2 previous errors
 
