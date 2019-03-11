@@ -207,10 +207,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let metadata = tcx.encode_metadata();
 
-        // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
-        save_incremental(tcx);
-        tcx.sess.warn("Saved incremental data");
-
         let mut log = if cfg!(debug_assertions) {
             Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
         } else {
@@ -322,6 +318,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             let mut allocator_module = new_module("allocator_shim.o".to_string());
             let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
+
+            rustc_incremental::assert_dep_graph(tcx);
+            rustc_incremental::save_dep_graph(tcx);
+            rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 
             return Box::new(CodegenResults {
                 crate_name: tcx.crate_name(LOCAL_CRATE),
@@ -467,12 +467,6 @@ fn time<R>(name: &str, f: impl FnOnce() -> R) -> R {
     let after = ::std::time::Instant::now();
     println!("[{}] end time: {:?}", name, after - before);
     res
-}
-
-fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    rustc_incremental::assert_dep_graph(tcx);
-    rustc_incremental::save_dep_graph(tcx);
-    rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
