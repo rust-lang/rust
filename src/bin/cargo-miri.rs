@@ -25,13 +25,6 @@ Common options:
 Other [options] are the same as `cargo rustc`.  Everything after the first "--" is
 passed verbatim to Miri, which will pass everything after the second "--" verbatim
 to the interpreted program.
-
-The config flag `miri` is automatically defined for convenience. You can use
-it to configure the resource limits
-
-    #![cfg_attr(miri, memory_size = 42)]
-
-available resource limits are `memory_size`, `step_limit`, `stack_limit`
 "#;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
