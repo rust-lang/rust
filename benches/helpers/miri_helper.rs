@@ -15,7 +15,7 @@ struct MiriCompilerCalls<'a> {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
-    fn after_analysis(&mut self, compiler: &interface::Compiler<'_>) -> bool {
+    fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
         compiler.session().abort_if_errors();
 
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
@@ -24,7 +24,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
             );
 
             self.bencher.iter(|| {
-                let config = MiriConfig { validate: true, args: vec![] };
+                let config = miri::MiriConfig { validate: true, args: vec![] };
                 eval_main(tcx, entry_def_id, config);
             });
         });
