@@ -1,0 +1,9 @@
+error[E0220]: associated type `Res` not found for `Self`
+  --> $DIR/issue-59029-1.rs:5:46
+   |
+LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
+   |                                              ^^^^^^^^^ associated type `Res` not found
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0220`.
