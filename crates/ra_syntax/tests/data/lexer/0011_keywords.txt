@@ -1,3 +1,5 @@
+ASYNC_KW 5 "async"
+WHITESPACE 1 " "
 FN_KW 2 "fn"
 WHITESPACE 1 " "
 USE_KW 3 "use"

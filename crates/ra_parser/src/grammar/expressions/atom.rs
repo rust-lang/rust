@@ -93,6 +93,11 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             }
         }
 
+        ASYNC_KW if la == L_CURLY => {
+            let m = p.start();
+            p.bump();
+            block_expr(p, Some(m))
+        }
         MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => {
             let m = p.start();

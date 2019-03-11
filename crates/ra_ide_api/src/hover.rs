@@ -550,7 +550,7 @@ The Some variant
     fn test_hover_infer_associated_method_result() {
         let (analysis, position) = single_file_with_position(
             "
-            struct Thing { x: u32 };
+            struct Thing { x: u32 }
 
             impl Thing {
                 fn new() -> Thing {
@@ -616,7 +616,7 @@ The Some variant
     fn test_hover_self() {
         let (analysis, position) = single_file_with_position(
             "
-            struct Thing { x: u32 };
+            struct Thing { x: u32 }
             impl Thing {
                 fn new() -> Self {
                     Self<|> { x: 0 }
@@ -630,7 +630,7 @@ The Some variant
 
         let (analysis, position) = single_file_with_position(
             "
-            struct Thing { x: u32 };
+            struct Thing { x: u32 }
             impl Thing {
                 fn new() -> Self<|> {
                     Self { x: 0 }
@@ -644,7 +644,7 @@ The Some variant
 
         let (analysis, position) = single_file_with_position(
             "
-            enum Thing { A };
+            enum Thing { A }
             impl Thing {
                 pub fn new() -> Self<|> {
                     Thing::A
@@ -658,7 +658,7 @@ The Some variant
 
         let (analysis, position) = single_file_with_position(
             "
-            enum Thing { A };
+            enum Thing { A }
             impl Thing {
                 pub fn thing(a: Self<|>) {
                 }

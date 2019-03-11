@@ -59,6 +59,7 @@ Grammar(
         [">>=", "SHREQ"],
     ],
     keywords: [
+        "async",
         "use",
         "fn",
         "struct",

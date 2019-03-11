@@ -86,9 +86,15 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     }
 
     let mut has_mods = false;
-    // modifiers
-    has_mods |= p.eat(CONST_KW);
 
+    // modifiers
+    // test_err async_without_semicolon
+    // fn foo() { let _ = async {} }
+    has_mods |= p.eat(CONST_KW);
+    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY {
+        p.eat(ASYNC_KW);
+        has_mods = true;
+    }
     // test_err unsafe_block_in_mod
     // fn foo(){} unsafe { } fn bar(){}
     if p.at(UNSAFE_KW) && p.nth(1) != L_CURLY {
@@ -110,6 +116,9 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
 
     // items
     let kind = match p.current() {
+        // test async_fn
+        // async fn foo() {}
+
         // test extern_fn
         // extern fn foo() {}
 
