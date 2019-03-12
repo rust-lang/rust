@@ -16,19 +16,20 @@ use core::intrinsics;
 #[derive(Copy, Clone)]
 pub struct BitMask(pub BitMaskWord);
 
+#[allow(clippy::use_self)]
 impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
     pub fn invert(self) -> Self {
-        Self(self.0 ^ BITMASK_MASK)
+        BitMask(self.0 ^ BITMASK_MASK)
     }
 
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]
     pub fn remove_lowest_bit(self) -> Self {
-        Self(self.0 & (self.0 - 1))
+        BitMask(self.0 & (self.0 - 1))
     }
     /// Returns whether the `BitMask` has at least one set bit.
     #[inline]

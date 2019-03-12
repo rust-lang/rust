@@ -21,7 +21,10 @@ type GroupWord = u32;
 pub type BitMaskWord = GroupWord;
 pub const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each byte for the mask.
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::unnecessary_cast,
+)]
 pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080_u64 as GroupWord;
 
 /// Helper function to replicate a byte across a `GroupWord`.
@@ -70,7 +73,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)] // unaligned load
     pub unsafe fn load(ptr: *const u8) -> Self {
-        Self(ptr::read_unaligned(ptr as *const _))
+        Group(ptr::read_unaligned(ptr as *const _))
     }
 
     /// Loads a group of bytes starting at the given address, which must be
@@ -80,7 +83,7 @@ impl Group {
     pub unsafe fn load_aligned(ptr: *const u8) -> Self {
         // FIXME: use align_offset once it stabilizes
         debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
-        Self(ptr::read(ptr as *const _))
+        Group(ptr::read(ptr as *const _))
     }
 
     /// Stores the group of bytes to the given address, which must be
@@ -143,6 +146,6 @@ impl Group {
         //   !1000_0000 + 1 = 0111_1111 + 1 = 1000_0000 (no carry)
         //   !0000_0000 + 0 = 1111_1111 + 0 = 1111_1111 (no carry)
         let full = !self.0 & repeat(0x80);
-        Self(!full + (full >> 7))
+        Group(!full + (full >> 7))
     }
 }
