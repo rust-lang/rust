@@ -904,6 +904,16 @@ mod tests {
     }
 
     #[test]
+    fn socket_peer_ip4() {
+        each_ip(&mut |addr1, addr2| {
+            let server = t!(UdpSocket::bind(&addr1));
+            assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
+            t!(server.connect(&addr2));
+            assert_eq!(addr2, t!(server.peer_addr()));
+        })
+    }
+
+    #[test]
     fn udp_clone_smoke() {
         each_ip(&mut |addr1, addr2| {
             let sock1 = t!(UdpSocket::bind(&addr1));
