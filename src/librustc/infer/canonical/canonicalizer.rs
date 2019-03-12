@@ -499,11 +499,13 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::KEEP_IN_LOCAL_TCX |
             TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
-            TypeFlags::HAS_TY_PLACEHOLDER
+            TypeFlags::HAS_TY_PLACEHOLDER |
+            TypeFlags::HAS_CT_PLACEHOLDER
         } else {
             TypeFlags::KEEP_IN_LOCAL_TCX |
             TypeFlags::HAS_RE_PLACEHOLDER |
-            TypeFlags::HAS_TY_PLACEHOLDER
+            TypeFlags::HAS_TY_PLACEHOLDER |
+            TypeFlags::HAS_CT_PLACEHOLDER
         };
 
         let gcx = tcx.global_tcx();

@@ -397,7 +397,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     // FIXME(const_generics): handle debug printing.
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
         match c.val {
-            ConstValue::Infer(..) => output.push_str("_"),
+            ConstValue::Infer(..) | ConstValue::Placeholder(_) => output.push_str("_"),
             ConstValue::Param(ParamConst { name, .. }) => {
                 write!(output, "{}", name).unwrap();
             }

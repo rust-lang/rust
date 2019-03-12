@@ -455,6 +455,7 @@ bitflags! {
         const HAS_TY_PLACEHOLDER = 1 << 14;
 
         const HAS_CT_INFER = 1 << 15;
+        const HAS_CT_PLACEHOLDER = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -477,7 +478,8 @@ bitflags! {
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
-                                  TypeFlags::HAS_TY_PLACEHOLDER.bits;
+                                  TypeFlags::HAS_TY_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_CT_PLACEHOLDER.bits;
     }
 }
 

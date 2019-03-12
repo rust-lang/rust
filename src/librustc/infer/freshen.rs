@@ -253,7 +253,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                     return ct;
                 }
 
-                ConstValue::Infer(ty::InferConst::Canonical(..)) => {
+                ConstValue::Infer(ty::InferConst::Canonical(..)) |
+                ConstValue::Placeholder(_) => {
                     bug!("unexpected const {:?}", ct)
                 }
 

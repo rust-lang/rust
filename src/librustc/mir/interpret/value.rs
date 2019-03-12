@@ -58,6 +58,7 @@ impl<'tcx> ConstValue<'tcx> {
         match *self {
             ConstValue::Param(_) |
             ConstValue::Infer(_) |
+            ConstValue::Placeholder(_) |
             ConstValue::ByRef(..) |
             ConstValue::Unevaluated(..) |
             ConstValue::Slice(..) => None,

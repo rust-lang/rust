@@ -615,6 +615,9 @@ where
                 (ConstValue::Param(a_p), ConstValue::Param(b_p)) if a_p.index == b_p.index => {
                     Ok(a)
                 }
+                (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
+                    Ok(a)
+                }
                 (ConstValue::Scalar(Scalar::Bits { .. }), _) if a == b => {
                     Ok(a)
                 }

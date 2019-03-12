@@ -254,6 +254,9 @@ impl FlagComputation {
             ConstValue::Param(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_PARAMS);
             }
+            ConstValue::Placeholder(_) => {
+                self.add_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_CT_PLACEHOLDER);
+            }
             _ => {},
         }
     }
