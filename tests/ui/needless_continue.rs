@@ -1,3 +1,5 @@
+#![warn(clippy::needless_continue)]
+
 macro_rules! zero {
     ($x:expr) => {
         $x == 0
@@ -10,7 +12,6 @@ macro_rules! nonzero {
     };
 }
 
-#[warn(clippy::needless_continue)]
 fn main() {
     let mut i = 1;
     while i < 10 {
@@ -47,5 +48,68 @@ fn main() {
         }
 
         println!("bleh");
+    }
+}
+
+mod issue_2329 {
+    fn condition() -> bool {
+        unimplemented!()
+    }
+    fn update_condition() {}
+
+    // only the outer loop has a label
+    fn foo() {
+        'outer: loop {
+            println!("Entry");
+            while condition() {
+                update_condition();
+                if condition() {
+                    println!("foo-1");
+                } else {
+                    continue 'outer; // should not lint here
+                }
+                println!("foo-2");
+
+                update_condition();
+                if condition() {
+                    continue 'outer; // should not lint here
+                } else {
+                    println!("foo-3");
+                }
+                println!("foo-4");
+            }
+        }
+    }
+
+    // both loops have labels
+    fn bar() {
+        'outer: loop {
+            println!("Entry");
+            'inner: while condition() {
+                update_condition();
+                if condition() {
+                    println!("bar-1");
+                } else {
+                    continue 'outer; // should not lint here
+                }
+                println!("bar-2");
+
+                update_condition();
+                if condition() {
+                    println!("bar-3");
+                } else {
+                    continue 'inner; // should lint here
+                }
+                println!("bar-4");
+
+                update_condition();
+                if condition() {
+                    continue; // should lint here
+                } else {
+                    println!("bar-5");
+                }
+                println!("bar-6");
+            }
+        }
     }
 }

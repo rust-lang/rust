@@ -181,19 +181,19 @@ impl EarlyLintPass for NeedlessContinue {
 /// - The expression is a `continue` node.
 /// - The expression node is a block with the first statement being a
 /// `continue`.
-fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
+fn needless_continue_in_else(else_expr: &ast::Expr, label: Option<&ast::Label>) -> bool {
     match else_expr.node {
-        ast::ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block),
-        ast::ExprKind::Continue(_) => true,
+        ast::ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block, label),
+        ast::ExprKind::Continue(l) => compare_labels(label, l.as_ref()),
         _ => false,
     }
 }
 
-fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
+fn is_first_block_stmt_continue(block: &ast::Block, label: Option<&ast::Label>) -> bool {
     block.stmts.get(0).map_or(false, |stmt| match stmt.node {
         ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => {
-            if let ast::ExprKind::Continue(_) = e.node {
-                true
+            if let ast::ExprKind::Continue(ref l) = e.node {
+                compare_labels(label, l.as_ref())
             } else {
                 false
             }
@@ -202,17 +202,29 @@ fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
     })
 }
 
+/// If the `continue` has a label, check it matches the label of the loop.
+fn compare_labels(loop_label: Option<&ast::Label>, continue_label: Option<&ast::Label>) -> bool {
+    match (loop_label, continue_label) {
+        // `loop { continue; }` or `'a loop { continue; }`
+        (_, None) => true,
+        // `loop { continue 'a; }`
+        (None, _) => false,
+        // `'a loop { continue 'a; }` or `'a loop { continue 'b; }`
+        (Some(x), Some(y)) => x.ident == y.ident,
+    }
+}
+
 /// If `expr` is a loop expression (while/while let/for/loop), calls `func` with
 /// the AST object representing the loop block of `expr`.
 fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
 where
-    F: FnMut(&ast::Block),
+    F: FnMut(&ast::Block, Option<&ast::Label>),
 {
     match expr.node {
-        ast::ExprKind::While(_, ref loop_block, _)
-        | ast::ExprKind::WhileLet(_, _, ref loop_block, _)
-        | ast::ExprKind::ForLoop(_, _, ref loop_block, _)
-        | ast::ExprKind::Loop(ref loop_block, _) => func(loop_block),
+        ast::ExprKind::While(_, ref loop_block, ref label)
+        | ast::ExprKind::WhileLet(_, _, ref loop_block, ref label)
+        | ast::ExprKind::ForLoop(_, _, ref loop_block, ref label)
+        | ast::ExprKind::Loop(ref loop_block, ref label) => func(loop_block, label.as_ref()),
         _ => {},
     }
 }
@@ -350,7 +362,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(
 }
 
 fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
-    with_loop_block(expr, |loop_block| {
+    with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
                 let data = &LintData {
@@ -361,14 +373,14 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
                     else_expr,
                     block_stmts: &loop_block.stmts,
                 };
-                if needless_continue_in_else(else_expr) {
+                if needless_continue_in_else(else_expr, label) {
                     emit_warning(
                         ctx,
                         data,
                         DROP_ELSE_BLOCK_AND_MERGE_MSG,
                         LintType::ContinueInsideElseBlock,
                     );
-                } else if is_first_block_stmt_continue(then_block) {
+                } else if is_first_block_stmt_continue(then_block, label) {
                     emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
                 }
             });
