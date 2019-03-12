@@ -405,7 +405,8 @@ impl<'a> Builder<'a> {
                 test::Miri,
                 test::Clippy,
                 test::CompiletestTest,
-                test::RustdocJS,
+                test::RustdocJSStd,
+                test::RustdocJSNotStd,
                 test::RustdocTheme,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,

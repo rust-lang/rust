@@ -1,7 +1,6 @@
 const fs = require('fs');
-const { spawnSync } = require('child_process');
 
-const TEST_FOLDER = 'src/test/rustdoc-js/';
+const TEST_FOLDER = 'src/test/rustdoc-js-std/';
 
 function getNextStep(content, pos, stop) {
     while (pos < content.length && content[pos] !== stop &&
@@ -220,10 +219,44 @@ function lookForEntry(entry, data) {
     return null;
 }
 
-function load_files(out_folder, crate) {
-    var mainJs = readFile(out_folder + "/main.js");
-    var ALIASES = readFile(out_folder + "/aliases.js");
-    var searchIndex = readFile(out_folder + "/search-index.js").split("\n");
+function findFile(dir, name, extension) {
+    var entries = fs.readdirSync(dir);
+    for (var i = 0; i < entries.length; ++i) {
+        var entry = entries[i];
+        var file_type = fs.statSync(dir + entry);
+        if (file_type.isDirectory()) {
+            continue;
+        }
+        if (entry.startsWith(name) && entry.endsWith(extension)) {
+            return entry;
+        }
+    }
+    return null;
+}
+
+function readFileMatching(dir, name, extension) {
+    if (dir.endsWith("/") === false) {
+        dir += "/";
+    }
+    var f = findFile(dir, name, extension);
+    if (f === null) {
+        return "";
+    }
+    return readFile(dir + f);
+}
+
+function main(argv) {
+    if (argv.length !== 3) {
+        console.error("Expected toolchain to check as argument (for example \
+                       'x86_64-apple-darwin')");
+        return 1;
+    }
+    var toolchain = argv[2];
+
+    var mainJs = readFileMatching("build/" + toolchain + "/doc/", "main", ".js");
+    var ALIASES = readFileMatching("build/" + toolchain + "/doc/", "aliases", ".js");
+    var searchIndex = readFileMatching("build/" + toolchain + "/doc/",
+                                       "search-index", ".js").split("\n");
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
     }
@@ -242,7 +275,7 @@ function load_files(out_folder, crate) {
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
                            "getQuery", "buildIndex", "execQuery", "execSearch"];
 
-    finalJS += 'window = { "currentCrate": "' + crate + '" };\n';
+    finalJS += 'window = { "currentCrate": "std" };\n';
     finalJS += 'var rootPath = "../";\n';
     finalJS += ALIASES;
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
@@ -250,36 +283,12 @@ function load_files(out_folder, crate) {
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, mainJs);
 
     var loaded = loadContent(finalJS);
-    return [loaded, loaded.buildIndex(searchIndex.searchIndex)];
-}
-
-function main(argv) {
-    if (argv.length < 4) {
-        console.error("USAGE: node tester.js OUT_FOLDER [TESTS]");
-        return 1;
-    }
-    if (argv[2].substr(-1) !== "/") {
-        argv[2] += "/";
-    }
-    const out_folder = argv[2];
+    var index = loaded.buildIndex(searchIndex.searchIndex);
 
     var errors = 0;
 
-    for (var j = 3; j < argv.length; ++j) {
-        const test_name = argv[j];
-
-        process.stdout.write('Checking "' + test_name + '" ... ');
-        if (!fs.existsSync(TEST_FOLDER + test_name + ".js")) {
-            errors += 1;
-            console.error("FAILED");
-            console.error("==> Missing '" + test_name + ".js' file...");
-            continue;
-        }
-
-        const test_out_folder = out_folder + test_name;
-
-        var [loaded, index] = load_files(test_out_folder, test_name);
-        var loadedFile = loadContent(readFile(TEST_FOLDER + test_name + ".js") +
+    fs.readdirSync(TEST_FOLDER).forEach(function(file) {
+        var loadedFile = loadContent(readFile(TEST_FOLDER + file) +
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
@@ -288,6 +297,7 @@ function main(argv) {
         const exact_check = loadedFile.exact_check;
         const should_fail = loadedFile.should_fail;
         var results = loaded.execSearch(loaded.getQuery(query), index);
+        process.stdout.write('Checking "' + file + '" ... ');
         var error_text = [];
         for (var key in expected) {
             if (!expected.hasOwnProperty(key)) {
@@ -327,7 +337,7 @@ function main(argv) {
         } else {
             console.log("OK");
         }
-    }
+    });
     return errors;
 }
 
