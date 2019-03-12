@@ -2900,50 +2900,55 @@ mod tests {
         let mut v3 = Options::default();
         let mut v4 = Options::default();
 
+        const JSON: super::ErrorOutputType = super::ErrorOutputType::Json {
+            pretty: false,
+            colorful_rendered: false,
+        };
+
         // Reference
         v1.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v2.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v3.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v4.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", json));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", json));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", json));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", json));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", json));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
