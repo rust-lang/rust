@@ -254,10 +254,11 @@ impl Options {
                                       (instead was `{}`)", arg));
             }
         };
+        // FIXME: deduplicate this code from the identical code in librustc/session/config.rs
         let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json(false),
-            Some("pretty-json") => ErrorOutputType::Json(true),
+            Some("json") => ErrorOutputType::Json { pretty: false, colorful_rendered: false },
+            Some("pretty-json") => ErrorOutputType::Json { pretty: true, colorful_rendered: false },
             Some("short") => ErrorOutputType::Short(color),
             None => ErrorOutputType::HumanReadable(color),
             Some(arg) => {

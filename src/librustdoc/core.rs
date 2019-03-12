@@ -307,7 +307,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                 sessopts.debugging_opts.teach,
             ).ui_testing(ui_testing)
         ),
-        ErrorOutputType::Json(pretty) => {
+        ErrorOutputType::Json { pretty, colorful_rendered } => {
             let source_map = source_map.unwrap_or_else(
                 || Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping())));
             Box::new(
@@ -315,6 +315,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     None,
                     source_map,
                     pretty,
+                    colorful_rendered,
                 ).ui_testing(ui_testing)
             )
         },
