@@ -58,10 +58,10 @@ impl<'a> FnKind<'a> {
         }
     }
 
-    pub fn header(&self) -> Option<FnHeader> {
+    pub fn header(&self) -> Option<&FnHeader> {
         match *self {
-            FnKind::ItemFn(_, _, header, _, _) => Some(header),
-            FnKind::Method(_, sig, _, _) => Some(sig.header),
+            FnKind::ItemFn(_, _, ref header, _, _) => Some(header),
+            FnKind::Method(_, ref sig, _, _) => Some(&sig.header),
             FnKind::Closure(_) => None,
         }
     }

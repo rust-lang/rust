@@ -68,7 +68,7 @@ impl<'a> DefCollector<'a> {
         id: NodeId,
         name: Name,
         span: Span,
-        header: &FnHeader,
+        header: &'a FnHeader,
         generics: &'a Generics,
         decl: &'a FnDecl,
         body: &'a Block,
@@ -77,6 +77,7 @@ impl<'a> DefCollector<'a> {
             IsAsync::Async {
                 closure_id,
                 return_impl_trait_id,
+                ..
             } => (closure_id, return_impl_trait_id),
             _ => unreachable!(),
         };
@@ -290,7 +291,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(_, asyncness, ..) => {
+            ExprKind::Closure(_, ref asyncness, ..) => {
                 let closure_def = self.create_def(expr.id,
                                           DefPathData::ClosureExpr,
                                           REGULAR_SPACE,
@@ -300,7 +301,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 if let IsAsync::Async { closure_id, .. } = asyncness {
-                    let async_def = self.create_def(closure_id,
+                    let async_def = self.create_def(*closure_id,
                                                     DefPathData::ClosureExpr,
                                                     REGULAR_SPACE,
                                                     expr.span);

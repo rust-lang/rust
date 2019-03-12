@@ -679,9 +679,17 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
 
 pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T) {
     match asyncness {
-        IsAsync::Async { closure_id, return_impl_trait_id } => {
+        IsAsync::Async { closure_id, return_impl_trait_id, ref mut arguments } => {
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
+            for AsyncArgument { ident, arg, stmt } in arguments.iter_mut() {
+                vis.visit_ident(ident);
+                vis.visit_arg(arg);
+                visit_clobber(stmt, |stmt| {
+                    vis.flat_map_stmt(stmt)
+                        .expect_one("expected visitor to produce exactly one item")
+                });
+            }
         }
         IsAsync::NotAsync => {}
     }

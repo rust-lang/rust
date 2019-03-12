@@ -3000,13 +3000,13 @@ impl<'a> LoweringContext<'a> {
     fn lower_async_body(
         &mut self,
         decl: &FnDecl,
-        asyncness: IsAsync,
+        asyncness: &IsAsync,
         body: &Block,
     ) -> hir::BodyId {
         self.lower_body(Some(decl), |this| {
             if let IsAsync::Async { closure_id, .. } = asyncness {
                 let async_expr = this.make_async_expr(
-                    CaptureBy::Value, closure_id, None,
+                    CaptureBy::Value, *closure_id, None,
                     |this| {
                         let body = this.lower_block(body, false);
                         this.expr_block(body, ThinVec::new())
@@ -3067,14 +3067,14 @@ impl<'a> LoweringContext<'a> {
                     value
                 )
             }
-            ItemKind::Fn(ref decl, header, ref generics, ref body) => {
+            ItemKind::Fn(ref decl, ref header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let body_id = this.lower_async_body(decl, header.asyncness.node, body);
+                    let body_id = this.lower_async_body(decl, &header.asyncness.node, body);
 
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
@@ -3565,7 +3565,7 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
-                let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness.node, body);
+                let body_id = self.lower_async_body(&sig.decl, &sig.header.asyncness.node, body);
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
@@ -3767,7 +3767,7 @@ impl<'a> LoweringContext<'a> {
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
     ) -> (hir::Generics, hir::MethodSig) {
-        let header = self.lower_fn_header(sig.header);
+        let header = self.lower_fn_header(&sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
             fn_def_id,
@@ -3789,10 +3789,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+    fn lower_fn_header(&mut self, h: &FnHeader) -> hir::FnHeader {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(h.asyncness.node),
+            asyncness: self.lower_asyncness(&h.asyncness.node),
             constness: self.lower_constness(h.constness),
             abi: h.abi,
         }
@@ -3812,7 +3812,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+    fn lower_asyncness(&mut self, a: &IsAsync) -> hir::IsAsync {
         match a {
             IsAsync::Async { .. } => hir::IsAsync::Async,
             IsAsync::NotAsync => hir::IsAsync::NotAsync,
@@ -4125,7 +4125,7 @@ impl<'a> LoweringContext<'a> {
                 })
             }
             ExprKind::Closure(
-                capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
+                capture_clause, ref asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
                 if let IsAsync::Async { closure_id, .. } = asyncness {
                     let outer_decl = FnDecl {
@@ -4163,7 +4163,7 @@ impl<'a> LoweringContext<'a> {
                                 Some(&**ty)
                             } else { None };
                             let async_body = this.make_async_expr(
-                                capture_clause, closure_id, async_ret_ty,
+                                capture_clause, *closure_id, async_ret_ty,
                                 |this| {
                                     this.with_new_scopes(|this| this.lower_expr(body))
                                 });
