@@ -9,12 +9,12 @@ LL |     const AC: Option<&'c str> = None;
 note: the lifetime 'c as defined on the impl at 20:18...
   --> $DIR/trait-associated-constant.rs:20:18
    |
-LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct1 {
+LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {
    |                  ^^
 note: ...does not necessarily outlive the lifetime 'b as defined on the impl at 20:14
   --> $DIR/trait-associated-constant.rs:20:14
    |
-LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct1 {
+LL | impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {
    |              ^^
 
 error: aborting due to previous error
