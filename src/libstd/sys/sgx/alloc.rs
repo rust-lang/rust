@@ -4,6 +4,8 @@ use super::waitqueue::SpinMutex;
 
 // Using a SpinMutex because we never want to exit the enclave waiting for the
 // allocator.
+#[cfg_attr(test, linkage = "available_externally")]
+#[export_name = "_ZN16__rust_internals3std3sys3sgx5alloc8DLMALLOCE"]
 static DLMALLOC: SpinMutex<dlmalloc::Dlmalloc> = SpinMutex::new(dlmalloc::DLMALLOC_INIT);
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]

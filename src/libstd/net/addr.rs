@@ -941,7 +941,10 @@ mod tests {
         assert_eq!(Ok(vec![a]), tsa(("2a02:6b8:0:1::1", 53)));
 
         let a = sa4(Ipv4Addr::new(127, 0, 0, 1), 23924);
+        #[cfg(not(target_env = "sgx"))]
         assert!(tsa(("localhost", 23924)).unwrap().contains(&a));
+        #[cfg(target_env = "sgx")]
+        let _ = a;
     }
 
     #[test]
@@ -953,7 +956,10 @@ mod tests {
         assert_eq!(Ok(vec![a]), tsa("[2a02:6b8:0:1::1]:53"));
 
         let a = sa4(Ipv4Addr::new(127, 0, 0, 1), 23924);
+        #[cfg(not(target_env = "sgx"))]
         assert!(tsa("localhost:23924").unwrap().contains(&a));
+        #[cfg(target_env = "sgx")]
+        let _ = a;
     }
 
     #[test]

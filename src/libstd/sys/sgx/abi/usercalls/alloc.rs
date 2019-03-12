@@ -188,8 +188,13 @@ impl<T: ?Sized> User<T> where T: UserSafe {
     // from outside as obtained by `super::alloc`.
     fn new_uninit_bytes(size: usize) -> Self {
         unsafe {
-            let ptr = super::alloc(size, T::align_of()).expect("User memory allocation failed");
-            User(NonNull::new_userref(T::from_raw_sized(ptr as _, size)))
+            // Mustn't call alloc with size 0.
+            let ptr = if size > 0 {
+                super::alloc(size, T::align_of()).expect("User memory allocation failed") as _
+            } else {
+                T::align_of() as _ // dangling pointer ok for size 0
+            };
+            User(NonNull::new_userref(T::from_raw_sized(ptr, size)))
         }
     }
 

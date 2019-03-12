@@ -72,3 +72,7 @@ wasm-bindgen-threads = []
 # https://github.com/rust-lang-nursery/stdsimd/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = []
 std_detect_dlsym_getauxval = []
+
+[package.metadata.fortanix-sgx]
+# Maximum possible number of threads when testing
+threads = 125
