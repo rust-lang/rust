@@ -64,6 +64,7 @@ use self::bitmask::BitMask;
 use self::imp::Group;
 
 /// Whether memory allocation errors should return an error or abort.
+#[derive(Copy, Clone)]
 enum Fallibility {
     Fallible,
     Infallible,
@@ -72,8 +73,8 @@ enum Fallibility {
 impl Fallibility {
     /// Error to return on capacity overflow.
     #[inline]
-    fn capacity_overflow(&self) -> CollectionAllocErr {
-        match *self {
+    fn capacity_overflow(self) -> CollectionAllocErr {
+        match self {
             Fallibility::Fallible => CollectionAllocErr::CapacityOverflow,
             Fallibility::Infallible => panic!("Hash table capacity overflow"),
         }
@@ -81,8 +82,8 @@ impl Fallibility {
 
     /// Error to return on allocation error.
     #[inline]
-    fn alloc_err(&self, layout: Layout) -> CollectionAllocErr {
-        match *self {
+    fn alloc_err(self, layout: Layout) -> CollectionAllocErr {
+        match self {
             Fallibility::Fallible => CollectionAllocErr::AllocErr,
             Fallibility::Infallible => handle_alloc_error(layout),
         }
@@ -90,10 +91,10 @@ impl Fallibility {
 }
 
 /// Control byte value for an empty bucket.
-const EMPTY: u8 = 0b11111111;
+const EMPTY: u8 = 0b1111_1111;
 
 /// Control byte value for a deleted bucket.
-const DELETED: u8 = 0b10000000;
+const DELETED: u8 = 0b1000_0000;
 
 /// Checks whether a control byte represents a full bucket (top bit is clear).
 #[inline]
@@ -116,19 +117,25 @@ fn special_is_empty(ctrl: u8) -> bool {
 
 /// Primary hash function, used to select the initial bucket to probe from.
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 fn h1(hash: u64) -> usize {
-    hash as usize
+    #[cfg(target_pointer_width = "32")]
+    {
+        debug_assert!(hash <= u64::from(u32::max_value()));
+    }
+    hash as usize // truncation
 }
 
 /// Secondary hash function, saved in the low 7 bits of the control byte.
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 fn h2(hash: u64) -> u8 {
     // Grab the top 7 bits of the hash. While the hash is normally a full 64-bit
     // value, some hash functions (such as FxHash) produce a usize result
     // instead, which means that the top 32 bits are 0 on 32-bit platforms.
     let hash_len = usize::min(mem::size_of::<usize>(), mem::size_of::<u64>());
     let top7 = hash >> (hash_len * 8 - 7);
-    (top7 & 0x7f) as u8
+    (top7 & 0x7f) as u8 // truncation
 }
 
 /// Probe sequence based on triangular numbers, which is guaranteed (since our
@@ -242,14 +249,14 @@ unsafe impl<T> Send for Bucket<T> {}
 impl<T> Clone for Bucket<T> {
     #[inline]
     fn clone(&self) -> Self {
-        Bucket { ptr: self.ptr }
+        Self { ptr: self.ptr }
     }
 }
 
 impl<T> Bucket<T> {
     #[inline]
     unsafe fn from_ptr(ptr: *const T) -> Self {
-        Bucket {
+        Self {
             ptr: NonNull::new_unchecked(ptr as *mut T),
         }
     }
@@ -291,8 +298,8 @@ impl<T> RawTable<T> {
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
     #[inline]
-    pub fn new() -> RawTable<T> {
-        RawTable {
+    pub fn new() -> Self {
+        Self {
             data: NonNull::dangling(),
             ctrl: NonNull::from(&Group::static_empty()[0]),
             bucket_mask: 0,
@@ -308,12 +315,12 @@ impl<T> RawTable<T> {
     unsafe fn new_uninitialized(
         buckets: usize,
         fallability: Fallibility,
-    ) -> Result<RawTable<T>, CollectionAllocErr> {
+    ) -> Result<Self, CollectionAllocErr> {
         let (layout, data_offset) =
             calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
         let ctrl = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
         let data = NonNull::new_unchecked(ctrl.as_ptr().add(data_offset) as *mut T);
-        Ok(RawTable {
+        Ok(Self {
             data,
             ctrl,
             bucket_mask: buckets - 1,
@@ -327,14 +334,14 @@ impl<T> RawTable<T> {
     fn try_with_capacity(
         capacity: usize,
         fallability: Fallibility,
-    ) -> Result<RawTable<T>, CollectionAllocErr> {
+    ) -> Result<Self, CollectionAllocErr> {
         if capacity == 0 {
-            Ok(RawTable::new())
+            Ok(Self::new())
         } else {
             unsafe {
                 let buckets =
                     capacity_to_buckets(capacity).ok_or_else(|| fallability.capacity_overflow())?;
-                let result = RawTable::new_uninitialized(buckets, fallability)?;
+                let result = Self::new_uninitialized(buckets, fallability)?;
                 result
                     .ctrl(0)
                     .write_bytes(EMPTY, result.buckets() + Group::WIDTH);
@@ -355,8 +362,8 @@ impl<T> RawTable<T> {
 
     /// Allocates a new hash table with at least enough capacity for inserting
     /// the given number of elements without reallocating.
-    pub fn with_capacity(capacity: usize) -> RawTable<T> {
-        RawTable::try_with_capacity(capacity, Fallibility::Infallible)
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::try_with_capacity(capacity, Fallibility::Infallible)
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() })
     }
 
@@ -689,7 +696,7 @@ impl<T> RawTable<T> {
             debug_assert!(self.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table = RawTable::try_with_capacity(capacity, fallability)?;
+            let mut new_table = Self::try_with_capacity(capacity, fallability)?;
             new_table.growth_left -= self.items;
             new_table.items = self.items;
 
@@ -820,12 +827,12 @@ impl<T> RawTable<T> {
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[inline]
     pub fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
-        let alloc = if self.bucket_mask != 0 {
+        let alloc = if self.bucket_mask == 0 {
+            None
+        } else {
             let (layout, _) = calculate_layout::<T>(self.buckets())
                 .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
             Some((self.ctrl.cast(), layout))
-        } else {
-            None
         };
         mem::forget(self);
         alloc
@@ -949,18 +956,14 @@ impl<T> RawIterRange<T> {
     ///
     /// The start offset must be aligned to the group width.
     #[inline]
-    unsafe fn new(
-        input_ctrl: *const u8,
-        input_data: *const T,
-        range: Range<usize>,
-    ) -> RawIterRange<T> {
+    unsafe fn new(input_ctrl: *const u8, input_data: *const T, range: Range<usize>) -> Self {
         debug_assert_eq!(range.start % Group::WIDTH, 0);
         let ctrl = input_ctrl.add(range.start);
         let data = input_data.add(range.start);
         let end = input_ctrl.add(range.end);
         debug_assert_eq!(offset_from(end, ctrl), range.end - range.start);
         let current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
-        RawIterRange {
+        Self {
             data,
             ctrl,
             current_group,
@@ -973,7 +976,7 @@ impl<T> RawIterRange<T> {
     /// This will fail if the total range is smaller than the group width.
     #[inline]
     #[cfg(feature = "rayon")]
-    pub fn split(mut self) -> (RawIterRange<T>, Option<RawIterRange<T>>) {
+    pub fn split(mut self) -> (Self, Option<RawIterRange<T>>) {
         unsafe {
             let len = offset_from(self.end, self.ctrl);
             debug_assert!(len.is_power_of_two());
@@ -982,7 +985,7 @@ impl<T> RawIterRange<T> {
             } else {
                 debug_assert_eq!(len % (Group::WIDTH * 2), 0);
                 let mid = len / 2;
-                let tail = RawIterRange::new(self.ctrl, self.data, mid..len);
+                let tail = Self::new(self.ctrl, self.data, mid..len);
                 debug_assert_eq!(self.data.add(mid), tail.data);
                 debug_assert_eq!(self.end, tail.end);
                 self.end = self.ctrl.add(mid);
@@ -999,7 +1002,7 @@ unsafe impl<T> Sync for RawIterRange<T> where T: Sync {}
 impl<T> Clone for RawIterRange<T> {
     #[inline]
     fn clone(&self) -> Self {
-        RawIterRange {
+        Self {
             data: self.data,
             ctrl: self.ctrl,
             current_group: self.current_group,
@@ -1051,7 +1054,7 @@ pub struct RawIter<T> {
 impl<T> Clone for RawIter<T> {
     #[inline]
     fn clone(&self) -> Self {
-        RawIter {
+        Self {
             iter: self.iter.clone(),
             items: self.items,
         }
@@ -1063,18 +1066,15 @@ impl<T> Iterator for RawIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<Bucket<T>> {
-        match self.iter.next() {
-            Some(b) => {
-                self.items -= 1;
-                Some(b)
-            }
-            None => {
-                // We don't check against items == 0 here to allow the
-                // compiler to optimize away the item count entirely if the
-                // iterator length is never queried.
-                debug_assert_eq!(self.items, 0);
-                None
-            }
+        if let Some(b) = self.iter.next() {
+            self.items -= 1;
+            Some(b)
+        } else {
+            // We don't check against items == 0 here to allow the
+            // compiler to optimize away the item count entirely if the
+            // iterator length is never queried.
+            debug_assert_eq!(self.items, 0);
+            None
         }
     }
 

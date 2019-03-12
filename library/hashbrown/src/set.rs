@@ -129,8 +129,8 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
     #[inline]
-    pub fn new() -> HashSet<T, DefaultHashBuilder> {
-        HashSet {
+    pub fn new() -> Self {
+        Self {
             map: HashMap::new(),
         }
     }
@@ -148,8 +148,8 @@ impl<T: Hash + Eq> HashSet<T, DefaultHashBuilder> {
     /// assert!(set.capacity() >= 10);
     /// ```
     #[inline]
-    pub fn with_capacity(capacity: usize) -> HashSet<T, DefaultHashBuilder> {
-        HashSet {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
             map: HashMap::with_capacity(capacity),
         }
     }
@@ -181,8 +181,8 @@ where
     /// set.insert(2);
     /// ```
     #[inline]
-    pub fn with_hasher(hasher: S) -> HashSet<T, S> {
-        HashSet {
+    pub fn with_hasher(hasher: S) -> Self {
+        Self {
             map: HashMap::with_hasher(hasher),
         }
     }
@@ -209,8 +209,8 @@ where
     /// set.insert(1);
     /// ```
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
-        HashSet {
+    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
+        Self {
             map: HashMap::with_capacity_and_hasher(capacity, hasher),
         }
     }
@@ -384,7 +384,7 @@ where
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[inline]
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
+    pub fn difference<'a>(&'a self, other: &'a Self) -> Difference<'a, T, S> {
         Difference {
             iter: self.iter(),
             other,
@@ -413,10 +413,7 @@ where
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[inline]
-    pub fn symmetric_difference<'a>(
-        &'a self,
-        other: &'a HashSet<T, S>,
-    ) -> SymmetricDifference<'a, T, S> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifference<'a, T, S> {
         SymmetricDifference {
             iter: self.difference(other).chain(other.difference(self)),
         }
@@ -441,7 +438,7 @@ where
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[inline]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
+    pub fn intersection<'a>(&'a self, other: &'a Self) -> Intersection<'a, T, S> {
         Intersection {
             iter: self.iter(),
             other,
@@ -467,7 +464,7 @@ where
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[inline]
-    pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
+    pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, T, S> {
         Union {
             iter: self.iter().chain(other.difference(self)),
         }
@@ -619,7 +616,7 @@ where
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    pub fn is_disjoint(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_disjoint(&self, other: &Self) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
@@ -640,7 +637,7 @@ where
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    pub fn is_subset(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_subset(&self, other: &Self) -> bool {
         self.iter().all(|v| other.contains(v))
     }
 
@@ -665,7 +662,7 @@ where
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
     #[inline]
-    pub fn is_superset(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_superset(&self, other: &Self) -> bool {
         other.is_subset(self)
     }
 
@@ -801,7 +798,7 @@ where
     T: Eq + Hash,
     S: BuildHasher,
 {
-    fn eq(&self, other: &HashSet<T, S>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -833,8 +830,8 @@ where
     S: BuildHasher + Default,
 {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> HashSet<T, S> {
-        let mut set = HashSet::with_hasher(Default::default());
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut set = Self::with_hasher(Default::default());
         set.extend(iter);
         set
     }
@@ -869,8 +866,8 @@ where
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]
-    fn default() -> HashSet<T, S> {
-        HashSet {
+    fn default() -> Self {
+        Self {
             map: HashMap::default(),
         }
     }

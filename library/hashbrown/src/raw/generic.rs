@@ -21,12 +21,16 @@ type GroupWord = u32;
 pub type BitMaskWord = GroupWord;
 pub const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each byte for the mask.
-pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080u64 as GroupWord;
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::unnecessary_cast,
+)]
+pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080_u64 as GroupWord;
 
 /// Helper function to replicate a byte across a `GroupWord`.
 #[inline]
 fn repeat(byte: u8) -> GroupWord {
-    let repeat = byte as GroupWord;
+    let repeat = GroupWord::from(byte);
     let repeat = repeat | repeat.wrapping_shl(8);
     let repeat = repeat | repeat.wrapping_shl(16);
     // This last line is a no-op with a 32-bit GroupWord
@@ -44,6 +48,7 @@ pub struct Group(GroupWord);
 // little-endian just before creating a BitMask. The can potentially
 // enable the compiler to eliminate unnecessary byte swaps if we are
 // only checking whether a BitMask is empty.
+#[allow(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub const WIDTH: usize = mem::size_of::<Self>();
@@ -66,23 +71,28 @@ impl Group {
 
     /// Loads a group of bytes starting at the given address.
     #[inline]
-    pub unsafe fn load(ptr: *const u8) -> Group {
+    #[allow(clippy::cast_ptr_alignment)] // unaligned load
+    pub unsafe fn load(ptr: *const u8) -> Self {
         Group(ptr::read_unaligned(ptr as *const _))
     }
 
     /// Loads a group of bytes starting at the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    pub unsafe fn load_aligned(ptr: *const u8) -> Group {
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
+    #[allow(clippy::cast_ptr_alignment)]
+    pub unsafe fn load_aligned(ptr: *const u8) -> Self {
+        // FIXME: use align_offset once it stabilizes
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
         Group(ptr::read(ptr as *const _))
     }
 
     /// Stores the group of bytes to the given address, which must be
     /// aligned to `mem::align_of::<Group>()`.
     #[inline]
-    pub unsafe fn store_aligned(&self, ptr: *mut u8) {
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
+    #[allow(clippy::cast_ptr_alignment)]
+    pub unsafe fn store_aligned(self, ptr: *mut u8) {
+        // FIXME: use align_offset once it stabilizes
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
         ptr::write(ptr as *mut _, self.0);
     }
 
@@ -97,7 +107,7 @@ impl Group {
     /// - This only happens if there is at least 1 true match.
     /// - The chance of this happening is very low (< 1% chance per byte).
     #[inline]
-    pub fn match_byte(&self, byte: u8) -> BitMask {
+    pub fn match_byte(self, byte: u8) -> BitMask {
         // This algorithm is derived from
         // http://graphics.stanford.edu/~seander/bithacks.html##ValueInWord
         let cmp = self.0 ^ repeat(byte);
@@ -107,7 +117,7 @@ impl Group {
     /// Returns a `BitMask` indicating all bytes in the group which are
     /// `EMPTY`.
     #[inline]
-    pub fn match_empty(&self) -> BitMask {
+    pub fn match_empty(self) -> BitMask {
         // If the high bit is set, then the byte must be either:
         // 1111_1111 (EMPTY) or 1000_0000 (DELETED).
         // So we can just check if the top two bits are 1 by ANDing them.
@@ -117,7 +127,7 @@ impl Group {
     /// Returns a `BitMask` indicating all bytes in the group which are
     /// `EMPTY` or `DELETED`.
     #[inline]
-    pub fn match_empty_or_deleted(&self) -> BitMask {
+    pub fn match_empty_or_deleted(self) -> BitMask {
         // A byte is EMPTY or DELETED iff the high bit is set
         BitMask((self.0 & repeat(0x80)).to_le())
     }
@@ -127,7 +137,7 @@ impl Group {
     /// - `DELETED => EMPTY`
     /// - `FULL => DELETED`
     #[inline]
-    pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
+    pub fn convert_special_to_empty_and_full_to_deleted(self) -> Self {
         // Map high_bit = 1 (EMPTY or DELETED) to 1111_1111
         // and high_bit = 0 (FULL) to 1000_0000
         //

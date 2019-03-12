@@ -1,38 +1,67 @@
 language: rust
 sudo: false
+rust: nightly
 
 matrix:
   include:
     - name: "miri"
-      rust: nightly
-      install:
-        - rustup component add rust-src
-        - cargo +nightly install --force --git https://github.com/rust-lang/miri miri
-        - cargo install xargo
-      script:
-        - cargo clean
-        - cargo +nightly miri test
-    - rust: 1.29.0
-    - rust: stable
-    - rust: beta
-    - rust: nightly
-    - rust: nightly
-      env:
-       - FEATURES='nightly'
+      env: TARGET=x86_64-unknown-linux-gnu
+      script: sh ci/miri.sh
+    - name: "rustfmt/clippy"
+      env: TARGET=i586-unknown-linux-gnu
+      script: sh ci/tools.sh
+    - name: "docs"
+      env: TARGET=x86_64-unknown-linux-gnu
+      script: cargo -vv doc --features nightly,serde,rayon
+      deploy:
+        provider: pages
+        skip-cleanup: true
+        github-token: $GITHUB_TOKEN
+        local-dir: target/doc
+        keep-history: false
+        on:
+          branch: master
 
-    # test a target without sse2 for raw/generic.rs
-    - rust: stable
-      env:
-       - TARGET=i586-unknown-linux-gnu
-      addons:
-        apt:
-          packages:
-            - gcc-multilib
-      install:
-       - rustup target add $TARGET
-      script:
-       - cargo build --verbose --target $TARGET
-       - cargo test --verbose --target $TARGET
+    # Tier 1 targets:
+    - name: "x86_64-unknown-linux-gnu"
+      env: TARGET=x86_64-unknown-linux-gnu
+    - name: "x86_64-unknown-linux-gnu (beta)"
+      rust: beta
+      env: TARGET=x86_64-unknown-linux-gnu
+    - name: "x86_64-unknown-linux-gnu (stable)"
+      rust: stable
+      env: TARGET=x86_64-unknown-linux-gnu
+    - name: "x86_64-unknown-linux-gnu (Rust 1.29.0)"
+      rust: 1.31.0
+      env: TARGET=x86_64-unknown-linux-gnu
+    - name: "i686-unknown-linux-gnu"
+      env: TARGET=i686-unknown-linux-gnu CROSS=1
+    - name: "x86_64-apple-darwin"
+      env: TARGET=x86_64-apple-darwin
+      os: osx
+      osx_image: xcode10
+    - name: "i686-apple-darwin"
+      env: TARGET=i686-apple-darwin
+      os: osx
+      osx_image: xcode10
+    - name: "x86_64-pc-windows-msvc"
+      env: TARGET=x86_64-pc-windows-msvc
+      os: windows
+    - name: "x86_64-pc-windows-gnu"
+      env: TARGET=x86_64-pc-windows-gnu CROSS=1
+    - name: "i686-pc-windows-gnu"
+      env: TARGET=i686-pc-windows-gnu CROSS=1
+
+    # Tier 2/3 targets:
+    - name: "i586-unknown-linux-gnu (no SSE2)"
+      env: TARGET=i586-unknown-linux-gnu CROSS=1
+    - name: "armv7-unknown-linux-gnueabihf"
+      env: TARGET=armv7-unknown-linux-gnueabihf CROSS=1
+    - name: "aarch64-unknown-linux-gnu"
+      env: TARGET=aarch64-unknown-linux-gnu CROSS=1
+   
+install: travis_retry rustup target add "${TARGET}"
+script: sh ci/run.sh
 
 branches:
   # Don't build these branches
@@ -40,19 +69,3 @@ branches:
     # Used by bors
     - trying.tmp
     - staging.tmp
-
-before_script:
-  - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then rustup component add rustfmt; fi
-
-script:
-  - if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then cargo fmt -- --check; fi
-
-  - cargo build --verbose --features "$FEATURES"
-  - cargo test --verbose --features "$FEATURES"
-  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo bench --verbose --features "$FEATURES"; fi
-  - cargo doc --verbose --features "$FEATURES"
-
-  - cargo build --verbose --features "$FEATURES serde"
-  - cargo test --verbose --features "$FEATURES serde"
-  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo bench --verbose --features "$FEATURES serde"; fi
-  - cargo doc --verbose --features "$FEATURES serde"
