@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:lint_tool_test.rs
+// aux-build:lint-tool-test.rs
 // ignore-stage1
 // compile-flags: -A test-lint
 
@@ -7,7 +7,6 @@
 #![warn(unused)]
 #![plugin(lint_tool_test)]
 
-fn lintme() { }
+fn lintme() {}
 
-pub fn main() {
-}
+pub fn main() {}

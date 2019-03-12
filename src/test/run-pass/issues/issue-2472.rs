@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:issue_2472_b.rs
+// aux-build:issue-2472-b.rs
 
 // pretty-expanded FIXME #23616
 

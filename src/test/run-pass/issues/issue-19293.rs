@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:issue_19293.rs
+// aux-build:issue-19293.rs
 // pretty-expanded FIXME #23616
 
 extern crate issue_19293;

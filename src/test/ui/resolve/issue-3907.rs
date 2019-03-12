@@ -1,4 +1,5 @@
-// aux-build:issue_3907.rs
+// aux-build:issue-3907.rs
+
 extern crate issue_3907;
 
 type Foo = issue_3907::Foo;

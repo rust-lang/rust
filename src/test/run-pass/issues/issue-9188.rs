@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:issue_9188.rs
+// aux-build:issue-9188.rs
 
 
 extern crate issue_9188;

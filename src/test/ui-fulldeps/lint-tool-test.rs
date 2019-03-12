@@ -1,4 +1,4 @@
-// aux-build:lint_tool_test.rs
+// aux-build:lint-tool-test.rs
 // ignore-stage1
 // compile-flags: --cfg foo
 

@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-// aux-build:custom_derive_plugin.rs
+// aux-build:custom-derive-plugin.rs
 // ignore-stage1
 
 #![feature(plugin)]
