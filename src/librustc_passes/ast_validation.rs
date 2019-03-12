@@ -64,8 +64,8 @@ struct AstValidator<'a> {
     is_impl_trait_banned: bool,
 
     // rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
-    // until sometime after PR #57730 landed: it would jump directly
-    // to walk_ty rather than visit_ty (or skip recurring entirely for
+    // until PRs #57730 and #57981 landed: it would jump directly to
+    // walk_ty rather than visit_ty (or skip recurring entirely for
     // impl trait in projections), and thus miss some cases. We track
     // whether we should downgrade to a warning for short-term via
     // these booleans.
