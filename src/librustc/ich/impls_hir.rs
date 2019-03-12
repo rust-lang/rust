@@ -435,4 +435,3 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for attr::OptimizeAttr {
         mem::discriminant(self).hash_stable(hcx, hasher);
     }
 }
-
