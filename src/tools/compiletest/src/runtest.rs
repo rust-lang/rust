@@ -2760,7 +2760,7 @@ impl<'test> TestCx<'test> {
         let stderr = if explicit {
             proc_res.stderr.clone()
         } else {
-            json::extract_rendered(&proc_res.stderr, &proc_res)
+            json::extract_rendered(&proc_res.stderr)
         };
 
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
@@ -3377,7 +3377,9 @@ impl ProcRes {
              {}\n\
              ------------------------------------------\n\
              \n",
-            self.status, self.cmdline, self.stdout, self.stderr
+            self.status, self.cmdline,
+            json::extract_rendered(&self.stdout),
+            json::extract_rendered(&self.stderr),
         );
         panic!();
     }
