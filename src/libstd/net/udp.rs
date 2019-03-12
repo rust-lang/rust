@@ -896,7 +896,7 @@ mod tests {
     }
 
     #[test]
-    fn socket_name_ip4() {
+    fn socket_name() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
             assert_eq!(addr, t!(server.local_addr()));
@@ -904,7 +904,7 @@ mod tests {
     }
 
     #[test]
-    fn socket_peer_ip4() {
+    fn socket_peer() {
         each_ip(&mut |addr1, addr2| {
             let server = t!(UdpSocket::bind(&addr1));
             assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
