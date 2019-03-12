@@ -2039,6 +2039,7 @@ pub struct EnumDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct VariantKind {
+    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
@@ -2383,6 +2384,7 @@ pub enum AssociatedItemKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct ForeignItem {
+    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
