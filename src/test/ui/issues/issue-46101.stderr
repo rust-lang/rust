@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: partially resolved path in a derive macro
   --> $DIR/issue-46101.rs:3:10
    |
-LL | #[derive(Foo::Anything)] //~ ERROR failed to resolve: partially resolved path in a derive macro
+LL | #[derive(Foo::Anything)]
    |          ^^^^^^^^^^^^^ partially resolved path in a derive macro
 
 error[E0601]: `main` function not found in crate `issue_46101`

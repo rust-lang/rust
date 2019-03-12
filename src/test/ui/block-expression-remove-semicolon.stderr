@@ -3,8 +3,8 @@ error[E0308]: mismatched types
    |
 LL |       let x: i32 = {
    |  __________________^
-LL | |         //~^ ERROR mismatched types
-LL | |         foo(); //~ HELP consider removing this semicolon
+LL | |
+LL | |         foo();
    | |              - help: consider removing this semicolon
 LL | |     };
    | |_____^ expected i32, found ()
