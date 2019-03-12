@@ -1,8 +1,3 @@
-// error-pattern:yummy
-#![feature(box_syntax)]
-#![feature(rustc_private)]
-#![allow(clippy::missing_docs_in_private_items)]
-
 use rustc_tools_util::*;
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
