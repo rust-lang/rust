@@ -181,7 +181,8 @@ pub trait CodegenUnitExt<'tcx> {
                         InstanceDef::Virtual(..) |
                         InstanceDef::ClosureOnceShim { .. } |
                         InstanceDef::DropGlue(..) |
-                        InstanceDef::CloneShim(..) => {
+                        InstanceDef::CloneCopyShim(..) |
+                        InstanceDef::CloneStructuralShim(..) => {
                             None
                         }
                     }
@@ -424,7 +425,8 @@ fn mono_item_visibility(
         InstanceDef::Intrinsic(..) |
         InstanceDef::ClosureOnceShim { .. } |
         InstanceDef::DropGlue(..) |
-        InstanceDef::CloneShim(..) => {
+        InstanceDef::CloneCopyShim(..) |
+        InstanceDef::CloneStructuralShim(..) => {
             return Visibility::Hidden
         }
     };
@@ -759,7 +761,8 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty::InstanceDef::Intrinsic(..) |
                 ty::InstanceDef::DropGlue(..) |
                 ty::InstanceDef::Virtual(..) |
-                ty::InstanceDef::CloneShim(..) => return None
+                ty::InstanceDef::CloneCopyShim(..) |
+                ty::InstanceDef::CloneStructuralShim(..) => return None
             };
 
             // If this is a method, we want to put it into the same module as

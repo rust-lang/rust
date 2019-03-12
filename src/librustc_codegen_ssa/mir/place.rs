@@ -104,6 +104,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         self, bx: &mut Bx,
         ix: usize,
     ) -> Self {
+        info!("project_field: self={:?}", self);
         let field = self.layout.field(bx.cx(), ix);
         let offset = self.layout.fields.offset(ix);
         let effective_field_align = self.align.restrict_for_offset(offset);

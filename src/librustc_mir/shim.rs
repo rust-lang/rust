@@ -98,16 +98,17 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::DropGlue(def_id, ty) => {
             build_drop_shim(tcx, def_id, ty)
         }
-        ty::InstanceDef::CloneShim(def_id, ty) => {
-            let name = tcx.item_name(def_id);
-            if name == "clone" {
-                build_clone_shim(tcx, def_id, ty)
-            } else if name == "clone_from" {
-                debug!("make_shim({:?}: using default trait implementation", instance);
-                return tcx.optimized_mir(def_id);
-            } else {
-                bug!("builtin clone shim {:?} not supported", instance)
-            }
+        ty::InstanceDef::CloneCopyShim(def_id) => {
+            info!("shim: CloneCopyShim({:?})", def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, def_id);
+            let self_ty = substs.type_at(0);
+            let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
+            builder.copy_shim();
+            builder.into_mir()
+        }
+        ty::InstanceDef::CloneStructuralShim(def_id, ty) => {
+            info!("shim: CloneStructuralShim(def_id: {:?}, ty: {:?})", def_id, ty);
+            build_clone_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)

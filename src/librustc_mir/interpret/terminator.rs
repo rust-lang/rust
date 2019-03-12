@@ -258,7 +258,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::DropGlue(..) |
-            ty::InstanceDef::CloneShim(..) |
+            ty::InstanceDef::CloneCopyShim(..) |
+            ty::InstanceDef::CloneStructuralShim(..) |
             ty::InstanceDef::Item(_) => {
                 // ABI check
                 {

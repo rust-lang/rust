@@ -767,8 +767,10 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
                 Some(ty::InstanceDef::ClosureOnceShim { call_once }),
             ty::InstanceDef::DropGlue(def_id, ref ty) =>
                 Some(ty::InstanceDef::DropGlue(def_id, tcx.lift(ty)?)),
-            ty::InstanceDef::CloneShim(def_id, ref ty) =>
-                Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?)),
+            ty::InstanceDef::CloneCopyShim(def_id) =>
+                Some(ty::InstanceDef::CloneCopyShim(def_id)),
+            ty::InstanceDef::CloneStructuralShim(def_id, ref ty) =>
+                Some(ty::InstanceDef::CloneStructuralShim(def_id, tcx.lift(ty)?)),
         }
     }
 }
@@ -999,7 +1001,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                     did.fold_with(folder),
                     ty.fold_with(folder),
                 ),
-                CloneShim(did, ty) => CloneShim(
+                CloneCopyShim(did) => CloneCopyShim(
+                    did.fold_with(folder),
+                ),
+                CloneStructuralShim(did, ty) => CloneStructuralShim(
                     did.fold_with(folder),
                     ty.fold_with(folder),
                 ),
@@ -1011,10 +1016,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor) ||
         match self.def {
-            Item(did) | VtableShim(did) | Intrinsic(did) | Virtual(did, _) => {
+            Item(did) | VtableShim(did) | Intrinsic(did) | Virtual(did, _) | CloneCopyShim(did) => {
                 did.visit_with(visitor)
             },
-            FnPtrShim(did, ty) | CloneShim(did, ty) => {
+            FnPtrShim(did, ty) | CloneStructuralShim(did, ty) => {
                 did.visit_with(visitor) || ty.visit_with(visitor)
             },
             DropGlue(did, ty) => {

@@ -2953,7 +2953,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::InstanceDef::Virtual(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::DropGlue(..) |
-            ty::InstanceDef::CloneShim(..) => {
+            ty::InstanceDef::CloneCopyShim(..) |
+            ty::InstanceDef::CloneStructuralShim(..) => {
                 self.mir_shims(instance)
             }
         }
