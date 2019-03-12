@@ -2819,12 +2819,18 @@ impl<'a> LoweringContext<'a> {
         asyncness: &IsAsync,
         body: &Block,
     ) -> hir::BodyId {
-        self.lower_body(Some(decl), |this| {
-            if let IsAsync::Async { closure_id, .. } = asyncness {
+        self.lower_body(Some(&decl), |this| {
+            if let IsAsync::Async { closure_id, ref arguments, .. } = asyncness {
+                let mut body = body.clone();
+
+                for a in arguments.iter().rev() {
+                    body.stmts.insert(0, a.stmt.clone());
+                }
+
                 let async_expr = this.make_async_expr(
                     CaptureBy::Value, *closure_id, None,
                     |this| {
-                        let body = this.lower_block(body, false);
+                        let body = this.lower_block(&body, false);
                         this.expr_block(body, ThinVec::new())
                     });
                 this.expr(body.span, async_expr, ThinVec::new())
@@ -2886,23 +2892,39 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Fn(ref decl, ref header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
-                    // Note: we don't need to change the return type from `T` to
-                    // `impl Future<Output = T>` here because lower_body
-                    // only cares about the input argument patterns in the function
-                    // declaration (decl), not the return types.
-                    let body_id = this.lower_async_body(decl, &header.asyncness.node, body);
+                    let mut lower_fn = |decl: &FnDecl| {
+                        // Note: we don't need to change the return type from `T` to
+                        // `impl Future<Output = T>` here because lower_body
+                        // only cares about the input argument patterns in the function
+                        // declaration (decl), not the return types.
+                        let body_id = this.lower_async_body(&decl, &header.asyncness.node, body);
 
-                    let (generics, fn_decl) = this.add_in_band_defs(
-                        generics,
-                        fn_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this, idty| this.lower_fn_decl(
-                            decl,
-                            Some((fn_def_id, idty)),
-                            true,
-                            header.asyncness.node.opt_return_id()
-                        ),
-                    );
+                        let (generics, fn_decl) = this.add_in_band_defs(
+                            generics,
+                            fn_def_id,
+                            AnonymousLifetimeMode::PassThrough,
+                            |this, idty| this.lower_fn_decl(
+                                &decl,
+                                Some((fn_def_id, idty)),
+                                true,
+                                header.asyncness.node.opt_return_id()
+                            ),
+                        );
+
+                        (body_id, generics, fn_decl)
+                    };
+
+                    let (body_id, generics, fn_decl) = if let IsAsync::Async {
+                        arguments, ..
+                    } = &header.asyncness.node {
+                        let mut decl = decl.clone();
+                        // Replace the arguments of this async function with the generated
+                        // arguments that will be moved into the closure.
+                        decl.inputs = arguments.clone().drain(..).map(|a| a.arg).collect();
+                        lower_fn(&decl)
+                    } else {
+                        lower_fn(decl)
+                    };
 
                     hir::ItemKind::Fn(
                         fn_decl,
