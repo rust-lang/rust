@@ -613,6 +613,8 @@ impl<Tag> DerefMut for Relocations<Tag> {
 
 type Block = u64;
 
+/// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
+/// is defined. If it is `false` the byte is undefined.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct UndefMask {
     blocks: Vec<Block>,
