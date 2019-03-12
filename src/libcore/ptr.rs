@@ -2878,7 +2878,8 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
 /// not change the fact that mutating through a (pointer derived from a) shared
 /// reference is undefined behavior unless the mutation happens inside an
-/// [`UnsafeCell<T>`]. When using this `From` instance without an `UnsafeCell<T>`,
+/// [`UnsafeCell<T>`]. The same goes for creating a mutable reference from a shared
+/// reference. When using this `From` instance without an `UnsafeCell<T>`,
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
