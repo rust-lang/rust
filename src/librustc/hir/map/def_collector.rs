@@ -68,7 +68,7 @@ impl<'a> DefCollector<'a> {
         id: NodeId,
         name: Name,
         span: Span,
-        header: &FnHeader,
+        header: &'a FnHeader,
         generics: &'a Generics,
         decl: &'a FnDecl,
         body: &'a Block,
@@ -86,12 +86,12 @@ impl<'a> DefCollector<'a> {
         let fn_def_data = DefPathData::ValueNs(name.as_interned_str());
         let fn_def = self.create_def(id, fn_def_data, ITEM_LIKE_SPACE, span);
         return self.with_parent(fn_def, |this| {
-            this.create_def(return_impl_trait_id, DefPathData::ImplTrait, REGULAR_SPACE, span);
+            this.create_def(*return_impl_trait_id, DefPathData::ImplTrait, REGULAR_SPACE, span);
 
             visit::walk_generics(this, generics);
             visit::walk_fn_decl(this, decl);
 
-            let closure_def = this.create_def(closure_id,
+            let closure_def = this.create_def(*closure_id,
                                               DefPathData::ClosureExpr,
                                               REGULAR_SPACE,
                                               span);
@@ -288,7 +288,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(_, asyncness, ..) => {
+            ExprKind::Closure(_, ref asyncness, ..) => {
                 let closure_def = self.create_def(expr.id,
                                           DefPathData::ClosureExpr,
                                           REGULAR_SPACE,
@@ -298,7 +298,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 if let IsAsync::Async { closure_id, .. } = asyncness {
-                    let async_def = self.create_def(closure_id,
+                    let async_def = self.create_def(*closure_id,
                                                     DefPathData::ClosureExpr,
                                                     REGULAR_SPACE,
                                                     expr.span);

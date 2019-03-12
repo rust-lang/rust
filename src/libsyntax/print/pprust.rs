@@ -372,7 +372,7 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl,
-                     header: ast::FnHeader,
+                     header: &ast::FnHeader,
                      name: ast::Ident,
                      generics: &ast::Generics)
                      -> String {
@@ -1133,7 +1133,7 @@ impl<'a> State<'a> {
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 self.head("")?;
-                self.print_fn(decl, ast::FnHeader::default(),
+                self.print_fn(decl, &ast::FnHeader::default(),
                               Some(item.ident),
                               generics, &item.vis)?;
                 self.end()?; // end head-ibox
@@ -1263,7 +1263,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            ast::ItemKind::Fn(ref decl, header, ref param_names, ref body) => {
+            ast::ItemKind::Fn(ref decl, ref header, ref param_names, ref body) => {
                 self.head("")?;
                 self.print_fn(
                     decl,
@@ -1612,7 +1612,7 @@ impl<'a> State<'a> {
                             vis: &ast::Visibility)
                             -> io::Result<()> {
         self.print_fn(&m.decl,
-                      m.header,
+                      &m.header,
                       Some(ident),
                       &generics,
                       vis)
@@ -2210,7 +2210,7 @@ impl<'a> State<'a> {
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
             ast::ExprKind::Closure(
-                capture_clause, asyncness, movability, ref decl, ref body, _) => {
+                capture_clause, ref asyncness, movability, ref decl, ref body, _) => {
                 self.print_movability(movability)?;
                 self.print_asyncness(asyncness)?;
                 self.print_capture_clause(capture_clause)?;
@@ -2795,7 +2795,7 @@ impl<'a> State<'a> {
 
     pub fn print_fn(&mut self,
                     decl: &ast::FnDecl,
-                    header: ast::FnHeader,
+                    header: &ast::FnHeader,
                     name: Option<ast::Ident>,
                     generics: &ast::Generics,
                     vis: &ast::Visibility) -> io::Result<()> {
@@ -2850,8 +2850,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_asyncness(&mut self, asyncness: ast::IsAsync)
-                                -> io::Result<()> {
+    pub fn print_asyncness(&mut self, asyncness: &ast::IsAsync) -> io::Result<()> {
         if asyncness.is_async() {
             self.word_nbsp("async")?;
         }
@@ -3123,7 +3122,7 @@ impl<'a> State<'a> {
             span: syntax_pos::DUMMY_SP,
         };
         self.print_fn(decl,
-                      ast::FnHeader { unsafety, abi, ..ast::FnHeader::default() },
+                      &ast::FnHeader { unsafety, abi, ..ast::FnHeader::default() },
                       name,
                       &generics,
                       &source_map::dummy_spanned(ast::VisibilityKind::Inherited))?;
@@ -3186,7 +3185,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self,
-                                header: ast::FnHeader,
+                                header: &ast::FnHeader,
                                 vis: &ast::Visibility) -> io::Result<()> {
         self.s.word(visibility_qualified(vis, ""))?;
 
@@ -3195,7 +3194,7 @@ impl<'a> State<'a> {
             ast::Constness::Const => self.word_nbsp("const")?
         }
 
-        self.print_asyncness(header.asyncness.node)?;
+        self.print_asyncness(&header.asyncness.node)?;
         self.print_unsafety(header.unsafety)?;
 
         if header.abi != Abi::Rust {
