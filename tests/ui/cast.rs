@@ -8,12 +8,16 @@
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     // Test clippy::cast_precision_loss
-    1i32 as f32;
-    1i64 as f32;
-    1i64 as f64;
-    1u32 as f32;
-    1u64 as f32;
-    1u64 as f64;
+    let x0 = 1i32;
+    x0 as f32;
+    let x1 = 1i64;
+    x1 as f32;
+    x1 as f64;
+    let x2 = 1u32;
+    x2 as f32;
+    let x3 = 1u64;
+    x3 as f32;
+    x3 as f64;
     // Test clippy::cast_possible_truncation
     1f32 as i32;
     1f32 as u32;
@@ -49,6 +53,10 @@ fn main() {
     1f32 as f32;
     false as bool;
     &1i32 as &i32;
+    // casting integer literal to float is unnecessary
+    100 as f32;
+    100 as f64;
+    100_i32 as f64;
     // Should not trigger
     #[rustfmt::skip]
     let v = vec!(1);
