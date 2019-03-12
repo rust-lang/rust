@@ -2912,7 +2912,7 @@ fn add_missing_lifetime_specifiers_label(
     ) {
         err.span_suggestion(
             span,
-            &format!("consider using the named lifetime `{}`", name),
+            "consider using the named lifetime",
             format!("&{} ", name),
             Applicability::MaybeIncorrect,
         );
