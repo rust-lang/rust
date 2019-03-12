@@ -73,12 +73,12 @@ impl<'a> DefCollector<'a> {
         decl: &'a FnDecl,
         body: &'a Block,
     ) {
-        let (closure_id, return_impl_trait_id) = match header.asyncness.node {
+        let (closure_id, return_impl_trait_id, arguments) = match &header.asyncness.node {
             IsAsync::Async {
                 closure_id,
                 return_impl_trait_id,
-                ..
-            } => (closure_id, return_impl_trait_id),
+                arguments,
+            } => (closure_id, return_impl_trait_id, arguments),
             _ => unreachable!(),
         };
 
@@ -87,17 +87,31 @@ impl<'a> DefCollector<'a> {
         let fn_def_data = DefPathData::ValueNs(name.as_interned_str());
         let fn_def = self.create_def(id, fn_def_data, ITEM_LIKE_SPACE, span);
         return self.with_parent(fn_def, |this| {
-            this.create_def(return_impl_trait_id, DefPathData::ImplTrait, REGULAR_SPACE, span);
+            this.create_def(*return_impl_trait_id, DefPathData::ImplTrait, REGULAR_SPACE, span);
 
             visit::walk_generics(this, generics);
-            visit::walk_fn_decl(this, decl);
 
-            let closure_def = this.create_def(closure_id,
-                                              DefPathData::ClosureExpr,
-                                              REGULAR_SPACE,
-                                              span);
+            // Walk the generated arguments for the `async fn`.
+            for a in arguments {
+                use visit::Visitor;
+                this.visit_ty(&a.arg.ty);
+            }
+
+            // We do not invoke `walk_fn_decl` as this will walk the arguments that are being
+            // replaced.
+            visit::walk_fn_ret_ty(this, &decl.output);
+
+            let closure_def = this.create_def(
+                *closure_id, DefPathData::ClosureExpr, REGULAR_SPACE, span,
+            );
             this.with_parent(closure_def, |this| {
-                visit::walk_block(this, body);
+                for a in arguments {
+                    use visit::Visitor;
+                    // Walk each of the generated statements before the regular block body.
+                    this.visit_stmt(&a.stmt);
+                }
+
+                visit::walk_block(this, &body);
             })
         })
     }

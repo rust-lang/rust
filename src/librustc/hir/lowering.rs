@@ -448,10 +448,9 @@ impl<'a> LoweringContext<'a> {
         impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
             fn visit_pat(&mut self, p: &'lcx Pat) {
                 match p.node {
-                    // Doesn't generate a Hir node
+                    // Doesn't generate a HIR node
                     PatKind::Paren(..) => {},
                     _ => {
-
                         if let Some(owner) = self.hir_id_owner {
                             self.lctx.lower_node_id_with_owner(p.id, owner);
                         }
@@ -459,6 +458,31 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 visit::walk_pat(self, p)
+            }
+
+            fn visit_fn(&mut self, fk: visit::FnKind<'lcx>, fd: &'lcx FnDecl, s: Span, _: NodeId) {
+                if fk.header().map(|h| h.asyncness.node.is_async()).unwrap_or(false) {
+                    // Don't visit the original pattern for async functions as it will be
+                    // replaced.
+                    for arg in &fd.inputs {
+                        self.visit_ty(&arg.ty)
+                    }
+                    self.visit_fn_ret_ty(&fd.output);
+
+                    match fk {
+                        visit::FnKind::ItemFn(_, decl, _, body) => {
+                            self.visit_fn_header(decl);
+                            self.visit_block(body)
+                        },
+                        visit::FnKind::Method(_, sig, _, body) => {
+                            self.visit_fn_header(&sig.header);
+                            self.visit_block(body)
+                        },
+                        visit::FnKind::Closure(body) => self.visit_expr(body),
+                    }
+                } else {
+                    visit::walk_fn(self, fk, fd, s)
+                }
             }
 
             fn visit_item(&mut self, item: &'lcx Item) {
@@ -3003,12 +3027,18 @@ impl<'a> LoweringContext<'a> {
         asyncness: &IsAsync,
         body: &Block,
     ) -> hir::BodyId {
-        self.lower_body(Some(decl), |this| {
-            if let IsAsync::Async { closure_id, .. } = asyncness {
+        self.lower_body(Some(&decl), |this| {
+            if let IsAsync::Async { closure_id, ref arguments, .. } = asyncness {
+                let mut body = body.clone();
+
+                for a in arguments.iter().rev() {
+                    body.stmts.insert(0, a.stmt.clone());
+                }
+
                 let async_expr = this.make_async_expr(
                     CaptureBy::Value, *closure_id, None,
                     |this| {
-                        let body = this.lower_block(body, false);
+                        let body = this.lower_block(&body, false);
                         this.expr_block(body, ThinVec::new())
                     });
                 this.expr(body.span, async_expr, ThinVec::new())
@@ -3070,23 +3100,39 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Fn(ref decl, ref header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
-                    // Note: we don't need to change the return type from `T` to
-                    // `impl Future<Output = T>` here because lower_body
-                    // only cares about the input argument patterns in the function
-                    // declaration (decl), not the return types.
-                    let body_id = this.lower_async_body(decl, &header.asyncness.node, body);
+                    let mut lower_fn = |decl: &FnDecl| {
+                        // Note: we don't need to change the return type from `T` to
+                        // `impl Future<Output = T>` here because lower_body
+                        // only cares about the input argument patterns in the function
+                        // declaration (decl), not the return types.
+                        let body_id = this.lower_async_body(&decl, &header.asyncness.node, body);
 
-                    let (generics, fn_decl) = this.add_in_band_defs(
-                        generics,
-                        fn_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this, idty| this.lower_fn_decl(
-                            decl,
-                            Some((fn_def_id, idty)),
-                            true,
-                            header.asyncness.node.opt_return_id()
-                        ),
-                    );
+                        let (generics, fn_decl) = this.add_in_band_defs(
+                            generics,
+                            fn_def_id,
+                            AnonymousLifetimeMode::PassThrough,
+                            |this, idty| this.lower_fn_decl(
+                                &decl,
+                                Some((fn_def_id, idty)),
+                                true,
+                                header.asyncness.node.opt_return_id()
+                            ),
+                        );
+
+                        (body_id, generics, fn_decl)
+                    };
+
+                    let (body_id, generics, fn_decl) = if let IsAsync::Async {
+                        arguments, ..
+                    } = &header.asyncness.node {
+                        let mut decl = decl.clone();
+                        // Replace the arguments of this async function with the generated
+                        // arguments that will be moved into the closure.
+                        decl.inputs = arguments.clone().drain(..).map(|a| a.arg).collect();
+                        lower_fn(&decl)
+                    } else {
+                        lower_fn(decl)
+                    };
 
                     hir::ItemKind::Fn(
                         fn_decl,

@@ -834,11 +834,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // Add each argument to the rib.
         let mut bindings_list = FxHashMap::default();
-        for argument in &declaration.inputs {
+        let mut add_argument = |argument: &ast::Arg| {
             self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
             self.visit_ty(&argument.ty);
             debug!("(resolving function) recorded argument");
+        };
+
+        // Walk the generated async arguments if this is an `async fn`, otherwise walk the
+        // normal arguments.
+        if let IsAsync::Async { ref arguments, .. } = asyncness {
+            for a in arguments { add_argument(&a.arg); }
+        } else {
+            for a in &declaration.inputs { add_argument(a); }
         }
+
         visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body, potentially inside the body of an async closure
@@ -849,9 +858,18 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         }
 
         match function_kind {
-            FnKind::ItemFn(.., body) |
-            FnKind::Method(.., body) => {
-                self.visit_block(body);
+            FnKind::ItemFn(.., body) | FnKind::Method(.., body) => {
+                if let IsAsync::Async { ref arguments, .. } = asyncness {
+                    let mut body = body.clone();
+                    // Insert the generated statements into the body before attempting to
+                    // resolve names.
+                    for a in arguments {
+                        body.stmts.insert(0, a.stmt.clone());
+                    }
+                    self.visit_block(&body);
+                } else {
+                    self.visit_block(body);
+                }
             }
             FnKind::Closure(body) => {
                 self.visit_expr(body);
