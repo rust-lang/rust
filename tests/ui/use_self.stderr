@@ -151,6 +151,18 @@ LL |         use_self_expand!(); // Should lint in local macros
    |         ------------------- in this macro invocation
 
 error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:260:21
+   |
+LL |         fn baz() -> Foo {
+   |                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:261:13
+   |
+LL |             Foo {}
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:248:29
    |
 LL |                 fn bar() -> Bar {
@@ -163,22 +175,22 @@ LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:293:13
+  --> $DIR/use_self.rs:303:13
    |
 LL |             nested::A::fun_1();
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:294:13
+  --> $DIR/use_self.rs:304:13
    |
 LL |             nested::A::A;
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:296:13
+  --> $DIR/use_self.rs:306:13
    |
 LL |             nested::A {};
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 29 previous errors
+error: aborting due to 31 previous errors
 
