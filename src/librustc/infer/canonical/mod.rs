@@ -117,6 +117,7 @@ impl CanonicalVarInfo {
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(_) => true,
+            CanonicalVarKind::PlaceholderConst(_) => false,
         }
     }
 }
@@ -142,6 +143,9 @@ pub enum CanonicalVarKind {
 
     /// Some kind of const inference variable.
     Const(ty::UniverseIndex),
+
+    /// A "placeholder" that represents "any const".
+    PlaceholderConst(ty::PlaceholderConst),
 }
 
 impl CanonicalVarKind {
@@ -156,6 +160,7 @@ impl CanonicalVarKind {
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
             CanonicalVarKind::Const(ui) => ui,
+            CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.universe,
         }
     }
 }
@@ -404,6 +409,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     ConstVariableOrigin::MiscVariable(span),
                     universe_map(ui),
                 ).into()
+            }
+
+            CanonicalVarKind::PlaceholderConst(
+                ty::PlaceholderConst { universe, name },
+            ) => {
+                let _ = (universe, name);
+                unimplemented!() // FIXME(const_generics)
             }
         }
     }
