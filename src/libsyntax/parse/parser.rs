@@ -1884,7 +1884,9 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    // Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
+    /// Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
+    /// Attempt to convert the base expression/pattern/type into a type, parse the `::AssocItem`
+    /// tail, and combine them into a `<Ty>::AssocItem` expression/pattern/type.
     fn maybe_recover_from_bad_qpath<T: RecoverQPath>(&mut self, base: P<T>, allow_recovery: bool)
                                                      -> PResult<'a, P<T>> {
         // Do not add `::` to expected tokens.
@@ -1896,6 +1898,8 @@ impl<'a> Parser<'a> {
         Ok(base)
     }
 
+    /// Given an already parsed `Ty` parse the `::AssocItem` tail and
+    /// combine them into a `<Ty>::AssocItem` expression/pattern/type.
     fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(&mut self, ty_span: Span, ty: P<Ty>)
                                                              -> PResult<'a, P<T>> {
         self.expect(&token::ModSep)?;
@@ -1912,7 +1916,7 @@ impl<'a> Parser<'a> {
                 path.span, "try", format!("<{}>::{}", ty_str, path), Applicability::MaybeIncorrect
             ).emit();
 
-        let path_span = path.span.to(path.span); // use an empty path since `position` == 0
+        let path_span = ty_span.shrink_to_hi(); // use an empty path since `position` == 0
         Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
     }
 
