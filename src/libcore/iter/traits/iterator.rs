@@ -2125,7 +2125,7 @@ pub trait Iterator {
     fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
-        // switch to y even if it is strictly smaller, to preserve stability.
+        // only switch to y if it is strictly smaller, to preserve stability.
         select_fold1(self, |x, y| compare(x, y) == Ordering::Greater)
     }
 
