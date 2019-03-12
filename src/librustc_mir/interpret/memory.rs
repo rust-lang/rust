@@ -791,6 +791,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         let undef_mask = &self.get(src.alloc_id)?.undef_mask;
 
+        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
+        // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
+        // the source and write it to the destination. Even if we optimized the memory accesses,
+        // we'd be doing all of this `repeat` times.
+        // Therefor we precompute a compressed version of the undef mask of the source value and
+        // then write it back `repeat` times without computing any more information from the source.
+
         // a precomputed cache for ranges of defined/undefined bits
         // 0000010010001110 will become
         // [5, 1, 2, 1, 3, 3, 1]
