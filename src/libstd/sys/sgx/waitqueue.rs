@@ -498,6 +498,7 @@ mod spin_mutex {
         use super::*;
         use crate::sync::Arc;
         use crate::thread;
+        use crate::time::{SystemTime, Duration};
 
         #[test]
         fn sleep() {
@@ -507,7 +508,13 @@ mod spin_mutex {
             let t1 = thread::spawn(move || {
                 *mutex2.lock() = 1;
             });
-            thread::sleep_ms(50);
+
+            // "sleep" for 50ms
+            // FIXME: https://github.com/fortanix/rust-sgx/issues/31
+            let start = SystemTime::now();
+            let max = Duration::from_millis(50);
+            while start.elapsed().unwrap() < max {}
+
             assert_eq!(*guard, 0);
             drop(guard);
             t1.join().unwrap();
@@ -530,7 +537,8 @@ mod tests {
         let locked = wq.lock();
 
         let t1 = thread::spawn(move || {
-            assert!(WaitQueue::notify_one(wq2.lock()).is_none())
+            // if we obtain the lock, the main thread should be waiting
+            assert!(WaitQueue::notify_one(wq2.lock()).is_ok());
         });
 
         WaitQueue::wait(locked);

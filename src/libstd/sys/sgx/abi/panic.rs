@@ -49,7 +49,7 @@ impl Write for SgxPanicOutput {
     }
 }
 
-#[no_mangle]
+#[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn panic_msg(msg: &str) -> ! {
     let _ = SgxPanicOutput::new().map(|mut out| out.write(msg.as_bytes()));
     usercalls::exit(true)

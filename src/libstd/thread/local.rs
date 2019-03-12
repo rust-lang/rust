@@ -530,7 +530,7 @@ mod tests {
 
         thread::spawn(|| {
             assert!(FOO.try_with(|_| ()).is_ok());
-        }).join().ok().unwrap();
+        }).join().ok().expect("thread panicked");
     }
 
     #[test]
@@ -584,7 +584,7 @@ mod tests {
 
         thread::spawn(move|| {
             drop(S1);
-        }).join().ok().unwrap();
+        }).join().ok().expect("thread panicked");
     }
 
     #[test]
@@ -600,7 +600,7 @@ mod tests {
 
         thread::spawn(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
-        }).join().ok().unwrap();
+        }).join().ok().expect("thread panicked");
     }
 
     // Note that this test will deadlock if TLS destructors aren't run (this

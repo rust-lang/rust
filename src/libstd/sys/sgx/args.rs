@@ -5,9 +5,12 @@ use crate::sys::os_str::Buf;
 use crate::sys_common::FromInner;
 use crate::slice;
 
+#[cfg_attr(test, linkage = "available_externally")]
+#[export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE"]
 static ARGS: AtomicUsize = AtomicUsize::new(0);
 type ArgsStore = Vec<OsString>;
 
+#[cfg_attr(test, allow(dead_code))]
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     if argc != 0 {
         let args = alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _);
