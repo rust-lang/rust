@@ -414,8 +414,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             CanonicalVarKind::PlaceholderConst(
                 ty::PlaceholderConst { universe, name },
             ) => {
-                let _ = (universe, name);
-                unimplemented!() // FIXME(const_generics)
+                let universe_mapped = universe_map(universe);
+                let placeholder_mapped = ty::PlaceholderConst {
+                    universe: universe_mapped,
+                    name,
+                };
+                self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
+                    ty::Const {
+                        val: ConstValue::Placeholder(placeholder_mapped),
+                        ty: self.tcx.types.err, // FIXME(const_generics)
+                    }
+                )).into()
             }
         }
     }

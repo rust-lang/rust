@@ -454,9 +454,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                             }
                             return self.canonicalize_const_var(
                                 CanonicalVarInfo {
-                                    kind: CanonicalVarKind::Const(ui)
+                                    kind: CanonicalVarKind::Const(ui),
                                 },
-                                c
+                                c,
                             );
                         }
                     }
@@ -470,6 +470,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                     } else {
                         return c;
                     }
+                }
+                ConstValue::Placeholder(placeholder) => {
+                    return self.canonicalize_const_var(
+                        CanonicalVarInfo {
+                            kind: CanonicalVarKind::PlaceholderConst(placeholder),
+                        },
+                        c,
+                    );
                 }
                 _ => {}
             }
