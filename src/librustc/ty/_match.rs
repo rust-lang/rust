@@ -1,5 +1,5 @@
 use crate::ty::{self, Ty, TyCtxt, InferConst};
-use crate::ty::error::{TypeError, ConstError};
+use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, TypeRelation, RelateResult};
 use crate::mir::interpret::ConstValue;
 
@@ -96,9 +96,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
                 }
 
                 (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
-                    return Err(TypeError::ConstError(
-                        ConstError::Mismatch(relate::expected_found(self, &a, &b))
-                    ));
+                    return Err(TypeError::ConstMismatch(relate::expected_found(self, &a, &b)));
                 }
 
                 _ => {}

@@ -34,7 +34,7 @@ use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
 use crate::ty::{IntType, UintType};
 use crate::ty::{self, Ty, TyCtxt, InferConst, LazyConst};
-use crate::ty::error::{ConstError, TypeError};
+use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::SubstsRef;
 use crate::traits::{Obligation, PredicateObligations};
@@ -627,9 +627,7 @@ pub fn const_unification_error<'tcx>(
     a_is_expected: bool,
     (a, b): (&'tcx LazyConst<'tcx>, &'tcx LazyConst<'tcx>),
 ) -> TypeError<'tcx> {
-    TypeError::ConstError(
-        ConstError::Mismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
-    )
+    TypeError::ConstMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
 }
 
 fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::IntVarValue))

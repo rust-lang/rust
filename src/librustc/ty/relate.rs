@@ -626,9 +626,7 @@ where
                     );
                 }
                  _ => {
-                    Err(TypeError::ConstError(
-                        ConstError::Mismatch(expected_found(relation, &a, &b))
-                    ))
+                    Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
                 }
             }
         }
@@ -642,9 +640,7 @@ where
             Ok(tcx.mk_lazy_const(ty::LazyConst::Unevaluated(*a_def_id, substs)))
         }
         _ => {
-            Err(TypeError::ConstError(
-                ConstError::Mismatch(expected_found(relation, &a, &b))
-            ))
+            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
         }
     }
 }
