@@ -17,6 +17,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use std::borrow::Cow;
+use syntax::ast::Attribute;
 use syntax::errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -88,13 +89,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         match kind {
             FnKind::ItemFn(.., header, _, attrs) => {
-                if header.abi != Abi::Rust {
+                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
-                }
-                for a in attrs {
-                    if a.meta_item_list().is_some() && a.name() == "proc_macro_derive" {
-                        return;
-                    }
                 }
             },
             FnKind::Method(..) => (),
@@ -321,6 +317,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             }
         }
     }
+}
+
+/// Functions marked with these attributes must have the exact signature.
+fn requires_exact_signature(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        ["proc_macro", "proc_macro_attribute", "proc_macro_derive"]
+            .iter()
+            .any(|&allow| attr.name() == allow)
+    })
 }
 
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
