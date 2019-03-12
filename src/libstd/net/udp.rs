@@ -185,6 +185,7 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(udp_peer_addr)]
     /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
@@ -192,7 +193,7 @@ impl UdpSocket {
     /// assert_eq!(socket.peer_addr().unwrap(),
     ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203)));
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "udp_peer_addr", issue = "59127")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         self.0.peer_addr()
     }
