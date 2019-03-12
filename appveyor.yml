@@ -1,4 +1,7 @@
 environment:
+  # This is required for at least an AArch64 compiler in one image, and is also
+  # going to soon be required for compiling LLVM.
+  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation
@@ -81,7 +84,6 @@ environment:
     DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-msvc
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
