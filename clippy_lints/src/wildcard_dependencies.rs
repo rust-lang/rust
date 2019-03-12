@@ -7,21 +7,21 @@ use cargo_metadata;
 use if_chain::if_chain;
 use semver;
 
-/// **What it does:** Checks for wildcard dependencies in the `Cargo.toml`.
-///
-/// **Why is this bad?** [As the edition guide says](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
-/// it is highly unlikely that you work with any possible version of your dependency,
-/// and wildcard dependencies would cause unnecessary breakage in the ecosystem.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```toml
-/// [dependencies]
-/// regex = "*"
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard dependencies in the `Cargo.toml`.
+    ///
+    /// **Why is this bad?** [As the edition guide says](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
+    /// it is highly unlikely that you work with any possible version of your dependency,
+    /// and wildcard dependencies would cause unnecessary breakage in the ecosystem.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```toml
+    /// [dependencies]
+    /// regex = "*"
+    /// ```
     pub WILDCARD_DEPENDENCIES,
     cargo,
     "wildcard dependencies being used"

@@ -15,6 +15,7 @@ group_re = re.compile(r'''\s*([a-z_][a-z_0-9]+)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(
     r'''/// Lint: (\w+). (.*).*\n\s*\([^,]+,\s+"([^"]+)",\s+([^=\)]+)=>\s+(.*)\),''', re.MULTILINE)
+comment_re = re.compile(r'''\s*/// ?(.*)''')
 
 lint_levels = {
     "correctness": 'Deny',
@@ -29,37 +30,15 @@ lint_levels = {
 
 
 def parse_lints(lints, filepath):
-    last_comment = []
-    comment = True
+    comment = []
     clippy = False
     deprecated = False
     name = ""
 
     with open(filepath) as fp:
         for line in fp:
-            if comment:
-                if line.startswith("/// "):
-                    last_comment.append(line[4:])
-                elif line.startswith("///"):
-                    last_comment.append(line[3:])
-                elif line.startswith("declare_lint!"):
-                    import sys
-                    print("don't use `declare_lint!` in Clippy, use `declare_clippy_lint!` instead")
-                    sys.exit(42)
-                elif line.startswith("declare_clippy_lint!"):
-                    comment = False
-                    deprecated = False
-                    clippy = True
-                    name = ""
-                elif line.startswith("declare_deprecated_lint!"):
-                    comment = False
-                    deprecated = True
-                    clippy = False
-                else:
-                    last_comment = []
-            if not comment:
+            if clippy or deprecated:
                 m = lintname_re.search(line)
-
                 if m:
                     name = m.group(1).lower()
                     line = next(fp)
@@ -81,13 +60,29 @@ def parse_lints(lints, filepath):
 
                     log.info("found %s with level %s in %s",
                              name, level, filepath)
-                    lints.append(Lint(name, level, last_comment, filepath, group))
-                    last_comment = []
-                    comment = True
+                    lints.append(Lint(name, level, comment, filepath, group))
+                    comment = []
 
-                    if "}" in line:
-                        log.warn("Warning: missing Lint-Name in %s", filepath)
-                        comment = True
+                    clippy = False
+                    deprecated = False
+                    name = ""
+                else:
+                    m = comment_re.search(line)
+                    if m:
+                        comment.append(m.group(1))
+            elif line.startswith("declare_clippy_lint!"):
+                clippy = True
+                deprecated = False
+            elif line.startswith("declare_deprecated_lint!"):
+                clippy = False
+                deprecated = True
+            elif line.startswith("declare_lint!"):
+                import sys
+                print(
+                    "don't use `declare_lint!` in Clippy, "
+                    "use `declare_clippy_lint!` instead"
+                )
+                sys.exit(42)
 
 
 def parse_configs(path):

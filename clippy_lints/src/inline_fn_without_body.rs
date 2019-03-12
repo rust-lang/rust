@@ -8,21 +8,21 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::{Attribute, Name};
 
-/// **What it does:** Checks for `#[inline]` on trait methods without bodies
-///
-/// **Why is this bad?** Only implementations of trait methods may be inlined.
-/// The inline attribute is ignored for trait methods without bodies.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// trait Animal {
-///     #[inline]
-///     fn name(&self) -> &'static str;
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `#[inline]` on trait methods without bodies
+    ///
+    /// **Why is this bad?** Only implementations of trait methods may be inlined.
+    /// The inline attribute is ignored for trait methods without bodies.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// trait Animal {
+    ///     #[inline]
+    ///     fn name(&self) -> &'static str;
+    /// }
+    /// ```
     pub INLINE_FN_WITHOUT_BODY,
     correctness,
     "use of `#[inline]` on trait methods without bodies"

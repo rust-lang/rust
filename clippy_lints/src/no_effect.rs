@@ -6,37 +6,37 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::ops::Deref;
 
-/// **What it does:** Checks for statements which have no effect.
-///
-/// **Why is this bad?** Similar to dead code, these statements are actually
-/// executed. However, as they have no effect, all they do is make the code less
-/// readable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// 0;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for statements which have no effect.
+    ///
+    /// **Why is this bad?** Similar to dead code, these statements are actually
+    /// executed. However, as they have no effect, all they do is make the code less
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// 0;
+    /// ```
     pub NO_EFFECT,
     complexity,
     "statements with no effect"
 }
 
-/// **What it does:** Checks for expression statements that can be reduced to a
-/// sub-expression.
-///
-/// **Why is this bad?** Expressions by themselves often have no side-effects.
-/// Having such expressions reduces readability.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// compute_array()[0];
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expression statements that can be reduced to a
+    /// sub-expression.
+    ///
+    /// **Why is this bad?** Expressions by themselves often have no side-effects.
+    /// Having such expressions reduces readability.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// compute_array()[0];
+    /// ```
     pub UNNECESSARY_OPERATION,
     complexity,
     "outer expressions with no effect"

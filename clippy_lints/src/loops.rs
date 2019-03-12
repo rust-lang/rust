@@ -27,413 +27,413 @@ use syntax_pos::BytePos;
 
 use crate::utils::paths;
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable, last_path_segment,
+    get_enclosing_block, get_parent_expr, has_iter_method, higher, is_integer_literal, is_refutable, last_path_segment,
     match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt, snippet_with_applicability,
     span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq,
 };
 
-/// **What it does:** Checks for for-loops that manually copy items between
-/// slices that could be optimized by having a memcpy.
-///
-/// **Why is this bad?** It is not as fast as a memcpy.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for i in 0..src.len() {
-///     dst[i + 64] = src[i];
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for for-loops that manually copy items between
+    /// slices that could be optimized by having a memcpy.
+    ///
+    /// **Why is this bad?** It is not as fast as a memcpy.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for i in 0..src.len() {
+    ///     dst[i + 64] = src[i];
+    /// }
+    /// ```
     pub MANUAL_MEMCPY,
     perf,
     "manually copying items between slices"
 }
 
-/// **What it does:** Checks for looping over the range of `0..len` of some
-/// collection just to get the values by index.
-///
-/// **Why is this bad?** Just iterating the collection itself makes the intent
-/// more clear and is probably faster.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for i in 0..vec.len() {
-///     println!("{}", vec[i]);
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for looping over the range of `0..len` of some
+    /// collection just to get the values by index.
+    ///
+    /// **Why is this bad?** Just iterating the collection itself makes the intent
+    /// more clear and is probably faster.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for i in 0..vec.len() {
+    ///     println!("{}", vec[i]);
+    /// }
+    /// ```
     pub NEEDLESS_RANGE_LOOP,
     style,
     "for-looping over a range of indices where an iterator over items would do"
 }
 
-/// **What it does:** Checks for loops on `x.iter()` where `&x` will do, and
-/// suggests the latter.
-///
-/// **Why is this bad?** Readability.
-///
-/// **Known problems:** False negatives. We currently only warn on some known
-/// types.
-///
-/// **Example:**
-/// ```rust
-/// // with `y` a `Vec` or slice:
-/// for x in y.iter() {
-///     ..
-/// }
-/// ```
-/// can be rewritten to
-/// ```rust
-/// for x in &y {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops on `x.iter()` where `&x` will do, and
+    /// suggests the latter.
+    ///
+    /// **Why is this bad?** Readability.
+    ///
+    /// **Known problems:** False negatives. We currently only warn on some known
+    /// types.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// // with `y` a `Vec` or slice:
+    /// for x in y.iter() {
+    ///     ..
+    /// }
+    /// ```
+    /// can be rewritten to
+    /// ```rust
+    /// for x in &y {
+    ///     ..
+    /// }
+    /// ```
     pub EXPLICIT_ITER_LOOP,
     pedantic,
     "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
 }
 
-/// **What it does:** Checks for loops on `y.into_iter()` where `y` will do, and
-/// suggests the latter.
-///
-/// **Why is this bad?** Readability.
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// // with `y` a `Vec` or slice:
-/// for x in y.into_iter() {
-///     ..
-/// }
-/// ```
-/// can be rewritten to
-/// ```rust
-/// for x in y {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops on `y.into_iter()` where `y` will do, and
+    /// suggests the latter.
+    ///
+    /// **Why is this bad?** Readability.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// // with `y` a `Vec` or slice:
+    /// for x in y.into_iter() {
+    ///     ..
+    /// }
+    /// ```
+    /// can be rewritten to
+    /// ```ignore
+    /// for x in y {
+    ///     ..
+    /// }
+    /// ```
     pub EXPLICIT_INTO_ITER_LOOP,
     pedantic,
     "for-looping over `_.into_iter()` when `_` would do"
 }
 
-/// **What it does:** Checks for loops on `x.next()`.
-///
-/// **Why is this bad?** `next()` returns either `Some(value)` if there was a
-/// value, or `None` otherwise. The insidious thing is that `Option<_>`
-/// implements `IntoIterator`, so that possibly one value will be iterated,
-/// leading to some hard to find bugs. No one will want to write such code
-/// [except to win an Underhanded Rust
-/// Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x in y.next() {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops on `x.next()`.
+    ///
+    /// **Why is this bad?** `next()` returns either `Some(value)` if there was a
+    /// value, or `None` otherwise. The insidious thing is that `Option<_>`
+    /// implements `IntoIterator`, so that possibly one value will be iterated,
+    /// leading to some hard to find bugs. No one will want to write such code
+    /// [except to win an Underhanded Rust
+    /// Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for x in y.next() {
+    ///     ..
+    /// }
+    /// ```
     pub ITER_NEXT_LOOP,
     correctness,
     "for-looping over `_.next()` which is probably not intended"
 }
 
-/// **What it does:** Checks for `for` loops over `Option` values.
-///
-/// **Why is this bad?** Readability. This is more clearly expressed as an `if
-/// let`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x in option {
-///     ..
-/// }
-/// ```
-///
-/// This should be
-/// ```rust
-/// if let Some(x) = option {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `for` loops over `Option` values.
+    ///
+    /// **Why is this bad?** Readability. This is more clearly expressed as an `if
+    /// let`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for x in option {
+    ///     ..
+    /// }
+    /// ```
+    ///
+    /// This should be
+    /// ```ignore
+    /// if let Some(x) = option {
+    ///     ..
+    /// }
+    /// ```
     pub FOR_LOOP_OVER_OPTION,
     correctness,
     "for-looping over an `Option`, which is more clearly expressed as an `if let`"
 }
 
-/// **What it does:** Checks for `for` loops over `Result` values.
-///
-/// **Why is this bad?** Readability. This is more clearly expressed as an `if
-/// let`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x in result {
-///     ..
-/// }
-/// ```
-///
-/// This should be
-/// ```rust
-/// if let Ok(x) = result {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `for` loops over `Result` values.
+    ///
+    /// **Why is this bad?** Readability. This is more clearly expressed as an `if
+    /// let`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for x in result {
+    ///     ..
+    /// }
+    /// ```
+    ///
+    /// This should be
+    /// ```ignore
+    /// if let Ok(x) = result {
+    ///     ..
+    /// }
+    /// ```
     pub FOR_LOOP_OVER_RESULT,
     correctness,
     "for-looping over a `Result`, which is more clearly expressed as an `if let`"
 }
 
-/// **What it does:** Detects `loop + match` combinations that are easier
-/// written as a `while let` loop.
-///
-/// **Why is this bad?** The `while let` loop is usually shorter and more
-/// readable.
-///
-/// **Known problems:** Sometimes the wrong binding is displayed (#383).
-///
-/// **Example:**
-/// ```rust
-/// loop {
-///     let x = match y {
-///         Some(x) => x,
-///         None => break,
-///     }
-///     // .. do something with x
-/// }
-/// // is easier written as
-/// while let Some(x) = y {
-///     // .. do something with x
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Detects `loop + match` combinations that are easier
+    /// written as a `while let` loop.
+    ///
+    /// **Why is this bad?** The `while let` loop is usually shorter and more
+    /// readable.
+    ///
+    /// **Known problems:** Sometimes the wrong binding is displayed (#383).
+    ///
+    /// **Example:**
+    /// ```rust
+    /// loop {
+    ///     let x = match y {
+    ///         Some(x) => x,
+    ///         None => break,
+    ///     }
+    ///     // .. do something with x
+    /// }
+    /// // is easier written as
+    /// while let Some(x) = y {
+    ///     // .. do something with x
+    /// }
+    /// ```
     pub WHILE_LET_LOOP,
     complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
 }
 
-/// **What it does:** Checks for using `collect()` on an iterator without using
-/// the result.
-///
-/// **Why is this bad?** It is more idiomatic to use a `for` loop over the
-/// iterator instead.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for using `collect()` on an iterator without using
+    /// the result.
+    ///
+    /// **Why is this bad?** It is more idiomatic to use a `for` loop over the
+    /// iterator instead.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
+    /// ```
     pub UNUSED_COLLECT,
     perf,
     "`collect()`ing an iterator without using the result; this is usually better written as a for loop"
 }
 
-/// **What it does:** Checks for functions collecting an iterator when collect
-/// is not needed.
-///
-/// **Why is this bad?** `collect` causes the allocation of a new data structure,
-/// when this allocation may not be needed.
-///
-/// **Known problems:**
-/// None
-///
-/// **Example:**
-/// ```rust
-/// let len = iterator.collect::<Vec<_>>().len();
-/// // should be
-/// let len = iterator.count();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for functions collecting an iterator when collect
+    /// is not needed.
+    ///
+    /// **Why is this bad?** `collect` causes the allocation of a new data structure,
+    /// when this allocation may not be needed.
+    ///
+    /// **Known problems:**
+    /// None
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// let len = iterator.collect::<Vec<_>>().len();
+    /// // should be
+    /// let len = iterator.count();
+    /// ```
     pub NEEDLESS_COLLECT,
     perf,
     "collecting an iterator when collect is not needed"
 }
 
-/// **What it does:** Checks for loops over ranges `x..y` where both `x` and `y`
-/// are constant and `x` is greater or equal to `y`, unless the range is
-/// reversed or has a negative `.step_by(_)`.
-///
-/// **Why is it bad?** Such loops will either be skipped or loop until
-/// wrap-around (in debug code, this may `panic!()`). Both options are probably
-/// not intended.
-///
-/// **Known problems:** The lint cannot catch loops over dynamically defined
-/// ranges. Doing this would require simulating all possible inputs and code
-/// paths through the program, which would be complex and error-prone.
-///
-/// **Example:**
-/// ```rust
-/// for x in 5..10 - 5 {
-///     ..
-/// } // oops, stray `-`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops over ranges `x..y` where both `x` and `y`
+    /// are constant and `x` is greater or equal to `y`, unless the range is
+    /// reversed or has a negative `.step_by(_)`.
+    ///
+    /// **Why is it bad?** Such loops will either be skipped or loop until
+    /// wrap-around (in debug code, this may `panic!()`). Both options are probably
+    /// not intended.
+    ///
+    /// **Known problems:** The lint cannot catch loops over dynamically defined
+    /// ranges. Doing this would require simulating all possible inputs and code
+    /// paths through the program, which would be complex and error-prone.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for x in 5..10 - 5 {
+    ///     ..
+    /// } // oops, stray `-`
+    /// ```
     pub REVERSE_RANGE_LOOP,
     correctness,
     "iteration over an empty range, such as `10..0` or `5..5`"
 }
 
-/// **What it does:** Checks `for` loops over slices with an explicit counter
-/// and suggests the use of `.enumerate()`.
-///
-/// **Why is it bad?** Not only is the version using `.enumerate()` more
-/// readable, the compiler is able to remove bounds checks which can lead to
-/// faster code in some instances.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for i in 0..v.len() { foo(v[i]);
-/// for i in 0..v.len() { bar(i, v[i]); }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks `for` loops over slices with an explicit counter
+    /// and suggests the use of `.enumerate()`.
+    ///
+    /// **Why is it bad?** Not only is the version using `.enumerate()` more
+    /// readable, the compiler is able to remove bounds checks which can lead to
+    /// faster code in some instances.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for i in 0..v.len() { foo(v[i]);
+    /// for i in 0..v.len() { bar(i, v[i]); }
+    /// ```
     pub EXPLICIT_COUNTER_LOOP,
     complexity,
     "for-looping with an explicit counter when `_.enumerate()` would do"
 }
 
-/// **What it does:** Checks for empty `loop` expressions.
-///
-/// **Why is this bad?** Those busy loops burn CPU cycles without doing
-/// anything. Think of the environment and either block on something or at least
-/// make the thread sleep for some microseconds.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// loop {}
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for empty `loop` expressions.
+    ///
+    /// **Why is this bad?** Those busy loops burn CPU cycles without doing
+    /// anything. Think of the environment and either block on something or at least
+    /// make the thread sleep for some microseconds.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// loop {}
+    /// ```
     pub EMPTY_LOOP,
     style,
     "empty `loop {}`, which should block or sleep"
 }
 
-/// **What it does:** Checks for `while let` expressions on iterators.
-///
-/// **Why is this bad?** Readability. A simple `for` loop is shorter and conveys
-/// the intent better.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// while let Some(val) = iter() {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `while let` expressions on iterators.
+    ///
+    /// **Why is this bad?** Readability. A simple `for` loop is shorter and conveys
+    /// the intent better.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// while let Some(val) = iter() {
+    ///     ..
+    /// }
+    /// ```
     pub WHILE_LET_ON_ITERATOR,
     style,
     "using a while-let loop instead of a for loop on an iterator"
 }
 
-/// **What it does:** Checks for iterating a map (`HashMap` or `BTreeMap`) and
-/// ignoring either the keys or values.
-///
-/// **Why is this bad?** Readability. There are `keys` and `values` methods that
-/// can be used to express that don't need the values or keys.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for (k, _) in &map {
-///     ..
-/// }
-/// ```
-///
-/// could be replaced by
-///
-/// ```rust
-/// for k in map.keys() {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for iterating a map (`HashMap` or `BTreeMap`) and
+    /// ignoring either the keys or values.
+    ///
+    /// **Why is this bad?** Readability. There are `keys` and `values` methods that
+    /// can be used to express that don't need the values or keys.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for (k, _) in &map {
+    ///     ..
+    /// }
+    /// ```
+    ///
+    /// could be replaced by
+    ///
+    /// ```ignore
+    /// for k in map.keys() {
+    ///     ..
+    /// }
+    /// ```
     pub FOR_KV_MAP,
     style,
     "looping on a map using `iter` when `keys` or `values` would do"
 }
 
-/// **What it does:** Checks for loops that will always `break`, `return` or
-/// `continue` an outer loop.
-///
-/// **Why is this bad?** This loop never loops, all it does is obfuscating the
-/// code.
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// loop {
-///     ..;
-///     break;
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops that will always `break`, `return` or
+    /// `continue` an outer loop.
+    ///
+    /// **Why is this bad?** This loop never loops, all it does is obfuscating the
+    /// code.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// loop {
+    ///     ..;
+    ///     break;
+    /// }
+    /// ```
     pub NEVER_LOOP,
     correctness,
     "any loop that will always `break` or `return`"
 }
 
-/// **What it does:** Checks for loops which have a range bound that is a mutable variable
-///
-/// **Why is this bad?** One might think that modifying the mutable variable changes the loop bounds
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// let mut foo = 42;
-/// for i in 0..foo {
-///     foo -= 1;
-///     println!("{}", i); // prints numbers from 0 to 42, not 0 to 21
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for loops which have a range bound that is a mutable variable
+    ///
+    /// **Why is this bad?** One might think that modifying the mutable variable changes the loop bounds
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut foo = 42;
+    /// for i in 0..foo {
+    ///     foo -= 1;
+    ///     println!("{}", i); // prints numbers from 0 to 42, not 0 to 21
+    /// }
+    /// ```
     pub MUT_RANGE_BOUND,
     complexity,
     "for loop over a range where one of the bounds is a mutable variable"
 }
 
-/// **What it does:** Checks whether variables used within while loop condition
-/// can be (and are) mutated in the body.
-///
-/// **Why is this bad?** If the condition is unchanged, entering the body of the loop
-/// will lead to an infinite loop.
-///
-/// **Known problems:** If the `while`-loop is in a closure, the check for mutation of the
-/// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
-/// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
-///
-/// **Example:**
-/// ```rust
-/// let i = 0;
-/// while i > 10 {
-///     println!("let me loop forever!");
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks whether variables used within while loop condition
+    /// can be (and are) mutated in the body.
+    ///
+    /// **Why is this bad?** If the condition is unchanged, entering the body of the loop
+    /// will lead to an infinite loop.
+    ///
+    /// **Known problems:** If the `while`-loop is in a closure, the check for mutation of the
+    /// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
+    /// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let i = 0;
+    /// while i > 10 {
+    ///     println!("let me loop forever!");
+    /// }
+    /// ```
     pub WHILE_IMMUTABLE_CONDITION,
     correctness,
     "variables used within while expression are not mutated in the body"
@@ -486,7 +486,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for never_loop
         match expr.node {
             ExprKind::While(_, ref block, _) | ExprKind::Loop(ref block, _, _) => {
-                match never_loop_block(block, expr.id) {
+                match never_loop_block(block, expr.hir_id) {
                     NeverLoopResult::AlwaysBreak => {
                         span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
                     },
@@ -663,7 +663,7 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
     }
 }
 
-fn never_loop_block(block: &Block, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_block(block: &Block, main_loop_id: HirId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
     let expr = once(block.expr.as_ref().map(|p| &**p));
     let mut iter = stmts.chain(expr).filter_map(|e| e);
@@ -678,7 +678,7 @@ fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
     }
 }
 
-fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
     match expr.node {
         ExprKind::Box(ref e)
         | ExprKind::Unary(_, ref e)
@@ -727,7 +727,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
         ExprKind::Continue(d) => {
             let id = d
                 .target_id
-                .expect("target id can only be missing in the presence of compilation errors");
+                .expect("target ID can only be missing in the presence of compilation errors");
             if id == main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
             } else {
@@ -752,17 +752,17 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
     }
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_both)
 }
 
-fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     e.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
@@ -783,14 +783,14 @@ fn check_for_loop<'a, 'tcx>(
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
-fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {
+fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> bool {
     if_chain! {
         if let ExprKind::Path(ref qpath) = expr.node;
         if let QPath::Resolved(None, ref path) = *qpath;
         if path.segments.len() == 1;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id);
         // our variable!
-        if local_id == var;
+        if cx.tcx.hir().node_to_hir_id(local_id) == var;
         then {
             return true;
         }
@@ -832,8 +832,8 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
-fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> Option<FixedOffsetVar> {
-    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: ast::NodeId) -> Option<String> {
+fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> Option<FixedOffsetVar> {
+    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: HirId) -> Option<String> {
         match e.node {
             ExprKind::Lit(ref l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
@@ -888,7 +888,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &Expr,
-    var: ast::NodeId,
+    var: HirId,
 ) -> Option<FixedOffsetVar> {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
@@ -906,12 +906,12 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
 fn get_indexed_assignments<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr,
-    var: ast::NodeId,
+    var: HirId,
 ) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
     fn get_assignment<'a, 'tcx>(
         cx: &LateContext<'a, 'tcx>,
         e: &Expr,
-        var: ast::NodeId,
+        var: HirId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
         if let ExprKind::Assign(ref lhs, ref rhs) = e.node {
             match (
@@ -953,7 +953,7 @@ fn get_indexed_assignments<'a, 'tcx>(
     }
 }
 
-/// Check for for loops that sequentially copy items from one slice-like
+/// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -969,7 +969,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, _, _, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
@@ -1065,7 +1065,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }
 }
 
-/// Check for looping over a range and then indexing a sequence with it.
+/// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 #[allow(clippy::too_many_lines)]
 fn check_for_loop_range<'a, 'tcx>(
@@ -1086,7 +1086,7 @@ fn check_for_loop_range<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, _, ident, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx,
                 var: canonical_id,
@@ -1109,13 +1109,19 @@ fn check_for_loop_range<'a, 'tcx>(
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
-                    let parent_id = cx.tcx.hir().get_parent(expr.id);
-                    let parent_def_id = cx.tcx.hir().local_def_id(parent_id);
+                    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+                    let parent_def_id = cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
                     let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
+                }
+
+                // don't lint if the container that is indexed does not have .iter() method
+                let has_iter = has_iter_method(cx, indexed_ty);
+                if has_iter.is_none() {
+                    return;
                 }
 
                 // don't lint if the container that is indexed into is also used without
@@ -1407,7 +1413,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
     }
 }
 
-/// Check for `for` loops over `Option`s and `Results`
+/// Checks for `for` loops over `Option`s and `Result`s.
 fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
     let ty = cx.tables.expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
@@ -1463,8 +1469,9 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     let map = &cx.tcx.hir();
+    let expr_node_id = map.hir_to_node_id(expr.hir_id);
     let parent_scope = map
-        .get_enclosing_scope(expr.id)
+        .get_enclosing_scope(expr_node_id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
         if let Node::Block(block) = map.get(parent_id) {
@@ -1500,7 +1507,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     }
 }
 
-/// Check for the `FOR_KV_MAP` lint.
+/// Checks for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     pat: &'tcx Pat,
@@ -1554,44 +1561,44 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
 }
 
 struct MutatePairDelegate {
-    node_id_low: Option<NodeId>,
-    node_id_high: Option<NodeId>,
+    hir_id_low: Option<HirId>,
+    hir_id_high: Option<HirId>,
     span_low: Option<Span>,
     span_high: Option<Span>,
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: HirId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
 
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
-                if Some(id) == self.node_id_low {
+                if Some(id) == self.hir_id_low {
                     self.span_low = Some(sp)
                 }
-                if Some(id) == self.node_id_high {
+                if Some(id) == self.hir_id_high {
                     self.span_high = Some(sp)
                 }
             }
         }
     }
 
-    fn mutate(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, _: HirId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         if let Categorization::Local(id) = cmt.cat {
-            if Some(id) == self.node_id_low {
+            if Some(id) == self.hir_id_low {
                 self.span_low = Some(sp)
             }
-            if Some(id) == self.node_id_high {
+            if Some(id) == self.hir_id_high {
                 self.span_high = Some(sp)
             }
         }
     }
 
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
+    fn decl_without_init(&mut self, _: HirId, _: Span) {}
 }
 
 impl<'tcx> MutatePairDelegate {
@@ -1627,7 +1634,7 @@ fn mut_warn_with_span(cx: &LateContext<'_, '_>, span: Option<Span>) {
     }
 }
 
-fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId> {
+fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId> {
     if_chain! {
         if let ExprKind::Path(ref qpath) = bound.node;
         if let QPath::Resolved(None, _) = *qpath;
@@ -1640,7 +1647,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
                     if let PatKind::Binding(bind_ann, ..) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
-                        return Some(node_id);
+                        return Some(cx.tcx.hir().node_to_hir_id(node_id));
                     }
                 }
             }
@@ -1652,11 +1659,11 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
 fn check_for_mutation(
     cx: &LateContext<'_, '_>,
     body: &Expr,
-    bound_ids: &[Option<NodeId>],
+    bound_ids: &[Option<HirId>],
 ) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
-        node_id_low: bound_ids[0],
-        node_id_high: bound_ids[1],
+        hir_id_low: bound_ids[0],
+        hir_id_high: bound_ids[1],
         span_low: None,
         span_high: None,
     };
@@ -1666,7 +1673,7 @@ fn check_for_mutation(
     delegate.mutation_span()
 }
 
-/// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
+/// Returns `true` if the pattern is a `PatWild` or an ident prefixed with `_`.
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
@@ -1703,7 +1710,7 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
 
 struct LocalUsedVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    local: ast::NodeId,
+    local: HirId,
     used: bool,
 }
 
@@ -1725,7 +1732,7 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// context reference
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
-    var: ast::NodeId,
+    var: HirId,
     /// indexed variables that are used mutably
     indexed_mut: FxHashSet<Name>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
@@ -1772,8 +1779,8 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                             let hir_id = self.cx.tcx.hir().node_to_hir_id(node_id);
 
-                            let parent_id = self.cx.tcx.hir().get_parent(expr.id);
-                            let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
+                            let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
+                            let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
@@ -1833,7 +1840,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             then {
                 match self.cx.tables.qpath_def(qpath, expr.hir_id) {
                     Def::Upvar(local_id, ..) => {
-                        if local_id == self.var {
+                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
                             // we are not indexing anything, record that
                             self.nonindex = true;
                         }
@@ -1841,7 +1848,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     Def::Local(local_id) =>
                     {
 
-                        if local_id == self.var {
+                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
                             self.nonindex = true;
                         } else {
                             // not the correct variable, but still a variable
@@ -1926,7 +1933,7 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
     let mut visitor = VarUsedAfterLoopVisitor {
         cx,
         def_id,
-        iter_expr_id: iter_expr.id,
+        iter_expr_id: iter_expr.hir_id,
         past_while_let: false,
         var_used_after_while_let: false,
     };
@@ -1938,8 +1945,8 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
 
 struct VarUsedAfterLoopVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    def_id: NodeId,
-    iter_expr_id: NodeId,
+    def_id: HirId,
+    iter_expr_id: HirId,
     past_while_let: bool,
     var_used_after_while_let: bool,
 }
@@ -1950,7 +1957,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
             if Some(self.def_id) == var_def_id(self.cx, expr) {
                 self.var_used_after_while_let = true;
             }
-        } else if self.iter_expr_id == expr.id {
+        } else if self.iter_expr_id == expr.hir_id {
             self.past_while_let = true;
         }
         walk_expr(self, expr);
@@ -1960,7 +1967,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
     }
 }
 
-/// Return true if the type of expr is one that provides `IntoIterator` impls
+/// Returns `true` if the type of expr is one that provides `IntoIterator` impls
 /// for `&T` and `&mut T`, such as `Vec`.
 #[rustfmt::skip]
 fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
@@ -2015,7 +2022,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
     }
 }
 
-/// Return true if expr contains a single break expr without destination label
+/// Returns `true` if expr contains a single break expr without destination label
 /// and
 /// passed expression. The expression may be within a block.
 fn is_simple_break_expr(expr: &Expr) -> bool {
@@ -2043,9 +2050,9 @@ enum VarState {
 
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>,       // context reference
-    states: FxHashMap<NodeId, VarState>, // incremented variables
-    depth: u32,                          // depth of conditional expressions
+    cx: &'a LateContext<'a, 'tcx>,      // context reference
+    states: FxHashMap<HirId, VarState>, // incremented variables
+    depth: u32,                         // depth of conditional expressions
     done: bool,
 }
 
@@ -2062,7 +2069,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 
                 match parent.node {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
-                        if lhs.id == expr.id {
+                        if lhs.hir_id == expr.hir_id {
                             if op.node == BinOpKind::Add && is_integer_literal(rhs, 1) {
                                 *state = match *state {
                                     VarState::Initial if self.depth == 0 => VarState::IncrOnce,
@@ -2074,7 +2081,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                             }
                         }
                     },
-                    ExprKind::Assign(ref lhs, _) if lhs.id == expr.id => *state = VarState::DontWarn,
+                    ExprKind::Assign(ref lhs, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
                     ExprKind::AddrOf(mutability, _) if mutability == MutMutable => *state = VarState::DontWarn,
                     _ => (),
                 }
@@ -2095,11 +2102,11 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     }
 }
 
-/// Check whether a variable is initialized to zero at the start of a loop.
+/// Checks whether a variable is initialized to zero at the start of a loop.
 struct InitializeVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     end_expr: &'tcx Expr,          // the for loop. Stop scanning here.
-    var_id: NodeId,
+    var_id: HirId,
     state: VarState,
     name: Option<Name>,
     depth: u32, // depth of conditional expressions
@@ -2110,7 +2117,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
         // Look for declarations of the variable
         if let StmtKind::Local(ref local) = stmt.node {
-            if local.pat.id == self.var_id {
+            if local.pat.hir_id == self.var_id {
                 if let PatKind::Binding(.., ident, _) = local.pat.node {
                     self.name = Some(ident.name);
 
@@ -2147,10 +2154,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         if var_def_id(self.cx, expr) == Some(self.var_id) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.node {
-                    ExprKind::AssignOp(_, ref lhs, _) if lhs.id == expr.id => {
+                    ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
                         self.state = VarState::DontWarn;
                     },
-                    ExprKind::Assign(ref lhs, ref rhs) if lhs.id == expr.id => {
+                    ExprKind::Assign(ref lhs, ref rhs) if lhs.hir_id == expr.hir_id => {
                         self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
@@ -2182,11 +2189,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     }
 }
 
-fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<NodeId> {
+fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
         if let Def::Local(node_id) = path_res {
-            return Some(node_id);
+            return Some(cx.tcx.hir().node_to_hir_id(node_id));
         }
     }
     None
@@ -2208,8 +2215,9 @@ fn is_conditional(expr: &Expr) -> bool {
 
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
-        if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
-        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(loop_block.id));
+        if let Some(loop_block) = get_enclosing_block(cx, match_expr.hir_id);
+        let parent_node = cx.tcx.hir().get_parent_node_by_hir_id(loop_block.hir_id);
+        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find_by_hir_id(parent_node);
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
         }
@@ -2218,18 +2226,18 @@ fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> b
 }
 
 fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) -> bool {
-    let mut id = loop_expr.id;
+    let mut id = loop_expr.hir_id;
     let iter_name = if let Some(name) = path_name(iter_expr) {
         name
     } else {
         return true;
     };
     loop {
-        let parent = cx.tcx.hir().get_parent_node(id);
+        let parent = cx.tcx.hir().get_parent_node_by_hir_id(id);
         if parent == id {
             return false;
         }
-        match cx.tcx.hir().find(parent) {
+        match cx.tcx.hir().find_by_hir_id(parent) {
             Some(Node::Expr(expr)) => match expr.node {
                 ExprKind::Loop(..) | ExprKind::While(..) => {
                     return true;
@@ -2238,7 +2246,7 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
             },
             Some(Node::Block(block)) => {
                 let mut block_visitor = LoopNestVisitor {
-                    id,
+                    hir_id: id,
                     iterator: iter_name,
                     nesting: Unknown,
                 };
@@ -2266,14 +2274,14 @@ enum Nesting {
 use self::Nesting::{LookFurther, RuledOut, Unknown};
 
 struct LoopNestVisitor {
-    id: NodeId,
+    hir_id: HirId,
     iterator: Name,
     nesting: Nesting,
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
-        if stmt.id == self.id {
+        if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
         } else if self.nesting == Unknown {
             walk_stmt(self, stmt);
@@ -2284,7 +2292,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
         if self.nesting != Unknown {
             return;
         }
-        if expr.id == self.id {
+        if expr.hir_id == self.hir_id {
             self.nesting = LookFurther;
             return;
         }
@@ -2328,7 +2336,7 @@ fn path_name(e: &Expr) -> Option<Name> {
 
 fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, expr: &'tcx Expr) {
     if constant(cx, cx.tables, cond).is_some() {
-        // A pure constant condition (e.g. while false) is not linted.
+        // A pure constant condition (e.g., `while false`) is not linted.
         return;
     }
 
@@ -2366,7 +2374,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
 /// All variables definition IDs are collected
 struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ids: FxHashSet<NodeId>,
+    ids: FxHashSet<HirId>,
     def_ids: FxHashMap<def_id::DefId, bool>,
     skip: bool,
 }
@@ -2380,7 +2388,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             then {
                 match def {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                        self.ids.insert(node_id);
+                        self.ids.insert(self.cx.tcx.hir().node_to_hir_id(node_id));
                     },
                     Def::Static(def_id, mutable) => {
                         self.def_ids.insert(def_id, mutable);

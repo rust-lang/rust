@@ -1,7 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{higher, in_macro, snippet, snippet_opt};
+use crate::utils::{higher, in_macro, snippet, snippet_opt, snippet_with_macro_callsite};
 use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
@@ -46,38 +46,7 @@ impl<'a> Sugg<'a> {
     pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
-            match expr.node {
-                hir::ExprKind::AddrOf(..)
-                | hir::ExprKind::Box(..)
-                | hir::ExprKind::Closure(.., _)
-                | hir::ExprKind::If(..)
-                | hir::ExprKind::Unary(..)
-                | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
-                hir::ExprKind::Continue(..)
-                | hir::ExprKind::Yield(..)
-                | hir::ExprKind::Array(..)
-                | hir::ExprKind::Block(..)
-                | hir::ExprKind::Break(..)
-                | hir::ExprKind::Call(..)
-                | hir::ExprKind::Field(..)
-                | hir::ExprKind::Index(..)
-                | hir::ExprKind::InlineAsm(..)
-                | hir::ExprKind::Lit(..)
-                | hir::ExprKind::Loop(..)
-                | hir::ExprKind::MethodCall(..)
-                | hir::ExprKind::Path(..)
-                | hir::ExprKind::Repeat(..)
-                | hir::ExprKind::Ret(..)
-                | hir::ExprKind::Struct(..)
-                | hir::ExprKind::Tup(..)
-                | hir::ExprKind::While(..)
-                | hir::ExprKind::Err => Sugg::NonParen(snippet),
-                hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-                hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-                hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
-                hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
-                hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
-            }
+            Self::hir_from_snippet(expr, snippet)
         })
     }
 
@@ -109,6 +78,50 @@ impl<'a> Sugg<'a> {
             }
             Sugg::NonParen(Cow::Borrowed(default))
         })
+    }
+
+    /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
+    pub fn hir_with_macro_callsite(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
+        let snippet = snippet_with_macro_callsite(cx, expr.span, default);
+
+        Self::hir_from_snippet(expr, snippet)
+    }
+
+    /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
+    /// function variants of `Sugg`, since these use different snippet functions.
+    fn hir_from_snippet(expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
+        match expr.node {
+            hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::Box(..)
+            | hir::ExprKind::Closure(.., _)
+            | hir::ExprKind::If(..)
+            | hir::ExprKind::Unary(..)
+            | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            hir::ExprKind::Continue(..)
+            | hir::ExprKind::Yield(..)
+            | hir::ExprKind::Array(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Break(..)
+            | hir::ExprKind::Call(..)
+            | hir::ExprKind::Field(..)
+            | hir::ExprKind::Index(..)
+            | hir::ExprKind::InlineAsm(..)
+            | hir::ExprKind::Lit(..)
+            | hir::ExprKind::Loop(..)
+            | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Path(..)
+            | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Struct(..)
+            | hir::ExprKind::Tup(..)
+            | hir::ExprKind::While(..)
+            | hir::ExprKind::Err => Sugg::NonParen(snippet),
+            hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
+            hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
+            hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+            hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
+            hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+        }
     }
 
     /// Prepare a suggestion from an expression.
@@ -227,13 +240,13 @@ impl<'a> Sugg<'a> {
         }
     }
 
-    /// Add parenthesis to any expression that might need them. Suitable to the
-    /// `self` argument of
-    /// a method call (eg. to build `bar.foo()` or `(1 + 2).foo()`).
+    /// Adds parenthesis to any expression that might need them. Suitable to the
+    /// `self` argument of a method call
+    /// (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
     pub fn maybe_par(self) -> Self {
         match self {
             Sugg::NonParen(..) => self,
-            // (x) and (x).y() both don't need additional parens
+            // `(x)` and `(x).y()` both don't need additional parens.
             Sugg::MaybeParen(sugg) => {
                 if sugg.starts_with('(') && sugg.ends_with(')') {
                     Sugg::MaybeParen(sugg)
@@ -269,14 +282,14 @@ impl<'a> std::ops::Not for Sugg<'a> {
 
 /// Helper type to display either `foo` or `(foo)`.
 struct ParenHelper<T> {
-    /// Whether parenthesis are needed.
+    /// `true` if parentheses are needed.
     paren: bool,
     /// The main thing to display.
     wrapped: T,
 }
 
 impl<T> ParenHelper<T> {
-    /// Build a `ParenHelper`.
+    /// Builds a `ParenHelper`.
     fn new(paren: bool, wrapped: T) -> Self {
         Self { paren, wrapped }
     }
@@ -292,7 +305,7 @@ impl<T: Display> Display for ParenHelper<T> {
     }
 }
 
-/// Build the string for `<op><expr>` adding parenthesis when necessary.
+/// Builds the string for `<op><expr>` adding parenthesis when necessary.
 ///
 /// For convenience, the operator is taken as a string because all unary
 /// operators have the same
@@ -301,18 +314,19 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
     Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
 }
 
-/// Build the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
+/// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
 ///
 /// Precedence of shift operator relative to other arithmetic operation is
 /// often confusing so
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
-    /// Whether the operator is a shift operator `<<` or `>>`.
+    /// Returns `true` if the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
-    /// Whether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
+    /// Returns `true` if the operator is a arithmetic operator
+    /// (i.e., `+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
         matches!(
             *op,
@@ -320,9 +334,8 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
         )
     }
 
-    /// Whether the operator `op` needs parenthesis with the operator `other`
-    /// in the direction
-    /// `dir`.
+    /// Returns `true` if the operator `op` needs parenthesis with the operator
+    /// `other` in the direction `dir`.
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence()
             || (other.precedence() == op.precedence()
@@ -400,10 +413,9 @@ enum Associativity {
     Right,
 }
 
-/// Return the associativity/fixity of an operator. The difference with
-/// `AssocOp::fixity` is that
-/// an operator can be both left and right associative (such as `+`:
-/// `a + b + c == (a + b) + c == a + (b + c)`.
+/// Returns the associativity/fixity of an operator. The difference with
+/// `AssocOp::fixity` is that an operator can be both left and right associative
+/// (such as `+`: `a + b + c == (a + b) + c == a + (b + c)`.
 ///
 /// Chained `as` and explicit `:` type coercion never need inner parenthesis so
 /// they are considered
@@ -420,7 +432,7 @@ fn associativity(op: &AssocOp) -> Associativity {
     }
 }
 
-/// Convert a `hir::BinOp` to the corresponding assigning binary operator.
+/// Converts a `hir::BinOp` to the corresponding assigning binary operator.
 fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
     use syntax::parse::token::BinOpToken::*;
 
@@ -447,7 +459,7 @@ fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
     })
 }
 
-/// Convert an `ast::BinOp` to the corresponding assigning binary operator.
+/// Converts an `ast::BinOp` to the corresponding assigning binary operator.
 fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
     use syntax::ast::BinOpKind::*;
     use syntax::parse::token::BinOpToken;
@@ -467,13 +479,13 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
     })
 }
 
-/// Return the indentation before `span` if there are nothing but `[ \t]`
+/// Returns the indentation before `span` if there are nothing but `[ \t]`
 /// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().source_map().lookup_char_pos(span.lo());
     if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
         if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
-            // we can mix char and byte positions here because we only consider `[ \t]`
+            // We can mix char and byte positions here because we only consider `[ \t]`.
             if lo.col == CharPos(pos) {
                 Some(line[..pos].into())
             } else {

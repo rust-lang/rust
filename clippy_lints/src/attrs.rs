@@ -2,8 +2,8 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
+    in_macro, last_line_of_span, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
+    without_block_comments,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -17,170 +17,170 @@ use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for items annotated with `#[inline(always)]`,
-/// unless the annotated function is empty or simply panics.
-///
-/// **Why is this bad?** While there are valid uses of this annotation (and once
-/// you know when to use it, by all means `allow` this lint), it's a common
-/// newbie-mistake to pepper one's code with it.
-///
-/// As a rule of thumb, before slapping `#[inline(always)]` on a function,
-/// measure if that additional function call really affects your runtime profile
-/// sufficiently to make up for the increase in compile time.
-///
-/// **Known problems:** False positives, big time. This lint is meant to be
-/// deactivated by everyone doing serious performance work. This means having
-/// done the measurement.
-///
-/// **Example:**
-/// ```rust
-/// #[inline(always)]
-/// fn not_quite_hot_code(..) { ... }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for items annotated with `#[inline(always)]`,
+    /// unless the annotated function is empty or simply panics.
+    ///
+    /// **Why is this bad?** While there are valid uses of this annotation (and once
+    /// you know when to use it, by all means `allow` this lint), it's a common
+    /// newbie-mistake to pepper one's code with it.
+    ///
+    /// As a rule of thumb, before slapping `#[inline(always)]` on a function,
+    /// measure if that additional function call really affects your runtime profile
+    /// sufficiently to make up for the increase in compile time.
+    ///
+    /// **Known problems:** False positives, big time. This lint is meant to be
+    /// deactivated by everyone doing serious performance work. This means having
+    /// done the measurement.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// #[inline(always)]
+    /// fn not_quite_hot_code(..) { ... }
+    /// ```
     pub INLINE_ALWAYS,
     pedantic,
     "use of `#[inline(always)]`"
 }
 
-/// **What it does:** Checks for `extern crate` and `use` items annotated with
-/// lint attributes.
-///
-/// This lint whitelists `#[allow(unused_imports)]` and `#[allow(deprecated)]` on
-/// `use` items and `#[allow(unused_imports)]` on `extern crate` items with a
-/// `#[macro_use]` attribute.
-///
-/// **Why is this bad?** Lint attributes have no effect on crate imports. Most
-/// likely a `!` was forgotten.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// // Bad
-/// #[deny(dead_code)]
-/// extern crate foo;
-/// #[forbid(dead_code)]
-/// use foo::bar;
-///
-/// // Ok
-/// #[allow(unused_imports)]
-/// use foo::baz;
-/// #[allow(unused_imports)]
-/// #[macro_use]
-/// extern crate baz;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `extern crate` and `use` items annotated with
+    /// lint attributes.
+    ///
+    /// This lint whitelists `#[allow(unused_imports)]` and `#[allow(deprecated)]` on
+    /// `use` items and `#[allow(unused_imports)]` on `extern crate` items with a
+    /// `#[macro_use]` attribute.
+    ///
+    /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
+    /// likely a `!` was forgotten.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// // Bad
+    /// #[deny(dead_code)]
+    /// extern crate foo;
+    /// #[forbid(dead_code)]
+    /// use foo::bar;
+    ///
+    /// // Ok
+    /// #[allow(unused_imports)]
+    /// use foo::baz;
+    /// #[allow(unused_imports)]
+    /// #[macro_use]
+    /// extern crate baz;
+    /// ```
     pub USELESS_ATTRIBUTE,
     correctness,
     "use of lint attributes on `extern crate` items"
 }
 
-/// **What it does:** Checks for `#[deprecated]` annotations with a `since`
-/// field that is not a valid semantic version.
-///
-/// **Why is this bad?** For checking the version of the deprecation, it must be
-/// a valid semver. Failing that, the contained information is useless.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// #[deprecated(since = "forever")]
-/// fn something_else(..) { ... }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `#[deprecated]` annotations with a `since`
+    /// field that is not a valid semantic version.
+    ///
+    /// **Why is this bad?** For checking the version of the deprecation, it must be
+    /// a valid semver. Failing that, the contained information is useless.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// #[deprecated(since = "forever")]
+    /// fn something_else() { /* ... */ }
+    /// ```
     pub DEPRECATED_SEMVER,
     correctness,
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
-/// **What it does:** Checks for empty lines after outer attributes
-///
-/// **Why is this bad?**
-/// Most likely the attribute was meant to be an inner attribute using a '!'.
-/// If it was meant to be an outer attribute, then the following item
-/// should not be separated by empty lines.
-///
-/// **Known problems:** Can cause false positives.
-///
-/// From the clippy side it's difficult to detect empty lines between an attributes and the
-/// following item because empty lines and comments are not part of the AST. The parsing
-/// currently works for basic cases but is not perfect.
-///
-/// **Example:**
-/// ```rust
-/// // Bad
-/// #[inline(always)]
-///
-/// fn not_quite_good_code(..) { ... }
-///
-/// // Good (as inner attribute)
-/// #![inline(always)]
-///
-/// fn this_is_fine(..) { ... }
-///
-/// // Good (as outer attribute)
-/// #[inline(always)]
-/// fn this_is_fine_too(..) { ... }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for empty lines after outer attributes
+    ///
+    /// **Why is this bad?**
+    /// Most likely the attribute was meant to be an inner attribute using a '!'.
+    /// If it was meant to be an outer attribute, then the following item
+    /// should not be separated by empty lines.
+    ///
+    /// **Known problems:** Can cause false positives.
+    ///
+    /// From the clippy side it's difficult to detect empty lines between an attributes and the
+    /// following item because empty lines and comments are not part of the AST. The parsing
+    /// currently works for basic cases but is not perfect.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // Bad
+    /// #[inline(always)]
+    ///
+    /// fn not_quite_good_code(..) { ... }
+    ///
+    /// // Good (as inner attribute)
+    /// #![inline(always)]
+    ///
+    /// fn this_is_fine(..) { ... }
+    ///
+    /// // Good (as outer attribute)
+    /// #[inline(always)]
+    /// fn this_is_fine_too(..) { ... }
+    /// ```
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
     nursery,
     "empty line after outer attribute"
 }
 
-/// **What it does:** Checks for `allow`/`warn`/`deny`/`forbid` attributes with scoped clippy
-/// lints and if those lints exist in clippy. If there is a uppercase letter in the lint name
-/// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
-/// the lint name.
-///
-/// **Why is this bad?** A lint attribute with a mistyped lint name won't have an effect.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// Bad:
-/// ```rust
-/// #![warn(if_not_els)]
-/// #![deny(clippy::All)]
-/// ```
-///
-/// Good:
-/// ```rust
-/// #![warn(if_not_else)]
-/// #![deny(clippy::all)]
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `allow`/`warn`/`deny`/`forbid` attributes with scoped clippy
+    /// lints and if those lints exist in clippy. If there is a uppercase letter in the lint name
+    /// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
+    /// the lint name.
+    ///
+    /// **Why is this bad?** A lint attribute with a mistyped lint name won't have an effect.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// #![warn(if_not_els)]
+    /// #![deny(clippy::All)]
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![warn(if_not_else)]
+    /// #![deny(clippy::all)]
+    /// ```
     pub UNKNOWN_CLIPPY_LINTS,
     style,
     "unknown_lints for scoped Clippy lints"
 }
 
-/// **What it does:** Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
-/// with `#[rustfmt::skip]`.
-///
-/// **Why is this bad?** Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
-/// are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
-///
-/// **Known problems:** This lint doesn't detect crate level inner attributes, because they get
-/// processed before the PreExpansionPass lints get executed. See
-/// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
-///
-/// **Example:**
-///
-/// Bad:
-/// ```rust
-/// #[cfg_attr(rustfmt, rustfmt_skip)]
-/// fn main() { }
-/// ```
-///
-/// Good:
-/// ```rust
-/// #[rustfmt::skip]
-/// fn main() { }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
+    /// with `#[rustfmt::skip]`.
+    ///
+    /// **Why is this bad?** Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
+    /// are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
+    ///
+    /// **Known problems:** This lint doesn't detect crate level inner attributes, because they get
+    /// processed before the PreExpansionPass lints get executed. See
+    /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
+    ///
+    /// **Example:**
+    ///
+    /// Bad:
+    /// ```rust
+    /// #[cfg_attr(rustfmt, rustfmt_skip)]
+    /// fn main() { }
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #[rustfmt::skip]
+    /// fn main() { }
+    /// ```
     pub DEPRECATED_CFG_ATTR,
     complexity,
     "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`"
@@ -396,7 +396,7 @@ fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.node {
-                if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
+                if let Some(fun_id) = tables.qpath_def(qpath, path_expr.hir_id).opt_def_id() {
                     !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
                 } else {
                     true

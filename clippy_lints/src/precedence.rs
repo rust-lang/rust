@@ -5,24 +5,24 @@ use rustc_errors::Applicability;
 use syntax::ast::*;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for operations where precedence may be unclear
-/// and suggests to add parentheses. Currently it catches the following:
-/// * mixed usage of arithmetic and bit shifting/combining operators without
-/// parentheses
-/// * a "negative" numeric literal (which is really a unary `-` followed by a
-/// numeric literal)
-///   followed by a method call
-///
-/// **Why is this bad?** Not everyone knows the precedence of those operators by
-/// heart, so expressions like these may trip others trying to reason about the
-/// code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
-/// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
 declare_clippy_lint! {
+    /// **What it does:** Checks for operations where precedence may be unclear
+    /// and suggests to add parentheses. Currently it catches the following:
+    /// * mixed usage of arithmetic and bit shifting/combining operators without
+    /// parentheses
+    /// * a "negative" numeric literal (which is really a unary `-` followed by a
+    /// numeric literal)
+    ///   followed by a method call
+    ///
+    /// **Why is this bad?** Not everyone knows the precedence of those operators by
+    /// heart, so expressions like these may trip others trying to reason about the
+    /// code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
+    /// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
     pub PRECEDENCE,
     complexity,
     "operations where precedence may be unclear"

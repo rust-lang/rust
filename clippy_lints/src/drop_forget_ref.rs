@@ -1,97 +1,97 @@
-use crate::utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
+use crate::utils::{is_copy, match_def_path, paths, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for calls to `std::mem::drop` with a reference
-/// instead of an owned value.
-///
-/// **Why is this bad?** Calling `drop` on a reference will only drop the
-/// reference itself, which is a no-op. It will not call the `drop` method (from
-/// the `Drop` trait implementation) on the underlying referenced value, which
-/// is likely what was intended.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let mut lock_guard = mutex.lock();
-/// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex
-/// // still locked
-/// operation_that_requires_mutex_to_be_unlocked();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `std::mem::drop` with a reference
+    /// instead of an owned value.
+    ///
+    /// **Why is this bad?** Calling `drop` on a reference will only drop the
+    /// reference itself, which is a no-op. It will not call the `drop` method (from
+    /// the `Drop` trait implementation) on the underlying referenced value, which
+    /// is likely what was intended.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// let mut lock_guard = mutex.lock();
+    /// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex
+    /// // still locked
+    /// operation_that_requires_mutex_to_be_unlocked();
+    /// ```
     pub DROP_REF,
     correctness,
     "calls to `std::mem::drop` with a reference instead of an owned value"
 }
 
-/// **What it does:** Checks for calls to `std::mem::forget` with a reference
-/// instead of an owned value.
-///
-/// **Why is this bad?** Calling `forget` on a reference will only forget the
-/// reference itself, which is a no-op. It will not forget the underlying
-/// referenced
-/// value, which is likely what was intended.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x = Box::new(1);
-/// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `std::mem::forget` with a reference
+    /// instead of an owned value.
+    ///
+    /// **Why is this bad?** Calling `forget` on a reference will only forget the
+    /// reference itself, which is a no-op. It will not forget the underlying
+    /// referenced
+    /// value, which is likely what was intended.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = Box::new(1);
+    /// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
+    /// ```
     pub FORGET_REF,
     correctness,
     "calls to `std::mem::forget` with a reference instead of an owned value"
 }
 
-/// **What it does:** Checks for calls to `std::mem::drop` with a value
-/// that derives the Copy trait
-///
-/// **Why is this bad?** Calling `std::mem::drop` [does nothing for types that
-/// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
-/// value will be copied and moved into the function on invocation.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x: i32 = 42; // i32 implements Copy
-/// std::mem::drop(x) // A copy of x is passed to the function, leaving the
-///                   // original unaffected
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `std::mem::drop` with a value
+    /// that derives the Copy trait
+    ///
+    /// **Why is this bad?** Calling `std::mem::drop` [does nothing for types that
+    /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
+    /// value will be copied and moved into the function on invocation.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x: i32 = 42; // i32 implements Copy
+    /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
+    ///                   // original unaffected
+    /// ```
     pub DROP_COPY,
     correctness,
     "calls to `std::mem::drop` with a value that implements Copy"
 }
 
-/// **What it does:** Checks for calls to `std::mem::forget` with a value that
-/// derives the Copy trait
-///
-/// **Why is this bad?** Calling `std::mem::forget` [does nothing for types that
-/// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
-/// value will be copied and moved into the function on invocation.
-///
-/// An alternative, but also valid, explanation is that Copy types do not
-/// implement
-/// the Drop trait, which means they have no destructors. Without a destructor,
-/// there
-/// is nothing for `std::mem::forget` to ignore.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x: i32 = 42; // i32 implements Copy
-/// std::mem::forget(x) // A copy of x is passed to the function, leaving the
-///                     // original unaffected
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `std::mem::forget` with a value that
+    /// derives the Copy trait
+    ///
+    /// **Why is this bad?** Calling `std::mem::forget` [does nothing for types that
+    /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
+    /// value will be copied and moved into the function on invocation.
+    ///
+    /// An alternative, but also valid, explanation is that Copy types do not
+    /// implement
+    /// the Drop trait, which means they have no destructors. Without a destructor,
+    /// there
+    /// is nothing for `std::mem::forget` to ignore.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x: i32 = 42; // i32 implements Copy
+    /// std::mem::forget(x) // A copy of x is passed to the function, leaving the
+    ///                     // original unaffected
+    /// ```
     pub FORGET_COPY,
     correctness,
     "calls to `std::mem::forget` with a value that implements Copy"
@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprKind::Call(ref path, ref args) = expr.node;
             if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 1;
-            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
+            if let Some(def_id) = cx.tables.qpath_def(qpath, path.hir_id).opt_def_id();
             then {
                 let lint;
                 let msg;

@@ -9,83 +9,83 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for incompatible bit masks in comparisons.
-///
-/// The formula for detecting if an expression of the type `_ <bit_op> m
-/// <cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
-/// {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
-/// table:
-///
-/// |Comparison  |Bit Op|Example     |is always|Formula               |
-/// |------------|------|------------|---------|----------------------|
-/// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
-/// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
-/// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
-/// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
-/// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
-/// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
-///
-/// **Why is this bad?** If the bits that the comparison cares about are always
-/// set to zero or one by the bit mask, the comparison is constant `true` or
-/// `false` (depending on mask, compared value, and operators).
-///
-/// So the code is actively misleading, and the only reason someone would write
-/// this intentionally is to win an underhanded Rust contest or create a
-/// test-case for this lint.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if (x & 1 == 2) { … }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for incompatible bit masks in comparisons.
+    ///
+    /// The formula for detecting if an expression of the type `_ <bit_op> m
+    /// <cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
+    /// {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
+    /// table:
+    ///
+    /// |Comparison  |Bit Op|Example     |is always|Formula               |
+    /// |------------|------|------------|---------|----------------------|
+    /// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
+    /// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
+    /// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
+    /// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
+    /// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
+    /// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
+    ///
+    /// **Why is this bad?** If the bits that the comparison cares about are always
+    /// set to zero or one by the bit mask, the comparison is constant `true` or
+    /// `false` (depending on mask, compared value, and operators).
+    ///
+    /// So the code is actively misleading, and the only reason someone would write
+    /// this intentionally is to win an underhanded Rust contest or create a
+    /// test-case for this lint.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if (x & 1 == 2) { … }
+    /// ```
     pub BAD_BIT_MASK,
     correctness,
     "expressions of the form `_ & mask == select` that will only ever return `true` or `false`"
 }
 
-/// **What it does:** Checks for bit masks in comparisons which can be removed
-/// without changing the outcome. The basic structure can be seen in the
-/// following table:
-///
-/// |Comparison| Bit Op  |Example    |equals |
-/// |----------|---------|-----------|-------|
-/// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
-/// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
-///
-/// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
-/// but still a bit misleading, because the bit mask is ineffective.
-///
-/// **Known problems:** False negatives: This lint will only match instances
-/// where we have figured out the math (which is for a power-of-two compared
-/// value). This means things like `x | 1 >= 7` (which would be better written
-/// as `x >= 6`) will not be reported (but bit masks like this are fairly
-/// uncommon).
-///
-/// **Example:**
-/// ```rust
-/// if (x | 1 > 3) { … }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for bit masks in comparisons which can be removed
+    /// without changing the outcome. The basic structure can be seen in the
+    /// following table:
+    ///
+    /// |Comparison| Bit Op  |Example    |equals |
+    /// |----------|---------|-----------|-------|
+    /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
+    /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
+    ///
+    /// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
+    /// but still a bit misleading, because the bit mask is ineffective.
+    ///
+    /// **Known problems:** False negatives: This lint will only match instances
+    /// where we have figured out the math (which is for a power-of-two compared
+    /// value). This means things like `x | 1 >= 7` (which would be better written
+    /// as `x >= 6`) will not be reported (but bit masks like this are fairly
+    /// uncommon).
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if (x | 1 > 3) { … }
+    /// ```
     pub INEFFECTIVE_BIT_MASK,
     correctness,
-    "expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`"
+    "expressions where a bit mask will be rendered useless by a comparison, e.g., `(x | 1) > 2`"
 }
 
-/// **What it does:** Checks for bit masks that can be replaced by a call
-/// to `trailing_zeros`
-///
-/// **Why is this bad?** `x.trailing_zeros() > 4` is much clearer than `x & 15
-/// == 0`
-///
-/// **Known problems:** llvm generates better code for `x & 15 == 0` on x86
-///
-/// **Example:**
-/// ```rust
-/// x & 0x1111 == 0
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for bit masks that can be replaced by a call
+    /// to `trailing_zeros`
+    ///
+    /// **Why is this bad?** `x.trailing_zeros() > 4` is much clearer than `x & 15
+    /// == 0`
+    ///
+    /// **Known problems:** llvm generates better code for `x & 15 == 0` on x86
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// x & 0x1111 == 0
+    /// ```
     pub VERBOSE_BIT_MASK,
     style,
     "expressions where a bit mask is less readable than the corresponding method call"

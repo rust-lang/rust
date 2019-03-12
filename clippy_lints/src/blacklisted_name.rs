@@ -4,19 +4,19 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::FxHashSet;
 
-/// **What it does:** Checks for usage of blacklisted names for variables, such
-/// as `foo`.
-///
-/// **Why is this bad?** These names are usually placeholder names and should be
-/// avoided.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let foo = 3.14;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of blacklisted names for variables, such
+    /// as `foo`.
+    ///
+    /// **Why is this bad?** These names are usually placeholder names and should be
+    /// avoided.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let foo = 3.14;
+    /// ```
     pub BLACKLISTED_NAME,
     style,
     "usage of a blacklisted/placeholder name"

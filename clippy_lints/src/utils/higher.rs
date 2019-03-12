@@ -3,13 +3,13 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
+use crate::utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
 use if_chain::if_chain;
 use rustc::lint::LateContext;
 use rustc::{hir, ty};
 use syntax::ast;
 
-/// Convert a hir binary operator to the corresponding `ast` type.
+/// Converts a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
     match op {
         hir::BinOpKind::Eq => ast::BinOpKind::Eq,
@@ -46,7 +46,7 @@ pub struct Range<'a> {
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
-    /// Find the field named `name` in the field. Always return `Some` for
+    /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
@@ -214,7 +214,7 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr) -> Option<Ve
         if let hir::ExprKind::Call(ref fun, ref args) = expr.node;
         if let hir::ExprKind::Path(ref path) = fun.node;
         if is_expn_of(fun.span, "vec").is_some();
-        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, path, fun.hir_id));
+        if let Some(fun_def_id) = resolve_node(cx, path, fun.hir_id).opt_def_id();
         then {
             return if match_def_path(cx.tcx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
                 // `vec![elem; size]` case

@@ -7,42 +7,42 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Applicability;
-use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
+use syntax::ast::LitKind;
 use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 
-/// **What it does:** Checks for boolean expressions that can be written more
-/// concisely.
-///
-/// **Why is this bad?** Readability of boolean expressions suffers from
-/// unnecessary duplication.
-///
-/// **Known problems:** Ignores short circuiting behavior of `||` and
-/// `&&`. Ignores `|`, `&` and `^`.
-///
-/// **Example:**
-/// ```rust
-/// if a && true  // should be: if a
-/// if !(a == b)  // should be: if a != b
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for boolean expressions that can be written more
+    /// concisely.
+    ///
+    /// **Why is this bad?** Readability of boolean expressions suffers from
+    /// unnecessary duplication.
+    ///
+    /// **Known problems:** Ignores short circuiting behavior of `||` and
+    /// `&&`. Ignores `|`, `&` and `^`.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if a && true  // should be: if a
+    /// if !(a == b)  // should be: if a != b
+    /// ```
     pub NONMINIMAL_BOOL,
     complexity,
     "boolean expressions that can be written more concisely"
 }
 
-/// **What it does:** Checks for boolean expressions that contain terminals that
-/// can be eliminated.
-///
-/// **Why is this bad?** This is most likely a logic bug.
-///
-/// **Known problems:** Ignores short circuiting behavior.
-///
-/// **Example:**
-/// ```rust
-/// if a && b || a { ... }
-/// ```
-/// The `b` is unnecessary, the expression is equivalent to `if a`.
 declare_clippy_lint! {
+    /// **What it does:** Checks for boolean expressions that contain terminals that
+    /// can be eliminated.
+    ///
+    /// **Why is this bad?** This is most likely a logic bug.
+    ///
+    /// **Known problems:** Ignores short circuiting behavior.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if a && b || a { ... }
+    /// ```
+    /// The `b` is unnecessary, the expression is equivalent to `if a`.
     pub LOGIC_BUG,
     correctness,
     "boolean expressions that contain terminals which can be eliminated"
@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body)
     }
@@ -132,7 +132,6 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                     }
 
                     let mk_expr = |op| Expr {
-                        id: DUMMY_NODE_ID,
                         hir_id: DUMMY_HIR_ID,
                         span: DUMMY_SP,
                         attrs: ThinVec::new(),

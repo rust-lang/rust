@@ -5,36 +5,36 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for matches being used to destructure a single-variant enum
-/// or tuple struct where a `let` will suffice.
-///
-/// **Why is this bad?** Just readability – `let` doesn't nest, whereas a `match` does.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// enum Wrapper {
-///     Data(i32),
-/// }
-///
-/// let wrapper = Wrapper::Data(42);
-///
-/// let data = match wrapper {
-///     Wrapper::Data(i) => i,
-/// };
-/// ```
-///
-/// The correct use would be:
-/// ```rust
-/// enum Wrapper {
-///     Data(i32),
-/// }
-///
-/// let wrapper = Wrapper::Data(42);
-/// let Wrapper::Data(data) = wrapper;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for matches being used to destructure a single-variant enum
+    /// or tuple struct where a `let` will suffice.
+    ///
+    /// **Why is this bad?** Just readability – `let` doesn't nest, whereas a `match` does.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// enum Wrapper {
+    ///     Data(i32),
+    /// }
+    ///
+    /// let wrapper = Wrapper::Data(42);
+    ///
+    /// let data = match wrapper {
+    ///     Wrapper::Data(i) => i,
+    /// };
+    /// ```
+    ///
+    /// The correct use would be:
+    /// ```rust
+    /// enum Wrapper {
+    ///     Data(i32),
+    /// }
+    ///
+    /// let wrapper = Wrapper::Data(42);
+    /// let Wrapper::Data(data) = wrapper;
+    /// ```
     pub INFALLIBLE_DESTRUCTURING_MATCH,
     style,
     "a match statement with a single infallible arm instead of a `let`"

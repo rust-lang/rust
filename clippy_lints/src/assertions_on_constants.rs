@@ -1,31 +1,32 @@
+use if_chain::if_chain;
+use rustc::hir::{Expr, ExprKind};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+
 use crate::consts::{constant, Constant};
-use crate::rustc::hir::{Expr, ExprKind};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::LitKind;
 use crate::utils::{in_macro, is_direct_expn_of, span_help_and_lint};
-use if_chain::if_chain;
 
-/// **What it does:** Check to call assert!(true/false)
-///
-/// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a
-/// panic!() or unreachable!()
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// assert!(false)
-/// // or
-/// assert!(true)
-/// // or
-/// const B: bool = false;
-/// assert!(B)
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
+    ///
+    /// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a
+    /// panic!() or unreachable!()
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// assert!(false)
+    /// // or
+    /// assert!(true)
+    /// // or
+    /// const B: bool = false;
+    /// assert!(B)
+    /// ```
     pub ASSERTIONS_ON_CONSTANTS,
     style,
-    "assert!(true/false) will be optimized out by the compiler/should probably be replaced by a panic!() or unreachable!()"
+    "`assert!(true)` / `assert!(false)` will be optimized out by the compiler, and should probably be replaced by a `panic!()` or `unreachable!()`"
 }
 
 pub struct AssertionsOnConstants;

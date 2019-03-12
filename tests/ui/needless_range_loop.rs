@@ -85,4 +85,23 @@ fn main() {
     for i in 0..vec.len() {
         vec[i] = Some(1).unwrap_or_else(|| panic!("error on {}", i));
     }
+
+    // #3788
+    let test = Test {
+        inner: vec![1, 2, 3, 4],
+    };
+    for i in 0..2 {
+        println!("{}", test[i]);
+    }
+}
+
+struct Test {
+    inner: Vec<usize>,
+}
+
+impl std::ops::Index<usize> for Test {
+    type Output = usize;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.inner[index]
+    }
 }

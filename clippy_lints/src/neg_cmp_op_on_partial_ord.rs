@@ -5,38 +5,38 @@ use rustc::{declare_tool_lint, lint_array};
 
 use crate::utils::{self, paths, span_lint};
 
-/// **What it does:**
-/// Checks for the usage of negated comparison operators on types which only implement
-/// `PartialOrd` (e.g. `f64`).
-///
-/// **Why is this bad?**
-/// These operators make it easy to forget that the underlying types actually allow not only three
-/// potential Orderings (Less, Equal, Greater) but also a fourth one (Uncomparable). This is
-/// especially easy to miss if the operator based comparison result is negated.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// use std::cmp::Ordering;
-///
-/// // Bad
-/// let a = 1.0;
-/// let b = std::f64::NAN;
-///
-/// let _not_less_or_equal = !(a <= b);
-///
-/// // Good
-/// let a = 1.0;
-/// let b = std::f64::NAN;
-///
-/// let _not_less_or_equal = match a.partial_cmp(&b) {
-///     None | Some(Ordering::Greater) => true,
-///     _ => false,
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:**
+    /// Checks for the usage of negated comparison operators on types which only implement
+    /// `PartialOrd` (e.g., `f64`).
+    ///
+    /// **Why is this bad?**
+    /// These operators make it easy to forget that the underlying types actually allow not only three
+    /// potential Orderings (Less, Equal, Greater) but also a fourth one (Uncomparable). This is
+    /// especially easy to miss if the operator based comparison result is negated.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// use std::cmp::Ordering;
+    ///
+    /// // Bad
+    /// let a = 1.0;
+    /// let b = std::f64::NAN;
+    ///
+    /// let _not_less_or_equal = !(a <= b);
+    ///
+    /// // Good
+    /// let a = 1.0;
+    /// let b = std::f64::NAN;
+    ///
+    /// let _not_less_or_equal = match a.partial_cmp(&b) {
+    ///     None | Some(Ordering::Greater) => true,
+    ///     _ => false,
+    /// };
+    /// ```
     pub NEG_CMP_OP_ON_PARTIAL_ORD,
     complexity,
     "The use of negated comparison operators on partially ordered types may produce confusing code."

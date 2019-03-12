@@ -12,7 +12,7 @@ fn main() {
     (&1u8 as *const u8) as *const u16;
     (&mut 1u8 as *mut u8) as *mut u16;
 
-    /* These should be okay */
+    /* These should be ok */
 
     // not a pointer type
     1u8 as u16;

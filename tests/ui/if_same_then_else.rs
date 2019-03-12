@@ -2,7 +2,7 @@
 #![allow(
     clippy::blacklisted_name,
     clippy::collapsible_if,
-    clippy::cyclomatic_complexity,
+    clippy::cognitive_complexity,
     clippy::eq_op,
     clippy::needless_return,
     clippy::never_loop,
@@ -232,7 +232,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         return Ok(&foo[0..]);
     }
 
-    // false positive if_same_then_else, let(x,y) vs let(y,x), see #3559
+    // False positive `if_same_then_else`: `let (x, y)` vs. `let (y, x)`; see issue #3559.
     if true {
         let foo = "";
         let (x, y) = (1, 2);
@@ -244,7 +244,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 }
 
-// Issue #2423. This was causing an ICE
+// Issue #2423. This was causing an ICE.
 fn func() {
     if true {
         f(&[0; 62]);

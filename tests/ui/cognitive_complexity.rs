@@ -1,5 +1,5 @@
 #![allow(clippy::all)]
-#![warn(clippy::cyclomatic_complexity)]
+#![warn(clippy::cognitive_complexity)]
 #![allow(unused)]
 
 #[rustfmt::skip]
@@ -87,7 +87,7 @@ fn main() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn kaboom() {
     let n = 0;
     'a: for i in 0..20 {
@@ -133,17 +133,17 @@ fn bloo() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn lots_of_short_circuits() -> bool {
     true && false && true && false && true && false && true
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn lots_of_short_circuits2() -> bool {
     true || false || true || false || true || false || true
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn baa() {
     let x = || match 99 {
         0 => 0,
@@ -161,7 +161,7 @@ fn baa() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn bar() {
     match 99 {
         0 => println!("hi"),
@@ -170,8 +170,8 @@ fn bar() {
 }
 
 #[test]
-#[clippy::cyclomatic_complexity = "0"]
-/// Tests are usually complex but simple at the same time. `clippy::cyclomatic_complexity` used to
+#[clippy::cognitive_complexity = "0"]
+/// Tests are usually complex but simple at the same time. `clippy::cognitive_complexity` used to
 /// give lots of false-positives in tests.
 fn dont_warn_on_tests() {
     match 99 {
@@ -180,7 +180,7 @@ fn dont_warn_on_tests() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barr() {
     match 99 {
         0 => println!("hi"),
@@ -190,7 +190,7 @@ fn barr() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barr2() {
     match 99 {
         0 => println!("hi"),
@@ -206,7 +206,7 @@ fn barr2() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barrr() {
     match 99 {
         0 => println!("hi"),
@@ -216,7 +216,7 @@ fn barrr() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barrr2() {
     match 99 {
         0 => println!("hi"),
@@ -232,7 +232,7 @@ fn barrr2() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barrrr() {
     match 99 {
         0 => println!("hi"),
@@ -242,7 +242,7 @@ fn barrrr() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn barrrr2() {
     match 99 {
         0 => println!("hi"),
@@ -258,7 +258,7 @@ fn barrrr2() {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn cake() {
     if 4 == 5 {
         println!("yea");
@@ -268,7 +268,7 @@ fn cake() {
     println!("whee");
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 pub fn read_file(input_path: &str) -> String {
     use std::fs::File;
     use std::io::{Read, Write};
@@ -299,20 +299,20 @@ pub fn read_file(input_path: &str) -> String {
 
 enum Void {}
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn void(void: Void) {
     if true {
         match void {}
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn mcarton_sees_all() {
     panic!("meh");
     panic!("möh");
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn try() -> Result<i32, &'static str> {
     match 5 {
         5 => Ok(5),
@@ -320,7 +320,7 @@ fn try() -> Result<i32, &'static str> {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn try_again() -> Result<i32, &'static str> {
     let _ = try!(Ok(42));
     let _ = try!(Ok(43));
@@ -336,7 +336,7 @@ fn try_again() -> Result<i32, &'static str> {
     }
 }
 
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn early() -> Result<i32, &'static str> {
     return Ok(5);
     return Ok(5);
@@ -350,7 +350,7 @@ fn early() -> Result<i32, &'static str> {
 }
 
 #[rustfmt::skip]
-#[clippy::cyclomatic_complexity = "0"]
+#[clippy::cognitive_complexity = "0"]
 fn early_ret() -> i32 {
     let a = if true { 42 } else { return 0; };
     let a = if a < 99 { 42 } else { return 0; };

@@ -1,10 +1,12 @@
-//! This file tests for the DOC_MARKDOWN lint
+//! This file tests for the `DOC_MARKDOWN` lint.
 
 #![allow(dead_code)]
 #![warn(clippy::doc_markdown)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-/// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
+/// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
 /// which should be reported only once despite being __doubly bad__.
 /// Here be ::a::global:path.
 /// That's not code ~NotInCodeBlock~.
@@ -69,7 +71,7 @@ fn main() {
 }
 
 /// ## CamelCaseThing
-/// Talks about `CamelCaseThing`. Titles should be ignored, see issue #897.
+/// Talks about `CamelCaseThing`. Titles should be ignored; see issue #897.
 ///
 /// # CamelCaseThing
 ///
@@ -105,7 +107,7 @@ fn issue883() {
 fn multiline() {
 }
 
-/** E.g. serialization of an empty list: FooBar
+/** E.g., serialization of an empty list: FooBar
 ```
 That's in a code block: `PackedNode`
 ```
@@ -116,7 +118,7 @@ be_sure_we_got_to_the_end_of_it
 fn issue1073() {
 }
 
-/** E.g. serialization of an empty list: FooBar
+/** E.g., serialization of an empty list: FooBar
 ```
 That's in a code block: PackedNode
 ```
@@ -127,7 +129,7 @@ be_sure_we_got_to_the_end_of_it
 fn issue1073_alt() {
 }
 
-/// Test more than three quotes:
+/// Tests more than three quotes:
 /// ````
 /// DoNotWarn
 /// ```

@@ -9,10 +9,9 @@
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
-#![feature(try_from)]
 
 // FIXME: switch to something more ergonomic here, once available.
-// (currently there is no way to opt into sysroot crates w/o `extern crate`)
+// (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
 extern crate fmt_macros;
 #[allow(unused_extern_crates)]
@@ -40,7 +39,7 @@ use toml;
 ///
 /// Every lint declaration consists of 4 parts:
 ///
-/// 1. The documentation above the lint, which is used for the website
+/// 1. The documentation, which is used for the website
 /// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
 /// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
 ///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
@@ -61,22 +60,22 @@ use toml;
 /// # use clippy_lints::declare_clippy_lint;
 /// use rustc::declare_tool_lint;
 ///
-/// /// **What it does:** Checks for ... (describe what the lint matches).
-/// ///
-/// /// **Why is this bad?** Supply the reason for linting the code.
-/// ///
-/// /// **Known problems:** None. (Or describe where it could go wrong.)
-/// ///
-/// /// **Example:**
-/// ///
-/// /// ```rust
-/// /// // Bad
-/// /// Insert a short example of code that triggers the lint
-/// ///
-/// /// // Good
-/// /// Insert a short example of improved code that doesn't trigger the lint
-/// /// ```
 /// declare_clippy_lint! {
+///     /// **What it does:** Checks for ... (describe what the lint matches).
+///     ///
+///     /// **Why is this bad?** Supply the reason for linting the code.
+///     ///
+///     /// **Known problems:** None. (Or describe where it could go wrong.)
+///     ///
+///     /// **Example:**
+///     ///
+///     /// ```rust
+///     /// // Bad
+///     /// Insert a short example of code that triggers the lint
+///     ///
+///     /// // Good
+///     /// Insert a short example of improved code that doesn't trigger the lint
+///     /// ```
 ///     pub LINT_NAME,
 ///     pedantic,
 ///     "description"
@@ -85,35 +84,55 @@ use toml;
 /// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 #[macro_export]
 macro_rules! declare_clippy_lint {
-    { pub $name:tt, style, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, style, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, correctness, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Deny, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, complexity, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, perf, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, pedantic, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, restriction, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, restriction, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, cargo, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, nursery, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, internal, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Allow, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
     };
-    { pub $name:tt, internal_warn, $description:tt } => {
-        declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }
+    { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
+        declare_tool_lint! {
+            pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
     };
 }
 
@@ -133,11 +152,11 @@ pub mod block_in_if_condition;
 pub mod booleans;
 pub mod bytecount;
 pub mod cargo_common_metadata;
+pub mod cognitive_complexity;
 pub mod collapsible_if;
 pub mod const_static_lifetime;
 pub mod copies;
 pub mod copy_iterator;
-pub mod cyclomatic_complexity;
 pub mod dbg_macro;
 pub mod default_trait_access;
 pub mod derive;
@@ -253,7 +272,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use syntax::ast::{Name, NodeId};
+    crate use syntax::ast::Name;
 }
 
 /// Register all pre expansion lints
@@ -388,7 +407,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     );
     store.register_removed(
         "assign_ops",
-        "using compound assignment operators (e.g. `+=`) is harmless",
+        "using compound assignment operators (e.g., `+=`) is harmless",
     );
     store.register_removed(
         "if_let_redundant_pattern_matching",
@@ -459,7 +478,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box temporary_assignment::Pass);
     reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(
-        box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold)
+        box cognitive_complexity::CognitiveComplexity::new(conf.cognitive_complexity_threshold)
     );
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
@@ -564,6 +583,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::WILDCARD_ENUM_MATCH_ARM,
         mem_forget::MEM_FORGET,
         methods::CLONE_ON_REF_PTR,
+        methods::GET_UNWRAP,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
@@ -647,11 +667,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         bytecount::NAIVE_BYTECOUNT,
+        cognitive_complexity::COGNITIVE_COMPLEXITY,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
-        cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
@@ -730,7 +750,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         methods::CLONE_ON_COPY,
         methods::EXPECT_FUN_CALL,
         methods::FILTER_NEXT,
-        methods::GET_UNWRAP,
         methods::INTO_ITER_ON_ARRAY,
         methods::INTO_ITER_ON_REF,
         methods::ITER_CLONED_COLLECT,
@@ -889,7 +908,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::SINGLE_MATCH,
         mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         methods::CHARS_LAST_CMP,
-        methods::GET_UNWRAP,
         methods::INTO_ITER_ON_REF,
         methods::ITER_CLONED_COLLECT,
         methods::ITER_SKIP_NEXT,
@@ -943,7 +961,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_CFG_ATTR,
         booleans::NONMINIMAL_BOOL,
-        cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        cognitive_complexity::COGNITIVE_COMPLEXITY,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
         duration_subsec::DURATION_SUBSEC,
@@ -1112,6 +1130,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
+    ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
 }
 
 // only exists to let the dogfood integration test works.

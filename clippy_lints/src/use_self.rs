@@ -1,4 +1,3 @@
-use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
@@ -9,36 +8,38 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
 
-/// **What it does:** Checks for unnecessary repetition of structure name when a
-/// replacement with `Self` is applicable.
-///
-/// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
-/// name
-/// feels inconsistent.
-///
-/// **Known problems:**
-/// - False positive when using associated types (#2843)
-/// - False positives in some situations when using generics (#3410)
-///
-/// **Example:**
-/// ```rust
-/// struct Foo {}
-/// impl Foo {
-///     fn new() -> Foo {
-///         Foo {}
-///     }
-/// }
-/// ```
-/// could be
-/// ```rust
-/// struct Foo {}
-/// impl Foo {
-///     fn new() -> Self {
-///         Self {}
-///     }
-/// }
-/// ```
+use crate::utils::span_lint_and_sugg;
+
 declare_clippy_lint! {
+    /// **What it does:** Checks for unnecessary repetition of structure name when a
+    /// replacement with `Self` is applicable.
+    ///
+    /// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
+    /// name
+    /// feels inconsistent.
+    ///
+    /// **Known problems:**
+    /// - False positive when using associated types (#2843)
+    /// - False positives in some situations when using generics (#3410)
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Foo {}
+    /// impl Foo {
+    ///     fn new() -> Foo {
+    ///         Foo {}
+    ///     }
+    /// }
+    /// ```
+    /// could be
+    /// ```rust
+    /// struct Foo {}
+    /// impl Foo {
+    ///     fn new() -> Self {
+    ///         Self {}
+    ///     }
+    /// }
+    /// ```
     pub USE_SELF,
     pedantic,
     "Unnecessary structure name repetition whereas `Self` is applicable"
@@ -60,9 +61,9 @@ impl LintPass for UseSelf {
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
-    // path segments only include actual path, no methods or fields
+    // Path segments only include actual path, no methods or fields.
     let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
-    // only take path up to the end of last_path_span
+    // Only take path up to the end of last_path_span.
     let span = path.span.with_hi(last_path_span.hi());
 
     span_lint_and_sugg(
@@ -137,7 +138,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
     let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
 
-    let impl_method_def_id = cx.tcx.hir().local_def_id(impl_item.id);
+    let impl_method_def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
     let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
     let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
 
@@ -149,7 +150,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
 
     // `impl_decl_ty` (of type `hir::Ty`) represents the type declared in the signature.
     // `impl_ty` (of type `ty:TyS`) is the concrete type that the compiler has determined for
-    // that declaration.  We use `impl_decl_ty` to see if the type was declared as `Self`
+    // that declaration. We use `impl_decl_ty` to see if the type was declared as `Self`
     // and use `impl_ty` to check its concrete type.
     for (impl_decl_ty, (impl_ty, trait_ty)) in impl_decl.inputs.iter().chain(output_ty).zip(
         impl_method_sig
@@ -192,7 +193,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                         item_path,
                         cx,
                     };
-                    let impl_def_id = cx.tcx.hir().local_def_id(item.id);
+                    let impl_def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                     let impl_trait_ref = cx.tcx.impl_trait_ref(impl_def_id);
 
                     if let Some(impl_trait_ref) = impl_trait_ref {

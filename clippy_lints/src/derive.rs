@@ -7,56 +7,56 @@ use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
-/// explicitly or vice versa.
-///
-/// **Why is this bad?** The implementation of these traits must agree (for
-/// example for use with `HashMap`) so it’s probably a bad idea to use a
-/// default-generated `Hash` implementation with an explicitly defined
-/// `PartialEq`. In particular, the following must hold for any type:
-///
-/// ```rust
-/// k1 == k2 ⇒ hash(k1) == hash(k2)
-/// ```
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// #[derive(Hash)]
-/// struct Foo;
-///
-/// impl PartialEq for Foo {
-///     ...
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
+    /// explicitly or vice versa.
+    ///
+    /// **Why is this bad?** The implementation of these traits must agree (for
+    /// example for use with `HashMap`) so it’s probably a bad idea to use a
+    /// default-generated `Hash` implementation with an explicitly defined
+    /// `PartialEq`. In particular, the following must hold for any type:
+    ///
+    /// ```text
+    /// k1 == k2 ⇒ hash(k1) == hash(k2)
+    /// ```
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// #[derive(Hash)]
+    /// struct Foo;
+    ///
+    /// impl PartialEq for Foo {
+    ///     ...
+    /// }
+    /// ```
     pub DERIVE_HASH_XOR_EQ,
     correctness,
     "deriving `Hash` but implementing `PartialEq` explicitly"
 }
 
-/// **What it does:** Checks for explicit `Clone` implementations for `Copy`
-/// types.
-///
-/// **Why is this bad?** To avoid surprising behaviour, these traits should
-/// agree and the behaviour of `Copy` cannot be overridden. In almost all
-/// situations a `Copy` type should have a `Clone` implementation that does
-/// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
-/// gets you.
-///
-/// **Known problems:** Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
-///
-/// **Example:**
-/// ```rust
-/// #[derive(Copy)]
-/// struct Foo;
-///
-/// impl Clone for Foo {
-///     ..
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for explicit `Clone` implementations for `Copy`
+    /// types.
+    ///
+    /// **Why is this bad?** To avoid surprising behaviour, these traits should
+    /// agree and the behaviour of `Copy` cannot be overridden. In almost all
+    /// situations a `Copy` type should have a `Clone` implementation that does
+    /// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
+    /// gets you.
+    ///
+    /// **Known problems:** Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
+    ///
+    /// **Example:**
+    /// ```rust
+    /// #[derive(Copy)]
+    /// struct Foo;
+    ///
+    /// impl Clone for Foo {
+    ///     ..
+    /// }
+    /// ```
     pub EXPL_IMPL_CLONE_ON_COPY,
     pedantic,
     "implementing `Clone` explicitly on `Copy` types"
@@ -77,7 +77,7 @@ impl LintPass for Derive {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node {
-            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.id));
+            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id_from_hir_id(item.hir_id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);

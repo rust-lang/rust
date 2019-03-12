@@ -1,5 +1,5 @@
 #![warn(clippy::while_let_loop, clippy::empty_loop, clippy::while_let_on_iterator)]
-#![allow(dead_code, clippy::never_loop, unused, clippy::cyclomatic_complexity)]
+#![allow(dead_code, clippy::never_loop, unused, clippy::cognitive_complexity)]
 
 fn main() {
     let y = Some(true);
@@ -118,7 +118,7 @@ fn main() {
 
 // regression test (#360)
 // this should not panic
-// it's okay if further iterations of the lint
+// it's ok if further iterations of the lint
 // cause this function to trigger it
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();

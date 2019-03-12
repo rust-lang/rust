@@ -4,23 +4,23 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 
-/// **What it does:** Checks for constants with an explicit `'static` lifetime.
-///
-/// **Why is this bad?** Adding `'static` to every reference can create very
-/// complicated types.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
-/// &[...]
-/// ```
-/// This code can be rewritten as
-/// ```rust
-///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for constants with an explicit `'static` lifetime.
+    ///
+    /// **Why is this bad?** Adding `'static` to every reference can create very
+    /// complicated types.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
+    /// &[...]
+    /// ```
+    /// This code can be rewritten as
+    /// ```ignore
+    ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
+    /// ```
     pub CONST_STATIC_LIFETIME,
     style,
     "Using explicit `'static` lifetime for constants when elision rules would allow omitting them."

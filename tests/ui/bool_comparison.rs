@@ -73,3 +73,39 @@ fn main() {
         "no"
     };
 }
+
+#[allow(dead_code)]
+fn issue3703() {
+    struct Foo;
+    impl PartialEq<bool> for Foo {
+        fn eq(&self, _: &bool) -> bool {
+            true
+        }
+    }
+    impl PartialEq<Foo> for bool {
+        fn eq(&self, _: &Foo) -> bool {
+            true
+        }
+    }
+    impl PartialOrd<bool> for Foo {
+        fn partial_cmp(&self, _: &bool) -> Option<std::cmp::Ordering> {
+            None
+        }
+    }
+    impl PartialOrd<Foo> for bool {
+        fn partial_cmp(&self, _: &Foo) -> Option<std::cmp::Ordering> {
+            None
+        }
+    }
+
+    if Foo == true {}
+    if true == Foo {}
+    if Foo != true {}
+    if true != Foo {}
+    if Foo == false {}
+    if false == Foo {}
+    if Foo != false {}
+    if false != Foo {}
+    if Foo < false {}
+    if false < Foo {}
+}

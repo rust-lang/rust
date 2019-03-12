@@ -1,7 +1,7 @@
 if_chain! {
     if let ExprKind::Block(ref block) = expr.node;
     if let StmtKind::Local(ref local) = block.node;
-    if let Some(ref init) = local.init
+    if let Some(ref init) = local.init;
     if let ExprKind::Match(ref expr, ref arms, MatchSource::ForLoopDesugar) = init.node;
     if let ExprKind::Call(ref func, ref args) = expr.node;
     if let ExprKind::Path(ref path) = func.node;
@@ -41,7 +41,7 @@ if_chain! {
     if let PatKind::Path(ref path7) = arms1[1].pats[0].node;
     if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
     if let StmtKind::Local(ref local2) = path7.node;
-    if let Some(ref init1) = local2.init
+    if let Some(ref init1) = local2.init;
     if let ExprKind::Path(ref path8) = init1.node;
     if match_qpath(path8, &["__next"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local2.pat.node;
@@ -49,7 +49,7 @@ if_chain! {
     if let StmtKind::Expr(ref e1, _) = local2.pat.node
     if let ExprKind::Block(ref block1) = e1.node;
     if let StmtKind::Local(ref local3) = block1.node;
-    if let Some(ref init2) = local3.init
+    if let Some(ref init2) = local3.init;
     if let ExprKind::Path(ref path9) = init2.node;
     if match_qpath(path9, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local3.pat.node;

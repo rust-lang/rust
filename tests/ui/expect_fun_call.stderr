@@ -60,5 +60,11 @@ error: use of `expect` followed by a function call
 LL |         Some("foo").expect(get_non_static_str(&0));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { panic!(get_non_static_str(&0).to_string()) })`
 
-error: aborting due to 10 previous errors
+error: use of `expect` followed by a function call
+  --> $DIR/expect_fun_call.rs:86:16
+   |
+LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
+
+error: aborting due to 11 previous errors
 

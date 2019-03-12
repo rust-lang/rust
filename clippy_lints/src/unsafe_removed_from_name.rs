@@ -5,22 +5,22 @@ use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
-/// **What it does:** Checks for imports that remove "unsafe" from an item's
-/// name.
-///
-/// **Why is this bad?** Renaming makes it less clear which traits and
-/// structures are unsafe.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// use std::cell::{UnsafeCell as TotallySafeCell};
-///
-/// extern crate crossbeam;
-/// use crossbeam::{spawn_unsafe as spawn};
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for imports that remove "unsafe" from an item's
+    /// name.
+    ///
+    /// **Why is this bad?** Renaming makes it less clear which traits and
+    /// structures are unsafe.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// use std::cell::{UnsafeCell as TotallySafeCell};
+    ///
+    /// extern crate crossbeam;
+    /// use crossbeam::{spawn_unsafe as spawn};
+    /// ```
     pub UNSAFE_REMOVED_FROM_NAME,
     style,
     "`unsafe` removed from API names on import"

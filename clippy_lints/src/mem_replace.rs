@@ -1,30 +1,32 @@
-use crate::utils::{match_def_path, match_qpath, opt_def_id, paths, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{match_def_path, match_qpath, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
-/// **What it does:** Checks for `mem::replace()` on an `Option` with
-/// `None`.
-///
-/// **Why is this bad?** `Option` already has the method `take()` for
-/// taking its current value (Some(..) or None) and replacing it with
-/// `None`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let mut an_option = Some(0);
-/// let replaced = mem::replace(&mut an_option, None);
-/// ```
-/// Is better expressed with:
-/// ```rust
-/// let mut an_option = Some(0);
-/// let taken = an_option.take();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `mem::replace()` on an `Option` with
+    /// `None`.
+    ///
+    /// **Why is this bad?** `Option` already has the method `take()` for
+    /// taking its current value (Some(..) or None) and replacing it with
+    /// `None`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// use std::mem;
+    ///
+    /// let mut an_option = Some(0);
+    /// let replaced = mem::replace(&mut an_option, None);
+    /// ```
+    /// Is better expressed with:
+    /// ```rust
+    /// let mut an_option = Some(0);
+    /// let taken = an_option.take();
+    /// ```
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"
@@ -49,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
             if let ExprKind::Call(ref func, ref func_args) = expr.node;
             if func_args.len() == 2;
             if let ExprKind::Path(ref func_qpath) = func.node;
-            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(func_qpath, func.hir_id));
+            if let Some(def_id) = cx.tables.qpath_def(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx.tcx, def_id, &paths::MEM_REPLACE);
 
             // Check that second argument is `Option::None`

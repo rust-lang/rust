@@ -4,7 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[b2601be...master](https://github.com/rust-lang/rust-clippy/compare/b2601be...master)
+[1b89724...master](https://github.com/rust-lang/rust-clippy/compare/1b89724...master)
+
+## Rust 1.33 (2019-02-26)
+
+[b2601be...1b89724](https://github.com/rust-lang/rust-clippy/compare/b2601be...1b89724)
+
+* New lints: [`implicit_return`], [`vec_box`], [`cast_ref_to_mut`]
+* The `rust-clippy` repository is now part of the `rust-lang` org.
+* Rename `stutter` to `module_name_repetitions`
+* Merge `new_without_default_derive` into `new_without_default` lint
+* Move `large_digit_groups` from `style` group to `pedantic`
+* Expand `bool_comparison` to check for `<`, `<=`, `>`, `>=`, and `!=`
+  comparisons against booleans
+* Expand `no_effect` to detect writes to constants such as `A_CONST.field = 2`
+* Expand `redundant_clone` to work on struct fields
+* Expand `suspicious_else_formatting` to detect `if .. {..} {..}`
+* Expand `use_self` to work on tuple structs and also in local macros
+* Fix ICE in `result_map_unit_fn` and `option_map_unit_fn`
+* Fix false positives in `implicit_return`
+* Fix false positives in `use_self`
+* Fix false negative in `clone_on_copy`
+* Fix false positive in `doc_markdown`
+* Fix false positive in `empty_loop`
+* Fix false positive in `if_same_then_else`
+* Fix false positive in `infinite_iter`
+* Fix false positive in `question_mark`
+* Fix false positive in `useless_asref`
+* Fix false positive in `wildcard_dependencies`
+* Fix false positive in `write_with_newline`
+* Add suggestion to `explicit_write`
+* Improve suggestions for `question_mark` lint
+* Fix incorrect suggestion for `get_unwrap`
 
 ## Rust 1.32 (2019-01-17)
 
@@ -767,11 +798,11 @@ All notable changes to this project will be documented in this file.
 [`cmp_nan`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_nan
 [`cmp_null`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_null
 [`cmp_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_owned
+[`cognitive_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
 [`const_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_static_lifetime
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
 [`crosspointer_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#crosspointer_transmute
-[`cyclomatic_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cyclomatic_complexity
 [`dbg_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro
 [`decimal_literal_representation`]: https://rust-lang.github.io/rust-clippy/master/index.html#decimal_literal_representation
 [`declare_interior_mutable_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#declare_interior_mutable_const

@@ -1,6 +1,6 @@
 if_chain! {
     if let StmtKind::Local(ref local) = stmt.node;
-    if let Some(ref init) = local.init
+    if let Some(ref init) = local.init;
     if let ExprKind::Call(ref func, ref args) = init.node;
     if let ExprKind::Path(ref path) = func.node;
     if match_qpath(path, &["{{root}}", "std", "cmp", "min"]);

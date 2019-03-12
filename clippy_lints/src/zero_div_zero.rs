@@ -5,18 +5,18 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for `0.0 / 0.0`.
-///
-/// **Why is this bad?** It's less readable than `std::f32::NAN` or
-/// `std::f64::NAN`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// 0.0f32 / 0.0
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `0.0 / 0.0`.
+    ///
+    /// **Why is this bad?** It's less readable than `std::f32::NAN` or
+    /// `std::f64::NAN`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// 0.0f32 / 0.0
+    /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,
     "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"

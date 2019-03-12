@@ -1,4 +1,5 @@
 #![allow(stutter)]
+#![warn(clippy::cyclomatic_complexity)]
 
 #[warn(clippy::stutter)]
 fn main() {}

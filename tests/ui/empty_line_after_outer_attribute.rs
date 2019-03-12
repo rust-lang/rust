@@ -1,5 +1,8 @@
 #![warn(clippy::empty_line_after_outer_attr)]
 #![allow(clippy::assertions_on_constants)]
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
+
 // This should produce a warning
 #[crate_type = "lib"]
 

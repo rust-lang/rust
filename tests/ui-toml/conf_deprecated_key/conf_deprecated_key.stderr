@@ -1,0 +1,4 @@
+error: error reading Clippy's configuration file `$DIR/clippy.toml`: found deprecated field `cyclomatic-complexity-threshold`. Please use `cognitive-complexity-threshold` instead.
+
+error: aborting due to previous error
+

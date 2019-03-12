@@ -35,66 +35,66 @@ use syntax::source_map::{original_sp, DUMMY_SP};
 
 use crate::utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};
 
-/// **What it does:** The lint checks for `if`-statements appearing in loops
-/// that contain a `continue` statement in either their main blocks or their
-/// `else`-blocks, when omitting the `else`-block possibly with some
-/// rearrangement of code can make the code easier to understand.
-///
-/// **Why is this bad?** Having explicit `else` blocks for `if` statements
-/// containing `continue` in their THEN branch adds unnecessary branching and
-/// nesting to the code. Having an else block containing just `continue` can
-/// also be better written by grouping the statements following the whole `if`
-/// statement within the THEN block and omitting the else block completely.
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// while condition() {
-///     update_condition();
-///     if x {
-///         // ...
-///     } else {
-///         continue;
-///     }
-///     println!("Hello, world");
-/// }
-/// ```
-///
-/// Could be rewritten as
-///
-/// ```rust
-/// while condition() {
-///     update_condition();
-///     if x {
-///         // ...
-///         println!("Hello, world");
-///     }
-/// }
-/// ```
-///
-/// As another example, the following code
-///
-/// ```rust
-/// loop {
-///     if waiting() {
-///         continue;
-///     } else {
-///         // Do something useful
-///     }
-/// }
-/// ```
-/// Could be rewritten as
-///
-/// ```rust
-/// loop {
-///     if waiting() {
-///         continue;
-///     }
-///     // Do something useful
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** The lint checks for `if`-statements appearing in loops
+    /// that contain a `continue` statement in either their main blocks or their
+    /// `else`-blocks, when omitting the `else`-block possibly with some
+    /// rearrangement of code can make the code easier to understand.
+    ///
+    /// **Why is this bad?** Having explicit `else` blocks for `if` statements
+    /// containing `continue` in their THEN branch adds unnecessary branching and
+    /// nesting to the code. Having an else block containing just `continue` can
+    /// also be better written by grouping the statements following the whole `if`
+    /// statement within the THEN block and omitting the else block completely.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// while condition() {
+    ///     update_condition();
+    ///     if x {
+    ///         // ...
+    ///     } else {
+    ///         continue;
+    ///     }
+    ///     println!("Hello, world");
+    /// }
+    /// ```
+    ///
+    /// Could be rewritten as
+    ///
+    /// ```rust
+    /// while condition() {
+    ///     update_condition();
+    ///     if x {
+    ///         // ...
+    ///         println!("Hello, world");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// As another example, the following code
+    ///
+    /// ```rust
+    /// loop {
+    ///     if waiting() {
+    ///         continue;
+    ///     } else {
+    ///         // Do something useful
+    ///     }
+    /// }
+    /// ```
+    /// Could be rewritten as
+    ///
+    /// ```rust
+    /// loop {
+    ///     if waiting() {
+    ///         continue;
+    ///     }
+    ///     // Do something useful
+    /// }
+    /// ```
     pub NEEDLESS_CONTINUE,
     pedantic,
     "`continue` statements that can be replaced by a rearrangement of code"

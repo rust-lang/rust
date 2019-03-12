@@ -7,48 +7,48 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 
-/// **What it does:** Checks for a read and a write to the same variable where
-/// whether the read occurs before or after the write depends on the evaluation
-/// order of sub-expressions.
-///
-/// **Why is this bad?** It is often confusing to read. In addition, the
-/// sub-expression evaluation order for Rust is not well documented.
-///
-/// **Known problems:** Code which intentionally depends on the evaluation
-/// order, or which is correct for any evaluation order.
-///
-/// **Example:**
-/// ```rust
-/// let mut x = 0;
-/// let a = {
-///     x = 1;
-///     1
-/// } + x;
-/// // Unclear whether a is 1 or 2.
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for a read and a write to the same variable where
+    /// whether the read occurs before or after the write depends on the evaluation
+    /// order of sub-expressions.
+    ///
+    /// **Why is this bad?** It is often confusing to read. In addition, the
+    /// sub-expression evaluation order for Rust is not well documented.
+    ///
+    /// **Known problems:** Code which intentionally depends on the evaluation
+    /// order, or which is correct for any evaluation order.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut x = 0;
+    /// let a = {
+    ///     x = 1;
+    ///     1
+    /// } + x;
+    /// // Unclear whether a is 1 or 2.
+    /// ```
     pub EVAL_ORDER_DEPENDENCE,
     complexity,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
-/// **What it does:** Checks for diverging calls that are not match arms or
-/// statements.
-///
-/// **Why is this bad?** It is often confusing to read. In addition, the
-/// sub-expression evaluation order for Rust is not well documented.
-///
-/// **Known problems:** Someone might want to use `some_bool || panic!()` as a
-/// shorthand.
-///
-/// **Example:**
-/// ```rust
-/// let a = b() || panic!() || c();
-/// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
-/// let x = (a, b, c, panic!());
-/// // can simply be replaced by `panic!()`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for diverging calls that are not match arms or
+    /// statements.
+    ///
+    /// **Why is this bad?** It is often confusing to read. In addition, the
+    /// sub-expression evaluation order for Rust is not well documented.
+    ///
+    /// **Known problems:** Someone might want to use `some_bool || panic!()` as a
+    /// shorthand.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let a = b() || panic!() || c();
+    /// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
+    /// let x = (a, b, c, panic!());
+    /// // can simply be replaced by `panic!()`
+    /// ```
     pub DIVERGING_SUB_EXPRESSION,
     complexity,
     "whether an expression contains a diverging sub expression"
@@ -186,13 +186,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
     let map = &vis.cx.tcx.hir();
-    let mut cur_id = vis.write_expr.id;
+    let mut cur_id = vis.write_expr.hir_id;
     loop {
-        let parent_id = map.get_parent_node(cur_id);
+        let parent_id = map.get_parent_node_by_hir_id(cur_id);
         if parent_id == cur_id {
             break;
         }
-        let parent_node = match map.find(parent_id) {
+        let parent_node = match map.find_by_hir_id(parent_id) {
             Some(parent) => parent,
             None => break,
         };
@@ -224,7 +224,7 @@ enum StopEarly {
 }
 
 fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> StopEarly {
-    if expr.id == vis.last_expr.id {
+    if expr.hir_id == vis.last_expr.hir_id {
         return StopEarly::KeepGoing;
     }
 
@@ -286,7 +286,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
 /// A visitor that looks for reads from a variable.
 struct ReadVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    /// The id of the variable we're looking for.
+    /// The ID of the variable we're looking for.
     var: ast::NodeId,
     /// The expressions where the write to the variable occurred (for reporting
     /// in the lint).
@@ -298,7 +298,7 @@ struct ReadVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if expr.id == self.last_expr.id {
+        if expr.hir_id == self.last_expr.hir_id {
             return;
         }
 
@@ -351,11 +351,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
     }
 }
 
-/// Returns true if `expr` is the LHS of an assignment, like `expr = ...`.
+/// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, _) = parent.node {
-            return lhs.id == expr.id;
+            return lhs.hir_id == expr.hir_id;
         }
     }
     false

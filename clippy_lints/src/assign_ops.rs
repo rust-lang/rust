@@ -1,50 +1,53 @@
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
-use crate::utils::{higher, sugg};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast;
 
-/// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
-/// patterns.
-///
-/// **Why is this bad?** These can be written as the shorter `a op= b`.
-///
-/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
-/// implementations that differ from the regular `Op` impl.
-///
-/// **Example:**
-/// ```rust
-/// let mut a = 5;
-/// ...
-/// a = a + b;
-/// ```
+use crate::utils::{
+    get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
+};
+use crate::utils::{higher, sugg};
+
 declare_clippy_lint! {
+    /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
+    /// patterns.
+    ///
+    /// **Why is this bad?** These can be written as the shorter `a op= b`.
+    ///
+    /// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
+    /// implementations that differ from the regular `Op` impl.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut a = 5;
+    /// let b = 0;
+    /// // ...
+    /// a = a + b;
+    /// ```
     pub ASSIGN_OP_PATTERN,
     style,
     "assigning the result of an operation on a variable to that same variable"
 }
 
-/// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
-///
-/// **Why is this bad?** Most likely these are bugs where one meant to write `a
-/// op= b`.
-///
-/// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
-/// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore it suggests both.
-/// If `a op= a op b` is really the correct behaviour it should be
-/// written as `a = a op a op b` as it's less confusing.
-///
-/// **Example:**
-/// ```rust
-/// let mut a = 5;
-/// ...
-/// a += a + b;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
+    ///
+    /// **Why is this bad?** Most likely these are bugs where one meant to write `a
+    /// op= b`.
+    ///
+    /// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
+    /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
+    /// If `a op= a op b` is really the correct behaviour it should be
+    /// written as `a = a op a op b` as it's less confusing.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut a = 5;
+    /// ...
+    /// a += a + b;
+    /// ```
     pub MISREFACTORED_ASSIGN_OP,
     complexity,
     "having a variable on both sides of an assign op"
@@ -69,58 +72,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
         match &expr.node {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 if let hir::ExprKind::Binary(binop, l, r) = &rhs.node {
-                    if op.node == binop.node {
-                        let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
-                            span_lint_and_then(
-                                cx,
-                                MISREFACTORED_ASSIGN_OP,
-                                expr.span,
-                                "variable appears on both sides of an assignment operation",
-                                |db| {
-                                    if let (Some(snip_a), Some(snip_r)) =
-                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span))
-                                    {
-                                        let a = &sugg::Sugg::hir(cx, assignee, "..");
-                                        let r = &sugg::Sugg::hir(cx, rhs, "..");
-                                        let long =
-                                            format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                                        db.span_suggestion(
-                                            expr.span,
-                                            &format!(
-                                                "Did you mean {} = {} {} {} or {}? Consider replacing it with",
-                                                snip_a,
-                                                snip_a,
-                                                op.node.as_str(),
-                                                snip_r,
-                                                long
-                                            ),
-                                            format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                            Applicability::MachineApplicable,
-                                        );
-                                        db.span_suggestion(
-                                            expr.span,
-                                            "or",
-                                            long,
-                                            Applicability::MachineApplicable, // snippet
-                                        );
-                                    }
-                                },
-                            );
-                        };
-                        // lhs op= l op r
-                        if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
-                            lint(lhs, r);
-                        }
-                        // lhs op= l commutative_op r
-                        if is_commutative(op.node) && SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, r) {
-                            lint(lhs, l);
-                        }
+                    if op.node != binop.node {
+                        return;
+                    }
+                    // lhs op= l op r
+                    if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, l) {
+                        lint_misrefactored_assign_op(cx, expr, *op, rhs, lhs, r);
+                    }
+                    // lhs op= l commutative_op r
+                    if is_commutative(op.node) && SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, r) {
+                        lint_misrefactored_assign_op(cx, expr, *op, rhs, lhs, l);
                     }
                 }
             },
             hir::ExprKind::Assign(assignee, e) => {
                 if let hir::ExprKind::Binary(op, l, r) = &e.node {
-                    #[allow(clippy::cyclomatic_complexity)]
+                    #[allow(clippy::cognitive_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);
                         let rty = cx.tables.expr_ty(rhs);
@@ -140,14 +107,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             return; // useless if the trait doesn't exist
                                         };
                                         // check that we are not inside an `impl AssignOp` of this exact operation
-                                        let parent_fn = cx.tcx.hir().get_parent(e.id);
-                                        let parent_impl = cx.tcx.hir().get_parent(parent_fn);
-                                        // the crate node is the only one that is not in the map
+                                        let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
                                         if_chain! {
-                                            if parent_impl != ast::CRATE_NODE_ID;
-                                            if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
-                                            if let hir::ItemKind::Impl(_, _, _, _, Some(trait_ref), _, _) =
-                                                &item.node;
+                                            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
                                         }
@@ -233,6 +195,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             _ => {},
         }
     }
+}
+
+fn lint_misrefactored_assign_op(
+    cx: &LateContext<'_, '_>,
+    expr: &hir::Expr,
+    op: hir::BinOp,
+    rhs: &hir::Expr,
+    assignee: &hir::Expr,
+    rhs_other: &hir::Expr,
+) {
+    span_lint_and_then(
+        cx,
+        MISREFACTORED_ASSIGN_OP,
+        expr.span,
+        "variable appears on both sides of an assignment operation",
+        |db| {
+            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
+                let a = &sugg::Sugg::hir(cx, assignee, "..");
+                let r = &sugg::Sugg::hir(cx, rhs, "..");
+                let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
+                db.span_suggestion(
+                    expr.span,
+                    &format!(
+                        "Did you mean {} = {} {} {} or {}? Consider replacing it with",
+                        snip_a,
+                        snip_a,
+                        op.node.as_str(),
+                        snip_r,
+                        long
+                    ),
+                    format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                    Applicability::MachineApplicable,
+                );
+                db.span_suggestion(
+                    expr.span,
+                    "or",
+                    long,
+                    Applicability::MachineApplicable, // snippet
+                );
+            }
+        },
+    );
 }
 
 fn is_commutative(op: hir::BinOpKind) -> bool {

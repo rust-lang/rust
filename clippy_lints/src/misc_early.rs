@@ -9,163 +9,164 @@ use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::visit::{walk_expr, FnKind, Visitor};
 
-/// **What it does:** Checks for structure field patterns bound to wildcards.
-///
-/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on
-/// the fields that are actually bound.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let { a: _, b: ref b, c: _ } = ..
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for structure field patterns bound to wildcards.
+    ///
+    /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on
+    /// the fields that are actually bound.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// let { a: _, b: ref b, c: _ } = ..
+    /// ```
     pub UNNEEDED_FIELD_PATTERN,
     style,
     "struct fields bound to a wildcard instead of using `..`"
 }
 
-/// **What it does:** Checks for function arguments having the similar names
-/// differing by an underscore.
-///
-/// **Why is this bad?** It affects code readability.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(a: i32, _a: i32) {}
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for function arguments having the similar names
+    /// differing by an underscore.
+    ///
+    /// **Why is this bad?** It affects code readability.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn foo(a: i32, _a: i32) {}
+    /// ```
     pub DUPLICATE_UNDERSCORE_ARGUMENT,
     style,
     "function arguments having names which only differ by an underscore"
 }
 
-/// **What it does:** Detects closures called in the same expression where they
-/// are defined.
-///
-/// **Why is this bad?** It is unnecessarily adding to the expression's
-/// complexity.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// (|| 42)()
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Detects closures called in the same expression where they
+    /// are defined.
+    ///
+    /// **Why is this bad?** It is unnecessarily adding to the expression's
+    /// complexity.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// (|| 42)()
+    /// ```
     pub REDUNDANT_CLOSURE_CALL,
     complexity,
     "throwaway closures called in the expression they are defined"
 }
 
-/// **What it does:** Detects expressions of the form `--x`.
-///
-/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was
-/// decremented.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// --x;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Detects expressions of the form `--x`.
+    ///
+    /// **Why is this bad?** It can mislead C/C++ programmers to think `x` was
+    /// decremented.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let mut x = 3;
+    /// --x;
+    /// ```
     pub DOUBLE_NEG,
     style,
     "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
-/// **What it does:** Warns on hexadecimal literals with mixed-case letter
-/// digits.
-///
-/// **Why is this bad?** It looks confusing.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let y = 0x1a9BAcD;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Warns on hexadecimal literals with mixed-case letter
+    /// digits.
+    ///
+    /// **Why is this bad?** It looks confusing.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let y = 0x1a9BAcD;
+    /// ```
     pub MIXED_CASE_HEX_LITERALS,
     style,
     "hex literals whose letter digits are not consistently upper- or lowercased"
 }
 
-/// **What it does:** Warns if literal suffixes are not separated by an
-/// underscore.
-///
-/// **Why is this bad?** It is much less readable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let y = 123832i32;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Warns if literal suffixes are not separated by an
+    /// underscore.
+    ///
+    /// **Why is this bad?** It is much less readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let y = 123832i32;
+    /// ```
     pub UNSEPARATED_LITERAL_SUFFIX,
     pedantic,
     "literals whose suffix is not separated by an underscore"
 }
 
-/// **What it does:** Warns if an integral constant literal starts with `0`.
-///
-/// **Why is this bad?** In some languages (including the infamous C language
-/// and most of its
-/// family), this marks an octal constant. In Rust however, this is a decimal
-/// constant. This could
-/// be confusing for both the writer and a reader of the constant.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// In Rust:
-/// ```rust
-/// fn main() {
-///     let a = 0123;
-///     println!("{}", a);
-/// }
-/// ```
-///
-/// prints `123`, while in C:
-///
-/// ```c
-/// #include <stdio.h>
-///
-/// int main() {
-///     int a = 0123;
-///     printf("%d\n", a);
-/// }
-/// ```
-///
-/// prints `83` (as `83 == 0o123` while `123 == 0o173`).
 declare_clippy_lint! {
+    /// **What it does:** Warns if an integral constant literal starts with `0`.
+    ///
+    /// **Why is this bad?** In some languages (including the infamous C language
+    /// and most of its
+    /// family), this marks an octal constant. In Rust however, this is a decimal
+    /// constant. This could
+    /// be confusing for both the writer and a reader of the constant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// In Rust:
+    /// ```rust
+    /// fn main() {
+    ///     let a = 0123;
+    ///     println!("{}", a);
+    /// }
+    /// ```
+    ///
+    /// prints `123`, while in C:
+    ///
+    /// ```c
+    /// #include <stdio.h>
+    ///
+    /// int main() {
+    ///     int a = 0123;
+    ///     printf("%d\n", a);
+    /// }
+    /// ```
+    ///
+    /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
     pub ZERO_PREFIXED_LITERAL,
     complexity,
     "integer literals starting with `0`"
 }
 
-/// **What it does:** Warns if a generic shadows a built-in type.
-///
-/// **Why is this bad?** This gives surprising type errors.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// impl<u32> Foo<u32> {
-///     fn impl_func(&self) -> u32 {
-///         42
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Warns if a generic shadows a built-in type.
+    ///
+    /// **Why is this bad?** This gives surprising type errors.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```ignore
+    /// impl<u32> Foo<u32> {
+    ///     fn impl_func(&self) -> u32 {
+    ///         42
+    ///     }
+    /// }
+    /// ```
     pub BUILTIN_TYPE_SHADOW,
     style,
     "shadowing a builtin type"
@@ -193,7 +194,7 @@ impl LintPass for MiscEarly {
     }
 }
 
-// Used to find `return` statements or equivalents e.g. `?`
+// Used to find `return` statements or equivalents e.g., `?`
 struct ReturnVisitor {
     found_return: bool,
 }

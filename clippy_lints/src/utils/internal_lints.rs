@@ -14,78 +14,78 @@ use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
-/// **What it does:** Checks for various things we like to keep tidy in clippy.
-///
-/// **Why is this bad?** We like to pretend we're an example of tidy code.
-///
-/// **Known problems:** None.
-///
-/// **Example:** Wrong ordering of the util::paths constants.
 declare_clippy_lint! {
+    /// **What it does:** Checks for various things we like to keep tidy in clippy.
+    ///
+    /// **Why is this bad?** We like to pretend we're an example of tidy code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:** Wrong ordering of the util::paths constants.
     pub CLIPPY_LINTS_INTERNAL,
     internal,
     "various things that will negatively affect your clippy experience"
 }
 
-/// **What it does:** Ensures every lint is associated to a `LintPass`.
-///
-/// **Why is this bad?** The compiler only knows lints via a `LintPass`. Without
-/// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
-/// know the name of the lint.
-///
-/// **Known problems:** Only checks for lints associated using the `lint_array!`
-/// macro.
-///
-/// **Example:**
-/// ```rust
-/// declare_lint! { pub LINT_1, ... }
-/// declare_lint! { pub LINT_2, ... }
-/// declare_lint! { pub FORGOTTEN_LINT, ... }
-/// // ...
-/// pub struct Pass;
-/// impl LintPass for Pass {
-///     fn get_lints(&self) -> LintArray {
-///         lint_array![LINT_1, LINT_2]
-///         // missing FORGOTTEN_LINT
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Ensures every lint is associated to a `LintPass`.
+    ///
+    /// **Why is this bad?** The compiler only knows lints via a `LintPass`. Without
+    /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
+    /// know the name of the lint.
+    ///
+    /// **Known problems:** Only checks for lints associated using the `lint_array!`
+    /// macro.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// declare_lint! { pub LINT_1, ... }
+    /// declare_lint! { pub LINT_2, ... }
+    /// declare_lint! { pub FORGOTTEN_LINT, ... }
+    /// // ...
+    /// pub struct Pass;
+    /// impl LintPass for Pass {
+    ///     fn get_lints(&self) -> LintArray {
+    ///         lint_array![LINT_1, LINT_2]
+    ///         // missing FORGOTTEN_LINT
+    ///     }
+    /// }
+    /// ```
     pub LINT_WITHOUT_LINT_PASS,
     internal,
     "declaring a lint without associating it in a LintPass"
 }
 
-/// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
-/// and recommends the FxHash* variants.
-///
-/// **Why is this bad?** The FxHash variants have better performance
-/// and we don't need any collision prevention in clippy.
 declare_clippy_lint! {
+    /// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
+    /// and recommends the FxHash* variants.
+    ///
+    /// **Why is this bad?** The FxHash variants have better performance
+    /// and we don't need any collision prevention in clippy.
     pub DEFAULT_HASH_TYPES,
     internal,
     "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
 
-/// **What it does:** Checks for calls to `cx.span_lint*` and suggests to use the `utils::*`
-/// variant of the function.
-///
-/// **Why is this bad?** The `utils::*` variants also add a link to the Clippy documentation to the
-/// warning/error messages.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// Bad:
-/// ```rust
-/// cx.span_lint(LINT_NAME, "message");
-/// ```
-///
-/// Good:
-/// ```rust
-/// utils::span_lint(cx, LINT_NAME, "message");
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `cx.span_lint*` and suggests to use the `utils::*`
+    /// variant of the function.
+    ///
+    /// **Why is this bad?** The `utils::*` variants also add a link to the Clippy documentation to the
+    /// warning/error messages.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// cx.span_lint(LINT_NAME, "message");
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// utils::span_lint(cx, LINT_NAME, "message");
+    /// ```
     pub COMPILER_LINT_FUNCTIONS,
     internal,
     "usage of the lint functions of the compiler instead of the utils::* variant"
@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                         output: &mut self.registered_lints,
                         cx,
                     };
-                    let body_id = cx.tcx.hir().body_owned_by(impl_item_refs[0].id.node_id);
+                    let body_id = cx.tcx.hir().body_owned_by(impl_item_refs[0].id.hir_id);
                     collector.visit_expr(&cx.tcx.hir().body(body_id).value);
                 }
             }

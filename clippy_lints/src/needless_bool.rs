@@ -11,47 +11,47 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for expressions of the form `if c { true } else {
-/// false }`
-/// (or vice versa) and suggest using the condition directly.
-///
-/// **Why is this bad?** Redundant code.
-///
-/// **Known problems:** Maybe false positives: Sometimes, the two branches are
-/// painstakingly documented (which we of course do not detect), so they *may*
-/// have some value. Even then, the documentation can be rewritten to match the
-/// shorter code.
-///
-/// **Example:**
-/// ```rust
-/// if x {
-///     false
-/// } else {
-///     true
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions of the form `if c { true } else {
+    /// false }`
+    /// (or vice versa) and suggest using the condition directly.
+    ///
+    /// **Why is this bad?** Redundant code.
+    ///
+    /// **Known problems:** Maybe false positives: Sometimes, the two branches are
+    /// painstakingly documented (which we of course do not detect), so they *may*
+    /// have some value. Even then, the documentation can be rewritten to match the
+    /// shorter code.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if x {
+    ///     false
+    /// } else {
+    ///     true
+    /// }
+    /// ```
     pub NEEDLESS_BOOL,
     complexity,
-    "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
+    "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`"
 }
 
-/// **What it does:** Checks for expressions of the form `x == true`,
-/// `x != true` and order comparisons such as `x < true` (or vice versa) and
-/// suggest using the variable directly.
-///
-/// **Why is this bad?** Unnecessary code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if x == true {} // could be `if x { }`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions of the form `x == true`,
+    /// `x != true` and order comparisons such as `x < true` (or vice versa) and
+    /// suggest using the variable directly.
+    ///
+    /// **Why is this bad?** Unnecessary code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if x == true {} // could be `if x { }`
+    /// ```
     pub BOOL_COMPARISON,
     complexity,
-    "comparing a variable to a boolean, e.g. `if x == true` or `if x != true`"
+    "comparing a variable to a boolean, e.g., `if x == true` or `if x != true`"
 }
 
 #[derive(Copy, Clone)]
@@ -126,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
 }
 
 fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_node(expr.id);
-    let parent_node = cx.tcx.hir().get(parent_id);
+    let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+    let parent_node = cx.tcx.hir().get_by_hir_id(parent_id);
 
     if let rustc::hir::Node::Expr(e) = parent_node {
         if let ExprKind::If(_, _, _) = e.node {
@@ -225,23 +225,23 @@ fn check_comparison<'a, 'tcx>(
     use self::Expression::*;
 
     if let ExprKind::Binary(_, ref left_side, ref right_side) = e.node {
-        let mut applicability = Applicability::MachineApplicable;
-        match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-            (Bool(true), Other) => left_true.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
-            }),
-            (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
-            }),
-            (Bool(false), Other) => left_false.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
-            }),
-            (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
-                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
-            }),
-            (Other, Other) => no_literal.map_or((), |(h, m)| {
-                let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
-                if l_ty.is_bool() && r_ty.is_bool() {
+        let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
+        if l_ty.is_bool() && r_ty.is_bool() {
+            let mut applicability = Applicability::MachineApplicable;
+            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+                (Bool(true), Other) => left_true.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+                }),
+                (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+                }),
+                (Bool(false), Other) => left_false.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+                }),
+                (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
+                    suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+                }),
+                (Other, Other) => no_literal.map_or((), |(h, m)| {
                     let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
                     let right_side = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
                     span_lint_and_sugg(
@@ -253,9 +253,9 @@ fn check_comparison<'a, 'tcx>(
                         h(left_side, right_side).to_string(),
                         applicability,
                     )
-                }
-            }),
-            _ => (),
+                }),
+                _ => (),
+            }
         }
     }
 }

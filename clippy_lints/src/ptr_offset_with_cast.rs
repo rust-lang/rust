@@ -3,37 +3,37 @@ use rustc::{declare_tool_lint, hir, lint, lint_array};
 use rustc_errors::Applicability;
 use std::fmt;
 
-/// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
-/// `isize`.
-///
-/// **Why is this bad?** If we’re always increasing the pointer address, we can avoid the numeric
-/// cast by using the `add` method instead.
-///
-/// **Known problems:** None
-///
-/// **Example:**
-/// ```rust
-/// let vec = vec![b'a', b'b', b'c'];
-/// let ptr = vec.as_ptr();
-/// let offset = 1_usize;
-///
-/// unsafe {
-///     ptr.offset(offset as isize);
-/// }
-/// ```
-///
-/// Could be written:
-///
-/// ```rust
-/// let vec = vec![b'a', b'b', b'c'];
-/// let ptr = vec.as_ptr();
-/// let offset = 1_usize;
-///
-/// unsafe {
-///     ptr.add(offset);
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// `isize`.
+    ///
+    /// **Why is this bad?** If we’re always increasing the pointer address, we can avoid the numeric
+    /// cast by using the `add` method instead.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.offset(offset as isize);
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```rust
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.add(offset);
+    /// }
+    /// ```
     pub PTR_OFFSET_WITH_CAST,
     complexity,
     "unneeded pointer offset cast"

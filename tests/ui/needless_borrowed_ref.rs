@@ -14,12 +14,12 @@ fn main() {
     let mut var2 = 5;
     let thingy2 = Some(&mut var2);
     if let Some(&mut ref mut v) = thingy2 {
-        //          ^ should *not* be linted
+        //          ^ should **not** be linted
         // v is borrowed as mutable.
         *v = 10;
     }
     if let Some(&mut ref v) = thingy2 {
-        //          ^ should *not* be linted
+        //          ^ should **not** be linted
         // here, v is borrowed as immutable.
         // can't do that:
         //*v = 15;
@@ -37,7 +37,7 @@ enum Animal {
 fn foo(a: &Animal, b: &Animal) {
     match (a, b) {
         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
-        //                  ^    and   ^ should *not* be linted
-        (&Animal::Dog(ref a), &Animal::Dog(_)) => (), //              ^ should *not* be linted
+        //                  ^    and   ^ should **not** be linted
+        (&Animal::Dog(ref a), &Animal::Dog(_)) => (), //              ^ should **not** be linted
     }
 }

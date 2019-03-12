@@ -4,75 +4,75 @@ use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::ptr::P;
 
-/// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
-/// operators.
-///
-/// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or
-/// confusing.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
+    /// operators.
+    ///
+    /// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or
+    /// confusing.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
+    /// ```
     pub SUSPICIOUS_ASSIGNMENT_FORMATTING,
     style,
     "suspicious formatting of `*=`, `-=` or `!=`"
 }
 
-/// **What it does:** Checks for formatting of `else`. It lints if the `else`
-/// is followed immediately by a newline or the `else` seems to be missing.
-///
-/// **Why is this bad?** This is probably some refactoring remnant, even if the
-/// code is correct, it might look confusing.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// if foo {
-/// } { // looks like an `else` is missing here
-/// }
-///
-/// if foo {
-/// } if bar { // looks like an `else` is missing here
-/// }
-///
-/// if foo {
-/// } else
-///
-/// { // this is the `else` block of the previous `if`, but should it be?
-/// }
-///
-/// if foo {
-/// } else
-///
-/// if bar { // this is the `else` block of the previous `if`, but should it be?
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for formatting of `else`. It lints if the `else`
+    /// is followed immediately by a newline or the `else` seems to be missing.
+    ///
+    /// **Why is this bad?** This is probably some refactoring remnant, even if the
+    /// code is correct, it might look confusing.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// if foo {
+    /// } { // looks like an `else` is missing here
+    /// }
+    ///
+    /// if foo {
+    /// } if bar { // looks like an `else` is missing here
+    /// }
+    ///
+    /// if foo {
+    /// } else
+    ///
+    /// { // this is the `else` block of the previous `if`, but should it be?
+    /// }
+    ///
+    /// if foo {
+    /// } else
+    ///
+    /// if bar { // this is the `else` block of the previous `if`, but should it be?
+    /// }
+    /// ```
     pub SUSPICIOUS_ELSE_FORMATTING,
     style,
     "suspicious formatting of `else`"
 }
 
-/// **What it does:** Checks for possible missing comma in an array. It lints if
-/// an array element is a binary operator expression and it lies on two lines.
-///
-/// **Why is this bad?** This could lead to unexpected results.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// let a = &[
-///     -1, -2, -3 // <= no comma here
-///     -4, -5, -6
-/// ];
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for possible missing comma in an array. It lints if
+    /// an array element is a binary operator expression and it lies on two lines.
+    ///
+    /// **Why is this bad?** This could lead to unexpected results.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// let a = &[
+    ///     -1, -2, -3 // <= no comma here
+    ///     -4, -5, -6
+    /// ];
+    /// ```
     pub POSSIBLE_MISSING_COMMA,
     correctness,
     "possible missing comma in array"

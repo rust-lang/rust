@@ -1,5 +1,5 @@
-error: the function has a cyclomatic complexity of 3
-  --> $DIR/cyclomatic_complexity_attr_used.rs:9:1
+error: the function has a cognitive complexity of 3
+  --> $DIR/cognitive_complexity_attr_used.rs:9:1
    |
 LL | / fn kaboom() {
 LL | |     if 42 == 43 {
@@ -10,7 +10,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = note: `-D clippy::cyclomatic-complexity` implied by `-D warnings`
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
 
 error: aborting due to previous error

@@ -3,28 +3,28 @@ use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for unused written/read amount.
-///
-/// **Why is this bad?** `io::Write::write` and `io::Read::read` are not
-/// guaranteed to
-/// process the entire buffer. They return how many bytes were processed, which
-/// might be smaller
-/// than a given buffer's length. If you don't need to deal with
-/// partial-write/read, use
-/// `write_all`/`read_exact` instead.
-///
-/// **Known problems:** Detects only common patterns.
-///
-/// **Example:**
-/// ```rust,ignore
-/// use std::io;
-/// fn foo<W: io::Write>(w: &mut W) -> io::Result<()> {
-///     // must be `w.write_all(b"foo")?;`
-///     w.write(b"foo")?;
-///     Ok(())
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for unused written/read amount.
+    ///
+    /// **Why is this bad?** `io::Write::write` and `io::Read::read` are not
+    /// guaranteed to
+    /// process the entire buffer. They return how many bytes were processed, which
+    /// might be smaller
+    /// than a given buffer's length. If you don't need to deal with
+    /// partial-write/read, use
+    /// `write_all`/`read_exact` instead.
+    ///
+    /// **Known problems:** Detects only common patterns.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// use std::io;
+    /// fn foo<W: io::Write>(w: &mut W) -> io::Result<()> {
+    ///     // must be `w.write_all(b"foo")?;`
+    ///     w.write(b"foo")?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub UNUSED_IO_AMOUNT,
     correctness,
     "unused written/read amount"
@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
         };
 
         match expr.node {
-            hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
+            hir::ExprKind::Match(ref res, _, _) if is_try(cx, expr).is_some() => {
                 if let hir::ExprKind::Call(ref func, ref args) = res.node {
                     if let hir::ExprKind::Path(ref path) = func.node {
                         if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {

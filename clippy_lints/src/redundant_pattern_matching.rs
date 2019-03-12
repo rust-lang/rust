@@ -6,37 +6,37 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 
-/// **What it does:** Lint for redundant pattern matching over `Result` or
-/// `Option`
-///
-/// **Why is this bad?** It's more concise and clear to just use the proper
-/// utility function
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-///
-/// ```rust
-/// if let Ok(_) = Ok::<i32, i32>(42) {}
-/// if let Err(_) = Err::<i32, i32>(42) {}
-/// if let None = None::<()> {}
-/// if let Some(_) = Some(42) {}
-/// match Ok::<i32, i32>(42) {
-///     Ok(_) => true,
-///     Err(_) => false,
-/// };
-/// ```
-///
-/// The more idiomatic use would be:
-///
-/// ```rust
-/// if Ok::<i32, i32>(42).is_ok() {}
-/// if Err::<i32, i32>(42).is_err() {}
-/// if None::<()>.is_none() {}
-/// if Some(42).is_some() {}
-/// Ok::<i32, i32>(42).is_ok();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Lint for redundant pattern matching over `Result` or
+    /// `Option`
+    ///
+    /// **Why is this bad?** It's more concise and clear to just use the proper
+    /// utility function
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// if let Ok(_) = Ok::<i32, i32>(42) {}
+    /// if let Err(_) = Err::<i32, i32>(42) {}
+    /// if let None = None::<()> {}
+    /// if let Some(_) = Some(42) {}
+    /// match Ok::<i32, i32>(42) {
+    ///     Ok(_) => true,
+    ///     Err(_) => false,
+    /// };
+    /// ```
+    ///
+    /// The more idiomatic use would be:
+    ///
+    /// ```rust
+    /// if Ok::<i32, i32>(42).is_ok() {}
+    /// if Err::<i32, i32>(42).is_err() {}
+    /// if None::<()>.is_none() {}
+    /// if Some(42).is_some() {}
+    /// Ok::<i32, i32>(42).is_ok();
+    /// ```
     pub REDUNDANT_PATTERN_MATCHING,
     style,
     "use the proper utility function avoiding an `if let`"

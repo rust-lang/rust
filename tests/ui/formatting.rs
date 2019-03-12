@@ -4,8 +4,11 @@
 #![allow(clippy::if_same_then_else)]
 #![allow(clippy::deref_addrof)]
 
-fn foo() -> bool { true }
+fn foo() -> bool {
+    true
+}
 
+#[rustfmt::skip]
 fn main() {
     // weird `else` formatting:
     if foo() {

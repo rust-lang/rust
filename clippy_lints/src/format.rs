@@ -1,33 +1,34 @@
 use crate::utils::paths;
 use crate::utils::{
-    in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet,
-    span_lint_and_then, walk_ptrs_ty,
+    in_macro, is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet, span_lint_and_then,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
+use syntax::source_map::Span;
 
-/// **What it does:** Checks for the use of `format!("string literal with no
-/// argument")` and `format!("{}", foo)` where `foo` is a string.
-///
-/// **Why is this bad?** There is no point of doing that. `format!("foo")` can
-/// be replaced by `"foo".to_owned()` if you really need a `String`. The even
-/// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
-/// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
-/// if `foo: &str`.
-///
-/// **Known problems:** None.
-///
-/// **Examples:**
-/// ```rust
-/// format!("foo")
-/// format!("{}", foo)
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `format!("string literal with no
+    /// argument")` and `format!("{}", foo)` where `foo` is a string.
+    ///
+    /// **Why is this bad?** There is no point of doing that. `format!("foo")` can
+    /// be replaced by `"foo".to_owned()` if you really need a `String`. The even
+    /// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
+    /// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
+    /// if `foo: &str`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// format!("foo")
+    /// format!("{}", foo)
+    /// ```
     pub USELESS_FORMAT,
     complexity,
     "useless use of `format!`"
@@ -57,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
                         if let ExprKind::Path(ref qpath) = fun.node;
-                        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
+                        if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
                         let new_v1 = match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
                         let new_v1_fmt = match_def_path(
                             cx.tcx,
@@ -82,14 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 }
                             };
 
-                            span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion(
-                                    expr.span,
-                                    message,
-                                    sugg,
-                                    Applicability::MachineApplicable,
-                                );
-                            });
+                            span_useless_format(cx, span, message, sugg);
                         }
                     }
                 },
@@ -98,14 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let ExprKind::Tup(ref tup) = matchee.node {
                         if tup.is_empty() {
                             let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
-                            span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-                                db.span_suggestion(
-                                    span,
-                                    "consider using .to_string()",
-                                    sugg,
-                                    Applicability::MachineApplicable, // snippet
-                                );
-                            });
+                            span_useless_format(cx, span, "consider using .to_string()", sugg);
                         }
                     }
                 },
@@ -113,6 +100,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
     }
+}
+
+fn span_useless_format<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, span: Span, help: &str, mut sugg: String) {
+    let to_replace = span.source_callsite();
+
+    // The callsite span contains the statement semicolon for some reason.
+    let snippet = snippet(cx, to_replace, "..");
+    if snippet.ends_with(';') {
+        sugg.push(';');
+    }
+
+    span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
+        db.span_suggestion(
+            to_replace,
+            help,
+            sugg,
+            Applicability::MachineApplicable, // snippet
+        );
+    });
 }
 
 /// Checks if the expressions matches `&[""]`
@@ -153,7 +159,7 @@ fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option
         if let ExprKind::Call(_, ref args) = exprs[0].node;
         if args.len() == 2;
         if let ExprKind::Path(ref qpath) = args[1].node;
-        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, args[1].hir_id));
+        if let Some(fun_def_id) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));

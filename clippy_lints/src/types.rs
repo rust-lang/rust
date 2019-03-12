@@ -1,14 +1,9 @@
 #![allow(clippy::default_hash_types)]
 
-use crate::consts::{constant, Constant};
-use crate::reexport::*;
-use crate::utils::paths;
-use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
-    snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
-    AbsolutePathBuffer,
-};
+use std::borrow::Cow;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
+
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
@@ -20,145 +15,151 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
-use std::borrow::Cow;
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
 
+use crate::consts::{constant, Constant};
+use crate::utils::paths;
+use crate::utils::{
+    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
+    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
+};
+
 /// Handles all the linting of funky types
 pub struct TypePass;
 
-/// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
-///
-/// **Why is this bad?** `Vec` already keeps its contents in a separate area on
-/// the heap. So if you `Box` it, you just add another level of indirection
-/// without any benefit whatsoever.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// struct X {
-///     values: Box<Vec<Foo>>,
-/// }
-/// ```
-///
-/// Better:
-///
-/// ```rust
-/// struct X {
-///     values: Vec<Foo>,
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
+    ///
+    /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
+    /// the heap. So if you `Box` it, you just add another level of indirection
+    /// without any benefit whatsoever.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// struct X {
+    ///     values: Box<Vec<Foo>>,
+    /// }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// struct X {
+    ///     values: Vec<Foo>,
+    /// }
+    /// ```
     pub BOX_VEC,
     perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
-/// **What it does:** Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
-///
-/// **Why is this bad?** `Vec` already keeps its contents in a separate area on
-/// the heap. So if you `Box` its contents, you just add another level of indirection.
-///
-/// **Known problems:** Vec<Box<T: Sized>> makes sense if T is a large type (see #3530,
-/// 1st comment).
-///
-/// **Example:**
-/// ```rust
-/// struct X {
-///     values: Vec<Box<i32>>,
-/// }
-/// ```
-///
-/// Better:
-///
-/// ```rust
-/// struct X {
-///     values: Vec<i32>,
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+    ///
+    /// **Why is this bad?** `Vec` already keeps its contents in a separate area on
+    /// the heap. So if you `Box` its contents, you just add another level of indirection.
+    ///
+    /// **Known problems:** Vec<Box<T: Sized>> makes sense if T is a large type (see #3530,
+    /// 1st comment).
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct X {
+    ///     values: Vec<Box<i32>>,
+    /// }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// struct X {
+    ///     values: Vec<i32>,
+    /// }
+    /// ```
     pub VEC_BOX,
     complexity,
     "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
 }
 
-/// **What it does:** Checks for use of `Option<Option<_>>` in function signatures and type
-/// definitions
-///
-/// **Why is this bad?** `Option<_>` represents an optional value. `Option<Option<_>>`
-/// represents an optional optional value which is logically the same thing as an optional
-/// value but has an unneeded extra level of wrapping.
-///
-/// **Known problems:** None.
-///
-/// **Example**
-/// ```rust
-/// fn x() -> Option<Option<u32>> {
-///     None
-/// }
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of `Option<Option<_>>` in function signatures and type
+    /// definitions
+    ///
+    /// **Why is this bad?** `Option<_>` represents an optional value. `Option<Option<_>>`
+    /// represents an optional optional value which is logically the same thing as an optional
+    /// value but has an unneeded extra level of wrapping.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example**
+    /// ```rust
+    /// fn x() -> Option<Option<u32>> {
+    ///     None
+    /// }
+    /// ```
     pub OPTION_OPTION,
     complexity,
     "usage of `Option<Option<T>>`"
 }
 
-/// **What it does:** Checks for usage of any `LinkedList`, suggesting to use a
-/// `Vec` or a `VecDeque` (formerly called `RingBuf`).
-///
-/// **Why is this bad?** Gankro says:
-///
-/// > The TL;DR of `LinkedList` is that it's built on a massive amount of
-/// pointers and indirection.
-/// > It wastes memory, it has terrible cache locality, and is all-around slow.
-/// `RingBuf`, while
-/// > "only" amortized for push/pop, should be faster in the general case for
-/// almost every possible
-/// > workload, and isn't even amortized at all if you can predict the capacity
-/// you need.
-/// >
-/// > `LinkedList`s are only really good if you're doing a lot of merging or
-/// splitting of lists.
-/// > This is because they can just mangle some pointers instead of actually
-/// copying the data. Even
-/// > if you're doing a lot of insertion in the middle of the list, `RingBuf`
-/// can still be better
-/// > because of how expensive it is to seek to the middle of a `LinkedList`.
-///
-/// **Known problems:** False positives – the instances where using a
-/// `LinkedList` makes sense are few and far between, but they can still happen.
-///
-/// **Example:**
-/// ```rust
-/// let x = LinkedList::new();
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of any `LinkedList`, suggesting to use a
+    /// `Vec` or a `VecDeque` (formerly called `RingBuf`).
+    ///
+    /// **Why is this bad?** Gankro says:
+    ///
+    /// > The TL;DR of `LinkedList` is that it's built on a massive amount of
+    /// pointers and indirection.
+    /// > It wastes memory, it has terrible cache locality, and is all-around slow.
+    /// `RingBuf`, while
+    /// > "only" amortized for push/pop, should be faster in the general case for
+    /// almost every possible
+    /// > workload, and isn't even amortized at all if you can predict the capacity
+    /// you need.
+    /// >
+    /// > `LinkedList`s are only really good if you're doing a lot of merging or
+    /// splitting of lists.
+    /// > This is because they can just mangle some pointers instead of actually
+    /// copying the data. Even
+    /// > if you're doing a lot of insertion in the middle of the list, `RingBuf`
+    /// can still be better
+    /// > because of how expensive it is to seek to the middle of a `LinkedList`.
+    ///
+    /// **Known problems:** False positives – the instances where using a
+    /// `LinkedList` makes sense are few and far between, but they can still happen.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = LinkedList::new();
+    /// ```
     pub LINKEDLIST,
     pedantic,
     "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque"
 }
 
-/// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
-///
-/// **Why is this bad?** Any `&Box<T>` can also be a `&T`, which is more
-/// general.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn foo(bar: &Box<T>) { ... }
-/// ```
-///
-/// Better:
-///
-/// ```rust
-/// fn foo(bar: &T) { ... }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
+    ///
+    /// **Why is this bad?** Any `&Box<T>` can also be a `&T`, which is more
+    /// general.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// fn foo(bar: &Box<T>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// fn foo(bar: &T) { ... }
+    /// ```
     pub BORROWED_BOX,
     complexity,
     "a borrow of a boxed type"
@@ -175,9 +176,9 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
-        // skip trait implementations, see #605
-        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent(id)) {
+    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: HirId) {
+        // Skip trait implementations; see issue #605.
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_hir_id(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -215,7 +216,7 @@ fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
     }
 }
 
-/// Check if `qpath` has last segment with type parameter matching `path`
+/// Checks if `qpath` has last segment with type parameter matching `path`
 fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
@@ -226,7 +227,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir().node_to_hir_id(ty.id)));
+        if let Some(did) = cx.tables.qpath_def(qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx.tcx, did, path);
         then {
             return true;
@@ -247,9 +248,9 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     }
     match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
-            let hir_id = cx.tcx.hir().node_to_hir_id(hir_ty.id);
+            let hir_id = hir_ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
-            if let Some(def_id) = opt_def_id(def) {
+            if let Some(def_id) = def.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     if match_type_parameter(cx, qpath, &paths::VEC) {
                         span_help_and_lint(
@@ -272,7 +273,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         // ty is now _ at this point
                         if let TyKind::Path(ref ty_qpath) = ty.node;
                         let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
-                        if let Some(def_id) = opt_def_id(def);
+                        if let Some(def_id) = def.opt_def_id();
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
@@ -376,10 +377,10 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
 fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
-            let hir_id = cx.tcx.hir().node_to_hir_id(mut_ty.ty.id);
+            let hir_id = mut_ty.ty.hir_id;
             let def = cx.tables.qpath_def(qpath, hir_id);
             if_chain! {
-                if let Some(def_id) = opt_def_id(def);
+                if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();
                 if let QPath::Resolved(None, ref path) = *qpath;
                 if let [ref bx] = *path.segments;
@@ -391,7 +392,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
                 });
                 then {
                     if is_any_trait(inner) {
-                        // Ignore `Box<Any>` types, see #1884 for details.
+                        // Ignore `Box<Any>` types; see issue #1884 for details.
                         return;
                     }
 
@@ -447,20 +448,20 @@ fn is_any_trait(t: &hir::Ty) -> bool {
 
 pub struct LetPass;
 
-/// **What it does:** Checks for binding a unit value.
-///
-/// **Why is this bad?** A unit value cannot usefully be used anywhere. So
-/// binding one is kind of pointless.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x = {
-///     1;
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for binding a unit value.
+    ///
+    /// **Why is this bad?** A unit value cannot usefully be used anywhere. So
+    /// binding one is kind of pointless.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = {
+    ///     1;
+    /// };
+    /// ```
     pub LET_UNIT_VALUE,
     style,
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
@@ -500,33 +501,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetPass {
     }
 }
 
-/// **What it does:** Checks for comparisons to unit.
-///
-/// **Why is this bad?** Unit is always equal to itself, and thus is just a
-/// clumsily written constant. Mostly this happens when someone accidentally
-/// adds semicolons at the end of the operands.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// if {
-///     foo();
-/// } == {
-///     bar();
-/// } {
-///     baz();
-/// }
-/// ```
-/// is equal to
-/// ```rust
-/// {
-///     foo();
-///     bar();
-///     baz();
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for comparisons to unit.
+    ///
+    /// **Why is this bad?** Unit is always equal to itself, and thus is just a
+    /// clumsily written constant. Mostly this happens when someone accidentally
+    /// adds semicolons at the end of the operands.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// if {
+    ///     foo();
+    /// } == {
+    ///     bar();
+    /// } {
+    ///     baz();
+    /// }
+    /// ```
+    /// is equal to
+    /// ```ignore
+    /// {
+    ///     foo();
+    ///     bar();
+    ///     baz();
+    /// }
+    /// ```
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
@@ -571,21 +572,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
     }
 }
 
-/// **What it does:** Checks for passing a unit value as an argument to a function without using a
-/// unit literal (`()`).
-///
-/// **Why is this bad?** This is likely the result of an accidental semicolon.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// foo({
-///     let a = bar();
-///     baz(a);
-/// })
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for passing a unit value as an argument to a function without using a
+    /// unit literal (`()`).
+    ///
+    /// **Why is this bad?** This is likely the result of an accidental semicolon.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// foo({
+    ///     let a = bar();
+    ///     baz(a);
+    /// })
+    /// ```
     pub UNIT_ARG,
     complexity,
     "passing unit to a function"
@@ -618,7 +619,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
         }
         if_chain! {
             let map = &cx.tcx.hir();
-            let opt_parent_node = map.find(map.get_parent_node(expr.id));
+            let opt_parent_node = map.find_by_hir_id(map.get_parent_node_by_hir_id(expr.hir_id));
             if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
             if is_questionmark_desugar_marked_call(parent_expr);
             then {
@@ -678,216 +679,216 @@ fn is_unit_literal(expr: &Expr) -> bool {
 
 pub struct CastPass;
 
-/// **What it does:** Checks for casts from any numerical to a float type where
-/// the receiving type cannot store all values from the original type without
-/// rounding errors. This possible rounding is to be expected, so this lint is
-/// `Allow` by default.
-///
-/// Basically, this warns on casting any integer with 32 or more bits to `f32`
-/// or any 64-bit integer to `f64`.
-///
-/// **Why is this bad?** It's not bad at all. But in some applications it can be
-/// helpful to know where precision loss can take place. This lint can help find
-/// those places in the code.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x = u64::MAX;
-/// x as f64
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts from any numerical to a float type where
+    /// the receiving type cannot store all values from the original type without
+    /// rounding errors. This possible rounding is to be expected, so this lint is
+    /// `Allow` by default.
+    ///
+    /// Basically, this warns on casting any integer with 32 or more bits to `f32`
+    /// or any 64-bit integer to `f64`.
+    ///
+    /// **Why is this bad?** It's not bad at all. But in some applications it can be
+    /// helpful to know where precision loss can take place. This lint can help find
+    /// those places in the code.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = u64::MAX;
+    /// x as f64
+    /// ```
     pub CAST_PRECISION_LOSS,
     pedantic,
-    "casts that cause loss of precision, e.g. `x as f32` where `x: u64`"
+    "casts that cause loss of precision, e.g., `x as f32` where `x: u64`"
 }
 
-/// **What it does:** Checks for casts from a signed to an unsigned numerical
-/// type. In this case, negative values wrap around to large positive values,
-/// which can be quite surprising in practice. However, as the cast works as
-/// defined, this lint is `Allow` by default.
-///
-/// **Why is this bad?** Possibly surprising results. You can activate this lint
-/// as a one-time check to see where numerical wrapping can arise.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let y: i8 = -1;
-/// y as u128 // will return 18446744073709551615
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts from a signed to an unsigned numerical
+    /// type. In this case, negative values wrap around to large positive values,
+    /// which can be quite surprising in practice. However, as the cast works as
+    /// defined, this lint is `Allow` by default.
+    ///
+    /// **Why is this bad?** Possibly surprising results. You can activate this lint
+    /// as a one-time check to see where numerical wrapping can arise.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let y: i8 = -1;
+    /// y as u128 // will return 18446744073709551615
+    /// ```
     pub CAST_SIGN_LOSS,
     pedantic,
-    "casts from signed types to unsigned types, e.g. `x as u32` where `x: i32`"
+    "casts from signed types to unsigned types, e.g., `x as u32` where `x: i32`"
 }
 
-/// **What it does:** Checks for on casts between numerical types that may
-/// truncate large values. This is expected behavior, so the cast is `Allow` by
-/// default.
-///
-/// **Why is this bad?** In some problem domains, it is good practice to avoid
-/// truncation. This lint can be activated to help assess where additional
-/// checks could be beneficial.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn as_u8(x: u64) -> u8 {
-///     x as u8
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for on casts between numerical types that may
+    /// truncate large values. This is expected behavior, so the cast is `Allow` by
+    /// default.
+    ///
+    /// **Why is this bad?** In some problem domains, it is good practice to avoid
+    /// truncation. This lint can be activated to help assess where additional
+    /// checks could be beneficial.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn as_u8(x: u64) -> u8 {
+    ///     x as u8
+    /// }
+    /// ```
     pub CAST_POSSIBLE_TRUNCATION,
     pedantic,
-    "casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
+    "casts that may cause truncation of the value, e.g., `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
 }
 
-/// **What it does:** Checks for casts from an unsigned type to a signed type of
-/// the same size. Performing such a cast is a 'no-op' for the compiler,
-/// i.e. nothing is changed at the bit level, and the binary representation of
-/// the value is reinterpreted. This can cause wrapping if the value is too big
-/// for the target signed type. However, the cast works as defined, so this lint
-/// is `Allow` by default.
-///
-/// **Why is this bad?** While such a cast is not bad in itself, the results can
-/// be surprising when this is not the intended behavior, as demonstrated by the
-/// example below.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// u32::MAX as i32 // will yield a value of `-1`
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts from an unsigned type to a signed type of
+    /// the same size. Performing such a cast is a 'no-op' for the compiler,
+    /// i.e., nothing is changed at the bit level, and the binary representation of
+    /// the value is reinterpreted. This can cause wrapping if the value is too big
+    /// for the target signed type. However, the cast works as defined, so this lint
+    /// is `Allow` by default.
+    ///
+    /// **Why is this bad?** While such a cast is not bad in itself, the results can
+    /// be surprising when this is not the intended behavior, as demonstrated by the
+    /// example below.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// u32::MAX as i32 // will yield a value of `-1`
+    /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
-    "casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` and `x > i32::MAX`"
+    "casts that may cause wrapping around the value, e.g., `x as i32` where `x: u32` and `x > i32::MAX`"
 }
 
-/// **What it does:** Checks for on casts between numerical types that may
-/// be replaced by safe conversion functions.
-///
-/// **Why is this bad?** Rust's `as` keyword will perform many kinds of
-/// conversions, including silently lossy conversions. Conversion functions such
-/// as `i32::from` will only perform lossless conversions. Using the conversion
-/// functions prevents conversions from turning into silent lossy conversions if
-/// the types of the input expressions ever change, and make it easier for
-/// people reading the code to know that the conversion is lossless.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn as_u64(x: u8) -> u64 {
-///     x as u64
-/// }
-/// ```
-///
-/// Using `::from` would look like this:
-///
-/// ```rust
-/// fn as_u64(x: u8) -> u64 {
-///     u64::from(x)
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for on casts between numerical types that may
+    /// be replaced by safe conversion functions.
+    ///
+    /// **Why is this bad?** Rust's `as` keyword will perform many kinds of
+    /// conversions, including silently lossy conversions. Conversion functions such
+    /// as `i32::from` will only perform lossless conversions. Using the conversion
+    /// functions prevents conversions from turning into silent lossy conversions if
+    /// the types of the input expressions ever change, and make it easier for
+    /// people reading the code to know that the conversion is lossless.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// fn as_u64(x: u8) -> u64 {
+    ///     x as u64
+    /// }
+    /// ```
+    ///
+    /// Using `::from` would look like this:
+    ///
+    /// ```rust
+    /// fn as_u64(x: u8) -> u64 {
+    ///     u64::from(x)
+    /// }
+    /// ```
     pub CAST_LOSSLESS,
     complexity,
-    "casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`"
+    "casts using `as` that are known to be lossless, e.g., `x as u64` where `x: u8`"
 }
 
-/// **What it does:** Checks for casts to the same type.
-///
-/// **Why is this bad?** It's just unnecessary.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let _ = 2i32 as i32
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts to the same type.
+    ///
+    /// **Why is this bad?** It's just unnecessary.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let _ = 2i32 as i32
+    /// ```
     pub UNNECESSARY_CAST,
     complexity,
-    "cast to the same type, e.g. `x as i32` where `x: i32`"
+    "cast to the same type, e.g., `x as i32` where `x: i32`"
 }
 
-/// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
-/// more-strictly-aligned pointer
-///
-/// **Why is this bad?** Dereferencing the resulting pointer may be undefined
-/// behavior.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let _ = (&1u8 as *const u8) as *const u16;
-/// let _ = (&mut 1u8 as *mut u8) as *mut u16;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
+    /// more-strictly-aligned pointer
+    ///
+    /// **Why is this bad?** Dereferencing the resulting pointer may be undefined
+    /// behavior.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let _ = (&1u8 as *const u8) as *const u16;
+    /// let _ = (&mut 1u8 as *mut u8) as *mut u16;
+    /// ```
     pub CAST_PTR_ALIGNMENT,
     correctness,
     "cast from a pointer to a more-strictly-aligned pointer"
 }
 
-/// **What it does:** Checks for casts of function pointers to something other than usize
-///
-/// **Why is this bad?**
-/// Casting a function pointer to anything other than usize/isize is not portable across
-/// architectures, because you end up losing bits if the target type is too small or end up with a
-/// bunch of extra bits that waste space and add more instructions to the final binary than
-/// strictly necessary for the problem
-///
-/// Casting to isize also doesn't make sense since there are no signed addresses.
-///
-/// **Example**
-///
-/// ```rust
-/// // Bad
-/// fn fun() -> i32 {}
-/// let a = fun as i64;
-///
-/// // Good
-/// fn fun2() -> i32 {}
-/// let a = fun2 as usize;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts of function pointers to something other than usize
+    ///
+    /// **Why is this bad?**
+    /// Casting a function pointer to anything other than usize/isize is not portable across
+    /// architectures, because you end up losing bits if the target type is too small or end up with a
+    /// bunch of extra bits that waste space and add more instructions to the final binary than
+    /// strictly necessary for the problem
+    ///
+    /// Casting to isize also doesn't make sense since there are no signed addresses.
+    ///
+    /// **Example**
+    ///
+    /// ```ignore
+    /// // Bad
+    /// fn fun() -> i32 {}
+    /// let a = fun as i64;
+    ///
+    /// // Good
+    /// fn fun2() -> i32 {}
+    /// let a = fun2 as usize;
+    /// ```
     pub FN_TO_NUMERIC_CAST,
     style,
     "casting a function pointer to a numeric type other than usize"
 }
 
-/// **What it does:** Checks for casts of a function pointer to a numeric type not wide enough to
-/// store address.
-///
-/// **Why is this bad?**
-/// Such a cast discards some bits of the function's address. If this is intended, it would be more
-/// clearly expressed by casting to usize first, then casting the usize to the intended type (with
-/// a comment) to perform the truncation.
-///
-/// **Example**
-///
-/// ```rust
-/// // Bad
-/// fn fn1() -> i16 {
-///     1
-/// };
-/// let _ = fn1 as i32;
-///
-/// // Better: Cast to usize first, then comment with the reason for the truncation
-/// fn fn2() -> i16 {
-///     1
-/// };
-/// let fn_ptr = fn2 as usize;
-/// let fn_ptr_truncated = fn_ptr as i32;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts of a function pointer to a numeric type not wide enough to
+    /// store address.
+    ///
+    /// **Why is this bad?**
+    /// Such a cast discards some bits of the function's address. If this is intended, it would be more
+    /// clearly expressed by casting to usize first, then casting the usize to the intended type (with
+    /// a comment) to perform the truncation.
+    ///
+    /// **Example**
+    ///
+    /// ```rust
+    /// // Bad
+    /// fn fn1() -> i16 {
+    ///     1
+    /// };
+    /// let _ = fn1 as i32;
+    ///
+    /// // Better: Cast to usize first, then comment with the reason for the truncation
+    /// fn fn2() -> i16 {
+    ///     1
+    /// };
+    /// let fn_ptr = fn2 as usize;
+    /// let fn_ptr_truncated = fn_ptr as i32;
+    /// ```
     pub FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     style,
     "casting a function pointer to a numeric type not wide enough to store the address"
@@ -962,7 +963,7 @@ fn should_strip_parens(op: &Expr, snip: &str) -> bool {
 
 fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    if in_constant(cx, expr.id) {
+    if in_constant(cx, expr.hir_id) {
         return;
     }
     // The suggestion is to use a function call, so if the original expression
@@ -1288,21 +1289,21 @@ fn lint_fn_to_numeric_cast(
     }
 }
 
-/// **What it does:** Checks for types used in structs, parameters and `let`
-/// declarations above a certain complexity threshold.
-///
-/// **Why is this bad?** Too complex types make the code less readable. Consider
-/// using a `type` definition to simplify them.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// struct Foo {
-///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for types used in structs, parameters and `let`
+    /// declarations above a certain complexity threshold.
+    ///
+    /// **Why is this bad?** Too complex types make the code less readable. Consider
+    /// using a `type` definition to simplify them.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// struct Foo {
+    ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
+    /// }
+    /// ```
     pub TYPE_COMPLEXITY,
     complexity,
     "usage of very complex types that might be better factored into `type` definitions"
@@ -1336,7 +1337,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
         decl: &'tcx FnDecl,
         _: &'tcx Body,
         _: Span,
-        _: NodeId,
+        _: HirId,
     ) {
         self.check_fndecl(cx, decl);
     }
@@ -1457,28 +1458,28 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     }
 }
 
-/// **What it does:** Checks for expressions where a character literal is cast
-/// to `u8` and suggests using a byte literal instead.
-///
-/// **Why is this bad?** In general, casting values to smaller types is
-/// error-prone and should be avoided where possible. In the particular case of
-/// converting a character literal to u8, it is easy to avoid by just using a
-/// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
-/// than `'a' as u8`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// 'x' as u8
-/// ```
-///
-/// A better version, using the byte literal:
-///
-/// ```rust
-/// b'x'
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for expressions where a character literal is cast
+    /// to `u8` and suggests using a byte literal instead.
+    ///
+    /// **Why is this bad?** In general, casting values to smaller types is
+    /// error-prone and should be avoided where possible. In the particular case of
+    /// converting a character literal to u8, it is easy to avoid by just using a
+    /// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
+    /// than `'a' as u8`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// 'x' as u8
+    /// ```
+    ///
+    /// A better version, using the byte literal:
+    ///
+    /// ```rust
+    /// b'x'
+    /// ```
     pub CHAR_LIT_AS_U8,
     complexity,
     "casting a character literal to u8"
@@ -1519,28 +1520,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     }
 }
 
-/// **What it does:** Checks for comparisons where one side of the relation is
-/// either the minimum or maximum value for its type and warns if it involves a
-/// case that is always true or always false. Only integer and boolean types are
-/// checked.
-///
-/// **Why is this bad?** An expression like `min <= x` may misleadingly imply
-/// that is is possible for `x` to be less than the minimum. Expressions like
-/// `max < x` are probably mistakes.
-///
-/// **Known problems:** For `usize` the size of the current compile target will
-/// be assumed (e.g. 64 bits on 64 bit systems). This means code that uses such
-/// a comparison to detect target pointer width will trigger this lint. One can
-/// use `mem::sizeof` and compare its value or conditional compilation
-/// attributes
-/// like `#[cfg(target_pointer_width = "64")] ..` instead.
-///
-/// **Example:**
-/// ```rust
-/// vec.len() <= 0
-/// 100 > std::i32::MAX
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for comparisons where one side of the relation is
+    /// either the minimum or maximum value for its type and warns if it involves a
+    /// case that is always true or always false. Only integer and boolean types are
+    /// checked.
+    ///
+    /// **Why is this bad?** An expression like `min <= x` may misleadingly imply
+    /// that is is possible for `x` to be less than the minimum. Expressions like
+    /// `max < x` are probably mistakes.
+    ///
+    /// **Known problems:** For `usize` the size of the current compile target will
+    /// be assumed (e.g., 64 bits on 64 bit systems). This means code that uses such
+    /// a comparison to detect target pointer width will trigger this lint. One can
+    /// use `mem::sizeof` and compare its value or conditional compilation
+    /// attributes
+    /// like `#[cfg(target_pointer_width = "64")] ..` instead.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// vec.len() <= 0
+    /// 100 > std::i32::MAX
+    /// ```
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
     "a comparison with a maximum or minimum value that is always true or false"
@@ -1704,22 +1705,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
     }
 }
 
-/// **What it does:** Checks for comparisons where the relation is always either
-/// true or false, but where one side has been upcast so that the comparison is
-/// necessary. Only integer types are checked.
-///
-/// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300`
-/// will mistakenly imply that it is possible for `x` to be outside the range of
-/// `u8`.
-///
-/// **Known problems:**
-/// https://github.com/rust-lang/rust-clippy/issues/886
-///
-/// **Example:**
-/// ```rust
-/// let x : u8 = ...; (x as u32) > 300
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for comparisons where the relation is always either
+    /// true or false, but where one side has been upcast so that the comparison is
+    /// necessary. Only integer types are checked.
+    ///
+    /// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300`
+    /// will mistakenly imply that it is possible for `x` to be outside the range of
+    /// `u8`.
+    ///
+    /// **Known problems:**
+    /// https://github.com/rust-lang/rust-clippy/issues/886
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x : u8 = ...; (x as u32) > 300
+    /// ```
     pub INVALID_UPCAST_COMPARISONS,
     pedantic,
     "a comparison involving an upcast which is always true or false"
@@ -1949,24 +1950,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     }
 }
 
-/// **What it does:** Checks for public `impl` or `fn` missing generalization
-/// over different hashers and implicitly defaulting to the default hashing
-/// algorithm (SipHash).
-///
-/// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
-/// used with them.
-///
-/// **Known problems:** Suggestions for replacing constructors can contain
-/// false-positives. Also applying suggestions can require modification of other
-/// pieces of code, possibly including external crates.
-///
-/// **Example:**
-/// ```rust
-/// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { ... }
-///
-/// pub foo(map: &mut HashMap<i32, i32>) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for public `impl` or `fn` missing generalization
+    /// over different hashers and implicitly defaulting to the default hashing
+    /// algorithm (SipHash).
+    ///
+    /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
+    /// used with them.
+    ///
+    /// **Known problems:** Suggestions for replacing constructors can contain
+    /// false-positives. Also applying suggestions can require modification of other
+    /// pieces of code, possibly including external crates.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { ... }
+    ///
+    /// pub foo(map: &mut HashMap<i32, i32>) { .. }
+    /// ```
     pub IMPLICIT_HASHER,
     style,
     "missing generalization over different hashers"
@@ -2035,7 +2036,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.id) {
+        if !cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(item.hir_id)) {
             return;
         }
 
@@ -2293,33 +2294,33 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
     }
 }
 
-/// **What it does:** Checks for casts of `&T` to `&mut T` anywhere in the code.
-///
-/// **Why is this bad?** It’s basically guaranteed to be undefined behaviour.
-/// `UnsafeCell` is the only way to obtain aliasable data that is considered
-/// mutable.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// fn x(r: &i32) {
-///     unsafe {
-///         *(r as *const _ as *mut _) += 1;
-///     }
-/// }
-/// ```
-///
-/// Instead consider using interior mutability types.
-///
-/// ```rust
-/// fn x(r: &UnsafeCell<i32>) {
-///     unsafe {
-///         *r.get() += 1;
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for casts of `&T` to `&mut T` anywhere in the code.
+    ///
+    /// **Why is this bad?** It’s basically guaranteed to be undefined behaviour.
+    /// `UnsafeCell` is the only way to obtain aliasable data that is considered
+    /// mutable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// fn x(r: &i32) {
+    ///     unsafe {
+    ///         *(r as *const _ as *mut _) += 1;
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Instead consider using interior mutability types.
+    ///
+    /// ```ignore
+    /// fn x(r: &UnsafeCell<i32>) {
+    ///     unsafe {
+    ///         *r.get() += 1;
+    ///     }
+    /// }
+    /// ```
     pub CAST_REF_TO_MUT,
     correctness,
     "a cast of reference to a mutable pointer"

@@ -6,48 +6,47 @@ use rustc::hir::BindingAnnotation;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
-use syntax::ast;
 
-/// **What it does:** Checks for variable declarations immediately followed by a
-/// conditional affectation.
-///
-/// **Why is this bad?** This is not idiomatic Rust.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust,ignore
-/// let foo;
-///
-/// if bar() {
-///     foo = 42;
-/// } else {
-///     foo = 0;
-/// }
-///
-/// let mut baz = None;
-///
-/// if bar() {
-///     baz = Some(42);
-/// }
-/// ```
-///
-/// should be written
-///
-/// ```rust,ignore
-/// let foo = if bar() {
-///     42
-/// } else {
-///     0
-/// };
-///
-/// let baz = if bar() {
-///     Some(42)
-/// } else {
-///     None
-/// };
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for variable declarations immediately followed by a
+    /// conditional affectation.
+    ///
+    /// **Why is this bad?** This is not idiomatic Rust.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// let foo;
+    ///
+    /// if bar() {
+    ///     foo = 42;
+    /// } else {
+    ///     foo = 0;
+    /// }
+    ///
+    /// let mut baz = None;
+    ///
+    /// if bar() {
+    ///     baz = Some(42);
+    /// }
+    /// ```
+    ///
+    /// should be written
+    ///
+    /// ```rust,ignore
+    /// let foo = if bar() {
+    ///     42
+    /// } else {
+    ///     0
+    /// };
+    ///
+    /// let baz = if bar() {
+    ///     Some(42)
+    /// } else {
+    ///     None
+    /// };
+    /// ```
     pub USELESS_LET_IF_SEQ,
     style,
     "unidiomatic `let mut` declaration followed by initialization in `if`"
@@ -73,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
             if_chain! {
                 if let Some(expr) = it.peek();
                 if let hir::StmtKind::Local(ref local) = stmt.node;
-                if let hir::PatKind::Binding(mode, canonical_id, _, ident, None) = local.pat.node;
+                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.node;
                 if let hir::StmtKind::Expr(ref if_) = expr.node;
                 if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.node;
                 if !used_in_expr(cx, canonical_id, cond);
@@ -142,7 +141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
 
 struct UsedVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    id: ast::NodeId,
+    id: hir::HirId,
     used: bool,
 }
 
@@ -151,7 +150,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.node;
             if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
-            if self.id == local_id;
+            if self.id == self.cx.tcx.hir().node_to_hir_id(local_id);
             then {
                 self.used = true;
                 return;
@@ -166,7 +165,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
 
 fn check_assign<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    decl: ast::NodeId,
+    decl: hir::HirId,
     block: &'tcx hir::Block,
 ) -> Option<&'tcx hir::Expr> {
     if_chain! {
@@ -176,7 +175,7 @@ fn check_assign<'a, 'tcx>(
         if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
         if let hir::ExprKind::Path(ref qpath) = var.node;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id);
-        if decl == local_id;
+        if decl == cx.tcx.hir().node_to_hir_id(local_id);
         then {
             let mut v = UsedVisitor {
                 cx,
@@ -199,7 +198,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: ast::NodeId, expr: &'tcx hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr) -> bool {
     let mut v = UsedVisitor { cx, id, used: false };
     hir::intravisit::walk_expr(&mut v, expr);
     v.used

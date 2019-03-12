@@ -5,22 +5,22 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for instances of `mut mut` references.
-///
-/// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the
-/// source. This is either a copy'n'paste error, or it shows a fundamental
-/// misunderstanding of references.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let x = &mut &mut y;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for instances of `mut mut` references.
+    ///
+    /// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the
+    /// source. This is either a copy'n'paste error, or it shows a fundamental
+    /// misunderstanding of references.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = &mut &mut y;
+    /// ```
     pub MUT_MUT,
     pedantic,
-    "usage of double-mut refs, e.g. `&mut &mut ...`"
+    "usage of double-mut refs, e.g., `&mut &mut ...`"
 }
 
 #[derive(Copy, Clone)]

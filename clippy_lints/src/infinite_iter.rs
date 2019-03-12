@@ -1,38 +1,41 @@
-use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 
-/// **What it does:** Checks for iteration that is guaranteed to be infinite.
-///
-/// **Why is this bad?** While there may be places where this is acceptable
-/// (e.g. in event streams), in most cases this is simply an error.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// repeat(1_u8).iter().collect::<Vec<_>>()
-/// ```
+use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
+
 declare_clippy_lint! {
+    /// **What it does:** Checks for iteration that is guaranteed to be infinite.
+    ///
+    /// **Why is this bad?** While there may be places where this is acceptable
+    /// (e.g., in event streams), in most cases this is simply an error.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// use std::iter;
+    ///
+    /// iter::repeat(1_u8).collect::<Vec<_>>();
+    /// ```
     pub INFINITE_ITER,
     correctness,
     "infinite iteration"
 }
 
-/// **What it does:** Checks for iteration that may be infinite.
-///
-/// **Why is this bad?** While there may be places where this is acceptable
-/// (e.g. in event streams), in most cases this is simply an error.
-///
-/// **Known problems:** The code may have a condition to stop iteration, but
-/// this lint is not clever enough to analyze it.
-///
-/// **Example:**
-/// ```rust
-/// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for iteration that may be infinite.
+    ///
+    /// **Why is this bad?** While there may be places where this is acceptable
+    /// (e.g., in event streams), in most cases this is simply an error.
+    ///
+    /// **Known problems:** The code may have a condition to stop iteration, but
+    /// this lint is not clever enough to analyze it.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
+    /// ```
     pub MAYBE_INFINITE_ITER,
     pedantic,
     "possible infinite iteration"
@@ -120,8 +123,8 @@ use self::Heuristic::{All, Always, Any, First};
 /// a slice of (method name, number of args, heuristic, bounds) tuples
 /// that will be used to determine whether the method in question
 /// returns an infinite or possibly infinite iterator. The finiteness
-/// is an upper bound, e.g. some methods can return a possibly
-/// infinite iterator at worst, e.g. `take_while`.
+/// is an upper bound, e.g., some methods can return a possibly
+/// infinite iterator at worst, e.g., `take_while`.
 static HEURISTICS: &[(&str, usize, Heuristic, Finiteness)] = &[
     ("zip", 2, All, Infinite),
     ("chain", 2, Any, Infinite),

@@ -1,4 +1,25 @@
-use crate::reexport::*;
+pub mod attrs;
+pub mod author;
+pub mod camel_case;
+pub mod comparisons;
+pub mod conf;
+pub mod constants;
+mod diagnostics;
+pub mod higher;
+mod hir_utils;
+pub mod inspector;
+pub mod internal_lints;
+pub mod paths;
+pub mod ptr;
+pub mod sugg;
+pub mod usage;
+pub use self::attrs::*;
+pub use self::diagnostics::*;
+pub use self::hir_utils::{SpanlessEq, SpanlessHash};
+
+use std::borrow::Cow;
+use std::mem;
+
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
@@ -8,7 +29,6 @@ use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
-use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{
     self,
@@ -17,38 +37,17 @@ use rustc::ty::{
     Binder, Ty, TyCtxt,
 };
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
-use std::borrow::Cow;
-use std::env;
-use std::mem;
-use std::str::FromStr;
+use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol;
 use syntax::symbol::{keywords, Symbol};
 
-pub mod camel_case;
+use crate::reexport::*;
 
-pub mod author;
-pub mod comparisons;
-pub mod conf;
-pub mod constants;
-mod hir_utils;
-pub mod inspector;
-pub mod internal_lints;
-pub mod paths;
-pub mod ptr;
-pub mod sugg;
-pub mod usage;
-pub use self::hir_utils::{SpanlessEq, SpanlessHash};
-
-pub mod higher;
-
-/// Returns true if the two spans come from differing expansions (i.e. one is
-/// from a macro and one
-/// isn't).
+/// Returns `true` if the two spans come from differing expansions (i.e., one is
+/// from a macro and one isn't).
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt() != lhs.ctxt()
 }
@@ -62,9 +61,9 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 ///     // Do something
 /// }
 /// ```
-pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
-    let parent_id = cx.tcx.hir().get_parent(id);
-    match cx.tcx.hir().get(parent_id) {
+pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
+    let parent_id = cx.tcx.hir().get_parent_item(id);
+    match cx.tcx.hir().get_by_hir_id(parent_id) {
         Node::Item(&Item {
             node: ItemKind::Const(..),
             ..
@@ -90,7 +89,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
     }
 }
 
-/// Returns true if this `expn_info` was expanded by any macro.
+/// Returns `true` if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().is_some()
 }
@@ -114,7 +113,7 @@ impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
     }
 }
 
-/// Check if a `DefId`'s path matches the given absolute type path usage.
+/// Checks if a `DefId`'s path matches the given absolute type path usage.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -130,7 +129,7 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
     apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
-/// Get the absolute path of `def_id` as a vector of `&str`.
+/// Gets the absolute path of `def_id` as a vector of `&str`.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -148,7 +147,7 @@ pub fn get_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Vec<&'static str>
         .collect()
 }
 
-/// Check if type is struct, enum or union type with given def path.
+/// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
@@ -156,7 +155,7 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     }
 }
 
-/// Check if the method call given in `expr` belongs to given trait.
+/// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
     let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.trait_of_item(method_call.def_id());
@@ -167,7 +166,7 @@ pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) 
     }
 }
 
-/// Check if an expression references a variable of the given name.
+/// Checks if an expression references a variable of the given name.
 pub fn match_var(expr: &Expr, var: Name) -> bool {
     if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.node {
         if path.segments.len() == 1 && path.segments[0].ident.name == var {
@@ -192,7 +191,10 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
     }
 }
 
-/// Match a `Path` against a slice of segment string literals.
+/// Matches a `QPath` against a slice of segment string literals.
+///
+/// There is also `match_path` if you are dealing with a `rustc::hir::Path` instead of a
+/// `rustc::hir::QPath`.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -212,6 +214,22 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     }
 }
 
+/// Matches a `Path` against a slice of segment string literals.
+///
+/// There is also `match_qpath` if you are dealing with a `rustc::hir::QPath` instead of a
+/// `rustc::hir::Path`.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// if match_path(&trait_ref.path, &paths::HASH) {
+///     // This is the `std::hash::Hash` trait.
+/// }
+///
+/// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
+///     // This is a `rustc::lint::Lint`.
+/// }
+/// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments
         .iter()
@@ -220,7 +238,7 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
         .all(|(a, b)| a.ident.name == *b)
 }
 
-/// Match a `Path` against a slice of segment string literals, e.g.
+/// Matches a `Path` against a slice of segment string literals, e.g.
 ///
 /// # Examples
 /// ```rust,ignore
@@ -234,7 +252,7 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
         .all(|(a, b)| a.ident.name == *b)
 }
 
-/// Get the definition associated to a path.
+/// Gets the definition associated to a path.
 pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> {
     let crates = cx.tcx.crates();
     let krate = crates.iter().find(|&&krate| cx.tcx.crate_name(krate) == path[0]);
@@ -281,7 +299,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId
     }
 }
 
-/// Check whether a type implements a trait.
+/// Checks whether a type implements a trait.
 /// See also `get_trait_def_id`.
 pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -303,7 +321,34 @@ pub fn implements_trait<'a, 'tcx>(
         .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }
 
-/// Check whether this type implements Drop.
+/// Gets the `hir::TraitRef` of the trait the given method is implemented for.
+///
+/// Use this if you want to find the `TraitRef` of the `Add` trait in this example:
+///
+/// ```rust
+/// struct Point(isize, isize);
+///
+/// impl std::ops::Add for Point {
+///     type Output = Self;
+///
+///     fn add(self, other: Self) -> Self {
+///         Point(0, 0)
+///     }
+/// }
+/// ```
+pub fn trait_ref_of_method(cx: &LateContext<'_, '_>, hir_id: HirId) -> Option<TraitRef> {
+    // Get the implemented trait for the current function
+    let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
+    if_chain! {
+        if parent_impl != hir::CRATE_HIR_ID;
+        if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
+        if let hir::ItemKind::Impl(_, _, _, _, trait_ref, _, _) = &item.node;
+        then { return trait_ref.clone(); }
+    }
+    None
+}
+
+/// Checks whether this type implements `Drop`.
 pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
@@ -311,12 +356,12 @@ pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-/// Resolve the definition of a node from its `HirId`.
+/// Resolves the definition of a node from its `HirId`.
 pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> def::Def {
     cx.tables.qpath_def(qpath, id)
 }
 
-/// Return the method names and argument list of nested method call expressions that make up
+/// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`.
 pub fn method_calls<'a>(expr: &'a Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&'a [Expr]>) {
     let mut method_names = Vec::with_capacity(max_depth);
@@ -339,7 +384,7 @@ pub fn method_calls<'a>(expr: &'a Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&
     (method_names, arg_lists)
 }
 
-/// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
+/// Matches an `Expr` against a chain of methods, and return the matched `Expr`s.
 ///
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
 /// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec`
@@ -364,11 +409,12 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
             return None;
         }
     }
-    matched.reverse(); // reverse `matched`, so that it is in the same order as `methods`
+    // Reverse `matched` so that it is in the same order as `methods`.
+    matched.reverse();
     Some(matched)
 }
 
-/// Returns true if the provided `def_id` is an entrypoint to a program
+/// Returns `true` if the provided `def_id` is an entrypoint to a program.
 pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
     if let Some((entry_fn_def_id, _)) = cx.tcx.entry_fn(LOCAL_CRATE) {
         return def_id == entry_fn_def_id;
@@ -376,10 +422,10 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
     false
 }
 
-/// Get the name of the item the expression is in, if available.
+/// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
-    let parent_id = cx.tcx.hir().get_parent(expr.id);
-    match cx.tcx.hir().find(parent_id) {
+    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+    match cx.tcx.hir().find_by_hir_id(parent_id) {
         Some(Node::Item(&Item { ref ident, .. })) => Some(ident.name),
         Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
             Some(ident.name)
@@ -388,7 +434,7 @@ pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     }
 }
 
-/// Get the name of a `Pat`, if any
+/// Gets the name of a `Pat`, if any.
 pub fn get_pat_name(pat: &Pat) -> Option<Name> {
     match pat.node {
         PatKind::Binding(.., ref spname, _) => Some(spname.name),
@@ -414,14 +460,14 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
     }
 }
 
-/// check if an `Expr` contains a certain name
+/// Checks if an `Expr` contains a certain name.
 pub fn contains_name(name: Name, expr: &Expr) -> bool {
     let mut cn = ContainsName { name, result: false };
     cn.visit_expr(expr);
     cn.result
 }
 
-/// Convert a span to a code snippet if available, otherwise use default.
+/// Converts a span to a code snippet if available, otherwise use default.
 ///
 /// This is useful if you want to provide suggestions for your lint or more generally, if you want
 /// to convert a given `Span` to a `str`.
@@ -466,12 +512,12 @@ pub fn snippet_with_macro_callsite<'a, 'b, T: LintContext<'b>>(cx: &T, span: Spa
     snippet(cx, span.source_callsite(), default)
 }
 
-/// Convert a span to a code snippet. Returns `None` if not available.
+/// Converts a span to a code snippet. Returns `None` if not available.
 pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     cx.sess().source_map().span_to_snippet(span).ok()
 }
 
-/// Convert a span (from a block) to a code snippet if available, otherwise use
+/// Converts a span (from a block) to a code snippet if available, otherwise use
 /// default.
 /// This trims the code of indentation, except for the first line. Use it for
 /// blocks or block-like
@@ -568,15 +614,15 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
     }
 }
 
-/// Get a parent expressions if any – this is useful to constrain a lint.
+/// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.hir();
-    let node_id: NodeId = e.id;
-    let parent_id: NodeId = map.get_parent_node(node_id);
-    if node_id == parent_id {
+    let hir_id = e.hir_id;
+    let parent_id = map.get_parent_node_by_hir_id(hir_id);
+    if hir_id == parent_id {
         return None;
     }
-    map.find(parent_id).and_then(|node| {
+    map.find_by_hir_id(parent_id).and_then(|node| {
         if let Node::Expr(parent) = node {
             Some(parent)
         } else {
@@ -585,10 +631,11 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
     })
 }
 
-pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
+pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: HirId) -> Option<&'tcx Block> {
     let map = &cx.tcx.hir();
+    let node_id = map.hir_to_node_id(node);
     let enclosing_node = map
-        .get_enclosing_scope(node)
+        .get_enclosing_scope(node_id)
         .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
@@ -611,147 +658,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
     }
 }
 
-pub struct DiagnosticWrapper<'a>(pub DiagnosticBuilder<'a>);
-
-impl<'a> Drop for DiagnosticWrapper<'a> {
-    fn drop(&mut self) {
-        self.0.emit();
-    }
-}
-
-impl<'a> DiagnosticWrapper<'a> {
-    fn docs_link(&mut self, lint: &'static Lint) {
-        if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
-            self.0.help(&format!(
-                "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{}",
-                &option_env!("RUST_RELEASE_NUM").map_or("master".to_string(), |n| {
-                    // extract just major + minor version and ignore patch versions
-                    format!("rust-{}", n.rsplitn(2, '.').nth(1).unwrap())
-                }),
-                lint.name_lower().replacen("clippy::", "", 1)
-            ));
-        }
-    }
-}
-
-pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).docs_link(lint);
-}
-
-pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
-    cx: &'a T,
-    lint: &'static Lint,
-    span: Span,
-    msg: &str,
-    help: &str,
-) {
-    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    db.0.help(help);
-    db.docs_link(lint);
-}
-
-pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
-    cx: &'a T,
-    lint: &'static Lint,
-    span: Span,
-    msg: &str,
-    note_span: Span,
-    note: &str,
-) {
-    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    if note_span == span {
-        db.0.note(note);
-    } else {
-        db.0.span_note(note_span, note);
-    }
-    db.docs_link(lint);
-}
-
-pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
-    cx: &'a T,
-    lint: &'static Lint,
-    sp: Span,
-    msg: &str,
-    f: F,
-) where
-    F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
-{
-    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
-    f(&mut db.0);
-    db.docs_link(lint);
-}
-
-pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: NodeId, sp: Span, msg: &str) {
-    DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg)).docs_link(lint);
-}
-
-pub fn span_lint_node_and_then(
-    cx: &LateContext<'_, '_>,
-    lint: &'static Lint,
-    node: NodeId,
-    sp: Span,
-    msg: &str,
-    f: impl FnOnce(&mut DiagnosticBuilder<'_>),
-) {
-    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg));
-    f(&mut db.0);
-    db.docs_link(lint);
-}
-
-/// Add a span lint with a suggestion on how to fix it.
-///
-/// These suggestions can be parsed by rustfix to allow it to automatically fix your code.
-/// In the example below, `help` is `"try"` and `sugg` is the suggested replacement `".any(|x| x >
-/// 2)"`.
-///
-/// ```ignore
-/// error: This `.fold` can be more succinctly expressed as `.any`
-/// --> $DIR/methods.rs:390:13
-///     |
-/// 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-///     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
-///     |
-///     = note: `-D fold-any` implied by `-D warnings`
-/// ```
-pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
-    cx: &'a T,
-    lint: &'static Lint,
-    sp: Span,
-    msg: &str,
-    help: &str,
-    sugg: String,
-    applicability: Applicability,
-) {
-    span_lint_and_then(cx, lint, sp, msg, |db| {
-        db.span_suggestion(sp, help, sugg, applicability);
-    });
-}
-
-/// Create a suggestion made from several `span → replacement`.
-///
-/// Note: in the JSON format (used by `compiletest_rs`), the help message will
-/// appear once per
-/// replacement. In human-readable format though, it only appears once before
-/// the whole suggestion.
-pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder<'_>, help_msg: String, sugg: I)
-where
-    I: IntoIterator<Item = (Span, String)>,
-{
-    let sugg = CodeSuggestion {
-        substitutions: vec![Substitution {
-            parts: sugg
-                .into_iter()
-                .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                .collect(),
-        }],
-        msg: help_msg,
-        style: SuggestionStyle::ShowCode,
-        applicability: Applicability::Unspecified,
-    };
-    db.suggestions.push(sugg);
-}
-
-/// Return the base type for HIR references and pointers.
+/// Returns the base type for HIR references and pointers.
 pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
     match ty.node {
         TyKind::Ptr(ref mut_ty) | TyKind::Rptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
@@ -759,7 +666,7 @@ pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
     }
 }
 
-/// Return the base type for references and raw pointers.
+/// Returns the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
     match ty.sty {
         ty::Ref(_, ty, _) => walk_ptrs_ty(ty),
@@ -767,7 +674,7 @@ pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
     }
 }
 
-/// Return the base type for references and raw pointers, and count reference
+/// Returns the base type for references and raw pointers, and count reference
 /// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
@@ -779,7 +686,7 @@ pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     inner(ty, 0)
 }
 
-/// Check whether the given expression is a constant literal of the given value.
+/// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
     // FIXME: use constant folding
     if let ExprKind::Lit(ref spanned) = expr.node {
@@ -801,56 +708,7 @@ pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
 }
 
-pub struct LimitStack {
-    stack: Vec<u64>,
-}
-
-impl Drop for LimitStack {
-    fn drop(&mut self) {
-        assert_eq!(self.stack.len(), 1);
-    }
-}
-
-impl LimitStack {
-    pub fn new(limit: u64) -> Self {
-        Self { stack: vec![limit] }
-    }
-    pub fn limit(&self) -> u64 {
-        *self.stack.last().expect("there should always be a value in the stack")
-    }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
-        let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| stack.push(val));
-    }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
-        let stack = &mut self.stack;
-        parse_attrs(sess, attrs, name, |val| assert_eq!(stack.pop(), Some(val)));
-    }
-}
-
-pub fn get_attr<'a>(attrs: &'a [ast::Attribute], name: &'static str) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.iter().filter(move |attr| {
-        attr.path.segments.len() == 2
-            && attr.path.segments[0].ident.to_string() == "clippy"
-            && attr.path.segments[1].ident.to_string() == name
-    })
-}
-
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
-    for attr in get_attr(attrs, name) {
-        if let Some(ref value) = attr.value_str() {
-            if let Ok(value) = FromStr::from_str(&value.as_str()) {
-                f(value)
-            } else {
-                sess.span_err(attr.span, "not a number");
-            }
-        } else {
-            sess.span_err(attr.span, "bad clippy attribute");
-        }
-    }
-}
-
-/// Return the pre-expansion span if is this comes from an expansion of the
+/// Returns the pre-expansion span if is this comes from an expansion of the
 /// macro `name`.
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
@@ -869,7 +727,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Return the pre-expansion span if is this directly comes from an expansion
+/// Returns the pre-expansion span if the span directly comes from an expansion
 /// of the macro `name`.
 /// The difference with `is_expn_of` is that in
 /// ```rust,ignore
@@ -891,19 +749,19 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Convenience function to get the return type of a function
-pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
+/// Convenience function to get the return type of a function.
+pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
+    let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
 
-/// Check if two types are the same.
+/// Checks if two types are the same.
 ///
 /// This discards any lifetime annotations, too.
-// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for
-// <'b> Foo<'b>` but
-// not for type parameters.
+//
+// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` ==
+// `for <'b> Foo<'b>`, but not for type parameters).
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
     let a = cx.tcx.erase_late_bound_regions(&Binder::bind(a));
     let b = cx.tcx.erase_late_bound_regions(&Binder::bind(b));
@@ -912,7 +770,7 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) 
         .enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
 }
 
-/// Return whether the given type is an `unsafe` function.
+/// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
@@ -924,7 +782,7 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
 }
 
-/// Return whether a pattern is refutable.
+/// Returns `true` if a pattern is refutable.
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
         matches!(
@@ -989,10 +847,6 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
     }
 }
 
-pub fn opt_def_id(def: Def) -> Option<DefId> {
-    def.opt_def_id()
-}
-
 pub fn is_self(slf: &Arg) -> bool {
     if let PatKind::Binding(.., name, _) = slf.pat.node {
         name.name == keywords::SelfLower.name()
@@ -1017,17 +871,17 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<I
     (0..decl.inputs.len()).map(move |i| &body.arguments[i])
 }
 
-/// Check if a given expression is a match expression
-/// expanded from `?` operator or `try` macro.
-pub fn is_try(expr: &Expr) -> Option<&Expr> {
-    fn is_ok(arm: &Arm) -> bool {
+/// Checks if a given expression is a match expression expanded from the `?`
+/// operator or the `try` macro.
+pub fn is_try<'a>(cx: &'_ LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
+    fn is_ok(cx: &'_ LateContext<'_, '_>, arm: &Arm) -> bool {
         if_chain! {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node;
             if match_qpath(path, &paths::RESULT_OK[1..]);
-            if let PatKind::Binding(_, defid, _, _, None) = pat[0].node;
+            if let PatKind::Binding(_, hir_id, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
             if let Def::Local(lid) = path.def;
-            if lid == defid;
+            if cx.tcx.hir().node_to_hir_id(lid) == hir_id;
             then {
                 return true;
             }
@@ -1053,8 +907,8 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
             if arms.len() == 2;
             if arms[0].pats.len() == 1 && arms[0].guard.is_none();
             if arms[1].pats.len() == 1 && arms[1].guard.is_none();
-            if (is_ok(&arms[0]) && is_err(&arms[1])) ||
-                (is_ok(&arms[1]) && is_err(&arms[0]));
+            if (is_ok(cx, &arms[0]) && is_err(&arms[1])) ||
+                (is_ok(cx, &arms[1]) && is_err(&arms[0]));
             then {
                 return Some(expr);
             }
@@ -1064,10 +918,10 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     None
 }
 
-/// Returns true if the lint is allowed in the current context
+/// Returns `true` if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: NodeId) -> bool {
+pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
@@ -1108,7 +962,7 @@ pub fn clip(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-/// Remove block comments from the given Vec of lines
+/// Removes block comments from the given `Vec` of lines.
 ///
 /// # Examples
 ///
@@ -1141,18 +995,59 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     without
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId) -> bool {
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: HirId) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if is_automatically_derived(map.attrs(enclosing_node)) {
+        if is_automatically_derived(map.attrs_by_hir_id(enclosing_node)) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.get_parent(enclosing_node);
+        enclosing_node = map.get_parent_item(enclosing_node);
     }
     false
+}
+
+/// Returns true if ty has `iter` or `iter_mut` methods
+pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: ty::Ty<'_>) -> Option<&'static str> {
+    // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
+    // exists and has the desired signature. Unfortunately FnCtxt is not exported
+    // so we can't use its `lookup_method` method.
+    static INTO_ITER_COLLECTIONS: [&[&str]; 13] = [
+        &paths::VEC,
+        &paths::OPTION,
+        &paths::RESULT,
+        &paths::BTREESET,
+        &paths::BTREEMAP,
+        &paths::VEC_DEQUE,
+        &paths::LINKED_LIST,
+        &paths::BINARY_HEAP,
+        &paths::HASHSET,
+        &paths::HASHMAP,
+        &paths::PATH_BUF,
+        &paths::PATH,
+        &paths::RECEIVER,
+    ];
+
+    let ty_to_check = match probably_ref_ty.sty {
+        ty::Ref(_, ty_to_check, _) => ty_to_check,
+        _ => probably_ref_ty,
+    };
+
+    let def_id = match ty_to_check.sty {
+        ty::Array(..) => return Some("array"),
+        ty::Slice(..) => return Some("slice"),
+        ty::Adt(adt, _) => adt.did,
+        _ => return None,
+    };
+
+    for path in &INTO_ITER_COLLECTIONS {
+        if match_def_path(cx.tcx, def_id, path) {
+            return Some(path.last().unwrap());
+        }
+    }
+    None
 }
 
 #[cfg(test)]

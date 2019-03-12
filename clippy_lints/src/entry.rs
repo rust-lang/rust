@@ -8,30 +8,30 @@ use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
 
-/// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
-/// or `BTreeMap`.
-///
-/// **Why is this bad?** Using `entry` is more efficient.
-///
-/// **Known problems:** Some false negatives, eg.:
-/// ```rust
-/// let k = &key;
-/// if !m.contains_key(k) {
-///     m.insert(k.clone(), v);
-/// }
-/// ```
-///
-/// **Example:**
-/// ```rust
-/// if !m.contains_key(&k) {
-///     m.insert(k, v)
-/// }
-/// ```
-/// can be rewritten as:
-/// ```rust
-/// m.entry(k).or_insert(v);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
+    /// or `BTreeMap`.
+    ///
+    /// **Why is this bad?** Using `entry` is more efficient.
+    ///
+    /// **Known problems:** Some false negatives, eg.:
+    /// ```rust
+    /// let k = &key;
+    /// if !m.contains_key(k) {
+    ///     m.insert(k.clone(), v);
+    /// }
+    /// ```
+    ///
+    /// **Example:**
+    /// ```rust
+    /// if !m.contains_key(&k) {
+    ///     m.insert(k, v)
+    /// }
+    /// ```
+    /// can be rewritten as:
+    /// ```rust
+    /// m.entry(k).or_insert(v);
+    /// ```
     pub MAP_ENTRY,
     perf,
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"

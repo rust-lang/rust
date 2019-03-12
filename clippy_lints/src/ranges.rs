@@ -1,6 +1,3 @@
-use crate::utils::sugg::Sugg;
-use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
-use crate::utils::{is_integer_literal, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -9,77 +6,81 @@ use rustc_errors::Applicability;
 use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
 
-/// **What it does:** Checks for calling `.step_by(0)` on iterators,
-/// which never terminates.
-///
-/// **Why is this bad?** This very much looks like an oversight, since with
-/// `loop { .. }` there is an obvious better way to endlessly loop.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x in (5..5).step_by(0) {
-///     ..
-/// }
-/// ```
+use crate::utils::sugg::Sugg;
+use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
+use crate::utils::{is_integer_literal, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
+
 declare_clippy_lint! {
+    /// **What it does:** Checks for calling `.step_by(0)` on iterators,
+    /// which never terminates.
+    ///
+    /// **Why is this bad?** This very much looks like an oversight, since with
+    /// `loop { .. }` there is an obvious better way to endlessly loop.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// for x in (5..5).step_by(0) {
+    ///     ..
+    /// }
+    /// ```
     pub ITERATOR_STEP_BY_ZERO,
     correctness,
     "using `Iterator::step_by(0)`, which produces an infinite iterator"
 }
 
-/// **What it does:** Checks for zipping a collection with the range of
-/// `0.._.len()`.
-///
-/// **Why is this bad?** The code is better expressed with `.enumerate()`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x.iter().zip(0..x.len())
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for zipping a collection with the range of
+    /// `0.._.len()`.
+    ///
+    /// **Why is this bad?** The code is better expressed with `.enumerate()`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// x.iter().zip(0..x.len())
+    /// ```
     pub RANGE_ZIP_WITH_LEN,
     complexity,
     "zipping iterator with a range when `enumerate()` would do"
 }
 
-/// **What it does:** Checks for exclusive ranges where 1 is added to the
-/// upper bound, e.g. `x..(y+1)`.
-///
-/// **Why is this bad?** The code is more readable with an inclusive range
-/// like `x..=y`.
-///
-/// **Known problems:** Will add unnecessary pair of parentheses when the
-/// expression is not wrapped in a pair but starts with a opening parenthesis
-/// and ends with a closing one.
-/// I.e: `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
-///
-/// **Example:**
-/// ```rust
-/// for x..(y+1) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for exclusive ranges where 1 is added to the
+    /// upper bound, e.g., `x..(y+1)`.
+    ///
+    /// **Why is this bad?** The code is more readable with an inclusive range
+    /// like `x..=y`.
+    ///
+    /// **Known problems:** Will add unnecessary pair of parentheses when the
+    /// expression is not wrapped in a pair but starts with a opening parenthesis
+    /// and ends with a closing one.
+    /// I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// for x..(y+1) { .. }
+    /// ```
     pub RANGE_PLUS_ONE,
     complexity,
     "`x..(y+1)` reads better as `x..=y`"
 }
 
-/// **What it does:** Checks for inclusive ranges where 1 is subtracted from
-/// the upper bound, e.g. `x..=(y-1)`.
-///
-/// **Why is this bad?** The code is more readable with an exclusive range
-/// like `x..y`.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// for x..=(y-1) { .. }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for inclusive ranges where 1 is subtracted from
+    /// the upper bound, e.g., `x..=(y-1)`.
+    ///
+    /// **Why is this bad?** The code is more readable with an exclusive range
+    /// like `x..y`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// for x..=(y-1) { .. }
+    /// ```
     pub RANGE_MINUS_ONE,
     complexity,
     "`x..=(y-1)` reads better as `x..y`"
@@ -123,16 +124,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let iter = &args[0].node;
                 let zip_arg = &args[1];
                 if_chain! {
-                    // .iter() call
+                    // `.iter()` call
                     if let ExprKind::MethodCall(ref iter_path, _, ref iter_args ) = *iter;
                     if iter_path.ident.name == "iter";
-                    // range expression in .zip() call: 0..x.len()
+                    // range expression in `.zip()` call: `0..x.len()`
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_literal(start, 0);
-                    // .len() call
+                    // `.len()` call
                     if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.node;
                     if len_path.ident.name == "len" && len_args.len() == 1;
-                    // .iter() and .len() called on same Path
+                    // `.iter()` and `.len()` called on same `Path`
                     if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
                     if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].node;
                     if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
@@ -147,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
 
-        // exclusive range plus one: x..(y+1)
+        // exclusive range plus one: `x..(y+1)`
         if_chain! {
             if let Some(higher::Range {
                 start,
@@ -186,7 +187,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }
 
-        // inclusive range minus one: x..=(y-1)
+        // inclusive range minus one: `x..=(y-1)`
         if_chain! {
             if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
             if let Some(y) = y_minus_one(end);
@@ -213,7 +214,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    // No need for walk_ptrs_ty here because step_by moves self, so it
+    // No need for `walk_ptrs_ty` here because `step_by` moves `self`, so it
     // can't be called on a borrowed range.
     let ty = cx.tables.expr_ty_adjusted(expr);
 

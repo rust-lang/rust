@@ -3,27 +3,28 @@
 use crate::utils::get_attr;
 use rustc::hir;
 use rustc::hir::print;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::session::Session;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::Attribute;
 
-/// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
-/// attribute
-///
-/// **Example:**
-/// ```rust
-/// #[clippy::dump]
-/// extern crate foo;
-/// ```
-///
-/// prints
-///
-/// ```
-/// item `foo`
-/// visibility inherited from outer item
-/// extern crate dylib source: "/path/to/foo.so"
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
+    /// attribute
+    ///
+    /// **Example:**
+    /// ```rust
+    /// #[clippy::dump]
+    /// extern crate foo;
+    /// ```
+    ///
+    /// prints
+    ///
+    /// ```
+    /// item `foo`
+    /// visibility inherited from outer item
+    /// extern crate dylib source: "/path/to/foo.so"
+    /// ```
     pub DEEP_CODE_INSPECTION,
     internal_warn,
     "helper to dump info about code"
@@ -43,14 +44,14 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
-        if !has_attr(&item.attrs) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem) {
-        if !has_attr(&item.attrs) {
+        if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         println!("impl item `{}`", item.ident.name);
@@ -100,14 +101,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     //
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if !has_attr(&expr.attrs) {
+        if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
     fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm) {
-        if !has_attr(&arm.attrs) {
+        if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
         for pat in &arm.pats {
@@ -122,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-        if !has_attr(stmt.node.attrs()) {
+        if !has_attr(cx.sess(), stmt.node.attrs()) {
             return;
         }
         match stmt.node {
@@ -148,8 +149,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     //
 }
 
-fn has_attr(attrs: &[Attribute]) -> bool {
-    get_attr(attrs, "dump").count() > 0
+fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
+    get_attr(sess, attrs, "dump").count() > 0
 }
 
 #[allow(clippy::similar_names)]
@@ -343,7 +344,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
 }
 
 fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
-    let did = cx.tcx.hir().local_def_id(item.id);
+    let did = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
     println!("item `{}`", item.ident.name);
     match item.vis.node {
         hir::VisibilityKind::Public => println!("public"),
@@ -356,7 +357,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
     }
     match item.node {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
-            let def_id = cx.tcx.hir().local_def_id(item.id);
+            let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(def_id) {
                 let source = cx.tcx.used_crate_source(crate_id);
                 if let Some(ref src) = source.dylib {

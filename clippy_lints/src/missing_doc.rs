@@ -14,16 +14,16 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Span;
 
-/// **What it does:** Warns if there is missing doc for any documentable item
-/// (public or private).
-///
-/// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
-/// allowed-by-default lint for
-/// public members, but has no way to enforce documentation of private items.
-/// This lint fixes that.
-///
-/// **Known problems:** None.
 declare_clippy_lint! {
+    /// **What it does:** Warns if there is missing doc for any documentable item
+    /// (public or private).
+    ///
+    /// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
+    /// allowed-by-default lint for
+    /// public members, but has no way to enforce documentation of private items.
+    /// This lint fixes that.
+    ///
+    /// **Known problems:** None.
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
     "detects missing documentation for public and private members"
@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == "main" {
-                    let def_id = cx.tcx.hir().local_def_id(it.id);
+                    let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
                     let def_key = cx.tcx.hir().def_key(def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
                         return;
@@ -162,7 +162,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        let def_id = cx.tcx.hir().local_def_id(impl_item.id);
+        let def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.hir_id);
         match cx.tcx.associated_item(def_id).container {
             ty::TraitContainer(_) => return,
             ty::ImplContainer(cid) => {

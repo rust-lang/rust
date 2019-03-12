@@ -10,75 +10,76 @@ use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::RangeLimits;
 
-/// **What it does:** Checks for out of bounds array indexing with a constant
-/// index.
-///
-/// **Why is this bad?** This will always panic at runtime.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
-/// ```rust
-/// let x = [1, 2, 3, 4];
-///
-/// // Bad
-/// x[9];
-/// &x[2..9];
-///
-/// // Good
-/// x[0];
-/// x[3];
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for out of bounds array indexing with a constant
+    /// index.
+    ///
+    /// **Why is this bad?** This will always panic at runtime.
+    ///
+    /// **Known problems:** Hopefully none.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// # #![allow(const_err)]
+    /// let x = [1, 2, 3, 4];
+    ///
+    /// // Bad
+    /// x[9];
+    /// &x[2..9];
+    ///
+    /// // Good
+    /// x[0];
+    /// x[3];
+    /// ```
     pub OUT_OF_BOUNDS_INDEXING,
     correctness,
     "out of bounds constant indexing"
 }
 
-/// **What it does:** Checks for usage of indexing or slicing. Arrays are special cased, this lint
-/// does report on arrays if we can tell that slicing operations are in bounds and does not
-/// lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint.
-///
-/// **Why is this bad?** Indexing and slicing can panic at runtime and there are
-/// safe alternatives.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
-/// ```rust
-/// // Vector
-/// let x = vec![0; 5];
-///
-/// // Bad
-/// x[2];
-/// &x[2..100];
-/// &x[2..];
-/// &x[..100];
-///
-/// // Good
-/// x.get(2);
-/// x.get(2..100);
-/// x.get(2..);
-/// x.get(..100);
-///
-/// // Array
-/// let y = [0, 1, 2, 3];
-///
-/// // Bad
-/// &y[10..100];
-/// &y[10..];
-/// &y[..100];
-///
-/// // Good
-/// &y[2..];
-/// &y[..2];
-/// &y[0..3];
-/// y.get(10);
-/// y.get(10..100);
-/// y.get(10..);
-/// y.get(..100);
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of indexing or slicing. Arrays are special cased, this lint
+    /// does report on arrays if we can tell that slicing operations are in bounds and does not
+    /// lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint.
+    ///
+    /// **Why is this bad?** Indexing and slicing can panic at runtime and there are
+    /// safe alternatives.
+    ///
+    /// **Known problems:** Hopefully none.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // Vector
+    /// let x = vec![0; 5];
+    ///
+    /// // Bad
+    /// x[2];
+    /// &x[2..100];
+    /// &x[2..];
+    /// &x[..100];
+    ///
+    /// // Good
+    /// x.get(2);
+    /// x.get(2..100);
+    /// x.get(2..);
+    /// x.get(..100);
+    ///
+    /// // Array
+    /// let y = [0, 1, 2, 3];
+    ///
+    /// // Bad
+    /// &y[10..100];
+    /// &y[10..];
+    /// &y[..100];
+    ///
+    /// // Good
+    /// &y[2..];
+    /// &y[..2];
+    /// &y[0..3];
+    /// y.get(10);
+    /// y.get(10..100);
+    /// y.get(10..);
+    /// y.get(..100);
+    /// ```
     pub INDEXING_SLICING,
     restriction,
     "indexing/slicing usage"
@@ -102,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
         if let ExprKind::Index(ref array, ref index) = &expr.node {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
-                // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
+                // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.sty {
                     let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
 
@@ -148,7 +149,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 
                 utils::span_help_and_lint(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
             } else {
-                // Catchall non-range index, i.e. [n] or [n << m]
+                // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.sty {
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.tables, index) {

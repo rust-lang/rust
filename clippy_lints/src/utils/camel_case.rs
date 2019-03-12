@@ -1,5 +1,4 @@
-/// Return the index of the character after the first camel-case component of
-/// `s`.
+/// Returns the index of the character after the first camel-case component of `s`.
 pub fn until(s: &str) -> usize {
     let mut iter = s.char_indices();
     if let Some((_, first)) = iter.next() {
@@ -32,7 +31,7 @@ pub fn until(s: &str) -> usize {
     }
 }
 
-/// Return index of the last camel-case component of `s`.
+/// Returns index of the last camel-case component of `s`.
 pub fn from(s: &str) -> usize {
     let mut iter = s.char_indices().rev();
     if let Some((_, first)) = iter.next() {

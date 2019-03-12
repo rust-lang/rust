@@ -6,28 +6,28 @@ use std::f64::consts as f64;
 use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;
 
-/// **What it does:** Checks for floating point literals that approximate
-/// constants which are defined in
-/// [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants)
-/// or
-/// [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants),
-/// respectively, suggesting to use the predefined constant.
-///
-/// **Why is this bad?** Usually, the definition in the standard library is more
-/// precise than what people come up with. If you find that your definition is
-/// actually more precise, please [file a Rust
-/// issue](https://github.com/rust-lang/rust/issues).
-///
-/// **Known problems:** If you happen to have a value that is within 1/8192 of a
-/// known constant, but is not *and should not* be the same, this lint will
-/// report your value anyway. We have not yet noticed any false positives in
-/// code we tested clippy with (this includes servo), but YMMV.
-///
-/// **Example:**
-/// ```rust
-/// let x = 3.14;
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Checks for floating point literals that approximate
+    /// constants which are defined in
+    /// [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants)
+    /// or
+    /// [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants),
+    /// respectively, suggesting to use the predefined constant.
+    ///
+    /// **Why is this bad?** Usually, the definition in the standard library is more
+    /// precise than what people come up with. If you find that your definition is
+    /// actually more precise, please [file a Rust
+    /// issue](https://github.com/rust-lang/rust/issues).
+    ///
+    /// **Known problems:** If you happen to have a value that is within 1/8192 of a
+    /// known constant, but is not *and should not* be the same, this lint will
+    /// report your value anyway. We have not yet noticed any false positives in
+    /// code we tested clippy with (this includes servo), but YMMV.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = 3.14;
+    /// ```
     pub APPROX_CONSTANT,
     correctness,
     "the approximate of a known float constant (in `std::fXX::consts`)"
@@ -104,7 +104,7 @@ fn check_known_consts(cx: &LateContext<'_, '_>, e: &Expr, s: symbol::Symbol, mod
     }
 }
 
-/// Returns false if the number of significant figures in `value` are
+/// Returns `false` if the number of significant figures in `value` are
 /// less than `min_digits`; otherwise, returns true if `value` is equal
 /// to `constant`, rounded to the number of digits present in `value`.
 fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {

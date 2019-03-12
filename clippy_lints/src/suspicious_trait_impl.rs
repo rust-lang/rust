@@ -1,50 +1,49 @@
-use crate::utils::{get_trait_def_id, span_lint};
+use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast;
 
-/// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
-/// subtracting elements in an Add impl.
-///
-/// **Why this is bad?** This is probably a typo or copy-and-paste error and not intended.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// impl Add for Foo {
-///     type Output = Foo;
-///
-///     fn add(self, other: Foo) -> Foo {
-///         Foo(self.0 - other.0)
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
+    /// subtracting elements in an Add impl.
+    ///
+    /// **Why this is bad?** This is probably a typo or copy-and-paste error and not intended.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// impl Add for Foo {
+    ///     type Output = Foo;
+    ///
+    ///     fn add(self, other: Foo) -> Foo {
+    ///         Foo(self.0 - other.0)
+    ///     }
+    /// }
+    /// ```
     pub SUSPICIOUS_ARITHMETIC_IMPL,
     correctness,
     "suspicious use of operators in impl of arithmetic trait"
 }
 
-/// **What it does:** Lints for suspicious operations in impls of OpAssign, e.g.
-/// subtracting elements in an AddAssign impl.
-///
-/// **Why this is bad?** This is probably a typo or copy-and-paste error and not intended.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// impl AddAssign for Foo {
-///     fn add_assign(&mut self, other: Foo) {
-///         *self = *self - other;
-///     }
-/// }
-/// ```
 declare_clippy_lint! {
+    /// **What it does:** Lints for suspicious operations in impls of OpAssign, e.g.
+    /// subtracting elements in an AddAssign impl.
+    ///
+    /// **Why this is bad?** This is probably a typo or copy-and-paste error and not intended.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// impl AddAssign for Foo {
+    ///     fn add_assign(&mut self, other: Foo) {
+    ///         *self = *self - other;
+    ///     }
+    /// }
+    /// ```
     pub SUSPICIOUS_OP_ASSIGN_IMPL,
     correctness,
     "suspicious use of operators in impl of OpAssign trait"
@@ -77,9 +76,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             }
             // Check if the binary expression is part of another bi/unary expression
             // as a child node
-            let mut parent_expr = cx.tcx.hir().get_parent_node(expr.id);
-            while parent_expr != ast::CRATE_NODE_ID {
-                if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
+            let mut parent_expr = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+            while parent_expr != hir::CRATE_HIR_ID {
+                if let hir::Node::Expr(e) = cx.tcx.hir().get_by_hir_id(parent_expr) {
                     match e.node {
                         hir::ExprKind::Binary(..)
                         | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
@@ -87,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                         _ => {},
                     }
                 }
-                parent_expr = cx.tcx.hir().get_parent_node(parent_expr);
+                parent_expr = cx.tcx.hir().get_parent_node_by_hir_id(parent_expr);
             }
             // as a parent node
             let mut visitor = BinaryExprVisitor { in_binary_expr: false };
@@ -177,13 +176,10 @@ fn check_binop<'a>(
     }
 
     // Get the actually implemented trait
-    let parent_fn = cx.tcx.hir().get_parent(expr.id);
-    let parent_impl = cx.tcx.hir().get_parent(parent_fn);
+    let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
 
     if_chain! {
-        if parent_impl != ast::CRATE_NODE_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
-        if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+        if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];
         then{
