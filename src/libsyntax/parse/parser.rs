@@ -14,7 +14,7 @@ use crate::ast::{GenericParam, GenericParamKind};
 use crate::ast::GenericArg;
 use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
 use crate::ast::{Label, Lifetime, Lit, LitKind};
-use crate::ast::Local;
+use crate::ast::{Local, LocalSource};
 use crate::ast::MacStmtStyle;
 use crate::ast::{Mac, Mac_, MacDelimiter};
 use crate::ast::{MutTy, Mutability};
@@ -5029,6 +5029,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
             attrs,
+            source: LocalSource::Normal,
         }))
     }
 

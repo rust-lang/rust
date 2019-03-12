@@ -208,6 +208,10 @@ pub trait MutVisitor: Sized {
         noop_visit_local(l, self);
     }
 
+    fn visit_local_source(&mut self, l: &mut LocalSource) {
+        noop_visit_local_source(l, self);
+    }
+
     fn visit_mac(&mut self, _mac: &mut Mac) {
         panic!("visit_mac disabled by default");
         // N.B., see note about macros above. If you really want a visitor that
@@ -511,13 +515,17 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(args: &mut Parenth
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, init, span, attrs } = local.deref_mut();
+    let Local { id, pat, ty, init, span, attrs, source } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
     visit_opt(init, |init| vis.visit_expr(init));
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
+    vis.visit_local_source(source);
+}
+
+pub fn noop_visit_local_source<T: MutVisitor>(_local_source: &mut LocalSource, _vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {

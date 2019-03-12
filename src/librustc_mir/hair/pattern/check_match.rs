@@ -76,6 +76,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         self.check_irrefutable(&loc.pat, match loc.source {
             hir::LocalSource::Normal => "local binding",
             hir::LocalSource::ForLoopDesugar => "`for` loop binding",
+            hir::LocalSource::AsyncFn => "async fn binding",
         });
 
         // Check legality of move bindings and `@` patterns.

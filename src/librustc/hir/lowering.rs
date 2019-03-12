@@ -2224,8 +2224,15 @@ impl<'a> LoweringContext<'a> {
             init: l.init.as_ref().map(|e| P(self.lower_expr(e))),
             span: l.span,
             attrs: l.attrs.clone(),
-            source: hir::LocalSource::Normal,
+            source: self.lower_local_source(l.source),
         }, ids)
+    }
+
+    fn lower_local_source(&mut self, ls: LocalSource) -> hir::LocalSource {
+        match ls {
+            LocalSource::Normal => hir::LocalSource::Normal,
+            LocalSource::AsyncFn => hir::LocalSource::AsyncFn,
+        }
     }
 
     fn lower_mutability(&mut self, m: Mutability) -> hir::Mutability {

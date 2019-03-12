@@ -888,6 +888,17 @@ pub struct Local {
     pub id: NodeId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
+    /// Origin of this local variable.
+    pub source: LocalSource,
+}
+
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum LocalSource {
+    /// Local was parsed from source.
+    Normal,
+    /// Within `ast::IsAsync::Async`, a local is generated that will contain the moved arguments
+    /// of an `async fn`.
+    AsyncFn,
 }
 
 /// An arm of a 'match'.

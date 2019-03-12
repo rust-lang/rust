@@ -1583,6 +1583,17 @@ pub enum LocalSource {
     Normal,
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
+    /// When lowering async functions, we create locals within the `async move` so that
+    /// all arguments are dropped after the future is polled.
+    ///
+    /// ```ignore (pseudo-Rust)
+    /// async fn foo(<pattern> @ x: Type) {
+    ///     async move {
+    ///         let <pattern> = x;
+    ///     }
+    /// }
+    /// ```
+    AsyncFn,
 }
 
 /// Hints at the original code for a `match _ { .. }`.
