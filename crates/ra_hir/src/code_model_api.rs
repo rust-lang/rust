@@ -62,11 +62,6 @@ impl Crate {
     }
 }
 
-#[derive(Debug)]
-pub enum Def {
-    Item,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) krate: Crate,
