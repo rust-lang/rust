@@ -1046,29 +1046,34 @@ fn default_emitter(
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
-            EmitterWriter::new(dst, Some(source_map.clone()), false, false)
-                .ui_testing(sopts.debugging_opts.ui_testing),
+            EmitterWriter::new(
+                dst, Some(source_map.clone()), false, false, sopts.debugging_opts.colorful_json,
+            ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Json(pretty), None) => Box::new(
+        (config::ErrorOutputType::Json { pretty, colorful_rendered }, None) => Box::new(
             JsonEmitter::stderr(
                 Some(registry),
                 source_map.clone(),
                 pretty,
+                colorful_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
+        (config::ErrorOutputType::Json { pretty, colorful_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
                 dst,
                 Some(registry),
                 source_map.clone(),
                 pretty,
+                colorful_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Short(color_config), None) => Box::new(
             EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
         ),
         (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(source_map.clone()), true, false))
+            Box::new(EmitterWriter::new(
+                dst, Some(source_map.clone()), true, false, sopts.debugging_opts.colorful_json,
+            ))
         }
     }
 }
@@ -1317,7 +1322,8 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
-        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
+        config::ErrorOutputType::Json { pretty, colorful_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, colorful_rendered)),
         config::ErrorOutputType::Short(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }
@@ -1332,7 +1338,8 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
-        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
+        config::ErrorOutputType::Json { pretty, colorful_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, colorful_rendered)),
         config::ErrorOutputType::Short(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, true, false))
         }

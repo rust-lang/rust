@@ -30,37 +30,46 @@ pub struct JsonEmitter {
     sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
+    colorful_rendered: bool,
 }
 
 impl JsonEmitter {
-    pub fn stderr(registry: Option<Registry>,
-                  source_map: Lrc<SourceMap>,
-                  pretty: bool) -> JsonEmitter {
+    pub fn stderr(
+        registry: Option<Registry>,
+        source_map: Lrc<SourceMap>,
+        pretty: bool,
+        colorful_rendered: bool,
+    ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             sm: source_map,
             pretty,
             ui_testing: false,
+            colorful_rendered,
         }
     }
 
-    pub fn basic(pretty: bool) -> JsonEmitter {
+    pub fn basic(pretty: bool, colorful_rendered: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(None, Lrc::new(SourceMap::new(file_path_mapping)),
-                            pretty)
+                            pretty, colorful_rendered)
     }
 
-    pub fn new(dst: Box<dyn Write + Send>,
-               registry: Option<Registry>,
-               source_map: Lrc<SourceMap>,
-               pretty: bool) -> JsonEmitter {
+    pub fn new(
+        dst: Box<dyn Write + Send>,
+        registry: Option<Registry>,
+        source_map: Lrc<SourceMap>,
+        pretty: bool,
+        colorful_rendered: bool,
+    ) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             sm: source_map,
             pretty,
             ui_testing: false,
+            colorful_rendered,
         }
     }
 
@@ -190,7 +199,7 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.sm.clone()), false, false)
+        EmitterWriter::new(Box::new(buf), Some(je.sm.clone()), false, false, je.colorful_rendered)
             .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();

@@ -205,7 +205,12 @@ impl OutputType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
     HumanReadable(ColorConfig),
-    Json(bool),
+    Json {
+        /// Render the json in a human readable way (with indents and newlines)
+        pretty: bool,
+        /// The `rendered` field with the command line diagnostics include color codes
+        colorful_rendered: bool,
+    },
     Short(ColorConfig),
 }
 
@@ -1345,6 +1350,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print some statistics about AST and HIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata"),
+    colorful_json: bool = (false, parse_bool, [UNTRACKED],
+        "encode color codes in the `rendered` field of json diagnostics"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the breaks off const evaluation. NOTE: this is unsound"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -1798,6 +1805,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "How errors and other messages are produced",
             "human|json|short",
         ),
+        opt::opt(
+            "",
+            "colorful-json",
+            "Emit ansi color codes to the `rendered` field of json diagnostics",
+            "TYPE",
+        ),
         opt::opt_s(
             "",
             "color",
@@ -1938,6 +1951,7 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
+    let colorful_rendered = matches.opt_present("colorful-json");
 
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
@@ -1946,8 +1960,8 @@ pub fn build_session_options_and_crate_config(
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json(false),
-            Some("pretty-json") => ErrorOutputType::Json(true),
+            Some("json") => ErrorOutputType::Json { pretty: false, colorful_rendered },
+            Some("pretty-json") => ErrorOutputType::Json { pretty: true, colorful_rendered },
             Some("short") => ErrorOutputType::Short(color),
             None => ErrorOutputType::HumanReadable(color),
 
@@ -1973,11 +1987,16 @@ pub fn build_session_options_and_crate_config(
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
-    if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(
-            ErrorOutputType::Json(false),
-            "--error-format=pretty-json is unstable",
-        );
+    if !debugging_opts.unstable_options {
+        if colorful_rendered {
+            early_error(error_format, "--colorful-json=true is unstable");
+        }
+        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
+            early_error(
+                ErrorOutputType::Json { pretty: false, colorful_rendered: false },
+                "--error-format=pretty-json is unstable",
+            );
+        }
     }
 
     if debugging_opts.pgo_gen.is_some() && !debugging_opts.pgo_use.is_empty() {

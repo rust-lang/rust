@@ -16,7 +16,7 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
-use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
+use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
@@ -152,13 +152,15 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: Box<dyn Write + Send>,
-               source_map: Option<Lrc<SourceMapperDyn>>,
-               short_message: bool,
-               teach: bool)
-               -> EmitterWriter {
+    pub fn new(
+        dst: Box<dyn Write + Send>,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        short_message: bool,
+        teach: bool,
+        colored: bool,
+    ) -> EmitterWriter {
         EmitterWriter {
-            dst: Raw(dst),
+            dst: Raw(dst, colored),
             sm: source_map,
             short_message,
             teach,
@@ -1538,13 +1540,14 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
 pub enum Destination {
     Terminal(StandardStream),
     Buffered(BufferWriter),
-    Raw(Box<dyn Write + Send>),
+    Raw(Box<(dyn Write + Send)>, bool),
 }
 
 pub enum WritableDst<'a> {
     Terminal(&'a mut StandardStream),
     Buffered(&'a mut BufferWriter, Buffer),
-    Raw(&'a mut Box<dyn Write + Send>),
+    Raw(&'a mut (dyn Write + Send)),
+    ColoredRaw(Ansi<&'a mut (dyn Write + Send)>),
 }
 
 impl Destination {
@@ -1570,7 +1573,8 @@ impl Destination {
                 let buf = t.buffer();
                 WritableDst::Buffered(t, buf)
             }
-            Destination::Raw(ref mut t) => WritableDst::Raw(t),
+            Destination::Raw(ref mut t, false) => WritableDst::Raw(t),
+            Destination::Raw(ref mut t, true) => WritableDst::ColoredRaw(Ansi::new(t)),
         }
     }
 }
@@ -1628,6 +1632,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.set_color(color),
             WritableDst::Buffered(_, ref mut t) => t.set_color(color),
+            WritableDst::ColoredRaw(ref mut t) => t.set_color(color),
             WritableDst::Raw(_) => Ok(())
         }
     }
@@ -1636,6 +1641,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.reset(),
             WritableDst::Buffered(_, ref mut t) => t.reset(),
+            WritableDst::ColoredRaw(ref mut t) => t.reset(),
             WritableDst::Raw(_) => Ok(()),
         }
     }
@@ -1647,6 +1653,7 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.write(bytes),
             WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
             WritableDst::Raw(ref mut w) => w.write(bytes),
+            WritableDst::ColoredRaw(ref mut t) => t.write(bytes),
         }
     }
 
@@ -1655,6 +1662,7 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.flush(),
             WritableDst::Buffered(_, ref mut buf) => buf.flush(),
             WritableDst::Raw(ref mut w) => w.flush(),
+            WritableDst::ColoredRaw(ref mut w) => w.flush(),
         }
     }
 }
