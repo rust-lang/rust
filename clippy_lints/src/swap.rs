@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
     /// let t = b;
     /// b = a;
     /// a = t;
@@ -41,7 +41,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
+    /// ```rust
+    /// # let mut a = 1;
+    /// # let mut b = 2;
     /// a = b;
     /// b = a;
     /// ```

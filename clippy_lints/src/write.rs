@@ -35,11 +35,13 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let name = "World";
     /// print!("Hello {}!\n", name);
     /// ```
     /// use println!() instead
-    /// ```ignore
+    /// ```rust
+    /// # let name = "World";
     /// println!("Hello {}!", name);
     /// ```
     pub PRINT_WITH_NEWLINE,
@@ -113,7 +115,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf, "");
     /// ```
     pub WRITELN_EMPTY_STRING,
@@ -132,7 +136,10 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
+    /// # let name = "World";
     /// write!(buf, "Hello {}!\n", name);
     /// ```
     pub WRITE_WITH_NEWLINE,
@@ -151,7 +158,9 @@ declare_clippy_lint! {
     /// -- e.g., `writeln!(buf, "{}", env!("FOO"))`.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf, "{}", "foo");
     /// ```
     pub WRITE_LITERAL,
@@ -259,8 +268,11 @@ impl EarlyLintPass for Pass {
 /// Example:
 ///
 /// Calling this function on
-/// ```rust,ignore
-/// writeln!(buf, "string to write: {}", something)
+/// ```rust
+/// # use std::fmt::Write;
+/// # let mut buf = String::new();
+/// # let something = "something";
+/// writeln!(buf, "string to write: {}", something);
 /// ```
 /// will return
 /// ```rust,ignore

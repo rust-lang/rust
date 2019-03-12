@@ -19,8 +19,9 @@ declare_clippy_lint! {
     /// calls. We may introduce a whitelist of known pure functions in the future.
     ///
     /// **Example:**
-    /// ```ignore
-    /// x + 1 == x + 1
+    /// ```rust
+    /// # let x = 1;
+    /// if x + 1 == x + 1 {}
     /// ```
     pub EQ_OP,
     correctness,

@@ -54,8 +54,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// x == NAN
+    /// ```rust
+    /// # use core::f32::NAN;
+    /// # let x = 1.0;
+    ///
+    /// if x == NAN { }
     /// ```
     pub CMP_NAN,
     correctness,
@@ -75,9 +78,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// y == 1.23f64
-    /// y != x  // where both are floats
+    /// ```rust
+    /// let x = 1.2331f64;
+    /// let y = 1.2332f64;
+    /// if y == 1.23f64 { }
+    /// if y != x {} // where both are floats
     /// ```
     pub FLOAT_CMP,
     correctness,
@@ -114,8 +119,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// x % 1
+    /// ```rust
+    /// # let x = 1;
+    /// let a = x % 1;
     /// ```
     pub MODULO_ONE,
     correctness,
@@ -131,7 +137,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let v = Some("abc");
+    ///
     /// match v {
     ///     Some(x) => (),
     ///     y @ _ => (), // easier written as `y`,
@@ -194,8 +202,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```ignore
-    /// 0 as *const u32
+    /// ```rust
+    /// let a = 0 as *const u32;
     /// ```
     pub ZERO_PTR,
     style,
