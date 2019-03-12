@@ -343,7 +343,6 @@ fn invoke_rustdoc(
         .arg("--html-before-content").arg(&version_info)
         .arg("--html-in-header").arg(&favicon)
         .arg("--markdown-no-toc")
-        .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
         .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
         .arg("-o").arg(&out).arg(&path)
         .arg("--markdown-css").arg("../rust.css");
@@ -428,7 +427,6 @@ impl Step for Standalone {
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
                .arg("--markdown-no-toc")
-               .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
                .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
@@ -588,6 +586,7 @@ impl Step for Test {
 
         cargo.arg("--no-deps")
              .arg("-p").arg("test")
+             .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
              .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
@@ -659,6 +658,7 @@ impl Step for WhitelistedRustc {
         // for which docs must be built.
         for krate in &["proc_macro"] {
             cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
                  .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
