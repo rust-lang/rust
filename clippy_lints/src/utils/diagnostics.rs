@@ -134,19 +134,19 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     db.docs_link(lint);
 }
 
-pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: HirId, sp: Span, msg: &str) {
-    DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, node, sp, msg)).docs_link(lint);
+pub fn span_lint_hir(cx: &LateContext<'_, '_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+    DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg)).docs_link(lint);
 }
 
-pub fn span_lint_node_and_then(
+pub fn span_lint_hir_and_then(
     cx: &LateContext<'_, '_>,
     lint: &'static Lint,
-    node: HirId,
+    hir_id: HirId,
     sp: Span,
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
-    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, node, sp, msg));
+    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg));
     f(&mut db.0);
     db.docs_link(lint);
 }

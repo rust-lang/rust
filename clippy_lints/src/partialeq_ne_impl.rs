@@ -1,4 +1,4 @@
-use crate::utils::{is_automatically_derived, span_lint_node};
+use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -51,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             then {
                 for impl_item in impl_items {
                     if impl_item.ident.name == "ne" {
-                        span_lint_node(
+                        span_lint_hir(
                             cx,
                             PARTIALEQ_NE_IMPL,
                             impl_item.id.hir_id,
