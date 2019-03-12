@@ -102,8 +102,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: HirId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
-            if let Move(DirectRefMove) = mode {
-                // Moved out or in. Clearly can't be localized.
+            if let Move(DirectRefMove) | Move(CaptureMove) = mode {
+                // moved out or in. clearly can't be localized
                 self.set.remove(&lid);
             }
         }

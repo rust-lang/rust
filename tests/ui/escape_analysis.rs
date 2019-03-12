@@ -148,3 +148,23 @@ trait MyTrait {
 impl<T> MyTrait for Box<T> {
     fn do_sth(self) {}
 }
+
+// Issue #3739 - capture in closures
+mod issue_3739 {
+    use super::A;
+
+    fn consume<T>(_: T) {}
+    fn borrow<T>(_: &T) {}
+
+    fn closure_consume(x: Box<A>) {
+        let _ = move || {
+            consume(x);
+        };
+    }
+
+    fn closure_borrow(x: Box<A>) {
+        let _ = || {
+            borrow(&x);
+        };
+    }
+}
