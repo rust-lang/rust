@@ -300,7 +300,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gimli"
 version = "0.17.0"
-source = "git+https://github.com/gimli-rs/gimli.git#57637915bbb59bb9743dab9cd2b4ff62454f2f93"
+source = "git+https://github.com/gimli-rs/gimli.git#f1f641c73eaa3caa38ef673e89bffd08469512dd"
 dependencies = [
  "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
