@@ -13,11 +13,12 @@ mod complete_scope;
 mod complete_postfix;
 
 use ra_db::SourceDatabase;
-use ra_syntax::{ast::{self, AstNode}, SyntaxKind::{ATTR, COMMENT}};
+use ra_syntax::{ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner}, SyntaxKind::{ATTR, COMMENT}};
 
 use crate::{
     db,
     FilePosition,
+    FunctionSignature,
     completion::{
         completion_item::{Completions, CompletionKind},
         completion_context::CompletionContext,
@@ -71,22 +72,52 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     Some(acc)
 }
 
-pub fn function_label(node: &ast::FnDef) -> Option<String> {
-    let label: String = if let Some(body) = node.body() {
-        let body_range = body.syntax().range();
-        let label: String = node
-            .syntax()
-            .children_with_tokens()
-            .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
-            .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR)) // Filter out comments and attrs
-            .map(|node| node.to_string())
-            .collect();
-        label
-    } else {
-        node.syntax().text().to_string()
+pub fn generic_parameters<N: TypeParamsOwner>(node: &N) -> Vec<String> {
+    let mut res = vec![];
+    if let Some(type_params) = node.type_param_list() {
+        res.extend(type_params.lifetime_params().map(|p| p.syntax().text().to_string()));
+        res.extend(type_params.type_params().map(|p| p.syntax().text().to_string()));
+    }
+    res
+}
+
+pub fn where_predicates<N: TypeParamsOwner>(node: &N) -> Vec<String> {
+    let mut res = vec![];
+    if let Some(clause) = node.where_clause() {
+        res.extend(clause.predicates().map(|p| p.syntax().text().to_string()));
+    }
+    res
+}
+
+pub fn function_signature(node: &ast::FnDef) -> Option<FunctionSignature> {
+    fn param_list(node: &ast::FnDef) -> Vec<String> {
+        let mut res = vec![];
+        if let Some(param_list) = node.param_list() {
+            if let Some(self_param) = param_list.self_param() {
+                res.push(self_param.syntax().text().to_string())
+            }
+
+            res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
+        }
+        res
+    }
+
+    let sig = FunctionSignature {
+        visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+        name: node.name().map(|n| n.text().to_string()),
+        ret_type: node.ret_type().and_then(|r| r.type_ref()).map(|n| n.syntax().text().to_string()),
+        parameters: param_list(node),
+        generic_parameters: generic_parameters(node),
+        where_predicates: where_predicates(node),
+        // docs are processed separately
+        doc: None,
     };
 
-    Some(label.trim().to_owned())
+    Some(sig)
+}
+
+pub fn function_label(node: &ast::FnDef) -> Option<String> {
+    function_signature(node).map(|n| n.to_string())
 }
 
 pub fn const_label(node: &ast::ConstDef) -> String {
