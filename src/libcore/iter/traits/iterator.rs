@@ -2008,8 +2008,7 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn max(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        // switch to y even if it is only equal, to preserve stability.
-        select_fold1(self, |x, y| x <= y)
+        self.max_by(Ord::cmp)
     }
 
     /// Returns the minimum element of an iterator.
@@ -2034,8 +2033,7 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn min(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        // only switch to y if it is strictly smaller, to preserve stability.
-        select_fold1(self, |x, y| x > y)
+        self.min_by(Ord::cmp)
     }
 
     /// Returns the element that gives the maximum value from the
