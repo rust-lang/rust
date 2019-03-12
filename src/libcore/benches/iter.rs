@@ -35,7 +35,7 @@ fn scatter(x: i32) -> i32 { (x * 31) % 127 }
 fn bench_max_by_key(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
-        it.max_by_key(|&x| scatter(x))
+        it.map(black_box).max_by_key(|&x| scatter(x))
     })
 }
 
@@ -56,7 +56,7 @@ fn bench_max_by_key2(b: &mut Bencher) {
 fn bench_max(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
-        it.map(scatter).max()
+        it.map(black_box).map(scatter).max()
     })
 }
 
