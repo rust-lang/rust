@@ -22,7 +22,8 @@ fn main() {
 
     // Forcibly enable memory intrinsics on wasm32 & SGX as we don't have a libc to
     // provide them.
-    if target.contains("wasm32") || (target.contains("sgx") && target.contains("fortanix")) {
+    if (target.contains("wasm32") && !target.contains("wasi")) ||
+        (target.contains("sgx") && target.contains("fortanix")) {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
@@ -314,7 +315,7 @@ mod c {
             if target_os == "freebsd" {
                 sources.extend(&["clear_cache.c"]);
             }
-            
+
             // First of all aeabi_cdcmp and aeabi_cfcmp are never called by LLVM.
             // Second are little-endian only, so build fail on big-endian targets.
             // Temporally workaround: exclude these files for big-endian targets.
