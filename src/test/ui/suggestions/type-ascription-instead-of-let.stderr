@@ -8,20 +8,11 @@ LL |         temp: i32 = fun(5i32);
    |         help: maybe you meant to write an assignment here: `let temp`
 
 error[E0425]: cannot find value `temp` in this scope
-  --> $DIR/type-ascription-instead-of-let.rs:8:9
+  --> $DIR/type-ascription-instead-of-let.rs:7:9
    |
 LL |         temp + value + 1
    |         ^^^^ not found in this scope
 
-error[E0658]: type ascription is experimental (see issue #23416)
-  --> $DIR/type-ascription-instead-of-let.rs:5:9
-   |
-LL |         temp: i32 = fun(5i32);
-   |         ^^^^^^^^^
-   |
-   = help: add #![feature(type_ascription)] to the crate attributes to enable
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0425, E0658.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.

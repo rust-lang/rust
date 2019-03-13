@@ -12,15 +12,7 @@ LL |     std:io::stdin();
    |     |
    |     not a value
 
-error[E0658]: type ascription is experimental (see issue #23416)
-  --> $DIR/type-ascription-instead-of-path.rs:2:5
-   |
-LL |     std:io::stdin();
-   |     ^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(type_ascription)] to the crate attributes to enable
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0423, E0433, E0658.
+Some errors occurred: E0423, E0433.
 For more information about an error, try `rustc --explain E0423`.
