@@ -3248,6 +3248,23 @@ impl Clean<Path> for hir::Path {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+pub enum GenericArg {
+    Lifetime(Lifetime),
+    Type(Type),
+    Const(Constant),
+}
+
+impl fmt::Display for GenericArg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GenericArg::Lifetime(lt) => lt.fmt(f),
+            GenericArg::Type(ty) => ty.fmt(f),
+            GenericArg::Const(ct) => ct.fmt(f),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum GenericArgs {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
