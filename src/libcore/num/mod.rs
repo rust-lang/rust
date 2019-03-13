@@ -1979,10 +1979,10 @@ When starting from a slice rather than an array, fallible conversion APIs can be
 ```
 use std::convert::TryInto;
 
-fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
     let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
     *input = rest;
-    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+    ", stringify!($SelfT), "::from_le_bytes(int_bytes.try_into().unwrap())
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
@@ -2020,10 +2020,10 @@ When starting from a slice rather than an array, fallible conversion APIs can be
 ```
 use std::convert::TryInto;
 
-fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
     let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
     *input = rest;
-    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+    ", stringify!($SelfT), "::from_ne_bytes(int_bytes.try_into().unwrap())
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
@@ -3695,10 +3695,10 @@ When starting from a slice rather than an array, fallible conversion APIs can be
 ```
 use std::convert::TryInto;
 
-fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
     let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
     *input = rest;
-    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+    ", stringify!($SelfT), "::from_le_bytes(int_bytes.try_into().unwrap())
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
@@ -3736,10 +3736,10 @@ When starting from a slice rather than an array, fallible conversion APIs can be
 ```
 use std::convert::TryInto;
 
-fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
     let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
     *input = rest;
-    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+    ", stringify!($SelfT), "::from_ne_bytes(int_bytes.try_into().unwrap())
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
