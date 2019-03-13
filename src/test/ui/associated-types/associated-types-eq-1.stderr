@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-types-eq-1.rs:10:12
    |
-LL |     let _: A = x.boo(); //~ ERROR cannot find type `A` in this scope
+LL |     let _: A = x.boo();
    |            ^ help: a type parameter with a similar name exists: `I`
 
 error: aborting due to previous error

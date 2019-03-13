@@ -6,6 +6,7 @@ use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
 use crate::symbol::Symbol;
+use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
@@ -53,7 +54,7 @@ impl ParseSess {
         let cm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
-                                                false,
+                                                None,
                                                 Some(cm.clone()));
         ParseSess::with_span_handler(handler, cm)
     }
@@ -141,8 +142,14 @@ pub fn parse_stream_from_source_str(
     source: String,
     sess: &ParseSess,
     override_span: Option<Span>,
-) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
-    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
+) -> TokenStream {
+    let (stream, mut errors) = source_file_to_stream(
+        sess,
+        sess.source_map().new_source_file(name, source),
+        override_span,
+    );
+    emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
+    stream
 }
 
 /// Creates a new parser from a source string.
@@ -178,7 +185,7 @@ pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
-crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
+pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
                                     directory_ownership: DirectoryOwnership,
                                     module_name: Option<String>,

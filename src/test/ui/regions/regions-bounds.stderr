@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/regions-bounds.rs:9:12
    |
-LL |     return e; //~ ERROR mismatched types
+LL |     return e;
    |            ^ lifetime mismatch
    |
    = note: expected type `TupleStruct<'b>`
@@ -20,7 +20,7 @@ LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
 error[E0308]: mismatched types
   --> $DIR/regions-bounds.rs:13:12
    |
-LL |     return e; //~ ERROR mismatched types
+LL |     return e;
    |            ^ lifetime mismatch
    |
    = note: expected type `Struct<'b>`

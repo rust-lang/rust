@@ -25,31 +25,31 @@ LL |         T::A {} => {}
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-associated-type.rs:25:20
    |
-LL |     let z = T::A::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+LL |     let z = T::A::<u8> {};
    |                    ^^ type argument not allowed
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:32:13
    |
-LL |     let s = S::A {}; //~ ERROR ambiguous associated type
+LL |     let s = S::A {};
    |             ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-associated-type.rs:33:20
    |
-LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
+LL |     let z = S::A::<u8> {};
    |                    ^^ type argument not allowed
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:33:13
    |
-LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
+LL |     let z = S::A::<u8> {};
    |             ^^^^^^^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:36:9
    |
-LL |         S::A {} => {} //~ ERROR ambiguous associated type
+LL |         S::A {} => {}
    |         ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error: aborting due to 9 previous errors

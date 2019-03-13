@@ -1,7 +1,7 @@
 error[E0658]: no_core is experimental (see issue #29639)
   --> $DIR/cfg-attr-crate-2.rs:6:21
    |
-LL | #![cfg_attr(broken, no_core)] //~ ERROR no_core is experimental
+LL | #![cfg_attr(broken, no_core)]
    |                     ^^^^^^^
    |
    = help: add #![feature(no_core)] to the crate attributes to enable

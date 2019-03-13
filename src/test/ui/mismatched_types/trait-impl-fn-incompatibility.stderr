@@ -4,7 +4,7 @@ error[E0053]: method `foo` has an incompatible type for trait
 LL |     fn foo(x: u16);
    |               --- type in trait
 ...
-LL |     fn foo(x: i16) { } //~ ERROR incompatible type
+LL |     fn foo(x: i16) { }
    |               ^^^ expected u16, found i16
    |
    = note: expected type `fn(u16)`
@@ -16,14 +16,14 @@ error[E0053]: method `bar` has an incompatible type for trait
 LL |     fn bar(&mut self, bar: &mut Bar);
    |                            -------- type in trait
 ...
-LL |     fn bar(&mut self, bar: &Bar) { } //~ ERROR incompatible type
+LL |     fn bar(&mut self, bar: &Bar) { }
    |                            ^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Bar, &mut Bar)`
               found type `fn(&mut Bar, &Bar)`
 help: consider change the type to match the mutability in trait
    |
-LL |     fn bar(&mut self, bar: &mut Bar) { } //~ ERROR incompatible type
+LL |     fn bar(&mut self, bar: &mut Bar) { }
    |                            ^^^^^^^^
 
 error: aborting due to 2 previous errors

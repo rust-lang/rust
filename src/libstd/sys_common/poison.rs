@@ -1,7 +1,7 @@
-use error::{Error};
-use fmt;
-use sync::atomic::{AtomicBool, Ordering};
-use thread;
+use crate::error::{Error};
+use crate::fmt;
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::thread;
 
 pub struct Flag { failed: AtomicBool }
 

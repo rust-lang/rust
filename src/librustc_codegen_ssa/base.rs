@@ -16,7 +16,7 @@
 use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
 
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Stats, CodegenUnitNameBuilder};
@@ -816,20 +816,10 @@ impl CrateInfo {
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: Default::default(),
-            wasm_imports: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
         };
         let lang_items = tcx.lang_items();
-
-        let load_wasm_items = tcx.sess.crate_types.borrow()
-            .iter()
-            .any(|c| *c != config::CrateType::Rlib) &&
-            tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
-
-        if load_wasm_items {
-            info.load_wasm_imports(tcx, LOCAL_CRATE);
-        }
 
         let crates = tcx.crates();
 
@@ -858,9 +848,6 @@ impl CrateInfo {
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
             }
-            if load_wasm_items {
-                info.load_wasm_imports(tcx, cnum);
-            }
             let missing = tcx.missing_lang_items(cnum);
             for &item in missing.iter() {
                 if let Ok(id) = lang_items.require(item) {
@@ -878,15 +865,6 @@ impl CrateInfo {
         }
 
         return info
-    }
-
-    fn load_wasm_imports(&mut self, tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) {
-        self.wasm_imports.extend(tcx.wasm_import_module_map(cnum).iter().map(|(&id, module)| {
-            let instance = Instance::mono(tcx, id);
-            let import_name = tcx.symbol_name(instance);
-
-            (import_name.to_string(), module.clone())
-        }));
     }
 }
 

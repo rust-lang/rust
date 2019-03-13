@@ -1,7 +1,7 @@
 error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/E0110.rs:1:14
    |
-LL | type X = u32<'static>; //~ ERROR E0110
+LL | type X = u32<'static>;
    |              ^^^^^^^ lifetime argument not allowed
 
 error: aborting due to previous error

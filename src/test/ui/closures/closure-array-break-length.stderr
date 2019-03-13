@@ -1,19 +1,19 @@
 error[E0268]: `continue` outside of loop
   --> $DIR/closure-array-break-length.rs:2:13
    |
-LL |     |_: [_; continue]| {}; //~ ERROR: `continue` outside of loop
+LL |     |_: [_; continue]| {};
    |             ^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `continue` outside of loop
   --> $DIR/closure-array-break-length.rs:4:19
    |
-LL |     while |_: [_; continue]| {} {} //~ ERROR: `continue` outside of loop
+LL |     while |_: [_; continue]| {} {}
    |                   ^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `break` outside of loop
   --> $DIR/closure-array-break-length.rs:6:19
    |
-LL |     while |_: [_; break]| {} {} //~ ERROR: `break` outside of loop
+LL |     while |_: [_; break]| {} {}
    |                   ^^^^^ cannot break outside of a loop
 
 error: aborting due to 3 previous errors

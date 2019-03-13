@@ -18,8 +18,10 @@ macro_rules! continue_if {
 
 unsafe fn compare_c_str(ptr: *const c_char, val: &str) -> bool {
     let cstr0 = CStr::from_ptr(ptr);
-    let cstr1 = CString::new(val).unwrap();
-    &*cstr1 == cstr0
+    match CString::new(val) {
+        Ok(cstr1) => &*cstr1 == cstr0,
+        Err(_) => false,
+    }
 }
 
 #[no_mangle]
@@ -67,4 +69,25 @@ pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
             0xff
         }
     })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_0(_: c_int, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<c_int>() == 42);
+    continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello, World!"));
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
+    continue_if!(ap.arg::<c_long>() == 12);
+    continue_if!(ap.arg::<c_char>() == 'A' as c_char);
+    continue_if!(ap.arg::<c_longlong>() == 1);
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_2(_: c_int, mut ap: ...) -> usize {
+    0
 }

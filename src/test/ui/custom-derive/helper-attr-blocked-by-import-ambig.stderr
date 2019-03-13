@@ -1,7 +1,7 @@
 error[E0659]: `helper` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:9:3
    |
-LL | #[helper] //~ ERROR `helper` is ambiguous
+LL | #[helper]
    |   ^^^^^^ ambiguous name
    |
 note: `helper` could refer to the derive helper attribute defined here

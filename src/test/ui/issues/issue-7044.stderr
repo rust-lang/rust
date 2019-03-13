@@ -3,7 +3,7 @@ error[E0428]: the name `X` is defined multiple times
    |
 LL | static X: isize = 0;
    | -------------------- previous definition of the value `X` here
-LL | struct X; //~ ERROR the name `X` is defined multiple times
+LL | struct X;
    | ^^^^^^^^^ `X` redefined here
    |
    = note: `X` must be defined only once in the value namespace of this module

@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/match-ref-mut-let-invariance.rs:11:9
    |
-LL |         x //~ ERROR mismatched types
+LL |         x
    |         ^ lifetime mismatch
    |
    = note: expected type `&'a mut &'a i32`

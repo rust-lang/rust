@@ -1,7 +1,7 @@
 error: expected `:`, found `[`
   --> $DIR/regions-out-of-scope-slice.rs:7:19
    |
-LL |         x = &'blk [1,2,3]; //~ ERROR expected `:`, found `[`
+LL |         x = &'blk [1,2,3];
    |                   ^ expected `:`
 
 error: aborting due to previous error

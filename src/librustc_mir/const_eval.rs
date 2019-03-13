@@ -466,45 +466,42 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 }
 
 /// Projects to a field of a (variant of a) const.
+// this function uses `unwrap` copiously, because an already validated constant must have valid
+// fields and can thus never fail outside of compiler bugs
 pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: ty::Const<'tcx>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let result = (|| {
-        // get the operand again
-        let op = ecx.const_to_op(value, None)?;
-        // downcast
-        let down = match variant {
-            None => op,
-            Some(variant) => ecx.operand_downcast(op, variant)?
-        };
-        // then project
-        let field = ecx.operand_field(down, field.index() as u64)?;
-        // and finally move back to the const world, always normalizing because
-        // this is not called for statics.
-        op_to_const(&ecx, field)
-    })();
-    result.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
-        err.report_as_error(ecx.tcx, "could not access field of constant");
-        ErrorHandled::Reported
-    })
+    // get the operand again
+    let op = ecx.const_to_op(value, None).unwrap();
+    // downcast
+    let down = match variant {
+        None => op,
+        Some(variant) => ecx.operand_downcast(op, variant).unwrap(),
+    };
+    // then project
+    let field = ecx.operand_field(down, field.index() as u64).unwrap();
+    // and finally move back to the const world, always normalizing because
+    // this is not called for statics.
+    op_to_const(&ecx, field).unwrap()
 }
 
+// this function uses `unwrap` copiously, because an already validated constant must have valid
+// fields and can thus never fail outside of compiler bugs
 pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: ty::Const<'tcx>,
-) -> EvalResult<'tcx, VariantIdx> {
+) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = ecx.const_to_op(val, None)?;
-    Ok(ecx.read_discriminant(op)?.1)
+    let op = ecx.const_to_op(val, None).unwrap();
+    ecx.read_discriminant(op).unwrap().1
 }
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
@@ -617,7 +614,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if let Some(id) = tcx.hir().as_local_node_id(def_id) {
+    if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
@@ -625,7 +622,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             return Err(ErrorHandled::Reported)
         }
 
-        if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(id) {
+        if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind_by_hir_id(id) {
             tcx.mir_const_qualif(def_id);
         }
 
@@ -665,11 +662,11 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // because any code that existed before validation could not have failed validation
                 // thus preventing such a hard error from being a backwards compatibility hazard
                 Some(Def::Const(_)) | Some(Def::AssociatedConst(_)) => {
-                    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+                    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     err.report_as_lint(
                         tcx.at(tcx.def_span(def_id)),
                         "any use of this value will cause an error",
-                        node_id,
+                        hir_id,
                     )
                 },
                 // promoting runtime code is only allowed to error if it references broken constants
@@ -685,7 +682,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                         err.report_as_lint(
                             tcx.at(span),
                             "reaching this expression at runtime will panic or abort",
-                            tcx.hir().as_local_node_id(def_id).unwrap(),
+                            tcx.hir().as_local_hir_id(def_id).unwrap(),
                         )
                     }
                 // anything else (array lengths, enum initializers, constant patterns) are reported

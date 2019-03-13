@@ -12,7 +12,7 @@ trait Bar: Foo {
 
 impl<T: Foo> Bar for T {
     const FROM: &'static str = "foo";
-    //~^ ERROR the trait bound `T: Foo` is not satisfied [E0277]
+    //~^ ERROR implemented const `FROM` has an incompatible type for trait [E0326]
 }
 
 fn main() {}

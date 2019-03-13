@@ -1,7 +1,7 @@
 error: can't qualify macro_rules invocation with `pub`
   --> $DIR/pub-macro-rules.rs:2:5
    |
-LL |     pub macro_rules! foo { //~ ERROR can't qualify macro_rules invocation
+LL |     pub macro_rules! foo {
    |     ^^^ help: try exporting the macro: `#[macro_export]`
 
 error: aborting due to previous error

@@ -15,7 +15,7 @@ use crate::clean;
 /// module headings. If you are adding to this enum and want to ensure that the sidebar also prints
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
-#[derive(Copy, PartialEq, Clone, Debug)]
+#[derive(Copy, PartialEq, Eq, Clone, Debug, PartialOrd, Ord)]
 pub enum ItemType {
     Module          = 0,
     ExternCrate     = 1,

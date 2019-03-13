@@ -12,7 +12,7 @@ use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 use std::cmp;
 use std::iter;
 use rustc_target::spec::abi::Abi;
@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id(expr.id);
+        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,
@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
             liberated_sig,
             decl,
-            expr.id,
+            expr.hir_id,
             body,
             gen,
         ).1;
@@ -95,15 +95,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
         let base_substs =
-            Substs::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
         let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    span_bug!(expr.span, "closure has region param")
+                    span_bug!(expr.span, "closure has lifetime param")
                 }
-                GenericParamDefKind::Type {..} => {
-                    self.infcx
-                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                GenericParamDefKind::Type { .. } => {
+                    self.infcx.next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                }
+                GenericParamDefKind::Const => {
+                    span_bug!(expr.span, "closure has const param")
                 }
             }
         });
@@ -131,8 +133,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
-            "check_closure: expr.id={:?} closure_type={:?}",
-            expr.id, closure_type
+            "check_closure: expr.hir_id={:?} closure_type={:?}",
+            expr.hir_id, closure_type
         );
 
         // Tuple up the arguments and insert the resulting function type into
@@ -141,7 +143,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.mk_fn_sig(
                 iter::once(self.tcx.intern_tup(sig.inputs())),
                 sig.output(),
-                sig.variadic,
+                sig.c_variadic,
                 sig.unsafety,
                 sig.abi,
             )
@@ -386,7 +388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.variadic != decl.variadic {
+        if expected_sig.sig.c_variadic != decl.c_variadic {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
         } else if expected_sig.sig.inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
@@ -404,7 +406,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let bound_sig = ty::Binder::bind(self.tcx.mk_fn_sig(
             expected_sig.sig.inputs().iter().cloned(),
             expected_sig.sig.output(),
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));
@@ -586,7 +588,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             supplied_return,
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));
@@ -621,7 +623,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             self.tcx.types.err,
-            decl.variadic,
+            decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
         ));

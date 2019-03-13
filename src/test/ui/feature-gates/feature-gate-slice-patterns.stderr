@@ -1,7 +1,7 @@
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:6:16
    |
-LL |         [1, 2, ..] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [1, 2, ..] => {}
    |                ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |         [1, 2, ..] => {} //~ ERROR syntax for subslices in slice patterns i
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:7:13
    |
-LL |         [1, .., 5] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [1, .., 5] => {}
    |             ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |         [1, .., 5] => {} //~ ERROR syntax for subslices in slice patterns i
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:8:10
    |
-LL |         [.., 4, 5] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [.., 4, 5] => {}
    |          ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable
@@ -25,7 +25,7 @@ LL |         [.., 4, 5] => {} //~ ERROR syntax for subslices in slice patterns i
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:13:11
    |
-LL |         [ xs.., 4, 5 ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [ xs.., 4, 5 ] => {}
    |           ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable
@@ -33,7 +33,7 @@ LL |         [ xs.., 4, 5 ] => {} //~ ERROR syntax for subslices in slice patter
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:14:14
    |
-LL |         [ 1, xs.., 5 ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [ 1, xs.., 5 ] => {}
    |              ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable
@@ -41,7 +41,7 @@ LL |         [ 1, xs.., 5 ] => {} //~ ERROR syntax for subslices in slice patter
 error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:15:17
    |
-LL |         [ 1, 2, xs.. ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+LL |         [ 1, 2, xs.. ] => {}
    |                 ^^
    |
    = help: add #![feature(slice_patterns)] to the crate attributes to enable

@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/union_promotion.rs:9:29
    |
-LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
+LL |       let x: &'static bool = &unsafe {
    |  _____________________________^
 LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
 LL | |     };

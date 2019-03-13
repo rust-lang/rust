@@ -21,9 +21,9 @@ fn is_stable<'tcx>(
 
     match *place {
         // Locals and statics have stable addresses, for sure
-        Local { .. } |
-        Promoted { .. } |
-        Static { .. } =>
+        Base(PlaceBase::Local { .. }) |
+        Base(PlaceBase::Promoted { .. }) |
+        Base(PlaceBase::Static { .. }) =>
             true,
         // Recurse for projections
         Projection(ref proj) => {
@@ -101,7 +101,7 @@ impl MirPass for AddRetag {
             };
             // Gather all arguments, skip return value.
             let places = local_decls.iter_enumerated().skip(1).take(arg_count)
-                    .map(|(local, _)| Place::Local(local))
+                    .map(|(local, _)| Place::Base(PlaceBase::Local(local)))
                     .filter(needs_retag)
                     .collect::<Vec<_>>();
             // Emit their retags.

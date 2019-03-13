@@ -1,73 +1,73 @@
 error: no path from `TypeAlias` to `TypeOfItem`
   --> $DIR/dep-graph-type-alias.rs:17:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
+LL | #[rustc_then_this_would_need(TypeOfItem)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:19:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
+LL |     #[rustc_then_this_would_need(TypeOfItem)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
   --> $DIR/dep-graph-type-alias.rs:24:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
+LL | #[rustc_then_this_would_need(TypeOfItem)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:27:9
    |
-LL |         #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
+LL |         #[rustc_then_this_would_need(TypeOfItem)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
   --> $DIR/dep-graph-type-alias.rs:33:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
+LL | #[rustc_then_this_would_need(TypeOfItem)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
   --> $DIR/dep-graph-type-alias.rs:41:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
+LL | #[rustc_then_this_would_need(TypeOfItem)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:48:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
+LL | #[rustc_then_this_would_need(TypeOfItem)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:51:1
    |
-LL | #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
+LL | #[rustc_then_this_would_need(FnSignature)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:52:1
    |
-LL | #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+LL | #[rustc_then_this_would_need(TypeckTables)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:35:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
+LL |     #[rustc_then_this_would_need(FnSignature)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:43:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
+LL |     #[rustc_then_this_would_need(FnSignature)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:44:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+LL |     #[rustc_then_this_would_need(TypeckTables)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors

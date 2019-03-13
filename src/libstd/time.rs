@@ -12,13 +12,13 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
-use cmp;
-use error::Error;
-use fmt;
-use ops::{Add, Sub, AddAssign, SubAssign};
-use sys::time;
-use sys_common::FromInner;
-use sys_common::mutex::Mutex;
+use crate::cmp;
+use crate::error::Error;
+use crate::fmt;
+use crate::ops::{Add, Sub, AddAssign, SubAssign};
+use crate::sys::time;
+use crate::sys_common::FromInner;
+use crate::sys_common::mutex::Mutex;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
@@ -713,7 +713,7 @@ mod tests {
         assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
         // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
-        if !(cfg!(unix) && ::mem::size_of::<::libc::time_t>() <= 4) {
+        if !(cfg!(unix) && crate::mem::size_of::<libc::time_t>() <= 4) {
             let eighty_years = second * 60 * 60 * 24 * 365 * 80;
             assert_almost_eq!(a - eighty_years + eighty_years, a);
             assert_almost_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);

@@ -3,7 +3,7 @@ error[E0252]: the name `Arc` is defined multiple times
    |
 LL | use std::sync::{self, Arc};
    |                       --- previous import of the type `Arc` here
-LL | use std::sync::Arc; //~ ERROR the name `Arc` is defined multiple times
+LL | use std::sync::Arc;
    | ----^^^^^^^^^^^^^^-
    | |   |
    | |   `Arc` reimported here
@@ -17,7 +17,7 @@ error[E0252]: the name `sync` is defined multiple times
 LL | use std::sync::{self, Arc};
    |                 ---- previous import of the module `sync` here
 ...
-LL | use std::sync; //~ ERROR the name `sync` is defined multiple times
+LL | use std::sync;
    | ----^^^^^^^^^-
    | |   |
    | |   `sync` reimported here

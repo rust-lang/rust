@@ -9,7 +9,7 @@ LL |     let x = A::<'a>::new(&v, 22);
    |             |            |
    |             |            borrowed value does not live long enough
    |             argument requires that `v` is borrowed for `'a`
-LL |     //~^ ERROR
+LL |
 LL | }
    | - `v` dropped here while still borrowed
 

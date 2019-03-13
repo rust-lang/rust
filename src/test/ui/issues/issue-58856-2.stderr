@@ -1,0 +1,30 @@
+error: expected one of `)` or `,`, found `->`
+  --> $DIR/issue-58856-2.rs:6:26
+   |
+LL |     fn how_are_you(&self -> Empty {
+   |                   -     -^^
+   |                   |     |
+   |                   |     help: `)` may belong here
+   |                   unclosed delimiter
+
+error: expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `)`
+  --> $DIR/issue-58856-2.rs:11:1
+   |
+LL |     }
+   |      - expected one of 11 possible tokens here
+LL | }
+   | ^ unexpected token
+
+error[E0407]: method `how_are_you` is not a member of trait `Howness`
+  --> $DIR/issue-58856-2.rs:6:5
+   |
+LL | /     fn how_are_you(&self -> Empty {
+LL | |
+LL | |
+LL | |         Empty
+LL | |     }
+   | |_____^ not a member of trait `Howness`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0407`.

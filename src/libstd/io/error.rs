@@ -1,8 +1,8 @@
-use error;
-use fmt;
-use result;
-use sys;
-use convert::From;
+use crate::error;
+use crate::fmt;
+use crate::result;
+use crate::sys;
+use crate::convert::From;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -556,6 +556,14 @@ impl error::Error for Error {
             Repr::Custom(ref c) => c.error.cause(),
         }
     }
+
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Simple(..) => None,
+            Repr::Custom(ref c) => c.error.source(),
+        }
+    }
 }
 
 fn _assert_error_is_sync_send() {
@@ -566,10 +574,10 @@ fn _assert_error_is_sync_send() {
 #[cfg(test)]
 mod test {
     use super::{Error, ErrorKind, Repr, Custom};
-    use error;
-    use fmt;
-    use sys::os::error_string;
-    use sys::decode_error_kind;
+    use crate::error;
+    use crate::fmt;
+    use crate::sys::os::error_string;
+    use crate::sys::decode_error_kind;
 
     #[test]
     fn test_debug_error() {

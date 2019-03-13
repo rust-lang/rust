@@ -1,7 +1,7 @@
 error[E0599]: no function or associated item named `make_g` found for type `for<'r> fn(&'r ())` in the current scope
   --> $DIR/issue-57362-2.rs:22:25
    |
-LL |     let x = <fn (&())>::make_g(); //~ ERROR no function or associated item
+LL |     let x = <fn (&())>::make_g();
    |             ------------^^^^^^
    |             |
    |             function or associated item not found in `for<'r> fn(&'r ())`

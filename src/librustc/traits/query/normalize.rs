@@ -9,7 +9,7 @@ use crate::mir::interpret::GlobalId;
 use crate::traits::project::Normalized;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts};
 use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
@@ -193,7 +193,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
             let tcx = self.infcx.tcx.global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
                 if substs.needs_infer() || substs.has_placeholders() {
-                    let identity_substs = Substs::identity_for_item(tcx, def_id);
+                    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
                     if let Some(instance) = instance {
                         let cid = GlobalId {

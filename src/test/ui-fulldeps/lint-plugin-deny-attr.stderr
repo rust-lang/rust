@@ -1,7 +1,7 @@
 error: item is named 'lintme'
   --> $DIR/lint-plugin-deny-attr.rs:8:1
    |
-LL | fn lintme() { } //~ ERROR item is named 'lintme'
+LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^
    |
 note: lint level defined here

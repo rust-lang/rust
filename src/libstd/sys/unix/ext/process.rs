@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use io;
-use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
-use process;
-use sys;
-use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
+use crate::io;
+use crate::os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
+use crate::process;
+use crate::sys;
+use crate::sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
@@ -209,5 +209,5 @@ impl IntoRawFd for process::ChildStderr {
 /// Returns the OS-assigned process identifier associated with this process's parent.
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
-    ::sys::os::getppid()
+    crate::sys::os::getppid()
 }

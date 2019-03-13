@@ -1,26 +1,14 @@
 error: expected type, found `{`
   --> $DIR/recover-enum2.rs:8:18
    |
-LL |             abc: {}, //~ ERROR: expected type, found `{`
+LL |             abc: {},
    |                  ^
 
 error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `{`
   --> $DIR/recover-enum2.rs:27:22
    |
-LL |             Nope(i32 {}) //~ ERROR: found `{`
+LL |             Nope(i32 {})
    |                      ^ expected one of 7 possible tokens here
 
-error: expected one of `!`, `&&`, `&`, `(`, `)`, `*`, `+`, `,`, `::`, `<`, `?`, `[`, `_`, `crate`, `dyn`, `extern`, `fn`, `for`, `impl`, `pub`, `unsafe`, `}`, or lifetime, found `{`
-  --> $DIR/recover-enum2.rs:27:22
-   |
-LL |             Nope(i32 {}) //~ ERROR: found `{`
-   |                      ^ expected one of 23 possible tokens here
-
-error: expected expression, found reserved identifier `_`
-  --> $DIR/recover-enum2.rs:32:22
-   |
-LL |     let bad_syntax = _; //~ ERROR: expected expression, found reserved identifier `_`
-   |                      ^ expected expression
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

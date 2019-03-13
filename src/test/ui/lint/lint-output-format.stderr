@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-output-format.rs:6:1
    |
-LL | extern crate lint_output_format; //~ ERROR use of unstable library feature
+LL | extern crate lint_output_format;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | extern crate lint_output_format; //~ ERROR use of unstable library feature
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-output-format.rs:7:31
    |
-LL | use lint_output_format::{foo, bar}; //~ ERROR use of unstable library feature
+LL | use lint_output_format::{foo, bar};
    |                               ^^^
    |
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL | use lint_output_format::{foo, bar}; //~ ERROR use of unstable library featu
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-output-format.rs:11:14
    |
-LL |     let _y = bar(); //~ ERROR use of unstable library feature
+LL |     let _y = bar();
    |              ^^^
    |
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable

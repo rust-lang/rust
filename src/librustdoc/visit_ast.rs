@@ -27,10 +27,10 @@ use crate::doctree::*;
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
-pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
+pub struct RustdocVisitor<'a, 'tcx> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+    pub cx: &'a core::DocContext<'tcx>,
     view_item_stack: FxHashSet<ast::NodeId>,
     inlining: bool,
     /// Are the current module and all of its parents public?
@@ -38,10 +38,10 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
 }
 
-impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(
-        cx: &'a core::DocContext<'a, 'tcx, 'rcx>
-    ) -> RustdocVisitor<'a, 'tcx, 'rcx> {
+        cx: &'a core::DocContext<'tcx>
+    ) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
         stack.insert(ast::CRATE_NODE_ID);
@@ -66,13 +66,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         }
     }
 
-    fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx.hir().opt_local_def_id(id)
+    fn stability(&self, id: hir::HirId) -> Option<attr::Stability> {
+        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
-    fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
-        self.cx.tcx.hir().opt_local_def_id(id)
+    fn deprecation(&self, id: hir::HirId) -> Option<attr::Deprecation> {
+        self.cx.tcx.hir().opt_local_def_id_from_hir_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
@@ -83,7 +83,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                                               krate.attrs.clone(),
                                               Spanned { span: syntax_pos::DUMMY_SP,
                                                         node: hir::VisibilityKind::Public },
-                                              ast::CRATE_NODE_ID,
+                                              hir::CRATE_HIR_ID,
                                               &krate.module,
                                               None);
         // Attach the crate's exported macros to the top-level module:
@@ -101,12 +101,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(&*sd);
         Struct {
-            id: item.id,
+            id: item.hir_id,
             struct_type,
             name,
             vis: item.vis.clone(),
-            stab: self.stability(item.id),
-            depr: self.deprecation(item.id),
+            stab: self.stability(item.hir_id),
+            depr: self.deprecation(item.hir_id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
             fields: sd.fields().iter().cloned().collect(),
@@ -120,12 +120,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("Visiting union");
         let struct_type = struct_type_from_def(&*sd);
         Union {
-            id: item.id,
+            id: item.hir_id,
             struct_type,
             name,
             vis: item.vis.clone(),
-            stab: self.stability(item.id),
-            depr: self.deprecation(item.id),
+            stab: self.stability(item.hir_id),
+            depr: self.deprecation(item.hir_id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
             fields: sd.fields().iter().cloned().collect(),
@@ -142,17 +142,17 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.ident.name,
                 attrs: v.node.attrs.clone(),
-                stab: self.stability(v.node.data.id()),
-                depr: self.deprecation(v.node.data.id()),
+                stab: self.stability(v.node.data.hir_id()),
+                depr: self.deprecation(v.node.data.hir_id()),
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
             vis: it.vis.clone(),
-            stab: self.stability(it.id),
-            depr: self.deprecation(it.id),
+            stab: self.stability(it.hir_id),
+            depr: self.deprecation(it.hir_id),
             generics: params.clone(),
             attrs: it.attrs.clone(),
-            id: it.id,
+            id: it.hir_id,
             whence: it.span,
         }
     }
@@ -202,21 +202,21 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
                 om.proc_macros.push(ProcMacro {
                     name,
-                    id: item.id,
+                    id: item.hir_id,
                     kind,
                     helpers,
                     attrs: item.attrs.clone(),
                     whence: item.span,
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 });
             }
             None => {
                 om.fns.push(Function {
-                    id: item.id,
+                    id: item.hir_id,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                     attrs: item.attrs.clone(),
                     decl: fd.clone(),
                     name,
@@ -230,7 +230,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
     }
 
     pub fn visit_mod_contents(&mut self, span: Span, attrs: hir::HirVec<ast::Attribute>,
-                              vis: hir::Visibility, id: ast::NodeId,
+                              vis: hir::Visibility, id: hir::HirId,
                               m: &hir::Mod,
                               name: Option<ast::Name>) -> Module {
         let mut om = Module::new(name);
@@ -240,7 +240,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         om.vis = vis.clone();
         om.stab = self.stability(id);
         om.depr = self.deprecation(id);
-        om.id = id;
+        om.id = self.cx.tcx.hir().hir_to_node_id(id);
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
@@ -262,14 +262,14 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
     ///
     /// Returns `true` if the target has been inlined.
     fn maybe_inline_local(&mut self,
-                          id: ast::NodeId,
+                          id: hir::HirId,
                           def: Def,
                           renamed: Option<ast::Ident>,
                           glob: bool,
                           om: &mut Module,
                           please_inline: bool) -> bool {
 
-        fn inherits_doc_hidden(cx: &core::DocContext<'_, '_, '_>, mut node: ast::NodeId) -> bool {
+        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
                 if cx.tcx.hir().attrs(node).lists("doc").has_word("hidden") {
@@ -291,7 +291,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             return false;
         };
 
-        let use_attrs = tcx.hir().attrs(id);
+        let use_attrs = tcx.hir().attrs_by_hir_id(id);
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
                            use_attrs.lists("doc").has_word("hidden");
@@ -357,7 +357,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             Node::ForeignItem(it) if !glob => {
                 // Generate a fresh `extern {}` block if we want to inline a foreign item.
                 om.foreigns.push(hir::ForeignMod {
-                    abi: tcx.hir().get_foreign_abi(it.id),
+                    abi: tcx.hir().get_foreign_abi_by_hir_id(it.hir_id),
                     items: vec![hir::ForeignItem {
                         ident: renamed.unwrap_or(it.ident),
                         .. it.clone()
@@ -381,7 +381,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         let ident = renamed.unwrap_or(item.ident);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir().local_def_id(item.id);
+            let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             self.store_path(def_id);
         }
 
@@ -401,7 +401,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::ExternCrate(orig_name) => {
-                let def_id = self.cx.tcx.hir().local_def_id(item.id);
+                let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
@@ -436,7 +436,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         }
                     });
                     let ident = if is_glob { None } else { Some(ident) };
-                    if self.maybe_inline_local(item.id,
+                    if self.maybe_inline_local(item.hir_id,
                                                path.def,
                                                ident,
                                                is_glob,
@@ -448,7 +448,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
                 om.imports.push(Import {
                     name: ident.name,
-                    id: item.id,
+                    id: item.hir_id,
                     vis: item.vis.clone(),
                     attrs: item.attrs.clone(),
                     path: (**path).clone(),
@@ -460,7 +460,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 om.mods.push(self.visit_mod_contents(item.span,
                                                      item.attrs.clone(),
                                                      item.vis.clone(),
-                                                     item.id,
+                                                     item.hir_id,
                                                      m,
                                                      Some(ident.name)));
             },
@@ -477,12 +477,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     ty: ty.clone(),
                     gen: gen.clone(),
                     name: ident.name,
-                    id: item.id,
+                    id: item.hir_id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.typedefs.push(t);
             },
@@ -490,12 +490,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 let t = Existential {
                     exist_ty: exist_ty.clone(),
                     name: ident.name,
-                    id: item.id,
+                    id: item.hir_id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.existentials.push(t);
             },
@@ -504,13 +504,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     type_: ty.clone(),
                     mutability: mut_.clone(),
                     expr: exp.clone(),
-                    id: item.id,
+                    id: item.hir_id,
                     name: ident.name,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.statics.push(s);
             },
@@ -518,13 +518,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 let s = Constant {
                     type_: ty.clone(),
                     expr: exp.clone(),
-                    id: item.id,
+                    id: item.hir_id,
                     name: ident.name,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.constants.push(s);
             },
@@ -539,12 +539,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     items,
                     generics: gen.clone(),
                     bounds: b.iter().cloned().collect(),
-                    id: item.id,
+                    id: item.hir_id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.traits.push(t);
             },
@@ -553,12 +553,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     name: ident.name,
                     generics: gen.clone(),
                     bounds: b.iter().cloned().collect(),
-                    id: item.id,
+                    id: item.hir_id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
                     vis: item.vis.clone(),
-                    stab: self.stability(item.id),
-                    depr: self.deprecation(item.id),
+                    stab: self.stability(item.hir_id),
+                    depr: self.deprecation(item.hir_id),
                 };
                 om.trait_aliases.push(t);
             },
@@ -585,11 +585,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         for_: ty.clone(),
                         items,
                         attrs: item.attrs.clone(),
-                        id: item.id,
+                        id: item.hir_id,
                         whence: item.span,
                         vis: item.vis.clone(),
-                        stab: self.stability(item.id),
-                        depr: self.deprecation(item.id),
+                        stab: self.stability(item.hir_id),
+                        depr: self.deprecation(item.hir_id),
                     };
                     om.impls.push(i);
                 }
@@ -609,13 +609,14 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();
 
         Macro {
-            def_id: self.cx.tcx.hir().local_def_id(def.id),
+
+            def_id: self.cx.tcx.hir().local_def_id_from_hir_id(def.hir_id),
             attrs: def.attrs.clone(),
             name: renamed.unwrap_or(def.name),
             whence: def.span,
             matchers,
-            stab: self.stability(def.id),
-            depr: self.deprecation(def.id),
+            stab: self.stability(def.hir_id),
+            depr: self.deprecation(def.hir_id),
             imported_from: None,
         }
     }

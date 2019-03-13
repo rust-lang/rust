@@ -6,7 +6,7 @@ LL |     let s = "Hello!".to_owned();
 LL |     let mut s_copy = s;
    |                      - value moved here
 ...
-LL |     println!("{}", s); //~ ERROR use of moved value
+LL |     println!("{}", s);
    |                    ^ value borrowed here after move
 
 error: aborting due to previous error

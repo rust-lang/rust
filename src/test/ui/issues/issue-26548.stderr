@@ -5,7 +5,7 @@ error[E0391]: cycle detected when computing layout of `std::option::Option<S>`
 note: cycle used when processing `main`
   --> $DIR/issue-26548.rs:9:1
    |
-LL | fn main() { //~ NOTE cycle used when processing `main`
+LL | fn main() {
    | ^^^^^^^^^
 
 error: aborting due to previous error

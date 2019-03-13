@@ -1118,6 +1118,9 @@ impl<'a> State<'a> {
             ast::TyKind::Mac(ref m) => {
                 self.print_mac(m)?;
             }
+            ast::TyKind::CVarArgs => {
+                self.s.word("...")?;
+            }
         }
         self.end()
     }
@@ -2811,9 +2814,6 @@ impl<'a> State<'a> {
         -> io::Result<()> {
         self.popen()?;
         self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false))?;
-        if decl.variadic {
-            self.s.word(", ...")?;
-        }
         self.pclose()?;
 
         self.print_fn_output(decl)
@@ -3195,7 +3195,7 @@ impl<'a> State<'a> {
             ast::Constness::Const => self.word_nbsp("const")?
         }
 
-        self.print_asyncness(header.asyncness)?;
+        self.print_asyncness(header.asyncness.node)?;
         self.print_unsafety(header.unsafety)?;
 
         if header.abi != Abi::Rust {
@@ -3238,7 +3238,7 @@ mod tests {
             let decl = ast::FnDecl {
                 inputs: Vec::new(),
                 output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
-                variadic: false
+                c_variadic: false
             };
             let generics = ast::Generics::default();
             assert_eq!(
@@ -3247,7 +3247,7 @@ mod tests {
                     ast::FnHeader {
                         unsafety: ast::Unsafety::Normal,
                         constness: source_map::dummy_spanned(ast::Constness::NotConst),
-                        asyncness: ast::IsAsync::NotAsync,
+                        asyncness: source_map::dummy_spanned(ast::IsAsync::NotAsync),
                         abi: Abi::Rust,
                     },
                     abba_ident,

@@ -42,33 +42,33 @@ LL | type W2Vec<'b, T> where T: 'b, T: 'b = (&'b u32, Vec<T>);
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:47:12
    |
-LL | type T1<U: Bound> = U::Assoc; //~ WARN not enforced in type aliases
+LL | type T1<U: Bound> = U::Assoc;
    |            ^^^^^
    |
    = help: the bound will not be checked when the type alias is used, and should be removed
 help: use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
   --> $DIR/type-alias-bounds.rs:47:21
    |
-LL | type T1<U: Bound> = U::Assoc; //~ WARN not enforced in type aliases
+LL | type T1<U: Bound> = U::Assoc;
    |                     ^^^^^^^^
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:48:18
    |
-LL | type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
+LL | type T2<U> where U: Bound = U::Assoc;
    |                  ^^^^^^^^
    |
    = help: the clause will not be checked when the type alias is used, and should be removed
 help: use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
   --> $DIR/type-alias-bounds.rs:48:29
    |
-LL | type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
+LL | type T2<U> where U: Bound = U::Assoc;
    |                             ^^^^^^^^
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:56:12
    |
-LL | type T5<U: Bound> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases
+LL | type T5<U: Bound> = <U as Bound>::Assoc;
    |            ^^^^^
    |
    = help: the bound will not be checked when the type alias is used, and should be removed
@@ -76,7 +76,7 @@ LL | type T5<U: Bound> = <U as Bound>::Assoc;  //~ WARN not enforced in type ali
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:57:12
    |
-LL | type T6<U: Bound> = ::std::vec::Vec<U>;  //~ WARN not enforced in type aliases
+LL | type T6<U: Bound> = ::std::vec::Vec<U>;
    |            ^^^^^
    |
    = help: the bound will not be checked when the type alias is used, and should be removed

@@ -1,4 +1,4 @@
-use cell::UnsafeCell;
+use crate::cell::UnsafeCell;
 
 pub struct RWLock {
     mode: UnsafeCell<isize>,

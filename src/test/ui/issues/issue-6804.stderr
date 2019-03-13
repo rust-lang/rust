@@ -1,7 +1,7 @@
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-6804.rs:11:9
    |
-LL |         NAN => {}, //~ ERROR floating-point types cannot be used
+LL |         NAN => {},
    |         ^^^
    |
 note: lint level defined here
@@ -15,7 +15,7 @@ LL | #![deny(illegal_floating_point_literal_pattern)]
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-6804.rs:17:10
    |
-LL |         [NAN, _] => {}, //~ ERROR floating-point types cannot be used
+LL |         [NAN, _] => {},
    |          ^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

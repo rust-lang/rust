@@ -1,7 +1,7 @@
 error[E0658]: no_core is experimental (see issue #29639)
   --> $DIR/feature-gate-no_core.rs:3:1
    |
-LL | #![no_core] //~ ERROR no_core is experimental
+LL | #![no_core]
    | ^^^^^^^^^^^
    |
    = help: add #![feature(no_core)] to the crate attributes to enable

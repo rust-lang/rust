@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immu
    |
 LL |     let _w = &v;
    |               - immutable borrow occurs here
-LL |     borrow_mut(&mut *v); //~ ERROR cannot borrow
+LL |     borrow_mut(&mut *v);
    |                     ^^ mutable borrow occurs here
 LL |     _w.use_ref();
 LL | }

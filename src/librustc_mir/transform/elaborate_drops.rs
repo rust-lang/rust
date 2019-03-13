@@ -11,11 +11,11 @@ use crate::util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
 use crate::util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::VariantIdx;
+use rustc::hir;
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
-use syntax::ast;
 use syntax_pos::Span;
 
 pub struct ElaborateDrops;
@@ -28,7 +28,7 @@ impl MirPass for ElaborateDrops {
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
-        let id = tcx.hir().as_local_node_id(src.def_id()).unwrap();
+        let id = tcx.hir().as_local_hir_id(src.def_id()).unwrap();
         let param_env = tcx.param_env(src.def_id()).with_reveal_all();
         let move_data = match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => move_data,
@@ -80,7 +80,7 @@ impl MirPass for ElaborateDrops {
 fn find_dead_unwinds<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
-    id: ast::NodeId,
+    id: hir::HirId,
     env: &MoveDataParamEnv<'tcx, 'tcx>)
     -> BitSet<BasicBlock>
 {
@@ -330,7 +330,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Place::Local(*t))
+        self.drop_flags.get(&index).map(|t| Place::Base(PlaceBase::Local(*t)))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -543,7 +543,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Place::Local(flag), val);
+            self.patch.add_assign(loc, Place::Base(PlaceBase::Local(flag)), val);
         }
     }
 
@@ -552,7 +552,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
+            self.patch.add_assign(loc, Place::Base(PlaceBase::Local(*flag)), false_.clone());
         }
     }
 

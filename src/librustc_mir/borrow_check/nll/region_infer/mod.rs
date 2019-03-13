@@ -14,7 +14,7 @@ use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
     ConstraintCategory, Local, Location, Mir,
 };
-use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1357,9 +1357,8 @@ pub trait ClosureRegionRequirementsExt<'gcx, 'tcx> {
     fn apply_requirements(
         &self,
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        location: Location,
         closure_def_id: DefId,
-        closure_substs: &'tcx ty::subst::Substs<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>>;
 
     fn subst_closure_mapping<T>(
@@ -1388,13 +1387,12 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
     fn apply_requirements(
         &self,
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        location: Location,
         closure_def_id: DefId,
-        closure_substs: &'tcx ty::subst::Substs<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>> {
         debug!(
-            "apply_requirements(location={:?}, closure_def_id={:?}, closure_substs={:?})",
-            location, closure_def_id, closure_substs
+            "apply_requirements(closure_def_id={:?}, closure_substs={:?})",
+            closure_def_id, closure_substs
         );
 
         // Extract the values of the free regions in `closure_substs`

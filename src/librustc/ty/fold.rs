@@ -91,7 +91,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
     fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
+        self.has_type_flags(
+            TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER | TypeFlags::HAS_CT_INFER
+        )
     }
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER | TypeFlags::HAS_TY_PLACEHOLDER)
@@ -117,7 +119,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     /// Indicates whether this value references only 'global'
-    /// types/lifetimes that are the same regardless of what fn we are
+    /// generic parameters that are the same regardless of what fn we are
     /// in. This is used for caching.
     fn is_global(&self) -> bool {
         !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
@@ -841,14 +843,13 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
-        if let ty::LazyConst::Unevaluated(..) = c {
-            let projection_flags = TypeFlags::HAS_NORMALIZABLE_PROJECTION |
-                TypeFlags::HAS_PROJECTION;
-            if projection_flags.intersects(self.flags) {
-                return true;
-            }
+        let flags = c.type_flags();
+        debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
+        if flags.intersects(self.flags) {
+            true
+        } else {
+            c.super_visit_with(self)
         }
-        c.super_visit_with(self)
     }
 }
 

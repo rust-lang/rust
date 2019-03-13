@@ -1,17 +1,17 @@
 use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 
-use error::Error as StdError;
-use ffi::{OsString, OsStr};
-use fmt;
-use io;
-use path::{self, PathBuf};
-use str;
-use sys::{unsupported, Void, sgx_ineffective, decode_error_kind};
-use collections::HashMap;
-use vec;
-use sync::Mutex;
-use sync::atomic::{AtomicUsize, Ordering};
-use sync::Once;
+use crate::error::Error as StdError;
+use crate::ffi::{OsString, OsStr};
+use crate::fmt;
+use crate::io;
+use crate::path::{self, PathBuf};
+use crate::str;
+use crate::sys::{unsupported, Void, sgx_ineffective, decode_error_kind};
+use crate::collections::HashMap;
+use crate::vec;
+use crate::sync::Mutex;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::Once;
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS

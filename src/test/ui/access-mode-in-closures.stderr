@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of borrowed content
   --> $DIR/access-mode-in-closures.rs:8:15
    |
-LL |         match *s { S(v) => v } //~ ERROR cannot move out
+LL |         match *s { S(v) => v }
    |               ^^     - hint: to prevent move, use `ref v` or `ref mut v`
    |               |
    |               cannot move out of borrowed content

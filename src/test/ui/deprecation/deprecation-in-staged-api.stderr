@@ -1,7 +1,7 @@
 error: `#[deprecated]` cannot be used in staged api, use `#[rustc_deprecated]` instead
   --> $DIR/deprecation-in-staged-api.rs:8:1
    |
-LL | fn main() { } //~ERROR `#[deprecated]` cannot be used in staged api
+LL | fn main() { }
    | ^^^^^^^^^^^^^
 
 error: aborting due to previous error

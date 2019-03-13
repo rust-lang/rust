@@ -1,7 +1,7 @@
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/issue-29161.rs:5:9
    |
-LL |         pub fn default() -> A { //~ ERROR unnecessary visibility qualifier
+LL |         pub fn default() -> A {
    |         ^^^ `pub` not permitted here because it's implied
 
 error[E0603]: struct `A` is private

@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `a::LolFrom<&[_]>` for type `LocalType<_>`:
   --> $DIR/issue-23563.rs:13:1
    |
-LL | impl<'a, T> LolFrom<&'a [T]> for LocalType<T> { //~ ERROR conflicting implementations of trait
+LL | impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `issue_23563_a`:

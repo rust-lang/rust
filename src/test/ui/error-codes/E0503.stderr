@@ -3,7 +3,7 @@ error[E0503]: cannot use `value` because it was mutably borrowed
    |
 LL |     let _borrow = &mut value;
    |                        ----- borrow of `value` occurs here
-LL |     let _sum = value + 1; //~ ERROR E0503
+LL |     let _sum = value + 1;
    |                ^^^^^ use of borrowed `value`
 
 error: aborting due to previous error

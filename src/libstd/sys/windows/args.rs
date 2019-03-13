@@ -1,14 +1,15 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use os::windows::prelude::*;
-use sys::windows::os::current_exe;
-use sys::c;
-use ffi::OsString;
-use fmt;
-use vec;
+use crate::os::windows::prelude::*;
+use crate::sys::windows::os::current_exe;
+use crate::sys::c;
+use crate::ffi::OsString;
+use crate::fmt;
+use crate::vec;
+use crate::slice;
+use crate::path::PathBuf;
+
 use core::iter;
-use slice;
-use path::PathBuf;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) { }
 
@@ -80,7 +81,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         // "However, if lpCmdLine starts with any amount of whitespace, CommandLineToArgvW
         // will consider the first argument to be an empty string. Excess whitespace at the
         // end of lpCmdLine is ignored."
-        0...SPACE => {
+        0..=SPACE => {
             ret_val.push(OsString::new());
             &cmd_line[1..]
         },
@@ -192,8 +193,8 @@ impl ExactSizeIterator for Args {
 
 #[cfg(test)]
 mod tests {
-    use sys::windows::args::*;
-    use ffi::OsString;
+    use crate::sys::windows::args::*;
+    use crate::ffi::OsString;
 
     fn chk(string: &str, parts: &[&str]) {
         let mut wide: Vec<u16> = OsString::from(string).encode_wide().collect();

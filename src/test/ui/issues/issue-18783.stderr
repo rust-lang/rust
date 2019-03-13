@@ -9,7 +9,7 @@ LL |     c.push(Box::new(|| y = 0));
    |                     ^^ - borrow occurs due to use of `y` in closure
    |                     |
    |                     second mutable borrow occurs here
-LL | //~^ ERROR cannot borrow `y` as mutable more than once at a time
+LL |
 LL | }
    | - first borrow ends here
 
@@ -24,7 +24,7 @@ LL |     Push::push(&c, Box::new(|| y = 0));
    |                             ^^ - borrow occurs due to use of `y` in closure
    |                             |
    |                             second mutable borrow occurs here
-LL | //~^ ERROR cannot borrow `y` as mutable more than once at a time
+LL |
 LL | }
    | - first borrow ends here
 

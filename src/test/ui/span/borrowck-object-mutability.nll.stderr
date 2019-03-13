@@ -4,7 +4,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL | fn borrowed_receiver(x: &Foo) {
    |                         ---- help: consider changing this to be a mutable reference: `&mut dyn Foo`
 LL |     x.borrowed();
-LL |     x.borrowed_mut(); //~ ERROR cannot borrow
+LL |     x.borrowed_mut();
    |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
 LL | fn owned_receiver(x: Box<Foo>) {
    |                   - help: consider changing this to be mutable: `mut x`
 LL |     x.borrowed();
-LL |     x.borrowed_mut(); //~ ERROR cannot borrow
+LL |     x.borrowed_mut();
    |     ^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors

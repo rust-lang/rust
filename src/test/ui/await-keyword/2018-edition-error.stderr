@@ -1,37 +1,37 @@
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:5:13
    |
-LL |     pub mod await { //~ ERROR `await` is a keyword
+LL |     pub mod await {
    |             ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:6:20
    |
-LL |         pub struct await; //~ ERROR `await` is a keyword
+LL |         pub struct await;
    |                    ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:9:22
    |
-LL | use self::outer_mod::await::await; //~ ERROR `await` is a keyword
+LL | use self::outer_mod::await::await;
    |                      ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:9:29
    |
-LL | use self::outer_mod::await::await; //~ ERROR `await` is a keyword
+LL | use self::outer_mod::await::await;
    |                             ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:13:11
    |
-LL |     match await { await => () } //~ ERROR `await` is a keyword
+LL |     match await { await => () }
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error[E0721]: `await` is a keyword in the 2018 edition
   --> $DIR/2018-edition-error.rs:13:19
    |
-LL |     match await { await => () } //~ ERROR `await` is a keyword
+LL |     match await { await => () }
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
 
 error: aborting due to 6 previous errors

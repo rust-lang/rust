@@ -7,7 +7,7 @@ LL |                       s: &'short isize,
 LL |                       l: &'long isize,
    |                          ------------
 ...
-LL |     let _: Contravariant<'long> = c; //~ ERROR E0623
+LL |     let _: Contravariant<'long> = c;
    |                                   ^ ...but data from `c` flows into `l` here
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error: function should have one argument
   --> $DIR/alloc-error-handler-bad-signature-3.rs:10:1
    |
-LL | fn oom() -> ! { //~ ERROR function should have one argument
+LL | fn oom() -> ! {
    | ^^^^^^^^^^^^^
 
 error: aborting due to previous error

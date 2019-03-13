@@ -1,7 +1,7 @@
 error[E0597]: `_thing1` does not live long enough
   --> $DIR/issue-54556-temps-in-tail-diagnostic.rs:5:11
    |
-LL |         D(&_thing1).end() //~ ERROR does not live long enough
+LL |         D(&_thing1).end()
    |         --^^^^^^^^-
    |         | |
    |         | borrowed value does not live long enough

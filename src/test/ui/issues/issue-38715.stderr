@@ -1,7 +1,7 @@
 error: a macro named `foo` has already been exported
   --> $DIR/issue-38715.rs:5:1
    |
-LL | macro_rules! foo { () => {} } //~ ERROR a macro named `foo` has already been exported
+LL | macro_rules! foo { () => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` already exported
    |
    = note: #[deny(duplicate_macro_exports)] on by default

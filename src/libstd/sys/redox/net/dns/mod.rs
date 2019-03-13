@@ -1,10 +1,10 @@
 pub use self::answer::DnsAnswer;
 pub use self::query::DnsQuery;
 
-use slice;
-use u16;
-use string::String;
-use vec::Vec;
+use crate::slice;
+use crate::u16;
+use crate::string::String;
+use crate::vec::Vec;
 
 mod answer;
 mod query;

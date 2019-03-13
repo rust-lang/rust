@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_trait_where_clause.rs:5:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'a, 'b, Self, T, U> { FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, T, U>). }

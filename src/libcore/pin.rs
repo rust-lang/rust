@@ -215,7 +215,7 @@
 //!     had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
 //!     Then we could do the following:
 //!     ```compile_fail
-//!     fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>) {
+//!     fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>>) {
 //!         { let p = rc.as_mut().get_pin_mut(); } // Here we get pinned access to the `T`.
 //!         let rc_shr: &RefCell<T> = rc.into_ref().get_ref();
 //!         let b = rc_shr.borrow_mut();
@@ -279,7 +279,7 @@ use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 // implementations, are allowed because they all only use `&P`, so they cannot move
 // the value behind `pointer`.
 #[stable(feature = "pin", since = "1.33.0")]
-#[cfg_attr(not(stage0), lang = "pin")]
+#[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, Eq, Ord)]

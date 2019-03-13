@@ -1,55 +1,55 @@
 error: type `m::Priv` is private
   --> $DIR/private-type-in-interface.rs:15:9
    |
-LL | fn f(_: m::Alias) {} //~ ERROR type `m::Priv` is private
+LL | fn f(_: m::Alias) {}
    |         ^^^^^^^^
 
 error: type `m::Priv` is private
   --> $DIR/private-type-in-interface.rs:15:6
    |
-LL | fn f(_: m::Alias) {} //~ ERROR type `m::Priv` is private
+LL | fn f(_: m::Alias) {}
    |      ^
 
 error: type `ext::Priv` is private
   --> $DIR/private-type-in-interface.rs:17:13
    |
-LL | fn f_ext(_: ext::Alias) {} //~ ERROR type `ext::Priv` is private
+LL | fn f_ext(_: ext::Alias) {}
    |             ^^^^^^^^^^
 
 error: type `ext::Priv` is private
   --> $DIR/private-type-in-interface.rs:17:10
    |
-LL | fn f_ext(_: ext::Alias) {} //~ ERROR type `ext::Priv` is private
+LL | fn f_ext(_: ext::Alias) {}
    |          ^
 
 error: type `m::Priv` is private
   --> $DIR/private-type-in-interface.rs:21:6
    |
-LL | impl m::Alias {} //~ ERROR type `m::Priv` is private
+LL | impl m::Alias {}
    |      ^^^^^^^^
 
 error: type `ext::Priv` is private
   --> $DIR/private-type-in-interface.rs:22:14
    |
-LL | impl Tr1 for ext::Alias {} //~ ERROR type `ext::Priv` is private
+LL | impl Tr1 for ext::Alias {}
    |              ^^^^^^^^^^
 
 error: type `m::Priv` is private
   --> $DIR/private-type-in-interface.rs:23:10
    |
-LL | type A = <m::Alias as m::Trait>::X; //~ ERROR type `m::Priv` is private
+LL | type A = <m::Alias as m::Trait>::X;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `m::Priv` is private
   --> $DIR/private-type-in-interface.rs:27:11
    |
-LL | fn g() -> impl Tr2<m::Alias> { 0 } //~ ERROR type `m::Priv` is private
+LL | fn g() -> impl Tr2<m::Alias> { 0 }
    |           ^^^^^^^^^^^^^^^^^^
 
 error: type `ext::Priv` is private
   --> $DIR/private-type-in-interface.rs:28:15
    |
-LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 } //~ ERROR type `ext::Priv` is private
+LL | fn g_ext() -> impl Tr2<ext::Alias> { 0 }
    |               ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors

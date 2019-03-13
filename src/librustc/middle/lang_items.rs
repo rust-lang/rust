@@ -20,6 +20,7 @@ use crate::util::nodemap::FxHashMap;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
 
@@ -45,6 +46,7 @@ impl LangItem {
     }
 }
 
+#[derive(HashStable)]
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
     pub missing: Vec<LangItem>,
@@ -98,7 +100,7 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
             match self.item_refs.get(&*value.as_str()).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir().local_def_id(item.id);
+                    let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
                     self.collect_item(item_index, def_id);
                 },
                 // Known lang item with attribute on incorrect target.

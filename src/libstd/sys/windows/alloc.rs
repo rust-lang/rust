@@ -1,6 +1,6 @@
-use alloc::{GlobalAlloc, Layout, System};
-use sys::c;
-use sys_common::alloc::{MIN_ALIGN, realloc_fallback};
+use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::sys::c;
+use crate::sys_common::alloc::{MIN_ALIGN, realloc_fallback};
 
 #[repr(C)]
 struct Header(*mut u8);

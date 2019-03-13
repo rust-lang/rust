@@ -139,13 +139,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(value) => {
                         debug!("stmt_expr Return val block_context.push(SubExpr) : {:?}", expr2);
                         this.block_context.push(BlockFrame::SubExpr);
-                        let result = unpack!(this.into(&Place::Local(RETURN_PLACE), block, value));
+                        let result = unpack!(
+                            this.into(
+                                &Place::RETURN_PLACE,
+                                block,
+                                value
+                            )
+                        );
                         this.block_context.pop();
                         result
                     }
                     None => {
-                        this.cfg
-                            .push_assign_unit(block, source_info, &Place::Local(RETURN_PLACE));
+                        this.cfg.push_assign_unit(
+                            block,
+                            source_info,
+                            &Place::RETURN_PLACE,
+                        );
                         block
                     }
                 };
@@ -226,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         }
                     }
                     let temp = this.local_decls.push(local_decl);
-                    let place = Place::Local(temp);
+                    let place = Place::Base(PlaceBase::Local(temp));
                     debug!("created temp {:?} for expr {:?} in block_context: {:?}",
                            temp, expr, this.block_context);
                     place

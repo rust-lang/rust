@@ -3,7 +3,7 @@ error[E0493]: destructors cannot be evaluated at compile-time
    |
 LL |                                           ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
    |  ___________________________________________^
-LL | | //~^ ERROR destructors cannot be evaluated at compile-time
+LL | |
 LL | |                                                      field2: SafeEnum::Variant1}};
    | |________________________________________________________________________________^ statics cannot evaluate destructors
 
@@ -28,49 +28,49 @@ LL |     field2: SafeEnum::Variant4("str".to_string())
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:95:5
    |
-LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     box MyOwned,
    |     ^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0019]: static contains unimplemented expression type
   --> $DIR/check-static-values-constraints.rs:95:9
    |
-LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     box MyOwned,
    |         ^^^^^^^
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:97:5
    |
-LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     box MyOwned,
    |     ^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0019]: static contains unimplemented expression type
   --> $DIR/check-static-values-constraints.rs:97:9
    |
-LL |     box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     box MyOwned,
    |         ^^^^^^^
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:102:6
    |
-LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     &box MyOwned,
    |      ^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0019]: static contains unimplemented expression type
   --> $DIR/check-static-values-constraints.rs:102:10
    |
-LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     &box MyOwned,
    |          ^^^^^^^
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:104:6
    |
-LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     &box MyOwned,
    |      ^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0019]: static contains unimplemented expression type
   --> $DIR/check-static-values-constraints.rs:104:10
    |
-LL |     &box MyOwned, //~ ERROR allocations are not allowed in statics
+LL |     &box MyOwned,
    |          ^^^^^^^
 
 error[E0010]: allocations are not allowed in statics

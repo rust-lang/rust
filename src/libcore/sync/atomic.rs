@@ -290,15 +290,11 @@ pub enum Ordering {
 /// [`AtomicBool`]: struct.AtomicBool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(stage0), rustc_deprecated(
+#[rustc_deprecated(
     since = "1.34.0",
     reason = "the `new` function is now preferred",
     suggestion = "AtomicBool::new(false)",
-))]
-#[cfg_attr(stage0, rustc_deprecated(
-    since = "1.34.0",
-    reason = "the `new` function is now preferred",
-))]
+)]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_has_atomic = "8")]
@@ -1158,15 +1154,11 @@ macro_rules! atomic_int {
 
         /// An atomic integer initialized to `0`.
         #[$stable_init_const]
-        #[cfg_attr(stage0, rustc_deprecated(
-            since = "1.34.0",
-            reason = "the `new` function is now preferred",
-        ))]
-        #[cfg_attr(not(stage0), rustc_deprecated(
+        #[rustc_deprecated(
             since = "1.34.0",
             reason = "the `new` function is now preferred",
             suggestion = $atomic_new,
-        ))]
+        )]
         pub const $atomic_init: $atomic_type = $atomic_type::new(0);
 
         #[$stable]

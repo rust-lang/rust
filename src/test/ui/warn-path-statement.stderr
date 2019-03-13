@@ -1,7 +1,7 @@
 error: path statement with no effect
   --> $DIR/warn-path-statement.rs:5:5
    |
-LL |     x; //~ ERROR path statement with no effect
+LL |     x;
    |     ^^
    |
    = note: requested on the command line with `-D path-statements`

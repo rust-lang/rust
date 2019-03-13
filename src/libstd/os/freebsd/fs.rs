@@ -1,12 +1,10 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
-use libc;
-
-use fs::Metadata;
-use sys_common::AsInner;
+use crate::fs::Metadata;
+use crate::sys_common::AsInner;
 
 #[allow(deprecated)]
-use os::freebsd::raw;
+use crate::os::freebsd::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

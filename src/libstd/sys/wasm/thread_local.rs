@@ -1,5 +1,5 @@
-use boxed::Box;
-use ptr;
+use crate::boxed::Box;
+use crate::ptr;
 
 pub type Key = usize;
 

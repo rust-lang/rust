@@ -1,19 +1,19 @@
 error: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:7:13
    |
-LL |     let u = U {}; //~ ERROR union expressions should have exactly one field
+LL |     let u = U {};
    |             ^
 
 error: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:9:13
    |
-LL |     let u = U { a: 0, b: 1 }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { a: 0, b: 1 };
    |             ^
 
 error[E0560]: union `U` has no field named `c`
   --> $DIR/union-fields-2.rs:10:29
    |
-LL |     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { a: 0, b: 1, c: 2 };
    |                             ^ `U` does not have this field
    |
    = note: available fields are: `a`, `b`
@@ -21,61 +21,61 @@ LL |     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have
 error: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:10:13
    |
-LL |     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { a: 0, b: 1, c: 2 };
    |             ^
 
 error: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:12:13
    |
-LL |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { ..u };
    |             ^
 
 error[E0436]: functional record update syntax requires a struct
   --> $DIR/union-fields-2.rs:12:19
    |
-LL |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
+LL |     let u = U { ..u };
    |                   ^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:15:9
    |
-LL |     let U {} = u; //~ ERROR union patterns should have exactly one field
+LL |     let U {} = u;
    |         ^^^^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:17:9
    |
-LL |     let U { a, b } = u; //~ ERROR union patterns should have exactly one field
+LL |     let U { a, b } = u;
    |         ^^^^^^^^^^
 
 error[E0026]: union `U` does not have a field named `c`
   --> $DIR/union-fields-2.rs:18:19
    |
-LL |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
+LL |     let U { a, b, c } = u;
    |                   ^ union `U` does not have this field
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:18:9
    |
-LL |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
+LL |     let U { a, b, c } = u;
    |         ^^^^^^^^^^^^^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:20:9
    |
-LL |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
+LL |     let U { .. } = u;
    |         ^^^^^^^^
 
 error: `..` cannot be used in union patterns
   --> $DIR/union-fields-2.rs:20:9
    |
-LL |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
+LL |     let U { .. } = u;
    |         ^^^^^^^^
 
 error: `..` cannot be used in union patterns
   --> $DIR/union-fields-2.rs:22:9
    |
-LL |     let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
+LL |     let U { a, .. } = u;
    |         ^^^^^^^^^^^
 
 error: aborting due to 13 previous errors

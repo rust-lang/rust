@@ -1,12 +1,12 @@
-use alloc::{self, Layout};
-use num::NonZeroUsize;
-use slice;
-use str;
+use crate::alloc::{self, Layout};
+use crate::num::NonZeroUsize;
+use crate::slice;
+use crate::str;
 
 use super::waitqueue::{
     try_lock_or_false, NotifiedTcs, SpinMutex, SpinMutexGuard, WaitQueue, WaitVariable,
 };
-use mem;
+use crate::mem;
 
 pub struct RWLock {
     readers: SpinMutex<WaitVariable<Option<NonZeroUsize>>>,
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
 #[no_mangle]
 // NB. used by both libunwind and libpanic_abort
 pub unsafe extern "C" fn __rust_abort() {
-    ::sys::abort_internal();
+    crate::sys::abort_internal();
 }
 
 #[no_mangle]
@@ -224,8 +224,8 @@ mod tests {
 
     use super::*;
     use core::array::FixedSizeArray;
-    use mem::MaybeUninit;
-    use {mem, ptr};
+    use crate::mem::MaybeUninit;
+    use crate::{mem, ptr};
 
     // The below test verifies that the bytes of initialized RWLock are the ones
     // we use in libunwind.

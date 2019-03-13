@@ -1,7 +1,7 @@
 error[E0659]: `S` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/issue-55884-1.rs:19:12
    |
-LL |     use m::S; //~ ERROR `S` is ambiguous
+LL |     use m::S;
    |            ^ ambiguous name
    |
 note: `S` could refer to the struct imported here

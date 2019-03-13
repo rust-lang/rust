@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `Type`
 LL |     type Type;
    |     ---------- `Type` from trait
 ...
-LL | impl Trait for isize {}  //~ ERROR missing: `Type`
+LL | impl Trait for isize {}
    | ^^^^^^^^^^^^^^^^^^^^ missing `Type` in implementation
 
 error: aborting due to previous error

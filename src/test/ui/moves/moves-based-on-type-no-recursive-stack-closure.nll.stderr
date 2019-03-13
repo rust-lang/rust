@@ -16,7 +16,7 @@ LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
    |                consider adding a `Copy` constraint to this type argument
 LL |     let mut r = R {c: Box::new(f)};
    |                                - value moved here
-LL |     f(&mut r, false) //~ ERROR use of moved value
+LL |     f(&mut r, false)
    |     ^ value borrowed here after move
 
 error: aborting due to 2 previous errors

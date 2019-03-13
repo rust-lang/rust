@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `extern`
   --> $DIR/keyword-extern-as-identifier-pat.rs:2:9
    |
-LL |     let extern = 0; //~ ERROR expected pattern, found keyword `extern`
+LL |     let extern = 0;
    |         ^^^^^^ expected pattern
 
 error: aborting due to previous error

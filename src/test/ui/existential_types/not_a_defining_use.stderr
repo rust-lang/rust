@@ -2,7 +2,7 @@ error: defining existential type use does not fully define existential type
   --> $DIR/not_a_defining_use.rs:9:1
    |
 LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
-LL | |     //~^ ERROR defining existential type use does not fully define existential type
+LL | |
 LL | |     (t, 4i8)
 LL | | }
    | |_^
@@ -10,7 +10,7 @@ LL | | }
 error: concrete type differs from previous defining existential type use
   --> $DIR/not_a_defining_use.rs:30:1
    |
-LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> { //~ concrete type differs from previous
+LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
 LL | |     (t, <U as Bar>::FOO)
 LL | | }
    | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`

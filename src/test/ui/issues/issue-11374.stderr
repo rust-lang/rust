@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-11374.rs:26:15
    |
-LL |     c.read_to(v); //~ ERROR E0308
+LL |     c.read_to(v);
    |               ^
    |               |
    |               expected &mut [u8], found struct `std::vec::Vec`

@@ -1,7 +1,7 @@
 error: `[TypeAlias::hoge]` cannot be resolved, ignoring it...
   --> $DIR/intra-doc-alias-ice.rs:5:30
    |
-LL | /// [broken cross-reference](TypeAlias::hoge) //~ ERROR
+LL | /// [broken cross-reference](TypeAlias::hoge)
    |                              ^^^^^^^^^^^^^^^ cannot be resolved, ignoring
    |
 note: lint level defined here
@@ -10,4 +10,6 @@ note: lint level defined here
 LL | #![deny(intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+
+error: aborting due to previous error
 

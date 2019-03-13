@@ -1,0 +1,11 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/variadic-ffi-6.rs:7:6
+   |
+LL | ) -> &usize {
+   |      ^ help: consider giving it an explicit bounded or 'static lifetime: `&'static`
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

@@ -1,7 +1,7 @@
 error[E0277]: can't compare `&T` with `T`
   --> $DIR/partialeq_help.rs:2:7
    |
-LL |     a == b; //~ ERROR E0277
+LL |     a == b;
    |       ^^ no implementation for `&T == T`
    |
    = help: the trait `std::cmp::PartialEq<T>` is not implemented for `&T`

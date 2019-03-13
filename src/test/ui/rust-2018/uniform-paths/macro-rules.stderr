@@ -1,19 +1,19 @@
 error[E0364]: `legacy_macro` is private, and cannot be re-exported
   --> $DIR/macro-rules.rs:11:13
    |
-LL |     pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+LL |     pub use legacy_macro as _;
    |             ^^^^^^^^^^^^^^^^^
    |
 note: consider marking `legacy_macro` as `pub` in the imported module
   --> $DIR/macro-rules.rs:11:13
    |
-LL |     pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+LL |     pub use legacy_macro as _;
    |             ^^^^^^^^^^^^^^^^^
 
 error[E0659]: `legacy_macro` is ambiguous (name vs any other name during import resolution)
   --> $DIR/macro-rules.rs:31:13
    |
-LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+LL |         use legacy_macro as _;
    |             ^^^^^^^^^^^^ ambiguous name
    |
 note: `legacy_macro` could refer to the macro defined here

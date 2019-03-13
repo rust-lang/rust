@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/move-closure.rs:5:17
    |
-LL |     let x: () = move || (); //~ ERROR mismatched types
+LL |     let x: () = move || ();
    |                 ^^^^^^^^^^ expected (), found closure
    |
    = note: expected type `()`

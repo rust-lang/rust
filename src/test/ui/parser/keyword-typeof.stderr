@@ -1,7 +1,7 @@
 error: expected pattern, found reserved keyword `typeof`
   --> $DIR/keyword-typeof.rs:2:9
    |
-LL |     let typeof = (); //~ ERROR expected pattern, found reserved keyword `typeof`
+LL |     let typeof = ();
    |         ^^^^^^ expected pattern
 
 error: aborting due to previous error

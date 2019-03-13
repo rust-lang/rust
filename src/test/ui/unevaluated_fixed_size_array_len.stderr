@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `[(); 0]: Foo` is not satisfied
   --> $DIR/unevaluated_fixed_size_array_len.rs:12:5
    |
-LL |     <[(); 0] as Foo>::foo() //~ ERROR E0277
+LL |     <[(); 0] as Foo>::foo()
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[(); 0]`
    |
    = help: the following implementations were found:

@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/liveness-move-call-arg.rs:9:14
    |
-LL |         take(x); //~ ERROR use of moved value: `x`
+LL |         take(x);
    |              ^ value moved here in previous iteration of loop
    |
    = note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

@@ -11,7 +11,7 @@ use syntax_pos::Span;
 use crate::traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext,
              TraitEngine, Vtable};
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::fold::TypeFoldable;
 
 /// Attempts to resolve an obligation to a vtable. The result is
@@ -82,7 +82,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// types.
     pub fn subst_and_normalize_erasing_regions<T>(
         self,
-        param_substs: &Substs<'tcx>,
+        param_substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: &T
     ) -> T

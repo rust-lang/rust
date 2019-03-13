@@ -1,8 +1,8 @@
-use sync::atomic::{AtomicUsize, Ordering};
-use ptr;
-use mem;
-use cell::Cell;
-use num::NonZeroUsize;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::ptr;
+use crate::mem;
+use crate::cell::Cell;
+use crate::num::NonZeroUsize;
 use self::sync_bitset::*;
 
 #[cfg(target_pointer_width="64")]
@@ -152,9 +152,9 @@ impl Tls {
 }
 
 mod sync_bitset {
-    use sync::atomic::{AtomicUsize, Ordering};
-    use iter::{Enumerate, Peekable};
-    use slice::Iter;
+    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::iter::{Enumerate, Peekable};
+    use crate::slice::Iter;
     use super::{TLS_KEYS_BITSET_SIZE, USIZE_BITS};
 
     /// A bitset that can be used synchronously.

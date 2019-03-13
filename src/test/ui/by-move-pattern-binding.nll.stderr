@@ -4,7 +4,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     match &s.x {
    |           ^^^^ cannot move out of borrowed content
 LL |         &E::Foo => {}
-LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+LL |         &E::Bar(identifier) => f(identifier.clone())
    |         -------------------
    |         |       |
    |         |       data moved here
@@ -13,7 +13,7 @@ LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
 note: move occurs because `identifier` has type `std::string::String`, which does not implement the `Copy` trait
   --> $DIR/by-move-pattern-binding.rs:16:17
    |
-LL |         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+LL |         &E::Bar(identifier) => f(identifier.clone())
    |                 ^^^^^^^^^^
 
 error: aborting due to previous error

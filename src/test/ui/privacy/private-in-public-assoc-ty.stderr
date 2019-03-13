@@ -2,9 +2,9 @@ warning: private trait `m::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-assoc-ty.rs:15:5
    |
 LL | /     pub trait PubTr {
-LL | |         //~^ WARN private trait `m::PrivTr` in public interface
-LL | |         //~| WARN this was previously accepted
-LL | |         //~| WARN private type `m::Priv` in public interface
+LL | |
+LL | |
+LL | |
 ...  |
 LL | |         fn infer_exist() -> Self::Exist;
 LL | |     }
@@ -18,9 +18,9 @@ warning: private type `m::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-assoc-ty.rs:15:5
    |
 LL | /     pub trait PubTr {
-LL | |         //~^ WARN private trait `m::PrivTr` in public interface
-LL | |         //~| WARN this was previously accepted
-LL | |         //~| WARN private type `m::Priv` in public interface
+LL | |
+LL | |
+LL | |
 ...  |
 LL | |         fn infer_exist() -> Self::Exist;
 LL | |     }

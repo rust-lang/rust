@@ -1,7 +1,7 @@
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-17904-2.rs:4:12
    |
-LL | struct Foo<T> where T: Copy; //~ ERROR parameter `T` is never used
+LL | struct Foo<T> where T: Copy;
    |            ^ unused type parameter
    |
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`

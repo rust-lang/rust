@@ -1,7 +1,7 @@
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
    |
-LL |     0.clone::<'a>(); //~ ERROR use of undeclared lifetime name `'a`
+LL |     0.clone::<'a>();
    |               ^^ undeclared lifetime
 
 error: aborting due to previous error

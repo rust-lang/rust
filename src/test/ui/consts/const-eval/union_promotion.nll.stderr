@@ -1,7 +1,7 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/union_promotion.rs:9:29
    |
-LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
+LL |       let x: &'static bool = &unsafe {
    |  ____________-------------____^
    | |            |
    | |            type annotation requires that borrow lasts for `'static`

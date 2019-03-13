@@ -4,7 +4,7 @@ error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs co
 LL | / impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
 LL | | where
 LL | |     T: DispatchFromDyn<U>,
-LL | | {} //~^^^ ERROR [E0378]
+LL | | {}
    | |__^
    |
    = note: extra field `1` of type `i32` is not allowed
@@ -15,7 +15,7 @@ error[E0378]: implementing the `DispatchFromDyn` trait requires multiple coercio
 LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
 LL | | where
 LL | |     T: Unsize<U>,
-LL | | {} //~^^^ ERROR [E0378]
+LL | | {}
    | |__^
    |
    = note: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
@@ -33,7 +33,7 @@ error[E0378]: structs implementing `DispatchFromDyn` may not have `#[repr(packed
 LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
 LL | | where
 LL | |     T: Unsize<U>,
-LL | | {} //~^^^ ERROR [E0378]
+LL | | {}
    | |__^
 
 error: aborting due to 4 previous errors

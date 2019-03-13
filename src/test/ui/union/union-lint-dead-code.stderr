@@ -1,7 +1,7 @@
 error: field is never used: `b`
   --> $DIR/union-lint-dead-code.rs:5:5
    |
-LL |     b: bool, //~ ERROR: field is never used
+LL |     b: bool,
    |     ^^^^^^^
    |
 note: lint level defined here

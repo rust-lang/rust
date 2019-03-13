@@ -104,8 +104,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Upvar(..) => {
                 self.bccx.tcx.mk_region(ty::ReScope(self.item_scope))
             }
-            Categorization::Local(local_id) => {
-                let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
+            Categorization::Local(hir_id) => {
                 self.bccx.tcx.mk_region(ty::ReScope(
                     self.bccx.region_scope_tree.var_scope(hir_id.local_id)))
             }

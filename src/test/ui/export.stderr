@@ -25,7 +25,7 @@ LL |     fn z(y: isize) { log(debug, y); }
 error[E0603]: function `z` is private
   --> $DIR/export.rs:10:18
    |
-LL | fn main() { foo::z(10); } //~ ERROR function `z` is private
+LL | fn main() { foo::z(10); }
    |                  ^
 
 error: aborting due to 5 previous errors

@@ -6,7 +6,7 @@ LL |     for x in &mut xs {
    |                   ||
    |                   |first borrow ends here
    |                   first mutable borrow occurs here
-LL |         xs.push(1) //~ ERROR cannot borrow `xs`
+LL |         xs.push(1)
    |         ^^ second mutable borrow occurs here
 
 error: aborting due to previous error

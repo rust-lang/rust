@@ -1,7 +1,7 @@
 warning: literal out of range for i8
   --> $DIR/type-overflow.rs:5:17
    |
-LL |     let error = 255i8; //~WARNING literal out of range for i8
+LL |     let error = 255i8;
    |                 ^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![warn(overflowing_literals)]
 warning: literal out of range for i8
   --> $DIR/type-overflow.rs:10:16
    |
-LL |     let fail = 0b1000_0001i8; //~WARNING literal out of range for i8
+LL |     let fail = 0b1000_0001i8;
    |                ^^^^^^^^^^^^^ help: consider using `u8` instead: `0b1000_0001u8`
    |
    = note: the literal `0b1000_0001i8` (decimal `129`) does not fit into an `i8` and will become `-127i8`
@@ -21,7 +21,7 @@ LL |     let fail = 0b1000_0001i8; //~WARNING literal out of range for i8
 warning: literal out of range for i64
   --> $DIR/type-overflow.rs:12:16
    |
-LL |     let fail = 0x8000_0000_0000_0000i64; //~WARNING literal out of range for i64
+LL |     let fail = 0x8000_0000_0000_0000i64;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `u64` instead: `0x8000_0000_0000_0000u64`
    |
    = note: the literal `0x8000_0000_0000_0000i64` (decimal `9223372036854775808`) does not fit into an `i64` and will become `-9223372036854775808i64`
@@ -29,7 +29,7 @@ LL |     let fail = 0x8000_0000_0000_0000i64; //~WARNING literal out of range fo
 warning: literal out of range for u32
   --> $DIR/type-overflow.rs:14:16
    |
-LL |     let fail = 0x1_FFFF_FFFFu32; //~WARNING literal out of range for u32
+LL |     let fail = 0x1_FFFF_FFFFu32;
    |                ^^^^^^^^^^^^^^^^ help: consider using `u64` instead: `0x1_FFFF_FFFFu64`
    |
    = note: the literal `0x1_FFFF_FFFFu32` (decimal `8589934591`) does not fit into an `u32` and will become `4294967295u32`
@@ -46,7 +46,7 @@ LL |     let fail: i128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 warning: literal out of range for i32
   --> $DIR/type-overflow.rs:19:16
    |
-LL |     let fail = 0x8FFF_FFFF_FFFF_FFFE; //~WARNING literal out of range for i32
+LL |     let fail = 0x8FFF_FFFF_FFFF_FFFE;
    |                ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the literal `0x8FFF_FFFF_FFFF_FFFE` (decimal `10376293541461622782`) does not fit into an `i32` and will become `-2i32`
@@ -55,7 +55,7 @@ LL |     let fail = 0x8FFF_FFFF_FFFF_FFFE; //~WARNING literal out of range for i
 warning: literal out of range for i8
   --> $DIR/type-overflow.rs:21:17
    |
-LL |     let fail = -0b1111_1111i8; //~WARNING literal out of range for i8
+LL |     let fail = -0b1111_1111i8;
    |                 ^^^^^^^^^^^^^ help: consider using `i16` instead: `0b1111_1111i16`
    |
    = note: the literal `0b1111_1111i8` (decimal `255`) does not fit into an `i8` and will become `-1i8`

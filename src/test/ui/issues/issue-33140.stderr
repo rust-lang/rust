@@ -19,7 +19,7 @@ LL | impl Trait2 for dyn Sync + Send + Sync {
 error[E0592]: duplicate definitions with name `abc`
   --> $DIR/issue-33140.rs:29:5
    |
-LL | /     fn abc() -> bool { //~ ERROR duplicate definitions with name `abc`
+LL | /     fn abc() -> bool {
 LL | |         false
 LL | |     }
    | |_____^ duplicate definitions for `abc`

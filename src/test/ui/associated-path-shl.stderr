@@ -1,37 +1,37 @@
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-path-shl.rs:4:14
    |
-LL |     let _: <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     let _: <<A>::B>::C;
    |              ^ not found in this scope
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-path-shl.rs:5:15
    |
-LL |     let _ = <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     let _ = <<A>::B>::C;
    |               ^ not found in this scope
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-path-shl.rs:6:11
    |
-LL |     let <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     let <<A>::B>::C;
    |           ^ not found in this scope
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-path-shl.rs:7:17
    |
-LL |     let 0 ..= <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     let 0 ..= <<A>::B>::C;
    |                 ^ not found in this scope
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-path-shl.rs:9:7
    |
-LL |     <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     <<A>::B>::C;
    |       ^ not found in this scope
 
 error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/associated-path-shl.rs:7:15
    |
-LL |     let 0 ..= <<A>::B>::C; //~ ERROR cannot find type `A` in this scope
+LL |     let 0 ..= <<A>::B>::C;
    |               ^^^^^^^^^^^ ranges require char or numeric types
    |
    = note: start type: {integer}

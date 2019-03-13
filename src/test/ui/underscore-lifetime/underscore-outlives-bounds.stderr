@@ -1,7 +1,7 @@
 error[E0637]: `'_` cannot be used here
   --> $DIR/underscore-outlives-bounds.rs:7:10
    |
-LL | impl<'b: '_> Foo<'b> for i32 {} //~ ERROR `'_` cannot be used here
+LL | impl<'b: '_> Foo<'b> for i32 {}
    |          ^^ `'_` is a reserved lifetime name
 
 error: aborting due to previous error

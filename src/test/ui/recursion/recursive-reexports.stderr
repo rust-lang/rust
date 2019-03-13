@@ -1,7 +1,7 @@
 error[E0412]: cannot find type `S` in module `recursive_reexports`
   --> $DIR/recursive-reexports.rs:5:32
    |
-LL | fn f() -> recursive_reexports::S {} //~ ERROR cannot find type `S` in module `recursive_reexports`
+LL | fn f() -> recursive_reexports::S {}
    |                                ^ not found in `recursive_reexports`
 
 error: aborting due to previous error

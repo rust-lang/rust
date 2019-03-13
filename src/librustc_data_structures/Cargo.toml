@@ -12,13 +12,15 @@ crate-type = ["dylib"]
 [dependencies]
 ena = "0.11"
 log = "0.4"
+jobserver_crate = { version = "0.1", package = "jobserver" }
+lazy_static = "1"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"
-rayon = { version = "0.1.1", package = "rustc-rayon" }
-rayon-core = { version = "0.1.1", package = "rustc-rayon-core" }
+rayon = { version = "0.1.2", package = "rustc-rayon" }
+rayon-core = { version = "0.1.2", package = "rustc-rayon-core" }
 rustc-hash = "1.0.1"
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 

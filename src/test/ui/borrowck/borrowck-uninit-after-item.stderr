@@ -1,7 +1,7 @@
 error[E0381]: use of possibly uninitialized variable: `bar`
   --> $DIR/borrowck-uninit-after-item.rs:4:9
    |
-LL |     baz(bar); //~ ERROR use of possibly uninitialized variable: `bar`
+LL |     baz(bar);
    |         ^^^ use of possibly uninitialized `bar`
 
 error: aborting due to previous error

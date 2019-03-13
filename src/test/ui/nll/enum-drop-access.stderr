@@ -4,7 +4,7 @@ error[E0713]: borrow may still be in use when destructor runs
 LL | fn drop_enum(opt: DropOption<&mut i32>) -> Option<&mut i32> {
    |                              - let's call the lifetime of this reference `'1`
 LL |     match opt {
-LL |         DropOption::Some(&mut ref mut r) => { //~ ERROR
+LL |         DropOption::Some(&mut ref mut r) => {
    |                               ^^^^^^^^^
 LL |             Some(r)
    |             ------- returning this value requires that `*opt.0` is borrowed for `'1`
@@ -18,7 +18,7 @@ error[E0713]: borrow may still be in use when destructor runs
 LL | fn optional_drop_enum(opt: Option<DropOption<&mut i32>>) -> Option<&mut i32> {
    |                                              - let's call the lifetime of this reference `'1`
 LL |     match opt {
-LL |         Some(DropOption::Some(&mut ref mut r)) => { //~ ERROR
+LL |         Some(DropOption::Some(&mut ref mut r)) => {
    |                                    ^^^^^^^^^
 LL |             Some(r)
    |             ------- returning this value requires that `*opt.0.0` is borrowed for `'1`

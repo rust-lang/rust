@@ -3,7 +3,7 @@ error[E0621]: explicit lifetime required in the type of `y`
    |
 LL | fn foo<'a>(x: &mut Vec<Ref<'a, i32>>, y: Ref<i32>) {
    |                                          -------- help: add explicit lifetime `'a` to the type of `y`: `Ref<'a, i32>`
-LL |     x.push(y); //~ ERROR explicit lifetime
+LL |     x.push(y);
    |            ^ lifetime `'a` required
 
 error: aborting due to previous error

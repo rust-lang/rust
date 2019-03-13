@@ -1,7 +1,7 @@
 error[E0597]: `*p` does not live long enough
   --> $DIR/regions-infer-borrow-scope-too-big.rs:11:23
    |
-LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
+LL |     let xc = x_coord(&*p);
    |                       ^^ borrowed value does not live long enough
 ...
 LL | }

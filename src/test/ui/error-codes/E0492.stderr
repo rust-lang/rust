@@ -1,7 +1,7 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
   --> $DIR/E0492.rs:4:34
    |
-LL | static B: &'static AtomicUsize = &A; //~ ERROR E0492
+LL | static B: &'static AtomicUsize = &A;
    |                                  ^^
 
 error: aborting due to previous error

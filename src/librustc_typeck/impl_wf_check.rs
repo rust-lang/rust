@@ -79,7 +79,7 @@ struct ImplWfCheck<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.node {
-            let impl_def_id = self.tcx.hir().local_def_id(item.id);
+            let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx,
                                                 impl_def_id,
                                                 impl_item_refs);
@@ -108,7 +108,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
-        .map(|item_ref| tcx.hir().local_def_id(item_ref.id.node_id))
+        .map(|item_ref| tcx.hir().local_def_id_from_hir_id(item_ref.id.hir_id))
         .filter(|&def_id| {
             let item = tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
@@ -120,7 +120,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for param in &impl_generics.params {
         match param.kind {
             // Disallow ANY unconstrained type parameters.
-            ty::GenericParamDefKind::Type {..} => {
+            ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
                     report_unused_parameter(tcx,
@@ -137,6 +137,15 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             tcx.def_span(param.def_id),
                                             "lifetime",
                                             &param.name.to_string());
+                }
+            }
+            ty::GenericParamDefKind::Const => {
+                let param_ct = ty::ParamConst::for_def(param);
+                if !input_parameters.contains(&ctp::Parameter::from(param_ct)) {
+                    report_unused_parameter(tcx,
+                                           tcx.def_span(param.def_id),
+                                           "const",
+                                           &param_ct.to_string());
                 }
             }
         }

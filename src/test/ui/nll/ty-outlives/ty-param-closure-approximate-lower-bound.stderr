@@ -45,7 +45,7 @@ note: No external requirements
    |
 LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
 LL | |     twice(cell, value, |a, b| invoke(a, b));
-LL | |     //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | | }
    | |_^
    |

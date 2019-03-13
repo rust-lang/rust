@@ -3,8 +3,8 @@ error[E0506]: cannot assign to `vec[..]` because it is borrowed
    |
 LL |         [box ref _a, _, _] => {
    |              ------ borrow of `vec[..]` occurs here
-LL |         //~^ borrow of `vec[..]` occurs here
-LL |             vec[0] = box 4; //~ ERROR cannot assign
+LL |
+LL |             vec[0] = box 4;
    |             ^^^^^^^^^^^^^^ assignment to borrowed `vec[..]` occurs here
 
 error[E0506]: cannot assign to `vec[..]` because it is borrowed
@@ -12,19 +12,19 @@ error[E0506]: cannot assign to `vec[..]` because it is borrowed
    |
 LL |         &mut [ref _b..] => {
    |               ------ borrow of `vec[..]` occurs here
-LL |         //~^ borrow of `vec[..]` occurs here
-LL |             vec[0] = box 4; //~ ERROR cannot assign
+LL |
+LL |             vec[0] = box 4;
    |             ^^^^^^^^^^^^^^ assignment to borrowed `vec[..]` occurs here
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:34:14
    |
-LL |           &mut [_a, //~ ERROR cannot move out
+LL |           &mut [_a,
    |                ^-- hint: to prevent move, use `ref _a` or `ref mut _a`
    |  ______________|
    | |
-LL | |             //~| cannot move out
-LL | |             //~| to prevent move
+LL | |
+LL | |
 LL | |             ..
 LL | |         ] => {
    | |_________^ cannot move out of here
@@ -32,7 +32,7 @@ LL | |         ] => {
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:47:13
    |
-LL |     let a = vec[0]; //~ ERROR cannot move out
+LL |     let a = vec[0];
    |             ^^^^^^
    |             |
    |             cannot move out of here
@@ -41,9 +41,9 @@ LL |     let a = vec[0]; //~ ERROR cannot move out
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:55:14
    |
-LL |           &mut [ //~ ERROR cannot move out
+LL |           &mut [
    |  ______________^
-LL | |         //~^ cannot move out
+LL | |
 LL | |          _b] => {}
    | |__________--^ cannot move out of here
    |            |
@@ -52,7 +52,7 @@ LL | |          _b] => {}
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:60:13
    |
-LL |     let a = vec[0]; //~ ERROR cannot move out
+LL |     let a = vec[0];
    |             ^^^^^^
    |             |
    |             cannot move out of here
@@ -61,7 +61,7 @@ LL |     let a = vec[0]; //~ ERROR cannot move out
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:68:14
    |
-LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+LL |         &mut [_a, _b, _c] => {}
    |              ^--^^--^^--^
    |              ||   |   |
    |              ||   |   ...and here (use `ref _c` or `ref mut _c`)
@@ -72,7 +72,7 @@ LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:72:13
    |
-LL |     let a = vec[0]; //~ ERROR cannot move out
+LL |     let a = vec[0];
    |             ^^^^^^
    |             |
    |             cannot move out of here

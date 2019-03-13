@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/match-ref-ice.rs:13:9
    |
-LL |         [1, 2, 3] => (), //~ ERROR unreachable pattern
+LL |         [1, 2, 3] => (),
    |         ^^^^^^^^^
    |
 note: lint level defined here

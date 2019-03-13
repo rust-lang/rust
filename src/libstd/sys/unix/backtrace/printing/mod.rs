@@ -1,8 +1,8 @@
 mod dladdr;
 
-use sys::backtrace::BacktraceContext;
-use sys_common::backtrace::Frame;
-use io;
+use crate::sys::backtrace::BacktraceContext;
+use crate::sys_common::backtrace::Frame;
+use crate::io;
 
 #[cfg(target_os = "emscripten")]
 pub use self::dladdr::resolve_symname;
@@ -16,14 +16,14 @@ where
 }
 
 #[cfg(not(target_os = "emscripten"))]
-pub use sys_common::gnu::libbacktrace::foreach_symbol_fileline;
+pub use crate::sys_common::gnu::libbacktrace::foreach_symbol_fileline;
 
 #[cfg(not(target_os = "emscripten"))]
 pub fn resolve_symname<F>(frame: Frame, callback: F, bc: &BacktraceContext) -> io::Result<()>
 where
     F: FnOnce(Option<&str>) -> io::Result<()>
 {
-    ::sys_common::gnu::libbacktrace::resolve_symname(frame, |symname| {
+    crate::sys_common::gnu::libbacktrace::resolve_symname(frame, |symname| {
         if symname.is_some() {
             callback(symname)
         } else {

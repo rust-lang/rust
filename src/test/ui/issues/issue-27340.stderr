@@ -3,7 +3,7 @@ error[E0204]: the trait `Copy` may not be implemented for this type
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
-LL | //~^ ERROR the trait `Copy` may not be implemented for this type
+LL |
 LL | struct Bar(Foo);
    |            --- this field does not implement `Copy`
 

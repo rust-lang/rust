@@ -23,10 +23,10 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
+extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
@@ -90,11 +90,11 @@ pub fn main() {
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
-        syntax::with_globals(move || {
+        rustc_interface::interface::default_thread_pool(move || {
             get_args().map(|args| main_args(&args)).unwrap_or(1)
         })
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
-    process::exit(res as i32);
+    process::exit(res);
 }
 
 fn get_args() -> Option<Vec<String>> {
@@ -347,6 +347,11 @@ fn opts() -> Vec<RustcOptGroup> {
                       "generate-redirect-pages",
                       "Generate extra pages to support legacy URLs and tool links")
         }),
+        unstable("show-coverage", |o| {
+            o.optflag("",
+                      "show-coverage",
+                      "calculate percentage of public items with documentation")
+        }),
     ]
 }
 
@@ -358,7 +363,7 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
-fn main_args(args: &[String]) -> isize {
+fn main_args(args: &[String]) -> i32 {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
@@ -391,7 +396,14 @@ fn main_args(args: &[String]) -> isize {
     let diag_opts = (options.error_format,
                      options.debugging_options.treat_err_as_bug,
                      options.debugging_options.ui_testing);
+    let show_coverage = options.show_coverage;
     rust_input(options, move |out| {
+        if show_coverage {
+            // if we ran coverage, bail early, we don't need to also generate docs at this point
+            // (also we didn't load in any of the useful passes)
+            return rustc_driver::EXIT_SUCCESS;
+        }
+
         let Output { krate, passes, renderinfo, renderopts } = out;
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
@@ -428,7 +440,7 @@ where R: 'static + Send,
 
     let (tx, rx) = channel();
 
-    let result = rustc_driver::monitor(move || syntax::with_globals(move || {
+    let result = rustc_driver::report_ices_to_stderr_if_any(move || syntax::with_globals(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
         let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
@@ -440,28 +452,6 @@ where R: 'static + Send,
         }
 
         krate.version = crate_version;
-
-        info!("Executing passes");
-
-        for pass in &passes {
-            // determine if we know about this pass
-            let pass = match passes::find_pass(pass) {
-                Some(pass) => if let Some(pass) = pass.late_fn() {
-                    pass
-                } else {
-                    // not a late pass, but still valid so don't report the error
-                    continue
-                }
-                None => {
-                    error!("unknown pass {}, skipping", *pass);
-
-                    continue
-                },
-            };
-
-            // run it
-            krate = pass(krate);
-        }
 
         tx.send(f(Output {
             krate: krate,

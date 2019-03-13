@@ -1,7 +1,7 @@
 warning: unused variable: `a`
   --> $DIR/attributes-included.rs:17:9
    |
-LL |     let a: i32 = "foo"; //~ WARN: unused variable
+LL |     let a: i32 = "foo";
    |         ^ help: consider prefixing with an underscore: `_a`
    |
 note: lint level defined here

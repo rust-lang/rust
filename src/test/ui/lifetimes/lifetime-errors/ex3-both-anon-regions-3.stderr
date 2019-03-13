@@ -3,7 +3,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                     ---                 --- these two types are declared with different lifetimes...
-LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+LL |     z.push((x,y));
    |             ^ ...but data flows into `z` here
 
 error[E0623]: lifetime mismatch
@@ -11,7 +11,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
    |                         ---                  --- these two types are declared with different lifetimes...
-LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+LL |     z.push((x,y));
    |               ^ ...but data flows into `z` here
 
 error: aborting due to 2 previous errors

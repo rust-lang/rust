@@ -1,7 +1,7 @@
 error: defining existential type use does not fully define existential type
   --> $DIR/bound_reduction2.rs:17:1
    |
-LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> { //~ ERROR does not fully define
+LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
 LL | |     ()
 LL | | }
    | |_^

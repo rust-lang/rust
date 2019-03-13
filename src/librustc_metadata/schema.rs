@@ -187,6 +187,7 @@ pub struct CrateRoot {
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub proc_macro_decls_static: Option<DefIndex>,
+    pub proc_macro_stability: Option<attr::Stability>,
 
     pub crate_deps: LazySeq<CrateDep>,
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,

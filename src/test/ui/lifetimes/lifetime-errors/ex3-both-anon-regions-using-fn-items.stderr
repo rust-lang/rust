@@ -3,7 +3,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                               ---      --- these two types are declared with different lifetimes...
-LL |   y.push(z); //~ ERROR lifetime mismatch
+LL |   y.push(z);
    |          ^ ...but data from `z` flows into `y` here
 
 error: aborting due to previous error

@@ -14,10 +14,10 @@
 
 #[doc(inline)]
 #[stable(feature = "pthread_t", since = "1.8.0")]
-pub use sys::platform::raw::pthread_t;
+pub use crate::sys::platform::raw::pthread_t;
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use sys::platform::raw::{dev_t, ino_t, mode_t, nlink_t, off_t, blksize_t};
+pub use crate::sys::platform::raw::{dev_t, ino_t, mode_t, nlink_t, off_t, blksize_t};
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use sys::platform::raw::{blkcnt_t, time_t};
+pub use crate::sys::platform::raw::{blkcnt_t, time_t};

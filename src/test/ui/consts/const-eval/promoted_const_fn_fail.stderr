@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promoted_const_fn_fail.rs:20:27
    |
-LL |     let x: &'static u8 = &(bar() + 1); //~ ERROR does not live long enough
+LL |     let x: &'static u8 = &(bar() + 1);
    |                           ^^^^^^^^^^^ temporary value does not live long enough
 ...
 LL | }

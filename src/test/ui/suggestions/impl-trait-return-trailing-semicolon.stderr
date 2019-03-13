@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:13
+   |
+LL | fn foo() -> impl Bar {
+   |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
+LL |     5;
+   |      - consider removing this semicolon
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

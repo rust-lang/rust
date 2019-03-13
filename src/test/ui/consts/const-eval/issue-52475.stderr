@@ -1,8 +1,8 @@
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/issue-52475.rs:6:9
    |
-LL | /         while n < 5 { //~ ERROR constant contains unimplemented expression type
-LL | |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
+LL | /         while n < 5 {
+LL | |             n = (n + 1) % 5;
 LL | |             x = &0; // Materialize a new AllocId
 LL | |         }
    | |_________^
@@ -12,7 +12,7 @@ warning: Constant evaluating a complex constant, this might take some time
    |
 LL |       let _ = [(); {
    |  __________________^
-LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |
 LL | |         let mut x = &0;
 LL | |         let mut n = 0;
 ...  |
@@ -23,7 +23,7 @@ LL | |     }];
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-52475.rs:7:17
    |
-LL |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
+LL |             n = (n + 1) % 5;
    |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
 
 error: aborting due to 2 previous errors

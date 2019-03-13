@@ -4,18 +4,21 @@ use crate::hir::def::Def;
 use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
 use crate::hir::{self, Node};
+use crate::mir::interpret::{sign_extend, truncate};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use crate::ty::subst::{Subst, Substs, UnpackedKind};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
+use crate::mir::interpret::ConstValue;
 use crate::util::common::ErrorReported;
 use crate::middle::lang_items;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_macros::HashStable;
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -32,12 +35,12 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.ty.sty {
             ty::Int(ity) => {
-                let bits = ty::tls::with(|tcx| {
-                    Integer::from_attr(&tcx, SignedInt(ity)).size().bits()
+                let size = ty::tls::with(|tcx| {
+                    Integer::from_attr(&tcx, SignedInt(ity)).size()
                 });
-                let x = self.val as i128;
+                let x = self.val;
                 // sign extend the raw representation to be an i128
-                let x = (x << (128 - bits)) >> (128 - bits);
+                let x = sign_extend(x, size) as i128;
                 write!(fmt, "{}", x)
             },
             _ => write!(fmt, "{}", self.val),
@@ -57,12 +60,12 @@ impl<'tcx> Discr<'tcx> {
             _ => bug!("non integer discriminant"),
         };
 
+        let size = int.size();
         let bit_size = int.size().bits();
         let shift = 128 - bit_size;
         if signed {
             let sext = |u| {
-                let i = u as i128;
-                (i << shift) >> shift
+                sign_extend(u, size) as i128
             };
             let min = sext(1_u128 << (bit_size - 1));
             let max = i128::max_value() >> shift;
@@ -77,7 +80,7 @@ impl<'tcx> Discr<'tcx> {
             };
             // zero the upper bits
             let val = val as u128;
-            let val = (val << shift) >> shift;
+            let val = truncate(val, size);
             (Self {
                 val: val as u128,
                 ty: self.ty,
@@ -494,8 +497,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
-                    UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
-                        // not a type or region param - this should be reported
+                    UnpackedKind::Const(&ty::LazyConst::Evaluated(ty::Const {
+                        val: ConstValue::Param(ref pc),
+                        ..
+                    })) => {
+                        !impl_generics.const_param(pc, self).pure_wrt_drop
+                    }
+                    UnpackedKind::Lifetime(_) |
+                    UnpackedKind::Type(_) |
+                    UnpackedKind::Const(_) => {
+                        // Not a type, const or region param: this should be reported
                         // as an error.
                         false
                     }
@@ -586,14 +597,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Some(ty::Binder::bind(env_ty))
     }
 
-    /// Given the `DefId` of some item that has no type parameters, make
+    /// Given the `DefId` of some item that has no type or const parameters, make
     /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self, item_def_id, |param, _| {
+    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
+        InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.types.re_erased.into(),
-                GenericParamDefKind::Type {..} => {
+                GenericParamDefKind::Type { .. } => {
                     bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+                }
+                GenericParamDefKind::Const { .. } => {
+                    bug!("empty_substs_for_def_id: {:?} has const parameters", item_def_id)
                 }
             }
         })
@@ -633,7 +647,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         use crate::ty::fold::TypeFolder;
 
@@ -652,7 +666,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fn expand_opaque_ty(
                 &mut self,
                 def_id: DefId,
-                substs: &'tcx Substs<'tcx>,
+                substs: SubstsRef<'tcx>,
             ) -> Option<Ty<'tcx>> {
                 if self.found_recursion {
                     None
@@ -992,7 +1006,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ))
 }
 
-#[derive(Clone)]
+#[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

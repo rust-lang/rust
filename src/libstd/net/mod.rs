@@ -28,7 +28,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use io::{self, Error, ErrorKind};
+use crate::io::{self, Error, ErrorKind};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};

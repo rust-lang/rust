@@ -51,8 +51,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         let tcx = self.tcx;
 
-        debug!("check_binop(expr.id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
-               expr.id,
+        debug!("check_binop(expr.hir_id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
+               expr.hir_id,
                expr,
                op,
                lhs_expr,
@@ -150,8 +150,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               is_assign: IsAssign)
                               -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)
     {
-        debug!("check_overloaded_binop(expr.id={}, op={:?}, is_assign={:?})",
-               expr.id,
+        debug!("check_overloaded_binop(expr.hir_id={}, op={:?}, is_assign={:?})",
+               expr.hir_id,
                op,
                is_assign);
 

@@ -58,9 +58,10 @@ macro_rules! newtype_index {
     // ---- public rules ----
 
     // Use default constants
-    ($v:vis struct $name:ident { .. }) => (
+    ($(#[$attrs:meta])* $v:vis struct $name:ident { .. }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
+            @attrs        [$(#[$attrs])*]
             @type         [$name]
             // shave off 256 indices at the end to allow space for packing these indices into enums
             @max          [0xFFFF_FF00]
@@ -69,9 +70,10 @@ macro_rules! newtype_index {
     );
 
     // Define any constants
-    ($v:vis struct $name:ident { $($tokens:tt)+ }) => (
+    ($(#[$attrs:meta])* $v:vis struct $name:ident { $($tokens:tt)+ }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
+            @attrs        [$(#[$attrs])*]
             @type         [$name]
             // shave off 256 indices at the end to allow space for packing these indices into enums
             @max          [0xFFFF_FF00]
@@ -84,10 +86,12 @@ macro_rules! newtype_index {
 
     // Base case, user-defined constants (if any) have already been defined
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
+        $(#[$attrs])*
         #[derive(Copy, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
@@ -282,13 +286,15 @@ macro_rules! newtype_index {
     );
 
     // Append comma to end of derives list if it's missing
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
         newtype_index!(
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -299,7 +305,8 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists. When encodable is custom, just use the derives list as-is.
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
@@ -307,6 +314,7 @@ macro_rules! newtype_index {
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
         newtype_index!(
+            @attrs        [$(#[$attrs])*]
             @derives      [$($derives,)+]
             @type         [$type]
             @max          [$max]
@@ -317,7 +325,8 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists. When encodable isn't custom, add serialization traits by default.
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
@@ -325,6 +334,7 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)+ RustcEncodable,]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -335,7 +345,8 @@ macro_rules! newtype_index {
 
     // The case where no derives are added, but encodable is overridden. Don't
     // derive serialization traits
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
@@ -343,6 +354,7 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      []
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -351,13 +363,15 @@ macro_rules! newtype_index {
     );
 
     // The case where no derives are added, add serialization derives by default
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [RustcEncodable,]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -384,6 +398,7 @@ macro_rules! newtype_index {
 
     // Rewrite final without comma to one that includes comma
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
@@ -391,6 +406,7 @@ macro_rules! newtype_index {
                    $name:ident = $constant:expr) => (
         newtype_index!(
             @derives      [$($derives,)*]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -400,6 +416,7 @@ macro_rules! newtype_index {
 
     // Rewrite final const without comma to one that includes comma
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$_max:expr]
      @vis          [$v:vis]
@@ -408,6 +425,7 @@ macro_rules! newtype_index {
                    const $name:ident = $constant:expr) => (
         newtype_index!(
             @derives      [$($derives,)*]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -417,6 +435,7 @@ macro_rules! newtype_index {
 
     // Replace existing default for max
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$_max:expr]
      @vis          [$v:vis]
@@ -425,6 +444,7 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)*]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -434,6 +454,7 @@ macro_rules! newtype_index {
 
     // Replace existing default for debug_format
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
@@ -442,6 +463,7 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)*]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -451,6 +473,7 @@ macro_rules! newtype_index {
 
     // Assign a user-defined constant
     (@derives      [$($derives:ident,)*]
+     @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
@@ -462,6 +485,7 @@ macro_rules! newtype_index {
         pub const $name: $type = $type::from_u32_const($constant);
         newtype_index!(
             @derives      [$($derives,)*]
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]

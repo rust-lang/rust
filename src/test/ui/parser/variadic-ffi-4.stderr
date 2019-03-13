@@ -1,4 +1,4 @@
-error: only foreign functions are allowed to be variadic
+error: only foreign functions are allowed to be C-variadic
   --> $DIR/variadic-ffi-4.rs:1:29
    |
 LL | extern "C" fn foo(x: isize, ...) {

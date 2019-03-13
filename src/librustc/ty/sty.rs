@@ -7,7 +7,8 @@ use crate::mir::interpret::{ConstValue, truncate};
 use crate::middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
-use crate::ty::subst::{Substs, Subst, Kind, UnpackedKind};
+use rustc_macros::HashStable;
+use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, Kind, UnpackedKind};
 use crate::ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::util::captures::Captures;
@@ -16,6 +17,7 @@ use crate::mir::interpret::{Scalar, Pointer};
 use smallvec::SmallVec;
 use std::iter;
 use std::cmp::Ordering;
+use std::marker::PhantomData;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
@@ -24,14 +26,15 @@ use serialize;
 use self::InferTy::*;
 use self::TyKind::*;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+         Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy)]
+         RustcEncodable, RustcDecodable, Copy, HashStable)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -40,7 +43,7 @@ pub struct FreeRegion {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy)]
+         RustcEncodable, RustcDecodable, Copy, HashStable)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -81,7 +84,8 @@ impl BoundRegion {
 
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `libsyntax/ast.rs` as well.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -101,11 +105,11 @@ pub enum TyKind<'tcx> {
 
     /// Structures, enumerations and unions.
     ///
-    /// Substs here, possibly against intuition, *may* contain `Param`s.
+    /// InternalSubsts here, possibly against intuition, *may* contain `Param`s.
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `Adt` corresponds to an ADT
     /// definition and not a concrete use of it.
-    Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
+    Adt(&'tcx AdtDef, SubstsRef<'tcx>),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
@@ -136,7 +140,7 @@ pub enum TyKind<'tcx> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(DefId, &'tcx Substs<'tcx>),
+    FnDef(DefId, SubstsRef<'tcx>),
 
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
@@ -184,7 +188,7 @@ pub enum TyKind<'tcx> {
     /// * or the `existential type` declaration
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
-    Opaque(DefId, &'tcx Substs<'tcx>),
+    Opaque(DefId, SubstsRef<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
@@ -302,14 +306,15 @@ static_assert!(MEM_SIZE_OF_TY_KIND: ::std::mem::size_of::<TyKind<'_>>() == 24);
 ///
 /// It'd be nice to split this struct into ClosureSubsts and
 /// GeneratorSubsts, I believe. -nmatsakis
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
     ///
     /// These are separated out because codegen wants to pass them around
     /// when monomorphizing.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 /// Struct returned by `split()`. Note that these are subslices of the
@@ -385,9 +390,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct GeneratorSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 struct SplitGeneratorSubsts<'tcx> {
@@ -518,7 +524,8 @@ impl<'tcx> UpvarSubsts<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum ExistentialPredicate<'tcx> {
     /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
@@ -669,14 +676,14 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T: for<'a> Foo<&'a U>`
 /// or higher-ranked object types.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>) -> TraitRef<'tcx> {
+    pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
         TraitRef { def_id: def_id, substs: substs }
     }
 
@@ -685,7 +692,7 @@ impl<'tcx> TraitRef<'tcx> {
     pub fn identity<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> TraitRef<'tcx> {
         TraitRef {
             def_id,
-            substs: Substs::identity_for_item(tcx, def_id),
+            substs: InternalSubsts::identity_for_item(tcx, def_id),
         }
     }
 
@@ -704,7 +711,7 @@ impl<'tcx> TraitRef<'tcx> {
 
     pub fn from_method(tcx: TyCtxt<'_, '_, 'tcx>,
                        trait_id: DefId,
-                       substs: &Substs<'tcx>)
+                       substs: SubstsRef<'tcx>)
                        -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
 
@@ -739,10 +746,11 @@ impl<'tcx> PolyTraitRef<'tcx> {
 ///
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
@@ -912,10 +920,11 @@ impl<T> Binder<T> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord,
+         Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// The `DefId` of the `TraitItem` for the associated type `N`.
     ///
@@ -957,7 +966,7 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -977,13 +986,14 @@ impl<'tcx> PolyGenSig<'tcx> {
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
-/// - `inputs` is the list of arguments and their modes.
-/// - `output` is the return type.
-/// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+/// - `inputs`: is the list of arguments and their modes.
+/// - `output`: is the return type.
+/// - `c_variadic`: indicates whether this is a C-variadic function.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord,
+         Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,
-    pub variadic: bool,
+    pub c_variadic: bool,
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
 }
@@ -1016,8 +1026,8 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
-    pub fn variadic(&self) -> bool {
-        self.skip_binder().variadic
+    pub fn c_variadic(&self) -> bool {
+        self.skip_binder().c_variadic
     }
     pub fn unsafety(&self) -> hir::Unsafety {
         self.skip_binder().unsafety
@@ -1030,7 +1040,8 @@ impl<'tcx> PolyFnSig<'tcx> {
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
 
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+         Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ParamTy {
     pub idx: u32,
     pub name: InternedString,
@@ -1061,46 +1072,67 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 }
 
-/// A [De Bruijn index][dbi] is a standard means of representing
-/// regions (and perhaps later types) in a higher-ranked setting. In
-/// particular, imagine a type like this:
-///
-///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-///     ^          ^            |        |         |
-///     |          |            |        |         |
-///     |          +------------+ 0      |         |
-///     |                                |         |
-///     +--------------------------------+ 1       |
-///     |                                          |
-///     +------------------------------------------+ 0
-///
-/// In this type, there are two binders (the outer fn and the inner
-/// fn). We need to be able to determine, for any given region, which
-/// fn type it is bound by, the inner or the outer one. There are
-/// various ways you can do this, but a De Bruijn index is one of the
-/// more convenient and has some nice properties. The basic idea is to
-/// count the number of binders, inside out. Some examples should help
-/// clarify what I mean.
-///
-/// Let's start with the reference type `&'b isize` that is the first
-/// argument to the inner function. This region `'b` is assigned a De
-/// Bruijn index of 0, meaning "the innermost binder" (in this case, a
-/// fn). The region `'a` that appears in the second argument type (`&'a
-/// isize`) would then be assigned a De Bruijn index of 1, meaning "the
-/// second-innermost binder". (These indices are written on the arrays
-/// in the diagram).
-///
-/// What is interesting is that De Bruijn index attached to a particular
-/// variable will vary depending on where it appears. For example,
-/// the final type `&'a char` also refers to the region `'a` declared on
-/// the outermost fn. But this time, this reference is not nested within
-/// any other binders (i.e., it is not an argument to the inner fn, but
-/// rather the outer one). Therefore, in this case, it is assigned a
-/// De Bruijn index of 0, because the innermost binder in that location
-/// is the outer fn.
-///
-/// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+#[derive(Copy, Clone, Hash, RustcEncodable, RustcDecodable,
+         Eq, PartialEq, Ord, PartialOrd, HashStable)]
+pub struct ParamConst {
+    pub index: u32,
+    pub name: InternedString,
+}
+
+impl<'a, 'gcx, 'tcx> ParamConst {
+    pub fn new(index: u32, name: InternedString) -> ParamConst {
+        ParamConst { index, name }
+    }
+
+    pub fn for_def(def: &ty::GenericParamDef) -> ParamConst {
+        ParamConst::new(def.index, def.name)
+    }
+
+    pub fn to_const(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx LazyConst<'tcx> {
+        tcx.mk_const_param(self.index, self.name, ty)
+    }
+}
+
 newtype_index! {
+    /// A [De Bruijn index][dbi] is a standard means of representing
+    /// regions (and perhaps later types) in a higher-ranked setting. In
+    /// particular, imagine a type like this:
+    ///
+    ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
+    ///     ^          ^            |        |         |
+    ///     |          |            |        |         |
+    ///     |          +------------+ 0      |         |
+    ///     |                                |         |
+    ///     +--------------------------------+ 1       |
+    ///     |                                          |
+    ///     +------------------------------------------+ 0
+    ///
+    /// In this type, there are two binders (the outer fn and the inner
+    /// fn). We need to be able to determine, for any given region, which
+    /// fn type it is bound by, the inner or the outer one. There are
+    /// various ways you can do this, but a De Bruijn index is one of the
+    /// more convenient and has some nice properties. The basic idea is to
+    /// count the number of binders, inside out. Some examples should help
+    /// clarify what I mean.
+    ///
+    /// Let's start with the reference type `&'b isize` that is the first
+    /// argument to the inner function. This region `'b` is assigned a De
+    /// Bruijn index of 0, meaning "the innermost binder" (in this case, a
+    /// fn). The region `'a` that appears in the second argument type (`&'a
+    /// isize`) would then be assigned a De Bruijn index of 1, meaning "the
+    /// second-innermost binder". (These indices are written on the arrays
+    /// in the diagram).
+    ///
+    /// What is interesting is that De Bruijn index attached to a particular
+    /// variable will vary depending on where it appears. For example,
+    /// the final type `&'a char` also refers to the region `'a` declared on
+    /// the outermost fn. But this time, this reference is not nested within
+    /// any other binders (i.e., it is not an argument to the inner fn, but
+    /// rather the outer one). Therefore, in this case, it is assigned a
+    /// De Bruijn index of 0, because the innermost binder in that location
+    /// is the outer fn.
+    ///
+    /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -1120,7 +1152,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// These are regions that are stored behind a binder and must be substituted
 /// with some concrete region before being used. There are two kind of
 /// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by a `Substs`, and late-bound, which are part of
+/// and are substituted by a `InternalSubsts`, and late-bound, which are part of
 /// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].
@@ -1230,6 +1262,12 @@ pub struct TyVid {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub struct ConstVid<'tcx> {
+    pub index: u32,
+    pub phantom: PhantomData<&'tcx ()>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct IntVid {
     pub index: u32,
 }
@@ -1251,7 +1289,8 @@ impl Atom for RegionVid {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+         Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -1294,10 +1333,11 @@ impl From<BoundVar> for BoundTy {
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+         Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
@@ -2056,11 +2096,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable,
+         Eq, PartialEq, Ord, PartialOrd, HashStable)]
 /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to `Evaluated` if the
 /// code is monomorphic enough for that.
 pub enum LazyConst<'tcx> {
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
+    Unevaluated(DefId, SubstsRef<'tcx>),
     Evaluated(Const<'tcx>),
 }
 
@@ -2083,10 +2124,27 @@ impl<'tcx> LazyConst<'tcx> {
     pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
         self.assert_usize(tcx).expect("expected `LazyConst` to contain a usize")
     }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        // FIXME(const_generics): incorporate substs flags.
+        let flags = match self {
+            LazyConst::Unevaluated(..) => {
+                TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION
+            }
+            LazyConst::Evaluated(c) => {
+                c.type_flags()
+            }
+        };
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
 }
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable,
+         Eq, PartialEq, Ord, PartialOrd, HashStable)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
@@ -2198,6 +2256,45 @@ impl<'tcx> Const<'tcx> {
         self.assert_usize(tcx).unwrap_or_else(||
             bug!("expected constant usize, got {:#?}", self))
     }
+
+    pub fn type_flags(&self) -> TypeFlags {
+        let mut flags = self.ty.flags;
+
+        match self.val {
+            ConstValue::Param(_) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_PARAMS;
+            }
+            ConstValue::Infer(infer) => {
+                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
+                flags |= TypeFlags::HAS_CT_INFER;
+                match infer {
+                    InferConst::Fresh(_) |
+                    InferConst::Canonical(_, _) => {}
+                    InferConst::Var(_) => {
+                        flags |= TypeFlags::KEEP_IN_LOCAL_TCX;
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        debug!("type_flags({:?}) = {:?}", self, flags);
+
+        flags
+    }
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}
+
+/// An inference variable for a const, for use in const generics.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,
+         Ord, RustcEncodable, RustcDecodable, Hash, HashStable)]
+pub enum InferConst<'tcx> {
+    /// Infer the value of the const.
+    Var(ConstVid<'tcx>),
+    /// A fresh const variable. See `infer::freshen` for more details.
+    Fresh(u32),
+    /// Canonicalized const variable, used only when preparing a trait query.
+    Canonical(DebruijnIndex, BoundVar),
+}

@@ -1,18 +1,18 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use intrinsics::unlikely;
-use collections::CollectionAllocErr;
-use cell::Cell;
-use borrow::Borrow;
-use cmp::max;
-use fmt::{self, Debug};
+use crate::intrinsics::unlikely;
+use crate::collections::CollectionAllocErr;
+use crate::cell::Cell;
+use crate::borrow::Borrow;
+use crate::cmp::max;
+use crate::fmt::{self, Debug};
 #[allow(deprecated)]
-use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use iter::{FromIterator, FusedIterator};
-use mem::{self, replace};
-use ops::{Deref, DerefMut, Index};
-use sys;
+use crate::hash::{Hash, Hasher, BuildHasher, SipHasher13};
+use crate::iter::{FromIterator, FusedIterator};
+use crate::mem::{self, replace};
+use crate::ops::{Deref, DerefMut, Index};
+use crate::sys;
 
 use super::table::{self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable,
                    SafeHash};
@@ -2341,6 +2341,11 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Send, V: 'a + Send> Send for OccupiedEntry<'a, K, V> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for OccupiedEntry<'a, K, V> {}
+
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2361,6 +2366,11 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Send, V: 'a + Send> Send for VacantEntry<'a, K, V> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K: 'a + Sync, V: 'a + Sync> Sync for VacantEntry<'a, K, V> {}
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
@@ -3328,7 +3338,7 @@ mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use super::RandomState;
-    use cell::RefCell;
+    use crate::cell::RefCell;
     use rand::{thread_rng, Rng};
     use realstd::collections::CollectionAllocErr::*;
     use realstd::mem::size_of;

@@ -4,7 +4,7 @@ error[E0597]: `x` does not live long enough
 LL |     let _f = {
    |         -- borrow later stored here
 LL |         let x = 0;
-LL |         || x //~ ERROR `x` does not live long enough
+LL |         || x
    |         -- ^ borrowed value does not live long enough
    |         |
    |         value captured here

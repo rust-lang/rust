@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     *lock.lock().unwrap() = &*y;
    |                             --- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         *lock.lock().unwrap() = &z;
@@ -16,7 +16,7 @@ LL |         *lock.lock().unwrap() = &z;
    |                                 ^^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-LL |     //~^^ ERROR `z` does not live long enough
+LL |
 LL |     lock.use_ref(); // (Mutex is #[may_dangle] so its dtor does not use `z` => needs explicit use)
    |     ---- borrow later used here
 
@@ -25,7 +25,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     *lock.write().unwrap() = &*y;
    |                              --- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         *lock.write().unwrap() = &z;
@@ -38,7 +38,7 @@ LL |         *lock.write().unwrap() = &z;
    |                                  ^^ borrowed value does not live long enough
 LL |     }
    |     - `z` dropped here while still borrowed
-LL |     //~^^ ERROR `z` does not live long enough
+LL |
 LL |     lock.use_ref(); // (RwLock is #[may_dangle] so its dtor does not use `z` => needs explicit use)
    |     ---- borrow later used here
 
@@ -47,7 +47,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
    |
 LL |     tx.send(&*y);
    |             --- borrow of `*y` occurs here
-LL |     drop(y); //~ ERROR cannot move out
+LL |     drop(y);
    |          ^ move out of `y` occurs here
 ...
 LL |         tx.send(&z).unwrap();

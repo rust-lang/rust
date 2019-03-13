@@ -1,6 +1,6 @@
-use io;
-use sys::{cvt, syscall};
-use sys::fd::FileDesc;
+use crate::io;
+use crate::sys::{cvt, syscall};
+use crate::sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes

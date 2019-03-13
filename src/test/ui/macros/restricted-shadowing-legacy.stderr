@@ -1,7 +1,7 @@
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:101:13
    |
-LL |             m!(); //~ ERROR `m` is ambiguous
+LL |             m!();
    |             ^ ambiguous name
 ...
 LL | include!();
@@ -27,7 +27,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:139:42
    |
-LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+LL |         macro_rules! gen_invoc { () => { m!() } }
    |                                          ^ ambiguous name
 ...
 LL | include!();
@@ -53,7 +53,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:148:9
    |
-LL |         m!(); //~ ERROR `m` is ambiguous
+LL |         m!();
    |         ^ ambiguous name
 ...
 LL | include!();
@@ -79,7 +79,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:164:9
    |
-LL |         m!(); //~ ERROR `m` is ambiguous
+LL |         m!();
    |         ^ ambiguous name
 ...
 LL | include!();
@@ -105,7 +105,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:180:13
    |
-LL |             m!(); //~ ERROR `m` is ambiguous
+LL |             m!();
    |             ^ ambiguous name
 ...
 LL | include!();
@@ -131,7 +131,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:218:42
    |
-LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+LL |         macro_rules! gen_invoc { () => { m!() } }
    |                                          ^ ambiguous name
 ...
 LL | include!();
@@ -157,7 +157,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:232:9
    |
-LL |         m!(); //~ ERROR `m` is ambiguous
+LL |         m!();
    |         ^ ambiguous name
 ...
 LL | include!();
@@ -183,7 +183,7 @@ LL | include!();
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/restricted-shadowing-legacy.rs:262:42
    |
-LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
+LL |         macro_rules! gen_invoc { () => { m!() } }
    |                                          ^ ambiguous name
 ...
 LL | include!();

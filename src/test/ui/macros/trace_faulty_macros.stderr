@@ -4,7 +4,7 @@ error: no rules expected the token `bcd`
 LL | macro_rules! my_faulty_macro {
    | ---------------------------- when calling this macro
 LL |     () => {
-LL |         my_faulty_macro!(bcd); //~ ERROR no rules
+LL |         my_faulty_macro!(bcd);
    |                          ^^^ no rules expected this token in macro call
 ...
 LL |     my_faulty_macro!();
@@ -23,7 +23,7 @@ LL |     my_faulty_macro!();
 error: recursion limit reached while expanding the macro `my_recursive_macro`
   --> $DIR/trace_faulty_macros.rs:22:9
    |
-LL |         my_recursive_macro!(); //~ ERROR recursion limit
+LL |         my_recursive_macro!();
    |         ^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     my_recursive_macro!();

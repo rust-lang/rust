@@ -1,7 +1,7 @@
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:10:9
    |
-LL |         5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         5.0 => {},
    |         ^^^
    |
 note: lint level defined here
@@ -15,7 +15,7 @@ LL | #![forbid(illegal_floating_point_literal_pattern)]
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:12:9
    |
-LL |         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         5.0f32 => {},
    |         ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -24,7 +24,7 @@ LL |         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patt
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:14:10
    |
-LL |         -5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         -5.0 => {},
    |          ^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -33,7 +33,7 @@ LL |         -5.0 => {}, //~ ERROR floating-point types cannot be used in patter
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:16:9
    |
-LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         1.0 .. 33.0 => {},
    |         ^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -42,7 +42,7 @@ LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:16:16
    |
-LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         1.0 .. 33.0 => {},
    |                ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -51,7 +51,7 @@ LL |         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:20:9
    |
-LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         39.0 ..= 70.0 => {},
    |         ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -60,7 +60,7 @@ LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used 
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:20:18
    |
-LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+LL |         39.0 ..= 70.0 => {},
    |                  ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -69,7 +69,7 @@ LL |         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used 
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:29:10
    |
-LL |         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
+LL |         (3.14, 1) => {},
    |          ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -78,7 +78,7 @@ LL |         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-41255.rs:36:18
    |
-LL |         Foo { x: 2.0 } => {}, //~ ERROR floating-point types cannot be used
+LL |         Foo { x: 2.0 } => {},
    |                  ^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

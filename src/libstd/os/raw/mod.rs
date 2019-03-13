@@ -86,9 +86,8 @@ pub use core::ffi::c_void;
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-    use any::TypeId;
-    use libc;
-    use mem;
+    use crate::any::TypeId;
+    use crate::mem;
 
     macro_rules! ok {
         ($($t:ident)*) => {$(
@@ -99,7 +98,7 @@ mod tests {
 
     #[test]
     fn same() {
-        use os::raw;
+        use crate::os::raw;
         ok!(c_char c_schar c_uchar c_short c_ushort c_int c_uint c_long c_ulong
             c_longlong c_ulonglong c_float c_double);
     }

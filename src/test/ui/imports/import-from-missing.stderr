@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `spam::eggs`
   --> $DIR/import-from-missing.rs:1:17
    |
-LL | use spam::{ham, eggs}; //~ ERROR unresolved import `spam::eggs` [E0432]
+LL | use spam::{ham, eggs};
    |                 ^^^^ no `eggs` in `spam`
 
 error: aborting due to previous error

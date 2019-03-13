@@ -3,13 +3,13 @@ error[E0252]: the name `foo` is defined multiple times
    |
 LL | use sub1::foo;
    |     --------- previous import of the value `foo` here
-LL | use sub2::foo; //~ ERROR the name `foo` is defined multiple times
+LL | use sub2::foo;
    |     ^^^^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use sub2::foo as other_foo; //~ ERROR the name `foo` is defined multiple times
+LL | use sub2::foo as other_foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

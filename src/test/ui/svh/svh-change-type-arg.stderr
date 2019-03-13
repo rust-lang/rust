@@ -1,7 +1,7 @@
 error[E0460]: found possibly newer version of crate `a` which `b` depends on
   --> $DIR/svh-change-type-arg.rs:10:1
    |
-LL | extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
+LL | extern crate b;
    | ^^^^^^^^^^^^^^^
    |
    = note: perhaps that crate needs to be recompiled?

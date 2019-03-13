@@ -66,6 +66,7 @@ macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             KeywordIdents: KeywordIdents,
+            UnusedDocComment: UnusedDocComment,
         ]);
     )
 }
@@ -77,7 +78,6 @@ macro_rules! early_lint_passes {
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
             AnonymousParameters: AnonymousParameters,
-            UnusedDocComment: UnusedDocComment,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns,
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),
@@ -351,6 +351,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(DUPLICATE_MATCHER_BINDING_NAME),
             reference: "issue #57593 <https://github.com/rust-lang/rust/issues/57593>",
+            edition: None,
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(NESTED_IMPL_TRAIT),
+            reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
             edition: None,
         },
         ]);

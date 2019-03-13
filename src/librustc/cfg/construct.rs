@@ -398,7 +398,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        let m = self.tcx.hir().get_module_parent(call_expr.id);
+        let m = self.tcx.hir().get_module_parent_by_hir_id(call_expr.hir_id);
         if self.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(call_expr)) {
             self.add_unreachable_node()
         } else {
@@ -571,9 +571,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match destination.target_id {
             Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
-                    if b.block_expr_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
+                    if b.block_expr_id == loop_id.local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
+                            id: loop_id.local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {
@@ -583,9 +583,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     }
                 }
                 for l in &self.loop_scopes {
-                    if l.loop_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
+                    if l.loop_id == loop_id.local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
+                            id: loop_id.local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {

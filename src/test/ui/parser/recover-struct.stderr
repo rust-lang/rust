@@ -3,7 +3,7 @@ error: expected `:`, found `Bad`
    |
 LL |         Very
    |             - expected `:`
-LL |         Bad //~ ERROR found `Bad`
+LL |         Bad
    |         ^^^ unexpected token
 
 error: aborting due to previous error

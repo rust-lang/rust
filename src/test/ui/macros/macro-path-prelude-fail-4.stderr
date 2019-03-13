@@ -1,7 +1,7 @@
 error: expected a macro, found built-in attribute
   --> $DIR/macro-path-prelude-fail-4.rs:1:10
    |
-LL | #[derive(inline)] //~ ERROR expected a macro, found built-in attribute
+LL | #[derive(inline)]
    |          ^^^^^^
 
 error: aborting due to previous error

@@ -1,15 +1,15 @@
 error: expected one of `.`, `?`, `{`, or an operator, found `;`
   --> $DIR/match-refactor-to-expr.rs:6:9
    |
-LL |         match //~ NOTE while parsing this match expression
+LL |         match
    |         -----
    |         |
    |         while parsing this match expression
    |         help: try removing this `match`
 LL |         Some(4).unwrap_or_else(5)
    |                                  - expected one of `.`, `?`, `{`, or an operator here
-LL |         //~^ NOTE expected one of `.`, `?`, `{`, or an operator here
-LL |         ; //~ NOTE unexpected token
+LL |
+LL |         ;
    |         ^ unexpected token
 
 error: aborting due to previous error

@@ -3,7 +3,7 @@ error[E0201]: duplicate definitions with name `Ty`:
    |
 LL |     type Ty = ();
    |     ------------- previous definition of `Ty` here
-LL |     type Ty = usize; //~ ERROR duplicate definitions
+LL |     type Ty = usize;
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `BAR`:
@@ -11,7 +11,7 @@ error[E0201]: duplicate definitions with name `BAR`:
    |
 LL |     const BAR: u32 = 7;
    |     ------------------- previous definition of `BAR` here
-LL |     const BAR: u32 = 8; //~ ERROR duplicate definitions
+LL |     const BAR: u32 = 8;
    |     ^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error: aborting due to 2 previous errors

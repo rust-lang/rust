@@ -4,7 +4,7 @@ warning: irrefutable if-let pattern
 LL |               if let $p = $e $b
    |               ^^
 ...
-LL | /     foo!(a, 1, { //~ WARN irrefutable if-let
+LL | /     foo!(a, 1, {
 LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
@@ -17,7 +17,7 @@ warning: irrefutable if-let pattern
 LL |               if let $p = $e $b
    |               ^^
 ...
-LL | /     bar!(a, 1, { //~ WARN irrefutable if-let
+LL | /     bar!(a, 1, {
 LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
@@ -25,7 +25,7 @@ LL | |     });
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:24:5
    |
-LL | /     if let a = 1 { //~ WARN irrefutable if-let
+LL | /     if let a = 1 {
 LL | |         println!("irrefutable pattern");
 LL | |     }
    | |_____^
@@ -33,7 +33,7 @@ LL | |     }
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:28:5
    |
-LL | /     if let a = 1 { //~ WARN irrefutable if-let
+LL | /     if let a = 1 {
 LL | |         println!("irrefutable pattern");
 LL | |     } else if true {
 LL | |         println!("else-if in irrefutable if-let");
@@ -45,7 +45,7 @@ LL | |     }
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:38:12
    |
-LL |       } else if let a = 1 { //~ WARN irrefutable if-let
+LL |       } else if let a = 1 {
    |  ____________^
 LL | |         println!("irrefutable pattern");
 LL | |     }
@@ -54,7 +54,7 @@ LL | |     }
 warning: irrefutable if-let pattern
   --> $DIR/if-let.rs:44:12
    |
-LL |       } else if let a = 1 { //~ WARN irrefutable if-let
+LL |       } else if let a = 1 {
    |  ____________^
 LL | |         println!("irrefutable pattern");
 LL | |     }

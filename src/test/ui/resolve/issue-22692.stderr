@@ -1,7 +1,7 @@
 error[E0423]: expected value, found struct `String`
   --> $DIR/issue-22692.rs:2:13
    |
-LL |     let _ = String.new(); //~ ERROR expected value, found struct `String`
+LL |     let _ = String.new();
    |             ^^^^^^----
    |             |
    |             help: use `::` to access an associated function: `String::new`

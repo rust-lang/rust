@@ -1,6 +1,6 @@
-use io;
-use mem;
-use sys::c;
+use crate::io;
+use crate::mem;
+use crate::sys::c;
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut v = (0, 0);

@@ -21,7 +21,7 @@ LL | | where
 LL | |     T: Iterator,
 LL | | {
 LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | |     //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+LL | |
 LL | | }
    | |_^
    |
@@ -93,7 +93,7 @@ LL | | where
 LL | |     T: 'b + Iterator,
 LL | | {
 LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | |     //~^ ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+LL | |
 LL | | }
    | |_^
    |

@@ -1,4 +1,5 @@
-//
+#![deny(rust_2018_idioms)]
+
 use clap::{crate_version};
 
 use std::env;
@@ -68,7 +69,7 @@ fn main() {
 }
 
 // Build command implementation
-pub fn build_1(args: &ArgMatches) -> Result1<()> {
+pub fn build_1(args: &ArgMatches<'_>) -> Result1<()> {
     let book_dir = get_book_dir(args);
     let mut book = MDBook1::load(&book_dir)?;
 
@@ -85,7 +86,7 @@ pub fn build_1(args: &ArgMatches) -> Result1<()> {
 }
 
 // Build command implementation
-pub fn build_2(args: &ArgMatches) -> Result2<()> {
+pub fn build_2(args: &ArgMatches<'_>) -> Result2<()> {
     let book_dir = get_book_dir(args);
     let mut book = MDBook2::load(&book_dir)?;
 
@@ -101,7 +102,7 @@ pub fn build_2(args: &ArgMatches) -> Result2<()> {
     Ok(())
 }
 
-fn get_book_dir(args: &ArgMatches) -> PathBuf {
+fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
     if let Some(dir) = args.value_of("dir") {
         // Check if path is relative from current dir, or absolute...
         let p = Path::new(dir);

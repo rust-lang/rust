@@ -35,7 +35,7 @@ fn scatter(x: i32) -> i32 { (x * 31) % 127 }
 fn bench_max_by_key(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
-        it.max_by_key(|&x| scatter(x))
+        it.map(black_box).max_by_key(|&x| scatter(x))
     })
 }
 
@@ -56,7 +56,7 @@ fn bench_max_by_key2(b: &mut Bencher) {
 fn bench_max(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
-        it.map(scatter).max()
+        it.map(black_box).map(scatter).max()
     })
 }
 
@@ -185,13 +185,13 @@ bench_sums! {
 bench_sums! {
     bench_filter_sum,
     bench_filter_ref_sum,
-    (0i64..1000000).filter(|x| x % 2 == 0)
+    (0i64..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
     bench_filter_chain_sum,
     bench_filter_chain_ref_sum,
-    (0i64..1000000).chain(0..1000000).filter(|x| x % 2 == 0)
+    (0i64..1000000).chain(0..1000000).filter(|x| x % 3 == 0)
 }
 
 bench_sums! {
@@ -305,4 +305,32 @@ fn bench_skip_then_zip(b: &mut Bencher) {
             .sum::<u64>();
         assert_eq!(s, 2009900);
     });
+}
+
+#[bench]
+fn bench_filter_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).map(black_box).filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_ref_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_chain_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).chain(0..1000000).map(black_box).filter(|x| x % 3 == 0).count()
+    })
+}
+
+#[bench]
+fn bench_filter_chain_ref_count(b: &mut Bencher) {
+    b.iter(|| {
+        (0i64..1000000).chain(0..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
+    })
 }

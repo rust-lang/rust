@@ -3,12 +3,12 @@ error: expected identifier, found keyword `let`
    |
 LL |     let try_result: Option<_> = try {
    |                                 --- while parsing this struct
-LL |     //~^ ERROR expected struct, variant or union type, found macro `try`
-LL |         let x = 5; //~ ERROR expected identifier, found keyword
+LL |
+LL |         let x = 5;
    |         ^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
-LL |         r#let x = 5; //~ ERROR expected identifier, found keyword
+LL |         r#let x = 5;
    |         ^^^^^
 
 error[E0574]: expected struct, variant or union type, found macro `try`

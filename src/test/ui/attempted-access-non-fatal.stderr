@@ -1,13 +1,13 @@
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/attempted-access-non-fatal.rs:4:15
    |
-LL |     let _ = x.foo; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
+LL |     let _ = x.foo;
    |               ^^^
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/attempted-access-non-fatal.rs:5:15
    |
-LL |     let _ = x.bar; //~ `{integer}` is a primitive type and therefore doesn't have fields [E0610]
+LL |     let _ = x.bar;
    |               ^^^
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `empty::issue_56125`
   --> $DIR/issue-56125.rs:17:9
    |
-LL |     use empty::issue_56125; //~ ERROR unresolved import `empty::issue_56125`
+LL |     use empty::issue_56125;
    |         ^^^^^^^^^^^^^^^^^^ no `issue_56125` in `m3::empty`
 
 error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
@@ -37,7 +37,7 @@ LL |     use issue_56125::non_last_segment::non_last_segment::*;
 error[E0659]: `issue_56125` is ambiguous (name vs any other name during import resolution)
   --> $DIR/issue-56125.rs:18:9
    |
-LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
+LL |     use issue_56125::*;
    |         ^^^^^^^^^^^ ambiguous name
    |
    = note: `issue_56125` could refer to an extern crate passed with `--extern`
@@ -45,7 +45,7 @@ LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
 note: `issue_56125` could also refer to the module imported here
   --> $DIR/issue-56125.rs:18:9
    |
-LL |     use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
+LL |     use issue_56125::*;
    |         ^^^^^^^^^^^^^^
    = help: use `self::issue_56125` to refer to this module unambiguously
 

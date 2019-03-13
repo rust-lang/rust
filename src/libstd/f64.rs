@@ -9,9 +9,9 @@
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
-use intrinsics;
+use crate::intrinsics;
 #[cfg(not(test))]
-use sys::cmath;
+use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
@@ -436,7 +436,7 @@ impl f64 {
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
             #[cfg(target_os = "android")]
-            return ::sys::android::log2f64(n);
+            return crate::sys::android::log2f64(n);
             #[cfg(not(target_os = "android"))]
             return unsafe { intrinsics::log2f64(n) };
         })
@@ -906,10 +906,10 @@ impl f64 {
 
 #[cfg(test)]
 mod tests {
-    use f64;
-    use f64::*;
-    use num::*;
-    use num::FpCategory as Fp;
+    use crate::f64;
+    use crate::f64::*;
+    use crate::num::*;
+    use crate::num::FpCategory as Fp;
 
     #[test]
     fn test_num_f64() {

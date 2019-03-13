@@ -1,7 +1,7 @@
 error: `dyn` is a keyword in the 2018 edition
   --> $DIR/dyn-keyword.rs:8:9
    |
-LL |     let dyn = (); //~ ERROR dyn
+LL |     let dyn = ();
    |         ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
 note: lint level defined here

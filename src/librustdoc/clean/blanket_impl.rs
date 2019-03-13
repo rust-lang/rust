@@ -9,14 +9,14 @@ use crate::core::DocAccessLevels;
 
 use super::*;
 
-use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
+use self::def_ctor::{get_def_from_def_id, get_def_from_hir_id};
 
-pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a> {
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+pub struct BlanketImplFinder<'a, 'tcx> {
+    pub cx: &'a core::DocContext<'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
+    pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
         BlanketImplFinder { cx }
     }
 
@@ -26,9 +26,9 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
         })
     }
 
-    pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
-        get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
-            let did = self.cx.tcx.hir().local_def_id(id);
+    pub fn get_with_hir_id(&self, id: hir::HirId, name: String) -> Vec<Item> {
+        get_def_from_hir_id(&self.cx, id, name, &|def_ctor, name| {
+            let did = self.cx.tcx.hir().local_def_id_from_hir_id(id);
             self.get_blanket_impls(did, &def_ctor, Some(name))
         })
     }
@@ -123,7 +123,6 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                             path: get_path_for_type(infcx.tcx,
                                                     trait_def_id,
                                                     hir::def::Def::Trait),
-                            ref_id: ast::DUMMY_NODE_ID,
                             hir_ref_id: hir::DUMMY_HIR_ID,
                         };
                         let provided_trait_methods =

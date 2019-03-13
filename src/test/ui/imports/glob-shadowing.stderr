@@ -1,7 +1,7 @@
 error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:11:17
    |
-LL |         let x = env!("PATH"); //~ ERROR `env` is ambiguous
+LL |         let x = env!("PATH");
    |                 ^^^ ambiguous name
    |
    = note: `env` could refer to a built-in macro
@@ -16,7 +16,7 @@ LL |     use m::*;
 error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:19:21
    |
-LL |             let x = env!("PATH"); //~ ERROR `env` is ambiguous
+LL |             let x = env!("PATH");
    |                     ^^^ ambiguous name
    |
    = note: `env` could refer to a built-in macro
@@ -30,7 +30,7 @@ LL |         use m::*;
 error[E0659]: `fenv` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:29:21
    |
-LL |             let x = fenv!(); //~ ERROR `fenv` is ambiguous
+LL |             let x = fenv!();
    |                     ^^^^ ambiguous name
    |
 note: `fenv` could refer to the macro imported here

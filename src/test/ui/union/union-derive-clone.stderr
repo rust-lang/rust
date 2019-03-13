@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `U1: std::marker::Copy` is not satisfied
   --> $DIR/union-derive-clone.rs:3:10
    |
-LL | #[derive(Clone)] //~ ERROR the trait bound `U1: std::marker::Copy` is not satisfied
+LL | #[derive(Clone)]
    |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
    |
    = note: required by `std::clone::AssertParamIsCopy`
@@ -12,7 +12,7 @@ error[E0599]: no method named `clone` found for type `U4<CloneNoCopy>` in the cu
 LL | union U4<T> {
    | ----------- method `clone` not found for this
 ...
-LL |     let w = u.clone(); //~ ERROR no method named `clone` found for type `U4<CloneNoCopy>`
+LL |     let w = u.clone();
    |               ^^^^^
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:

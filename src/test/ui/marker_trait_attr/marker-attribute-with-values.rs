@@ -1,5 +1,4 @@
 #![feature(marker_trait_attr)]
-#![feature(unrestricted_attribute_tokens)]
 
 #[marker(always)]
 trait Marker1 {}
@@ -9,8 +8,8 @@ trait Marker1 {}
 trait Marker2 {}
 //~^^ ERROR attribute must be of the form
 
-#[marker(key = value)]
+#[marker(key = "value")]
 trait Marker3 {}
-//~^^ ERROR expected unsuffixed literal or identifier, found value
+//~^^ ERROR attribute must be of the form `#[marker]`
 
 fn main() {}

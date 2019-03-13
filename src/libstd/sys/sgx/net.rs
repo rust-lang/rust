@@ -1,12 +1,12 @@
-use fmt;
-use io;
-use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
-use time::Duration;
-use sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
-use sys::fd::FileDesc;
-use convert::TryFrom;
-use error;
-use sync::Arc;
+use crate::fmt;
+use crate::io::{self, IoVec, IoVecMut};
+use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use crate::time::Duration;
+use crate::sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
+use crate::sys::fd::FileDesc;
+use crate::convert::TryFrom;
+use crate::error;
+use crate::sync::Arc;
 
 use super::abi::usercalls;
 
@@ -103,8 +103,24 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
+    pub fn read_vectored(&self, buf: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let buf = match buf.get_mut(0) {
+            Some(buf) => buf,
+            None => return Ok(0),
+        };
+        self.read(buf)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.write(buf)
+    }
+
+    pub fn write_vectored(&self, buf: &[IoVec<'_>]) -> io::Result<usize> {
+        let buf = match buf.get(0) {
+            Some(buf) => buf,
+            None => return Ok(0),
+        };
+        self.write(buf)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -404,10 +420,10 @@ impl Iterator for LookupHost {
     }
 }
 
-impl<'a> TryFrom<&'a str> for LookupHost {
+impl TryFrom<&str> for LookupHost {
     type Error = io::Error;
 
-    fn try_from(v: &'a str) -> io::Result<LookupHost> {
+    fn try_from(v: &str) -> io::Result<LookupHost> {
         LookupHost::new(v.to_owned())
     }
 }

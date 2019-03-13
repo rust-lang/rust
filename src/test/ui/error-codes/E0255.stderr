@@ -4,7 +4,7 @@ error[E0255]: the name `foo` is defined multiple times
 LL | use bar::foo;
    |     -------- previous import of the value `foo` here
 LL | 
-LL | fn foo() {} //~ ERROR E0255
+LL | fn foo() {}
    | ^^^^^^^^ `foo` redefined here
    |
    = note: `foo` must be defined only once in the value namespace of this module

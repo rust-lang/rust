@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_env1.rs:6:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<Self> { FromEnv(Self: Foo) :- FromEnv(Self: Bar). }
@@ -11,7 +11,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
 error: program clause dump
   --> $DIR/lower_env1.rs:9:1
    |
-LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_env_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<Self> { FromEnv(Self: Foo) :- FromEnv(Self: Bar). }

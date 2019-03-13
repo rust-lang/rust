@@ -1,7 +1,7 @@
 error: argument should be `&PanicInfo`
   --> $DIR/panic-handler-bad-signature-2.rs:10:11
    |
-LL |     info: &'static PanicInfo, //~ ERROR argument should be `&PanicInfo`
+LL |     info: &'static PanicInfo,
    |           ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

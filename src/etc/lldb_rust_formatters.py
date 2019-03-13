@@ -290,6 +290,8 @@ def print_array_of_values(array_name, data_ptr_val, length, internal_dict):
 
 
 def read_utf8_string(ptr_val, byte_count):
+    if byte_count == 0:
+        return '""'
     error = lldb.SBError()
     process = ptr_val.get_wrapped_value().GetProcess()
     data = process.ReadMemory(ptr_val.as_integer(), byte_count, error)

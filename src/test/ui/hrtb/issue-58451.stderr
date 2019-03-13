@@ -8,7 +8,7 @@ LL | |     I::Item: for<'a> Into<&'a ()>,
 LL | | {}
    | |__- defined here
 ...
-LL |       f(&[f()]); //~ ERROR this function takes 1 parameter
+LL |       f(&[f()]);
    |           ^^^ expected 1 parameter
 
 error: aborting due to previous error

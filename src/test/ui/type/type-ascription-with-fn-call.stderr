@@ -3,7 +3,7 @@ error[E0573]: expected type, found function `f`
    |
 LL |     f()  :
    |          - help: did you mean to use `;` here instead?
-LL |     f(); //~ ERROR expected type, found function
+LL |     f();
    |     ^^^
    |     |
    |     not a type

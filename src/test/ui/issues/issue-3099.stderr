@@ -4,7 +4,7 @@ error[E0428]: the name `a` is defined multiple times
 LL | fn a(x: String) -> String {
    | ------------------------- previous definition of the value `a` here
 ...
-LL | fn a(x: String, y: String) -> String { //~ ERROR the name `a` is defined multiple times
+LL | fn a(x: String, y: String) -> String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `a` redefined here
    |
    = note: `a` must be defined only once in the value namespace of this module

@@ -1,7 +1,7 @@
 error: any use of this value will cause an error
   --> $DIR/issue-50814.rs:13:5
    |
-LL |     const MAX: u8 = A::MAX + B::MAX; //~ ERROR any use of this value will cause an error
+LL |     const MAX: u8 = A::MAX + B::MAX;
    |     ^^^^^^^^^^^^^^^^---------------^
    |                     |
    |                     attempt to add with overflow
@@ -11,7 +11,7 @@ LL |     const MAX: u8 = A::MAX + B::MAX; //~ ERROR any use of this value will c
 error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-50814.rs:17:5
    |
-LL |     &Sum::<U8,U8>::MAX //~ ERROR E0080
+LL |     &Sum::<U8,U8>::MAX
    |     ^-----------------
    |      |
    |      referenced constant has errors

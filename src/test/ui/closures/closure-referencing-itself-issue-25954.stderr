@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/closure-referencing-itself-issue-25954.rs:15:13
    |
-LL |     let q = || p.b.set(5i32); //~ ERROR mismatched types
+LL |     let q = || p.b.set(5i32);
    |             ^^^^^^^^^^^^^^^^ cyclic type of infinite size
 
 error: aborting due to previous error

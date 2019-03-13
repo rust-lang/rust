@@ -2,13 +2,13 @@ error[E0308]: match arms have incompatible types
   --> $DIR/issue-11319.rs:8:20
    |
 LL | /     match Some(10) {
-LL | |     //~^ NOTE `match` arms have incompatible types
+LL | |
 LL | |         Some(5) => false,
    | |                    ----- this is found to be of type `bool`
-LL | |         //~^ NOTE this is found to be of type `bool`
+LL | |
 LL | |         Some(2) => true,
    | |                    ---- this is found to be of type `bool`
-LL | |         //~^ NOTE this is found to be of type `bool`
+LL | |
 LL | |         None    => (),
    | |                    ^^ expected bool, found ()
 ...  |

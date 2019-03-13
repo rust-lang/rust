@@ -1,6 +1,5 @@
-use libc;
-use cell::UnsafeCell;
-use sync::atomic::{AtomicUsize, Ordering};
+use crate::cell::UnsafeCell;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct RWLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,

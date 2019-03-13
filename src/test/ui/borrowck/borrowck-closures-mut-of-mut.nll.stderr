@@ -9,7 +9,7 @@ LL |     let mut c2 = || set(&mut *x);
    |                  ^^           - second borrow occurs due to use of `x` in closure
    |                  |
    |                  second closure is constructed here
-LL |     //~^ ERROR two closures require unique access to `x` at the same time
+LL |
 LL |     c2(); c1();
    |           -- first borrow later used here
 

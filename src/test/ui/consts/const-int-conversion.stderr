@@ -69,7 +69,7 @@ error[E0597]: borrowed value does not live long enough
    |
 LL |     let d: &'static [u8] = &(i32::min_value().to_be().to_ne_bytes());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |         //~^ ERROR does not live long enough
+LL |
 LL | }
    | - temporary value only lives until here
    |

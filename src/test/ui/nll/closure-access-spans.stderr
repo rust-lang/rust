@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `x` as immutable because it is also borrowed as muta
    |
 LL |     let r = &mut x;
    |             ------ mutable borrow occurs here
-LL |     || x; //~ ERROR
+LL |     || x;
    |     ^^ - second borrow occurs due to use of `x` in closure
    |     |
    |     immutable borrow occurs here
@@ -15,7 +15,7 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
    |
 LL |     let r = &mut x;
    |             ------ first mutable borrow occurs here
-LL |     || x = 2; //~ ERROR
+LL |     || x = 2;
    |     ^^ - second borrow occurs due to use of `x` in closure
    |     |
    |     second mutable borrow occurs here
@@ -27,7 +27,7 @@ error[E0500]: closure requires unique access to `x` but it is already borrowed
    |
 LL |     let r = &mut x;
    |             ------ borrow occurs here
-LL |     || *x = 2; //~ ERROR
+LL |     || *x = 2;
    |     ^^  - second borrow occurs due to use of `x` in closure
    |     |
    |     closure construction occurs here
@@ -39,7 +39,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let r = &mut x;
    |             ------ borrow of `x` occurs here
-LL |     move || x; //~ ERROR
+LL |     move || x;
    |             ^ use of borrowed `x`
 LL |     r.use_ref();
    |     - borrow later used here
@@ -49,7 +49,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
    |
 LL |     let r = &x;
    |             -- borrow of `x` occurs here
-LL |     || x; //~ ERROR
+LL |     || x;
    |     ^^ - move occurs due to use in closure
    |     |
    |     move out of `x` occurs here
@@ -63,7 +63,7 @@ LL | fn closure_imm_capture_moved(mut x: String) {
    |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
-LL |     || x.len(); //~ ERROR
+LL |     || x.len();
    |     ^^ - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
@@ -75,7 +75,7 @@ LL | fn closure_mut_capture_moved(mut x: String) {
    |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
-LL |     || x = String::new(); //~ ERROR
+LL |     || x = String::new();
    |     ^^ - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
@@ -87,7 +87,7 @@ LL | fn closure_unique_capture_moved(x: &mut String) {
    |                                 - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
-LL |     || *x = String::new(); //~ ERROR
+LL |     || *x = String::new();
    |     ^^  - borrow occurs due to use in closure
    |     |
    |     value borrowed here after move
@@ -99,7 +99,7 @@ LL | fn closure_move_capture_moved(x: &mut String) {
    |                               - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
-LL |     || x; //~ ERROR
+LL |     || x;
    |     ^^ - use occurs due to use in closure
    |     |
    |     value used here after move

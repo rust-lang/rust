@@ -1,16 +1,16 @@
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:1:9
    |
-LL |   impl X { //~ ERROR cannot be made into an object
+LL |   impl X {
    |  _________^
-LL | | //~^ ERROR missing
+LL | |
 LL | |     Y
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:8:10
    |
-LL |   trait X { //~ ERROR missing
+LL |   trait X {
    |  __________^
 LL | |     X() {}
    | |____^ missing `fn`, `type`, or `const`
@@ -18,48 +18,48 @@ LL | |     X() {}
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:10:17
    |
-LL |     fn xxx() { ### } //~ ERROR missing
+LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:10:21
    |
-LL |       fn xxx() { ### } //~ ERROR missing
+LL |       fn xxx() { ### }
    |  _____________________^
-LL | |     //~^ ERROR expected
-LL | |     L = M; //~ ERROR missing
+LL | |
+LL | |     L = M;
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:12:11
    |
-LL |       L = M; //~ ERROR missing
+LL |       L = M;
    |  ___________^
-LL | |     Z = { 2 + 3 }; //~ ERROR expected one of
+LL | |     Z = { 2 + 3 };
    | |____^ missing `fn`, `type`, or `const`
 
 error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
   --> $DIR/issue-40006.rs:13:18
    |
-LL |     Z = { 2 + 3 }; //~ ERROR expected one of
+LL |     Z = { 2 + 3 };
    |                  ^ expected one of 7 possible tokens here
 
 error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:14:9
    |
-LL |     ::Y (); //~ ERROR expected one of
+LL |     ::Y ();
    |         ^ expected one of `!` or `::` here
 
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:18:8
    |
-LL |     pub hello_method(&self) { //~ ERROR missing
+LL |     pub hello_method(&self) {
    |        ^ missing `fn`, `type`, or `const`
 
 error[E0038]: the trait `X` cannot be made into an object
   --> $DIR/issue-40006.rs:1:6
    |
-LL | impl X { //~ ERROR cannot be made into an object
+LL | impl X {
    |      ^ the trait `X` cannot be made into an object
    |
    = note: method `xxx` has no receiver

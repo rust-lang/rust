@@ -729,8 +729,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
         match span {
             Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg),
             None => {
-                let node_id = self.tcx.hir().hir_to_node_id(hir_id); // FIXME(@ljedrz): remove later
-                self.tcx.struct_lint_node(lint, node_id, msg)
+                self.tcx.struct_lint_node(lint, hir_id, msg)
             },
         }
     }
@@ -793,11 +792,11 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         run_lints!(self, exit_lint_attrs, attrs);
     }
 
-    fn with_param_env<F>(&mut self, id: ast::NodeId, f: F)
+    fn with_param_env<F>(&mut self, id: hir::HirId, f: F)
         where F: FnOnce(&mut Self),
     {
         let old_param_env = self.param_env;
-        self.param_env = self.tcx.param_env(self.tcx.hir().local_def_id(id));
+        self.param_env = self.tcx.param_env(self.tcx.hir().local_def_id_from_hir_id(id));
         f(self);
         self.param_env = old_param_env;
     }
@@ -841,7 +840,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         let generics = self.generics.take();
         self.generics = it.node.generics();
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
-            cx.with_param_env(it.id, |cx| {
+            cx.with_param_env(it.hir_id, |cx| {
                 run_lints!(cx, check_item, it);
                 hir_visit::walk_item(cx, it);
                 run_lints!(cx, check_item_post, it);
@@ -852,7 +851,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
-            cx.with_param_env(it.id, |cx| {
+            cx.with_param_env(it.hir_id, |cx| {
                 run_lints!(cx, check_foreign_item, it);
                 hir_visit::walk_foreign_item(cx, it);
                 run_lints!(cx, check_foreign_item_post, it);
@@ -983,7 +982,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         let generics = self.generics.take();
         self.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |cx| {
-            cx.with_param_env(trait_item.id, |cx| {
+            cx.with_param_env(trait_item.hir_id, |cx| {
                 run_lints!(cx, check_trait_item, trait_item);
                 hir_visit::walk_trait_item(cx, trait_item);
                 run_lints!(cx, check_trait_item_post, trait_item);
@@ -996,7 +995,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         let generics = self.generics.take();
         self.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |cx| {
-            cx.with_param_env(impl_item.id, |cx| {
+            cx.with_param_env(impl_item.hir_id, |cx| {
                 run_lints!(cx, check_impl_item, impl_item);
                 hir_visit::walk_impl_item(cx, impl_item);
                 run_lints!(cx, check_impl_item_post, impl_item);

@@ -4,9 +4,9 @@
 //! description of [`TryIntoRawFd`](trait.TryIntoRawFd.html) for more details.
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
-pub use sys::abi::usercalls::raw::Fd as RawFd;
-use net;
-use sys::{self, AsInner, FromInner, IntoInner, TryIntoInner};
+pub use crate::sys::abi::usercalls::raw::Fd as RawFd;
+use crate::net;
+use crate::sys::{self, AsInner, FromInner, IntoInner, TryIntoInner};
 
 /// A trait to extract the raw SGX file descriptor from an underlying
 /// object.

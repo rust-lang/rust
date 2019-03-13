@@ -2,7 +2,7 @@ error: crate has missing stability attribute
   --> $DIR/missing-stability-attr-at-top-level.rs:1:1
    |
 LL | / #![feature(staged_api)]
-LL | | //~^ ERROR crate has missing stability attribute
+LL | |
 LL | |
 LL | | fn main() {}
    | |____________^

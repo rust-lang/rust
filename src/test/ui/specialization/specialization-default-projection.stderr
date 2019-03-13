@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn generic<T>() -> <T as Foo>::Assoc {
    |                    ----------------- expected `<T as Foo>::Assoc` because of return type
 ...
-LL |     () //~ ERROR mismatched types
+LL |     ()
    |     ^^ expected associated type, found ()
    |
    = note: expected type `<T as Foo>::Assoc`
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL | fn monomorphic() -> () {
    |                     -- expected `()` because of return type
 ...
-LL |     generic::<()>() //~ ERROR mismatched types
+LL |     generic::<()>()
    |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |     |
    |     expected (), found associated type

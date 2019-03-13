@@ -2,7 +2,7 @@ error[E0491]: in type `&'x (dyn for<'z> Trait1<<T as Trait2<'y, 'z>>::Foo> + 'x)
   --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:1
    |
 LL | / fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
-LL | |     //~^ ERROR reference has a longer lifetime than the data it references
+LL | |
 LL | | {
 LL | | }
    | |_^

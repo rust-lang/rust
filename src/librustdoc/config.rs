@@ -85,6 +85,9 @@ pub struct Options {
     /// Whether to display warnings during doc generation or while gathering doctests. By default,
     /// all non-rustdoc-specific lints are allowed when generating docs.
     pub display_warnings: bool,
+    /// Whether to run the `calculate-doc-coverage` pass, which counts the number of public items
+    /// with and without documentation.
+    pub show_coverage: bool,
 
     // Options that alter generated documentation pages
 
@@ -128,6 +131,7 @@ impl fmt::Debug for Options {
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
+            .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
             .finish()
@@ -199,7 +203,7 @@ pub struct RenderOptions {
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
-    pub fn from_matches(matches: &getopts::Matches) -> Result<Options, isize> {
+    pub fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
         // Check for unstable options.
         nightly_options::check_nightly_options(&matches, &opts());
 
@@ -214,7 +218,7 @@ impl Options {
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
             for pass in passes::PASSES {
-                println!("{:>20} - {}", pass.name(), pass.description());
+                println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
             for &name in passes::DEFAULT_PASSES {
@@ -224,6 +228,18 @@ impl Options {
             for &name in passes::DEFAULT_PRIVATE_PASSES {
                 println!("{:>20}", name);
             }
+
+            if nightly_options::is_nightly_build() {
+                println!("\nPasses run with `--show-coverage`:");
+                for &name in passes::DEFAULT_COVERAGE_PASSES {
+                    println!("{:>20}", name);
+                }
+                println!("\nPasses run with `--show-coverage --document-private-items`:");
+                for &name in passes::PRIVATE_COVERAGE_PASSES {
+                    println!("{:>20}", name);
+                }
+            }
+
             return Err(0);
         }
 
@@ -413,9 +429,16 @@ impl Options {
             }
         });
 
+        let show_coverage = matches.opt_present("show-coverage");
+        let document_private = matches.opt_present("document-private-items");
+
         let default_passes = if matches.opt_present("no-defaults") {
             passes::DefaultPassOption::None
-        } else if matches.opt_present("document-private-items") {
+        } else if show_coverage && document_private {
+            passes::DefaultPassOption::PrivateCoverage
+        } else if show_coverage {
+            passes::DefaultPassOption::Coverage
+        } else if document_private {
             passes::DefaultPassOption::Private
         } else {
             passes::DefaultPassOption::Default
@@ -463,6 +486,7 @@ impl Options {
             default_passes,
             manual_passes,
             display_warnings,
+            show_coverage,
             crate_version,
             persist_doctests,
             render_options: RenderOptions {

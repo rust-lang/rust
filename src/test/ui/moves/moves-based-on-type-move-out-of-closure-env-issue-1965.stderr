@@ -3,7 +3,7 @@ error[E0507]: cannot move out of captured outer variable in an `Fn` closure
    |
 LL |     let i = box 3;
    |         - captured outer variable
-LL |     let _f = to_fn(|| test(i)); //~ ERROR cannot move out
+LL |     let _f = to_fn(|| test(i));
    |                            ^ cannot move out of captured outer variable in an `Fn` closure
 
 error: aborting due to previous error

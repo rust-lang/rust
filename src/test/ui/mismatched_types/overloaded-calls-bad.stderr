@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/overloaded-calls-bad.rs:28:17
    |
-LL |     let ans = s("what");    //~ ERROR mismatched types
+LL |     let ans = s("what");
    |                 ^^^^^^ expected isize, found reference
    |
    = note: expected type `isize`

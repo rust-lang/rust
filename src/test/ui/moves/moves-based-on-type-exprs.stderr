@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = Foo { f:x };
    |                      - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = (x, 3);
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -24,7 +24,7 @@ error[E0382]: use of moved value: `x`
 LL |         x
    |         - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -35,7 +35,7 @@ error[E0382]: use of moved value: `y`
 LL |         y
    |         - value moved here
 ...
-LL |     touch(&y); //~ ERROR use of moved value: `y`
+LL |     touch(&y);
    |            ^ value used here after move
    |
    = note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
@@ -46,7 +46,7 @@ error[E0382]: use of moved value: `x`
 LL |         true => x,
    |                 - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -57,7 +57,7 @@ error[E0382]: use of moved value: `y`
 LL |         false => y
    |                  - value moved here
 ...
-LL |     touch(&y); //~ ERROR use of moved value: `y`
+LL |     touch(&y);
    |            ^ value used here after move
    |
    = note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
@@ -68,7 +68,7 @@ error[E0382]: use of moved value: `x`
 LL |         _ if guard(x) => 10,
    |                    - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -78,7 +78,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = [x];
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -88,7 +88,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = vec![x];
    |                   - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -98,7 +98,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = x.into_iter().next().unwrap();
    |              - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
@@ -108,7 +108,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = [x.into_iter().next().unwrap(); 1];
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait

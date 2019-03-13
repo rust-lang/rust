@@ -2,10 +2,10 @@
 
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
-use cell::UnsafeCell;
-use fmt;
-use hint;
-use mem;
+use crate::cell::UnsafeCell;
+use crate::fmt;
+use crate::hint;
+use crate::mem;
 
 /// A thread local storage key which owns its contents.
 ///
@@ -40,12 +40,15 @@ use mem;
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// thread::spawn(move|| {
+/// let t = thread::spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
 ///     });
 /// });
+///
+/// // wait for the thread to complete and bail out on panic
+/// t.join().unwrap();
 ///
 /// // we retain our original value of 2 despite the child thread
 /// FOO.with(|f| {
@@ -126,8 +129,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(stage0, allow_internal_unstable)]
-#[cfg_attr(not(stage0), allow_internal_unstable(thread_local_internals))]
+#[allow_internal_unstable(thread_local_internals)]
 macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
@@ -149,10 +151,7 @@ macro_rules! thread_local {
            reason = "should not be necessary",
            issue = "0")]
 #[macro_export]
-#[cfg_attr(stage0, allow_internal_unstable)]
-#[cfg_attr(not(stage0), allow_internal_unstable(
-    thread_local_internals, cfg_target_thread_local, thread_local,
-))]
+#[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
     (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
@@ -310,14 +309,14 @@ impl<T: 'static> LocalKey<T> {
 #[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 pub mod statik {
-    use cell::UnsafeCell;
-    use fmt;
+    use crate::cell::UnsafeCell;
+    use crate::fmt;
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> { }
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -341,11 +340,11 @@ pub mod statik {
 #[doc(hidden)]
 #[cfg(target_thread_local)]
 pub mod fast {
-    use cell::{Cell, UnsafeCell};
-    use fmt;
-    use mem;
-    use ptr;
-    use sys::fast_thread_local::{register_dtor, requires_move_before_drop};
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::fmt;
+    use crate::mem;
+    use crate::ptr;
+    use crate::sys::fast_thread_local::{register_dtor, requires_move_before_drop};
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
@@ -412,11 +411,11 @@ pub mod fast {
 
 #[doc(hidden)]
 pub mod os {
-    use cell::{Cell, UnsafeCell};
-    use fmt;
-    use marker;
-    use ptr;
-    use sys_common::thread_local::StaticKey as OsStaticKey;
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::fmt;
+    use crate::marker;
+    use crate::ptr;
+    use crate::sys_common::thread_local::StaticKey as OsStaticKey;
 
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
@@ -430,7 +429,7 @@ pub mod os {
         }
     }
 
-    unsafe impl<T> ::marker::Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> { }
 
     struct Value<T: 'static> {
         key: &'static Key<T>,
@@ -484,9 +483,9 @@ pub mod os {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use sync::mpsc::{channel, Sender};
-    use cell::{Cell, UnsafeCell};
-    use thread;
+    use crate::sync::mpsc::{channel, Sender};
+    use crate::cell::{Cell, UnsafeCell};
+    use crate::thread;
 
     struct Foo(Sender<()>);
 
@@ -632,8 +631,8 @@ mod tests {
 
 #[cfg(test)]
 mod dynamic_tests {
-    use cell::RefCell;
-    use collections::HashMap;
+    use crate::cell::RefCell;
+    use crate::collections::HashMap;
 
     #[test]
     fn smoke() {

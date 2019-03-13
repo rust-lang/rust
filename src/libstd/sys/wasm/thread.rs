@@ -1,8 +1,8 @@
-use boxed::FnBox;
-use ffi::CStr;
-use io;
-use sys::{unsupported, Void};
-use time::Duration;
+use crate::boxed::FnBox;
+use crate::ffi::CStr;
+use crate::io;
+use crate::sys::{unsupported, Void};
+use crate::time::Duration;
 
 pub struct Thread(Void);
 
@@ -31,8 +31,8 @@ impl Thread {
 
     #[cfg(target_feature = "atomics")]
     pub fn sleep(dur: Duration) {
-        use arch::wasm32;
-        use cmp;
+        use crate::arch::wasm32;
+        use crate::cmp;
 
         // Use an atomic wait to block the current thread artificially with a
         // timeout listed. Note that we should never be notified (return value
@@ -76,7 +76,7 @@ cfg_if! {
         // you'd like to use them be sure to update that and make sure everyone
         // agrees what's what.
         pub fn tcb_get() -> *mut u8 {
-            use mem;
+            use crate::mem;
             assert_eq!(mem::size_of::<*mut u8>(), mem::size_of::<u32>());
             unsafe { __wbindgen_tcb_get() as *mut u8 }
         }

@@ -3,7 +3,7 @@ error: lifetime may not live long enough
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here
-LL |     <() as Foo<'a>>::C //~ ERROR
+LL |     <() as Foo<'a>>::C
    |     ^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: aborting due to previous error

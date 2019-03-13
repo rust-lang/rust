@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `std::clone::Clone` for type `Node<[_]>`:
   --> $DIR/issue-48728.rs:4:10
    |
-LL | #[derive(Clone)] //~ ERROR conflicting implementations of trait `std::clone::Clone`
+LL | #[derive(Clone)]
    |          ^^^^^ conflicting implementation for `Node<[_]>`
 ...
 LL | impl<T: Clone + ?Sized> Clone for Node<[T]> {

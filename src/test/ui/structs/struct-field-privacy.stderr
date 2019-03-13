@@ -1,31 +1,31 @@
 error[E0616]: field `a` of struct `inner::A` is private
   --> $DIR/struct-field-privacy.rs:23:5
    |
-LL |     b.a; //~ ERROR: field `a` of struct `inner::A` is private
+LL |     b.a;
    |     ^^^
 
 error[E0616]: field `b` of struct `inner::B` is private
   --> $DIR/struct-field-privacy.rs:26:5
    |
-LL |     c.b; //~ ERROR: field `b` of struct `inner::B` is private
+LL |     c.b;
    |     ^^^
 
 error[E0616]: field `a` of struct `xc::A` is private
   --> $DIR/struct-field-privacy.rs:28:5
    |
-LL |     d.a; //~ ERROR: field `a` of struct `xc::A` is private
+LL |     d.a;
    |     ^^^
 
 error[E0616]: field `b` of struct `xc::B` is private
   --> $DIR/struct-field-privacy.rs:32:5
    |
-LL |     e.b; //~ ERROR: field `b` of struct `xc::B` is private
+LL |     e.b;
    |     ^^^
 
 error[E0616]: field `1` of struct `inner::Z` is private
   --> $DIR/struct-field-privacy.rs:35:5
    |
-LL |     z.1; //~ ERROR: field `1` of struct `inner::Z` is private
+LL |     z.1;
    |     ^^^
 
 error: aborting due to 5 previous errors

@@ -6,7 +6,7 @@ LL |           self.thing.bar(|| {
    |           |          |
    |  _________|          immutable borrow later used by call
    | |
-LL | |         //~^ ERROR cannot borrow `self.thing` as mutable because it is also borrowed as immutable [E0502]
+LL | |
 LL | |             &self.number;
    | |              ---- first borrow occurs due to use of `self` in closure
 LL | |         });

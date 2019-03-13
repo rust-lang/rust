@@ -7,7 +7,7 @@ use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty;
 use crate::ty::error::ExpectedFound;
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::util::ppaux::RegionHighlightMode;
 
 impl NiceRegionError<'me, 'gcx, 'tcx> {
@@ -175,8 +175,8 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         sub_placeholder: Option<ty::Region<'tcx>>,
         sup_placeholder: Option<ty::Region<'tcx>>,
         trait_def_id: DefId,
-        expected_substs: &'tcx Substs<'tcx>,
-        actual_substs: &'tcx Substs<'tcx>,
+        expected_substs: SubstsRef<'tcx>,
+        actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'me> {
         debug!(
             "try_report_placeholders_trait(\

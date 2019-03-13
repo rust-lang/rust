@@ -1,14 +1,15 @@
 use crate::hir::def_id::DefId;
 use crate::hir::map::definitions::DefPathData;
 use crate::middle::region;
-use crate::ty::subst::{self, Subst};
+use crate::ty::subst::{self, Subst, SubstsRef};
 use crate::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use crate::ty::{Bool, Char, Adt};
 use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
+use crate::mir::interpret::ConstValue;
 use crate::util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -360,7 +361,7 @@ impl PrintContext {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
                              inputs: &[Ty<'_>],
-                             variadic: bool,
+                             c_variadic: bool,
                              output: Ty<'_>)
                              -> fmt::Result {
         write!(f, "(")?;
@@ -370,7 +371,7 @@ impl PrintContext {
             for &ty in inputs {
                 print!(f, self, write(", "), print_display(ty))?;
             }
-            if variadic {
+            if c_variadic {
                 write!(f, ", ...")?;
             }
         }
@@ -384,7 +385,7 @@ impl PrintContext {
 
     fn parameterized<F: fmt::Write>(&mut self,
                                     f: &mut F,
-                                    substs: &subst::Substs<'_>,
+                                    substs: SubstsRef<'_>,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
@@ -478,6 +479,7 @@ impl PrintContext {
                         GenericParamDefKind::Type { has_default, .. } => {
                             Some((param.def_id, has_default))
                         }
+                        GenericParamDefKind::Const => None, // FIXME(const_generics:defaults)
                     }).peekable();
                 let has_default = {
                     let has_default = type_params.peek().map(|(_, has_default)| has_default);
@@ -569,6 +571,14 @@ impl PrintContext {
                              tcx.associated_item(projection.projection_ty.item_def_id).ident),
                        print_display(projection.ty))
             )?;
+        }
+
+        // FIXME(const_generics::defaults)
+        let consts = substs.consts();
+
+        for ct in consts {
+            start_or_continue(f, "<", ", ")?;
+            ct.print_display(f, self)?;
         }
 
         start_or_continue(f, "", ">")?;
@@ -692,7 +702,7 @@ pub fn identify_regions() -> bool {
 }
 
 pub fn parameterized<F: fmt::Write>(f: &mut F,
-                                    substs: &subst::Substs<'_>,
+                                    substs: SubstsRef<'_>,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
@@ -763,7 +773,8 @@ impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_name = match self.kind {
             ty::GenericParamDefKind::Lifetime => "Lifetime",
-            ty::GenericParamDefKind::Type {..} => "Type",
+            ty::GenericParamDefKind::Type { .. } => "Type",
+            ty::GenericParamDefKind::Const => "Const",
         };
         write!(f, "{}({}, {:?}, {})",
                type_name,
@@ -1074,10 +1085,10 @@ define_print! {
             }
 
             write!(f, "fn")?;
-            cx.fn_sig(f, self.inputs(), self.variadic, self.output())
+            cx.fn_sig(f, self.inputs(), self.c_variadic, self.output())
         }
         debug {
-            write!(f, "({:?}; variadic: {})->{:?}", self.inputs(), self.variadic, self.output())
+            write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
         }
     }
 }
@@ -1085,6 +1096,12 @@ define_print! {
 impl fmt::Debug for ty::TyVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}t", self.index)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}f", self.index)
     }
 }
 
@@ -1290,7 +1307,7 @@ define_print! {
                         Ok(())
                     }
                 }
-                Foreign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
+                Foreign(def_id) => parameterized(f, subst::InternalSubsts::empty(), def_id, &[]),
                 Projection(ref data) => data.print(f, cx),
                 UnnormalizedProjection(ref data) => {
                     write!(f, "Unnormalized(")?;
@@ -1363,10 +1380,10 @@ define_print! {
                         write!(f, "[static generator")?;
                     }
 
-                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
-                        write!(f, "@{:?}", tcx.hir().span(node_id))?;
+                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+                        write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
                         let mut sep = " ";
-                        tcx.with_freevars(node_id, |freevars| {
+                        tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
@@ -1399,14 +1416,14 @@ define_print! {
                     let upvar_tys = substs.upvar_tys(did, tcx);
                     write!(f, "[closure")?;
 
-                    if let Some(node_id) = tcx.hir().as_local_node_id(did) {
+                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
                         if tcx.sess.opts.debugging_opts.span_free_formats {
-                            write!(f, "@{:?}", node_id)?;
+                            write!(f, "@{:?}", hir_id)?;
                         } else {
-                            write!(f, "@{:?}", tcx.hir().span(node_id))?;
+                            write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
                         }
                         let mut sep = " ";
-                        tcx.with_freevars(node_id, |freevars| {
+                        tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
@@ -1448,7 +1465,12 @@ define_print! {
                             write!(f, "_")?;
                         }
                         ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
-                            write!(f, "{}", c.unwrap_usize(tcx))
+                            match c.val {
+                                ConstValue::Infer(..) => write!(f, "_"),
+                                ConstValue::Param(ParamConst { name, .. }) =>
+                                    write!(f, "{}", name),
+                                _ => write!(f, "{}", c.unwrap_usize(tcx)),
+                            }
                         })?,
                     }
                     write!(f, "]")
@@ -1473,12 +1495,54 @@ define_print! {
 }
 
 define_print! {
+    ('tcx) ConstValue<'tcx>, (self, f, cx) {
+        display {
+            match self {
+                ConstValue::Infer(..) => write!(f, "_"),
+                ConstValue::Param(ParamConst { name, .. }) => write!(f, "{}", name),
+                _ => write!(f, "{:?}", self),
+            }
+        }
+    }
+}
+
+define_print! {
+    ('tcx) ty::Const<'tcx>, (self, f, cx) {
+        display {
+            write!(f, "{} : {}", self.val, self.ty)
+        }
+    }
+}
+
+define_print! {
+    ('tcx) ty::LazyConst<'tcx>, (self, f, cx) {
+        display {
+            match self {
+                ty::LazyConst::Unevaluated(..) => write!(f, "_ : _"),
+                ty::LazyConst::Evaluated(c) => write!(f, "{}", c),
+            }
+        }
+    }
+}
+
+define_print! {
     () ty::ParamTy, (self, f, cx) {
         display {
             write!(f, "{}", self.name)
         }
         debug {
             write!(f, "{}/#{}", self.name, self.idx)
+        }
+    }
+}
+
+define_print! {
+    () ty::ParamConst, (self, f, cx) {
+        display {
+            write!(f, "{}", self.name)
+        }
+        debug {
+            write!(f, "{}/#{}", self.name, self.index)
         }
     }
 }

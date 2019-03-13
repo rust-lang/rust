@@ -5,14 +5,14 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc::mir::{self, Mir, TerminatorKind};
 use rustc::ty::{AssociatedItem, AssociatedItemContainer, Instance, TyCtxt, TyKind};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::InternalSubsts;
 
 pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
              mir: &Mir<'tcx>,
              def_id: DefId) {
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(node_id)) {
+    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
         check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), mir, def_id);
     }
 }
@@ -69,7 +69,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }) => tcx.generics_of(trait_def_id).count(),
             _ => 0
         };
-    let caller_substs = &Substs::identity_for_item(tcx, def_id)[..trait_substs_count];
+    let caller_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
 
     while let Some(bb) = reachable_without_self_call_queue.pop() {
         if visited.contains(bb) {
@@ -129,12 +129,12 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // no break */ }`) shouldn't be linted unless it actually
     // recurs.
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
-        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let sp = tcx.sess.source_map().def_span(tcx.hir().span(node_id));
-        let mut db = tcx.struct_span_lint_node(UNCONDITIONAL_RECURSION,
-                                                node_id,
-                                                sp,
-                                                "function cannot return without recursing");
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let sp = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(hir_id));
+        let mut db = tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION,
+                                              hir_id,
+                                              sp,
+                                              "function cannot return without recursing");
         db.span_label(sp, "cannot return without recursing");
         // offer some help to the programmer.
         for location in &self_call_locations {

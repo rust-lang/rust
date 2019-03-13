@@ -1,9 +1,10 @@
-use io;
-use error::Error;
-use libc;
-use sys_common::backtrace::Frame;
+use crate::io;
+use crate::error::Error;
+use crate::fmt;
+use crate::sys_common::backtrace::Frame;
+use crate::sys::sgx::abi::mem::image_base;
+
 use unwind as uw;
-use sys::sgx::abi::mem::image_base;
 
 pub struct BacktraceContext;
 
@@ -21,8 +22,8 @@ impl Error for UnwindError {
     }
 }
 
-impl ::fmt::Display for UnwindError {
-    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl fmt::Display for UnwindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {:?}", self.description(), self.0)
     }
 }

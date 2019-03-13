@@ -1,10 +1,11 @@
-use io;
-use sys::c;
+use crate::io;
+use crate::sys::c;
+use crate::path::PathBuf;
+use crate::fs::{OpenOptions, File};
+use crate::sys::ext::fs::OpenOptionsExt;
+use crate::sys::handle::Handle;
+
 use libc::c_char;
-use path::PathBuf;
-use fs::{OpenOptions, File};
-use sys::ext::fs::OpenOptionsExt;
-use sys::handle::Handle;
 use super::super::{fill_utf16_buf, os2path, to_u16s, wide_char_to_multi_byte};
 
 fn query_full_process_image_name() -> io::Result<PathBuf> {

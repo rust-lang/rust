@@ -1,8 +1,8 @@
-use cell::UnsafeCell;
-use sys::c;
-use sys::mutex::{self, Mutex};
-use sys::os;
-use time::Duration;
+use crate::cell::UnsafeCell;
+use crate::sys::c;
+use crate::sys::mutex::{self, Mutex};
+use crate::sys::os;
+use crate::time::Duration;
 
 pub struct Condvar { inner: UnsafeCell<c::CONDITION_VARIABLE> }
 

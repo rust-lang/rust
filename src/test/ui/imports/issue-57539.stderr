@@ -1,7 +1,7 @@
 error[E0659]: `core` is ambiguous (name vs any other name during import resolution)
   --> $DIR/issue-57539.rs:4:9
    |
-LL |     use core; //~ ERROR `core` is ambiguous
+LL |     use core;
    |         ^^^^ ambiguous name
    |
    = note: `core` could refer to a built-in extern crate

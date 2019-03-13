@@ -27,7 +27,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                       w: &mut W) -> io::Result<()>
     where W: Write
 {
-    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_node_id(def_id).unwrap())?;
+    writeln!(w, "digraph Mir_{} {{", tcx.hir().as_local_hir_id(def_id).unwrap())?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;
@@ -134,7 +134,11 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w, "{:?}: {}", Place::Local(arg), escape(&mir.local_decls[arg].ty))?;
+        write!(w,
+               "{:?}: {}",
+               Place::Base(PlaceBase::Local(arg)),
+               escape(&mir.local_decls[arg].ty)
+        )?;
     }
 
     write!(w, ") -&gt; {}", escape(mir.return_ty()))?;
@@ -150,10 +154,10 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty), name)?;
+                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
         } else {
             write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Place::Local(local), escape(&decl.ty))?;
+                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
         }
     }
 

@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `match`
   --> $DIR/keyword-match-as-identifier.rs:4:9
    |
-LL |     let match = "foo"; //~ error: expected pattern, found keyword `match`
+LL |     let match = "foo";
    |         ^^^^^ expected pattern
 
 error: aborting due to previous error

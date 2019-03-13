@@ -1,7 +1,7 @@
 error[E0560]: struct `Foo` has no field named `nonexistent`
   --> $DIR/issue-5439.rs:13:26
    |
-LL |         return box Foo { nonexistent: self, foo: i }; //~ ERROR: no field named
+LL |         return box Foo { nonexistent: self, foo: i };
    |                          ^^^^^^^^^^^ `Foo` does not have this field
    |
    = note: available fields are: `foo`

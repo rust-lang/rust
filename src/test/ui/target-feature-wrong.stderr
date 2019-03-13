@@ -33,7 +33,7 @@ error: attribute should be applied to a function
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL | //~^ ERROR: should be applied to a function
+LL |
 LL | mod another {}
    | -------------- not a function
 

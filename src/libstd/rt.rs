@@ -14,18 +14,18 @@
 
 
 // Re-export some of our utilities which are expected by other crates.
-pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
+pub use crate::panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.
 #[cfg(not(test))]
-fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
+fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindSafe),
                        argc: isize, argv: *const *const u8) -> isize {
-    use panic;
-    use sys;
-    use sys_common;
-    use sys_common::thread_info;
-    use thread::Thread;
+    use crate::panic;
+    use crate::sys;
+    use crate::sys_common;
+    use crate::sys_common::thread_info;
+    use crate::thread::Thread;
 
     sys::init();
 
@@ -46,7 +46,7 @@ fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
         // Let's run some code!
         #[cfg(feature = "backtrace")]
         let exit_code = panic::catch_unwind(|| {
-            ::sys_common::backtrace::__rust_begin_short_backtrace(move || main())
+            sys_common::backtrace::__rust_begin_short_backtrace(move || main())
         });
         #[cfg(not(feature = "backtrace"))]
         let exit_code = panic::catch_unwind(move || main());
@@ -58,7 +58,7 @@ fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
 
 #[cfg(not(test))]
 #[lang = "start"]
-fn lang_start<T: ::process::Termination + 'static>
+fn lang_start<T: crate::process::Termination + 'static>
     (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
 {
     lang_start_internal(&move || main().report(), argc, argv)

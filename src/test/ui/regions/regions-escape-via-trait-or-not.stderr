@@ -1,13 +1,13 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/regions-escape-via-trait-or-not.rs:18:14
    |
-LL |     with(|o| o) //~ ERROR cannot infer
+LL |     with(|o| o)
    |              ^
    |
 note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 18:10...
   --> $DIR/regions-escape-via-trait-or-not.rs:18:10
    |
-LL |     with(|o| o) //~ ERROR cannot infer
+LL |     with(|o| o)
    |          ^^^^^
    = note: ...so that the expression is assignable:
            expected &isize
@@ -15,12 +15,12 @@ LL |     with(|o| o) //~ ERROR cannot infer
 note: but, the lifetime must be valid for the expression at 18:5...
   --> $DIR/regions-escape-via-trait-or-not.rs:18:5
    |
-LL |     with(|o| o) //~ ERROR cannot infer
+LL |     with(|o| o)
    |     ^^^^
 note: ...so type `fn([closure@$DIR/regions-escape-via-trait-or-not.rs:18:10: 18:15]) -> isize {with::<&isize, [closure@$DIR/regions-escape-via-trait-or-not.rs:18:10: 18:15]>}` of expression is valid during the expression
   --> $DIR/regions-escape-via-trait-or-not.rs:18:5
    |
-LL |     with(|o| o) //~ ERROR cannot infer
+LL |     with(|o| o)
    |     ^^^^
 
 error: aborting due to previous error

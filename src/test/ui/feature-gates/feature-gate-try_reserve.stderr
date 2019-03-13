@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'try_reserve': new API (see issue #48043)
   --> $DIR/feature-gate-try_reserve.rs:3:7
    |
-LL |     v.try_reserve(10); //~ ERROR: use of unstable library feature 'try_reserve'
+LL |     v.try_reserve(10);
    |       ^^^^^^^^^^^
    |
    = help: add #![feature(try_reserve)] to the crate attributes to enable

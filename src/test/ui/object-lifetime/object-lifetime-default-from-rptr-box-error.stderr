@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/object-lifetime-default-from-rptr-box-error.rs:15:12
    |
-LL |     ss.t = t; //~ ERROR mismatched types
+LL |     ss.t = t;
    |            ^ lifetime mismatch
    |
    = note: expected type `&'a std::boxed::Box<(dyn Test + 'static)>`

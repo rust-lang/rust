@@ -2,13 +2,13 @@
 
 //! Unix-specific networking functionality
 
-use fmt;
-use io::{self, Error, ErrorKind, Initializer};
-use net::Shutdown;
-use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
-use path::Path;
-use time::Duration;
-use sys::{cvt, fd::FileDesc, syscall};
+use crate::fmt;
+use crate::io::{self, Error, ErrorKind, Initializer};
+use crate::net::Shutdown;
+use crate::os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
+use crate::path::Path;
+use crate::time::Duration;
+use crate::sys::{cvt, fd::FileDesc, syscall};
 
 /// An address associated with a Unix socket.
 ///

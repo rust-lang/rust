@@ -1,75 +1,75 @@
 error[E0387]: cannot assign to data in a captured outer variable in an `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:15:27
    |
-LL |         let _f = to_fn(|| x = 42); //~ ERROR cannot assign
+LL |         let _f = to_fn(|| x = 42);
    |                           ^^^^^^
    |
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:15:24
    |
-LL |         let _f = to_fn(|| x = 42); //~ ERROR cannot assign
+LL |         let _f = to_fn(|| x = 42);
    |                        ^^^^^^^^^
 
 error[E0387]: cannot borrow data mutably in a captured outer variable in an `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:18:36
    |
-LL |         let _g = to_fn(|| set(&mut y)); //~ ERROR cannot borrow
+LL |         let _g = to_fn(|| set(&mut y));
    |                                    ^
    |
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:18:24
    |
-LL |         let _g = to_fn(|| set(&mut y)); //~ ERROR cannot borrow
+LL |         let _g = to_fn(|| set(&mut y));
    |                        ^^^^^^^^^^^^^^
 
 error[E0387]: cannot assign to data in a captured outer variable in an `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:21:55
    |
-LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); }); //~ ERROR cannot assign
+LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); });
    |                                                       ^^^^^^
    |
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:21:52
    |
-LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); }); //~ ERROR cannot assign
+LL |         let _h = to_fn_mut(|| { set(&mut z); to_fn(|| z = 42); });
    |                                                    ^^^^^^^^^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:27:32
    |
-LL |         let _f = to_fn(move || x = 42); //~ ERROR cannot assign
+LL |         let _f = to_fn(move || x = 42);
    |                                ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:27:24
    |
-LL |         let _f = to_fn(move || x = 42); //~ ERROR cannot assign
+LL |         let _f = to_fn(move || x = 42);
    |                        ^^^^^^^^^^^^^^
 
 error[E0596]: cannot borrow captured outer variable in an `Fn` closure as mutable
   --> $DIR/borrow-immutable-upvar-mutation.rs:30:41
    |
-LL |         let _g = to_fn(move || set(&mut y)); //~ ERROR cannot borrow
+LL |         let _g = to_fn(move || set(&mut y));
    |                                         ^
    |
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:30:24
    |
-LL |         let _g = to_fn(move || set(&mut y)); //~ ERROR cannot borrow
+LL |         let _g = to_fn(move || set(&mut y));
    |                        ^^^^^^^^^^^^^^^^^^^
 
 error[E0594]: cannot assign to captured outer variable in an `Fn` closure
   --> $DIR/borrow-immutable-upvar-mutation.rs:33:65
    |
-LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); }); //~ ERROR cannot assign
+LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); });
    |                                                                 ^^^^^^
    |
    = note: `Fn` closures cannot capture their enclosing environment for modifications
 help: consider changing this closure to take self by mutable reference
   --> $DIR/borrow-immutable-upvar-mutation.rs:33:57
    |
-LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); }); //~ ERROR cannot assign
+LL |         let _h = to_fn_mut(move || { set(&mut z); to_fn(move || z = 42); });
    |                                                         ^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

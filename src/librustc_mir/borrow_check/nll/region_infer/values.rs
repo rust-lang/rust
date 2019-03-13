@@ -116,14 +116,14 @@ impl RegionValueElements {
     }
 }
 
-/// A single integer representing a `Location` in the MIR control-flow
-/// graph. Constructed efficiently from `RegionValueElements`.
 newtype_index! {
+    /// A single integer representing a `Location` in the MIR control-flow
+    /// graph. Constructed efficiently from `RegionValueElements`.
     pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
 }
 
-/// A single integer representing a `ty::Placeholder`.
 newtype_index! {
+    /// A single integer representing a `ty::Placeholder`.
     pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
 }
 
@@ -154,10 +154,10 @@ impl<N: Idx> LivenessValues<N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    crate fn new(elements: &Rc<RegionValueElements>) -> Self {
+    crate fn new(elements: Rc<RegionValueElements>) -> Self {
         Self {
-            elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
+            elements: elements,
         }
     }
 

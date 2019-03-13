@@ -2,12 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fs;
-use os::raw;
-use sys;
-use io;
-use sys_common::{AsInner, FromInner, IntoInner};
-use libc;
+use crate::fs;
+use crate::os::raw;
+use crate::sys;
+use crate::io;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]

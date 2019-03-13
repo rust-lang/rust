@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `&'static mut isize: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:27:5
    |
-LL |     assert_copy::<&'static mut isize>(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<&'static mut isize>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `&'static mut isize`
    |
    = help: the following implementations were found:
@@ -15,7 +15,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `&'a mut isize: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:28:5
    |
-LL |     assert_copy::<&'a mut isize>();  //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<&'a mut isize>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `&'a mut isize`
    |
    = help: the following implementations were found:
@@ -29,7 +29,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::boxed::Box<isize>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:31:5
    |
-LL |     assert_copy::<Box<isize>>();   //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Box<isize>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<isize>`
    |
 note: required by `assert_copy`
@@ -41,7 +41,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:32:5
    |
-LL |     assert_copy::<String>();   //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<String>();
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
 note: required by `assert_copy`
@@ -53,7 +53,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::vec::Vec<isize>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:33:5
    |
-LL |     assert_copy::<Vec<isize> >(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Vec<isize> >();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::vec::Vec<isize>`
    |
 note: required by `assert_copy`
@@ -65,7 +65,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::boxed::Box<&'a mut isize>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:34:5
    |
-LL |     assert_copy::<Box<&'a mut isize>>(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Box<&'a mut isize>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<&'a mut isize>`
    |
 note: required by `assert_copy`
@@ -77,7 +77,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::boxed::Box<dyn Dummy>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:42:5
    |
-LL |     assert_copy::<Box<Dummy>>(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Box<Dummy>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<dyn Dummy>`
    |
 note: required by `assert_copy`
@@ -89,7 +89,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::boxed::Box<dyn Dummy + std::marker::Send>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:43:5
    |
-LL |     assert_copy::<Box<Dummy+Send>>(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Box<Dummy+Send>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<dyn Dummy + std::marker::Send>`
    |
 note: required by `assert_copy`
@@ -101,7 +101,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `&'a mut (dyn Dummy + std::marker::Send + 'a): std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:46:5
    |
-LL |     assert_copy::<&'a mut (Dummy+Send)>();  //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<&'a mut (Dummy+Send)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `&'a mut (dyn Dummy + std::marker::Send + 'a)`
    |
 note: required by `assert_copy`
@@ -113,7 +113,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `MyNoncopyStruct: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:64:5
    |
-LL |     assert_copy::<MyNoncopyStruct>(); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<MyNoncopyStruct>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `MyNoncopyStruct`
    |
 note: required by `assert_copy`
@@ -125,7 +125,7 @@ LL | fn assert_copy<T:Copy>() { }
 error[E0277]: the trait bound `std::rc::Rc<isize>: std::marker::Copy` is not satisfied
   --> $DIR/kindck-copy.rs:67:5
    |
-LL |     assert_copy::<Rc<isize>>();   //~ ERROR : std::marker::Copy` is not satisfied
+LL |     assert_copy::<Rc<isize>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::rc::Rc<isize>`
    |
 note: required by `assert_copy`

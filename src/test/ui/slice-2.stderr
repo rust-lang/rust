@@ -1,25 +1,25 @@
 error[E0608]: cannot index into a value of type `Foo`
   --> $DIR/slice-2.rs:7:6
    |
-LL |     &x[..]; //~ ERROR cannot index into a value of type `Foo`
+LL |     &x[..];
    |      ^^^^^
 
 error[E0608]: cannot index into a value of type `Foo`
   --> $DIR/slice-2.rs:8:6
    |
-LL |     &x[Foo..]; //~ ERROR cannot index into a value of type `Foo`
+LL |     &x[Foo..];
    |      ^^^^^^^^
 
 error[E0608]: cannot index into a value of type `Foo`
   --> $DIR/slice-2.rs:9:6
    |
-LL |     &x[..Foo]; //~ ERROR cannot index into a value of type `Foo`
+LL |     &x[..Foo];
    |      ^^^^^^^^
 
 error[E0608]: cannot index into a value of type `Foo`
   --> $DIR/slice-2.rs:10:6
    |
-LL |     &x[Foo..Foo]; //~ ERROR cannot index into a value of type `Foo`
+LL |     &x[Foo..Foo];
    |      ^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

@@ -1,9 +1,10 @@
-use error::Error;
-use ffi::CStr;
-use intrinsics;
-use io;
-use libc;
-use sys_common::backtrace::Frame;
+use crate::error::Error;
+use crate::ffi::CStr;
+use crate::fmt;
+use crate::intrinsics;
+use crate::io;
+use crate::sys_common::backtrace::Frame;
+
 use unwind as uw;
 
 pub struct BacktraceContext;
@@ -22,8 +23,8 @@ impl Error for UnwindError {
     }
 }
 
-impl ::fmt::Display for UnwindError {
-    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+impl fmt::Display for UnwindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {:?}", self.description(), self.0)
     }
 }

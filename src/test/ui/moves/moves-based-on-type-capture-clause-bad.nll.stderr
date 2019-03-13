@@ -8,7 +8,7 @@ LL |     thread::spawn(move|| {
 LL |         println!("{}", x);
    |                        - variable moved due to use in closure
 LL |     });
-LL |     println!("{}", x); //~ ERROR use of moved value
+LL |     println!("{}", x);
    |                    ^ value borrowed here after move
 
 error: aborting due to previous error

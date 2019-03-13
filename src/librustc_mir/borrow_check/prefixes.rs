@@ -11,7 +11,7 @@ use super::MirBorrowckCtxt;
 
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{Mir, Place, ProjectionElem};
+use rustc::mir::{Mir, Place, PlaceBase, ProjectionElem};
 
 pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: &Place<'tcx>) -> bool;
@@ -26,8 +26,9 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
             }
 
             match *cursor {
-                Place::Promoted(_) |
-                Place::Local(_) | Place::Static(_) => return false,
+                Place::Base(PlaceBase::Promoted(_)) |
+                Place::Base(PlaceBase::Local(_)) |
+                Place::Base(PlaceBase::Static(_)) => return false,
                 Place::Projection(ref proj) => {
                     cursor = &proj.base;
                 }
@@ -86,9 +87,9 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
 
         'cursor: loop {
             let proj = match *cursor {
-                Place::Promoted(_) |
-                Place::Local(_) | // search yielded this leaf
-                Place::Static(_) => {
+                Place::Base(PlaceBase::Promoted(_)) |
+                Place::Base(PlaceBase::Local(_)) | // search yielded this leaf
+                Place::Base(PlaceBase::Static(_)) => {
                     self.next = None;
                     return Some(cursor);
                 }

@@ -1,19 +1,19 @@
 error[E0572]: return statement outside of function body
   --> $DIR/return-match-array-const.rs:2:10
    |
-LL |     [(); return match 0 { n => n }]; //~ ERROR: return statement outside of function body
+LL |     [(); return match 0 { n => n }];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
   --> $DIR/return-match-array-const.rs:4:10
    |
-LL |     [(); return match 0 { 0 => 0 }]; //~ ERROR: return statement outside of function body
+LL |     [(); return match 0 { 0 => 0 }];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
   --> $DIR/return-match-array-const.rs:6:10
    |
-LL |     [(); return match () { 'a' => 0, _ => 0 }]; //~ ERROR: return statement outside of function body
+LL |     [(); return match () { 'a' => 0, _ => 0 }];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

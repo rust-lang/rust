@@ -1,7 +1,7 @@
 error: expected one of `:` or `@`, found `)`
   --> $DIR/anon-params-denied-2018.rs:6:15
    |
-LL |     fn foo(i32); //~ expected one of `:` or `@`, found `)`
+LL |     fn foo(i32);
    |            ---^ expected one of `:` or `@` here
    |            |
    |            help: explicitly ignore parameter: `_: i32`

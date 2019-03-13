@@ -1,7 +1,7 @@
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts2.rs:7:15
    |
-LL |       let n = 1u8 << (4+4); //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1u8 << (4+4);
    |               ^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,13 +13,13 @@ LL | #![deny(exceeding_bitshifts, const_err)]
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts2.rs:15:15
    |
-LL |       let n = 1_isize << BITS; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1_isize << BITS;
    |               ^^^^^^^^^^^^^^^
 
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts2.rs:16:15
    |
-LL |       let n = 1_usize << BITS; //~ ERROR: attempt to shift left with overflow
+LL |       let n = 1_usize << BITS;
    |               ^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

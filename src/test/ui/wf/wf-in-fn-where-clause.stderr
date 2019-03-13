@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
   --> $DIR/wf-in-fn-where-clause.rs:9:1
    |
-LL | / fn bar<T,U>() //~ ERROR E0277
+LL | / fn bar<T,U>()
 LL | |     where T: MustBeCopy<U>
 LL | | {
 LL | | }

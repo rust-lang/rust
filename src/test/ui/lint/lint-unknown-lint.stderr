@@ -1,7 +1,7 @@
 error: unknown lint: `not_a_real_lint`
   --> $DIR/lint-unknown-lint.rs:3:10
    |
-LL | #![allow(not_a_real_lint)] //~ ERROR unknown lint
+LL | #![allow(not_a_real_lint)]
    |          ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unknown_lints)]
 error: unknown lint: `dead_cod`
   --> $DIR/lint-unknown-lint.rs:5:9
    |
-LL | #![deny(dead_cod)] //~ ERROR unknown lint
+LL | #![deny(dead_cod)]
    |         ^^^^^^^^ help: did you mean: `dead_code`
 
 error: aborting due to 2 previous errors

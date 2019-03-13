@@ -3,6 +3,8 @@ error[E0004]: non-exhaustive patterns: `Some(Private { misc: true, .. })` not co
    |
 LL |     match private::DATA {
    |           ^^^^^^^^^^^^^ pattern `Some(Private { misc: true, .. })` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

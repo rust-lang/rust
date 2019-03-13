@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/const-int-overflowing.rs:2:36
    |
-LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3)); //~ ERROR does not live long enough
+LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3));
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -12,9 +12,9 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/const-int-overflowing.rs:3:36
    |
-LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3)); //~ ERROR does not live long enough
+LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3));
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3)); //~ ERROR does not live long enough
+LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3));
 LL | }
    | - temporary value only lives until here
    |
@@ -23,7 +23,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/const-int-overflowing.rs:4:36
    |
-LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3)); //~ ERROR does not live long enough
+LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3));
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

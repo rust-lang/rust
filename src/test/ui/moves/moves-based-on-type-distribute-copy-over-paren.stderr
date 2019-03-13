@@ -3,8 +3,8 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = Foo { f:x };
    |                      - value moved here
-LL |     //~^ NOTE value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -14,8 +14,8 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let _y = Foo { f:(((x))) };
    |                      ------- value moved here
-LL |     //~^ NOTE value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |
+LL |     touch(&x);
    |            ^ value used here after move
    |
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait

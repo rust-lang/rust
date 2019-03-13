@@ -67,7 +67,7 @@ use crate::traits::query::{
 };
 use crate::ty::{TyCtxt, FnSig, Instance, InstanceDef,
          ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need
@@ -456,6 +456,8 @@ define_dep_nodes!( <'tcx>
     [eval_always] CoherenceInherentImplOverlapCheck,
     [] CoherenceCheckTrait(DefId),
     [eval_always] PrivacyAccessLevels(CrateNum),
+    [eval_always] CheckPrivateInPublic(CrateNum),
+    [eval_always] Analysis(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -661,7 +663,7 @@ define_dep_nodes!( <'tcx>
     [] TypeOpNormalizePolyFnSig(CanonicalTypeOpNormalizeGoal<'tcx, PolyFnSig<'tcx>>),
     [] TypeOpNormalizeFnSig(CanonicalTypeOpNormalizeGoal<'tcx, FnSig<'tcx>>),
 
-    [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
+    [] SubstituteNormalizeAndTestPredicates { key: (DefId, SubstsRef<'tcx>) },
     [] MethodAutoderefSteps(CanonicalTyGoal<'tcx>),
 
     [input] TargetFeaturesWhitelist,

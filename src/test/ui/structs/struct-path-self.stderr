@@ -25,13 +25,13 @@ LL |             Self { .. } => {}
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-self.rs:20:24
    |
-LL |         let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
 
 error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-self.rs:30:24
    |
-LL |         let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
 
 error: aborting due to 6 previous errors

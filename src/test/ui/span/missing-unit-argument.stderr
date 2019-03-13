@@ -1,11 +1,11 @@
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/missing-unit-argument.rs:11:33
    |
-LL |     let _: Result<(), String> = Ok(); //~ ERROR this function takes
+LL |     let _: Result<(), String> = Ok();
    |                                 ^^^^
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     let _: Result<(), String> = Ok(()); //~ ERROR this function takes
+LL |     let _: Result<(), String> = Ok(());
    |                                    ^^
 
 error[E0061]: this function takes 2 parameters but 0 parameters were supplied
@@ -14,7 +14,7 @@ error[E0061]: this function takes 2 parameters but 0 parameters were supplied
 LL | fn foo(():(), ():()) {}
    | -------------------- defined here
 ...
-LL |     foo(); //~ ERROR this function takes
+LL |     foo();
    |     ^^^^^ expected 2 parameters
 
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
@@ -23,7 +23,7 @@ error[E0061]: this function takes 2 parameters but 1 parameter was supplied
 LL | fn foo(():(), ():()) {}
    | -------------------- defined here
 ...
-LL |     foo(()); //~ ERROR this function takes
+LL |     foo(());
    |     ^^^^^^^ expected 2 parameters
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
@@ -32,11 +32,11 @@ error[E0061]: this function takes 1 parameter but 0 parameters were supplied
 LL | fn bar(():()) {}
    | ------------- defined here
 ...
-LL |     bar(); //~ ERROR this function takes
+LL |     bar();
    |     ^^^^^
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     bar(()); //~ ERROR this function takes
+LL |     bar(());
    |         ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
@@ -45,11 +45,11 @@ error[E0061]: this function takes 1 parameter but 0 parameters were supplied
 LL |     fn baz(self, (): ()) { }
    |     -------------------- defined here
 ...
-LL |     S.baz(); //~ ERROR this function takes
+LL |     S.baz();
    |       ^^^
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     S.baz(()); //~ ERROR this function takes
+LL |     S.baz(());
    |           ^^
 
 error[E0061]: this function takes 1 parameter but 0 parameters were supplied
@@ -58,11 +58,11 @@ error[E0061]: this function takes 1 parameter but 0 parameters were supplied
 LL |     fn generic<T>(self, _: T) { }
    |     ------------------------- defined here
 ...
-LL |     S.generic::<()>(); //~ ERROR this function takes
+LL |     S.generic::<()>();
    |       ^^^^^^^
 help: expected the unit value `()`; create it with empty parentheses
    |
-LL |     S.generic::<()>(()); //~ ERROR this function takes
+LL |     S.generic::<()>(());
    |                     ^^
 
 error: aborting due to 6 previous errors

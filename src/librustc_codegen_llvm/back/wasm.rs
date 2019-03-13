@@ -2,115 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::str;
 
-use rustc_data_structures::fx::FxHashMap;
 use serialize::leb128;
 
 // https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
-const WASM_IMPORT_SECTION_ID: u8 = 2;
 const WASM_CUSTOM_SECTION_ID: u8 = 0;
-
-const WASM_EXTERNAL_KIND_FUNCTION: u8 = 0;
-const WASM_EXTERNAL_KIND_TABLE: u8 = 1;
-const WASM_EXTERNAL_KIND_MEMORY: u8 = 2;
-const WASM_EXTERNAL_KIND_GLOBAL: u8 = 3;
-
-/// Rewrite the module imports are listed from in a wasm module given the field
-/// name to module name mapping in `import_map`.
-///
-/// LLVM 6 which we're using right now doesn't have the ability to configure the
-/// module a wasm symbol is import from. Rather all imported symbols come from
-/// the bland `"env"` module unconditionally. Furthermore we'd *also* need
-/// support in LLD for preserving these import modules, which it unfortunately
-/// currently does not.
-///
-/// This function is intended as a hack for now where we manually rewrite the
-/// wasm output by LLVM to have the correct import modules listed. The
-/// `#[link(wasm_import_module = "...")]` attribute in Rust translates to the
-/// module that each symbol is imported from, so here we manually go through the
-/// wasm file, decode it, rewrite imports, and then rewrite the wasm module.
-///
-/// Support for this was added to LLVM in
-/// https://github.com/llvm-mirror/llvm/commit/0f32e1365, although support still
-/// needs to be added, tracked at https://bugs.llvm.org/show_bug.cgi?id=37168
-pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
-    if import_map.is_empty() {
-        return
-    }
-
-    let wasm = fs::read(path).expect("failed to read wasm output");
-    let mut ret = WasmEncoder::new();
-    ret.data.extend(&wasm[..8]);
-
-    // skip the 8 byte wasm/version header
-    for (id, raw) in WasmSections(WasmDecoder::new(&wasm[8..])) {
-        ret.byte(id);
-        if id == WASM_IMPORT_SECTION_ID {
-            info!("rewriting import section");
-            let data = rewrite_import_section(
-                &mut WasmDecoder::new(raw),
-                import_map,
-            );
-            ret.bytes(&data);
-        } else {
-            info!("carry forward section {}, {} bytes long", id, raw.len());
-            ret.bytes(raw);
-        }
-    }
-
-    fs::write(path, &ret.data).expect("failed to write wasm output");
-
-    fn rewrite_import_section(
-        wasm: &mut WasmDecoder<'_>,
-        import_map: &FxHashMap<String, String>,
-    )
-        -> Vec<u8>
-    {
-        let mut dst = WasmEncoder::new();
-        let n = wasm.u32();
-        dst.u32(n);
-        info!("rewriting {} imports", n);
-        for _ in 0..n {
-            rewrite_import_entry(wasm, &mut dst, import_map);
-        }
-        return dst.data
-    }
-
-    fn rewrite_import_entry(wasm: &mut WasmDecoder<'_>,
-                            dst: &mut WasmEncoder,
-                            import_map: &FxHashMap<String, String>) {
-        // More info about the binary format here is available at:
-        // https://webassembly.github.io/spec/core/binary/modules.html#import-section
-        //
-        // Note that you can also find the whole point of existence of this
-        // function here, where we map the `module` name to a different one if
-        // we've got one listed.
-        let module = wasm.str();
-        let field = wasm.str();
-        let new_module = if module == "env" {
-            import_map.get(field).map(|s| &**s).unwrap_or(module)
-        } else {
-            module
-        };
-        info!("import rewrite ({} => {}) / {}", module, new_module, field);
-        dst.str(new_module);
-        dst.str(field);
-        let kind = wasm.byte();
-        dst.byte(kind);
-        match kind {
-            WASM_EXTERNAL_KIND_FUNCTION => dst.u32(wasm.u32()),
-            WASM_EXTERNAL_KIND_TABLE => {
-                dst.byte(wasm.byte()); // element_type
-                dst.limits(wasm.limits());
-            }
-            WASM_EXTERNAL_KIND_MEMORY => dst.limits(wasm.limits()),
-            WASM_EXTERNAL_KIND_GLOBAL => {
-                dst.byte(wasm.byte()); // content_type
-                dst.bool(wasm.bool()); // mutable
-            }
-            b => panic!("unknown kind: {}", b),
-        }
-    }
-}
 
 /// Adds or augment the existing `producers` section to encode information about
 /// the Rust compiler used to produce the wasm file.
@@ -266,15 +161,6 @@ impl<'a> WasmDecoder<'a> {
         let len = self.u32();
         str::from_utf8(self.skip(len as usize)).unwrap()
     }
-
-    fn bool(&mut self) -> bool {
-        self.byte() == 1
-    }
-
-    fn limits(&mut self) -> (u32, Option<u32>) {
-        let has_max = self.bool();
-        (self.u32(), if has_max { Some(self.u32()) } else { None })
-    }
 }
 
 struct WasmEncoder {
@@ -301,17 +187,5 @@ impl WasmEncoder {
 
     fn str(&mut self, val: &str) {
         self.bytes(val.as_bytes())
-    }
-
-    fn bool(&mut self, b: bool) {
-        self.byte(b as u8);
-    }
-
-    fn limits(&mut self, limits: (u32, Option<u32>)) {
-        self.bool(limits.1.is_some());
-        self.u32(limits.0);
-        if let Some(c) = limits.1 {
-            self.u32(c);
-        }
     }
 }

@@ -3,13 +3,13 @@ error[E0252]: the name `ConstructorExtension` is defined multiple times
    |
 LL | use extension1::ConstructorExtension;
    |     -------------------------------- previous import of the trait `ConstructorExtension` here
-LL | use extension2::ConstructorExtension; //~ ERROR is defined multiple times
+LL | use extension2::ConstructorExtension;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ConstructorExtension` reimported here
    |
    = note: `ConstructorExtension` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use extension2::ConstructorExtension as OtherConstructorExtension; //~ ERROR is defined multiple times
+LL | use extension2::ConstructorExtension as OtherConstructorExtension;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

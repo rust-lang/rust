@@ -1,55 +1,55 @@
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:5:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:8:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:11:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:14:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:17:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:20:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:23:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:26:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/deriving-non-type.rs:29:1
    |
-LL | #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs, enums and unions
+LL | #[derive(PartialEq)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors

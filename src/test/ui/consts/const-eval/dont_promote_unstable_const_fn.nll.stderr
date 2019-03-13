@@ -1,7 +1,7 @@
 error: `foo` is not yet stable as a const fn
   --> $DIR/dont_promote_unstable_const_fn.rs:15:25
    |
-LL | const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
+LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
    |
    = help: add `#![feature(foo)]` to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a cons
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:18:28
    |
-LL |     let _: &'static u32 = &foo(); //~ ERROR does not live long enough
+LL |     let _: &'static u32 = &foo();
    |            ------------    ^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
@@ -19,7 +19,7 @@ LL | }
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:22:28
    |
-LL |     let _: &'static u32 = &meh(); //~ ERROR does not live long enough
+LL |     let _: &'static u32 = &meh();
    |            ------------    ^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
@@ -34,7 +34,7 @@ LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis
    |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
-LL |     //~^ ERROR does not live long enough
+LL |
 LL | }
    | - temporary value is freed at the end of this statement
 

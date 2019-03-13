@@ -52,11 +52,11 @@
 // You'll find a few more details in the implementation, but that's the gist of
 // it!
 
-use fmt;
-use marker;
-use ptr;
-use sync::atomic::{AtomicUsize, AtomicBool, Ordering};
-use thread::{self, Thread};
+use crate::fmt;
+use crate::marker;
+use crate::ptr;
+use crate::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use crate::thread::{self, Thread};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
@@ -514,9 +514,9 @@ impl OnceState {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use panic;
-    use sync::mpsc::channel;
-    use thread;
+    use crate::panic;
+    use crate::sync::mpsc::channel;
+    use crate::thread;
     use super::Once;
 
     #[test]

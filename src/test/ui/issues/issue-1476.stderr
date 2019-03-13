@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-1476.rs:2:20
    |
-LL |     println!("{}", x); //~ ERROR cannot find value `x` in this scope
+LL |     println!("{}", x);
    |                    ^ not found in this scope
 
 error: aborting due to previous error

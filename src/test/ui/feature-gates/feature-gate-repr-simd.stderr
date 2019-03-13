@@ -1,7 +1,7 @@
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/feature-gate-repr-simd.rs:1:1
    |
-LL | #[repr(simd)] //~ error: SIMD types are experimental
+LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | #[repr(simd)] //~ error: SIMD types are experimental
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/feature-gate-repr-simd.rs:5:1
    |
-LL | #[repr(simd)] //~ error: SIMD types are experimental
+LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
@@ -17,9 +17,9 @@ LL | #[repr(simd)] //~ error: SIMD types are experimental
 warning[E0566]: conflicting representation hints
   --> $DIR/feature-gate-repr-simd.rs:4:8
    |
-LL | #[repr(C)] //~ warn: conflicting representation hints
+LL | #[repr(C)]
    |        ^
-LL | #[repr(simd)] //~ error: SIMD types are experimental
+LL | #[repr(simd)]
    |        ^^^^
 
 error: aborting due to 2 previous errors

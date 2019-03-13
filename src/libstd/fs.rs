@@ -7,13 +7,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-use ffi::OsString;
-use io::{self, SeekFrom, Seek, Read, Initializer, Write};
-use path::{Path, PathBuf};
-use sys::fs as fs_imp;
-use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
-use time::SystemTime;
+use crate::fmt;
+use crate::ffi::OsString;
+use crate::io::{self, SeekFrom, Seek, Read, Initializer, Write};
+use crate::path::{Path, PathBuf};
+use crate::sys::fs as fs_imp;
+use crate::sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
+use crate::time::SystemTime;
 
 /// A reference to an open file on the filesystem.
 ///
@@ -2096,26 +2096,27 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
-    use io::prelude::*;
+    use crate::io::prelude::*;
 
-    use fs::{self, File, OpenOptions};
-    use io::{ErrorKind, SeekFrom};
-    use path::Path;
+    use crate::fs::{self, File, OpenOptions};
+    use crate::io::{ErrorKind, SeekFrom};
+    use crate::path::Path;
+    use crate::str;
+    use crate::sys_common::io::test::{TempDir, tmpdir};
+    use crate::thread;
+
     use rand::{rngs::StdRng, FromEntropy, RngCore};
-    use str;
-    use sys_common::io::test::{TempDir, tmpdir};
-    use thread;
 
     #[cfg(windows)]
-    use os::windows::fs::{symlink_dir, symlink_file};
+    use crate::os::windows::fs::{symlink_dir, symlink_file};
     #[cfg(windows)]
-    use sys::fs::symlink_junction;
+    use crate::sys::fs::symlink_junction;
     #[cfg(unix)]
-    use os::unix::fs::symlink as symlink_dir;
+    use crate::os::unix::fs::symlink as symlink_dir;
     #[cfg(unix)]
-    use os::unix::fs::symlink as symlink_file;
+    use crate::os::unix::fs::symlink as symlink_file;
     #[cfg(unix)]
-    use os::unix::fs::symlink as symlink_junction;
+    use crate::os::unix::fs::symlink as symlink_junction;
 
     macro_rules! check { ($e:expr) => (
         match $e {
@@ -2334,7 +2335,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn file_test_io_read_write_at() {
-        use os::unix::fs::FileExt;
+        use crate::os::unix::fs::FileExt;
 
         let tmpdir = tmpdir();
         let filename = tmpdir.join("file_rt_io_file_test_read_write_at.txt");
@@ -2390,7 +2391,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn set_get_unix_permissions() {
-        use os::unix::fs::PermissionsExt;
+        use crate::os::unix::fs::PermissionsExt;
 
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("set_get_unix_permissions");
@@ -2411,7 +2412,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn file_test_io_seek_read_write() {
-        use os::windows::fs::FileExt;
+        use crate::os::windows::fs::FileExt;
 
         let tmpdir = tmpdir();
         let filename = tmpdir.join("file_rt_io_file_test_seek_read_write.txt");
@@ -3013,7 +3014,7 @@ mod tests {
 
     #[test]
     fn open_flavors() {
-        use fs::OpenOptions as OO;
+        use crate::fs::OpenOptions as OO;
         fn c<T: Clone>(t: &T) -> T { t.clone() }
 
         let tmpdir = tmpdir();

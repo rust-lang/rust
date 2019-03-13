@@ -94,7 +94,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -134,7 +134,7 @@ fn get_symbol_hash<'a, 'tcx>(
 
     // values for generic type parameters,
     // if any.
-    substs: &'tcx Substs<'tcx>,
+    substs: SubstsRef<'tcx>,
 ) -> u64 {
     debug!(
         "get_symbol_hash(def_id={:?}, parameters={:?})",
@@ -172,7 +172,7 @@ fn get_symbol_hash<'a, 'tcx>(
         assert!(!substs.needs_subst());
         substs.hash_stable(&mut hcx, &mut hasher);
 
-        let is_generic = substs.types().next().is_some();
+        let is_generic = substs.non_erasable_generics().next().is_some();
         let avoid_cross_crate_conflicts =
             // If this is an instance of a generic function, we also hash in
             // the ID of the instantiating crate. This avoids symbol conflicts
@@ -242,7 +242,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let node_id = tcx.hir().as_local_node_id(def_id);
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
 
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
@@ -256,8 +256,8 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(id) = node_id {
-        match tcx.hir().get(id) {
+    let is_foreign = if let Some(id) = hir_id {
+        match tcx.hir().get_by_hir_id(id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

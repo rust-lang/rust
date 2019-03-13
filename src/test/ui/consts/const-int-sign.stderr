@@ -1,9 +1,9 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/const-int-sign.rs:2:29
    |
-LL |     let x: &'static bool = &(5_i32.is_negative()); //~ ERROR does not live long enough
+LL |     let x: &'static bool = &(5_i32.is_negative());
    |                             ^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |     let y: &'static bool = &(5_i32.is_positive()); //~ ERROR does not live long enough
+LL |     let y: &'static bool = &(5_i32.is_positive());
 LL | }
    | - temporary value only lives until here
    |
@@ -12,7 +12,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/const-int-sign.rs:3:29
    |
-LL |     let y: &'static bool = &(5_i32.is_positive()); //~ ERROR does not live long enough
+LL |     let y: &'static bool = &(5_i32.is_positive());
    |                             ^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

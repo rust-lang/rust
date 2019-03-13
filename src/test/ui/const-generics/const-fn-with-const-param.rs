@@ -3,7 +3,6 @@
 
 const fn const_u32_identity<const X: u32>() -> u32 {
     //~^ ERROR const parameters are not permitted in `const fn`
-    //~^^ ERROR const generics in any position are currently unsupported
     X
 }
 

@@ -29,7 +29,7 @@
 use std::fmt::{self, Display, Debug};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
-use std::{mem, ptr, slice, vec};
+use std::{slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -66,45 +66,18 @@ impl<T: 'static> P<T> {
     pub fn map<F>(mut self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
-        let p: *mut T = &mut *self.ptr;
+        let x = f(*self.ptr);
+        *self.ptr = x;
 
-        // Leak self in case of panic.
-        // FIXME(eddyb) Use some sort of "free guard" that
-        // only deallocates, without dropping the pointee,
-        // in case the call the `f` below ends in a panic.
-        mem::forget(self);
-
-        unsafe {
-            ptr::write(p, f(ptr::read(p)));
-
-            // Recreate self from the raw pointer.
-            P { ptr: Box::from_raw(p) }
-        }
+        self
     }
 
     /// Optionally produce a new `P<T>` from `self` without reallocating.
     pub fn filter_map<F>(mut self, f: F) -> Option<P<T>> where
         F: FnOnce(T) -> Option<T>,
     {
-        let p: *mut T = &mut *self.ptr;
-
-        // Leak self in case of panic.
-        // FIXME(eddyb) Use some sort of "free guard" that
-        // only deallocates, without dropping the pointee,
-        // in case the call the `f` below ends in a panic.
-        mem::forget(self);
-
-        unsafe {
-            if let Some(v) = f(ptr::read(p)) {
-                ptr::write(p, v);
-
-                // Recreate self from the raw pointer.
-                Some(P { ptr: Box::from_raw(p) })
-            } else {
-                drop(Box::from_raw(p));
-                None
-            }
-        }
+        *self.ptr = f(*self.ptr)?;
+        Some(self)
     }
 }
 

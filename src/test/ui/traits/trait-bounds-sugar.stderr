@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/trait-bounds-sugar.rs:12:7
    |
-LL |     a(x); //~ ERROR mismatched types
+LL |     a(x);
    |       ^ expected trait `Foo + std::marker::Send`, found trait `Foo + std::marker::Sync`
    |
    = note: expected type `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`

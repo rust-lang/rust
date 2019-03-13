@@ -1,7 +1,7 @@
 error[E0616]: field `0` of struct `a::Foo` is private
   --> $DIR/ex-E0611.rs:11:4
    |
-LL |    y.0; //~ ERROR field `0` of struct `a::Foo` is private
+LL |    y.0;
    |    ^^^
 
 error: aborting due to previous error

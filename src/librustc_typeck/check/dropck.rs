@@ -6,7 +6,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
-use rustc::ty::subst::{Subst, Substs, UnpackedKind};
+use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
 
@@ -145,7 +145,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
-    self_to_impl_substs: &Substs<'tcx>,
+    self_to_impl_substs: SubstsRef<'tcx>,
 ) -> Result<(), ErrorReported> {
     let mut result = Ok(());
 
@@ -313,6 +313,9 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
         match kind.unpack() {
             UnpackedKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope, r),
             UnpackedKind::Type(ty) => rcx.type_must_outlive(origin(), ty, parent_scope),
+            UnpackedKind::Const(_) => {
+                // Generic consts don't add constraints.
+            }
         }
     }
     Ok(())

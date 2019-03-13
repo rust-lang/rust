@@ -3,7 +3,7 @@ error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
    |
 LL |     fn foo(mut a: &String) {
    |                   ------- use `&mut String` here to make mutable
-LL |         a.push_str("bar"); //~ ERROR cannot borrow immutable borrowed content
+LL |         a.push_str("bar");
    |         ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
@@ -11,7 +11,7 @@ error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
    |
 LL | pub fn foo<'a>(mut a: &'a String) {
    |                       ---------- use `&'a mut String` here to make mutable
-LL |     a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
+LL |     a.push_str("foo");
    |     ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
@@ -19,7 +19,7 @@ error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
    |
 LL |     pub fn foo(mut a: &String) {
    |                       ------- use `&mut String` here to make mutable
-LL |         a.push_str("foo"); //~ ERROR cannot borrow immutable borrowed content
+LL |         a.push_str("foo");
    |         ^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors

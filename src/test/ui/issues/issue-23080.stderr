@@ -2,7 +2,7 @@ error[E0380]: auto traits cannot have methods or associated items
   --> $DIR/issue-23080.rs:5:1
    |
 LL | / unsafe auto trait Trait {
-LL | | //~^ ERROR E0380
+LL | |
 LL | |     fn method(&self) {
 LL | |         println!("Hello");
 LL | |     }

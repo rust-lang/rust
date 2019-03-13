@@ -1,7 +1,7 @@
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:16:33
    |
-LL |     let f2: &Fat<[isize; 3]> = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &Fat<[isize; 3]> = &f1;
    |                                 ^^ borrowed value does not live long enough
 ...
 LL | }
@@ -16,7 +16,7 @@ LL | fn baz<'a>() {
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:21:26
    |
-LL |     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &Fat<Foo> = &f1;
    |                          ^^ borrowed value does not live long enough
 ...
 LL | }
@@ -31,7 +31,7 @@ LL | fn baz<'a>() {
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:26:31
    |
-LL |     let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &([isize; 3],) = &f1;
    |                               ^^ borrowed value does not live long enough
 ...
 LL | }
@@ -46,7 +46,7 @@ LL | fn baz<'a>() {
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:31:24
    |
-LL |     let f2: &(Foo,) = &f1; //~ ERROR `f1` does not live long enough
+LL |     let f2: &(Foo,) = &f1;
    |                        ^^ borrowed value does not live long enough
 LL |     let f3: &'a (Bar,) = f2;
 LL | }

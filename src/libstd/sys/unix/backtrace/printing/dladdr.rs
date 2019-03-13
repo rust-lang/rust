@@ -1,9 +1,8 @@
-use io;
-use intrinsics;
-use ffi::CStr;
-use libc;
-use sys::backtrace::BacktraceContext;
-use sys_common::backtrace::Frame;
+use crate::io;
+use crate::intrinsics;
+use crate::ffi::CStr;
+use crate::sys::backtrace::BacktraceContext;
+use crate::sys_common::backtrace::Frame;
 
 pub fn resolve_symname<F>(frame: Frame,
                           callback: F,

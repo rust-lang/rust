@@ -1,7 +1,7 @@
 error: unused variable: `unused`
   --> $DIR/lint-renamed-allow.rs:8:17
    |
-LL | fn main() { let unused = (); } //~ ERROR unused
+LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: consider prefixing with an underscore: `_unused`
    |
 note: lint level defined here

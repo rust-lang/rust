@@ -1,19 +1,19 @@
 error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:14:1
    |
-LL | impl Marker1 for dyn Object + Marker2 { }   //~ ERROR E0371
+LL | impl Marker1 for dyn Object + Marker2 { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
 
 error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:16:1
    |
-LL | impl Marker2 for dyn Object + Marker2 { }   //~ ERROR E0371
+LL | impl Marker2 for dyn Object + Marker2 { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:22:1
    |
-LL | unsafe impl Send for dyn Marker2 {} //~ ERROR E0117
+LL | unsafe impl Send for dyn Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
    |
    = note: the impl does not reference only types defined in this crate
@@ -22,13 +22,13 @@ LL | unsafe impl Send for dyn Marker2 {} //~ ERROR E0117
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `(dyn Object + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:26:1
    |
-LL | unsafe impl Send for dyn Object {} //~ ERROR E0321
+LL | unsafe impl Send for dyn Object {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `(dyn Object + Marker2 + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:27:1
    |
-LL | unsafe impl Send for dyn Object + Marker2 {} //~ ERROR E0321
+LL | unsafe impl Send for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error: aborting due to 5 previous errors

@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-34126.rs:6:23
    |
-LL |         self.run(&mut self); //~ ERROR cannot borrow
+LL |         self.run(&mut self);
    |                       ^^^^
    |                       |
    |                       cannot reborrow mutably

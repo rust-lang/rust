@@ -1,14 +1,14 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/augmented-assignments.rs:16:5
    |
-LL |       x   //~ error: use of moved value: `x`
+LL |       x
    |       -
    |       |
    |  _____borrow of `x` occurs here
    | |
-LL | |     //~^ value used here after move
+LL | |
 LL | |     +=
-LL | |     x;  //~ value moved here
+LL | |     x;
    | |     ^
    | |     |
    | |_____move out of `x` occurs here
@@ -20,7 +20,7 @@ error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
 LL |     let y = Int(2);
    |         - help: consider changing this to be mutable: `mut y`
 ...
-LL |     y   //~ error: cannot borrow immutable local variable `y` as mutable
+LL |     y
    |     ^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0430]: `self` import can only appear once in an import list
   --> $DIR/E0430.rs:1:16
    |
-LL | use std::fmt::{self, self}; //~ ERROR E0430
+LL | use std::fmt::{self, self};
    |                ^^^^  ---- another `self` import appears here
    |                |
    |                can only appear once in an import list
@@ -9,7 +9,7 @@ LL | use std::fmt::{self, self}; //~ ERROR E0430
 error[E0252]: the name `fmt` is defined multiple times
   --> $DIR/E0430.rs:1:22
    |
-LL | use std::fmt::{self, self}; //~ ERROR E0430
+LL | use std::fmt::{self, self};
    |                ------^^^^
    |                |   | |
    |                |   | `fmt` reimported here

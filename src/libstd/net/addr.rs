@@ -1,16 +1,16 @@
-use fmt;
-use hash;
-use io;
-use mem;
-use net::{ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
-use option;
-use sys::net::netc as c;
-use sys_common::{FromInner, AsInner, IntoInner};
-use sys_common::net::LookupHost;
-use vec;
-use iter;
-use slice;
-use convert::TryInto;
+use crate::fmt;
+use crate::hash;
+use crate::io;
+use crate::mem;
+use crate::net::{ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
+use crate::option;
+use crate::sys::net::netc as c;
+use crate::sys_common::{FromInner, AsInner, IntoInner};
+use crate::sys_common::net::LookupHost;
+use crate::vec;
+use crate::iter;
+use crate::slice;
+use crate::convert::TryInto;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
@@ -921,8 +921,8 @@ impl ToSocketAddrs for String {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use net::*;
-    use net::test::{tsa, sa6, sa4};
+    use crate::net::*;
+    use crate::net::test::{tsa, sa6, sa4};
 
     #[test]
     fn to_socket_addr_ipaddr_u16() {

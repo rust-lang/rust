@@ -1,7 +1,7 @@
 error[E0275]: overflow evaluating the requirement `NoClone: Magic`
   --> $DIR/traits-inductive-overflow-supertrait.rs:13:18
    |
-LL |     let (a, b) = copy(NoClone); //~ ERROR E0275
+LL |     let (a, b) = copy(NoClone);
    |                  ^^^^
    |
    = note: required because of the requirements on the impl of `Magic` for `NoClone`

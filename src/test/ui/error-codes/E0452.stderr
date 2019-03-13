@@ -1,7 +1,7 @@
 error[E0452]: malformed lint attribute
   --> $DIR/E0452.rs:1:10
    |
-LL | #![allow(foo = "")] //~ ERROR E0452
+LL | #![allow(foo = "")]
    |          ^^^^^^^^
 
 error: aborting due to previous error

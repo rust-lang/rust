@@ -2,7 +2,7 @@ use crate::hir::def_id::DefId;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
 use crate::traits;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, InternalSubsts};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
@@ -292,7 +292,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             .iter()
             .map(|(p, _)| *p)
             .collect();
-        let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
+        let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,

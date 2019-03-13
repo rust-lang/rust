@@ -1,7 +1,7 @@
 error[E0391]: cycle detected when processing `FOO`
   --> $DIR/issue-17252.rs:1:20
    |
-LL | const FOO: usize = FOO; //~ ERROR E0391
+LL | const FOO: usize = FOO;
    |                    ^^^
    |
    = note: ...which again requires processing `FOO`, completing the cycle

@@ -2,7 +2,7 @@ error[E0277]: `F` cannot be sent between threads safely
   --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:1
    |
 LL | / fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-LL | |     //~^ ERROR `F` cannot be sent between threads safely
+LL | |
 LL | |     return X { field: blk };
 LL | | }
    | |_^ `F` cannot be sent between threads safely

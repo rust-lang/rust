@@ -1,7 +1,7 @@
 error[E0605]: non-primitive cast: `()` as `usize`
   --> $DIR/issue-10991.rs:3:14
    |
-LL |     let _t = nil as usize; //~ ERROR: non-primitive cast: `()` as `usize`
+LL |     let _t = nil as usize;
    |              ^^^^^^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait

@@ -34,15 +34,17 @@ impl Finder {
 
     fn maybe_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> Option<PathBuf> {
         let cmd: OsString = cmd.as_ref().into();
-        let path = self.path.clone();
+        let path = &self.path;
         self.cache.entry(cmd.clone()).or_insert_with(|| {
-            for path in env::split_paths(&path) {
+            for path in env::split_paths(path) {
                 let target = path.join(&cmd);
-                let mut cmd_alt = cmd.clone();
-                cmd_alt.push(".exe");
-                if target.is_file() || // some/path/git
-                target.with_extension("exe").exists() || // some/path/git.exe
-                target.join(&cmd_alt).exists() { // some/path/git/git.exe
+                let mut cmd_exe = cmd.clone();
+                cmd_exe.push(".exe");
+
+                if target.is_file()                   // some/path/git
+                    || path.join(&cmd_exe).exists()   // some/path/git.exe
+                    || target.join(&cmd_exe).exists() // some/path/git/git.exe
+                {
                     return Some(target);
                 }
             }
@@ -107,9 +109,9 @@ pub fn check(build: &mut Build) {
     }
 
     build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))
-        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| cmd_finder.maybe_have("python2.7"))
         .or_else(|| cmd_finder.maybe_have("python2"))
+        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| Some(cmd_finder.must_have("python")));
 
     build.config.nodejs = build.config.nodejs.take().map(|p| cmd_finder.must_have(p))

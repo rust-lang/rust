@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `*self.x`
    |
 LL |         self.bar();
    |         ---- value moved here
-LL |         return *self.x;  //~ ERROR use of moved value: `*self.x`
+LL |         return *self.x;
    |                ^^^^^^^ value used here after move
    |
    = note: move occurs because `self` has type `S`, which does not implement the `Copy` trait

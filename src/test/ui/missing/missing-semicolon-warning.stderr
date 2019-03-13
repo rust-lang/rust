@@ -1,7 +1,7 @@
 warning: expected `;`, found keyword `let`
   --> $DIR/missing-semicolon-warning.rs:6:12
    |
-LL |         $( let x = $e1 )*; //~ WARN expected `;`
+LL |         $( let x = $e1 )*;
    |            ^^^
 ...
 LL | fn main() { m!(0, 0; 0, 0); }
@@ -12,7 +12,7 @@ LL | fn main() { m!(0, 0; 0, 0); }
 warning: expected `;`, found `println`
   --> $DIR/missing-semicolon-warning.rs:7:12
    |
-LL |         $( println!("{}", $e2) )*; //~ WARN expected `;`
+LL |         $( println!("{}", $e2) )*;
    |            ^^^^^^^
 ...
 LL | fn main() { m!(0, 0; 0, 0); }

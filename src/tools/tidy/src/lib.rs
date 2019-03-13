@@ -3,7 +3,8 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-extern crate serde;
+#![deny(rust_2018_idioms)]
+
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;

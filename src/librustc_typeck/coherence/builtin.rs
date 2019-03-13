@@ -50,8 +50,8 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
         /* do nothing */
     } else {
         // Destructors only work on nominal types.
-        if let Some(impl_node_id) = tcx.hir().as_local_node_id(impl_did) {
-            if let Some(Node::Item(item)) = tcx.hir().find(impl_node_id) {
+        if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_did) {
+            if let Some(Node::Item(item)) = tcx.hir().find_by_hir_id(impl_hir_id) {
                 let span = match item.node {
                     ItemKind::Impl(.., ref ty, _) => ty.span,
                     _ => item.span,

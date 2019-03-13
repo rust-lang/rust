@@ -25,8 +25,7 @@
 // ignore-license
 
 #[cfg(feature = "bitflags")]
-#[macro_use]
-extern crate bitflags;
+use bitflags::bitflags;
 
 // Minimal implementation of bitflags! in case we can't depend on the bitflags
 // crate. Only implements `bits()` and a `from_bits_truncate()` that doesn't

@@ -3,7 +3,6 @@
 mod _match;
 mod check_match;
 
-pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
 use crate::const_eval::{const_field, const_variant_index};
@@ -16,7 +15,7 @@ use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
-use rustc::ty::subst::{Substs, Kind};
+use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -126,7 +125,7 @@ pub enum PatternKind<'tcx> {
         mutability: Mutability,
         name: ast::Name,
         mode: BindingMode,
-        var: ast::NodeId,
+        var: hir::HirId,
         ty: Ty<'tcx>,
         subpattern: Option<Pattern<'tcx>>,
     },
@@ -135,7 +134,7 @@ pub enum PatternKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: &'tcx AdtDef,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
@@ -330,13 +329,13 @@ pub struct PatternContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
     pub errors: Vec<PatternError>,
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+                    param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
                     pat: &'tcx hir::Pat) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
@@ -352,7 +351,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+               param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                tables: &'a ty::TypeckTables<'tcx>) -> Self {
         PatternContext {
             tcx,
@@ -559,7 +558,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(_, id, _, ident, ref sub) => {
+            PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_type(pat.hir_id);
                 if let ty::Error = var_ty.sty {
                     // Avoid ICE
@@ -631,7 +630,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     fields.iter()
                           .map(|field| {
                               FieldPattern {
-                                  field: Field::new(self.tcx.field_index(field.node.id,
+                                  field: Field::new(self.tcx.field_index(field.node.hir_id,
                                                                          self.tables)),
                                   pattern: self.lower_pattern(&field.node.pat),
                               }
@@ -937,10 +936,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = const_field(
-                self.tcx, self.param_env,
-                variant_opt, field, cv,
-            ).expect("field access failed");
+            let val = const_field(self.tcx, self.param_env, variant_opt, field, cv);
             self.const_to_pat(instance, val, id, span)
         };
         let adt_subpatterns = |n, variant_opt| {
@@ -955,8 +951,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
         let kind = match cv.ty.sty {
             ty::Float(_) => {
-                let id = self.tcx.hir().hir_to_node_id(id);
-                self.tcx.lint_node(
+                self.tcx.lint_hir(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
                     span,
@@ -980,9 +975,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let variant_index = const_variant_index(
-                    self.tcx, self.param_env, cv
-                ).expect("const_variant_index failed");
+                let variant_index = const_variant_index(self.tcx, self.param_env, cv);
                 let subpatterns = adt_subpatterns(
                     adt_def.variants[variant_index].fields.len(),
                     Some(variant_index),
@@ -1091,9 +1084,9 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ty::Const<'tcx>,
+    Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
+    SubstsRef<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
     UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
 }
 

@@ -1,7 +1,7 @@
 error[E0599]: no method named `eat` found for type `std::boxed::Box<dyn Noisy>` in the current scope
   --> $DIR/class-cast-to-trait.rs:53:8
    |
-LL |   nyan.eat(); //~ ERROR no method named `eat` found
+LL |   nyan.eat();
    |        ^^^
 
 error: aborting due to previous error

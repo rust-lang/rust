@@ -1,5 +1,5 @@
-use time::Duration;
-use sys::{TimeSysCall, TimeClock};
+use crate::time::Duration;
+use crate::sys::{TimeSysCall, TimeClock};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);

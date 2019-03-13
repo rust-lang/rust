@@ -1,67 +1,67 @@
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:15:24
    |
-LL |     fn m4(&self, arg: &'b isize) { } //~ ERROR undeclared lifetime
+LL |     fn m4(&self, arg: &'b isize) { }
    |                        ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:16:12
    |
-LL |     fn m5(&'b self) { } //~ ERROR undeclared lifetime
+LL |     fn m5(&'b self) { }
    |            ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:17:27
    |
-LL |     fn m6(&self, arg: Foo<'b>) { } //~ ERROR undeclared lifetime
+LL |     fn m6(&self, arg: Foo<'b>) { }
    |                           ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:25:22
    |
-LL |     type X = Option<&'a isize>; //~ ERROR undeclared lifetime
+LL |     type X = Option<&'a isize>;
    |                      ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:27:13
    |
-LL |         E1(&'a isize) //~ ERROR undeclared lifetime
+LL |         E1(&'a isize)
    |             ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:30:13
    |
-LL |         f: &'a isize //~ ERROR undeclared lifetime
+LL |         f: &'a isize
    |             ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:32:14
    |
-LL |     fn f(a: &'a isize) { } //~ ERROR undeclared lifetime
+LL |     fn f(a: &'a isize) { }
    |              ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:40:17
    |
-LL | fn fn_types(a: &'a isize, //~ ERROR undeclared lifetime
+LL | fn fn_types(a: &'a isize,
    |                 ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:42:36
    |
-LL |                                   &'b isize, //~ ERROR undeclared lifetime
+LL |                                   &'b isize,
    |                                    ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:45:36
    |
-LL |                                   &'b isize)>, //~ ERROR undeclared lifetime
+LL |                                   &'b isize)>,
    |                                    ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:46:17
    |
-LL |             c: &'a isize) //~ ERROR undeclared lifetime
+LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
 
 error: aborting due to 11 previous errors

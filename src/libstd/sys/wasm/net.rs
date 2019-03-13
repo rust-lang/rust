@@ -1,9 +1,9 @@
-use fmt;
-use io;
-use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
-use time::Duration;
-use sys::{unsupported, Void};
-use convert::TryFrom;
+use crate::fmt;
+use crate::io::{self, IoVec, IoVecMut};
+use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
+use crate::time::Duration;
+use crate::sys::{unsupported, Void};
+use crate::convert::TryFrom;
 
 pub struct TcpStream(Void);
 
@@ -40,7 +40,15 @@ impl TcpStream {
         match self.0 {}
     }
 
+    pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
+    pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 
@@ -290,10 +298,10 @@ impl Iterator for LookupHost {
     }
 }
 
-impl<'a> TryFrom<&'a str> for LookupHost {
+impl TryFrom<&str> for LookupHost {
     type Error = io::Error;
 
-    fn try_from(_v: &'a str) -> io::Result<LookupHost> {
+    fn try_from(_v: &str) -> io::Result<LookupHost> {
         unsupported()
     }
 }

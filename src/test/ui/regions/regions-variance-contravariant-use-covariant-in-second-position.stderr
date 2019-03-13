@@ -6,7 +6,7 @@ LL | fn use_<'short,'long>(c: S<'long, 'short>,
    |                          |
    |                          this type is declared with multiple lifetimes...
 ...
-LL |     let _: S<'long, 'long> = c; //~ ERROR E0623
+LL |     let _: S<'long, 'long> = c;
    |                              ^ ...but data with one lifetime flows into the other here
 
 error: aborting due to previous error

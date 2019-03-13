@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -244,7 +244,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     pub(super) fn resolve(
         &self,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>
+        substs: SubstsRef<'tcx>
     ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
@@ -306,7 +306,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
         &self,
         t: T,
-        substs: &'tcx Substs<'tcx>
+        substs: SubstsRef<'tcx>
     ) -> T {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them

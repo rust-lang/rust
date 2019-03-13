@@ -1,10 +1,10 @@
-use cmp::Ordering;
-use libc;
-use time::Duration;
+use crate::cmp::Ordering;
+use crate::time::Duration;
+
 use core::hash::{Hash, Hasher};
 
 pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
-use convert::TryInto;
+use crate::convert::TryInto;
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
@@ -113,12 +113,11 @@ impl Hash for Timespec {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
-    use fmt;
-    use libc;
-    use sync::Once;
-    use sys::cvt;
-    use sys_common::mul_div_u64;
-    use time::Duration;
+    use crate::fmt;
+    use crate::sync::Once;
+    use crate::sys::cvt;
+    use crate::sys_common::mul_div_u64;
+    use crate::time::Duration;
 
     use super::NSEC_PER_SEC;
     use super::Timespec;
@@ -173,7 +172,7 @@ mod inner {
 
     impl SystemTime {
         pub fn now() -> SystemTime {
-            use ptr;
+            use crate::ptr;
 
             let mut s = libc::timeval {
                 tv_sec: 0,
@@ -249,10 +248,9 @@ mod inner {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
-    use fmt;
-    use libc;
-    use sys::cvt;
-    use time::Duration;
+    use crate::fmt;
+    use crate::sys::cvt;
+    use crate::time::Duration;
 
     use super::Timespec;
 

@@ -5,7 +5,7 @@ LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
    |            --  -- lifetime `'b` defined here
    |            |
    |            lifetime `'a` defined here
-LL |     Foo::xmute(u) //~ ERROR lifetime may not live long enough
+LL |     Foo::xmute(u)
    |     ^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
 
 error: aborting due to previous error

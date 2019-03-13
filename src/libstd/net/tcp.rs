@@ -1,11 +1,11 @@
-use io::prelude::*;
+use crate::io::prelude::*;
 
-use fmt;
-use io::{self, Initializer};
-use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner, IntoInner};
-use time::Duration;
+use crate::fmt;
+use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::net::{ToSocketAddrs, SocketAddr, Shutdown};
+use crate::sys_common::net as net_imp;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::time::Duration;
 
 /// A TCP stream between a local and a remote socket.
 ///
@@ -569,6 +569,10 @@ impl TcpStream {
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -577,11 +581,20 @@ impl Read for TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
@@ -591,6 +604,11 @@ impl Read for &TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
@@ -911,14 +929,14 @@ impl fmt::Debug for TcpListener {
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
-    use io::ErrorKind;
-    use io::prelude::*;
-    use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
-    use sync::mpsc::channel;
-    use sys_common::AsInner;
-    use time::{Instant, Duration};
-    use thread;
+    use crate::io::{ErrorKind, IoVec, IoVecMut};
+    use crate::io::prelude::*;
+    use crate::net::*;
+    use crate::net::test::{next_test_ip4, next_test_ip6};
+    use crate::sync::mpsc::channel;
+    use crate::sys_common::AsInner;
+    use crate::time::{Instant, Duration};
+    use crate::thread;
 
     fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
         f(next_test_ip4());
@@ -1181,6 +1199,53 @@ mod tests {
             assert_eq!(c.read(&mut b).unwrap(), 1);
             t!(c.write(&[1]));
             rx.recv().unwrap();
+        })
+    }
+
+    #[test]
+    fn read_vectored() {
+        each_ip(&mut |addr| {
+            let srv = t!(TcpListener::bind(&addr));
+            let mut s1 = t!(TcpStream::connect(&addr));
+            let mut s2 = t!(srv.accept()).0;
+
+            let len = s1.write(&[10, 11, 12]).unwrap();
+            assert_eq!(len, 3);
+
+            let mut a = [];
+            let mut b = [0];
+            let mut c = [0; 3];
+            let len = t!(s2.read_vectored(
+                &mut [IoVecMut::new(&mut a), IoVecMut::new(&mut b), IoVecMut::new(&mut c)],
+            ));
+            assert!(len > 0);
+            assert_eq!(b, [10]);
+            // some implementations don't support readv, so we may only fill the first buffer
+            assert!(len == 1 || c == [11, 12, 0]);
+        })
+    }
+
+    #[test]
+    fn write_vectored() {
+        each_ip(&mut |addr| {
+            let srv = t!(TcpListener::bind(&addr));
+            let mut s1 = t!(TcpStream::connect(&addr));
+            let mut s2 = t!(srv.accept()).0;
+
+            let a = [];
+            let b = [10];
+            let c = [11, 12];
+            t!(s1.write_vectored(&[IoVec::new(&a), IoVec::new(&b), IoVec::new(&c)]));
+
+            let mut buf = [0; 4];
+            let len = t!(s2.read(&mut buf));
+            // some implementations don't support writev, so we may only write the first buffer
+            if len == 1 {
+                assert_eq!(buf, [10, 0, 0, 0]);
+            } else {
+                assert_eq!(len, 3);
+                assert_eq!(buf, [10, 11, 12, 0]);
+            }
         })
     }
 
@@ -1675,21 +1740,6 @@ mod tests {
             }
             t!(txdone.send(()));
         })
-    }
-
-    #[test]
-    fn connect_timeout_unbound() {
-        // bind and drop a socket to track down a "probably unassigned" port
-        let socket = TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = socket.local_addr().unwrap();
-        drop(socket);
-
-        let timeout = Duration::from_secs(1);
-        let e = TcpStream::connect_timeout(&addr, timeout).unwrap_err();
-        assert!(e.kind() == io::ErrorKind::ConnectionRefused ||
-                e.kind() == io::ErrorKind::TimedOut ||
-                e.kind() == io::ErrorKind::Other,
-                "bad error: {} {:?}", e, e.kind());
     }
 
     #[test]

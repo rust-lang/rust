@@ -1643,6 +1643,8 @@ pub enum TyKind {
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
+    /// Placeholder for a `va_list`.
+    CVarArgs,
 }
 
 impl TyKind {
@@ -1802,7 +1804,7 @@ impl Arg {
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
     pub output: FunctionRetTy,
-    pub variadic: bool,
+    pub c_variadic: bool,
 }
 
 impl FnDecl {
@@ -2216,7 +2218,7 @@ impl Item {
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
-    pub asyncness: IsAsync,
+    pub asyncness: Spanned<IsAsync>,
     pub constness: Spanned<Constness>,
     pub abi: Abi,
 }
@@ -2225,7 +2227,7 @@ impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
             unsafety: Unsafety::Normal,
-            asyncness: IsAsync::NotAsync,
+            asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
             abi: Abi::Rust,
         }

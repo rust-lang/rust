@@ -1,4 +1,4 @@
-use string::String;
+use crate::string::String;
 
 #[derive(Clone, Debug)]
 pub struct DnsQuery {

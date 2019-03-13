@@ -1,16 +1,19 @@
-use ffi::CStr;
-use io;
-use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
-use mem;
-use net::{SocketAddr, Shutdown};
-use str;
-use sys::fd::FileDesc;
-use sys_common::{AsInner, FromInner, IntoInner};
-use sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
-use time::{Duration, Instant};
-use cmp;
+use crate::ffi::CStr;
+use crate::io::{self, IoVec, IoVecMut};
+use crate::mem;
+use crate::net::{SocketAddr, Shutdown};
+use crate::str;
+use crate::sys::fd::FileDesc;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::time::{Duration, Instant};
+use crate::cmp;
 
-pub use sys::{cvt, cvt_r};
+use libc::{c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
+
+pub use crate::sys::{cvt, cvt_r};
+
+#[allow(unused_extern_crates)]
 pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
@@ -241,6 +244,10 @@ impl Socket {
         self.recv_with_flags(buf, MSG_PEEK)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: c_int)
                             -> io::Result<(usize, SocketAddr)> {
         let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
@@ -267,6 +274,10 @@ impl Socket {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
@@ -376,7 +387,7 @@ impl IntoInner<c_int> for Socket {
 // believe it's thread-safe).
 #[cfg(target_env = "gnu")]
 fn on_resolver_failure() {
-    use sys;
+    use crate::sys;
 
     // If the version fails to parse, we treat it the same as "not glibc".
     if let Some(version) = sys::os::glibc_version() {

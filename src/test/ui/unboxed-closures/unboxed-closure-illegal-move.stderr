@@ -3,7 +3,7 @@ error[E0507]: cannot move out of captured outer variable in an `Fn` closure
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
-LL |         let f = to_fn(|| drop(x)); //~ ERROR cannot move
+LL |         let f = to_fn(|| drop(x));
    |                               ^ cannot move out of captured outer variable in an `Fn` closure
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
@@ -11,7 +11,7 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
-LL |         let f = to_fn_mut(|| drop(x)); //~ ERROR cannot move
+LL |         let f = to_fn_mut(|| drop(x));
    |                                   ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error[E0507]: cannot move out of captured outer variable in an `Fn` closure
@@ -19,7 +19,7 @@ error[E0507]: cannot move out of captured outer variable in an `Fn` closure
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
-LL |         let f = to_fn(move || drop(x)); //~ ERROR cannot move
+LL |         let f = to_fn(move || drop(x));
    |                                    ^ cannot move out of captured outer variable in an `Fn` closure
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
@@ -27,7 +27,7 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
    |
 LL |         let x = Box::new(0);
    |             - captured outer variable
-LL |         let f = to_fn_mut(move || drop(x)); //~ ERROR cannot move
+LL |         let f = to_fn_mut(move || drop(x));
    |                                        ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 4 previous errors

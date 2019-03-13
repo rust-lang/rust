@@ -1,12 +1,11 @@
-use alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
-use collections::CollectionAllocErr;
-use hash::{BuildHasher, Hash, Hasher};
-use marker;
-use mem::{size_of, needs_drop};
-use mem;
-use ops::{Deref, DerefMut};
-use ptr::{self, Unique, NonNull};
-use hint;
+use crate::alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
+use crate::collections::CollectionAllocErr;
+use crate::hash::{BuildHasher, Hash, Hasher};
+use crate::marker;
+use crate::mem::{self, size_of, needs_drop};
+use crate::ops::{Deref, DerefMut};
+use crate::ptr::{self, Unique, NonNull};
+use crate::hint;
 
 use self::BucketState::*;
 

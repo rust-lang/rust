@@ -13,7 +13,7 @@ error: multiple unused formatting arguments
    |
 LL |     println!("Test2",
    |              ------- multiple missing formatting specifiers
-LL |         123,  //~ ERROR multiple unused formatting arguments
+LL |         123,
    |         ^^^ argument never used
 LL |         456,
    |         ^^^ argument never used
@@ -23,7 +23,7 @@ LL |         789
 error: named argument never used
   --> $DIR/format-unused-lables.rs:11:35
    |
-LL |     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
+LL |     println!("Some stuff", UNUSED="args");
    |              ------------         ^^^^^^ named argument never used
    |              |
    |              formatting specifier missing
@@ -36,7 +36,7 @@ LL |     println!("Some more $STUFF",
    |              |          |
    |              |          help: format specifiers use curly braces: `{STUFF}`
    |              multiple missing formatting specifiers
-LL |         "woo!",  //~ ERROR multiple unused formatting arguments
+LL |         "woo!",
    |         ^^^^^^ argument never used
 LL |             STUFF=
 LL |        "things"

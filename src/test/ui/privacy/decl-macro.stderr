@@ -1,7 +1,7 @@
 error[E0603]: macro `mac` is private
   --> $DIR/decl-macro.rs:8:8
    |
-LL |     m::mac!(); //~ ERROR macro `mac` is private
+LL |     m::mac!();
    |        ^^^
 
 error: aborting due to previous error

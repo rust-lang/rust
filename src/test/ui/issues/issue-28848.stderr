@@ -1,7 +1,7 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/issue-28848.rs:10:5
    |
-LL |     Foo::<'a, 'b>::xmute(u) //~ ERROR lifetime bound not satisfied
+LL |     Foo::<'a, 'b>::xmute(u)
    |     ^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'b as defined on the function body at 9:16

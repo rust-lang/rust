@@ -2,8 +2,8 @@
 
 /// This file exists to hack around https://github.com/rust-lang/rust/issues/47238
 
-use thread;
-use sync::mpsc::*;
+use crate::thread;
+use crate::sync::mpsc::*;
 
 // Don't use the libstd version so we can pull in the right Select structure
 // (std::comm points at the wrong one)

@@ -1,7 +1,7 @@
 error: comparison is useless due to type limits
   --> $DIR/lint-type-limits3.rs:9:11
    |
-LL |     while 200 != i { //~ ERROR comparison is useless due to type limits
+LL |     while 200 != i {
    |           ^^^^^^^^
    |
    = note: requested on the command line with `-D unused-comparisons`
@@ -9,7 +9,7 @@ LL |     while 200 != i { //~ ERROR comparison is useless due to type limits
 warning: literal out of range for i8
   --> $DIR/lint-type-limits3.rs:9:11
    |
-LL |     while 200 != i { //~ ERROR comparison is useless due to type limits
+LL |     while 200 != i {
    |           ^^^
    |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/unreachable-in-call.rs:14:10
    |
-LL |          get_u8()); //~ ERROR unreachable expression
+LL |          get_u8());
    |          ^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ LL | #![deny(unreachable_code)]
 error: unreachable expression
   --> $DIR/unreachable-in-call.rs:17:5
    |
-LL | /     call( //~ ERROR unreachable expression
+LL | /     call(
 LL | |         get_u8(),
 LL | |         diverge());
    | |__________________^

@@ -1,7 +1,7 @@
 error[E0530]: match bindings cannot shadow unit variants
   --> $DIR/issue-27033.rs:3:9
    |
-LL |         None @ _ => {} //~ ERROR match bindings cannot shadow unit variants
+LL |         None @ _ => {}
    |         ^^^^ cannot be named the same as a unit variant
 
 error[E0530]: match bindings cannot shadow constants
@@ -10,7 +10,7 @@ error[E0530]: match bindings cannot shadow constants
 LL |     const C: u8 = 1;
    |     ---------------- the constant `C` is defined here
 LL |     match 1 {
-LL |         C @ 2 => { //~ ERROR match bindings cannot shadow constant
+LL |         C @ 2 => {
    |         ^ cannot be named the same as a constant
 
 error: aborting due to 2 previous errors

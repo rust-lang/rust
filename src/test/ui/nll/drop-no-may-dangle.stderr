@@ -4,7 +4,7 @@ error[E0506]: cannot assign to `v[_]` because it is borrowed
 LL |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
    |                                                                 ----- borrow of `v[_]` occurs here
 ...
-LL |         v[0] += 1; //~ ERROR cannot assign to `v[_]` because it is borrowed
+LL |         v[0] += 1;
    |         ^^^^^^^^^ assignment to borrowed `v[_]` occurs here
 ...
 LL | }
@@ -16,7 +16,7 @@ error[E0506]: cannot assign to `v[_]` because it is borrowed
 LL |     let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
    |                                                                 ----- borrow of `v[_]` occurs here
 ...
-LL |     v[0] += 1; //~ ERROR cannot assign to `v[_]` because it is borrowed
+LL |     v[0] += 1;
    |     ^^^^^^^^^ assignment to borrowed `v[_]` occurs here
 LL | }
    | - borrow might be used here, when `p` is dropped and runs the `Drop` code for type `WrapMayNotDangle`

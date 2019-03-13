@@ -1,7 +1,7 @@
 error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/regions-name-duplicated.rs:1:16
    |
-LL | struct Foo<'a, 'a> { //~ ERROR lifetime name `'a` declared twice
+LL | struct Foo<'a, 'a> {
    |            --  ^^ declared twice
    |            |
    |            previous declaration here

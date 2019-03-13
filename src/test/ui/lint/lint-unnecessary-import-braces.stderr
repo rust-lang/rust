@@ -1,7 +1,7 @@
 error: braces around A is unnecessary
   --> $DIR/lint-unnecessary-import-braces.rs:3:1
    |
-LL | use test::{A}; //~ ERROR braces around A is unnecessary
+LL | use test::{A};
    | ^^^^^^^^^^^^^^
    |
 note: lint level defined here

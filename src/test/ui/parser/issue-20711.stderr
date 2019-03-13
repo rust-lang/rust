@@ -3,7 +3,7 @@ error: expected one of `async`, `const`, `crate`, `default`, `existential`, `ext
    |
 LL |     #[stable(feature = "rust1", since = "1.0.0")]
    |                                                  - expected one of 10 possible tokens here
-LL | } //~ ERROR expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, or
+LL | }
    | ^ unexpected token
 
 error: aborting due to previous error

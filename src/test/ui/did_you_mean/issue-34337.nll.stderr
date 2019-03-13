@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow `key` as mutable, as it is not declared as mutable
   --> $DIR/issue-34337.rs:6:9
    |
-LL |     get(&mut key); //~ ERROR cannot borrow
+LL |     get(&mut key);
    |         ^^^^^^^^
    |         |
    |         cannot borrow as mutable

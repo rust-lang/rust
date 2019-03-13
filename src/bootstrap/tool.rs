@@ -91,7 +91,8 @@ impl Step for ToolBuild {
                 compile::CargoMessage::CompilerArtifact {
                     package_id,
                     features,
-                    filenames
+                    filenames,
+                    target: _,
                 } => {
                     (package_id, features, filenames)
                 }

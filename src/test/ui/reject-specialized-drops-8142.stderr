@@ -2,7 +2,7 @@ error[E0367]: The requirement `'adds_bnd : 'al` is added only by the Drop impl.
   --> $DIR/reject-specialized-drops-8142.rs:19:1
    |
 LL | / impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
-LL | |     //~^ ERROR The requirement `'adds_bnd : 'al` is added only by the Drop impl.
+LL | |
 LL | |     fn drop(&mut self) { } }
    | |____________________________^
    |
@@ -16,7 +16,7 @@ error[E0367]: The requirement `'adds_bnd : 'al` is added only by the Drop impl.
   --> $DIR/reject-specialized-drops-8142.rs:23:1
    |
 LL | / impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
-LL | |     //~^ ERROR The requirement `'adds_bnd : 'al` is added only by the Drop impl.
+LL | |
 LL | |     fn drop(&mut self) { } }
    | |____________________________^
    |

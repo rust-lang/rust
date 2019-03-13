@@ -405,7 +405,8 @@ impl<'a> Builder<'a> {
                 test::Miri,
                 test::Clippy,
                 test::CompiletestTest,
-                test::RustdocJS,
+                test::RustdocJSStd,
+                test::RustdocJSNotStd,
                 test::RustdocTheme,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
@@ -811,6 +812,17 @@ impl<'a> Builder<'a> {
         // (e.g., not building/requiring LLVM).
         if cmd == "check" {
             cargo.env("RUST_CHECK", "1");
+        }
+
+        match mode {
+            Mode::Std | Mode::Test | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTest=> {},
+            Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
+                // Build proc macros both for the host and the target
+                if target != compiler.host && cmd != "check" {
+                    cargo.arg("-Zdual-proc-macros");
+                    cargo.env("RUST_DUAL_PROC_MACROS", "1");
+                }
+            },
         }
 
         cargo.arg("-j").arg(self.jobs().to_string());

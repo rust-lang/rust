@@ -1,7 +1,7 @@
 error[E0369]: binary operation `==` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq-enum-struct-variant.rs:9:6
    |
-LL |      x: Error //~ ERROR
+LL |      x: Error
    |      ^^^^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`
@@ -9,7 +9,7 @@ LL |      x: Error //~ ERROR
 error[E0369]: binary operation `!=` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq-enum-struct-variant.rs:9:6
    |
-LL |      x: Error //~ ERROR
+LL |      x: Error
    |      ^^^^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`

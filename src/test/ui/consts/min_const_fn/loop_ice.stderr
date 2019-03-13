@@ -1,7 +1,7 @@
 error[E0723]: loops are not allowed in const fn (see issue #57563)
   --> $DIR/loop_ice.rs:2:5
    |
-LL |     loop {} //~ ERROR loops are not allowed in const fn
+LL |     loop {}
    |     ^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

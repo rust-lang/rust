@@ -3,7 +3,7 @@ error[E0252]: the name `mem` is defined multiple times
    |
 LL | use std::{mem, ptr};
    |           --- previous import of the module `mem` here
-LL | use std::mem; //~ ERROR the name `mem` is defined multiple times
+LL | use std::mem;
    | ----^^^^^^^^-
    | |   |
    | |   `mem` reimported here

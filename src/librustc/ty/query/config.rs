@@ -9,7 +9,7 @@ use crate::traits::query::{
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::query::queries;
 use crate::ty::query::Query;
 use crate::ty::query::QueryCache;
@@ -313,7 +313,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, (_, def_id): (DefId, DefId)) -> Cow<'static, str> {
-        let id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         format!("computing the bounds for type parameter `{}`",
                 tcx.hir().ty_param_name(id)).into()
     }
@@ -366,6 +366,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::mir_shims<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "privacy access levels".into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_private_in_public<'tcx> {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "checking for private elements in public interfaces".into()
     }
 }
 
@@ -608,6 +614,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::has_panic_handler<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::extern_crate<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
         "getting crate's ExternCrateData".into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "running analysis passes on this crate".into()
     }
 }
 
@@ -914,7 +926,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
-    fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, &'tcx Substs<'tcx>)) -> Cow<'static, str> {
+    fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, SubstsRef<'tcx>)) -> Cow<'static, str> {
         format!("testing substituted normalized predicates:`{}`", tcx.item_path_str(key.0)).into()
     }
 }

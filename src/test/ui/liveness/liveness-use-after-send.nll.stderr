@@ -5,7 +5,7 @@ LL | fn test00_start(ch: Chan<Box<isize>>, message: Box<isize>, _count: Box<isiz
    |                                       ------- move occurs because `message` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 LL |     send(ch, message);
    |              ------- value moved here
-LL |     println!("{}", message); //~ ERROR use of moved value: `message`
+LL |     println!("{}", message);
    |                    ^^^^^^^ value borrowed here after move
 
 error: aborting due to previous error

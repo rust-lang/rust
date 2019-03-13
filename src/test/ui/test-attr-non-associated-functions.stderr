@@ -1,7 +1,7 @@
 error: #[test] attribute is only allowed on non associated functions
   --> $DIR/test-attr-non-associated-functions.rs:9:5
    |
-LL | /     fn new() -> A { //~ ERROR #[test] attribute is only allowed on non associated functions
+LL | /     fn new() -> A {
 LL | |         A {}
 LL | |     }
    | |_____^

@@ -9,7 +9,7 @@ LL |     thread::spawn(move|| {
 LL |         assert_eq!((*arc_v)[3], 4);
    |                      ----- variable moved due to use in closure
 ...
-LL |     assert_eq!((*arc_v)[2], 3); //~ ERROR use of moved value: `arc_v`
+LL |     assert_eq!((*arc_v)[2], 3);
    |                  ^^^^^ value borrowed here after move
 
 error: aborting due to previous error

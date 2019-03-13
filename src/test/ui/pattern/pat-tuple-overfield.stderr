@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:5:9
    |
-LL |         (1, 2, 3, 4) => {} //~ ERROR mismatched types
+LL |         (1, 2, 3, 4) => {}
    |         ^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
    = note: expected type `({integer}, {integer}, {integer})`
@@ -10,7 +10,7 @@ LL |         (1, 2, 3, 4) => {} //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:6:9
    |
-LL |         (1, 2, .., 3, 4) => {} //~ ERROR mismatched types
+LL |         (1, 2, .., 3, 4) => {}
    |         ^^^^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
    = note: expected type `({integer}, {integer}, {integer})`

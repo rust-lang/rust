@@ -6,7 +6,7 @@ LL |     fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
    |                   |
    |                   this parameter and the return type are declared with different lifetimes...
 LL | 
-LL |         if x > y { x } else { y } //~ ERROR lifetime mismatch
+LL |         if x > y { x } else { y }
    |                    ^ ...but data from `x` is returned here
 
 error: aborting due to previous error

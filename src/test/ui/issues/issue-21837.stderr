@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `T: Bound` is not satisfied
   --> $DIR/issue-21837.rs:8:9
    |
-LL | impl<T> Trait2 for Foo<T> {} //~ ERROR the trait bound `T: Bound` is not satisfied
+LL | impl<T> Trait2 for Foo<T> {}
    |         ^^^^^^ the trait `Bound` is not implemented for `T`
    |
    = help: consider adding a `where T: Bound` bound

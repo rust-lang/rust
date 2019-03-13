@@ -1,7 +1,7 @@
 error[E0433]: failed to resolve: there are too many initial `super`s.
   --> $DIR/keyword-super.rs:2:9
    |
-LL |     let super: isize; //~ ERROR failed to resolve: there are too many initial `super`s
+LL |     let super: isize;
    |         ^^^^^ there are too many initial `super`s.
 
 error: aborting due to previous error

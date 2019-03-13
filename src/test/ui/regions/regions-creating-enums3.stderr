@@ -5,7 +5,7 @@ LL | fn mk_add_bad1<'a,'b>(x: &'a Ast<'a>, y: &'b Ast<'b>) -> Ast<'a> {
    |                                          -----------     -------
    |                                          |
    |                                          this parameter and the return type are declared with different lifetimes...
-LL |     Ast::Add(x, y) //~ ERROR lifetime mismatch [E0623]
+LL |     Ast::Add(x, y)
    |     ^^^^^^^^^^^^^^ ...but data from `y` is returned here
 
 error: aborting due to previous error

@@ -631,7 +631,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, substs: &Substs<'_>) -> bool {
+    fn is_param_no_infer(&self, substs: SubstsRef<'_>) -> bool {
         return self.is_of_param(substs.type_at(0)) &&
             !substs.types().any(|t| t.has_infer_types());
     }

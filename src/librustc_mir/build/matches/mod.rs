@@ -10,12 +10,13 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
+use rustc::hir::HirId;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax_pos::Span;
 
 // helper functions, broken out by category:
@@ -530,7 +531,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn storage_live_binding(
         &mut self,
         block: BasicBlock,
-        var: NodeId,
+        var: HirId,
         span: Span,
         for_guard: ForGuard,
     ) -> Place<'tcx> {
@@ -543,23 +544,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let place = Place::Local(local_id);
+        let place = Place::Base(PlaceBase::Local(local_id));
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
-        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
         place
     }
 
-    pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span, for_guard: ForGuard) {
+    pub fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
-        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(
             span,
             region_scope,
-            &Place::Local(local_id),
+            &Place::Base(PlaceBase::Local(local_id)),
             var_ty,
             DropKind::Value {
                 cached_block: CachedBlock::default(),
@@ -576,7 +575,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Mutability,
             Name,
             BindingMode,
-            NodeId,
+            HirId,
             Span,
             Ty<'tcx>,
             UserTypeProjections<'tcx>,
@@ -703,7 +702,7 @@ struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
     name: Name,
-    var_id: NodeId,
+    var_id: HirId,
     var_ty: Ty<'tcx>,
     mutability: Mutability,
     binding_mode: BindingMode,
@@ -1452,7 +1451,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     scrutinee_source_info,
-                    &Place::Local(temp),
+                    &Place::Base(PlaceBase::Local(temp)),
                     borrow,
                 );
             }
@@ -1478,7 +1477,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     source_info: guard_end,
                     kind: StatementKind::FakeRead(
                         FakeReadCause::ForMatchGuard,
-                        Place::Local(temp),
+                        Place::Base(PlaceBase::Local(temp)),
                     ),
                 });
             }
@@ -1529,7 +1528,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // place they refer to can't be modified by the guard.
                 for binding in by_value_bindings.clone() {
                     let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                    let place = Place::Local(local_id);
+                    let place = Place::Base(PlaceBase::Local(local_id));
                     self.cfg.push(
                         block,
                         Statement {
@@ -1694,7 +1693,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         mutability: Mutability,
         name: Name,
         mode: BindingMode,
-        var_id: NodeId,
+        var_id: HirId,
         var_ty: Ty<'tcx>,
         user_ty: UserTypeProjections<'tcx>,
         has_guard: ArmHasGuard,

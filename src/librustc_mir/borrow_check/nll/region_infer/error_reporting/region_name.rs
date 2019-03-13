@@ -6,7 +6,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
-use rustc::ty::subst::{Substs, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::util::ppaux::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
@@ -541,7 +541,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// types+hir to search through).
     fn match_adt_and_segment<'hir>(
         &self,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment,
         counter: &mut usize,
@@ -587,7 +587,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `search_stack` the types+hir to search through.
     fn try_match_adt_and_generic_args<'hir>(
         &self,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         needle_fr: RegionVid,
         args: &'hir hir::GenericArgs,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
@@ -604,7 +604,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     search_stack.push((ty, hir_ty));
                 }
 
-                (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => {
+                (UnpackedKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
+                    // Lifetimes cannot be found in consts, so we don't need
+                    // to search anything here.
+                }
+
+                (UnpackedKind::Lifetime(_), _)
+                | (UnpackedKind::Type(_), _)
+                | (UnpackedKind::Const(_), _) => {
                     // I *think* that HIR lowering should ensure this
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.

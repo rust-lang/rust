@@ -5,7 +5,7 @@ LL |     add(
    |     --- immutable borrow later used by call
 LL |         &*a,
    |         --- immutable borrow occurs here
-LL |         rewrite(&mut a)); //~ ERROR cannot borrow
+LL |         rewrite(&mut a));
    |                 ^^^^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
@@ -15,7 +15,7 @@ LL |     add(
    |     --- immutable borrow later used by call
 LL |         &*a,
    |         --- immutable borrow occurs here
-LL |         rewrite(&mut a)); //~ ERROR cannot borrow
+LL |         rewrite(&mut a));
    |                 ^^^^^^ mutable borrow occurs here
 
 error: aborting due to 2 previous errors

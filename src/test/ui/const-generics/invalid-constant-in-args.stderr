@@ -1,0 +1,9 @@
+error[E0107]: wrong number of const arguments: expected 0, found 1
+  --> $DIR/invalid-constant-in-args.rs:2:22
+   |
+LL |     let _: Vec<&str, "a"> = Vec::new();
+   |                      ^^^ unexpected const argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

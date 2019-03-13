@@ -4,7 +4,7 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
 LL |     let bar: Box<_> = box 3;
    |         --- captured outer variable
 LL |     let _g = to_fn_mut(|| {
-LL |         let _h = to_fn_once(move || -> isize { *bar }); //~ ERROR cannot move out of
+LL |         let _h = to_fn_once(move || -> isize { *bar });
    |                             ^^^^^^^^^^^^^^^^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to previous error

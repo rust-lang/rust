@@ -1,7 +1,7 @@
 error: lifetime parameter `'a` only used once
   --> $DIR/one-use-in-inherent-method-argument.rs:12:19
    |
-LL |     fn inherent_a<'a>(&self, data: &'a u32) { //~ ERROR `'a` only used once
+LL |     fn inherent_a<'a>(&self, data: &'a u32) {
    |                   ^^                -- ...is used only here
    |                   |
    |                   this lifetime...
@@ -13,13 +13,13 @@ LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: elide the single-use lifetime
    |
-LL |     fn inherent_a(&self, data: &u32) { //~ ERROR `'a` only used once
+LL |     fn inherent_a(&self, data: &u32) {
    |                 --             --
 
 error: lifetime parameter `'f` only used once
   --> $DIR/one-use-in-inherent-method-argument.rs:11:6
    |
-LL | impl<'f> Foo<'f> { //~ ERROR `'f` only used once
+LL | impl<'f> Foo<'f> {
    |      ^^      -- ...is used only here
    |      |
    |      this lifetime...

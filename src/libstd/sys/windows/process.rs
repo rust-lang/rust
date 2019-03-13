@@ -1,27 +1,28 @@
 #![unstable(feature = "process_internals", issue = "0")]
 
-use collections::BTreeMap;
-use env::split_paths;
-use env;
-use ffi::{OsString, OsStr};
-use fmt;
-use fs;
-use io::{self, Error, ErrorKind};
+use crate::collections::BTreeMap;
+use crate::env::split_paths;
+use crate::env;
+use crate::ffi::{OsString, OsStr};
+use crate::fmt;
+use crate::fs;
+use crate::io::{self, Error, ErrorKind};
+use crate::mem;
+use crate::os::windows::ffi::OsStrExt;
+use crate::path::Path;
+use crate::ptr;
+use crate::sys::mutex::Mutex;
+use crate::sys::c;
+use crate::sys::fs::{OpenOptions, File};
+use crate::sys::handle::Handle;
+use crate::sys::pipe::{self, AnonPipe};
+use crate::sys::stdio;
+use crate::sys::cvt;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::process::{CommandEnv, EnvKey};
+use crate::borrow::Borrow;
+
 use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
-use mem;
-use os::windows::ffi::OsStrExt;
-use path::Path;
-use ptr;
-use sys::mutex::Mutex;
-use sys::c;
-use sys::fs::{OpenOptions, File};
-use sys::handle::Handle;
-use sys::pipe::{self, AnonPipe};
-use sys::stdio;
-use sys::cvt;
-use sys_common::{AsInner, FromInner, IntoInner};
-use sys_common::process::{CommandEnv, EnvKey};
-use borrow::Borrow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -537,7 +538,7 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 
 #[cfg(test)]
 mod tests {
-    use ffi::{OsStr, OsString};
+    use crate::ffi::{OsStr, OsString};
     use super::make_command_line;
 
     #[test]

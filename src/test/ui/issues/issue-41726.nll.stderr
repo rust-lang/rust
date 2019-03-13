@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-41726.rs:5:9
    |
-LL |         things[src.as_str()].sort(); //~ ERROR cannot borrow immutable
+LL |         things[src.as_str()].sort();
    |         ^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<std::string::String, std::vec::Vec<std::string::String>>`

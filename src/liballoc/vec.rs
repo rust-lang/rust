@@ -1260,7 +1260,7 @@ impl<T> Vec<T> {
     /// This method uses a closure to create new values on every push. If
     /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
     /// to use the [`Default`] trait to generate values, you can pass
-    /// [`Default::default()`] as the second argument..
+    /// [`Default::default()`] as the second argument.
     ///
     /// # Examples
     ///
@@ -2182,25 +2182,25 @@ impl<T> AsMut<[T]> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+impl<T: Clone> From<&[T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
 
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
-impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
+impl<T: Clone> From<&mut [T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
@@ -2231,8 +2231,8 @@ impl<T> From<Vec<T>> for Box<[T]> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Vec<u8> {
-    fn from(s: &'a str) -> Vec<u8> {
+impl From<&str> for Vec<u8> {
+    fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }
 }
@@ -2465,6 +2465,25 @@ impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
         f.debug_tuple("Drain")
          .field(&self.iter.as_slice())
          .finish()
+    }
+}
+
+impl<'a, T> Drain<'a, T> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_drain_as_slice)]
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain(..);
+    /// assert_eq!(drain.as_slice(), &['a', 'b', 'c']);
+    /// let _ = drain.next().unwrap();
+    /// assert_eq!(drain.as_slice(), &['b', 'c']);
+    /// ```
+    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "58957")]
+    pub fn as_slice(&self) -> &[T] {
+        self.iter.as_slice()
     }
 }
 

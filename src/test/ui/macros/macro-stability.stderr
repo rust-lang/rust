@@ -1,7 +1,7 @@
 error[E0658]: macro unstable_macro! is unstable
   --> $DIR/macro-stability.rs:11:5
    |
-LL |     unstable_macro!(); //~ ERROR: macro unstable_macro! is unstable
+LL |     unstable_macro!();
    |     ^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unstable_macros)] to the crate attributes to enable

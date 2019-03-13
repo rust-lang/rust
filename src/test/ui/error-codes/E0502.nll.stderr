@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*a` as mutable because it is also borrowed as immut
    |
 LL |     let ref y = a;
    |         ----- immutable borrow occurs here
-LL |     bar(a); //~ ERROR E0502
+LL |     bar(a);
    |     ^^^^^^ mutable borrow occurs here
 LL |     y.use_ref();
    |     - immutable borrow later used here

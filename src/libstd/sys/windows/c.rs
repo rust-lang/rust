@@ -4,11 +4,12 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
-use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
+use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
 #[cfg(target_arch = "x86_64")]
-use os::raw::c_ulonglong;
+use crate::os::raw::c_ulonglong;
+use crate::ptr;
+
 use libc::{wchar_t, size_t, c_void};
-use ptr;
 
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 pub use self::EXCEPTION_DISPOSITION::*;
@@ -57,12 +58,15 @@ pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 pub type LPSTR = *mut CHAR;
 pub type LPWSTR = *mut WCHAR;
 pub type LPFILETIME = *mut FILETIME;
+pub type LPWSABUF = *mut WSABUF;
+pub type LPWSAOVERLAPPED = *mut c_void;
+pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
 pub type PSRWLOCK = *mut SRWLOCK;
 
-pub type SOCKET = ::os::windows::raw::SOCKET;
+pub type SOCKET = crate::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = USHORT;
 
@@ -325,6 +329,12 @@ pub struct WSADATA {
 }
 
 #[repr(C)]
+pub struct WSABUF {
+    pub len: ULONG,
+    pub buf: *mut CHAR,
+}
+
+#[repr(C)]
 pub struct WSAPROTOCOL_INFO {
     pub dwServiceFlags1: DWORD,
     pub dwServiceFlags2: DWORD,
@@ -441,7 +451,7 @@ pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
-pub type LPPROGRESS_ROUTINE = ::option::Option<unsafe extern "system" fn(
+pub type LPPROGRESS_ROUTINE = crate::option::Option<unsafe extern "system" fn(
     TotalFileSize: LARGE_INTEGER,
     TotalBytesTransferred: LARGE_INTEGER,
     StreamSize: LARGE_INTEGER,
@@ -988,6 +998,22 @@ extern "system" {
                                dwProcessId: DWORD,
                                lpProtocolInfo: LPWSAPROTOCOL_INFO)
                                -> c_int;
+    pub fn WSASend(s: SOCKET,
+                   lpBuffers: LPWSABUF,
+                   dwBufferCount: DWORD,
+                   lpNumberOfBytesSent: LPDWORD,
+                   dwFlags: DWORD,
+                   lpOverlapped: LPWSAOVERLAPPED,
+                   lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+                   -> c_int;
+    pub fn WSARecv(s: SOCKET,
+                   lpBuffers: LPWSABUF,
+                   dwBufferCount: DWORD,
+                   lpNumberOfBytesRecvd: LPDWORD,
+                   lpFlags: LPDWORD,
+                   lpOverlapped: LPWSAOVERLAPPED,
+                   lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+                   -> c_int;
     pub fn GetCurrentProcessId() -> DWORD;
     pub fn WSASocketW(af: c_int,
                       kind: c_int,

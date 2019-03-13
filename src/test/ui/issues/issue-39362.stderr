@@ -1,8 +1,15 @@
 error[E0004]: non-exhaustive patterns: `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
   --> $DIR/issue-39362.rs:10:11
    |
-LL |     match f {
-   |           ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+LL | / enum Foo {
+LL | |     Bar { bar: Bar, id: usize }
+LL | | }
+   | |_- `Foo` defined here
+...
+LL |       match f {
+   |             ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

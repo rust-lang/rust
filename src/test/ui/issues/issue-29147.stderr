@@ -1,7 +1,7 @@
 error[E0283]: type annotations required: cannot resolve `S5<_>: Foo`
   --> $DIR/issue-29147.rs:21:13
    |
-LL |     let _ = <S5<_>>::xxx; //~ ERROR cannot resolve `S5<_>: Foo`
+LL |     let _ = <S5<_>>::xxx;
    |             ^^^^^^^^^^^^
    |
 note: required by `Foo::xxx`

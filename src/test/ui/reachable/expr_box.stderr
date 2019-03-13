@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_box.rs:6:13
    |
-LL |     let x = box return; //~ ERROR unreachable
+LL |     let x = box return;
    |             ^^^^^^^^^^
    |
 note: lint level defined here

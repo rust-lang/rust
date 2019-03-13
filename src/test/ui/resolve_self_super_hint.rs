@@ -5,19 +5,23 @@ mod a {
     extern crate alloc;
     use alloc::HashMap;
     //~^ ERROR unresolved import `alloc` [E0432]
-    //~| did you mean `self::alloc`?
+    //~| HELP a similar path exists
+    //~| SUGGESTION self::alloc
     mod b {
         use alloc::HashMap;
         //~^ ERROR unresolved import `alloc` [E0432]
-        //~| did you mean `super::alloc`?
+        //~| HELP a similar path exists
+        //~| SUGGESTION super::alloc
         mod c {
             use alloc::HashMap;
             //~^ ERROR unresolved import `alloc` [E0432]
-            //~| did you mean `a::alloc`?
+            //~| HELP a similar path exists
+            //~| SUGGESTION a::alloc
             mod d {
                 use alloc::HashMap;
                 //~^ ERROR unresolved import `alloc` [E0432]
-                //~| did you mean `a::alloc`?
+                //~| HELP a similar path exists
+                //~| SUGGESTION a::alloc
             }
         }
     }

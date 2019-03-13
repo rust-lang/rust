@@ -4,7 +4,7 @@ error[E0599]: no associated item named `NotEvenReal` found for type `Foo` in the
 LL | struct Foo;
    | ----------- associated item `NotEvenReal` not found for this
 ...
-LL |     || if let Foo::NotEvenReal() = Foo {}; //~ ERROR E0599
+LL |     || if let Foo::NotEvenReal() = Foo {};
    |               -----^^^^^^^^^^^-- associated item not found in `Foo`
 
 error: aborting due to previous error

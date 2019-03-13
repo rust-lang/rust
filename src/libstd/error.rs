@@ -13,17 +13,18 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
-use alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
-use any::TypeId;
-use borrow::Cow;
-use cell;
-use char;
 use core::array;
-use fmt::{self, Debug, Display};
-use mem::transmute;
-use num;
-use str;
-use string;
+
+use crate::alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
+use crate::any::TypeId;
+use crate::borrow::Cow;
+use crate::cell;
+use crate::char;
+use crate::fmt::{self, Debug, Display};
+use crate::mem::transmute;
+use crate::num;
+use crate::str;
+use crate::string;
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`]. Errors must describe
@@ -336,7 +337,7 @@ impl From<String> for Box<dyn Error> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> From<&'b str> for Box<dyn Error + Send + Sync + 'a> {
+impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
     /// # Examples
@@ -350,13 +351,13 @@ impl<'a, 'b> From<&'b str> for Box<dyn Error + Send + Sync + 'a> {
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
-    fn from(err: &'b str) -> Box<dyn Error + Send + Sync + 'a> {
+    fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
         From::from(String::from(err))
     }
 }
 
 #[stable(feature = "string_box_error", since = "1.6.0")]
-impl<'a> From<&'a str> for Box<dyn Error> {
+impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
     /// # Examples
@@ -369,7 +370,7 @@ impl<'a> From<&'a str> for Box<dyn Error> {
     /// let a_boxed_error = Box::<Error>::from(a_str_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
-    fn from(err: &'a str) -> Box<dyn Error> {
+    fn from(err: &str) -> Box<dyn Error> {
         From::from(String::from(err))
     }
 }
@@ -466,14 +467,14 @@ impl Error for num::ParseIntError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl Error for num::TryFromIntError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl Error for array::TryFromSliceError {
     fn description(&self) -> &str {
         self.__description()
@@ -548,7 +549,7 @@ impl Error for cell::BorrowMutError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl Error for char::CharTryFromError {
     fn description(&self) -> &str {
         "converted integer out of range for `char`"
@@ -852,7 +853,7 @@ impl dyn Error + Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::Error;
-    use fmt;
+    use crate::fmt;
 
     #[derive(Debug, PartialEq)]
     struct A;

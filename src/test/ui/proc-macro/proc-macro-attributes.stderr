@@ -1,7 +1,7 @@
 error[E0658]: The attribute `C` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/proc-macro-attributes.rs:7:3
    |
-LL | #[C] //~ ERROR attribute `C` is currently unknown to the compiler
+LL | #[C]
    |   ^
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
@@ -9,11 +9,11 @@ LL | #[C] //~ ERROR attribute `C` is currently unknown to the compiler
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:6:3
    |
-LL | #[B] //~ ERROR `B` is ambiguous
+LL | #[B]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:12:10
+  --> $DIR/proc-macro-attributes.rs:11:10
    |
 LL | #[derive(B)]
    |          ^
@@ -26,11 +26,11 @@ LL | #[macro_use]
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:8:3
    |
-LL | #[B(D)] //~ ERROR `B` is ambiguous
+LL | #[B(D)]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:12:10
+  --> $DIR/proc-macro-attributes.rs:11:10
    |
 LL | #[derive(B)]
    |          ^
@@ -43,11 +43,11 @@ LL | #[macro_use]
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:9:3
    |
-LL | #[B(E = "foo")] //~ ERROR `B` is ambiguous
+LL | #[B(E = "foo")]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:12:10
+  --> $DIR/proc-macro-attributes.rs:11:10
    |
 LL | #[derive(B)]
    |          ^
@@ -60,11 +60,11 @@ LL | #[macro_use]
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:10:3
    |
-LL | #[B(arbitrary tokens)] //~ ERROR `B` is ambiguous
+LL | #[B(arbitrary tokens)]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:12:10
+  --> $DIR/proc-macro-attributes.rs:11:10
    |
 LL | #[derive(B)]
    |          ^
@@ -74,13 +74,7 @@ note: `B` could also refer to the derive macro imported here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error: expected one of `(`, `)`, `,`, `::`, or `=`, found `tokens`
-  --> $DIR/proc-macro-attributes.rs:10:15
-   |
-LL | #[B(arbitrary tokens)] //~ ERROR `B` is ambiguous
-   |               ^^^^^^ expected one of `(`, `)`, `,`, `::`, or `=` here
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors occurred: E0658, E0659.
 For more information about an error, try `rustc --explain E0658`.

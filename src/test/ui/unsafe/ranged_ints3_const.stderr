@@ -1,19 +1,19 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
   --> $DIR/ranged_ints3_const.rs:12:13
    |
-LL |     let y = &x.0; //~ ERROR cannot borrow a constant which may contain interior mutability
+LL |     let y = &x.0;
    |             ^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
   --> $DIR/ranged_ints3_const.rs:19:22
    |
-LL |     let y = unsafe { &x.0 }; //~ ERROR cannot borrow a constant which may contain interior mut
+LL |     let y = unsafe { &x.0 };
    |                      ^^^^
 
 error[E0133]: borrow of layout constrained field with interior mutability is unsafe and requires unsafe function or block
   --> $DIR/ranged_ints3_const.rs:12:13
    |
-LL |     let y = &x.0; //~ ERROR cannot borrow a constant which may contain interior mutability
+LL |     let y = &x.0;
    |             ^^^^ borrow of layout constrained field with interior mutability
    |
    = note: references to fields of layout constrained fields lose the constraints. Coupled with interior mutability, the field can be changed to invalid values

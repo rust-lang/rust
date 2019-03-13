@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of dereference of raw pointer
   --> $DIR/borrowck-move-from-unsafe-ptr.rs:2:13
    |
-LL |     let y = *x; //~ ERROR cannot move out of dereference of raw pointer
+LL |     let y = *x;
    |             ^^
    |             |
    |             cannot move out of dereference of raw pointer

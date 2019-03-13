@@ -1,7 +1,7 @@
 error[E0517]: attribute should be applied to struct, enum or union
   --> $DIR/attr-usage-repr.rs:4:8
    |
-LL | #[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
+LL | #[repr(C)]
    |        ^
 LL | fn f() {}
    | --------- not a struct, enum or union
@@ -9,7 +9,7 @@ LL | fn f() {}
 error[E0517]: attribute should be applied to enum
   --> $DIR/attr-usage-repr.rs:16:8
    |
-LL | #[repr(i8)] //~ ERROR: attribute should be applied to enum
+LL | #[repr(i8)]
    |        ^^
 LL | struct SInt(f64, f64);
    | ---------------------- not an enum
@@ -17,7 +17,7 @@ LL | struct SInt(f64, f64);
 error[E0517]: attribute should be applied to struct or union
   --> $DIR/attr-usage-repr.rs:25:8
    |
-LL | #[repr(packed)] //~ ERROR: attribute should be applied to struct
+LL | #[repr(packed)]
    |        ^^^^^^
 LL | enum EPacked { A, B }
    | --------------------- not a struct or union
@@ -25,7 +25,7 @@ LL | enum EPacked { A, B }
 error[E0517]: attribute should be applied to struct
   --> $DIR/attr-usage-repr.rs:28:8
    |
-LL | #[repr(simd)] //~ ERROR: attribute should be applied to struct
+LL | #[repr(simd)]
    |        ^^^^
 LL | enum ESimd { A, B }
    | ------------------- not a struct

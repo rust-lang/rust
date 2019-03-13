@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/variance-covariant-self-trait-match.rs:14:5
    |
-LL |     impls_get::<&'min G>(); //~ ERROR mismatched types
+LL |     impls_get::<&'min G>();
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`
@@ -20,7 +20,7 @@ LL | fn get_min_from_max<'min, 'max, G>()
 error[E0308]: mismatched types
   --> $DIR/variance-covariant-self-trait-match.rs:20:5
    |
-LL |     impls_get::<&'max G>(); //~ ERROR mismatched types
+LL |     impls_get::<&'max G>();
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`

@@ -15,7 +15,7 @@ use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, D
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use rustc::ty::subst::{Substs, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, UnpackedKind};
 
 use crate::abi::Abi;
 use crate::common::CodegenCx;
@@ -399,7 +399,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
-            substs: &Substs<'tcx>,
+            substs: SubstsRef<'tcx>,
             file_metadata: &'ll DIFile,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {

@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `elf` in this scope
   --> $DIR/E0425.rs:3:9
    |
-LL |         elf; //~ ERROR E0425
+LL |         elf;
    |         ^^^ not found in this scope
 
 error: aborting due to previous error

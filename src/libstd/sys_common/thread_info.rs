@@ -1,8 +1,8 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
-use cell::RefCell;
-use sys::thread::guard::Guard;
-use thread::Thread;
+use crate::cell::RefCell;
+use crate::sys::thread::guard::Guard;
+use crate::thread::Thread;
 
 struct ThreadInfo {
     stack_guard: Option<Guard>,

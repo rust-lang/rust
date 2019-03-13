@@ -1082,12 +1082,39 @@ fn test_iterator_product_result() {
     assert_eq!(v.iter().cloned().product::<Result<i32, _>>(), Err(()));
 }
 
+/// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
+/// integer modulo 3. Used to test that `Iterator::max` and `Iterator::min`
+/// return the correct element if some of them are equal.
+#[derive(Debug)]
+struct Mod3(i32);
+
+impl PartialEq for Mod3 {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 % 3 == other.0 % 3
+    }
+}
+
+impl Eq for Mod3 {}
+
+impl PartialOrd for Mod3 {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Mod3 {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        (self.0 % 3).cmp(&(other.0 % 3))
+    }
+}
+
 #[test]
 fn test_iterator_max() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().cloned().max(), Some(3));
     assert_eq!(v.iter().cloned().max(), Some(10));
     assert_eq!(v[..0].iter().cloned().max(), None);
+    assert_eq!(v.iter().cloned().map(Mod3).max().map(|x| x.0), Some(8));
 }
 
 #[test]
@@ -1096,6 +1123,7 @@ fn test_iterator_min() {
     assert_eq!(v[..4].iter().cloned().min(), Some(0));
     assert_eq!(v.iter().cloned().min(), Some(0));
     assert_eq!(v[..0].iter().cloned().min(), None);
+    assert_eq!(v.iter().cloned().map(Mod3).min().map(|x| x.0), Some(0));
 }
 
 #[test]

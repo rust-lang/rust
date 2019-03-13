@@ -3,7 +3,7 @@ error[E0062]: field `foo` specified more than once
    |
 LL |         foo: 0,
    |         ------ first use of `foo`
-LL |         foo: 0 //~ ERROR field `foo` specified more than once
+LL |         foo: 0
    |         ^^^ used more than once
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
-use crate::common::{Incremental, MirOpt, RunMake, Ui, Assembly};
+use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
@@ -276,6 +276,7 @@ impl<'test> TestCx<'test> {
             RunPass | Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
+            JsDocTest => self.run_js_doc_test(),
         }
     }
 
@@ -292,6 +293,7 @@ impl<'test> TestCx<'test> {
         match self.config.mode {
             CompileFail => self.props.compile_pass,
             RunPass => true,
+            JsDocTest => true,
             Ui => self.props.compile_pass,
             Incremental => {
                 let revision = self.revision
@@ -1714,7 +1716,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
-        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui");
+        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
+                         self.config.src_base.ends_with("rustdoc-js");
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
@@ -1804,7 +1807,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg(dir_opt);
             }
             RunFail | RunPassValgrind | Pretty | DebugInfoBoth | DebugInfoGdb | DebugInfoLldb
-            | Codegen | Rustdoc | RunMake | CodegenUnits | Assembly => {
+            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
@@ -2754,6 +2757,27 @@ impl<'test> TestCx<'test> {
         fs::remove_dir(path)
     }
 
+    fn run_js_doc_test(&self) {
+        if let Some(nodejs) = &self.config.nodejs {
+            let out_dir = self.output_base_dir();
+
+            self.document(&out_dir);
+
+            let root = self.config.find_rust_src_root().unwrap();
+            let res = self.cmd2procres(
+                Command::new(&nodejs)
+                    .arg(root.join("src/tools/rustdoc-js/tester.js"))
+                    .arg(out_dir.parent().expect("no parent"))
+                    .arg(&self.testpaths.file.file_stem().expect("couldn't get file stem")),
+            );
+            if !res.status.success() {
+                self.fatal_proc_rec("rustdoc-js test failed!", &res);
+            }
+        } else {
+            self.fatal("no nodeJS");
+        }
+    }
+
     fn run_ui_test(&self) {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -3127,6 +3151,12 @@ impl<'test> TestCx<'test> {
               .replace("\\", "/") // normalize for paths on windows
               .replace("\r\n", "\n") // normalize for linebreaks on windows
               .replace("\t", "\\t"); // makes tabs visible
+
+        // Remove test annotations like `//~ ERROR text` from the output,
+        // since they duplicate actual errors and make the output hard to read.
+        normalized = Regex::new("\\s*//~.*").unwrap()
+            .replace_all(&normalized, "").into_owned();
+
         for rule in custom_rules {
             let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
             normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();

@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/issue-44373.rs:4:42
    |
-LL |     let _val: &'static [&'static u32] = &[&FOO]; //~ ERROR borrowed value does not live long enough
+LL |     let _val: &'static [&'static u32] = &[&FOO];
    |                                          ^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

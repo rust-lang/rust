@@ -1,7 +1,7 @@
 warning: private type `m1::Priv` in public interface (error E0446)
   --> $DIR/issue-30079.rs:6:9
    |
-LL |         pub fn f(_: Priv) {} //~ WARN private type `m1::Priv` in public interface
+LL |         pub fn f(_: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(private_in_public)] on by default
@@ -14,7 +14,7 @@ error[E0446]: private type `m2::Priv` in public interface
 LL |     struct Priv;
    |     - `m2::Priv` declared as private
 LL |     impl ::std::ops::Deref for ::SemiPriv {
-LL |         type Target = Priv; //~ ERROR private type `m2::Priv` in public interface
+LL |         type Target = Priv;
    |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `m3::Priv` in public interface
@@ -23,7 +23,7 @@ error[E0446]: private type `m3::Priv` in public interface
 LL |     struct Priv;
    |     - `m3::Priv` declared as private
 LL |     impl ::SemiPrivTrait for () {
-LL |         type Assoc = Priv; //~ ERROR private type `m3::Priv` in public interface
+LL |         type Assoc = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: aborting due to 2 previous errors

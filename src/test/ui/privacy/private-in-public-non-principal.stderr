@@ -11,7 +11,7 @@ LL | pub fn leak_dyn_nonprincipal() -> Box<PubPrincipal + PrivNonPrincipal> { lo
 error: missing documentation for a method
   --> $DIR/private-in-public-non-principal.rs:13:9
    |
-LL |         pub fn check_doc_lint() {} //~ ERROR missing documentation for a method
+LL |         pub fn check_doc_lint() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

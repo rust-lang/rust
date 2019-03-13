@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `if`
   --> $DIR/keyword-if-as-identifier.rs:4:9
    |
-LL |     let if = "foo"; //~ error: expected pattern, found keyword `if`
+LL |     let if = "foo";
    |         ^^ expected pattern
 
 error: aborting due to previous error

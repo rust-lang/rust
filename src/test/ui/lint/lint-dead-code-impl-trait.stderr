@@ -1,0 +1,14 @@
+error: type alias is never used: `Unused`
+  --> $DIR/lint-dead-code-impl-trait.rs:12:1
+   |
+LL | type Unused = ();
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-dead-code-impl-trait.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

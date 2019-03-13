@@ -5,7 +5,7 @@ LL |     foo(|a| &x)
    |          -   ^ `x` would have to be valid for `'0`...
    |          |
    |          has type `&'0 u32`
-LL | //~^ ERROR does not live long enough
+LL |
 LL | }
    | - ...but `x` will be dropped here, when the function `bar` returns
    |
@@ -19,7 +19,7 @@ LL |     baz(|first, second| &y)
    |          -----           ^ `y` would have to be valid for `'0`...
    |          |
    |          has type `&'0 u32`
-LL | //~^ ERROR does not live long enough
+LL |
 LL | }
    | - ...but `y` will be dropped here, when the function `foobar` returns
    |

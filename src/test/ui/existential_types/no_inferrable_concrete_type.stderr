@@ -1,7 +1,7 @@
 error[E0391]: cycle detected when processing `Foo`
   --> $DIR/no_inferrable_concrete_type.rs:6:1
    |
-LL | existential type Foo: Copy; //~ cycle detected
+LL | existential type Foo: Copy;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires processing `bar`...
@@ -15,7 +15,7 @@ note: cycle used when collecting item types in top-level module
    |
 LL | / #![feature(existential_type)]
 LL | |
-LL | | existential type Foo: Copy; //~ cycle detected
+LL | | existential type Foo: Copy;
 LL | |
 ...  |
 LL | |     let _: Foo = std::mem::transmute(0u8);

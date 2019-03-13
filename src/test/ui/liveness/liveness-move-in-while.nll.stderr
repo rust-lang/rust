@@ -4,7 +4,7 @@ error[E0382]: borrow of moved value: `y`
 LL |     let y: Box<isize> = box 42;
    |         - move occurs because `y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 ...
-LL |         println!("{}", y); //~ ERROR use of moved value: `y`
+LL |         println!("{}", y);
    |                        ^ value borrowed here after move
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |                                                    - value moved here, in previous iteration of loop

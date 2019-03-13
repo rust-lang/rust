@@ -1,7 +1,7 @@
 error[E0320]: overflow while adding drop-check rules for FingerTree<i32>
   --> $DIR/dropck_no_diverge_on_nonregular_1.rs:24:9
    |
-LL |     let ft = //~ ERROR overflow while adding drop-check rules for FingerTree
+LL |     let ft =
    |         ^^
    |
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<i32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

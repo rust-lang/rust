@@ -11,6 +11,7 @@ use rustc_target::spec::{Target, TargetTriple};
 use crate::lint;
 use crate::middle::cstore;
 
+use syntax;
 use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
@@ -499,6 +500,13 @@ impl Input {
             Input::Str { ref mut input, .. } => Some(input),
         }
     }
+
+    pub fn source_name(&self) -> FileName {
+        match *self {
+            Input::File(ref ifile) => ifile.clone().into(),
+            Input::Str { ref name, .. } => name.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Hash)]
@@ -809,6 +817,8 @@ macro_rules! options {
             Some("crate=integer");
         pub const parse_unpretty: Option<&str> =
             Some("`string` or `string=string`");
+        pub const parse_treat_err_as_bug: Option<&str> =
+            Some("either no value or a number bigger than 0");
         pub const parse_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
                   `fat`, or omitted");
@@ -1012,6 +1022,13 @@ macro_rules! options {
                     true
                 }
                 _ => false,
+            }
+        }
+
+        fn parse_treat_err_as_bug(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = s.parse().ok().filter(|&x| x != 0); slot.unwrap_or(0) != 0 }
+                None => { *slot = Some(1); true }
             }
         }
 
@@ -1225,10 +1242,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          Use with RUST_REGION_GRAPH=help for more info"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link"),
+    dual_proc_macros: bool = (false, parse_bool, [TRACKED],
+        "load proc macros for both target and host, but only link to the target"),
     no_codegen: bool = (false, parse_bool, [TRACKED],
         "run all passes except codegen; no output"),
-    treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
-        "treat all errors that occur as bugs"),
+    treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
+        "treat error number `val` that occurs as bug"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug`"),
     external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
@@ -1398,9 +1417,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     self_profile: bool = (false, parse_bool, [UNTRACKED],
-        "run the self profiler"),
-    profile_json: bool = (false, parse_bool, [UNTRACKED],
-        "output a json file with profiler results"),
+        "run the self profiler and output the raw event data"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emits a section containing stack size metadata"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1476,6 +1493,15 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         ret.insert((Symbol::intern("proc_macro"), None));
     }
     ret
+}
+
+/// Converts the crate cfg! configuration from String to Symbol.
+/// `rustc_interface::interface::Config` accepts this in the compiler configuration,
+/// but the symbol interner is not yet set up then, so we must convert it later.
+pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateConfig {
+    cfg.into_iter()
+       .map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b))))
+       .collect()
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
@@ -1784,10 +1810,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
-    cfgspecs
-        .into_iter()
-        .map(|s| {
+pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
+    syntax::with_globals(move || {
+        let cfg = cfgspecs.into_iter().map(|s| {
             let sess = parse::ParseSess::new(FilePathMapping::empty());
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
@@ -1819,8 +1844,11 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
             }
 
             error!(r#"expected `key` or `key="value"`"#);
-        })
-        .collect::<ast::CrateConfig>()
+        }).collect::<ast::CrateConfig>();
+        cfg.into_iter().map(|(a, b)| {
+            (a.to_string(), b.map(|b| b.to_string()))
+        }).collect()
+    })
 }
 
 pub fn get_cmd_lint_options(matches: &getopts::Matches,
@@ -1848,7 +1876,7 @@ pub fn get_cmd_lint_options(matches: &getopts::Matches,
 
 pub fn build_session_options_and_crate_config(
     matches: &getopts::Matches,
-) -> (Options, ast::CrateConfig) {
+) -> (Options, FxHashSet<(String, Option<String>)>) {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
@@ -2574,7 +2602,11 @@ mod tests {
     use getopts;
     use crate::lint;
     use crate::middle::cstore;
-    use crate::session::config::{build_configuration, build_session_options_and_crate_config};
+    use crate::session::config::{
+        build_configuration,
+        build_session_options_and_crate_config,
+        to_crate_config
+    };
     use crate::session::config::{LtoCli, LinkerPluginLto};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
@@ -2615,7 +2647,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
-            let cfg = build_configuration(&sess, cfg);
+            let cfg = build_configuration(&sess, to_crate_config(cfg));
             assert!(cfg.contains(&(Symbol::intern("test"), None)));
         });
     }
@@ -2633,7 +2665,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
-            let cfg = build_configuration(&sess, cfg);
+            let cfg = build_configuration(&sess, to_crate_config(cfg));
             let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
             assert!(test_items.next().is_some());
             assert!(test_items.next().is_none());
@@ -3207,7 +3239,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.treat_err_as_bug = true;
+        opts.debugging_opts.treat_err_as_bug = Some(1);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

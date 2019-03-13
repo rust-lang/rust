@@ -3,7 +3,7 @@ error[E0596]: cannot borrow immutable local variable `v` as mutable
    |
 LL |     let v = vec![1, 2, 3];
    |         - help: make this binding mutable: `mut v`
-LL |     write(&mut v); //~ ERROR cannot borrow
+LL |     write(&mut v);
    |                ^ cannot borrow mutably
 
 error: aborting due to previous error

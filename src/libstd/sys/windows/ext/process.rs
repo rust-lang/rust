@@ -2,10 +2,10 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
-use os::windows::io::{FromRawHandle, RawHandle, AsRawHandle, IntoRawHandle};
-use process;
-use sys;
-use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
+use crate::os::windows::io::{FromRawHandle, RawHandle, AsRawHandle, IntoRawHandle};
+use crate::process;
+use crate::sys;
+use crate::sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {

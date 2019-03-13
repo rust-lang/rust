@@ -1,7 +1,7 @@
 error[E0369]: binary operation `+` cannot be applied to type `()`
   --> $DIR/for-loop-type-error.rs:2:13
    |
-LL |     let x = () + (); //~ ERROR binary operation
+LL |     let x = () + ();
    |             ^^^^^^^
    |
    = note: an implementation of `std::ops::Add` might be missing for `()`

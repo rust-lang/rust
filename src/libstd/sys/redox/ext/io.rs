@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fs;
-use net;
-use sys;
-use io;
-use sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::fs;
+use crate::net;
+use crate::sys;
+use crate::io;
+use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]

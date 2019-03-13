@@ -1,4 +1,4 @@
-use sys::rwlock as imp;
+use crate::sys::rwlock as imp;
 
 /// An OS-based reader-writer lock.
 ///

@@ -1,7 +1,7 @@
 error: program clause dump
   --> $DIR/lower_trait.rs:5:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<Self, S, T> { FromEnv(<Self as Foo<S, T>>::Assoc: Bar) :- FromEnv(Self: Foo<S, T>). }
@@ -12,7 +12,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
 error: program clause dump
   --> $DIR/lower_trait.rs:7:5
    |
-LL |     #[rustc_dump_program_clauses] //~ ERROR program clause dump
+LL |     #[rustc_dump_program_clauses]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<Self, S, T, ^3> { ProjectionEq(<Self as Foo<S, T>>::Assoc == ^3) :- Normalize(<Self as Foo<S, T>>::Assoc -> ^3). }

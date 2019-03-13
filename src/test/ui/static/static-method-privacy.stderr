@@ -1,7 +1,7 @@
 error[E0624]: method `new` is private
   --> $DIR/static-method-privacy.rs:9:13
    |
-LL |     let _ = a::S::new();    //~ ERROR method `new` is private
+LL |     let _ = a::S::new();
    |             ^^^^^^^^^
 
 error: aborting due to previous error

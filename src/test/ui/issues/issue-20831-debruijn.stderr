@@ -3,8 +3,8 @@ error[E0308]: mismatched types
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }
@@ -17,8 +17,8 @@ note: the anonymous lifetime #2 defined on the method body at 28:5...
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }
@@ -34,8 +34,8 @@ error[E0308]: mismatched types
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }
@@ -53,8 +53,8 @@ note: ...does not necessarily outlive the anonymous lifetime #2 defined on the m
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }
@@ -65,8 +65,8 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }
@@ -77,8 +77,8 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
    |
 LL | /     fn subscribe(&mut self, t : Box<Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
 LL | |         // Not obvious, but there is an implicit lifetime here -------^
-LL | |         //~^^ ERROR cannot infer
-LL | |         //~| ERROR mismatched types
+LL | |
+LL | |
 ...  |
 LL | |         self.sub = t;
 LL | |     }

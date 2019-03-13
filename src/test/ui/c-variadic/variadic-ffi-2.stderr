@@ -1,0 +1,9 @@
+error[E0045]: C-variadic function must have C or cdecl calling convention
+  --> $DIR/variadic-ffi-2.rs:3:11
+   |
+LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadics require C or cdecl calling convention
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0045`.

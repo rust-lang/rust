@@ -1,7 +1,7 @@
 error: the `?` macro repetition operator does not take a separator
   --> $DIR/macro-at-most-once-rep-2018.rs:10:10
    |
-LL |     ($(a),?) => {}; //~ERROR the `?` macro repetition operator
+LL |     ($(a),?) => {};
    |          ^
 
 error: no rules expected the token `?`
@@ -10,7 +10,7 @@ error: no rules expected the token `?`
 LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
-LL |     foo!(a?); //~ ERROR no rules expected the token `?`
+LL |     foo!(a?);
    |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
@@ -19,7 +19,7 @@ error: no rules expected the token `?`
 LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
-LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
+LL |     foo!(a?a);
    |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
@@ -28,7 +28,7 @@ error: no rules expected the token `?`
 LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
-LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
+LL |     foo!(a?a?a);
    |           ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
@@ -37,7 +37,7 @@ error: unexpected end of macro invocation
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
-LL |     barplus!(); //~ERROR unexpected end of macro invocation
+LL |     barplus!();
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
@@ -46,7 +46,7 @@ error: unexpected end of macro invocation
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
-LL |     barplus!(a); //~ERROR unexpected end of macro invocation
+LL |     barplus!(a);
    |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
@@ -55,7 +55,7 @@ error: no rules expected the token `?`
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
-LL |     barplus!(a?); //~ ERROR no rules expected the token `?`
+LL |     barplus!(a?);
    |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
@@ -64,7 +64,7 @@ error: no rules expected the token `?`
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
-LL |     barplus!(a?a); //~ ERROR no rules expected the token `?`
+LL |     barplus!(a?a);
    |               ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
@@ -73,7 +73,7 @@ error: unexpected end of macro invocation
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
-LL |     barstar!(); //~ERROR unexpected end of macro invocation
+LL |     barstar!();
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
@@ -82,7 +82,7 @@ error: unexpected end of macro invocation
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
-LL |     barstar!(a); //~ERROR unexpected end of macro invocation
+LL |     barstar!(a);
    |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
@@ -91,7 +91,7 @@ error: no rules expected the token `?`
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
-LL |     barstar!(a?); //~ ERROR no rules expected the token `?`
+LL |     barstar!(a?);
    |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
@@ -100,7 +100,7 @@ error: no rules expected the token `?`
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
-LL |     barstar!(a?a); //~ ERROR no rules expected the token `?`
+LL |     barstar!(a?a);
    |               ^ no rules expected this token in macro call
 
 error: aborting due to 12 previous errors

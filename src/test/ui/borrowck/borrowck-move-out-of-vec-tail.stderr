@@ -5,9 +5,9 @@ LL |                   &[Foo { string: a },
    |                    ^              - hint: to prevent move, use `ref a` or `ref mut a`
    |  __________________|
    | |
-LL | |                 //~^ ERROR cannot move out of type `[Foo]`
-LL | |                 //~| cannot move out
-LL | |                 //~| to prevent move
+LL | |
+LL | |
+LL | |
 LL | |                   Foo { string: b }] => {
    | |_________________________________-__^ cannot move out of here
    |                                   |

@@ -25,9 +25,6 @@ fn main() {
         // fail again
         enum Test4 {
             Nope(i32 {}) //~ ERROR: found `{`
-                         //~^ ERROR: found `{`
         }
     }
-    // still recover later
-    let bad_syntax = _; //~ ERROR: expected expression, found reserved identifier `_`
 }

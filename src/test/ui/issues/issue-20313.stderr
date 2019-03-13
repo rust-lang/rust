@@ -1,7 +1,7 @@
 error[E0658]: linking to LLVM intrinsics is experimental (see issue #29602)
   --> $DIR/issue-20313.rs:3:5
    |
-LL |     fn sqrt(x: f32) -> f32; //~ ERROR linking to LLVM intrinsics is experimental
+LL |     fn sqrt(x: f32) -> f32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(link_llvm_intrinsics)] to the crate attributes to enable

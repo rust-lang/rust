@@ -1,7 +1,7 @@
 error[E0599]: no method named `foobar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:22:11
    |
-LL |         x.foobar(); //~ ERROR no method named `foobar`
+LL |         x.foobar();
    |           ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
@@ -11,7 +11,7 @@ LL |         x.foobar(); //~ ERROR no method named `foobar`
 error[E0599]: no method named `bar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:28:7
    |
-LL |     x.bar(); //~ ERROR no method named `bar`
+LL |     x.bar();
    |       ^^^
    |
    = help: items from traits can only be used if the trait is in scope
@@ -23,13 +23,13 @@ LL | use crate::foo::Bar;
 error[E0599]: no method named `baz` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:29:7
    |
-LL |     x.baz(); //~ ERROR no method named `baz`
+LL |     x.baz();
    |       ^^^
 
 error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:30:18
    |
-LL |     let y = u32::from_str("33"); //~ ERROR no function or associated item named `from_str`
+LL |     let y = u32::from_str("33");
    |             -----^^^^^^^^
    |             |
    |             function or associated item not found in `u32`

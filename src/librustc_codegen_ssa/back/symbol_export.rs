@@ -11,7 +11,7 @@ use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadat
 use rustc::session::config;
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -69,7 +69,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut reachable_non_generics: DefIdMap<_> = tcx.reachable_set(LOCAL_CRATE).0
         .iter()
-        .filter_map(|&node_id| {
+        .filter_map(|&hir_id| {
             // We want to ignore some FFI functions that are not exposed from
             // this crate. Reachable FFI functions can be lumped into two
             // categories:
@@ -83,9 +83,9 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir().get(node_id) {
+            match tcx.hir().get_by_hir_id(hir_id) {
                 Node::ForeignItem(..) => {
-                    let def_id = tcx.hir().local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     if tcx.is_statically_included_foreign_item(def_id) {
                         Some(def_id)
                     } else {
@@ -105,7 +105,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     node: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
-                    let def_id = tcx.hir().local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
@@ -263,7 +263,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 def: InstanceDef::Item(def_id),
                 substs,
             }) = mono_item {
-                if substs.types().next().is_some() {
+                if substs.non_erasable_generics().next().is_some() {
                     symbols.push((ExportedSymbol::Generic(def_id, substs),
                                   SymbolExportLevel::Rust));
                 }
@@ -282,7 +282,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn upstream_monomorphizations_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum)
-    -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>
+    -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>>
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
@@ -334,7 +334,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId)
-    -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>
+    -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>
 {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(LOCAL_CRATE)
@@ -343,8 +343,8 @@ fn upstream_monomorphizations_for_provider<'a, 'tcx>(
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
+    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+        !tcx.reachable_set(LOCAL_CRATE).0.contains(&hir_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
              def_id)

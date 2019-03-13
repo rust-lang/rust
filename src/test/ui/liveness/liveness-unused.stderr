@@ -1,7 +1,7 @@
 warning: unreachable statement
   --> $DIR/liveness-unused.rs:92:9
    |
-LL |         drop(*x as i32); //~ WARNING unreachable statement
+LL |         drop(*x as i32);
    |         ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -105,7 +105,7 @@ LL |     let x;
 error: value assigned to `x` is never read
   --> $DIR/liveness-unused.rs:116:9
    |
-LL |         x = 0;  //~ ERROR value assigned to `x` is never read
+LL |         x = 0;
    |         ^
    |
    = help: maybe it is overwritten before being read?

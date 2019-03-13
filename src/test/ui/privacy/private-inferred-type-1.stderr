@@ -1,13 +1,13 @@
 error: type `m::Priv` is private
   --> $DIR/private-inferred-type-1.rs:16:5
    |
-LL |     [].arr0_secret(); //~ ERROR type `m::Priv` is private
+LL |     [].arr0_secret();
    |     ^^^^^^^^^^^^^^^^
 
 error: type `m::Priv` is private
   --> $DIR/private-inferred-type-1.rs:17:5
    |
-LL |     None.ty_param_secret(); //~ ERROR type `m::Priv` is private
+LL |     None.ty_param_secret();
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

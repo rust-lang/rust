@@ -1,7 +1,7 @@
 error: expected expression, found `$`
   --> $DIR/issue-35450.rs:4:8
    |
-LL |     m!($t); //~ ERROR expected expression
+LL |     m!($t);
    |        ^ expected expression
 
 error: aborting due to previous error

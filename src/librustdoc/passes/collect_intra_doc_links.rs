@@ -4,7 +4,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use syntax;
-use syntax::ast::{self, Ident, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -19,11 +19,13 @@ use crate::passes::{look_for_tests, Pass};
 
 use super::span_of_attrs;
 
-pub const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass::early("collect-intra-doc-links", collect_intra_doc_links,
-                "reads a crate's documentation to resolve intra-doc-links");
+pub const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
+    name: "collect-intra-doc-links",
+    pass: collect_intra_doc_links,
+    description: "reads a crate's documentation to resolve intra-doc-links",
+};
 
-pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
+pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
         krate
     } else {
@@ -45,14 +47,14 @@ enum PathKind {
     Type,
 }
 
-struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
-    mod_ids: Vec<NodeId>,
+struct LinkCollector<'a, 'tcx> {
+    cx: &'a DocContext<'tcx>,
+    mod_ids: Vec<ast::NodeId>,
     is_nightly_build: bool,
 }
 
-impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
+    fn new(cx: &'a DocContext<'tcx>) -> Self {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
@@ -67,7 +69,7 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
                path_str: &str,
                is_val: bool,
                current_item: &Option<String>,
-               parent_id: Option<NodeId>)
+               parent_id: Option<ast::NodeId>)
         -> Result<(Def, Option<String>), ()>
     {
         let cx = self.cx;
@@ -76,12 +78,11 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
         // path.
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let result = cx.resolver.borrow_mut()
-                                    .with_scope(id,
+            let result = cx.enter_resolver(|resolver| resolver.with_scope(id,
                 |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP,
                                                     &path_str, is_val)
-            });
+            }));
 
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
@@ -140,11 +141,9 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
             }
 
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let ty = cx.resolver.borrow_mut()
-                                .with_scope(id,
-                |resolver| {
+            let ty = cx.enter_resolver(|resolver| resolver.with_scope(id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
-            })?;
+            }))?;
             match ty.def {
                 Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
                     let item = cx.tcx.inherent_impls(did)
@@ -216,10 +215,10 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
     }
 }
 
-impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
-        let item_node_id = if item.is_mod() {
-            if let Some(id) = self.cx.tcx.hir().as_local_node_id(item.def_id) {
+        let item_hir_id = if item.is_mod() {
+            if let Some(id) = self.cx.tcx.hir().as_local_hir_id(item.def_id) {
                 Some(id)
             } else {
                 debug!("attempting to fold on a non-local item: {:?}", item);
@@ -246,14 +245,14 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
         let current_item = match item.inner {
             ModuleItem(..) => {
                 if item.attrs.inner_docs {
-                    if item_node_id.unwrap() != NodeId::from_u32(0) {
+                    if item_hir_id.unwrap() != hir::CRATE_HIR_ID {
                         item.name.clone()
                     } else {
                         None
                     }
                 } else {
                     match parent_node.or(self.mod_ids.last().cloned()) {
-                        Some(parent) if parent != NodeId::from_u32(0) => {
+                        Some(parent) if parent != ast::CRATE_NODE_ID => {
                             // FIXME: can we pull the parent module's name from elsewhere?
                             Some(self.cx.tcx.hir().name(parent).to_string())
                         }
@@ -272,7 +271,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
         };
 
         if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.push(item_node_id.unwrap());
+            self.mod_ids.push(self.cx.tcx.hir().hir_to_node_id(item_hir_id.unwrap()));
         }
 
         let cx = self.cx;
@@ -419,7 +418,7 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
         }
 
         if item.is_mod() && !item.attrs.inner_docs {
-            self.mod_ids.push(item_node_id.unwrap());
+            self.mod_ids.push(self.cx.tcx.hir().hir_to_node_id(item_hir_id.unwrap()));
         }
 
         if item.is_mod() {
@@ -435,26 +434,27 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
 }
 
 /// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
+fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
-    let mut resolver = cx.resolver.borrow_mut();
-    let parent_scope = resolver.dummy_parent_scope();
-    if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
-                                                         &parent_scope, false, false) {
-        if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
-            // skip proc-macro stubs, they'll cause `get_macro` to crash
-        } else {
-            if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-                return Some(def);
+    cx.enter_resolver(|resolver| {
+        let parent_scope = resolver.dummy_parent_scope();
+        if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
+                                                            &parent_scope, false, false) {
+            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+                // skip proc-macro stubs, they'll cause `get_macro` to crash
+            } else {
+                if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
+                    return Some(def);
+                }
             }
         }
-    }
-    if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
-        return Some(*def);
-    }
-    None
+        if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+            return Some(*def);
+        }
+        None
+    })
 }
 
 /// Reports a resolution failure diagnostic.
@@ -463,7 +463,7 @@ fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
 /// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
 /// line containing the failure as a note as well.
 fn resolution_failure(
-    cx: &DocContext<'_, '_, '_>,
+    cx: &DocContext<'_>,
     attrs: &Attributes,
     path_str: &str,
     dox: &str,
@@ -471,9 +471,9 @@ fn resolution_failure(
 ) {
     let sp = span_of_attrs(attrs);
 
-    let mut diag = cx.tcx.struct_span_lint_node(
+    let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        NodeId::from_u32(0),
+        hir::CRATE_HIR_ID,
         sp,
         &format!("`[{}]` cannot be resolved, ignoring it...", path_str),
     );
@@ -505,7 +505,7 @@ fn resolution_failure(
     diag.emit();
 }
 
-fn ambiguity_error(cx: &DocContext<'_, '_, '_>, attrs: &Attributes,
+fn ambiguity_error(cx: &DocContext<'_>, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
@@ -561,7 +561,7 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext<'_, '_, '_>, def: Def) -> Result<(Def, Option<String>), ()> {
+fn handle_variant(cx: &DocContext<'_>, def: Def) -> Result<(Def, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
     let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
@@ -602,7 +602,7 @@ fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
     }
 }
 
-fn primitive_impl(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<DefId> {
+fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
     let tcx = cx.tcx;
     match path_str {
         "u8" => tcx.lang_items().u8_impl(),

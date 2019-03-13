@@ -1,7 +1,7 @@
 error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ufcs.rs:12:20
    |
-LL |     <i32 as ::foo::Bar>::baz(); //~ERROR trait `Bar` is private
+LL |     <i32 as ::foo::Bar>::baz();
    |                    ^^^
 
 error: aborting due to previous error

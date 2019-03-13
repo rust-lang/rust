@@ -1,7 +1,7 @@
 error[E0277]: can't compare `Error` with `Error`
   --> $DIR/derives-span-PartialOrd-struct.rs:8:5
    |
-LL |     x: Error //~ ERROR
+LL |     x: Error
    |     ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
    |
    = help: the trait `std::cmp::PartialOrd` is not implemented for `Error`

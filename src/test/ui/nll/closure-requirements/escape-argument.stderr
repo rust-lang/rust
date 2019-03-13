@@ -28,7 +28,7 @@ error[E0597]: `y` does not live long enough
    |
 LL |         closure(&mut p, &y);
    |                         ^^ borrowed value does not live long enough
-LL |         //~^ ERROR `y` does not live long enough [E0597]
+LL |
 LL |     }
    |     - `y` dropped here while still borrowed
 LL | 

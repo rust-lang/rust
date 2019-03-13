@@ -1,31 +1,31 @@
 error: lifetime bounds cannot be used in this context
   --> $DIR/bounds-lifetime.rs:1:22
    |
-LL | type A = for<'b, 'a: 'b> fn(); //~ ERROR lifetime bounds cannot be used in this context
+LL | type A = for<'b, 'a: 'b> fn();
    |                      ^^
 
 error: lifetime bounds cannot be used in this context
   --> $DIR/bounds-lifetime.rs:2:22
    |
-LL | type B = for<'b, 'a: 'b,> fn(); //~ ERROR lifetime bounds cannot be used in this context
+LL | type B = for<'b, 'a: 'b,> fn();
    |                      ^^
 
 error: lifetime bounds cannot be used in this context
   --> $DIR/bounds-lifetime.rs:3:22
    |
-LL | type C = for<'b, 'a: 'b +> fn(); //~ ERROR lifetime bounds cannot be used in this context
+LL | type C = for<'b, 'a: 'b +> fn();
    |                      ^^
 
 error: only lifetime parameters can be used in this context
   --> $DIR/bounds-lifetime.rs:4:18
    |
-LL | type D = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
+LL | type D = for<'a, T> fn();
    |                  ^
 
 error: only lifetime parameters can be used in this context
   --> $DIR/bounds-lifetime.rs:5:14
    |
-LL | type E = for<T> Fn(); //~ ERROR only lifetime parameters can be used in this context
+LL | type E = for<T> Fn();
    |              ^
 
 error: aborting due to 5 previous errors

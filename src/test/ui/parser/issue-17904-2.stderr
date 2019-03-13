@@ -1,7 +1,7 @@
 error: expected item, found keyword `where`
   --> $DIR/issue-17904-2.rs:3:24
    |
-LL | struct Bar<T> { x: T } where T: Copy //~ ERROR expected item, found keyword `where`
+LL | struct Bar<T> { x: T } where T: Copy
    |                        ^^^^^ expected item
 
 error: aborting due to previous error

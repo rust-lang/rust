@@ -1,10 +1,10 @@
-use ffi::OsString;
-use fmt;
-use hash::{Hash, Hasher};
-use io::{self, SeekFrom};
-use path::{Path, PathBuf};
-use sys::time::SystemTime;
-use sys::{unsupported, Void};
+use crate::ffi::OsString;
+use crate::fmt;
+use crate::hash::{Hash, Hasher};
+use crate::io::{self, SeekFrom};
+use crate::path::{Path, PathBuf};
+use crate::sys::time::SystemTime;
+use crate::sys::{unsupported, Void};
 
 pub struct File(Void);
 

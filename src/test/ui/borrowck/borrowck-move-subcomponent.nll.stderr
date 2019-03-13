@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `a.x` because it is borrowed
    |
 LL |   let pb = &a;
    |            -- borrow of `a` occurs here
-LL |   let S { x: ax } = a;  //~ ERROR cannot move out
+LL |   let S { x: ax } = a;
    |              ^^ move out of `a.x` occurs here
 LL |   f(pb);
    |     -- borrow later used here

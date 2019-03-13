@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use rustc_macros::HashStable;
 use crate::session::{early_error, config};
 use crate::session::filesearch::make_target_lib_path;
 
@@ -9,7 +10,7 @@ pub struct SearchPath {
     pub files: Vec<PathBuf>,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash, HashStable)]
 pub enum PathKind {
     Native,
     Crate,

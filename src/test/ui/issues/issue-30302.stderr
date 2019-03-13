@@ -9,7 +9,7 @@ error: unreachable pattern
    |
 LL |         Nil => true,
    |         --- matches any value
-LL | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
+LL |
 LL |         _ => false
    |         ^ unreachable pattern
    |

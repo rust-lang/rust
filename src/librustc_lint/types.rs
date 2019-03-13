@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::Node;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
 use rustc::{lint, util};
@@ -46,12 +46,12 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: ast::NodeId,
+    negated_expr_id: hir::HirId,
 }
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: ast::DUMMY_NODE_ID }
+        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
     }
 }
 
@@ -71,8 +71,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.node {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.id {
-                    self.negated_expr_id = expr.id;
+                if self.negated_expr_id != e.hir_id {
+                    self.negated_expr_id = expr.hir_id;
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 };
                                 let (_, max) = int_ty_range(int_type);
                                 let max = max as u128;
-                                let negative = self.negated_expr_id == e.id;
+                                let negative = self.negated_expr_id == e.hir_id;
 
                                 // Detect literal value out of range [min, max] inclusive
                                 // avoiding use of -min to prevent overflow/panic
@@ -136,8 +136,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             _ => bug!(),
                         };
                         if lit_val < min || lit_val > max {
-                            let parent_id = cx.tcx.hir().get_parent_node(e.id);
-                            if let Node::Expr(parent_expr) = cx.tcx.hir().get(parent_id) {
+                            let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+                            if let Node::Expr(parent_expr) = cx.tcx.hir().get_by_hir_id(parent_id) {
                                 if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
@@ -445,7 +445,7 @@ enum FfiResult<'tcx> {
 /// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: &'tcx ty::AdtDef,
-                                  substs: &Substs<'tcx>)
+                                  substs: SubstsRef<'tcx>)
                                   -> bool {
     if def.variants.len() == 2 {
         let data_idx;
@@ -762,12 +762,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: ast::NodeId, decl: &hir::FnDecl) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
+    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl) {
+        let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
+        let inputs = if sig.c_variadic {
+            // Don't include the spoofed `VaList` in the functions list
+            // of inputs.
+            &sig.inputs()[..sig.inputs().len() - 1]
+        } else {
+            &sig.inputs()[..]
+        };
 
-        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
+        for (input_ty, input_hir) in inputs.iter().zip(&decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
         }
 
@@ -779,8 +786,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_static(&mut self, id: ast::NodeId, span: Span) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
+    fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
+        let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(id);
         let ty = self.cx.tcx.type_of(def_id);
         self.check_type_for_ffi_and_report_errors(span, ty);
     }
@@ -802,14 +809,14 @@ impl LintPass for ImproperCTypes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
-        let abi = cx.tcx.hir().get_foreign_abi(it.id);
+        let abi = cx.tcx.hir().get_foreign_abi_by_hir_id(it.hir_id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
             match it.node {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.id, decl);
+                    vis.check_foreign_fn(it.hir_id, decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.id, ty.span);
+                    vis.check_foreign_static(it.hir_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => ()
             }
@@ -832,7 +839,7 @@ impl LintPass for VariantSizeDifferences {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
-            let item_def_id = cx.tcx.hir().local_def_id(it.id);
+            let item_def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);
             let ty = cx.tcx.erase_regions(&t);
             match cx.layout_of(ty) {

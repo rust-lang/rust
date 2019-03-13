@@ -17,7 +17,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
-                if let mir::Place::Local(index) = *place {
+                if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)

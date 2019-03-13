@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:6:16
    |
-LL |         loop { break }; //~ ERROR mismatched types
+LL |         loop { break };
    |                ^^^^^ expected (), found i32
    |
    = note: expected type `()`
@@ -10,7 +10,7 @@ LL |         loop { break }; //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:8:9
    |
-LL | /         'b: //~ ERROR mismatched types
+LL | /         'b:
 LL | |         while true { break }; // but here we cite the whole loop
    | |____________________________^ expected i32, found ()
    |
@@ -20,7 +20,7 @@ LL | |         while true { break }; // but here we cite the whole loop
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:11:9
    |
-LL | /         'c: //~ ERROR mismatched types
+LL | /         'c:
 LL | |         for _ in None { break }; // but here we cite the whole loop
    | |_______________________________^ expected i32, found ()
    |
@@ -30,7 +30,7 @@ LL | |         for _ in None { break }; // but here we cite the whole loop
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:14:9
    |
-LL | /         'd: //~ ERROR mismatched types
+LL | /         'd:
 LL | |         while let Some(_) = None { break };
    | |__________________________________________^ expected i32, found ()
    |

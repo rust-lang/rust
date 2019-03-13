@@ -1,7 +1,7 @@
 error: expected `{`, found `=>`
   --> $DIR/missing-block-hint.rs:3:18
    |
-LL |         if (foo) => {} //~ ERROR expected `{`, found `=>`
+LL |         if (foo) => {}
    |         --       ^^ expected `{`
    |         |
    |         this `if` statement has a condition, but no block
@@ -11,7 +11,7 @@ error: expected `{`, found `bar`
    |
 LL |         if (foo)
    |         -- this `if` statement has a condition, but no block
-LL |             bar; //~ ERROR expected `{`, found `bar`
+LL |             bar;
    |             ^^^-
    |             |
    |             expected `{`

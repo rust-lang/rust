@@ -118,6 +118,10 @@ pub fn insert_outlives_predicate<'tcx>(
             }
             required_predicates.insert(ty::OutlivesPredicate(kind, outlived_region));
         }
+
+        UnpackedKind::Const(_) => {
+            // Generic consts don't impose any constraints.
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 error: `async` is a keyword in the 2018 edition
   --> $DIR/async-ident-allowed.rs:9:9
    |
-LL |     let async = 3; //~ ERROR: is a keyword
+LL |     let async = 3;
    |         ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
    |
 note: lint level defined here

@@ -1,13 +1,13 @@
 error: visibilities can only be restricted to ancestor modules
   --> $DIR/issue-50493.rs:8:12
    |
-LL |     pub(in restricted) field: usize, //~ visibilities can only be restricted to ancestor modules
+LL |     pub(in restricted) field: usize,
    |            ^^^^^^^^^^
 
 error[E0616]: field `field` of struct `Restricted` is private
   --> $DIR/issue-50493.rs:6:10
    |
-LL | #[derive(Derive)] //~ ERROR field `field` of struct `Restricted` is private
+LL | #[derive(Derive)]
    |          ^^^^^^
 
 error: aborting due to 2 previous errors

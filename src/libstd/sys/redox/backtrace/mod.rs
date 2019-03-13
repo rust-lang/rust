@@ -9,13 +9,13 @@ mod tracing;
 mod printing;
 
 pub mod gnu {
-    use io;
-    use fs;
+    use crate::io;
+    use crate::fs;
+    use crate::vec::Vec;
+    use crate::ffi::OsStr;
+    use crate::os::unix::ffi::OsStrExt;
+    use crate::io::Read;
     use libc::c_char;
-    use vec::Vec;
-    use ffi::OsStr;
-    use os::unix::ffi::OsStrExt;
-    use io::Read;
 
     pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
         let mut exefile = fs::File::open("sys:exe")?;

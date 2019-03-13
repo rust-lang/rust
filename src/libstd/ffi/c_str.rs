@@ -1,19 +1,19 @@
-use ascii;
-use borrow::{Cow, Borrow};
-use cmp::Ordering;
-use error::Error;
-use fmt::{self, Write};
-use io;
-use mem;
-use memchr;
-use ops;
-use os::raw::c_char;
-use ptr;
-use rc::Rc;
-use slice;
-use str::{self, Utf8Error};
-use sync::Arc;
-use sys;
+use crate::ascii;
+use crate::borrow::{Cow, Borrow};
+use crate::cmp::Ordering;
+use crate::error::Error;
+use crate::fmt::{self, Write};
+use crate::io;
+use crate::mem;
+use crate::memchr;
+use crate::ops;
+use crate::os::raw::c_char;
+use crate::ptr;
+use crate::rc::Rc;
+use crate::slice;
+use crate::str::{self, Utf8Error};
+use crate::sync::Arc;
+use crate::sys;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -690,8 +690,8 @@ impl<'a> From<Cow<'a, CStr>> for CString {
 }
 
 #[stable(feature = "box_from_c_str", since = "1.17.0")]
-impl<'a> From<&'a CStr> for Box<CStr> {
-    fn from(s: &'a CStr) -> Box<CStr> {
+impl From<&CStr> for Box<CStr> {
+    fn from(s: &CStr) -> Box<CStr> {
         let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
@@ -767,7 +767,7 @@ impl From<CString> for Arc<CStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a CStr> for Arc<CStr> {
+impl From<&CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
@@ -789,7 +789,7 @@ impl From<CString> for Rc<CStr> {
 }
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
-impl<'a> From<&'a CStr> for Rc<CStr> {
+impl From<&CStr> for Rc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
@@ -1268,8 +1268,8 @@ impl ToOwned for CStr {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl<'a> From<&'a CStr> for CString {
-    fn from(s: &'a CStr) -> CString {
+impl From<&CStr> for CString {
+    fn from(s: &CStr) -> CString {
         s.to_owned()
     }
 }
@@ -1303,12 +1303,12 @@ impl AsRef<CStr> for CString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use os::raw::c_char;
-    use borrow::Cow::{Borrowed, Owned};
-    use hash::{Hash, Hasher};
-    use collections::hash_map::DefaultHasher;
-    use rc::Rc;
-    use sync::Arc;
+    use crate::os::raw::c_char;
+    use crate::borrow::Cow::{Borrowed, Owned};
+    use crate::hash::{Hash, Hasher};
+    use crate::collections::hash_map::DefaultHasher;
+    use crate::rc::Rc;
+    use crate::sync::Arc;
 
     #[test]
     fn c_to_rust() {

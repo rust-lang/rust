@@ -3,7 +3,7 @@ error: borrowed data cannot be stored outside of its closure
    |
 LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
    |                               - cannot infer an appropriate lifetime...
-LL |         //~^ NOTE cannot infer an appropriate lifetime
+LL |
 LL |     let push_id = |installed_id: &CrateId| {
    |         -------   ------------------------ borrowed data cannot outlive this closure
    |         |

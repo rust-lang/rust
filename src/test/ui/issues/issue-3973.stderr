@@ -2,7 +2,7 @@ error[E0407]: method `new` is not a member of trait `ToString_`
   --> $DIR/issue-3973.rs:11:5
    |
 LL | /     fn new(x: f64, y: f64) -> Point {
-LL | |     //~^ ERROR method `new` is not a member of trait `ToString_`
+LL | |
 LL | |         Point { x: x, y: y }
 LL | |     }
    | |_____^ not a member of trait `ToString_`

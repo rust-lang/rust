@@ -1,7 +1,7 @@
 error: attribute without generic parameters
   --> $DIR/attribute-with-no-generics-in-parameter-list.rs:1:8
    |
-LL | fn foo<#[attr]>() {} //~ ERROR attribute without generic parameters
+LL | fn foo<#[attr]>() {}
    |        ^^^^^^^ attributes are only permitted when preceding parameters
 
 error: aborting due to previous error

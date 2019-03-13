@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`:
   --> $DIR/complex-impl.rs:9:1
    |
-LL | impl<R> External for (Q, R) {} //~ ERROR must be used
+LL | impl<R> External for (Q, R) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `complex_impl_support`:
@@ -11,7 +11,7 @@ LL | impl<R> External for (Q, R) {} //~ ERROR must be used
 error[E0210]: type parameter `R` must be used as the type parameter for some local type (e.g., `MyStruct<R>`)
   --> $DIR/complex-impl.rs:9:1
    |
-LL | impl<R> External for (Q, R) {} //~ ERROR must be used
+LL | impl<R> External for (Q, R) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `R` must be used as the type parameter for some local type
    |
    = note: only traits defined in the current crate can be implemented for a type parameter

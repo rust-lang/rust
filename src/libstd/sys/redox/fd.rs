@@ -1,9 +1,9 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
-use io::{self, Read};
-use mem;
-use sys::{cvt, syscall};
-use sys_common::AsInner;
+use crate::io::{self, Read};
+use crate::mem;
+use crate::sys::{cvt, syscall};
+use crate::sys_common::AsInner;
 
 pub struct FileDesc {
     fd: usize,

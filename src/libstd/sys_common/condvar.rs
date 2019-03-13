@@ -1,6 +1,6 @@
-use time::Duration;
-use sys_common::mutex::{self, Mutex};
-use sys::condvar as imp;
+use crate::time::Duration;
+use crate::sys_common::mutex::{self, Mutex};
+use crate::sys::condvar as imp;
 
 /// An OS-based condition variable.
 ///

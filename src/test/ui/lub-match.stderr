@@ -1,7 +1,7 @@
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/lub-match.rs:30:13
    |
-LL |             s //~ ERROR E0312
+LL |             s
    |             ^
    |
    = note: ...the reference is valid for the static lifetime...
@@ -14,7 +14,7 @@ LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/lub-match.rs:39:13
    |
-LL |             s //~ ERROR E0312
+LL |             s
    |             ^
    |
    = note: ...the reference is valid for the static lifetime...

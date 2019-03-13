@@ -3,7 +3,7 @@ error[E0124]: field `bar` is already declared
    |
 LL |     bar: u8,
    |     ------- `bar` first declared here
-LL |     pub bar: u8, //~ ERROR is already declared
+LL |     pub bar: u8,
    |     ^^^^^^^^^^^ field already declared
 
 error[E0124]: field `bar` is already declared
@@ -11,8 +11,8 @@ error[E0124]: field `bar` is already declared
    |
 LL |     bar: u8,
    |     ------- `bar` first declared here
-LL |     pub bar: u8, //~ ERROR is already declared
-LL |     pub(crate) bar: u8, //~ ERROR is already declared
+LL |     pub bar: u8,
+LL |     pub(crate) bar: u8,
    |     ^^^^^^^^^^^^^^^^^^ field already declared
 
 error: aborting due to 2 previous errors

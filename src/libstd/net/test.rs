@@ -1,8 +1,8 @@
 #![allow(warnings)] // not used on emscripten
 
-use env;
-use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
-use sync::atomic::{AtomicUsize, Ordering};
+use crate::env;
+use crate::net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use crate::sync::atomic::{AtomicUsize, Ordering};
 
 static PORT: AtomicUsize = AtomicUsize::new(0);
 

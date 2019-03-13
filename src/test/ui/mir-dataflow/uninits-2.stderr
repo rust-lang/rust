@@ -1,7 +1,7 @@
 error: rustc_peek: bit not set
   --> $DIR/uninits-2.rs:15:14
    |
-LL |     unsafe { rustc_peek(&x) }; //~ ERROR rustc_peek: bit not set
+LL |     unsafe { rustc_peek(&x) };
    |              ^^^^^^^^^^^^^^
 
 error: stop_after_dataflow ended compilation

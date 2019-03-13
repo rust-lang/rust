@@ -1,7 +1,7 @@
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/wf-static-method.rs:17:9
    |
-LL |         u //~ ERROR E0312
+LL |         u
    |         ^
    |
 note: ...the reference is valid for the lifetime 'a as defined on the impl at 14:6...
@@ -18,7 +18,7 @@ LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
 error[E0478]: lifetime bound not satisfied
   --> $DIR/wf-static-method.rs:26:18
    |
-LL |         let me = Self::make_me(); //~ ERROR lifetime bound not satisfied
+LL |         let me = Self::make_me();
    |                  ^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'b as defined on the impl at 23:10
@@ -35,7 +35,7 @@ LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/wf-static-method.rs:33:9
    |
-LL |         u //~ ERROR E0312
+LL |         u
    |         ^
    |
 note: ...the reference is valid for the lifetime 'a as defined on the impl at 31:6...
@@ -52,7 +52,7 @@ LL | impl<'a, 'b> Evil<'a, 'b> {
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
   --> $DIR/wf-static-method.rs:41:5
    |
-LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+LL |     <()>::static_evil(b)
    |     ^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime 'b as defined on the function body at 40:13...
@@ -63,7 +63,7 @@ LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
 note: ...so that reference does not outlive borrowed content
   --> $DIR/wf-static-method.rs:41:23
    |
-LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+LL |     <()>::static_evil(b)
    |                       ^
 note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 40:9...
   --> $DIR/wf-static-method.rs:40:9
@@ -73,7 +73,7 @@ LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
 note: ...so that reference does not outlive borrowed content
   --> $DIR/wf-static-method.rs:41:5
    |
-LL |     <()>::static_evil(b) //~ ERROR cannot infer an appropriate lifetime
+LL |     <()>::static_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements

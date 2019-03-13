@@ -14,7 +14,7 @@ error[E0597]: `d1` does not live long enough
    |
 LL |     d2.p.set(Some(&d1));
    |                    ^^ borrowed value does not live long enough
-LL |     //~^ ERROR `d1` does not live long enough
+LL |
 LL | }
    | - `d1` dropped here while still borrowed
    |

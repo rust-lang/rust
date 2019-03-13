@@ -1,7 +1,7 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
   --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
-LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime  as defined on the body at 9:18...
@@ -12,13 +12,13 @@ LL |         let _f = || {
 note: ...so that reference does not outlive borrowed content
   --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
-LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that reference does not outlive borrowed content
   --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
-LL |             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer
+LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
 
 error: aborting due to previous error

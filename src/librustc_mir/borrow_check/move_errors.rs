@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place::Local(local),
+                    Place::Base(PlaceBase::Local(local)),
                     box Rvalue::Use(Operand::Move(move_from)),
                 )) = self.mir.basic_blocks()[location.block]
                     .statements

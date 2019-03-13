@@ -1,20 +1,21 @@
 use crate::hir::Unsafety;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
+use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
 use crate::traits;
 use rustc_target::spec::abi::Abi;
+use rustc_macros::HashStable;
 use crate::util::ppaux;
 
 use std::fmt;
 use std::iter;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
@@ -65,7 +66,7 @@ impl<'a, 'tcx> Instance<'tcx> {
                 sig.map_bound(|sig| tcx.mk_fn_sig(
                     iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
                     sig.output(),
-                    sig.variadic,
+                    sig.c_variadic,
                     sig.unsafety,
                     sig.abi
                 ))
@@ -203,7 +204,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Instance<'tcx> {
-    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
+    pub fn new(def_id: DefId, substs: SubstsRef<'tcx>)
                -> Instance<'tcx> {
         assert!(!substs.has_escaping_bound_vars(),
                 "substs of instance {:?} not normalized for codegen: {:?}",
@@ -241,7 +242,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>,
                    def_id: DefId,
-                   substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+                   substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
@@ -293,7 +294,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               param_env: ty::ParamEnv<'tcx>,
                               def_id: DefId,
-                              substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+                              substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let fn_sig = tcx.fn_sig(def_id);
         let is_vtable_shim =
@@ -338,7 +339,7 @@ fn resolve_associated_item<'a, 'tcx>(
     trait_item: &ty::AssociatedItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>,
+    rcvr_substs: SubstsRef<'tcx>,
 ) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \

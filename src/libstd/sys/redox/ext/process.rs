@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use io;
-use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
-use process;
-use sys;
-use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
+use crate::io;
+use crate::os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
+use crate::process;
+use crate::sys;
+use crate::sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
 /// Redox-specific extensions to the [`process::Command`] builder,
 ///

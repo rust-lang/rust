@@ -3,7 +3,7 @@ error: discriminator values can only be used with a field-less enum
    |
 LL |     Red = 0xff0000,
    |           ^^^^^^^^ only valid in field-less enums
-LL |     //~^ ERROR discriminator values can only be used with a field-less enum
+LL |
 LL |     Green = 0x00ff00,
    |             ^^^^^^^^ only valid in field-less enums
 LL |     Blue = 0x0000ff,

@@ -73,7 +73,7 @@ impl<'a> DefCollector<'a> {
         decl: &'a FnDecl,
         body: &'a Block,
     ) {
-        let (closure_id, return_impl_trait_id) = match header.asyncness {
+        let (closure_id, return_impl_trait_id) = match header.asyncness.node {
             IsAsync::Async {
                 closure_id,
                 return_impl_trait_id,
@@ -129,10 +129,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ItemKind::Fn(
                 ref decl,
-                ref header @ FnHeader { asyncness: IsAsync::Async { .. }, .. },
+                ref header,
                 ref generics,
                 ref body,
-            ) => {
+            ) if header.asyncness.node.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
@@ -242,9 +242,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(MethodSig {
-                header: ref header @ FnHeader { asyncness: IsAsync::Async { .. }, .. },
+                ref header,
                 ref decl,
-            }, ref body) => {
+            }, ref body) if header.asyncness.node.is_async() => {
                 return self.visit_async_fn(
                     ii.id,
                     ii.ident.name,

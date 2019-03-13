@@ -257,7 +257,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
+                    mir::CastKind::MutToConstPointer
+                    | mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
                                 let data_cast = bx.pointercast(data_ptr,
@@ -274,7 +275,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unexpected non-Pair operand")
                         }
                     }
-                    mir::CastKind::Misc => {
+                    mir::CastKind::MutToConstPointer
+                    | mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -534,7 +536,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let mir::Place::Local(index) = *place {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
                     let n = n.unwrap_usize(bx.cx().tcx());

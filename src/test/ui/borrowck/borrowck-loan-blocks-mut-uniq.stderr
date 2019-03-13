@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `v` as mutable because `*v` is also borrowed as immu
    |
 LL |     borrow(&*v,
    |             -- immutable borrow occurs here
-LL |            |w| { //~ ERROR cannot borrow `v` as mutable
+LL |            |w| {
    |            ^^^ mutable borrow occurs here
 LL |             v = box 4;
    |             - borrow occurs due to use of `v` in closure

@@ -1,7 +1,7 @@
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:15:32
    |
-LL | const unsafe fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
+LL | const unsafe fn bar() -> u32 { foo() }
    |                                ^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | const unsafe fn bar() -> u32 { foo() } //~ ERROR can only call other `min_c
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:22:33
    |
-LL | const unsafe fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
+LL | const unsafe fn bar2() -> u32 { foo2() }
    |                                 ^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL | const unsafe fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min
 error[E0723]: can only call other `min_const_fn` within a `min_const_fn` (see issue #57563)
   --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:30:39
    |
-LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
+LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() }
    |                                       ^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

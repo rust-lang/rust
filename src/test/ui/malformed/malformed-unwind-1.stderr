@@ -1,0 +1,14 @@
+error: attribute must be of the form `#[unwind(allowed|aborts)]`
+  --> $DIR/malformed-unwind-1.rs:3:1
+   |
+LL | #[unwind]
+   | ^^^^^^^^^
+
+error: attribute must be of the form `#[unwind(allowed|aborts)]`
+  --> $DIR/malformed-unwind-1.rs:7:1
+   |
+LL | #[unwind = ""]
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

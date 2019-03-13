@@ -1,31 +1,31 @@
 error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
   --> $DIR/empty-struct-unit-pat.rs:21:9
    |
-LL |         Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+LL |         Empty2() => ()
    |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:24:9
    |
-LL |         XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+LL |         XEmpty2() => ()
    |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `Empty2`
   --> $DIR/empty-struct-unit-pat.rs:27:9
    |
-LL |         Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+LL |         Empty2(..) => ()
    |         ^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit struct `XEmpty2`
   --> $DIR/empty-struct-unit-pat.rs:30:9
    |
-LL |         XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+LL |         XEmpty2(..) => ()
    |         ^^^^^^^ help: a tuple struct with a similar name exists: `XEmpty6`
 
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:34:9
    |
-LL |         E::Empty4() => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
+LL |         E::Empty4() => ()
    |         ^^^^^^^^^ not a tuple struct/variant
 
 error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`
@@ -39,7 +39,7 @@ LL |         XE::XEmpty4() => (),
 error[E0532]: expected tuple struct/variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:42:9
    |
-LL |         E::Empty4(..) => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
+LL |         E::Empty4(..) => ()
    |         ^^^^^^^^^ not a tuple struct/variant
 
 error[E0532]: expected tuple struct/variant, found unit variant `XE::XEmpty4`

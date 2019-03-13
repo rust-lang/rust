@@ -1,7 +1,7 @@
 error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
   --> $DIR/E0059.rs:3:41
    |
-LL | fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) } //~ ERROR E0059
+LL | fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) }
    |                                         ^^^^
 
 error: aborting due to previous error

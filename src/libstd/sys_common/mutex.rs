@@ -1,4 +1,4 @@
-use sys::mutex as imp;
+use crate::sys::mutex as imp;
 
 /// An OS-based mutual exclusion lock.
 ///

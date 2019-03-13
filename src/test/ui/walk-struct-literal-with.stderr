@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `start.test`
    |
 LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
    |                                   ----- value moved here
-LL |     println!("{}", start.test); //~ ERROR use of moved value: `start.test`
+LL |     println!("{}", start.test);
    |                    ^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `start` has type `Mine`, which does not implement the `Copy` trait

@@ -3,7 +3,7 @@ error[E0594]: cannot assign to `n`, as it is not declared as mutable
    |
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
-LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
+LL |     let mut f = to_fn_mut(|| {
 LL |         n += 1;
    |         ^^^^^^ cannot assign
 
@@ -13,7 +13,7 @@ error[E0594]: cannot assign to `n`, as it is not declared as mutable
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
 ...
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^ cannot assign
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
@@ -22,13 +22,13 @@ error[E0594]: cannot assign to `n`, as it is not declared as mutable
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
 LL |     let mut f = to_fn(move || {
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^ cannot assign
 
 error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
   --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
    |
-LL |         n += 1; //~ ERROR cannot assign
+LL |         n += 1;
    |         ^^^^^^ cannot assign
    |
 help: consider changing this to accept closures that implement `FnMut`
@@ -36,7 +36,7 @@ help: consider changing this to accept closures that implement `FnMut`
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^
-LL | |         n += 1; //~ ERROR cannot assign
+LL | |         n += 1;
 LL | |     });
    | |_____^
 

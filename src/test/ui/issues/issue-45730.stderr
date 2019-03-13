@@ -1,7 +1,7 @@
 error[E0641]: cannot cast to a pointer of an unknown kind
   --> $DIR/issue-45730.rs:3:23
    |
-LL |     let x: *const _ = 0 as _; //~ ERROR cannot cast
+LL |     let x: *const _ = 0 as _;
    |                       ^^^^^-
    |                            |
    |                            help: consider giving more type information
@@ -11,7 +11,7 @@ LL |     let x: *const _ = 0 as _; //~ ERROR cannot cast
 error[E0641]: cannot cast to a pointer of an unknown kind
   --> $DIR/issue-45730.rs:5:23
    |
-LL |     let x: *const _ = 0 as *const _; //~ ERROR cannot cast
+LL |     let x: *const _ = 0 as *const _;
    |                       ^^^^^--------
    |                            |
    |                            help: consider giving more type information
@@ -21,7 +21,7 @@ LL |     let x: *const _ = 0 as *const _; //~ ERROR cannot cast
 error[E0641]: cannot cast to a pointer of an unknown kind
   --> $DIR/issue-45730.rs:8:13
    |
-LL |     let x = 0 as *const i32 as *const _ as *mut _; //~ ERROR cannot cast
+LL |     let x = 0 as *const i32 as *const _ as *mut _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------
    |                                            |
    |                                            help: consider giving more type information

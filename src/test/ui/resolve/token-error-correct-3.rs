@@ -10,16 +10,14 @@ pub mod raw {
     pub fn ensure_dir_exists<P: AsRef<Path>, F: FnOnce(&Path)>(path: P,
                                                                callback: F)
                                                                -> io::Result<bool> {
-        if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
-            callback(path.as_ref(); //~ ERROR expected one of
-            fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
-            //~^ expected (), found enum `std::result::Result`
-            //~| expected type `()`
-            //~| found type `std::result::Result<bool, std::io::Error>`
-            //~| expected one of
+        if !is_directory(path.as_ref()) {
+            //~^ ERROR cannot find function `is_directory`
+            callback(path.as_ref();
+            //~^ ERROR expected one of
+            fs::create_dir_all(path.as_ref()).map(|()| true)
+            //~^ ERROR mismatched types
         } else {
-            //~^ ERROR: expected one of
-            //~| unexpected token
+            //~^ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
             Ok(false);
         }
 

@@ -8,7 +8,6 @@ extern crate derive_b;
 #[B(D)] //~ ERROR `B` is ambiguous
 #[B(E = "foo")] //~ ERROR `B` is ambiguous
 #[B(arbitrary tokens)] //~ ERROR `B` is ambiguous
-                       //~^ ERROR expected one of `(`, `)`, `,`, `::`, or `=`, found `tokens`
 #[derive(B)]
 struct B;
 

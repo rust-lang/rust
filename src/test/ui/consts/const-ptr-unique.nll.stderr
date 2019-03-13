@@ -1,0 +1,14 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-ptr-unique.rs:8:33
+   |
+LL |     let x: &'static *mut u32 = &(unique.as_ptr());
+   |            -----------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

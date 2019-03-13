@@ -1,7 +1,7 @@
 error[E0077]: SIMD vector element type should be machine type
   --> $DIR/E0077.rs:4:1
    |
-LL | struct Bad(String); //~ ERROR E0077
+LL | struct Bad(String);
    | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

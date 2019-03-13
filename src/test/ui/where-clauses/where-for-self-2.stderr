@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `for<'a> &'a _: Bar` is not satisfied
   --> $DIR/where-for-self-2.rs:21:5
    |
-LL |     foo(&X); //~ ERROR trait bound
+LL |     foo(&X);
    |     ^^^ the trait `for<'a> Bar` is not implemented for `&'a _`
    |
    = help: the following implementations were found:

@@ -1,10 +1,10 @@
 //! Generic support for building blocking abstractions.
 
-use thread::{self, Thread};
-use sync::atomic::{AtomicBool, Ordering};
-use sync::Arc;
-use mem;
-use time::Instant;
+use crate::thread::{self, Thread};
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::Arc;
+use crate::mem;
+use crate::time::Instant;
 
 struct Inner {
     thread: Thread,

@@ -1,7 +1,7 @@
 error: unexpected token: `]`
   --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:15
    |
-LL |         [_, 99..] => {}, //~ ERROR unexpected token: `]`
+LL |         [_, 99..] => {},
    |               ^^
 
 error: aborting due to previous error

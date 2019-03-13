@@ -1,0 +1,11 @@
+error[E0277]: cannot add `()` to `{integer}`
+  --> $DIR/issue-50582.rs:2:18
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                  ^ no implementation for `{integer} + ()`
+   |
+   = help: the trait `std::ops::Add<()>` is not implemented for `{integer}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

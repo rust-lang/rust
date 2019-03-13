@@ -1,7 +1,7 @@
 error[E0659]: `std` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/macro-path-prelude-shadowing.rs:29:9
    |
-LL |         std::panic!(); //~ ERROR `std` is ambiguous
+LL |         std::panic!();
    |         ^^^ ambiguous name
    |
    = note: `std` could refer to a built-in extern crate

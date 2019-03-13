@@ -1,8 +1,8 @@
-use os::windows::prelude::*;
+use crate::os::windows::prelude::*;
 
-use ffi::{CString, OsStr};
-use io;
-use sys::c;
+use crate::ffi::{CString, OsStr};
+use crate::io;
+use crate::sys::c;
 
 pub struct DynamicLibrary {
     handle: c::HMODULE,

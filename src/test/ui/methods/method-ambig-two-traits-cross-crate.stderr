@@ -1,7 +1,7 @@
 error[E0034]: multiple applicable items in scope
   --> $DIR/method-ambig-two-traits-cross-crate.rs:11:21
    |
-LL | fn main() { 1_usize.me(); } //~ ERROR E0034
+LL | fn main() { 1_usize.me(); }
    |                     ^^ multiple `me` found
    |
 note: candidate #1 is defined in an impl of the trait `Me2` for the type `usize`

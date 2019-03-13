@@ -5,7 +5,7 @@ LL |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
    |     |
    |     first mutable borrow occurs here
-LL |     //~^ ERROR: cannot borrow `f` as mutable more than once
+LL |
 LL |         f((Box::new(|| {})))
    |         - borrow occurs due to use of `f` in closure
 LL |     }));

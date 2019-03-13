@@ -19,11 +19,11 @@
 //! CriticalSection is used and we keep track of who's holding the mutex to
 //! detect recursive locks.
 
-use cell::UnsafeCell;
-use mem::{self, MaybeUninit};
-use sync::atomic::{AtomicUsize, Ordering};
-use sys::c;
-use sys::compat;
+use crate::cell::UnsafeCell;
+use crate::mem::{self, MaybeUninit};
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sys::c;
+use crate::sys::compat;
 
 pub struct Mutex {
     lock: AtomicUsize,

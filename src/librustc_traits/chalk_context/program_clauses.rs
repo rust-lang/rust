@@ -10,7 +10,7 @@ use rustc::traits::{
     Environment,
 };
 use rustc::ty;
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -105,7 +105,7 @@ fn assemble_builtin_sized_impls<'tcx>(
             let fn_ptr = generic_types::fn_ptr(
                 tcx,
                 fn_ptr.inputs_and_output.len(),
-                fn_ptr.variadic,
+                fn_ptr.c_variadic,
                 fn_ptr.unsafety,
                 fn_ptr.abi
             );
@@ -129,7 +129,7 @@ fn assemble_builtin_sized_impls<'tcx>(
 
         // Struct def
         ty::Adt(adt_def, _) => {
-            let substs = Substs::bound_vars_for_item(tcx, adt_def.did);
+            let substs = InternalSubsts::bound_vars_for_item(tcx, adt_def.did);
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
             let sized_constraint = adt_def.sized_constraint(tcx)
                 .iter()
@@ -190,11 +190,11 @@ fn wf_clause_for_raw_ptr<'tcx>(
 fn wf_clause_for_fn_ptr<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     arity_and_output: usize,
-    variadic: bool,
+    c_variadic: bool,
     unsafety: hir::Unsafety,
     abi: abi::Abi
 ) -> Clauses<'tcx> {
-    let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, variadic, unsafety, abi);
+    let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, c_variadic, unsafety, abi);
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(fn_ptr)),
@@ -503,7 +503,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         wf_clause_for_fn_ptr(
                             self.infcx.tcx,
                             fn_ptr.inputs_and_output.len(),
-                            fn_ptr.variadic,
+                            fn_ptr.c_variadic,
                             fn_ptr.unsafety,
                             fn_ptr.abi
                         )

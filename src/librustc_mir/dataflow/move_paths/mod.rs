@@ -23,7 +23,7 @@ pub(crate) mod indexes {
     use rustc_data_structures::indexed_vec::Idx;
 
     macro_rules! new_index {
-        ($Index:ident, $debug_name:expr) => {
+        ($(#[$attrs:meta])* $Index:ident, $debug_name:expr) => {
             #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub struct $Index(NonZeroUsize);
 
@@ -44,17 +44,29 @@ pub(crate) mod indexes {
         }
     }
 
-    /// Index into MovePathData.move_paths
-    new_index!(MovePathIndex, "mp");
+    new_index!(
+        /// Index into MovePathData.move_paths
+        MovePathIndex,
+        "mp"
+    );
 
-    /// Index into MoveData.moves.
-    new_index!(MoveOutIndex, "mo");
+    new_index!(
+        /// Index into MoveData.moves.
+        MoveOutIndex,
+        "mo"
+    );
 
-    /// Index into MoveData.inits.
-    new_index!(InitIndex, "in");
+    new_index!(
+        /// Index into MoveData.inits.
+        InitIndex,
+        "in"
+    );
 
-    /// Index into Borrows.locations
-    new_index!(BorrowIndex, "bw");
+    new_index!(
+        /// Index into Borrows.locations
+        BorrowIndex,
+        "bw"
+    );
 }
 
 pub use self::indexes::MovePathIndex;
@@ -273,9 +285,9 @@ impl<'tcx> MovePathLookup<'tcx> {
     // parent.
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
         match *place {
-            Place::Local(local) => LookupResult::Exact(self.locals[local]),
-            Place::Promoted(_) |
-            Place::Static(..) => LookupResult::Parent(None),
+            Place::Base(PlaceBase::Local(local)) => LookupResult::Exact(self.locals[local]),
+            Place::Base(PlaceBase::Promoted(_)) |
+            Place::Base(PlaceBase::Static(..)) => LookupResult::Parent(None),
             Place::Projection(ref proj) => {
                 match self.find(&proj.base) {
                     LookupResult::Exact(base_path) => {
@@ -347,7 +359,7 @@ impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place::Local(l) = path.place { return Some(l); }
+            if let Place::Base(PlaceBase::Local(l)) = path.place { return Some(l); }
             if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
         }
     }

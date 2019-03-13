@@ -8,10 +8,10 @@
 /// simple to use it should be used only on iOS devices as the only viable
 /// option.
 
-use io;
-use libc;
-use sys::backtrace::BacktraceContext;
-use sys_common::backtrace::Frame;
+use crate::io;
+use crate::ptr;
+use crate::sys::backtrace::BacktraceContext;
+use crate::sys_common::backtrace::Frame;
 
 #[inline(never)] // if we know this is a function call, we can skip it when
                  // tracing
@@ -20,7 +20,7 @@ pub fn unwind_backtrace(frames: &mut [Frame])
 {
     const FRAME_LEN: usize = 100;
     assert!(FRAME_LEN >= frames.len());
-    let mut raw_frames = [::ptr::null_mut(); FRAME_LEN];
+    let mut raw_frames = [ptr::null_mut(); FRAME_LEN];
     let nb_frames = unsafe {
         backtrace(raw_frames.as_mut_ptr(), raw_frames.len() as libc::c_int)
     } as usize;

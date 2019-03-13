@@ -3,7 +3,7 @@ error[E0597]: borrowed value does not live long enough
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
    |                 ^^^^^ borrowed value does not live long enough
-LL |     x //~^ ERROR borrowed value does not live long enough
+LL |     x
 LL | }
    | - borrowed value only lives until here
    |
@@ -12,7 +12,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/regions-ref-in-fn-arg.rs:11:15
    |
-LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
+LL |     with(|box ref x| x)
    |               ^^^^^  - borrowed value only lives until here
    |               |
    |               borrowed value does not live long enough

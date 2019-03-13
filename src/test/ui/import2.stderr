@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `baz::zed`
   --> $DIR/import2.rs:1:10
    |
-LL | use baz::zed::bar; //~ ERROR unresolved import `baz::zed` [E0432]
+LL | use baz::zed::bar;
    |          ^^^ could not find `zed` in `baz`
 
 error: aborting due to previous error

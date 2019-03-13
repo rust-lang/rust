@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `t`
    |
 LL |     drop(t);
    |          - value moved here
-LL |     drop(t); //~ ERROR use of moved value
+LL |     drop(t);
    |          ^ value used here after move
    |
    = note: move occurs because `t` has type `S<()>`, which does not implement the `Copy` trait

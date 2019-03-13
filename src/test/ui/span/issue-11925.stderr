@@ -1,7 +1,7 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/issue-11925.rs:8:36
    |
-LL |         let f = to_fn_once(move|| &x); //~ ERROR does not live long enough
+LL |         let f = to_fn_once(move|| &x);
    |                                    ^
    |                                    |
    |                                    borrowed value does not live long enough

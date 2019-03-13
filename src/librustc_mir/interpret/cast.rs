@@ -33,7 +33,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.unsize_into(src, dest)?;
             }
 
-            Misc => {
+            Misc | MutToConstPointer => {
                 let src = self.read_immediate(src)?;
 
                 if self.type_is_fat_ptr(src.layout.ty) {

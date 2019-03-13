@@ -1,5 +1,5 @@
-use sys::mutex::Mutex;
-use time::Duration;
+use crate::sys::mutex::Mutex;
+use crate::time::Duration;
 
 use super::waitqueue::{WaitVariable, WaitQueue, SpinMutex};
 

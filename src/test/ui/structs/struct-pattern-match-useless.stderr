@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/struct-pattern-match-useless.rs:12:9
    |
-LL |         Foo { .. } => () //~ ERROR unreachable pattern
+LL |         Foo { .. } => ()
    |         ^^^^^^^^^^
    |
 note: lint level defined here

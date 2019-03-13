@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:28:19
    |
-LL |     let _x = arg(&AddFlags(1)); //~ ERROR value does not live long enough
+LL |     let _x = arg(&AddFlags(1));
    |                   ^^^^^^^^^^^ - temporary value dropped here while still borrowed
    |                   |
    |                   temporary value does not live long enough
@@ -14,7 +14,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:29:14
    |
-LL |     let _x = AddFlags(1).get(); //~ ERROR value does not live long enough
+LL |     let _x = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value dropped here while still borrowed
    |              |
    |              temporary value does not live long enough
@@ -27,7 +27,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:30:21
    |
-LL |     let _x = &*arg(&AddFlags(1)); //~ ERROR value does not live long enough
+LL |     let _x = &*arg(&AddFlags(1));
    |                     ^^^^^^^^^^^ - temporary value dropped here while still borrowed
    |                     |
    |                     temporary value does not live long enough
@@ -40,7 +40,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:31:24
    |
-LL |     let ref _x = *arg(&AddFlags(1)); //~ ERROR value does not live long enough
+LL |     let ref _x = *arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value dropped here while still borrowed
    |                        |
    |                        temporary value does not live long enough
@@ -53,7 +53,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:32:24
    |
-LL |     let &ref _x = arg(&AddFlags(1)); //~ ERROR value does not live long enough
+LL |     let &ref _x = arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value dropped here while still borrowed
    |                        |
    |                        temporary value does not live long enough
@@ -66,11 +66,11 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:33:14
    |
-LL |     let _x = AddFlags(1).get(); //~ ERROR value does not live long enough
+LL |     let _x = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value dropped here while still borrowed
    |              |
    |              temporary value does not live long enough
-LL |     let Box { f: _x } = Box { f: AddFlags(1).get() }; //~ ERROR value does not live long enough
+LL |     let Box { f: _x } = Box { f: AddFlags(1).get() };
 LL | }
    | - temporary value needs to live until here
    |
@@ -79,7 +79,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/cleanup-rvalue-scopes-cf.rs:34:34
    |
-LL |     let Box { f: _x } = Box { f: AddFlags(1).get() }; //~ ERROR value does not live long enough
+LL |     let Box { f: _x } = Box { f: AddFlags(1).get() };
    |                                  ^^^^^^^^^^^        - temporary value dropped here while still borrowed
    |                                  |
    |                                  temporary value does not live long enough

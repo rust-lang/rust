@@ -1,7 +1,7 @@
 error[E0560]: struct `Foo` has no field named `z`
   --> $DIR/struct-fields-shorthand.rs:9:15
    |
-LL |         x, y, z //~ ERROR struct `Foo` has no field named `z`
+LL |         x, y, z
    |               ^ `Foo` does not have this field
    |
    = note: available fields are: `x`, `y`

@@ -1,7 +1,7 @@
 error: expected pattern, found keyword `else`
   --> $DIR/keyword-else-as-identifier.rs:4:9
    |
-LL |     let else = "foo"; //~ error: expected pattern, found keyword `else`
+LL |     let else = "foo";
    |         ^^^^ expected pattern
 
 error: aborting due to previous error

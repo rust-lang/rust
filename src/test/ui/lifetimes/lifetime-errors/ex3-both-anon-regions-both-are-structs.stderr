@@ -3,7 +3,7 @@ error[E0623]: lifetime mismatch
    |
 LL | fn foo(mut x: Vec<Ref>, y: Ref) {
    |                   ---      --- these two types are declared with different lifetimes...
-LL |     x.push(y); //~ ERROR lifetime mismatch
+LL |     x.push(y);
    |            ^ ...but data from `y` flows into `x` here
 
 error: aborting due to previous error

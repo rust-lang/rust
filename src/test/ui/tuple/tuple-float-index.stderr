@@ -1,7 +1,7 @@
 error: unexpected token: `1.1`
   --> $DIR/tuple-float-index.rs:4:17
    |
-LL |     (1, (2, 3)).1.1; //~ ERROR unexpected token: `1.1`
+LL |     (1, (2, 3)).1.1;
    |     ------------^^^
    |     |           |
    |     |           unexpected token

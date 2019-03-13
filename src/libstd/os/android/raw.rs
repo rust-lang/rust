@@ -8,7 +8,7 @@
                               definitions")]
 #![allow(deprecated)]
 
-use os::raw::c_long;
+use crate::os::raw::c_long;
 
 #[stable(feature = "pthread_t", since = "1.8.0")]
 pub type pthread_t = c_long;
@@ -19,8 +19,8 @@ pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, 
 
 #[cfg(any(target_arch = "arm", target_arch = "x86"))]
 mod arch {
-    use os::raw::{c_uint, c_uchar, c_ulonglong, c_longlong, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use crate::os::raw::{c_uint, c_uchar, c_ulonglong, c_longlong, c_ulong};
+    use crate::os::unix::raw::{uid_t, gid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -89,8 +89,8 @@ mod arch {
 
 #[cfg(target_arch = "aarch64")]
 mod arch {
-    use os::raw::{c_uchar, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use crate::os::raw::{c_uchar, c_ulong};
+    use crate::os::unix::raw::{uid_t, gid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
@@ -157,8 +157,8 @@ mod arch {
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
-    use os::raw::{c_uint, c_long, c_ulong};
-    use os::unix::raw::{uid_t, gid_t};
+    use crate::os::raw::{c_uint, c_long, c_ulong};
+    use crate::os::unix::raw::{uid_t, gid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;

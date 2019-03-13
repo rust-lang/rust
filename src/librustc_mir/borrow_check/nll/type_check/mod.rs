@@ -27,6 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
@@ -36,16 +37,17 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, Substs, UnpackedKind, UserSubsts};
+use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
 use rustc::ty::{
     self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
-    CanonicalUserTypeAnnotation, UserTypeAnnotationIndex,
+    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    UserTypeAnnotationIndex,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
-use std::{fmt, iter};
+use std::{fmt, iter, mem};
 use syntax_pos::{Span, DUMMY_SP};
 
 macro_rules! span_mirbug {
@@ -124,7 +126,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::new(elements),
+        liveness_constraints: LivenessValues::new(elements.clone()),
         outlives_constraints: ConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
@@ -253,7 +255,7 @@ enum FieldAccessError {
 /// is a problem.
 struct TypeVerifier<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'b Mir<'tcx>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -283,7 +285,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
-                let annotation = &self.mir.user_type_annotations[annotation_index];
+                let annotation = &self.cx.user_type_annotations[annotation_index];
                 span_mirbug!(
                     self,
                     constant,
@@ -385,7 +387,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 }
 
 impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'b Mir<'tcx>) -> Self {
         TypeVerifier {
             mir,
             mir_def_id: cx.mir_def_id,
@@ -451,25 +453,37 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
         let place_ty = match *place {
-            Place::Local(index) => PlaceTy::Ty {
+            Place::Base(PlaceBase::Local(index)) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Place::Promoted(box (_index, sty)) => {
+            Place::Base(PlaceBase::Promoted(box (index, sty))) => {
                 let sty = self.sanitize_type(place, sty);
-                // FIXME -- promoted MIR return types reference
-                // various "free regions" (e.g., scopes and things)
-                // that they ought not to do. We have to figure out
-                // how best to handle that -- probably we want treat
-                // promoted MIR much like closures, renumbering all
-                // their free regions and propagating constraints
-                // upwards. We have the same acyclic guarantees, so
-                // that should be possible. But for now, ignore them.
-                //
-                // let promoted_mir = &self.mir.promoted[index];
-                // promoted_mir.return_ty()
+
+                if !self.errors_reported {
+                    let promoted_mir = &self.mir.promoted[index];
+                    self.sanitize_promoted(promoted_mir, location);
+
+                    let promoted_ty = promoted_mir.return_ty();
+
+                    if let Err(terr) = self.cx.eq_types(
+                        sty,
+                        promoted_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                    ) {
+                        span_mirbug!(
+                            self,
+                            place,
+                            "bad promoted type ({:?}: {:?}): {:?}",
+                            promoted_ty,
+                            sty,
+                            terr
+                        );
+                    };
+                }
                 PlaceTy::Ty { ty: sty }
             }
-            Place::Static(box Static { def_id, ty: sty }) => {
+            Place::Base(PlaceBase::Static(box Static { def_id, ty: sty })) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(ty, location);
@@ -533,6 +547,72 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         place_ty
     }
 
+    fn sanitize_promoted(&mut self, promoted_mir: &'b Mir<'tcx>, location: Location) {
+        // Determine the constraints from the promoted MIR by running the type
+        // checker on the promoted MIR, then transfer the constraints back to
+        // the main MIR, changing the locations to the provided location.
+
+        let parent_mir = mem::replace(&mut self.mir, promoted_mir);
+
+        let all_facts = &mut None;
+        let mut constraints = Default::default();
+        let mut closure_bounds = Default::default();
+        if let Some(ref mut bcx) = self.cx.borrowck_context {
+            // Don't try to add borrow_region facts for the promoted MIR
+            mem::swap(bcx.all_facts, all_facts);
+
+            // Use a new sets of constraints and closure bounds so that we can
+            // modify their locations.
+            mem::swap(&mut bcx.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
+        };
+
+        self.visit_mir(promoted_mir);
+
+        if !self.errors_reported {
+            // if verifier failed, don't do further checks to avoid ICEs
+            self.cx.typeck_mir(promoted_mir);
+        }
+
+        self.mir = parent_mir;
+        // Merge the outlives constraints back in, at the given location.
+        if let Some(ref mut base_bcx) = self.cx.borrowck_context {
+            mem::swap(base_bcx.all_facts, all_facts);
+            mem::swap(&mut base_bcx.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut base_bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
+
+            let locations = location.to_locations();
+            for constraint in constraints.iter() {
+                let mut constraint = *constraint;
+                constraint.locations = locations;
+                if let ConstraintCategory::Return
+                    | ConstraintCategory::UseAsConst
+                    | ConstraintCategory::UseAsStatic = constraint.category
+                {
+                    // "Returning" from a promoted is an assigment to a
+                    // temporary from the user's point of view.
+                    constraint.category = ConstraintCategory::Boring;
+                }
+                base_bcx.constraints.outlives_constraints.push(constraint)
+            }
+
+            if !closure_bounds.is_empty() {
+                let combined_bounds_mapping = closure_bounds
+                    .into_iter()
+                    .flat_map(|(_, value)| value)
+                    .collect();
+                let existing = base_bcx
+                    .constraints
+                    .closure_bounds_mapping
+                    .insert(location, combined_bounds_mapping);
+                assert!(
+                    existing.is_none(),
+                    "Multiple promoteds/closures at the same location."
+                );
+            }
+        }
+    }
+
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
@@ -553,7 +633,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::Local(i).ty(self.mir, tcx).to_ty(tcx);
+                let index_ty = Place::Base(PlaceBase::Local(i)).ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
                     PlaceTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),
@@ -738,7 +818,9 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
-    mir: &'a Mir<'tcx>,
+    /// User type annotations are shared between the main MIR and the MIR of
+    /// all of the promoted items.
+    user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     mir_def_id: DefId,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -893,8 +975,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let mut checker = Self {
             infcx,
             last_span: DUMMY_SP,
-            mir,
             mir_def_id,
+            user_type_annotations: &mir.user_type_annotations,
             param_env,
             region_bound_pairs,
             implicit_region_bound,
@@ -910,9 +992,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn check_user_type_annotations(&mut self) {
         debug!(
             "check_user_type_annotations: user_type_annotations={:?}",
-             self.mir.user_type_annotations
+             self.user_type_annotations
         );
-        for user_annotation in &self.mir.user_type_annotations {
+        for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let (annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
                 span, user_ty
@@ -1095,7 +1177,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        let annotated_type = self.mir.user_type_annotations[user_ty.base].inferred_ty;
+        let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
         let tcx = self.infcx.tcx;
@@ -1234,7 +1316,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
+                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => if let Some(BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
@@ -1251,7 +1333,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
+                    Place::Base(PlaceBase::Local(l))
+                        if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1280,7 +1363,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
-                        let annotation = &mir.user_type_annotations[annotation_index];
+                        let annotation = &self.user_type_annotations[annotation_index];
                         span_mirbug!(
                             self,
                             stmt,
@@ -1339,7 +1422,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
                 ) {
-                    let annotation = &mir.user_type_annotations[projection.base];
+                    let annotation = &self.user_type_annotations[projection.base];
                     span_mirbug!(
                         self,
                         stmt,
@@ -1537,7 +1620,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 let category = match *dest {
-                    Place::Local(RETURN_PLACE) => {
+                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
                         if let Some(BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
@@ -1556,7 +1639,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
+                    Place::Base(PlaceBase::Local(l))
+                        if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1602,10 +1686,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         from_hir_call: bool,
     ) {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
-        if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.variadic) {
+        // Do not count the `VaList` argument as a "true" argument to
+        // a C-variadic function.
+        let inputs = if sig.c_variadic {
+            &sig.inputs()[..sig.inputs().len() - 1]
+        } else {
+            &sig.inputs()[..]
+        };
+        if args.len() < inputs.len() || (args.len() > inputs.len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
-        for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
+        for (n, (fn_arg, op_arg)) in inputs.iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(mir, self.tcx());
             let category = if from_hir_call {
                 ConstraintCategory::CallArgument
@@ -1984,15 +2075,163 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     }
 
-                    CastKind::Misc => {}
+                    CastKind::MutToConstPointer => {
+                        let ty_from = match op.ty(mir, tcx).sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_from,
+                                mutbl: hir::MutMutable,
+                            }) => ty_from,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected base type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        let ty_to = match ty.sty {
+                            ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl: hir::MutImmutable,
+                            }) => ty_to,
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "unexpected target type for cast {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+                        if let Err(terr) = self.sub_types(
+                            ty_from,
+                            ty_to,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "relating {:?} with {:?} yields {:?}",
+                                ty_from,
+                                ty_to,
+                                terr
+                            )
+                        }
+                    }
+
+                    CastKind::Misc => {
+                        if let ty::Ref(_, mut ty_from, _) = op.ty(mir, tcx).sty {
+                            let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
+                                ty: ty_to,
+                                mutbl,
+                            }) = ty.sty {
+                                (ty_to, mutbl)
+                            } else {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "invalid cast types {:?} -> {:?}",
+                                    op.ty(mir, tcx),
+                                    ty,
+                                );
+                                return;
+                            };
+
+                            // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
+                            // any array we find.
+                            while let ty::Array(ty_elem_from, _) = ty_from.sty {
+                                ty_from = ty_elem_from;
+                                if let ty::Array(ty_elem_to, _) = ty_to.sty {
+                                    ty_to = ty_elem_to;
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if let hir::MutMutable = mutability {
+                                if let Err(terr) = self.eq_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "equating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            } else {
+                                if let Err(terr) = self.sub_types(
+                                    ty_from,
+                                    ty_to,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast,
+                                ) {
+                                    span_mirbug!(
+                                        self,
+                                        rvalue,
+                                        "relating {:?} with {:?} yields {:?}",
+                                        ty_from,
+                                        ty_to,
+                                        terr
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(location, region, borrowed_place);
+                self.add_reborrow_constraint(mir, location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
+            Rvalue::BinaryOp(BinOp::Eq, left, right)
+            | Rvalue::BinaryOp(BinOp::Ne, left, right)
+            | Rvalue::BinaryOp(BinOp::Lt, left, right)
+            | Rvalue::BinaryOp(BinOp::Le, left, right)
+            | Rvalue::BinaryOp(BinOp::Gt, left, right)
+            | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
+                let ty_left = left.ty(mir, tcx);
+                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.sty {
+                    let ty_right = right.ty(mir, tcx);
+                    let common_ty = self.infcx.next_ty_var(
+                        TypeVariableOrigin::MiscVariable(mir.source_info(location).span),
+                    );
+                    self.sub_types(
+                        common_ty,
+                        ty_left,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ).unwrap_or_else(|err| {
+                        bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
+                    });
+                    if let Err(terr) = self.sub_types(
+                        common_ty,
+                        ty_right,
+                        location.to_locations(),
+                        ConstraintCategory::Boring
+                    ) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "unexpected comparison types {:?} and {:?} yields {:?}",
+                            ty_left,
+                            ty_right,
+                            terr
+                        )
+                    }
+                }
+            }
+
             Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
@@ -2088,6 +2327,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// - `borrowed_place`: the place `P` being borrowed
     fn add_reborrow_constraint(
         &mut self,
+        mir: &Mir<'tcx>,
         location: Location,
         borrow_region: ty::Region<'tcx>,
         borrowed_place: &Place<'tcx>,
@@ -2137,7 +2377,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             match *elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                    let base_ty = base.ty(mir, tcx).to_ty(tcx);
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
@@ -2261,12 +2501,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
             let closure_constraints =
-                closure_region_requirements.apply_requirements(tcx, location, def_id, substs);
+                closure_region_requirements.apply_requirements(tcx, def_id, substs);
 
             if let Some(ref mut borrowck_context) = self.borrowck_context {
                 let bounds_mapping = closure_constraints
@@ -2293,7 +2533,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                     ),
                                 ))
                             }
-                            UnpackedKind::Type(_) => None,
+                            UnpackedKind::Type(_) | UnpackedKind::Const(_) => None,
                         }
                     })
                     .collect();

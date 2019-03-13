@@ -308,17 +308,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
         let source_scope = self.source_scope;
         let tcx = self.hir.tcx();
-        if let LintLevel::Explicit(node_id) = lint_level {
+        if let LintLevel::Explicit(current_hir_id) = lint_level {
             let same_lint_scopes = tcx.dep_graph.with_ignore(|| {
                 let sets = tcx.lint_levels(LOCAL_CRATE);
-                let parent_hir_id =
-                    tcx.hir().definitions().node_to_hir_id(
-                        self.source_scope_local_data[source_scope].lint_root
-                    );
-                let current_hir_id =
-                    tcx.hir().definitions().node_to_hir_id(node_id);
-                sets.lint_level_set(parent_hir_id) ==
-                    sets.lint_level_set(current_hir_id)
+                let parent_hir_id = self.source_scope_local_data[source_scope].lint_root;
+                sets.lint_level_set(parent_hir_id) == sets.lint_level_set(current_hir_id)
             });
 
             if !same_lint_scopes {
@@ -668,7 +662,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             DropKind::Value { .. } => if !needs_drop { return },
             DropKind::Storage => {
                 match *place {
-                    Place::Local(index) => if index.index() <= self.arg_count {
+                    Place::Base(PlaceBase::Local(index)) => if index.index() <= self.arg_count {
                         span_bug!(
                             span, "`schedule_drop` called with index {} and arg_count {}",
                             index.index(),
@@ -942,7 +936,7 @@ fn build_scope_drops<'tcx>(
                 // Drop the storage for both value and storage drops.
                 // Only temps and vars need their storage dead.
                 match drop_data.location {
-                    Place::Local(index) if index.index() > arg_count => {
+                    Place::Base(PlaceBase::Local(index)) if index.index() > arg_count => {
                         cfg.push(block, Statement {
                             source_info,
                             kind: StatementKind::StorageDead(index)

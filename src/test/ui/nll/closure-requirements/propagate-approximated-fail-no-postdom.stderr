@@ -4,7 +4,7 @@ note: No external requirements
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
 LL | |             let p = x.get();
-LL | |             demand_y(x, y, p) //~ ERROR
+LL | |             demand_y(x, y, p)
 LL | |         },
    | |_________^
    |
@@ -24,7 +24,7 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |          |
    |          has type `std::cell::Cell<&&'1 u32>`
 ...
-LL |             demand_y(x, y, p) //~ ERROR
+LL |             demand_y(x, y, p)
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements

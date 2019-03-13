@@ -2,8 +2,6 @@
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
 pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
-    use libc;
-
     let p = unsafe {
         libc::memchr(
             haystack.as_ptr() as *const libc::c_void,
@@ -21,8 +19,6 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 
     #[cfg(target_os = "linux")]
     fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        use libc;
-
         // GNU's memrchr() will - unlike memchr() - error if haystack is empty.
         if haystack.is_empty() {return None}
         let p = unsafe {
@@ -40,7 +36,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 
     #[cfg(not(target_os = "linux"))]
     fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        ::core::slice::memchr::memrchr(needle, haystack)
+        core::slice::memchr::memrchr(needle, haystack)
     }
 
     memrchr_specific(needle, haystack)

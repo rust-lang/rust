@@ -99,7 +99,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
                         (p.substs, Some(p.ty)),
                     ty::ExistentialPredicate::AutoTrait(_) =>
                         // Empty iterator
-                        (ty::Substs::empty(), None),
+                        (ty::InternalSubsts::empty(), None),
                 };
 
                 substs.types().rev().chain(opt_ty)

@@ -1,7 +1,7 @@
 error: `extern` block uses type `U` which is not FFI-safe: enum has no representation hint
   --> $DIR/lint-ctypes-enum.rs:20:13
    |
-LL |    fn uf(x: U); //~ ERROR enum has no representation hint
+LL |    fn uf(x: U);
    |             ^
    |
 note: lint level defined here
@@ -19,7 +19,7 @@ LL | enum U { A }
 error: `extern` block uses type `B` which is not FFI-safe: enum has no representation hint
   --> $DIR/lint-ctypes-enum.rs:21:13
    |
-LL |    fn bf(x: B); //~ ERROR enum has no representation hint
+LL |    fn bf(x: B);
    |             ^
    |
    = help: consider adding a #[repr(...)] attribute to this enum
@@ -32,7 +32,7 @@ LL | enum B { C, D }
 error: `extern` block uses type `T` which is not FFI-safe: enum has no representation hint
   --> $DIR/lint-ctypes-enum.rs:22:13
    |
-LL |    fn tf(x: T); //~ ERROR enum has no representation hint
+LL |    fn tf(x: T);
    |             ^
    |
    = help: consider adding a #[repr(...)] attribute to this enum

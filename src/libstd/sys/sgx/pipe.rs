@@ -1,5 +1,5 @@
-use io;
-use sys::Void;
+use crate::io;
+use crate::sys::Void;
 
 pub struct AnonPipe(Void);
 

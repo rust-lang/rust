@@ -21,7 +21,7 @@ LL | | where
 LL | |     T: Debug,
 LL | | {
 ...  |
-LL | |     //~^ ERROR the parameter type `T` may not live long enough
+LL | |
 LL | | }
    | |_^
    |

@@ -48,10 +48,10 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 #![allow(dead_code)] // sys isn't exported yet
 
-use ptr;
-use sync::atomic::{self, AtomicUsize, Ordering};
-use sys::thread_local as imp;
-use sys_common::mutex::Mutex;
+use crate::ptr;
+use crate::sync::atomic::{self, AtomicUsize, Ordering};
+use crate::sys::thread_local as imp;
+use crate::sys_common::mutex::Mutex;
 
 /// A type for TLS keys that are statically allocated.
 ///

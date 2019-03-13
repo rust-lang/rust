@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/issue-30240-b.rs:12:9
    |
-LL |         "hello" => {} //~ ERROR unreachable pattern
+LL |         "hello" => {}
    |         ^^^^^^^
    |
 note: lint level defined here

@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place::Local(temp) = assigned_place {
+        let temp = if let &mir::Place::Base(mir::PlaceBase::Local(temp)) = assigned_place {
             temp
         } else {
             span_bug!(

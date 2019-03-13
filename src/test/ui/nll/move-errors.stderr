@@ -87,7 +87,7 @@ LL |     match x[0] {
    |           |
    |           cannot move out of here
    |           help: consider borrowing here: `&x[0]`
-LL |     //~^ ERROR
+LL |
 LL |         B::U(d) => (),
    |              - data moved here
 LL |         B::V(s) => (),
@@ -151,7 +151,7 @@ error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
    |
 LL |     match x {
    |           ^ cannot move out of here
-LL |     //~^ ERROR
+LL |
 LL |         F(s, mut t) => (),
    |           -  ----- ...and here
    |           |
@@ -171,7 +171,7 @@ LL |     match *x {
    |           |
    |           cannot move out of borrowed content
    |           help: consider removing the `*`: `x`
-LL |     //~^ ERROR
+LL |
 LL |         Ok(s) | Err(s) => (),
    |            - data moved here
    |

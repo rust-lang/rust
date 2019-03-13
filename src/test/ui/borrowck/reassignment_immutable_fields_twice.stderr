@@ -4,7 +4,7 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
 LL |     x = (22, 44);
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
@@ -12,7 +12,7 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
+LL |     x.0 = 1;
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
@@ -20,8 +20,8 @@ error[E0594]: cannot assign to field `x.0` of immutable binding
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1; //~ ERROR
-LL |     x.0 = 22; //~ ERROR
+LL |     x.0 = 1;
+LL |     x.0 = 22;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.1` of immutable binding
@@ -30,7 +30,7 @@ error[E0594]: cannot assign to field `x.1` of immutable binding
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
 ...
-LL |     x.1 = 44; //~ ERROR
+LL |     x.1 = 44;
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error: aborting due to 4 previous errors

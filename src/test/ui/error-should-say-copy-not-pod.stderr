@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/error-should-say-copy-not-pod.rs:6:5
    |
-LL |     check_bound("nocopy".to_string()); //~ ERROR : std::marker::Copy` is not satisfied
+LL |     check_bound("nocopy".to_string());
    |     ^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
 note: required by `check_bound`

@@ -1,7 +1,7 @@
 error[E0038]: the trait `EqAlias` cannot be made into an object
   --> $DIR/trait-alias-object.rs:7:13
    |
-LL |     let _: &dyn EqAlias = &123; //~ ERROR `EqAlias` cannot be made into an object
+LL |     let _: &dyn EqAlias = &123;
    |             ^^^^^^^^^^^ the trait `EqAlias` cannot be made into an object
    |
    = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
@@ -9,7 +9,7 @@ LL |     let _: &dyn EqAlias = &123; //~ ERROR `EqAlias` cannot be made into an 
 error[E0191]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) must be specified
   --> $DIR/trait-alias-object.rs:8:13
    |
-LL |     let _: &dyn IteratorAlias = &vec![123].into_iter(); //~ ERROR must be specified
+LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
    |             ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
 
 error: aborting due to 2 previous errors

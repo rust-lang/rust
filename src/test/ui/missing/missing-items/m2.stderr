@@ -1,7 +1,7 @@
 error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
   --> $DIR/m2.rs:9:1
    |
-LL | impl m1::X for X { //~ ERROR not all trait items implemented
+LL | impl m1::X for X {
    | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method` in implementation
    |
    = note: `CONSTANT` from trait: `const CONSTANT: u32;`

@@ -12,10 +12,10 @@ cfg_if! {
         // cross-platform way in the documentation
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub use sys::unix_ext as unix;
+        pub use crate::sys::unix_ext as unix;
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub use sys::windows_ext as windows;
+        pub use crate::sys::windows_ext as windows;
 
         #[doc(cfg(target_os = "linux"))]
         pub mod linux;
@@ -26,11 +26,11 @@ cfg_if! {
 
         #[cfg(any(target_os = "redox", unix))]
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub use sys::ext as unix;
+        pub use crate::sys::ext as unix;
 
         #[cfg(windows)]
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub use sys::ext as windows;
+        pub use crate::sys::ext as windows;
 
         #[cfg(any(target_os = "linux", target_os = "l4re"))]
         pub mod linux;

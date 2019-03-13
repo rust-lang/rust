@@ -1,7 +1,7 @@
 error[E0220]: associated type `Assoc` not found for `V`
   --> $DIR/not_well_formed.rs:10:32
    |
-LL | existential type Foo<V>: Trait<V::Assoc>; //~ associated type `Assoc` not found for `V`
+LL | existential type Foo<V>: Trait<V::Assoc>;
    |                                ^^^^^^^^ associated type `Assoc` not found
 
 error: aborting due to previous error

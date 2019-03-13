@@ -1,7 +1,7 @@
 error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
   --> $DIR/send-sync.rs:8:5
    |
-LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
+LL |     send(format_args!("{:?}", c));
    |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
    |
    = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
@@ -21,7 +21,7 @@ LL | fn send<T: Send>(_: T) {}
 error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
   --> $DIR/send-sync.rs:9:5
    |
-LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
+LL |     sync(format_args!("{:?}", c));
    |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
    |
    = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`

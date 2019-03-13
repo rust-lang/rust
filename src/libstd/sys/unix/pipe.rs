@@ -1,9 +1,10 @@
-use io;
-use libc::{self, c_int};
-use mem;
-use sync::atomic::{AtomicBool, Ordering};
-use sys::fd::FileDesc;
-use sys::{cvt, cvt_r};
+use crate::io;
+use crate::mem;
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sys::fd::FileDesc;
+use crate::sys::{cvt, cvt_r};
+
+use libc::c_int;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes

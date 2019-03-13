@@ -5,7 +5,7 @@ use crate::hir::def_id::DefId;
 
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::TyVar;
-use crate::ty::subst::Substs;
+use crate::ty::subst::SubstsRef;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
@@ -33,9 +33,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
     fn relate_item_substs(&mut self,
                           _item_def_id: DefId,
-                          a_subst: &'tcx Substs<'tcx>,
-                          b_subst: &'tcx Substs<'tcx>)
-                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+                          a_subst: SubstsRef<'tcx>,
+                          b_subst: SubstsRef<'tcx>)
+                          -> RelateResult<'tcx, SubstsRef<'tcx>>
     {
         // N.B., once we are equating types, we don't care about
         // variance, so don't try to lookup the variance here. This

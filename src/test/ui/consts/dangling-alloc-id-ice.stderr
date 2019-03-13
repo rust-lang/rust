@@ -1,7 +1,7 @@
 error: any use of this value will cause an error
   --> $DIR/dangling-alloc-id-ice.rs:8:1
    |
-LL | / const FOO: &() = { //~ ERROR any use of this value will cause an error
+LL | / const FOO: &() = {
 LL | |     let y = ();
 LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };

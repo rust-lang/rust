@@ -1,7 +1,7 @@
 error: expected pattern, found `=`
   --> $DIR/keyword-box-as-identifier.rs:2:13
    |
-LL |     let box = "foo"; //~ error: expected pattern, found `=`
+LL |     let box = "foo";
    |             ^ expected pattern
 
 error: aborting due to previous error

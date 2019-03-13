@@ -3,7 +3,7 @@ error: const globals cannot be mutable
    |
 LL | const
    | ----- help: you might want to declare a static instead: `static`
-LL | mut //~ ERROR: const globals cannot be mutable
+LL | mut
    | ^^^ cannot be mutable
 
 error: aborting due to previous error

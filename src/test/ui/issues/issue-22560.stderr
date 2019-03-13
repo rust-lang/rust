@@ -25,8 +25,8 @@ error[E0191]: the value of the associated type `Output` (from the trait `std::op
    |
 LL |   type Test = Add +
    |  _____________^
-LL | |             //~^ ERROR E0393
-LL | |             //~| ERROR E0191
+LL | |
+LL | |
 LL | |             Sub;
    | |_______________^ associated type `Output` must be specified
 

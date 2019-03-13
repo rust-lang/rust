@@ -1,7 +1,7 @@
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:15:5
    |
-LL |     pub type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
+LL |     pub type Alias = Priv;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -15,7 +15,7 @@ LL | #![deny(private_in_public)]
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:18:12
    |
-LL |         V1(Priv), //~ ERROR private type `types::Priv` in public interface
+LL |         V1(Priv),
    |            ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -24,7 +24,7 @@ LL |         V1(Priv), //~ ERROR private type `types::Priv` in public interface
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:20:14
    |
-LL |         V2 { field: Priv }, //~ ERROR private type `types::Priv` in public interface
+LL |         V2 { field: Priv },
    |              ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -33,7 +33,7 @@ LL |         V2 { field: Priv }, //~ ERROR private type `types::Priv` in public 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:24:9
    |
-LL |         const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
+LL |         const C: Priv = Priv;
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -45,13 +45,13 @@ error[E0446]: private type `types::Priv` in public interface
 LL |     struct Priv;
    |     - `types::Priv` declared as private
 ...
-LL |         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
+LL |         type Alias = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:27:9
    |
-LL |         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
+LL |         fn f1(arg: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -60,7 +60,7 @@ LL |         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public 
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:29:9
    |
-LL |         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
+LL |         fn f2() -> Priv { panic!() }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -69,7 +69,7 @@ LL |         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` i
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:33:9
    |
-LL |         pub static ES: Priv; //~ ERROR private type `types::Priv` in public interface
+LL |         pub static ES: Priv;
    |         ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -78,7 +78,7 @@ LL |         pub static ES: Priv; //~ ERROR private type `types::Priv` in public
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:35:9
    |
-LL |         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in public interface
+LL |         pub fn ef1(arg: Priv);
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -87,7 +87,7 @@ LL |         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in publ
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:37:9
    |
-LL |         pub fn ef2() -> Priv; //~ ERROR private type `types::Priv` in public interface
+LL |         pub fn ef2() -> Priv;
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -99,13 +99,13 @@ error[E0446]: private type `types::Priv` in public interface
 LL |     struct Priv;
    |     - `types::Priv` declared as private
 ...
-LL |         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
+LL |         type Alias = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:50:5
    |
-LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     pub type Alias<T: PrivTr> = T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -114,7 +114,7 @@ LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr`
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:53:5
    |
-LL |     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     pub trait Tr1: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -123,7 +123,7 @@ LL |     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in pu
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:55:5
    |
-LL |     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     pub trait Tr2<T: PrivTr> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -133,11 +133,11 @@ error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:57:5
    |
 LL | /     pub trait Tr3 {
-LL | |         //~^ ERROR private trait `traits::PrivTr` in public interface
-LL | |         //~| WARNING hard error
+LL | |
+LL | |
 LL | |         type Alias: PrivTr;
-LL | |         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
-LL | |         //~^ WARNING hard error
+LL | |         fn f<T: PrivTr>(arg: T) {}
+LL | |
 LL | |     }
    | |_____^
    |
@@ -147,7 +147,7 @@ LL | |     }
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:61:9
    |
-LL |         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
+LL |         fn f<T: PrivTr>(arg: T) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -156,7 +156,7 @@ LL |         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr`
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:64:5
    |
-LL |     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     impl<T: PrivTr> Pub<T> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -165,7 +165,7 @@ LL |     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in p
 error: private trait `traits::PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-warn.rs:66:5
    |
-LL |     impl<T: PrivTr> PubTr for Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     impl<T: PrivTr> PubTr for Pub<T> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -228,7 +228,7 @@ LL |     pub trait Tr1: PrivTr<Pub> {}
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:104:5
    |
-LL |     pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` in public interface
+LL |     pub trait Tr2: PubTr<Priv> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -237,7 +237,7 @@ LL |     pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` i
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:106:5
    |
-LL |     pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Priv` in public interface
+LL |     pub trait Tr3: PubTr<[Priv; 1]> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -246,7 +246,7 @@ LL |     pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Pr
 error: private type `generics::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:108:5
    |
-LL |     pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR private type `generics::Priv` in public interface
+LL |     pub trait Tr4: PubTr<Pub<Priv>> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -258,13 +258,13 @@ error[E0446]: private type `impls::Priv` in public interface
 LL |     struct Priv;
    |     - `impls::Priv` declared as private
 ...
-LL |         type Alias = Priv; //~ ERROR private type `impls::Priv` in public interface
+LL |         type Alias = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private type `aliases_pub::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:206:9
    |
-LL |         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
+LL |         pub fn f(arg: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -276,7 +276,7 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
 ...
-LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+LL |         type Check = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
@@ -285,7 +285,7 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
 ...
-LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+LL |         type Check = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
@@ -294,7 +294,7 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
 ...
-LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+LL |         type Check = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
@@ -303,7 +303,7 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
 ...
-LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
+LL |         type Check = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private trait `aliases_priv::PrivTr1` in public interface (error E0445)
@@ -336,7 +336,7 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/private-in-public-warn.rs:50:23
    |
-LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
+LL |     pub type Alias<T: PrivTr> = T;
    |                       ^^^^^^
    |
    = note: #[warn(type_alias_bounds)] on by default

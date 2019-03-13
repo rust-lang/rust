@@ -1,19 +1,19 @@
 error[E0433]: failed to resolve: global paths cannot start with `super`
   --> $DIR/use-super-global-path.rs:7:11
    |
-LL |     use ::super::{S, Z}; //~ ERROR global paths cannot start with `super`
+LL |     use ::super::{S, Z};
    |           ^^^^^ global paths cannot start with `super`
 
 error[E0433]: failed to resolve: global paths cannot start with `super`
   --> $DIR/use-super-global-path.rs:10:15
    |
-LL |         use ::super::main; //~ ERROR global paths cannot start with `super`
+LL |         use ::super::main;
    |               ^^^^^ global paths cannot start with `super`
 
 error[E0425]: cannot find function `main` in this scope
   --> $DIR/use-super-global-path.rs:11:9
    |
-LL |         main(); //~ ERROR cannot find function `main` in this scope
+LL |         main();
    |         ^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |

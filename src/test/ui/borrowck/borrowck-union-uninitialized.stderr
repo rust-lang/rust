@@ -1,13 +1,13 @@
 error[E0381]: use of possibly uninitialized variable: `s.a`
   --> $DIR/borrowck-union-uninitialized.rs:15:13
    |
-LL |         let sa = s.a; //~ ERROR use of possibly uninitialized variable: `s.a`
+LL |         let sa = s.a;
    |             ^^ use of possibly uninitialized `s.a`
 
 error[E0381]: use of possibly uninitialized variable: `u.a`
   --> $DIR/borrowck-union-uninitialized.rs:16:13
    |
-LL |         let ua = u.a; //~ ERROR use of possibly uninitialized variable: `u.a`
+LL |         let ua = u.a;
    |             ^^ use of possibly uninitialized `u.a`
 
 error: aborting due to 2 previous errors

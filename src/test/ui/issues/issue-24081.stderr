@@ -4,7 +4,7 @@ error[E0255]: the name `Add` is defined multiple times
 LL | use std::ops::Add;
    |     ------------- previous import of the trait `Add` here
 ...
-LL | type Add = bool; //~ ERROR the name `Add` is defined multiple times
+LL | type Add = bool;
    | ^^^^^^^^^^^^^^^^ `Add` redefined here
    |
    = note: `Add` must be defined only once in the type namespace of this module
@@ -19,7 +19,7 @@ error[E0255]: the name `Sub` is defined multiple times
 LL | use std::ops::Sub;
    |     ------------- previous import of the trait `Sub` here
 ...
-LL | struct Sub { x: f32 } //~ ERROR the name `Sub` is defined multiple times
+LL | struct Sub { x: f32 }
    | ^^^^^^^^^^ `Sub` redefined here
    |
    = note: `Sub` must be defined only once in the type namespace of this module
@@ -34,7 +34,7 @@ error[E0255]: the name `Mul` is defined multiple times
 LL | use std::ops::Mul;
    |     ------------- previous import of the trait `Mul` here
 ...
-LL | enum Mul { A, B } //~ ERROR the name `Mul` is defined multiple times
+LL | enum Mul { A, B }
    | ^^^^^^^^ `Mul` redefined here
    |
    = note: `Mul` must be defined only once in the type namespace of this module
@@ -49,7 +49,7 @@ error[E0255]: the name `Div` is defined multiple times
 LL | use std::ops::Div;
    |     ------------- previous import of the trait `Div` here
 ...
-LL | mod Div { } //~ ERROR the name `Div` is defined multiple times
+LL | mod Div { }
    | ^^^^^^^ `Div` redefined here
    |
    = note: `Div` must be defined only once in the type namespace of this module
@@ -64,7 +64,7 @@ error[E0255]: the name `Rem` is defined multiple times
 LL | use std::ops::Rem;
    |     ------------- previous import of the trait `Rem` here
 ...
-LL | trait Rem {  } //~ ERROR the name `Rem` is defined multiple times
+LL | trait Rem {  }
    | ^^^^^^^^^ `Rem` redefined here
    |
    = note: `Rem` must be defined only once in the type namespace of this module

@@ -1,7 +1,7 @@
 error: rustc_outlives
   --> $DIR/explicit-enum.rs:4:1
    |
-LL | / enum Foo<'a, U> { //~ ERROR rustc_outlives
+LL | / enum Foo<'a, U> {
 LL | |     One(Bar<'a, U>)
 LL | | }
    | |_^

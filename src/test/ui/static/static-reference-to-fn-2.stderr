@@ -11,7 +11,7 @@ note: borrowed value must be valid for the anonymous lifetime #2 defined on the 
    |
 LL | / fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
 LL | |     self_.statefn = &id(state2 as StateMachineFunc);
-LL | |     //~^ ERROR borrowed value does not live long enough
+LL | |
 LL | |     return Some("state1");
 LL | | }
    | |_^
@@ -30,7 +30,7 @@ note: borrowed value must be valid for the anonymous lifetime #2 defined on the 
    |
 LL | / fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
 LL | |     self_.statefn = &id(state3 as StateMachineFunc);
-LL | |     //~^ ERROR borrowed value does not live long enough
+LL | |
 LL | |     return Some("state2");
 LL | | }
    | |_^
@@ -49,7 +49,7 @@ note: borrowed value must be valid for the anonymous lifetime #2 defined on the 
    |
 LL | / fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
 LL | |     self_.statefn = &id(finished as StateMachineFunc);
-LL | |     //~^ ERROR borrowed value does not live long enough
+LL | |
 LL | |     return Some("state3");
 LL | | }
    | |_^

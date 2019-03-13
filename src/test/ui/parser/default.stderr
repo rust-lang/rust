@@ -1,13 +1,13 @@
 error: expected one of `async`, `const`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
   --> $DIR/default.rs:22:13
    |
-LL |     default pub fn foo<T: Default>() -> T { T::default() } //~ ERROR expected one of
+LL |     default pub fn foo<T: Default>() -> T { T::default() }
    |             ^^^ expected one of 7 possible tokens here
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/default.rs:16:5
    |
-LL |     pub default fn foo<T: Default>() -> T { //~ ERROR unnecessary visibility qualifier
+LL |     pub default fn foo<T: Default>() -> T {
    |     ^^^ `pub` not permitted here because it's implied
 
 error[E0046]: not all trait items implemented, missing: `foo`
@@ -16,7 +16,7 @@ error[E0046]: not all trait items implemented, missing: `foo`
 LL |     fn foo<T: Default>() -> T;
    |     -------------------------- `foo` from trait
 ...
-LL | impl Foo for u32 { //~ ERROR not all trait items implemented, missing: `foo`
+LL | impl Foo for u32 {
    | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
 error: aborting due to 3 previous errors

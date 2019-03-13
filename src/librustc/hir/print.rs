@@ -25,7 +25,7 @@ pub enum AnnNode<'a> {
     Name(&'a ast::Name),
     Block(&'a hir::Block),
     Item(&'a hir::Item),
-    SubItem(ast::NodeId),
+    SubItem(hir::HirId),
     Expr(&'a hir::Expr),
     Pat(&'a hir::Pat),
 }
@@ -433,6 +433,9 @@ impl<'a> State<'a> {
                 self.popen()?;
                 self.s.word("/*ERROR*/")?;
                 self.pclose()?;
+            }
+            hir::TyKind::CVarArgs(_) => {
+                self.s.word("...")?;
             }
         }
         self.end()
@@ -924,7 +927,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
-        self.ann.pre(self, AnnNode::SubItem(ti.id))?;
+        self.ann.pre(self, AnnNode::SubItem(ti.hir_id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ti.span.lo())?;
         self.print_outer_attributes(&ti.attrs)?;
@@ -956,11 +959,11 @@ impl<'a> State<'a> {
                                            default.as_ref().map(|ty| &**ty))?;
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ti.id))
+        self.ann.post(self, AnnNode::SubItem(ti.hir_id))
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
-        self.ann.pre(self, AnnNode::SubItem(ii.id))?;
+        self.ann.pre(self, AnnNode::SubItem(ii.hir_id))?;
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo())?;
         self.print_outer_attributes(&ii.attrs)?;
@@ -986,7 +989,7 @@ impl<'a> State<'a> {
                 self.print_associated_type(ii.ident, Some(bounds), None)?;
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ii.id))
+        self.ann.post(self, AnnNode::SubItem(ii.hir_id))
     }
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
@@ -1762,7 +1765,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.node {
             PatKind::Wild => self.s.word("_")?,
-            PatKind::Binding(binding_mode, _, _, ident, ref sub) => {
+            PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref")?;
@@ -2004,7 +2007,7 @@ impl<'a> State<'a> {
             s.print_type(ty)?;
             s.end()
         })?;
-        if decl.variadic {
+        if decl.c_variadic {
             self.s.word(", ...")?;
         }
         self.pclose()?;
@@ -2248,7 +2251,6 @@ impl<'a> State<'a> {
         let generics = hir::Generics {
             params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
-                id: ast::DUMMY_NODE_ID,
                 hir_id: hir::DUMMY_HIR_ID,
                 predicates: hir::HirVec::new(),
             },

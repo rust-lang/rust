@@ -1176,14 +1176,20 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
     /// This is invoked by the `layout_raw` query to record the final
     /// layout of each type.
-    #[inline]
+    #[inline(always)]
     fn record_layout_for_printing(&self, layout: TyLayout<'tcx>) {
-        // If we are running with `-Zprint-type-sizes`, record layouts for
-        // dumping later. Ignore layouts that are done with non-empty
-        // environments or non-monomorphic layouts, as the user only wants
-        // to see the stuff resulting from the final codegen session.
+        // If we are running with `-Zprint-type-sizes`, maybe record layouts
+        // for dumping later.
+        if self.tcx.sess.opts.debugging_opts.print_type_sizes {
+            self.record_layout_for_printing_outlined(layout)
+        }
+    }
+
+    fn record_layout_for_printing_outlined(&self, layout: TyLayout<'tcx>) {
+        // Ignore layouts that are done with non-empty environments or
+        // non-monomorphic layouts, as the user only wants to see the stuff
+        // resulting from the final codegen session.
         if
-            !self.tcx.sess.opts.debugging_opts.print_type_sizes ||
             layout.ty.has_param_types() ||
             layout.ty.has_self_ty() ||
             !self.param_env.caller_bounds.is_empty()
@@ -1191,10 +1197,6 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             return;
         }
 
-        self.record_layout_for_printing_outlined(layout)
-    }
-
-    fn record_layout_for_printing_outlined(&self, layout: TyLayout<'tcx>) {
         // (delay format until we actually need it)
         let record = |kind, packed, opt_discr_size, variants| {
             let type_desc = format!("{:?}", layout.ty);

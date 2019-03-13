@@ -76,6 +76,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let val = match val.val {
+            ConstValue::Param(_) => bug!("encountered a ConstValue::Param in codegen"),
+            ConstValue::Infer(_) => bug!("encountered a ConstValue::Infer in codegen"),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
@@ -378,7 +380,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if let mir::Place::Local(index) = *place {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             match self.locals[index] {
                 LocalRef::Operand(Some(o)) => {
                     return Some(o);

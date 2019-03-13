@@ -6,7 +6,7 @@ LL | fn foo<T>() {
    |    |
    |    try adding a local generic parameter in this method instead
 LL |     struct Foo {
-LL |         x: T, //~ ERROR can't use generic parameters from outer function
+LL |         x: T,
    |            ^ use of generic parameter from outer function
 
 error[E0107]: wrong number of type arguments: expected 0, found 1

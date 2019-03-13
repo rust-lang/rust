@@ -681,12 +681,7 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        for x in &mut self.iter {
-            if (self.predicate)(&x) {
-                return Some(x);
-            }
-        }
-        None
+        self.try_for_each(Err).err()
     }
 
     #[inline]
@@ -707,12 +702,9 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
     // Using the branchless version will also simplify the LLVM byte code, thus
     // leaving more budget for LLVM optimizations.
     #[inline]
-    fn count(mut self) -> usize {
-        let mut count = 0;
-        for x in &mut self.iter {
-            count += (self.predicate)(&x) as usize;
-        }
-        count
+    fn count(self) -> usize {
+        let mut predicate = self.predicate;
+        self.iter.map(|x| predicate(&x) as usize).sum()
     }
 
     #[inline]
@@ -746,12 +738,7 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
 {
     #[inline]
     fn next_back(&mut self) -> Option<I::Item> {
-        for x in self.iter.by_ref().rev() {
-            if (self.predicate)(&x) {
-                return Some(x);
-            }
-        }
-        None
+        self.try_rfold((), |_, x| Err(x)).err()
     }
 
     #[inline]
@@ -820,12 +807,7 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        for x in self.iter.by_ref() {
-            if let Some(y) = (self.f)(x) {
-                return Some(y);
-            }
-        }
-        None
+        self.try_for_each(Err).err()
     }
 
     #[inline]
@@ -863,12 +845,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        for x in self.iter.by_ref().rev() {
-            if let Some(y) = (self.f)(x) {
-                return Some(y);
-            }
-        }
-        None
+        self.try_rfold((), |_, x| Err(x)).err()
     }
 
     #[inline]

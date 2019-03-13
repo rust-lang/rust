@@ -1,31 +1,31 @@
 error: unknown byte escape: f
   --> $DIR/byte-string-literals.rs:6:32
    |
-LL | static FOO: &'static [u8] = b"/f";  //~ ERROR unknown byte escape
+LL | static FOO: &'static [u8] = b"/f";
    |                                ^
 
 error: unknown byte escape: f
   --> $DIR/byte-string-literals.rs:9:8
    |
-LL |     b"/f";  //~ ERROR unknown byte escape
+LL |     b"/f";
    |        ^
 
 error: invalid character in numeric character escape: Z
   --> $DIR/byte-string-literals.rs:10:10
    |
-LL |     b"/x0Z";  //~ ERROR invalid character in numeric character escape: Z
+LL |     b"/x0Z";
    |          ^
 
 error: byte constant must be ASCII. Use a /xHH escape for a non-ASCII byte
   --> $DIR/byte-string-literals.rs:11:7
    |
-LL |     b"é";  //~ ERROR byte constant must be ASCII
+LL |     b"é";
    |       ^
 
 error: unterminated double quote byte string
   --> $DIR/byte-string-literals.rs:12:7
    |
-LL |       b"a  //~ ERROR unterminated double quote byte string
+LL |       b"a
    |  _______^
 LL | | }
    | |__^

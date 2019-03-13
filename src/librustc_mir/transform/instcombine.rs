@@ -1,6 +1,6 @@
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{TyCtxt, TyKind};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -45,7 +45,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             let new_place = match *rvalue {
                 Rvalue::Ref(_, _, Place::Projection(ref mut projection)) => {
                     // Replace with dummy
-                    mem::replace(&mut projection.base, Place::Local(Local::new(0)))
+                    mem::replace(&mut projection.base, Place::Base(PlaceBase::Local(Local::new(0))))
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };

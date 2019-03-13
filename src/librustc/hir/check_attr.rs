@@ -94,7 +94,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id_from_hir_id(item.hir_id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
@@ -341,12 +341,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         self.check_expr_attributes(expr);
         intravisit::walk_expr(self, expr)
-    }
-}
-
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
     }
 }
 

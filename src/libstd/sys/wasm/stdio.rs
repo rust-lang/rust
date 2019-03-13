@@ -1,5 +1,5 @@
-use io;
-use sys::{ReadSysCall, WriteSysCall};
+use crate::io;
+use crate::sys::{ReadSysCall, WriteSysCall};
 
 pub struct Stdin;
 pub struct Stdout;

@@ -12,7 +12,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promoted_raw_ptr_ops.rs:6:30
    |
-LL |     let y: &'static usize = &(&1 as *const i32 as usize + 1); //~ ERROR does not live long enough
+LL |     let y: &'static usize = &(&1 as *const i32 as usize + 1);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
 ...
 LL | }
@@ -23,9 +23,9 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promoted_raw_ptr_ops.rs:7:28
    |
-LL |     let z: &'static i32 = &(unsafe { *(42 as *const i32) }); //~ ERROR does not live long enough
+LL |     let z: &'static i32 = &(unsafe { *(42 as *const i32) });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |     let a: &'static bool = &(main as fn() == main as fn()); //~ ERROR does not live long enough
+LL |     let a: &'static bool = &(main as fn() == main as fn());
 LL | }
    | - temporary value only lives until here
    |
@@ -34,7 +34,7 @@ LL | }
 error[E0597]: borrowed value does not live long enough
   --> $DIR/promoted_raw_ptr_ops.rs:8:29
    |
-LL |     let a: &'static bool = &(main as fn() == main as fn()); //~ ERROR does not live long enough
+LL |     let a: &'static bool = &(main as fn() == main as fn());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
 LL | }
    | - temporary value only lives until here

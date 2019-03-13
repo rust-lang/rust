@@ -1,7 +1,7 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
-use fs::Metadata;
-use sys_common::AsInner;
+use crate::fs::Metadata;
+use crate::sys_common::AsInner;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

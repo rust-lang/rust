@@ -1,19 +1,19 @@
 error[E0017]: references in constants may only refer to immutable values
   --> $DIR/projection_qualif.rs:6:27
    |
-LL |         let b: *mut u32 = &mut a; //~ ERROR may only refer to immutable values
+LL |         let b: *mut u32 = &mut a;
    |                           ^^^^^^ constants require immutable values
 
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/projection_qualif.rs:7:18
    |
-LL |         unsafe { *b = 5; } //~ ERROR dereferencing raw pointers in constants
+LL |         unsafe { *b = 5; }
    |                  ^^^^^^
 
 error[E0658]: dereferencing raw pointers in constants is unstable (see issue #51911)
   --> $DIR/projection_qualif.rs:7:18
    |
-LL |         unsafe { *b = 5; } //~ ERROR dereferencing raw pointers in constants
+LL |         unsafe { *b = 5; }
    |                  ^^^^^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable

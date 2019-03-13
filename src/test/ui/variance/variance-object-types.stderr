@@ -1,7 +1,7 @@
 error[E0208]: [o]
   --> $DIR/variance-object-types.rs:11:1
    |
-LL | / struct Foo<'a> { //~ ERROR [o]
+LL | / struct Foo<'a> {
 LL | |     x: Box<Fn(i32) -> &'a i32 + 'static>
 LL | | }
    | |_^

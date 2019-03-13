@@ -7,6 +7,7 @@ use std::{fmt, ptr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
+use rustc_data_structures::jobserver;
 use syntax_pos::Span;
 
 use crate::ty::tls;
@@ -198,7 +199,11 @@ impl<'tcx> QueryLatch<'tcx> {
             // we have to be in the `wait` call. This is ensured by the deadlock handler
             // getting the self.info lock.
             rayon_core::mark_blocked();
+            jobserver::release_thread();
             waiter.condvar.wait(&mut info);
+            // Release the lock before we potentially block in `acquire_thread`
+            mem::drop(info);
+            jobserver::acquire_thread();
         }
     }
 

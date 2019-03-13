@@ -1,7 +1,8 @@
-use cmp;
-use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind};
-use fmt;
-use mem;
+use crate::cmp;
+use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
+         IoVec};
+use crate::fmt;
+use crate::mem;
 
 // =============================================================================
 // Forwarding implementations
@@ -11,6 +12,11 @@ impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
     }
 
     #[inline]
@@ -37,6 +43,11 @@ impl<R: Read + ?Sized> Read for &mut R {
 impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        (**self).write_vectored(bufs)
+    }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> { (**self).flush() }
@@ -83,6 +94,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -106,6 +122,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
 impl<W: Write + ?Sized> Write for Box<W> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        (**self).write_vectored(bufs)
+    }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> { (**self).flush() }
@@ -144,6 +165,20 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     }
 }
 
+// Used by panicking::default_hook
+#[cfg(test)]
+/// This impl is only used by printing logic, so any error returned is always
+/// of kind `Other`, and should be ignored.
+impl Write for Box<dyn (::realstd::io::Write) + Send> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (**self).write(buf).map_err(|_| ErrorKind::Other.into())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        (**self).flush().map_err(|_| ErrorKind::Other.into())
+    }
+}
+
 // =============================================================================
 // In-memory buffer implementations
 
@@ -169,6 +204,19 @@ impl Read for &[u8] {
 
         *self = b;
         Ok(amt)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        let mut nread = 0;
+        for buf in bufs {
+            nread += self.read(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nread)
     }
 
     #[inline]
@@ -232,6 +280,19 @@ impl Write for &mut [u8] {
     }
 
     #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            nwritten += self.write(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nwritten)
+    }
+
+    #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
         if self.write(data)? == data.len() {
             Ok(())
@@ -255,6 +316,16 @@ impl Write for Vec<u8> {
     }
 
     #[inline]
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        let len = bufs.iter().map(|b| b.len()).sum();
+        self.reserve(len);
+        for buf in bufs {
+            self.extend_from_slice(buf);
+        }
+        Ok(len)
+    }
+
+    #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend_from_slice(buf);
         Ok(())
@@ -266,8 +337,7 @@ impl Write for Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use io::prelude::*;
-    use test;
+    use crate::io::prelude::*;
 
     #[bench]
     fn bench_read_slice(b: &mut test::Bencher) {

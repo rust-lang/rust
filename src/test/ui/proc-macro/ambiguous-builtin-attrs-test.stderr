@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `NonExistent` in this scope
   --> $DIR/ambiguous-builtin-attrs-test.rs:19:5
    |
-LL |     NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
+LL |     NonExistent;
    |     ^^^^^^^^^^^ not found in this scope
 
 error: aborting due to previous error

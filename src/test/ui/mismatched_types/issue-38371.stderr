@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:4:8
    |
-LL | fn foo(&foo: Foo) { //~ ERROR mismatched types
+LL | fn foo(&foo: Foo) {
    |        ^^^^ expected struct `Foo`, found reference
    |
    = note: expected type `Foo`
@@ -11,7 +11,7 @@ LL | fn foo(&foo: Foo) { //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:18:9
    |
-LL | fn agh(&&bar: &u32) { //~ ERROR mismatched types
+LL | fn agh(&&bar: &u32) {
    |         ^^^^ expected u32, found reference
    |
    = note: expected type `u32`
@@ -21,7 +21,7 @@ LL | fn agh(&&bar: &u32) { //~ ERROR mismatched types
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:21:8
    |
-LL | fn bgh(&&bar: u32) { //~ ERROR mismatched types
+LL | fn bgh(&&bar: u32) {
    |        ^^^^^ expected u32, found reference
    |
    = note: expected type `u32`
@@ -30,7 +30,7 @@ LL | fn bgh(&&bar: u32) { //~ ERROR mismatched types
 error[E0529]: expected an array or slice, found `u32`
   --> $DIR/issue-38371.rs:24:9
    |
-LL | fn ugh(&[bar]: &u32) { //~ ERROR expected an array or slice
+LL | fn ugh(&[bar]: &u32) {
    |         ^^^^^ pattern cannot match with input type `u32`
 
 error: aborting due to 4 previous errors

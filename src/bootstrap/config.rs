@@ -78,6 +78,7 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
+    pub llvm_allow_old_toolchain: Option<bool>,
 
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
@@ -263,6 +264,7 @@ struct Llvm {
     ldflags: Option<String>,
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
+    allow_old_toolchain: Option<bool>,
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -530,6 +532,7 @@ impl Config {
             config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.clone();
         }
 
         if let Some(ref rust) = toml.rust {

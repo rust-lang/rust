@@ -3,13 +3,13 @@ error[E0252]: the name `baz` is defined multiple times
    |
 LL | use foo::baz;
    |     -------- previous import of the type `baz` here
-LL | use bar::baz; //~ ERROR E0252
+LL | use bar::baz;
    |     ^^^^^^^^ `baz` reimported here
    |
    = note: `baz` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use bar::baz as other_baz; //~ ERROR E0252
+LL | use bar::baz as other_baz;
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

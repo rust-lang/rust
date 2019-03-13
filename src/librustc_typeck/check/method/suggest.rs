@@ -732,7 +732,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
             if let hir::ItemKind::Trait(..) = i.node {
-                let def_id = self.map.local_def_id(i.id);
+                let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
                 self.traits.push(def_id);
             }
         }

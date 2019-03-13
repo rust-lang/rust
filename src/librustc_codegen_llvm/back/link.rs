@@ -698,7 +698,6 @@ fn link_natively(sess: &Session,
     }
 
     if sess.opts.target_triple.triple() == "wasm32-unknown-unknown" {
-        wasm::rewrite_imports(&out_filename, &codegen_results.crate_info.wasm_imports);
         wasm::add_producer_section(
             &out_filename,
             &sess.edition().to_string(),

@@ -4,12 +4,11 @@ use crate::hir::Node;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Substs, UnpackedKind};
+use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -30,7 +29,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.
-    pub substs: &'tcx Substs<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 
     /// The type variable that represents the value of the abstract type
     /// that we require. In other words, after we compile this function,
@@ -381,10 +380,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         substs,
                         item_def_id: _,
                     }) => {
-                        for r in substs.regions() {
-                            bound_region(r);
+                        for k in substs {
+                            match k.unpack() {
+                                UnpackedKind::Lifetime(lt) => bound_region(lt),
+                                UnpackedKind::Type(ty) => types.push(ty),
+                                UnpackedKind::Const(_) => {
+                                    // Const parameters don't impose constraints.
+                                }
+                            }
                         }
-                        types.extend(substs.types());
                     }
 
                     Component::EscapingProjection(more_components) => {
@@ -437,7 +441,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = Substs::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
         let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> = opaque_defn
             .substs
             .iter()
@@ -681,13 +685,14 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     //     let x = || foo(); // returns the Opaque assoc with `foo`
                     // }
                     // ```
-                    if let Some(opaque_node_id) = tcx.hir().as_local_node_id(def_id) {
+                    if let Some(opaque_hir_id) = tcx.hir().as_local_hir_id(def_id) {
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
-                            let opaque_parent_node_id = tcx.hir().get_parent(opaque_node_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_node_id)
+                            let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
+                            parent_def_id == tcx.hir()
+                                                .local_def_id_from_hir_id(opaque_parent_hir_id)
                         };
-                        let in_definition_scope = match tcx.hir().find(opaque_node_id) {
+                        let in_definition_scope = match tcx.hir().find_by_hir_id(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.node {
                                 // impl trait
                                 hir::ItemKind::Existential(hir::ExistTy {
@@ -701,7 +706,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                                 }) => may_define_existential_type(
                                     tcx,
                                     self.parent_def_id,
-                                    opaque_node_id,
+                                    opaque_hir_id,
                                 ),
                                 _ => def_scope_default(),
                             },
@@ -709,13 +714,13 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                                 hir::ImplItemKind::Existential(_) => may_define_existential_type(
                                     tcx,
                                     self.parent_def_id,
-                                    opaque_node_id,
+                                    opaque_hir_id,
                                 ),
                                 _ => def_scope_default(),
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
-                                tcx.hir().node_to_string(opaque_node_id),
+                                tcx.hir().hir_to_string(opaque_hir_id),
                             ),
                         };
                         if in_definition_scope {
@@ -740,7 +745,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
@@ -834,20 +839,20 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 pub fn may_define_existential_type(
     tcx: TyCtxt<'_, '_, '_>,
     def_id: DefId,
-    opaque_node_id: ast::NodeId,
+    opaque_hir_id: hir::HirId,
 ) -> bool {
-    let mut node_id = tcx
+    let mut hir_id = tcx
         .hir()
-        .as_local_node_id(def_id)
+        .as_local_hir_id(def_id)
         .unwrap();
     // named existential types can be defined by any siblings or
     // children of siblings
-    let mod_id = tcx.hir().get_parent(opaque_node_id);
+    let mod_id = tcx.hir().get_parent_item(opaque_hir_id);
     // so we walk up the node tree until we hit the root or the parent
     // of the opaque type
-    while node_id != mod_id && node_id != ast::CRATE_NODE_ID {
-        node_id = tcx.hir().get_parent(node_id);
+    while hir_id != mod_id && hir_id != hir::CRATE_HIR_ID {
+        hir_id = tcx.hir().get_parent_item(hir_id);
     }
     // syntactically we are allowed to define the concrete type
-    node_id == mod_id
+    hir_id == mod_id
 }

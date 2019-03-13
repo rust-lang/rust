@@ -1,7 +1,7 @@
 error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
   --> $DIR/not-panic-safe-5.rs:9:5
    |
-LL |     assert::<*const UnsafeCell<i32>>(); //~ ERROR E0277
+LL |     assert::<*const UnsafeCell<i32>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
    |
    = help: the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`

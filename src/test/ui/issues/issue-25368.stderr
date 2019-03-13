@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let (tx, rx) = channel();
    |         -------- consider giving the pattern a type
 ...
-LL |         tx.send(Foo{ foo: PhantomData }); //~ ERROR E0282
+LL |         tx.send(Foo{ foo: PhantomData });
    |                 ^^^ cannot infer type for `T`
 
 error: aborting due to previous error

@@ -1,7 +1,7 @@
 error[E0044]: foreign items may not have type parameters
   --> $DIR/generic-extern.rs:2:5
    |
-LL |     fn foo<T>(); //~ ERROR foreign items may not have type parameters
+LL |     fn foo<T>();
    |     ^^^^^^^^^^^^ can't have type parameters
    |
    = help: use specialization instead of type parameters by replacing them with concrete types like `u32`

@@ -88,7 +88,7 @@ pub enum Categorization<'tcx> {
     ThreadLocal(ty::Region<'tcx>),       // value that cannot move, but still restricted in scope
     StaticItem,
     Upvar(Upvar),                        // upvar referenced by closure env
-    Local(ast::NodeId),                  // local variable
+    Local(hir::HirId),                   // local variable
     Deref(cmt<'tcx>, PointerKind<'tcx>), // deref of a ptr
     Interior(cmt<'tcx>, InteriorKind),   // something interior: field, tuple, etc
     Downcast(cmt<'tcx>, DefId),          // selects a particular enum variant (*1)
@@ -198,9 +198,9 @@ pub struct cmt_<'tcx> {
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
-    ImmLocal(ast::NodeId),
+    ImmLocal(hir::HirId),
     ClosureEnv(LocalDefId),
-    LocalDeref(ast::NodeId),
+    LocalDeref(hir::HirId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
 
@@ -230,8 +230,8 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Deref(ref base_cmt, BorrowedPtr(ty::ImmBorrow, _)) => {
                 // try to figure out where the immutable reference came from
                 match base_cmt.cat {
-                    Categorization::Local(node_id) =>
-                        Some(ImmutabilityBlame::LocalDeref(node_id)),
+                    Categorization::Local(hir_id) =>
+                        Some(ImmutabilityBlame::LocalDeref(hir_id)),
                     Categorization::Interior(ref base_cmt, InteriorField(field_index)) => {
                         base_cmt.resolve_field(field_index.0).map(|(adt_def, field_def)| {
                             ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
@@ -247,8 +247,8 @@ impl<'tcx> cmt_<'tcx> {
                     _ => None
                 }
             }
-            Categorization::Local(node_id) => {
-                Some(ImmutabilityBlame::ImmLocal(node_id))
+            Categorization::Local(hir_id) => {
+                Some(ImmutabilityBlame::ImmLocal(hir_id))
             }
             Categorization::Rvalue(..) |
             Categorization::Upvar(..) |
@@ -632,7 +632,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<cmt_<'tcx>> {
-        debug!("cat_expr: id={} expr={:?}", expr.id, expr);
+        debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
@@ -648,10 +648,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             hir::ExprKind::Field(ref base, f_ident) => {
                 let base_cmt = Rc::new(self.cat_expr(&base)?);
                 debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
-                       expr.id,
+                       expr.hir_id,
                        expr,
                        base_cmt);
-                let f_index = self.tcx.field_index(expr.id, self.tables);
+                let f_index = self.tcx.field_index(expr.hir_id, self.tables);
                 Ok(self.cat_field(expr, base_cmt, f_index, f_ident, expr_ty))
             }
 
@@ -741,7 +741,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(cmt_ {
                     hir_id,
                     span,
-                    cat: Categorization::Local(vid),
+                    cat: Categorization::Local(self.tcx.hir().node_to_hir_id(vid)),
                     mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vid),
                     ty: expr_ty,
                     note: NoteNone
@@ -1321,7 +1321,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.node.pat)?; // see (*2)
-                    let f_index = self.tcx.field_index(fp.node.id, self.tables);
+                    let f_index = self.tcx.field_index(fp.node.hir_id, self.tables);
                     let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
                                                            fp.node.ident, field_ty));
                     self.cat_pattern_(cmt_field, &fp.node.pat, op)?;
@@ -1495,7 +1495,7 @@ impl<'tcx> cmt_<'tcx> {
                 "non-place".into()
             }
             Categorization::Local(vid) => {
-                if tcx.hir().is_argument(vid) {
+                if tcx.hir().is_argument(tcx.hir().hir_to_node_id(vid)) {
                     "argument"
                 } else {
                     "local variable"

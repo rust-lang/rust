@@ -1,21 +1,21 @@
 error: character literal may only contain one codepoint
   --> $DIR/str-as-char.rs:4:14
    |
-LL |     println!('●●'); //~ ERROR character literal may only contain one codepoint
+LL |     println!('●●');
    |              ^^^^
 help: if you meant to write a `str` literal, use double quotes
    |
-LL |     println!("●●"); //~ ERROR character literal may only contain one codepoint
+LL |     println!("●●");
    |              ^^^^
 
 error: format argument must be a string literal
   --> $DIR/str-as-char.rs:4:14
    |
-LL |     println!('●●'); //~ ERROR character literal may only contain one codepoint
+LL |     println!('●●');
    |              ^^^^
 help: you might be missing a string literal to format with
    |
-LL |     println!("{}", '●●'); //~ ERROR character literal may only contain one codepoint
+LL |     println!("{}", '●●');
    |              ^^^^^
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0720]: opaque type expands to a recursive type
   --> $DIR/infinite-impl-trait-issue-38064.rs:8:13
    |
-LL | fn foo() -> impl Quux { //~ opaque type expands to a recursive type
+LL | fn foo() -> impl Quux {
    |             ^^^^^^^^^ expands to self-referential type
    |
    = note: expanded type is `foo::Foo<bar::Bar<impl Quux>>`
@@ -9,7 +9,7 @@ LL | fn foo() -> impl Quux { //~ opaque type expands to a recursive type
 error[E0720]: opaque type expands to a recursive type
   --> $DIR/infinite-impl-trait-issue-38064.rs:14:13
    |
-LL | fn bar() -> impl Quux { //~ opaque type expands to a recursive type
+LL | fn bar() -> impl Quux {
    |             ^^^^^^^^^ expands to self-referential type
    |
    = note: expanded type is `bar::Bar<foo::Foo<impl Quux>>`

@@ -1,13 +1,13 @@
 warning: skipping const checks
   --> $DIR/assoc_const.rs:12:31
    |
-LL |     const F: u32 = (U::X, 42).1; //~ WARN skipping const checks
+LL |     const F: u32 = (U::X, 42).1;
    |                               ^
 
 error[E0080]: erroneous constant used
   --> $DIR/assoc_const.rs:29:13
    |
-LL |     let y = <String as Bar<Vec<u32>, String>>::F; //~ ERROR erroneous constant
+LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 error: aborting due to previous error

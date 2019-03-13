@@ -4,8 +4,17 @@ error[E0433]: failed to resolve: use of undeclared type or module `Vec`
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
-LL |         Vec::new(); //~ ERROR failed to resolve
+LL |         Vec::new();
    |         ^^^ use of undeclared type or module `Vec`
+
+error: cannot find macro `print!` in this scope
+  --> $DIR/no_implicit_prelude.rs:16:9
+   |
+LL |         println!();
+   |         ^^^^^^^^^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0599]: no method named `clone` found for type `()` in the current scope
   --> $DIR/no_implicit_prelude.rs:12:12
@@ -13,14 +22,14 @@ error[E0599]: no method named `clone` found for type `()` in the current scope
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
 ...
-LL |         ().clone() //~ ERROR no method named `clone` found
+LL |         ().clone()
    |            ^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
            `use std::clone::Clone;`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors occurred: E0433, E0599.
 For more information about an error, try `rustc --explain E0433`.

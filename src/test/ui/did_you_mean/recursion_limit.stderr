@@ -1,7 +1,7 @@
 error[E0275]: overflow evaluating the requirement `J: std::marker::Send`
   --> $DIR/recursion_limit.rs:34:5
    |
-LL |     is_send::<A>(); //~ ERROR overflow evaluating the requirement
+LL |     is_send::<A>();
    |     ^^^^^^^^^^^^
    |
    = help: consider adding a `#![recursion_limit="20"]` attribute to your crate

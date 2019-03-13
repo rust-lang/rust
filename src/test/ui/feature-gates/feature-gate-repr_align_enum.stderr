@@ -1,7 +1,7 @@
 error[E0658]: `#[repr(align(x))]` on enums is experimental (see issue #57996)
   --> $DIR/feature-gate-repr_align_enum.rs:4:1
    |
-LL | #[repr(align(8))] //~ ERROR `#[repr(align(x))]` on enums is experimental (see issue #57996)
+LL | #[repr(align(8))]
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_align_enum)] to the crate attributes to enable

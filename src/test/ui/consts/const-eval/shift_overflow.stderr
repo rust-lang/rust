@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $DIR/shift_overflow.rs:3:9
    |
-LL |     X = 1 << ((u32::max_value() as u64) + 1), //~ ERROR E0080
+LL |     X = 1 << ((u32::max_value() as u64) + 1),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to shift left with overflow
 
 error: aborting due to previous error

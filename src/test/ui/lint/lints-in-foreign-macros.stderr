@@ -1,7 +1,7 @@
 warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:11:16
    |
-LL |     () => {use std::string::ToString;} //~ WARN: unused import
+LL |     () => {use std::string::ToString;}
    |                ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | mod a { foo!(); }
@@ -10,25 +10,25 @@ LL | mod a { foo!(); }
 note: lint level defined here
   --> $DIR/lints-in-foreign-macros.rs:4:9
    |
-LL | #![warn(unused_imports)] //~ missing documentation for crate [missing_docs]
+LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
 warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:16:18
    |
-LL | mod c { baz!(use std::string::ToString;); } //~ WARN: unused import
+LL | mod c { baz!(use std::string::ToString;); }
    |                  ^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:17:19
    |
-LL | mod d { baz2!(use std::string::ToString;); } //~ WARN: unused import
+LL | mod d { baz2!(use std::string::ToString;); }
    |                   ^^^^^^^^^^^^^^^^^^^^^
 
 warning: missing documentation for crate
   --> $DIR/lints-in-foreign-macros.rs:4:1
    |
-LL | / #![warn(unused_imports)] //~ missing documentation for crate [missing_docs]
+LL | / #![warn(unused_imports)]
 LL | | #![warn(missing_docs)]
 LL | |
 LL | | #[macro_use]
@@ -46,12 +46,12 @@ LL | #![warn(missing_docs)]
 warning: missing documentation for a function
   --> $DIR/lints-in-foreign-macros.rs:18:6
    |
-LL | baz!(pub fn undocumented() {}); //~ WARN: missing documentation for a function
+LL | baz!(pub fn undocumented() {});
    |      ^^^^^^^^^^^^^^^^^^^^^
 
 warning: missing documentation for a function
   --> $DIR/lints-in-foreign-macros.rs:19:7
    |
-LL | baz2!(pub fn undocumented2() {}); //~ WARN: missing documentation for a function
+LL | baz2!(pub fn undocumented2() {});
    |       ^^^^^^^^^^^^^^^^^^^^^^
 

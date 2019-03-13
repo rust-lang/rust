@@ -1,7 +1,7 @@
 error[E0608]: cannot index into a value of type `({integer},)`
   --> $DIR/suggestion-non-ascii.rs:3:21
    |
-LL |     println!("☃{}", tup[0]); //~ ERROR cannot index into a value of type
+LL |     println!("☃{}", tup[0]);
    |                     ^^^^^^ help: to access tuple elements, use: `tup.0`
 
 error: aborting due to previous error

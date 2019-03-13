@@ -5,7 +5,7 @@ LL |     let x = "hi".to_string();
    |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = Foo { f:x };
    |                      - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -15,7 +15,7 @@ LL |     let x = "hi".to_string();
    |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = (x, 3);
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -27,7 +27,7 @@ LL |     let x = "hi".to_string();
 LL |         x
    |         - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `y`
@@ -39,7 +39,7 @@ LL |     let y = "ho".to_string();
 LL |         y
    |         - value moved here
 ...
-LL |     touch(&y); //~ ERROR use of moved value: `y`
+LL |     touch(&y);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -51,7 +51,7 @@ LL |     let x = "hi".to_string();
 LL |         true => x,
    |                 - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `y`
@@ -63,7 +63,7 @@ LL |     let y = "ho".to_string();
 LL |         false => y
    |                  - value moved here
 ...
-LL |     touch(&y); //~ ERROR use of moved value: `y`
+LL |     touch(&y);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -75,7 +75,7 @@ LL |     let x = "hi".to_string();
 LL |         _ if guard(x) => 10,
    |                    - value moved here
 ...
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -85,7 +85,7 @@ LL |     let x = "hi".to_string();
    |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = [x];
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -95,7 +95,7 @@ LL |     let x = "hi".to_string();
    |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = vec![x];
    |                   - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -105,7 +105,7 @@ LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = x.into_iter().next().unwrap();
    |              - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -115,7 +115,7 @@ LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = [x.into_iter().next().unwrap(); 1];
    |               - value moved here
-LL |     touch(&x); //~ ERROR use of moved value: `x`
+LL |     touch(&x);
    |           ^^ value borrowed here after move
 
 error: aborting due to 11 previous errors

@@ -1,31 +1,31 @@
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:9:1
    |
-LL | generate_mod::check!(); //~ ERROR cannot find type `FromOutside` in this scope
+LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:9:1
    |
-LL | generate_mod::check!(); //~ ERROR cannot find type `FromOutside` in this scope
+LL | generate_mod::check!();
    | ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:12:1
    |
-LL | #[generate_mod::check_attr] //~ ERROR cannot find type `FromOutside` in this scope
+LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `OuterAttr` in this scope
   --> $DIR/generate-mod.rs:12:1
    |
-LL | #[generate_mod::check_attr] //~ ERROR cannot find type `FromOutside` in this scope
+LL | #[generate_mod::check_attr]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 warning: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
-LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
    = note: #[warn(proc_macro_derive_resolution_fallback)] on by default
@@ -35,7 +35,7 @@ LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside
 warning: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:16:10
    |
-LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -44,7 +44,7 @@ LL | #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside
 warning: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
-LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -53,7 +53,7 @@ LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOut
 warning: cannot find type `OuterDerive` in this scope
   --> $DIR/generate-mod.rs:23:14
    |
-LL |     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
+LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

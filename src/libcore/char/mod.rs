@@ -30,7 +30,7 @@ pub use self::convert::{from_u32, from_digit};
 pub use self::convert::from_u32_unchecked;
 #[stable(feature = "char_from_str", since = "1.20.0")]
 pub use self::convert::ParseCharError;
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 pub use self::convert::CharTryFromError;
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};

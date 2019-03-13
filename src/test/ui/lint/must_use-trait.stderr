@@ -1,7 +1,7 @@
 error: unused implementer of `Critical` that must be used
   --> $DIR/must_use-trait.rs:21:5
    |
-LL |     get_critical(); //~ ERROR unused implementer of `Critical` that must be used
+LL |     get_critical();
    |     ^^^^^^^^^^^^^^^
    |
 note: lint level defined here

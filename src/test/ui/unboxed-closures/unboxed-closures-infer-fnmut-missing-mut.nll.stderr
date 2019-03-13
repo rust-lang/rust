@@ -3,7 +3,7 @@ error[E0596]: cannot borrow `tick` as mutable, as it is not declared as mutable
    |
 LL |     let tick = || counter += 1;
    |         ---- help: consider changing this to be mutable: `mut tick`
-LL |     tick(); //~ ERROR cannot borrow immutable local variable `tick` as mutable
+LL |     tick();
    |     ^^^^ cannot borrow as mutable
 
 error: aborting due to previous error

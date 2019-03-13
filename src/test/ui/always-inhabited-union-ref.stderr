@@ -4,11 +4,7 @@ error[E0004]: non-exhaustive patterns: type `&'static !` is non-empty
 LL |     match uninhab_ref() {
    |           ^^^^^^^^^^^^^
    |
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/always-inhabited-union-ref.rs:23:11
-   |
-LL |     match uninhab_ref() {
-   |           ^^^^^^^^^^^^^
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
   --> $DIR/always-inhabited-union-ref.rs:27:11
@@ -16,11 +12,7 @@ error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
 LL |     match uninhab_union() {
    |           ^^^^^^^^^^^^^^^
    |
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/always-inhabited-union-ref.rs:27:11
-   |
-LL |     match uninhab_union() {
-   |           ^^^^^^^^^^^^^^^
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 2 previous errors
 

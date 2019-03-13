@@ -1,13 +1,13 @@
 error[E0261]: use of undeclared lifetime name `'foo`
   --> $DIR/regions-in-enums.rs:13:9
    |
-LL |     X5(&'foo usize) //~ ERROR use of undeclared lifetime name `'foo`
+LL |     X5(&'foo usize)
    |         ^^^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-in-enums.rs:17:9
    |
-LL |     X6(&'a usize) //~ ERROR use of undeclared lifetime name `'a`
+LL |     X6(&'a usize)
    |         ^^ undeclared lifetime
 
 error: aborting due to 2 previous errors

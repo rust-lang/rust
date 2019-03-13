@@ -1,19 +1,19 @@
 error[E0557]: feature has been removed
   --> $DIR/macro-reexport-removed.rs:3:12
    |
-LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
+LL | #![feature(macro_reexport)]
    |            ^^^^^^^^^^^^^^
    |
 note: subsumed by `pub use`
   --> $DIR/macro-reexport-removed.rs:3:12
    |
-LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
+LL | #![feature(macro_reexport)]
    |            ^^^^^^^^^^^^^^
 
 error[E0658]: The attribute `macro_reexport` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/macro-reexport-removed.rs:5:3
    |
-LL | #[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
+LL | #[macro_reexport(macro_one)]
    |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable

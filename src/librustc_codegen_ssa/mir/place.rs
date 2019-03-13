@@ -392,7 +392,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        if let mir::Place::Local(index) = *place {
+        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             match self.locals[index] {
                 LocalRef::Place(place) => {
                     return place;
@@ -407,8 +407,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let result = match *place {
-            mir::Place::Local(_) => bug!(), // handled above
-            mir::Place::Promoted(box (index, ty)) => {
+            mir::Place::Base(mir::PlaceBase::Local(_)) => bug!(), // handled above
+            mir::Place::Base(mir::PlaceBase::Promoted(box (index, ty))) => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
@@ -435,7 +435,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            mir::Place::Static(box mir::Static { def_id, ty }) => {
+            mir::Place::Base(mir::PlaceBase::Static(box mir::Static { def_id, ty })) => {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
@@ -457,7 +457,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         cg_base.project_field(bx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Copy(mir::Place::Local(index));
+                        let index = &mir::Operand::Copy(
+                            mir::Place::Base(mir::PlaceBase::Local(index))
+                        );
                         let index = self.codegen_operand(bx, index);
                         let llindex = index.immediate();
                         cg_base.project_index(bx, llindex)

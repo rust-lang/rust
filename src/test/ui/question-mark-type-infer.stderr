@@ -1,7 +1,7 @@
 error[E0284]: type annotations required: cannot resolve `<_ as std::ops::Try>::Ok == _`
   --> $DIR/question-mark-type-infer.rs:12:5
    |
-LL |     l.iter().map(f).collect()? //~ ERROR type annotations required: cannot resolve
+LL |     l.iter().map(f).collect()?
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

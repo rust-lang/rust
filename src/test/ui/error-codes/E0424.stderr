@@ -1,13 +1,13 @@
 error[E0424]: expected value, found module `self`
   --> $DIR/E0424.rs:7:9
    |
-LL |         self.bar(); //~ ERROR E0424
+LL |         self.bar();
    |         ^^^^ `self` value is a keyword only available in methods with `self` parameter
 
 error[E0424]: expected unit struct/variant or constant, found module `self`
   --> $DIR/E0424.rs:12:9
    |
-LL |     let self = "self"; //~ ERROR E0424
+LL |     let self = "self";
    |         ^^^^ `self` value is a keyword and may not be bound to variables or shadowed
 
 error: aborting due to 2 previous errors

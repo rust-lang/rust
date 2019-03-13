@@ -105,8 +105,8 @@ LL | | /// [error]
    |
    = note: the link appears in this line:
            
-            [error]
-             ^^^^^
+           [error]
+            ^^^^^
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[error1]` cannot be resolved, ignoring it...

@@ -1,7 +1,7 @@
 error: variant `V` is private and cannot be re-exported
   --> $DIR/private-variant-reexport.rs:2:13
    |
-LL |     pub use ::E::V; //~ ERROR variant `V` is private and cannot be re-exported
+LL |     pub use ::E::V;
    |             ^^^^^^
 ...
 LL | enum E { V }
@@ -10,19 +10,19 @@ LL | enum E { V }
 error: variant `V` is private and cannot be re-exported
   --> $DIR/private-variant-reexport.rs:6:19
    |
-LL |     pub use ::E::{V}; //~ ERROR variant `V` is private and cannot be re-exported
+LL |     pub use ::E::{V};
    |                   ^
 
 error: variant `V` is private and cannot be re-exported
   --> $DIR/private-variant-reexport.rs:10:22
    |
-LL |     pub use ::E::V::{self}; //~ ERROR variant `V` is private and cannot be re-exported
+LL |     pub use ::E::V::{self};
    |                      ^^^^
 
 error: enum is private and its variants cannot be re-exported
   --> $DIR/private-variant-reexport.rs:14:13
    |
-LL |     pub use ::E::*; //~ ERROR enum is private and its variants cannot be re-exported
+LL |     pub use ::E::*;
    |             ^^^^^^
 
 error: aborting due to 4 previous errors

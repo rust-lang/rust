@@ -3,7 +3,7 @@ error[E0502]: cannot borrow `*collection` as mutable because `collection` is als
    |
 LL |     let _a = &collection;
    |               ---------- immutable borrow occurs here
-LL |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
+LL |     collection.swap(1, 2);
    |     ^^^^^^^^^^ mutable borrow occurs here
 LL |     _a.use_ref();
 LL | }

@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
    |
 LL |     let r = &x.0;
    |              --- borrow of `x.0` occurs here
-LL |     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
+LL |     let y = x;
    |         ^ move out of `x` occurs here
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
@@ -11,7 +11,7 @@ error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immu
    |
 LL |     let a = &x.0;
    |              --- immutable borrow occurs here
-LL |     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable because it is also borrowed as
+LL |     let b = &mut x.0;
    |                  ^^^ mutable borrow occurs here
 ...
 LL | }
@@ -22,7 +22,7 @@ error[E0499]: cannot borrow `x.0` as mutable more than once at a time
    |
 LL |     let a = &mut x.0;
    |                  --- first mutable borrow occurs here
-LL |     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable more than once at a time
+LL |     let b = &mut x.0;
    |                  ^^^ second mutable borrow occurs here
 ...
 LL | }
@@ -33,7 +33,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
    |
 LL |     let r = &x.0;
    |              --- borrow of `x.0` occurs here
-LL |     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
+LL |     let y = x;
    |         ^ move out of `x` occurs here
 
 error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immutable
@@ -41,7 +41,7 @@ error[E0502]: cannot borrow `x.0` as mutable because it is also borrowed as immu
    |
 LL |     let a = &x.0;
    |              --- immutable borrow occurs here
-LL |     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable because it is also borrowed as
+LL |     let b = &mut x.0;
    |                  ^^^ mutable borrow occurs here
 ...
 LL | }
@@ -52,7 +52,7 @@ error[E0499]: cannot borrow `x.0` as mutable more than once at a time
    |
 LL |     let a = &mut x.0;
    |                  --- first mutable borrow occurs here
-LL |     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable more than once at a time
+LL |     let b = &mut x.0;
    |                  ^^^ second mutable borrow occurs here
 LL |     a.use_mut();
 LL | }

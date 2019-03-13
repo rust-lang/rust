@@ -1,31 +1,31 @@
 error[E0364]: `foo` is private, and cannot be re-exported
   --> $DIR/reexports.rs:6:17
    |
-LL |         pub use super::foo; //~ ERROR cannot be re-exported
+LL |         pub use super::foo;
    |                 ^^^^^^^^^^
    |
 note: consider marking `foo` as `pub` in the imported module
   --> $DIR/reexports.rs:6:17
    |
-LL |         pub use super::foo; //~ ERROR cannot be re-exported
+LL |         pub use super::foo;
    |                 ^^^^^^^^^^
 
 error: A non-empty glob must import something with the glob's visibility
   --> $DIR/reexports.rs:7:17
    |
-LL |         pub use super::*; //~ ERROR must import something with the glob's visibility
+LL |         pub use super::*;
    |                 ^^^^^^^^
 
 error[E0603]: module `foo` is private
   --> $DIR/reexports.rs:28:15
    |
-LL |     use b::a::foo::S; //~ ERROR `foo`
+LL |     use b::a::foo::S;
    |               ^^^
 
 error[E0603]: module `foo` is private
   --> $DIR/reexports.rs:29:15
    |
-LL |     use b::b::foo::S as T; //~ ERROR `foo`
+LL |     use b::b::foo::S as T;
    |               ^^^
 
 error: aborting due to 4 previous errors

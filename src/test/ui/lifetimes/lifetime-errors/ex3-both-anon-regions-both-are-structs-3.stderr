@@ -5,7 +5,7 @@ LL | fn foo(mut x: Ref) {
    |               ---
    |               |
    |               this type is declared with multiple lifetimes...
-LL |     x.a = x.b; //~ ERROR lifetime mismatch
+LL |     x.a = x.b;
    |           ^^^ ...but data with one lifetime flows into the other here
 
 error: aborting due to previous error

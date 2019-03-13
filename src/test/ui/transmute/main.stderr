@@ -1,7 +1,7 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/main.rs:16:5
    |
-LL |     transmute(x) //~ ERROR cannot transmute between types of different sizes
+LL |     transmute(x)
    |     ^^^^^^^^^
    |
    = note: source type: `<C as TypeConstructor<'a>>::T` (size can vary because of <C as TypeConstructor>::T)
@@ -10,7 +10,7 @@ LL |     transmute(x) //~ ERROR cannot transmute between types of different size
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/main.rs:20:17
    |
-LL |     let x: u8 = transmute(10u16); //~ ERROR cannot transmute between types of different sizes
+LL |     let x: u8 = transmute(10u16);
    |                 ^^^^^^^^^
    |
    = note: source type: `u16` (16 bits)
@@ -19,7 +19,7 @@ LL |     let x: u8 = transmute(10u16); //~ ERROR cannot transmute between types 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/main.rs:24:17
    |
-LL |     let x: u8 = transmute("test"); //~ ERROR cannot transmute between types of different sizes
+LL |     let x: u8 = transmute("test");
    |                 ^^^^^^^^^
    |
    = note: source type: `&str` ($STR bits)
@@ -28,7 +28,7 @@ LL |     let x: u8 = transmute("test"); //~ ERROR cannot transmute between types
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/main.rs:29:18
    |
-LL |     let x: Foo = transmute(10); //~ ERROR cannot transmute between types of different sizes
+LL |     let x: Foo = transmute(10);
    |                  ^^^^^^^^^
    |
    = note: source type: `i32` (32 bits)

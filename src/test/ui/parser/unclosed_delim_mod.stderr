@@ -1,0 +1,18 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/unclosed_delim_mod.rs:5:1
+   |
+LL | pub fn new() -> Result<Value, ()> {
+   |                                   - close delimiter possibly meant for this
+LL |     Ok(Value {
+   |       - un-closed delimiter
+LL |     }
+LL | }
+   | ^ incorrect close delimiter
+
+error[E0601]: `main` function not found in crate `unclosed_delim_mod`
+   |
+   = note: consider adding a `main` function to `$DIR/unclosed_delim_mod.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

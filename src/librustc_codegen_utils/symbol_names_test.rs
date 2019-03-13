@@ -6,7 +6,6 @@
 
 use rustc::hir;
 use rustc::ty::TyCtxt;
-use syntax::ast;
 
 use rustc_mir::monomorphize::Instance;
 
@@ -33,9 +32,9 @@ struct SymbolNamesTest<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     fn process_attrs(&mut self,
-                     node_id: ast::NodeId) {
+                     hir_id: hir::HirId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(node_id);
+        let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
@@ -56,14 +55,14 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
 
 impl<'a, 'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.process_attrs(item.id);
+        self.process_attrs(item.hir_id);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        self.process_attrs(trait_item.id);
+        self.process_attrs(trait_item.hir_id);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        self.process_attrs(impl_item.id);
+        self.process_attrs(impl_item.hir_id);
     }
 }

@@ -53,7 +53,7 @@ For example, in the following code:
 ```rust
 /// Does the thing.
 pub fn do_the_thing(_: SomeType) {
-	println!("Let's do the thing!");
+    println!("Let's do the thing!");
 }
 
 /// Token you use to [`do_the_thing`].
@@ -66,15 +66,15 @@ target out also works:
 
 ```rust
 pub mod some_module {
-	/// Token you use to do the thing.
-	pub struct SomeStruct;
+    /// Token you use to do the thing.
+    pub struct SomeStruct;
 }
 
 /// Does the thing. Requires one [`SomeStruct`] for the thing to work.
 ///
 /// [`SomeStruct`]: some_module::SomeStruct
 pub fn do_the_thing(_: some_module::SomeStruct) {
-	println!("Let's do the thing!");
+    println!("Let's do the thing!");
 }
 ```
 
@@ -428,3 +428,30 @@ $ rustdoc src/lib.rs --test -Z unstable-options --persist-doctests target/rustdo
 This flag allows you to keep doctest executables around after they're compiled or run.
 Usually, rustdoc will immediately discard a compiled doctest after it's been tested, but
 with this option, you can keep those binaries around for farther testing.
+
+### `--show-coverage`: calculate the percentage of items with documentation
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --show-coverage
+```
+
+If you want to determine how many items in your crate are documented, pass this flag to rustdoc.
+When it receives this flag, it will count the public items in your crate that have documentation,
+and print out the counts and a percentage instead of generating docs.
+
+Some methodology notes about what rustdoc counts in this metric:
+
+* Rustdoc will only count items from your crate (i.e. items re-exported from other crates don't
+  count).
+* Docs written directly onto inherent impl blocks are not counted, even though their doc comments
+  are displayed, because the common pattern in Rust code is to write all inherent methods into the
+  same impl block.
+* Items in a trait implementation are not counted, as those impls will inherit any docs from the
+  trait itself.
+* By default, only public items are counted. To count private items as well, pass
+  `--document-private-items` at the same time.
+
+Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
+items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.

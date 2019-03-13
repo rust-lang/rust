@@ -1,7 +1,7 @@
 error: lifetime parameter `'a` only used once
   --> $DIR/one-use-in-fn-argument.rs:8:6
    |
-LL | fn a<'a>(x: &'a u32) { //~ ERROR `'a` only used once
+LL | fn a<'a>(x: &'a u32) {
    |      ^^      -- ...is used only here
    |      |
    |      this lifetime...
@@ -13,7 +13,7 @@ LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: elide the single-use lifetime
    |
-LL | fn a(x: &u32) { //~ ERROR `'a` only used once
+LL | fn a(x: &u32) {
    |    --   --
 
 error: aborting due to previous error

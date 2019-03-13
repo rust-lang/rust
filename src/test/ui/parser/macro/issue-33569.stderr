@@ -1,19 +1,19 @@
 error: expected identifier, found `+`
   --> $DIR/issue-33569.rs:2:8
    |
-LL |     { $+ } => { //~ ERROR expected identifier, found `+`
+LL |     { $+ } => {
    |        ^
 
 error: expected `*` or `+`
   --> $DIR/issue-33569.rs:4:13
    |
-LL |         $(x)(y) //~ ERROR expected `*` or `+`
+LL |         $(x)(y)
    |             ^^^
 
 error: missing fragment specifier
   --> $DIR/issue-33569.rs:2:8
    |
-LL |     { $+ } => { //~ ERROR expected identifier, found `+`
+LL |     { $+ } => {
    |        ^
 
 error: aborting due to 3 previous errors

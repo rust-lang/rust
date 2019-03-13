@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $DIR/infinite-recursion-const-fn.rs:3:25
    |
-LL | const fn a() -> usize { b() } //~ ERROR evaluation of constant value failed
+LL | const fn a() -> usize { b() }
    |                         ^^^
    |                         |
    |                         reached the configured maximum number of stack frames

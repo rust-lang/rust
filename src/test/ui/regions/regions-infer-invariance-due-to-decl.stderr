@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/regions-infer-invariance-due-to-decl.rs:12:5
    |
-LL |     b_isize //~ ERROR mismatched types
+LL |     b_isize
    |     ^^^^^^^ lifetime mismatch
    |
    = note: expected type `Invariant<'static>`

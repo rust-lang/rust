@@ -1,7 +1,7 @@
 error: invalid unicode character escape
   --> $DIR/new-unicode-escapes-3.rs:2:14
    |
-LL |     let s1 = "/u{d805}"; //~ ERROR invalid unicode character escape
+LL |     let s1 = "/u{d805}";
    |              ^^^^^^^^^^
    |
    = help: unicode escape must not be a surrogate
@@ -9,7 +9,7 @@ LL |     let s1 = "/u{d805}"; //~ ERROR invalid unicode character escape
 error: invalid unicode character escape
   --> $DIR/new-unicode-escapes-3.rs:3:14
    |
-LL |     let s2 = "/u{ffffff}"; //~ ERROR invalid unicode character escape
+LL |     let s2 = "/u{ffffff}";
    |              ^^^^^^^^^^^^
    |
    = help: unicode escape must be at most 10FFFF

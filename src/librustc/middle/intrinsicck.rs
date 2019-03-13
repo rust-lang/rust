@@ -10,12 +10,6 @@ use syntax_pos::Span;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir;
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id(module));
-    }
-}
-
 fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,

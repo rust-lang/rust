@@ -1,7 +1,7 @@
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:5:13
    |
-LL |           1.fake() //~ ERROR no method
+LL |           1.fake()
    |             ^^^^
 ...
 LL |     fake_method_stmt!();
@@ -10,7 +10,7 @@ LL |     fake_method_stmt!();
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:11:13
    |
-LL |           1.fake //~ ERROR doesn't have fields
+LL |           1.fake
    |             ^^^^
 ...
 LL |     fake_field_stmt!();
@@ -19,7 +19,7 @@ LL |     fake_field_stmt!();
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:17:15
    |
-LL |           (1).0 //~ ERROR doesn't have fields
+LL |           (1).0
    |               ^
 ...
 LL |     fake_anon_field_stmt!();
@@ -28,20 +28,20 @@ LL |     fake_anon_field_stmt!();
 error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:41:15
    |
-LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+LL |           2.0.neg()
    |               ^^^
 ...
 LL |     real_method_stmt!();
    |     -------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg()
    |           ^^^^^^^
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:23:13
    |
-LL |           1.fake() //~ ERROR no method
+LL |           1.fake()
    |             ^^^^
 ...
 LL |     let _ = fake_method_expr!();
@@ -50,7 +50,7 @@ LL |     let _ = fake_method_expr!();
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:29:13
    |
-LL |           1.fake //~ ERROR doesn't have fields
+LL |           1.fake
    |             ^^^^
 ...
 LL |     let _ = fake_field_expr!();
@@ -59,7 +59,7 @@ LL |     let _ = fake_field_expr!();
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:35:15
    |
-LL |           (1).0 //~ ERROR doesn't have fields
+LL |           (1).0
    |               ^
 ...
 LL |     let _ = fake_anon_field_expr!();
@@ -68,14 +68,14 @@ LL |     let _ = fake_anon_field_expr!();
 error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:47:15
    |
-LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+LL |           2.0.neg()
    |               ^^^
 ...
 LL |     let _ = real_method_expr!();
    |             ------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg()
    |           ^^^^^^^
 
 error: aborting due to 8 previous errors

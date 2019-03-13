@@ -1,7 +1,7 @@
 error: `async` is a keyword in the 2018 edition
   --> $DIR/async-ident.rs:7:4
    |
-LL | fn async() {} //~ ERROR async
+LL | fn async() {}
    |    ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
    |
 note: lint level defined here

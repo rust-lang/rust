@@ -1,7 +1,7 @@
 error: expected identifier, found `=`
   --> $DIR/keyword-mut-as-identifier.rs:2:13
    |
-LL |     let mut = "foo"; //~ error: expected identifier, found `=`
+LL |     let mut = "foo";
    |             ^ expected identifier
 
 error: aborting due to previous error

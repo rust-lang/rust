@@ -1,7 +1,7 @@
 error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
   --> $DIR/issue-27060.rs:26:13
    |
-LL |     let _ = &good.data; //~ ERROR borrow of packed field is unsafe
+LL |     let _ = &good.data;
    |             ^^^^^^^^^^
    |
 note: lint level defined here
@@ -16,7 +16,7 @@ LL | #[deny(safe_packed_borrows)]
 error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
   --> $DIR/issue-27060.rs:28:13
    |
-LL |     let _ = &good.data2[0]; //~ ERROR borrow of packed field is unsafe
+LL |     let _ = &good.data2[0];
    |             ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

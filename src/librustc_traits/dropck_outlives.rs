@@ -4,7 +4,7 @@ use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstrai
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::{TraitEngine, Normalized, ObligationCause, TraitEngineExt};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
@@ -291,7 +291,7 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     if def.is_phantom_data() {
         // The first generic parameter here is guaranteed to be a type because it's
         // `PhantomData`.
-        let substs = Substs::identity_for_item(tcx, def_id);
+        let substs = InternalSubsts::identity_for_item(tcx, def_id);
         assert_eq!(substs.len(), 1);
         let result = DtorckConstraint {
             outlives: vec![],

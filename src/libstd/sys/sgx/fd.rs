@@ -1,8 +1,8 @@
 use fortanix_sgx_abi::Fd;
 
-use io;
-use mem;
-use sys::{AsInner, FromInner, IntoInner};
+use crate::io;
+use crate::mem;
+use crate::sys::{AsInner, FromInner, IntoInner};
 use super::abi::usercalls;
 
 #[derive(Debug)]

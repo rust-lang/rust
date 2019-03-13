@@ -7,7 +7,7 @@ LL |     || x;
    |     -- - variable moved due to use in closure
    |     |
    |     value moved into closure here
-LL |     let y = x; //~ ERROR
+LL |     let y = x;
    |             ^ value used here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -19,7 +19,7 @@ LL |     || x;
    |     -- - variable moved due to use in closure
    |     |
    |     value moved into closure here
-LL |     let y = &x; //~ ERROR
+LL |     let y = &x;
    |             ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
@@ -31,7 +31,7 @@ LL |     || x;
    |     -- - variable moved due to use in closure
    |     |
    |     value moved into closure here
-LL |     let y = &mut x; //~ ERROR
+LL |     let y = &mut x;
    |             ^^^^^^ value borrowed here after move
 
 error: aborting due to 3 previous errors

@@ -609,6 +609,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
+        clean::CVarArgs => primitive_link(f, PrimitiveType::CVarArgs, "..."),
         clean::RawPointer(m, ref t) => {
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
@@ -834,18 +835,10 @@ impl fmt::Display for clean::FunctionRetTy {
 
 impl fmt::Display for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.variadic {
-            if f.alternate() {
-                write!(f, "({args:#}, ...){arrow:#}", args = self.inputs, arrow = self.output)
-            } else {
-                write!(f, "({args}, ...){arrow}", args = self.inputs, arrow = self.output)
-            }
+        if f.alternate() {
+            write!(f, "({args:#}){arrow:#}", args = self.inputs, arrow = self.output)
         } else {
-            if f.alternate() {
-                write!(f, "({args:#}){arrow:#}", args = self.inputs, arrow = self.output)
-            } else {
-                write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
-            }
+            write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
         }
     }
 }
@@ -907,12 +900,7 @@ impl<'a> fmt::Display for Function<'a> {
             }
         }
 
-        let mut args_plain = format!("({})", args_plain);
-
-        if decl.variadic {
-            args.push_str(",<br> ...");
-            args_plain.push_str(", ...");
-        }
+        let args_plain = format!("({})", args_plain);
 
         let output = if let hir::IsAsync::Async = asyncness {
             Cow::Owned(decl.sugared_async_return_type())

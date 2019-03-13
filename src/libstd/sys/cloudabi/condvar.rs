@@ -1,10 +1,10 @@
-use cell::UnsafeCell;
-use mem;
-use sync::atomic::{AtomicU32, Ordering};
-use sys::cloudabi::abi;
-use sys::mutex::{self, Mutex};
-use sys::time::checked_dur2intervals;
-use time::Duration;
+use crate::cell::UnsafeCell;
+use crate::mem;
+use crate::sync::atomic::{AtomicU32, Ordering};
+use crate::sys::cloudabi::abi;
+use crate::sys::mutex::{self, Mutex};
+use crate::sys::time::checked_dur2intervals;
+use crate::time::Duration;
 
 extern "C" {
     #[thread_local]

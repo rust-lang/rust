@@ -1,4 +1,4 @@
-error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+error: #[derive] can't be used on a #[repr(packed)] struct with type or const parameters (error E0133)
   --> $DIR/deriving-with-repr-packed.rs:8:16
    |
 LL | #[derive(Copy, Clone, PartialEq, Eq)]
@@ -12,7 +12,7 @@ LL | #![deny(safe_packed_borrows)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
 
-error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+error: #[derive] can't be used on a #[repr(packed)] struct with type or const parameters (error E0133)
   --> $DIR/deriving-with-repr-packed.rs:8:23
    |
 LL | #[derive(Copy, Clone, PartialEq, Eq)]

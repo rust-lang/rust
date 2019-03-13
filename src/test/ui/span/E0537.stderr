@@ -1,7 +1,7 @@
 error[E0537]: invalid predicate `unknown`
   --> $DIR/E0537.rs:1:7
    |
-LL | #[cfg(unknown())] //~ ERROR E0537
+LL | #[cfg(unknown())]
    |       ^^^^^^^^^
 
 error: aborting due to previous error

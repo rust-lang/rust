@@ -1,19 +1,19 @@
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:7:13
    |
-LL |             *n += 1; //~ ERROR cannot assign to immutable
+LL |             *n += 1;
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:15:13
    |
-LL |             *n += 1; //~ ERROR cannot assign to immutable
+LL |             *n += 1;
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:23:13
    |
-LL |             *n += 1; //~ ERROR cannot assign to immutable
+LL |             *n += 1;
    |             ^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors

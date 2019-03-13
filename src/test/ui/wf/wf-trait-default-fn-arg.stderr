@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
   --> $DIR/wf-trait-default-fn-arg.rs:11:5
    |
 LL | /     fn bar(&self, x: &Bar<Self>) {
-LL | |         //~^ ERROR E0277
+LL | |
 LL | |         //
 LL | |         // Here, Eq ought to be implemented.
 LL | |     }

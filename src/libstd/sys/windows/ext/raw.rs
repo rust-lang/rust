@@ -2,7 +2,7 @@
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
-use os::raw::c_void;
+use crate::os::raw::c_void;
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type HANDLE = *mut c_void;
 #[cfg(target_pointer_width = "32")]

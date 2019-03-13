@@ -1,7 +1,7 @@
 error[E0723]: function pointers in const fn are unstable (see issue #57563)
   --> $DIR/cmp_fn_pointers.rs:1:14
    |
-LL | const fn cmp(x: fn(), y: fn()) -> bool { //~ ERROR function pointers in const fn are unstable
+LL | const fn cmp(x: fn(), y: fn()) -> bool {
    |              ^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable

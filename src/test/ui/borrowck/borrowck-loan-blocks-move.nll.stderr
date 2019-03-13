@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `v` because it is borrowed
    |
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
-LL |     take(v); //~ ERROR cannot move out of `v` because it is borrowed
+LL |     take(v);
    |          ^ move out of `v` occurs here
 LL |     w.use_ref();
    |     - borrow later used here

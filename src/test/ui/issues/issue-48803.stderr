@@ -6,7 +6,7 @@ LL |     let y = &x;
 ...
 LL |     x = "modified";
    |     ^^^^^^^^^^^^^^ assignment to borrowed `x` occurs here
-LL |     //~^ ERROR cannot assign to `x` because it is borrowed [E0506]
+LL |
 LL |     println!("{}", w); // prints "modified"
    |                    - borrow later used here
 

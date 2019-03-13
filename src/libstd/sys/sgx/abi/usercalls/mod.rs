@@ -1,5 +1,5 @@
-use io::{Error as IoError, Result as IoResult};
-use time::Duration;
+use crate::io::{Error as IoError, Result as IoResult};
+use crate::time::Duration;
 
 pub(crate) mod alloc;
 #[macro_use]
@@ -22,7 +22,7 @@ pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
     unsafe {
-        let userbuf = ByteBuffer { data: ::ptr::null_mut(), len: 0 };
+        let userbuf = ByteBuffer { data: crate::ptr::null_mut(), len: 0 };
         let mut userbuf = alloc::User::new_from_enclave(&userbuf);
         raw::read_alloc(fd, userbuf.as_raw_mut_ptr()).from_sgx_result()?;
         Ok(userbuf.copy_user_buffer())

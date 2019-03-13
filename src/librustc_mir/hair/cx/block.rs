@@ -30,7 +30,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
                 hir::BlockCheckMode::DefaultBlock =>
                     BlockSafety::Safe,
                 hir::BlockCheckMode::UnsafeBlock(..) =>
-                    BlockSafety::ExplicitUnsafe(self.id),
+                    BlockSafety::ExplicitUnsafe(self.hir_id),
                 hir::BlockCheckMode::PushUnsafeBlock(..) =>
                     BlockSafety::PushUnsafe,
                 hir::BlockCheckMode::PopUnsafeBlock(..) =>
@@ -103,7 +103,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         },
                         pattern,
                         initializer: local.init.to_ref(),
-                        lint_level: cx.lint_level_of(local.id),
+                        lint_level: cx.lint_level_of(local.hir_id),
                     },
                     opt_destruction_scope: opt_dxn_ext,
                     span: stmt_span,

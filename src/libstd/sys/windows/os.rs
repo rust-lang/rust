@@ -2,18 +2,18 @@
 
 #![allow(nonstandard_style)]
 
-use os::windows::prelude::*;
+use crate::os::windows::prelude::*;
 
-use error::Error as StdError;
-use ffi::{OsString, OsStr};
-use fmt;
-use io;
-use os::windows::ffi::EncodeWide;
-use path::{self, PathBuf};
-use ptr;
-use slice;
-use sys::{c, cvt};
-use sys::handle::Handle;
+use crate::error::Error as StdError;
+use crate::ffi::{OsString, OsStr};
+use crate::fmt;
+use crate::io;
+use crate::os::windows::ffi::EncodeWide;
+use crate::path::{self, PathBuf};
+use crate::ptr;
+use crate::slice;
+use crate::sys::{c, cvt};
+use crate::sys::handle::Handle;
 
 use super::to_u16s;
 
@@ -285,8 +285,8 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    ::env::var_os("HOME").or_else(|| {
-        ::env::var_os("USERPROFILE")
+    crate::env::var_os("HOME").or_else(|| {
+        crate::env::var_os("USERPROFILE")
     }).map(PathBuf::from).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
@@ -314,8 +314,8 @@ pub fn getpid() -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use io::Error;
-    use sys::c;
+    use crate::io::Error;
+    use crate::sys::c;
 
     // tests `error_string` above
     #[test]

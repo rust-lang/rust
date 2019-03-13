@@ -3,7 +3,7 @@ warning: label name `'fl` shadows a label name that is already in scope
    |
 LL |     'fl: for _ in 0..10 { break; }
    |     --- first declared here
-LL |     'fl: loop { break; }           //~ WARN label name `'fl` shadows a label name that is already in scope
+LL |     'fl: loop { break; }
    |     ^^^ lifetime 'fl already in scope
 
 warning: label name `'lf` shadows a label name that is already in scope
@@ -11,7 +11,7 @@ warning: label name `'lf` shadows a label name that is already in scope
    |
 LL |     'lf: loop { break; }
    |     --- first declared here
-LL |     'lf: for _ in 0..10 { break; } //~ WARN label name `'lf` shadows a label name that is already in scope
+LL |     'lf: for _ in 0..10 { break; }
    |     ^^^ lifetime 'lf already in scope
 
 warning: label name `'wl` shadows a label name that is already in scope
@@ -19,7 +19,7 @@ warning: label name `'wl` shadows a label name that is already in scope
    |
 LL |     'wl: while 2 > 1 { break; }
    |     --- first declared here
-LL |     'wl: loop { break; }           //~ WARN label name `'wl` shadows a label name that is already in scope
+LL |     'wl: loop { break; }
    |     ^^^ lifetime 'wl already in scope
 
 warning: label name `'lw` shadows a label name that is already in scope
@@ -27,7 +27,7 @@ warning: label name `'lw` shadows a label name that is already in scope
    |
 LL |     'lw: loop { break; }
    |     --- first declared here
-LL |     'lw: while 2 > 1 { break; }    //~ WARN label name `'lw` shadows a label name that is already in scope
+LL |     'lw: while 2 > 1 { break; }
    |     ^^^ lifetime 'lw already in scope
 
 warning: label name `'fw` shadows a label name that is already in scope
@@ -35,7 +35,7 @@ warning: label name `'fw` shadows a label name that is already in scope
    |
 LL |     'fw: for _ in 0..10 { break; }
    |     --- first declared here
-LL |     'fw: while 2 > 1 { break; }    //~ WARN label name `'fw` shadows a label name that is already in scope
+LL |     'fw: while 2 > 1 { break; }
    |     ^^^ lifetime 'fw already in scope
 
 warning: label name `'wf` shadows a label name that is already in scope
@@ -43,7 +43,7 @@ warning: label name `'wf` shadows a label name that is already in scope
    |
 LL |     'wf: while 2 > 1 { break; }
    |     --- first declared here
-LL |     'wf: for _ in 0..10 { break; } //~ WARN label name `'wf` shadows a label name that is already in scope
+LL |     'wf: for _ in 0..10 { break; }
    |     ^^^ lifetime 'wf already in scope
 
 warning: label name `'tl` shadows a label name that is already in scope
@@ -51,7 +51,7 @@ warning: label name `'tl` shadows a label name that is already in scope
    |
 LL |     'tl: while let Some(_) = None::<i32> { break; }
    |     --- first declared here
-LL |     'tl: loop { break; }           //~ WARN label name `'tl` shadows a label name that is already in scope
+LL |     'tl: loop { break; }
    |     ^^^ lifetime 'tl already in scope
 
 warning: label name `'lt` shadows a label name that is already in scope

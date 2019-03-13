@@ -1,7 +1,7 @@
 error: expected expression, found keyword `mut`
   --> $DIR/removed-syntax-uniq-mut-expr.rs:2:21
    |
-LL |     let a_box = box mut 42; //~ ERROR expected expression, found keyword `mut`
+LL |     let a_box = box mut 42;
    |                     ^^^ expected expression
 
 error: aborting due to previous error

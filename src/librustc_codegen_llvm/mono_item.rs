@@ -36,10 +36,10 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn predefine_fn(&self,
-                              instance: Instance<'tcx>,
-                              linkage: Linkage,
-                              visibility: Visibility,
-                              symbol_name: &str) {
+                    instance: Instance<'tcx>,
+                    linkage: Linkage,
+                    visibility: Visibility,
+                    symbol_name: &str) {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 

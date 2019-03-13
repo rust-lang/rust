@@ -1,7 +1,7 @@
 error[E0723]: mutable references in const fn are unstable (see issue #57563)
   --> $DIR/ranged_ints2_const.rs:11:9
    |
-LL |     let y = &mut x.0; //~ ERROR references in const fn are unstable
+LL |     let y = &mut x.0;
    |         ^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL |     let y = &mut x.0; //~ ERROR references in const fn are unstable
 error[E0723]: mutable references in const fn are unstable (see issue #57563)
   --> $DIR/ranged_ints2_const.rs:18:9
    |
-LL |     let y = unsafe { &mut x.0 }; //~ ERROR mutable references in const fn are unstable
+LL |     let y = unsafe { &mut x.0 };
    |         ^
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
@@ -17,7 +17,7 @@ LL |     let y = unsafe { &mut x.0 }; //~ ERROR mutable references in const fn a
 error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
   --> $DIR/ranged_ints2_const.rs:11:13
    |
-LL |     let y = &mut x.0; //~ ERROR references in const fn are unstable
+LL |     let y = &mut x.0;
    |             ^^^^^^^^ mutation of layout constrained field
    |
    = note: mutating layout constrained fields cannot statically be checked for valid values

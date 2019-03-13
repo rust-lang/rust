@@ -7,7 +7,7 @@ LL |     match Some(42) {
 LL |         Some(_) if { drop(my_str); false } => {}
    |                           ------ value moved here
 LL |         Some(_) => {}
-LL |         None => { foo(my_str); } //~ ERROR [E0382]
+LL |         None => { foo(my_str); }
    |                       ^^^^^^ value used here after move
 
 error: aborting due to previous error

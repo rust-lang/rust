@@ -1,19 +1,19 @@
 error[E0381]: use of possibly uninitialized variable: `x.0`
   --> $DIR/assign_mutable_fields.rs:11:10
    |
-LL |     drop(x.0); //~ ERROR
+LL |     drop(x.0);
    |          ^^^ use of possibly uninitialized `x.0`
 
 error[E0381]: use of possibly uninitialized variable: `x.1`
   --> $DIR/assign_mutable_fields.rs:12:10
    |
-LL |     drop(x.1); //~ ERROR
+LL |     drop(x.1);
    |          ^^^ use of possibly uninitialized `x.1`
 
 error[E0381]: use of possibly uninitialized variable: `x`
   --> $DIR/assign_mutable_fields.rs:19:10
    |
-LL |     drop(x); //~ ERROR
+LL |     drop(x);
    |          ^ use of possibly uninitialized `x`
 
 error: aborting due to 3 previous errors

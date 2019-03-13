@@ -1,7 +1,7 @@
 error[E0369]: binary operation `==` cannot be applied to type `NoCloneOrEq`
   --> $DIR/deriving-no-inner-impl-error-message.rs:5:5
    |
-LL |     x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
@@ -9,7 +9,7 @@ LL |     x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to typ
 error[E0369]: binary operation `!=` cannot be applied to type `NoCloneOrEq`
   --> $DIR/deriving-no-inner-impl-error-message.rs:5:5
    |
-LL |     x: NoCloneOrEq //~ ERROR binary operation `==` cannot be applied to type `NoCloneOrEq`
+LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`

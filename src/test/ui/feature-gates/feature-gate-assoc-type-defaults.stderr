@@ -1,7 +1,7 @@
 error[E0658]: associated type defaults are unstable (see issue #29661)
   --> $DIR/feature-gate-assoc-type-defaults.rs:4:5
    |
-LL |     type Bar = u8; //~ ERROR associated type defaults are unstable
+LL |     type Bar = u8;
    |     ^^^^^^^^^^^^^^
    |
    = help: add #![feature(associated_type_defaults)] to the crate attributes to enable

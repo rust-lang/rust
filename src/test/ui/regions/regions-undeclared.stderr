@@ -1,31 +1,31 @@
 error[E0261]: use of undeclared lifetime name `'blk`
   --> $DIR/regions-undeclared.rs:1:14
    |
-LL | static c_x: &'blk isize = &22; //~ ERROR use of undeclared lifetime name `'blk`
+LL | static c_x: &'blk isize = &22;
    |              ^^^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:4:10
    |
-LL |     Foo(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
+LL |     Foo(&'a isize),
    |          ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:5:10
    |
-LL |     Bar(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
+LL |     Bar(&'a isize),
    |          ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:8:15
    |
-LL | fn fnDecl(x: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
+LL | fn fnDecl(x: &'a isize,
    |               ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:9:15
    |
-LL |           y: &'a isize) //~ ERROR use of undeclared lifetime name `'a`
+LL |           y: &'a isize)
    |               ^^ undeclared lifetime
 
 error: aborting due to 5 previous errors
