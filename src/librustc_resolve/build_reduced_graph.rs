@@ -635,10 +635,9 @@ impl<'a> Resolver<'a> {
         // but metadata cannot encode gensyms currently, so we create it here.
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
-        let def_id = def.def_id();
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
-            Def::Mod(..) | Def::Enum(..) => {
+            Def::Mod(def_id) | Def::Enum(def_id) => {
                 let module = self.new_module(parent,
                                              ModuleKind::Def(def, ident.name),
                                              def_id,
@@ -646,13 +645,14 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(..) | Def::TyAlias(..) | Def::ForeignTy(..) => {
+            Def::Variant(..) | Def::TyAlias(..) | Def::ForeignTy(..) | Def::Existential(..) |
+            Def::TraitAlias(..) | Def::PrimTy(..) | Def::ToolMod => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::StructCtor(..) => {
+            Def::StructCtor(def_id, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =
@@ -661,7 +661,7 @@ impl<'a> Resolver<'a> {
                     self.struct_constructors.insert(struct_def_id, (def, vis));
                 }
             }
-            Def::Trait(..) => {
+            Def::Trait(def_id) => {
                 let module_kind = ModuleKind::Def(def, ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
@@ -682,18 +682,14 @@ impl<'a> Resolver<'a> {
                 }
                 module.populated.set(true);
             }
-            Def::Existential(..) |
-            Def::TraitAlias(..) => {
-                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
-            }
-            Def::Struct(..) | Def::Union(..) => {
+            Def::Struct(def_id) | Def::Union(def_id) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
 
                 // Record field names for error reporting.
                 let field_names = self.cstore.struct_field_names_untracked(def_id);
                 self.insert_field_names(def_id, field_names);
             }
-            Def::Macro(..) => {
+            Def::Macro(..) | Def::NonMacroAttr(..) => {
                 self.define(parent, ident, MacroNS, (def, vis, DUMMY_SP, expansion));
             }
             _ => bug!("unexpected definition: {:?}", def)
