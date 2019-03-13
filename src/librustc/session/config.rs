@@ -1440,6 +1440,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking
          the same values as the target option of the same name"),
+    allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
+        "only allow the listed language features to be enabled in code (space separated)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -3285,6 +3287,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.merge_functions = Some(MergeFunctions::Disabled);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.allow_features = Some(vec![String::from("lang_items")]);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 
