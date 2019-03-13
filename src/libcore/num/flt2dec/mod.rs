@@ -315,15 +315,15 @@ fn digits_to_dec_str<'a>(buf: &'a [u8], exp: i16, frac_digits: usize,
     }
 }
 
-/// Formats given decimal digits `0.<...buf...> * 10^exp` into the exponential form
-/// with at least given number of significant digits. When `upper` is true,
+/// Formats the given decimal digits `0.<...buf...> * 10^exp` into the exponential
+/// form with at least the given number of significant digits. When `upper` is `true`,
 /// the exponent will be prefixed by `E`; otherwise that's `e`. The result is
 /// stored to the supplied parts array and a slice of written parts is returned.
 ///
 /// `min_digits` can be less than the number of actual significant digits in `buf`;
 /// it will be ignored and full digits will be printed. It is only used to print
-/// additional zeroes after rendered digits. Thus `min_digits` of 0 means that
-/// it will only print given digits and nothing else.
+/// additional zeroes after rendered digits. Thus, `min_digits == 0` means that
+/// it will only print the given digits and nothing else.
 fn digits_to_exp_str<'a>(buf: &'a [u8], exp: i16, min_ndigits: usize, upper: bool,
                          parts: &'a mut [Part<'a>]) -> &'a [Part<'a>] {
     assert!(!buf.is_empty());
@@ -384,7 +384,7 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
     }
 }
 
-/// Formats given floating point number into the decimal form with at least
+/// Formats the given floating point number into the decimal form with at least
 /// given number of fractional digits. The result is stored to the supplied parts
 /// array while utilizing given byte buffer as a scratch. `upper` is currently
 /// unused but left for the future decision to change the case of non-finite values,
@@ -438,7 +438,7 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
     }
 }
 
-/// Formats given floating point number into the decimal form or
+/// Formats the given floating point number into the decimal form or
 /// the exponential form, depending on the resulting exponent. The result is
 /// stored to the supplied parts array while utilizing given byte buffer
 /// as a scratch. `upper` is used to determine the case of non-finite values
@@ -497,7 +497,7 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
     }
 }
 
-/// Returns rather crude approximation (upper bound) for the maximum buffer size
+/// Returns a rather crude approximation (upper bound) for the maximum buffer size
 /// calculated from the given decoded exponent.
 ///
 /// The exact limit is:
