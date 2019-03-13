@@ -27,7 +27,7 @@ note: lint level defined here
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
    = note: #[deny(intra_doc_link_resolution_failure)] implied by #[deny(rustdoc)]
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 error: Missing code example in this documentation
   --> $DIR/lint-group.rs:16:1

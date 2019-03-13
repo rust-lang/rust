@@ -10,7 +10,7 @@ use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
 use crate::header::TestProps;
 use crate::json;
-use regex::Regex;
+use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use crate::util::{logv, PathBufExt};
 
@@ -3147,10 +3147,8 @@ impl<'test> TestCx<'test> {
         normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+").unwrap()
             .replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
 
-        normalized = normalized.replace("\\\\", "\\") // denormalize for paths on windows
-              .replace("\\", "/") // normalize for paths on windows
-              .replace("\r\n", "\n") // normalize for linebreaks on windows
-              .replace("\t", "\\t"); // makes tabs visible
+        normalized = Self::normalize_platform_differences(&normalized);
+        normalized = normalized.replace("\t", "\\t"); // makes tabs visible
 
         // Remove test annotations like `//~ ERROR text` from the output,
         // since they duplicate actual errors and make the output hard to read.
@@ -3162,6 +3160,36 @@ impl<'test> TestCx<'test> {
             normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();
         }
         normalized
+    }
+
+    /// Normalize output differences across platforms. Generally changes Windows output to be more
+    /// Unix-like.
+    ///
+    /// Replaces backslashes in paths with forward slashes, and replaces CRLF line endings
+    /// with LF.
+    fn normalize_platform_differences(output: &str) -> String {
+        lazy_static! {
+            /// Used to find Windows paths.
+            ///
+            /// It's not possible to detect paths in the error messages generally, but this is a
+            /// decent enough heuristic.
+            static ref PATH_BACKSLASH_RE: Regex = Regex::new(r#"(?x)
+                (?:
+                  # Match paths that don't include spaces.
+                  (?:\\[\pL\pN\.\-_']+)+\.\pL+
+                |
+                  # If the path starts with a well-known root, then allow spaces.
+                  \$(?:DIR|SRC_DIR|TEST_BUILD_DIR|BUILD_DIR|LIB_DIR)(?:\\[\pL\pN\.\-_' ]+)+
+                )"#
+            ).unwrap();
+        }
+
+        let output = output.replace(r"\\", r"\");
+
+        PATH_BACKSLASH_RE.replace_all(&output, |caps: &Captures<'_>| {
+            println!("{}", &caps[0]);
+            caps[0].replace(r"\", "/")
+        }).replace("\r\n", "\n")
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {
@@ -3494,4 +3522,69 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
         stdout: stdout.into_bytes(),
         stderr: stderr.into_bytes(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TestCx;
+
+    #[test]
+    fn normalize_platform_differences() {
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\foo.rs"),
+            "$DIR/foo.rs"
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$BUILD_DIR\..\parser.rs"),
+            "$BUILD_DIR/../parser.rs"
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\bar.rs hello\nworld"),
+            r"$DIR/bar.rs hello\nworld"
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"either bar\baz.rs or bar\baz\mod.rs"),
+            r"either bar/baz.rs or bar/baz/mod.rs",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"`.\some\path.rs`"),
+            r"`./some/path.rs`",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"`some\path.rs`"),
+            r"`some/path.rs`",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\path-with-dashes.rs"),
+            r"$DIR/path-with-dashes.rs"
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\path_with_underscores.rs"),
+            r"$DIR/path_with_underscores.rs",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\foo.rs:12:11"), "$DIR/foo.rs:12:11",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\path with spaces 'n' quotes"),
+            "$DIR/path with spaces 'n' quotes",
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r"$DIR\file_with\no_extension"),
+            "$DIR/file_with/no_extension",
+        );
+
+        assert_eq!(TestCx::normalize_platform_differences(r"\n"), r"\n");
+        assert_eq!(TestCx::normalize_platform_differences(r"{ \n"), r"{ \n");
+        assert_eq!(TestCx::normalize_platform_differences(r"`\]`"), r"`\]`");
+        assert_eq!(TestCx::normalize_platform_differences(r#""\{""#), r#""\{""#);
+        assert_eq!(
+            TestCx::normalize_platform_differences(r#"write!(&mut v, "Hello\n")"#),
+            r#"write!(&mut v, "Hello\n")"#
+        );
+        assert_eq!(
+            TestCx::normalize_platform_differences(r#"println!("test\ntest")"#),
+            r#"println!("test\ntest")"#,
+        );
+    }
 }

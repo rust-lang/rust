@@ -50,10 +50,10 @@ LL |     let _ = format!("}");
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: invalid format string: expected `'}'`, found `'/'`
+error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error.rs:17:23
    |
-LL |     let _ = format!("{/}");
+LL |     let _ = format!("{\}");
    |                      -^ expected `}` in format string
    |                      |
    |                      because of this opening brace
@@ -63,7 +63,7 @@ LL |     let _ = format!("{/}");
 error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/format-string-error.rs:19:35
    |
-LL |     let _ = format!("/n/n/n{/n/n/n");
+LL |     let _ = format!("\n\n\n{\n\n\n");
    |                            -      ^ expected `'}'` in format string
    |                            |
    |                            because of this opening brace
