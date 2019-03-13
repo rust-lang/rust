@@ -297,6 +297,16 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         let ty = self.resolve(&ty, &hir_ty.span);
         self.write_ty_to_tables(hir_ty.hir_id, ty);
     }
+
+    fn visit_argument_source(&mut self, s: &'gcx hir::ArgSource) {
+        match s {
+            // Don't visit the pattern in `ArgSource::AsyncFn`, it contains a pattern which has
+            // a `NodeId` w/out a type, as it is only used for getting the name of the original
+            // pattern for diagnostics where only an `hir::Arg` is present.
+            hir::ArgSource::AsyncFn(..) => {},
+            _ => intravisit::walk_argument_source(self, s),
+        }
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {

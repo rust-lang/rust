@@ -235,6 +235,10 @@ pub trait MutVisitor: Sized {
         noop_visit_arg(a, self);
     }
 
+    fn visit_arg_source(&mut self, a: &mut ArgSource) {
+        noop_visit_arg_source(a, self);
+    }
+
     fn visit_generics(&mut self, generics: &mut Generics) {
         noop_visit_generics(generics, self);
     }
@@ -564,10 +568,18 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty }: &mut Arg, vis: &mut T) {
+pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty, source }: &mut Arg, vis: &mut T) {
     vis.visit_id(id);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
+    vis.visit_arg_source(source);
+}
+
+pub fn noop_visit_arg_source<T: MutVisitor>(source: &mut ArgSource, vis: &mut T) {
+    match source {
+        ArgSource::Normal => {},
+        ArgSource::AsyncFn(pat) => vis.visit_pat(pat),
+    }
 }
 
 pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {

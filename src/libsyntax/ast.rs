@@ -1736,6 +1736,16 @@ pub struct Arg {
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
+    pub source: ArgSource,
+}
+
+/// The source of an argument in a function header.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum ArgSource {
+    /// Argument as written by the user.
+    Normal,
+    /// Argument from `async fn` lowering, contains the original binding pattern.
+    AsyncFn(P<Pat>),
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -1795,6 +1805,7 @@ impl Arg {
             }),
             ty,
             id: DUMMY_NODE_ID,
+            source: ArgSource::Normal,
         };
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),

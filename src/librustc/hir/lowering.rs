@@ -465,6 +465,7 @@ impl<'a> LoweringContext<'a> {
                     // Don't visit the original pattern for async functions as it will be
                     // replaced.
                     for arg in &fd.inputs {
+                        if let ArgSource::AsyncFn(pat) = &arg.source { self.visit_pat(pat); }
                         self.visit_ty(&arg.ty)
                     }
                     self.visit_fn_ret_ty(&fd.output);
@@ -2271,6 +2272,14 @@ impl<'a> LoweringContext<'a> {
         hir::Arg {
             hir_id,
             pat: self.lower_pat(&arg.pat),
+            source: self.lower_arg_source(&arg.source),
+        }
+    }
+
+    fn lower_arg_source(&mut self, source: &ArgSource) -> hir::ArgSource {
+        match source {
+            ArgSource::Normal => hir::ArgSource::Normal,
+            ArgSource::AsyncFn(pat) => hir::ArgSource::AsyncFn(self.lower_pat(pat)),
         }
     }
 
