@@ -1,6 +1,6 @@
 use crate::utils::{
-    has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_node,
-    span_lint_node_and_then, walk_ptrs_ty_depth,
+    has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
+    walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -199,7 +199,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             span.lo() + BytePos(u32::try_from(dot).unwrap())
                         );
 
-                        span_lint_node_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
+                        span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
                             db.span_suggestion(
                                 sugg_span,
                                 "remove this",
@@ -212,7 +212,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             );
                         });
                     } else {
-                        span_lint_node(cx, REDUNDANT_CLONE, node, span, "redundant clone");
+                        span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
                     }
                 }
             }

@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_node_and_then};
+use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_hir_and_then};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                     }
 
                                     if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
-                                        span_lint_node_and_then(
+                                        span_lint_hir_and_then(
                                             cx,
                                             NEW_WITHOUT_DEFAULT,
                                             id,
@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                 );
                                             });
                                     } else {
-                                        span_lint_node_and_then(
+                                        span_lint_hir_and_then(
                                             cx,
                                             NEW_WITHOUT_DEFAULT,
                                             id,
