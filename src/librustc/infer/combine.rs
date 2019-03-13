@@ -28,7 +28,7 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::const_variable::ConstVariableValue;
+use super::unify_key::{ConstVarValue, ConstVariableValue, ConstVariableOrigin};
 
 use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
@@ -40,7 +40,7 @@ use crate::ty::subst::SubstsRef;
 use crate::traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
@@ -166,7 +166,10 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     ) -> RelateResult<'tcx, &'tcx LazyConst<'tcx>> {
         self.const_unification_table
             .borrow_mut()
-            .unify_var_value(vid, ConstVariableValue::Known { value })
+            .unify_var_value(vid, ConstVarValue {
+                origin: ConstVariableOrigin::ConstInference(DUMMY_SP),
+                val: ConstVariableValue::Known { value },
+            })
             .map_err(|e| const_unification_error(vid_is_expected, e))?;
         Ok(value)
     }
@@ -590,7 +593,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 ..
             }) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
-                match variable_table.probe(*vid).known() {
+                match variable_table.probe_value(*vid).val.known() {
                     Some(u) => {
                         self.relate(&u, &u)
                     }

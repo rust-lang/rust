@@ -4,11 +4,10 @@
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 
-use crate::infer::{CombinedSnapshot, ConstVariableOrigin};
+use crate::infer::CombinedSnapshot;
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 use crate::ty::{self, Binder, TypeFoldable};
-
-use syntax_pos::DUMMY_SP;
+use crate::mir::interpret::ConstValue;
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     pub fn higher_ranked_sub<T>(
@@ -101,13 +100,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }))
         };
 
-        let fld_c = |_: ty::BoundVar, ty| {
-            self.next_const_var_in_universe(
-                ty,
-                // FIXME(const_generics): do we want a placeholder const?
-                ConstVariableOrigin::MiscVariable(DUMMY_SP),
-                next_universe,
-            )
+        let fld_c = |bound_var: ty::BoundVar, ty| {
+            self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const {
+                    val: ConstValue::Placeholder(ty::PlaceholderConst {
+                        universe: next_universe,
+                        name: bound_var,
+                    }),
+                    ty,
+                }
+            ))
         };
 
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);

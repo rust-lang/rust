@@ -232,7 +232,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 ConstValue::Infer(ty::InferConst::Var(v)) => {
                     let opt_ct = self.infcx.const_unification_table
                         .borrow_mut()
-                        .probe(*v)
+                        .probe_value(*v)
+                        .val
                         .known();
                     return self.freshen_const(
                         opt_ct,

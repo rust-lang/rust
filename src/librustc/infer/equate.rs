@@ -8,6 +8,7 @@ use crate::ty::TyVar;
 use crate::ty::subst::SubstsRef;
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::mir::interpret::ConstValue;
+use crate::infer::unify_key::replace_if_possible;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
@@ -110,8 +111,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
-        let a = infcx.const_unification_table.borrow_mut().replace_if_possible(a);
-        let b = infcx.const_unification_table.borrow_mut().replace_if_possible(b);
+        let a = replace_if_possible(infcx.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(infcx.const_unification_table.borrow_mut(), b);
         let a_is_expected = self.a_is_expected();
         if let (&ty::LazyConst::Evaluated(a_eval), &ty::LazyConst::Evaluated(b_eval)) = (a, b) {
             match (a_eval.val, b_eval.val) {

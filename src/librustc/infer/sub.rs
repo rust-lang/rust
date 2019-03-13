@@ -6,6 +6,7 @@ use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::ty::TyVar;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use crate::infer::unify_key::replace_if_possible;
 use crate::mir::interpret::ConstValue;
 use std::mem;
 
@@ -143,8 +144,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
-        let a = infcx.const_unification_table.borrow_mut().replace_if_possible(a);
-        let b = infcx.const_unification_table.borrow_mut().replace_if_possible(b);
+        let a = replace_if_possible(infcx.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(infcx.const_unification_table.borrow_mut(), b);
 
         // Consts can only be equal or unequal to each other: there's no subtyping
         // relation, so we're just going to perform equating here instead.

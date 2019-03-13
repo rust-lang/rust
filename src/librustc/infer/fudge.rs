@@ -181,26 +181,16 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
             val: ConstValue::Infer(ty::InferConst::Var(vid)),
             ty,
         }) = *ct {
-            match self.const_variables.get(&vid) {
-                None => {
-                    // This variable was created before the
-                    // "fudging".  Since we refresh all
-                    // variables to their binding anyhow, we know
-                    // that it is unbound, so we can just return
-                    // it.
-                    debug_assert!(
-                        self.infcx.const_unification_table.borrow_mut()
-                        .probe(vid)
-                        .is_unknown()
-                    );
-                    ct
-                }
-                Some(&origin) => {
-                    // This variable was created during the
-                    // fudging. Recreate it with a fresh variable
-                    // here.
-                    self.infcx.next_const_var(ty, origin)
-                }
+            if self.const_variables.contains(&vid) {
+                // This variable was created during the
+                // fudging. Recreate it with a fresh variable
+                // here.
+                let origin = self.infcx.const_unification_table.borrow_mut()
+                    .probe_value(vid)
+                    .origin;
+                self.infcx.next_const_var(ty, origin)
+            } else {
+                ct
             }
         } else {
             ct.super_fold_with(self)

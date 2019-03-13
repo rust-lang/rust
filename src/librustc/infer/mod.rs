@@ -10,6 +10,7 @@ pub use crate::ty::IntVarValue;
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
+use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use crate::middle::free_region::RegionRelations;
 use crate::middle::lang_items;
 use crate::middle::region;
@@ -35,13 +36,12 @@ use syntax_pos::symbol::InternedString;
 use syntax_pos::Span;
 
 use self::combine::CombineFields;
-use self::const_variable::ConstVariableOrigin;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
-use self::unify_key::ToType;
+use self::unify_key::{ToType, ConstVariableOrigin};
 
 pub mod at;
 pub mod canonical;
@@ -62,7 +62,6 @@ pub mod region_constraints;
 pub mod resolve;
 mod sub;
 pub mod type_variable;
-pub mod const_variable;
 pub mod unify_key;
 
 #[must_use]
@@ -126,7 +125,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     /// Map from const parameter variable to the kind of const it represents.
-    const_unification_table: RefCell<const_variable::ConstVariableTable<'tcx>>,
+    const_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::ConstVid<'tcx>>>>,
 
     /// Map from integral variable to the kind of integer it represents.
     int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
@@ -532,7 +531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
                 in_progress_tables,
                 projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-                const_unification_table: RefCell::new(const_variable::ConstVariableTable::new()),
+                const_unification_table: RefCell::new(ut::UnificationTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
                 float_unification_table: RefCell::new(ut::UnificationTable::new()),
                 region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
@@ -598,7 +597,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 pub struct CombinedSnapshot<'a, 'tcx: 'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
-    const_snapshot: const_variable::Snapshot<'tcx>,
+    const_snapshot: ut::Snapshot<ut::InPlace<ty::ConstVid<'tcx>>>,
     int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
     float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
@@ -1017,14 +1016,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> &'tcx ty::LazyConst<'tcx> {
         let vid = self.const_unification_table
             .borrow_mut()
-            .new_var(universe, origin);
+            .new_key(ConstVarValue {
+                origin,
+                val: ConstVariableValue::Unknown { universe },
+            });
         self.tcx.mk_const_var(vid, ty)
     }
 
     pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
         self.const_unification_table
             .borrow_mut()
-            .new_var(self.universe(), origin)
+            .new_key(ConstVarValue {
+                origin,
+                val: ConstVariableValue::Unknown { universe: self.universe() },
+            })
     }
 
     fn next_int_var_id(&self) -> IntVid {
@@ -1120,13 +1125,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.mk_ty_var(ty_var_id).into()
             }
             GenericParamDefKind::Const { .. } => {
+                let origin = ConstVariableOrigin::ConstParameterDefinition(span, param.name);
                 let const_var_id =
                     self.const_unification_table
                         .borrow_mut()
-                        .new_var(
-                            self.universe(),
-                            ConstVariableOrigin::ConstParameterDefinition(span, param.name),
-                        );
+                        .new_key(ConstVarValue {
+                            origin,
+                            val: ConstVariableValue::Unknown { universe: self.universe() },
+                        });
                 self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
         }
@@ -1362,9 +1368,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         vid: ty::ConstVid<'tcx>
     ) -> Result<&'tcx ty::LazyConst<'tcx>, ty::UniverseIndex> {
-        use self::const_variable::ConstVariableValue;
+        use self::unify_key::ConstVariableValue;
 
-        match self.const_unification_table.borrow_mut().probe(vid) {
+        match self.const_unification_table.borrow_mut().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
         }
@@ -1380,7 +1386,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }) = ct {
             self.const_unification_table
                 .borrow_mut()
-                .probe(*v)
+                .probe_value(*v)
+                .val
                 .known()
                 .map(|c| self.resolve_const_var(c))
                 .unwrap_or(ct)
@@ -1400,7 +1407,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 self.const_unification_table
                     .borrow_mut()
-                    .probe(*vid)
+                    .probe_value(*vid)
+                    .val
                     .known()
                     .map(|c| self.shallow_resolve_const(c))
                     .unwrap_or(ct)
