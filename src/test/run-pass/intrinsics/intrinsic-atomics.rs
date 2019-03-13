@@ -29,6 +29,10 @@ mod rusti {
         pub fn atomic_xsub<T>(dst: *mut T, src: T) -> T;
         pub fn atomic_xsub_acq<T>(dst: *mut T, src: T) -> T;
         pub fn atomic_xsub_rel<T>(dst: *mut T, src: T) -> T;
+
+        pub fn atomic_element_copy_nonoverlapping_memory_unordered<T>(dst: *mut T, src: *const T, count: usize);
+        pub fn atomic_element_copy_memory_unordered<T>(dst: *mut T, src: *const T, count: usize);
+        pub fn atomic_element_set_memory_unordered<T>(dst: *mut T, val: u8, count: usize);
     }
 }
 
@@ -99,5 +103,16 @@ pub fn main() {
             }
         }
         assert_eq!(*x, 3);
+
+        let mut mem = [0; 4];
+        let src = [1, 2, 3, 4];
+        let dst = &mut mem[0] as *mut _;
+
+        rusti::atomic_element_copy_nonoverlapping_memory_unordered(dst, &src[0], 4);
+        assert_eq!(mem, src);
+        rusti::atomic_element_copy_memory_unordered(dst, &mem[1], 2);
+        assert_eq!(mem, [2, 3, 3, 4]);
+        rusti::atomic_element_set_memory_unordered(dst, 1, 3);
+        assert_eq!(mem, [1, 1, 1, 4]);
     }
 }

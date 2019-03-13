@@ -190,6 +190,33 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         flags: MemFlags,
     );
 
+    fn atomic_element_unordered_memcpy(
+        &mut self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        element_size: u32,
+    );
+    fn atomic_element_unordered_memmove(
+        &mut self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        element_size: u32,
+    );
+    fn atomic_element_unordered_memset(
+        &mut self,
+        ptr: Self::Value,
+        fill_byte: Self::Value,
+        size: Self::Value,
+        align: Align,
+        element_size: u32,
+    );
+
     fn select(
         &mut self,
         cond: Self::Value,

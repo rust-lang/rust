@@ -92,7 +92,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         })
     };
 
-    let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
+    let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") && ! name.starts_with("atomic_element_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
@@ -197,7 +197,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                ],
                tcx.mk_unit())
             }
-            "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
+            "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" |
+            "atomic_element_copy_memory_unordered" | "atomic_element_copy_nonoverlapping_memory_unordered" => {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
@@ -212,7 +213,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                ],
                tcx.mk_unit())
             }
-            "write_bytes" | "volatile_set_memory" => {
+            "write_bytes" | "volatile_set_memory" | "atomic_element_set_memory_unordered" => {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {

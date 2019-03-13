@@ -102,6 +102,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
         let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align.abi);
 
+        let invalid_integer_monomorphization = |ty| {
+            span_invalid_monomorphization_error(tcx.sess, span,
+                                                &format!("invalid monomorphization of `{}` intrinsic: \
+                                                         expected basic integer type, found `{}`", name, ty));
+        };
+
+
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {
             _ if simple.is_some() => {
@@ -503,10 +510,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             _ => bug!(),
                         },
                     None => {
-                        span_invalid_monomorphization_error(
-                            tcx.sess, span,
-                            &format!("invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`", name, ty));
+                        invalid_integer_monomorphization(ty);
                         return;
                     }
                 }
@@ -548,6 +552,17 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     Err(()) => return
                 }
             }
+            name if name.starts_with("atomic_element_") => {
+                let ty = substs.type_at(0);
+                if int_type_width_signed(ty, self).is_some() {
+                    atomic_element_intrinsic(self, name,
+                                                    substs.type_at(0),
+                                                    args);
+                    return;
+                } else {
+                    return invalid_integer_monomorphization(ty);
+                }
+            }
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
             name if name.starts_with("atomic_") => {
@@ -582,12 +597,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     _ => self.sess().fatal("Atomic intrinsic not in correct format"),
                 };
 
-                let invalid_monomorphization = |ty| {
-                    span_invalid_monomorphization_error(tcx.sess, span,
-                        &format!("invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`", name, ty));
-                };
-
                 match split[1] {
                     "cxchg" | "cxchgweak" => {
                         let ty = substs.type_at(0);
@@ -610,7 +619,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             self.store(success, dest.llval, dest.align);
                             return;
                         } else {
-                            return invalid_monomorphization(ty);
+                            return invalid_integer_monomorphization(ty);
                         }
                     }
 
@@ -620,7 +629,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             let size = self.size_of(ty);
                             self.atomic_load(args[0].immediate(), order, size)
                         } else {
-                            return invalid_monomorphization(ty);
+                            return invalid_integer_monomorphization(ty);
                         }
                     }
 
@@ -636,7 +645,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             );
                             return;
                         } else {
-                            return invalid_monomorphization(ty);
+                            return invalid_integer_monomorphization(ty);
                         }
                     }
 
@@ -676,7 +685,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 order
                             )
                         } else {
-                            return invalid_monomorphization(ty);
+                            return invalid_integer_monomorphization(ty);
                         }
                     }
                 }
@@ -754,6 +763,54 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
+fn atomic_element_intrinsic(
+    bx: &mut Builder<'a, 'll, 'tcx>,
+    name: &str,
+    ty: Ty<'tcx>,
+    args: &[OperandRef<'tcx, &'ll Value>],
+) {
+    let (element_size, align) = bx.size_and_align_of(ty);
+    let element_size = element_size.bytes();
+    assert!(element_size <= u32::max_value() as u64);
+
+    let size = bx.mul(bx.const_usize(element_size), args[2].immediate());
+
+    match name {
+        "atomic_element_copy_nonoverlapping_memory_unordered" => {
+            bx.atomic_element_unordered_memcpy(
+                args[0].immediate(),
+                align,
+                args[1].immediate(),
+                align,
+                size,
+                element_size as u32
+            );
+        }
+        "atomic_element_copy_memory_unordered" => {
+            bx.atomic_element_unordered_memmove(
+                args[0].immediate(),
+                align,
+                args[1].immediate(),
+                align,
+                size,
+                element_size as u32
+            );
+        }
+        "atomic_element_set_memory_unordered" => {
+            bx.atomic_element_unordered_memset(
+                args[0].immediate(),
+                args[1].immediate(),
+                size,
+                align,
+                element_size as u32
+            );
+        }
+        _ => {
+            bug!("unknown intrinsic '{}'", name);
+        }
+    }
+}
+
 fn copy_intrinsic(
     bx: &mut Builder<'a, 'll, 'tcx>,
     allow_overlap: bool,
@@ -776,6 +833,7 @@ fn copy_intrinsic(
         bx.memcpy(dst, align, src, align, size, flags);
     }
 }
+
 
 fn memset_intrinsic(
     bx: &mut Builder<'a, 'll, 'tcx>,

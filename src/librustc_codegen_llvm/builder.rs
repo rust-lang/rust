@@ -966,6 +966,48 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }
 
+    fn atomic_element_unordered_memcpy(&mut self, dst: &'ll Value, dst_align: Align,
+                                        src: &'ll Value, src_align: Align,
+                                        size: &'ll Value, element_size: u32) {
+        let size = self.intcast(size, self.type_isize(), false);
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
+        unsafe {
+            llvm::LLVMRustBuildElementUnorderedAtomicMemCpy(self.llbuilder, dst, dst_align.bytes() as c_uint,
+                                                            src, src_align.bytes() as c_uint, size, element_size);
+        }
+    }
+
+    fn atomic_element_unordered_memmove(&mut self, dst: &'ll Value, dst_align: Align,
+                                        src: &'ll Value, src_align: Align,
+                                        size: &'ll Value, element_size: u32) {
+        let size = self.intcast(size, self.type_isize(), false);
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
+        let ret_ref = unsafe {
+            llvm::LLVMRustBuildElementUnorderedAtomicMemMove(self.llbuilder,
+                                                             dst, dst_align.bytes() as c_uint,
+                                                             src, src_align.bytes() as c_uint,
+                                                             size, element_size)
+        };
+        if ret_ref.is_none() {
+            bug!("llvm.memmove.element.unordered.atomic.* is not supported with LLVM prior to 7.0");
+        }
+    }
+
+    fn atomic_element_unordered_memset(&mut self, ptr: &'ll Value, fill_byte: &'ll Value,
+                                       size: &'ll Value, align: Align, element_size: u32) {
+        let size = self.intcast(size, self.type_isize(), false);
+        let ptr = self.pointercast(ptr, self.type_i8p());
+        let ret_ref = unsafe {
+            llvm::LLVMRustBuildElementUnorderedAtomicMemSet(self.llbuilder, ptr, fill_byte,
+                                                            size, align.bytes() as c_uint, element_size)
+        };
+        if ret_ref.is_none() {
+            bug!("llvm.memset.element.unordered.atomic.* is not supported with LLVM prior to 7.0");
+        }
+    }
+
     fn select(
         &mut self, cond: &'ll Value,
         then_val: &'ll Value,

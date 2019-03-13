@@ -1268,6 +1268,42 @@ extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
 #endif
 }
 
+extern "C" LLVMValueRef LLVMRustBuildElementUnorderedAtomicMemCpy(LLVMBuilderRef B,
+                                                                  LLVMValueRef Dst, unsigned DstAlign,
+                                                                  LLVMValueRef Src, unsigned SrcAlign,
+                                                                  LLVMValueRef Size, uint32_t ElementSize) {
+  return wrap(unwrap(B)->CreateElementUnorderedAtomicMemCpy(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), ElementSize));
+}
+
+extern "C" LLVMValueRef LLVMRustBuildElementUnorderedAtomicMemMove(LLVMBuilderRef B,
+                                                                   LLVMValueRef Dst, unsigned DstAlign,
+                                                                   LLVMValueRef Src, unsigned SrcAlign,
+                                                                   LLVMValueRef Size, uint32_t ElementSize) {
+#if LLVM_VERSION_GE(7, 0)
+  return wrap(unwrap(B)->CreateElementUnorderedAtomicMemMove(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), ElementSize));
+#else
+  return nullptr;
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustBuildElementUnorderedAtomicMemSet(LLVMBuilderRef B,
+                                                                  LLVMValueRef Ptr, LLVMValueRef Val,
+                                                                  LLVMValueRef Size, unsigned Align, uint32_t ElementSize) {
+#if LLVM_VERSION_GE(7, 0)
+  return wrap(unwrap(B)->CreateElementUnorderedAtomicMemSet(
+      unwrap(Ptr), unwrap(Val),
+      unwrap(Size), Align, ElementSize));
+#else
+  return nullptr;
+#endif
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                     unsigned NumArgs, LLVMBasicBlockRef Then,

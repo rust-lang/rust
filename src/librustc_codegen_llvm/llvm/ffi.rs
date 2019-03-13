@@ -1154,6 +1154,28 @@ extern "C" {
                                Size: &'a Value,
                                IsVolatile: bool)
                                -> &'a Value;
+    pub fn LLVMRustBuildElementUnorderedAtomicMemCpy(B: &Builder<'a>,
+                                                     Dst: &'a Value,
+                                                     DstAlign: c_uint,
+                                                     Src: &'a Value,
+                                                     SrcAlign: c_uint,
+                                                     Size: &'a Value,
+                                                     ElementSize: u32)
+                                                     -> &'a Value;
+    pub fn LLVMRustBuildElementUnorderedAtomicMemMove(B: &Builder<'a>,
+                                                      Dst: &'a Value,
+                                                      DstAlign: c_uint,
+                                                      Src: &'a Value,
+                                                      SrcAlign: c_uint,
+                                                      Size: &'a Value,
+                                                      ElementSize: u32) -> Option<&'a Value>;
+    pub fn LLVMRustBuildElementUnorderedAtomicMemSet(B: &Builder<'a>,
+                                                     Ptr: &'a Value,
+                                                     Val: &'a Value,
+                                                     Size: &'a Value,
+                                                     Align: c_uint,
+                                                     ElementSize: u32) -> Option<&'a Value>;
+
     pub fn LLVMRustBuildMemMove(B: &Builder<'a>,
                                 Dst: &'a Value,
                                 DstAlign: c_uint,
