@@ -271,7 +271,7 @@ pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty-printing doesn't have to
     /// painfully maintain a context like this)
-    pub typarams: FxHashMap<DefId, String>,
+    pub param_names: FxHashMap<DefId, String>,
 
     /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
@@ -635,7 +635,7 @@ pub fn run(mut krate: clean::Crate,
         deref_mut_trait_did,
         owned_box_did,
         masked_crates: mem::replace(&mut krate.masked_crates, Default::default()),
-        typarams: external_typarams,
+        param_names: external_param_names,
         aliases: Default::default(),
     };
 
@@ -1751,7 +1751,7 @@ impl<'a> Cache {
                 clean::GenericParamDefKind::Lifetime => {}
                 clean::GenericParamDefKind::Type { did, .. } |
                 clean::GenericParamDefKind::Const { did, .. } => {
-                    self.typarams.insert(did, param.name.clone());
+                    self.param_names.insert(did, param.name.clone());
                 }
             }
         }

@@ -591,12 +591,12 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemKind::Fn(ref decl, header, ref typarams, body) => {
+            hir::ItemKind::Fn(ref decl, header, ref param_names, body) => {
                 self.head("")?;
                 self.print_fn(decl,
                               header,
                               Some(item.ident.name),
-                              typarams,
+                              param_names,
                               &item.vis,
                               &[],
                               Some(body))?;

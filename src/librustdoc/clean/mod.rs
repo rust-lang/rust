@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
             PolyTrait {
                 trait_: ResolvedPath {
                     path,
-                    typarams: None,
+                    param_names: None,
                     did: trait_ref.def_id,
                     is_generic: false,
                 },
@@ -2244,7 +2244,7 @@ pub enum Type {
     /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
-        typarams: Option<Vec<GenericBound>>,
+        param_names: Option<Vec<GenericBound>>,
         did: DefId,
         /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,
@@ -2706,7 +2706,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
-                    ResolvedPath { path, typarams: None, did, is_generic } => {
+                    ResolvedPath { path, param_names: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..].iter().map(|bound| {
                             self::GenericBound::TraitBound(bound.clean(cx),
                                                            hir::TraitBoundModifier::None)
@@ -2714,7 +2714,7 @@ impl Clean<Type> for hir::Ty {
                         if !lifetime.is_elided() {
                             bounds.push(self::GenericBound::Outlives(lifetime.clean(cx)));
                         }
-                        ResolvedPath { path, typarams: Some(bounds), did, is_generic, }
+                        ResolvedPath { path, param_names: Some(bounds), did, is_generic, }
                     }
                     _ => Infer // shouldn't happen
                 }
@@ -2781,7 +2781,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                          None, false, vec![], substs);
                 ResolvedPath {
                     path,
-                    typarams: None,
+                    param_names: None,
                     did,
                     is_generic: false,
                 }
@@ -2792,7 +2792,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                          None, false, vec![], InternalSubsts::empty());
                 ResolvedPath {
                     path: path,
-                    typarams: None,
+                    param_names: None,
                     did: did,
                     is_generic: false,
                 }
@@ -2813,8 +2813,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
-                let mut typarams = vec![];
-                reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
+                let mut param_names = vec![];
+                reg.clean(cx).map(|b| param_names.push(GenericBound::Outlives(b)));
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
@@ -2823,13 +2823,13 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let bound = GenericBound::TraitBound(PolyTrait {
                         trait_: ResolvedPath {
                             path,
-                            typarams: None,
+                            param_names: None,
                             did,
                             is_generic: false,
                         },
                         generic_params: Vec::new(),
                     }, hir::TraitBoundModifier::None);
-                    typarams.push(bound);
+                    param_names.push(bound);
                 }
 
                 let mut bindings = vec![];
@@ -2844,7 +2844,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     false, bindings, substs);
                 ResolvedPath {
                     path,
-                    typarams: Some(typarams),
+                    param_names: Some(param_names),
                     did,
                     is_generic: false,
                 }
@@ -3294,8 +3294,8 @@ impl Clean<PathSegment> for hir::PathSegment {
 
 fn strip_type(ty: Type) -> Type {
     match ty {
-        Type::ResolvedPath { path, typarams, did, is_generic } => {
-            Type::ResolvedPath { path: strip_path(&path), typarams, did, is_generic }
+        Type::ResolvedPath { path, param_names, did, is_generic } => {
+            Type::ResolvedPath { path: strip_path(&path), param_names, did, is_generic }
         }
         Type::Tuple(inner_tys) => {
             Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
@@ -3955,7 +3955,7 @@ fn resolve_type(cx: &DocContext<'_>,
         _ => false,
     };
     let did = register_def(&*cx, path.def);
-    ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
+    ResolvedPath { path: path, param_names: None, did: did, is_generic: is_generic }
 }
 
 pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
@@ -4381,9 +4381,9 @@ impl From<GenericBound> for SimpleBound {
         match bound.clone() {
             GenericBound::Outlives(l) => SimpleBound::Outlives(l),
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
-                Type::ResolvedPath { path, typarams, .. } => {
+                Type::ResolvedPath { path, param_names, .. } => {
                     SimpleBound::TraitBound(path.segments,
-                                            typarams
+                                            param_names
                                                 .map_or_else(|| Vec::new(), |v| v.iter()
                                                         .map(|p| SimpleBound::from(p.clone()))
                                                         .collect()),
