@@ -20,7 +20,7 @@ LL |     v.extend(&v);
    |     | immutable borrow later used by call
    |     mutable borrow occurs here
 
-warning[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+warning: cannot borrow `v` as mutable because it is also borrowed as immutable
   --> $DIR/two-phase-reservation-sharing-interference-2.rs:42:5
    |
 LL |     let shared = &v;
@@ -31,8 +31,9 @@ LL |     v.push(shared.len());
    |     |
    |     mutable borrow occurs here
    |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: #[warn(mutable_borrow_reservation_conflict)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
 
 error: aborting due to 2 previous errors
 

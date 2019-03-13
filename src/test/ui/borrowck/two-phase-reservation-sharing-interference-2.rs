@@ -43,11 +43,11 @@ fn reservation_conflict() {
     //[nll2015]~^ ERROR cannot borrow `v` as mutable
     //[nll2018]~^^ ERROR cannot borrow `v` as mutable
     //[migrate2015]~^^^ WARNING cannot borrow `v` as mutable
-    //[migrate2015]~| WARNING this error has been downgraded to a warning
-    //[migrate2015]~| WARNING this warning will become a hard error in the future
+    //[migrate2015]~| WARNING will become a hard error in a future release
+
     //[migrate2018]~^^^^^^ WARNING cannot borrow `v` as mutable
-    //[migrate2018]~| WARNING this error has been downgraded to a warning
-    //[migrate2018]~| WARNING this warning will become a hard error in the future
+    //[migrate2018]~| WARNING will become a hard error in a future release
+
     //[ast]~^^^^^^^^^ ERROR cannot borrow `v` as mutable
 }
 
