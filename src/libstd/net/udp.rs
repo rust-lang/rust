@@ -180,6 +180,37 @@ impl UdpSocket {
         }
     }
 
+    /// Returns the socket address of the remote peer this socket was connected to.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(udp_peer_addr)]
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("192.168.0.1:41203").expect("couldn't connect to address");
+    /// assert_eq!(socket.peer_addr().unwrap(),
+    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203)));
+    /// ```
+    ///
+    /// If the socket isn't connected, it will return a [`NotConnected`] error.
+    ///
+    /// [`NotConnected`]: ../../std/io/enum.ErrorKind.html#variant.NotConnected
+    ///
+    /// ```no_run
+    /// #![feature(udp_peer_addr)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
+    ///            ::std::io::ErrorKind::NotConnected);
+    /// ```
+    #[unstable(feature = "udp_peer_addr", issue = "59127")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        self.0.peer_addr()
+    }
+
     /// Returns the socket address that this socket was created from.
     ///
     /// # Examples
@@ -865,10 +896,20 @@ mod tests {
     }
 
     #[test]
-    fn socket_name_ip4() {
+    fn socket_name() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
             assert_eq!(addr, t!(server.local_addr()));
+        })
+    }
+
+    #[test]
+    fn socket_peer() {
+        each_ip(&mut |addr1, addr2| {
+            let server = t!(UdpSocket::bind(&addr1));
+            assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
+            t!(server.connect(&addr2));
+            assert_eq!(addr2, t!(server.peer_addr()));
         })
     }
 

@@ -472,6 +472,12 @@ impl UdpSocket {
 
     pub fn into_socket(self) -> Socket { self.inner }
 
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        sockname(|buf, len| unsafe {
+            c::getpeername(*self.inner.as_inner(), buf, len)
+        })
+    }
+
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             c::getsockname(*self.inner.as_inner(), buf, len)
