@@ -5288,6 +5288,53 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 
+    // Rewrite `SelfCtor` to `StructCtor`
+    pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> (Def, DefId, Ty<'tcx>) {
+        let tcx = self.tcx;
+        if let Def::SelfCtor(impl_def_id) = def {
+            let ty = self.impl_self_ty(span, impl_def_id).ty;
+            let adt_def = ty.ty_adt_def();
+
+            match adt_def {
+                Some(adt_def) if adt_def.has_ctor() => {
+                    let variant = adt_def.non_enum_variant();
+                    let def = Def::StructCtor(variant.did, variant.ctor_kind);
+                    (def, variant.did, tcx.type_of(variant.did))
+                }
+                _ => {
+                    let mut err = tcx.sess.struct_span_err(span,
+                        "the `Self` constructor can only be used with tuple or unit structs");
+                    if let Some(adt_def) = adt_def {
+                        match adt_def.adt_kind() {
+                            AdtKind::Enum => {
+                                err.help("did you mean to use one of the enum's variants?");
+                            },
+                            AdtKind::Struct |
+                            AdtKind::Union => {
+                                err.span_suggestion(
+                                    span,
+                                    "use curly brackets",
+                                    String::from("Self { /* fields */ }"),
+                                    Applicability::HasPlaceholders,
+                                );
+                            }
+                        }
+                    }
+                    err.emit();
+
+                    (def, impl_def_id, tcx.types.err)
+                }
+            }
+        } else {
+            let def_id = def.def_id();
+
+            // The things we are substituting into the type should not contain
+            // escaping late-bound regions, and nor should the base type scheme.
+            let ty = tcx.type_of(def_id);
+            (def, def_id, ty)
+        }
+    }
+
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
@@ -5307,6 +5354,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
 
+        match def {
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
+                let hid = self.tcx.hir().node_to_hir_id(nid);
+                let ty = self.local_ty(span, hid).decl_ty;
+                let ty = self.normalize_associated_types_in(span, &ty);
+                self.write_ty(hir_id, ty);
+                return (ty, def);
+            }
+            _ => {}
+        }
+
+        let (def, def_id, ty) = self.rewrite_self_ctor(def, span);
         let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
 
         let mut user_self_ty = None;
@@ -5368,17 +5427,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             user_self_ty = None;
         }
 
-        match def {
-            Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let hid = self.tcx.hir().node_to_hir_id(nid);
-                let ty = self.local_ty(span, hid).decl_ty;
-                let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(hir_id, ty);
-                return (ty, def);
-            }
-            _ => {}
-        }
-
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
         // did not provide any types, then we want to substitute inference
@@ -5410,53 +5458,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
             tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
-
-        let mut new_def = def;
-        let (def_id, ty) = match def {
-            Def::SelfCtor(impl_def_id) => {
-                let ty = self.impl_self_ty(span, impl_def_id).ty;
-                let adt_def = ty.ty_adt_def();
-
-                match adt_def {
-                    Some(adt_def) if adt_def.has_ctor() => {
-                        let variant = adt_def.non_enum_variant();
-                        new_def = Def::StructCtor(variant.did, variant.ctor_kind);
-                        (variant.did, tcx.type_of(variant.did))
-                    }
-                    _ => {
-                        let mut err = tcx.sess.struct_span_err(span,
-                            "the `Self` constructor can only be used with tuple or unit structs");
-                        if let Some(adt_def) = adt_def {
-                            match adt_def.adt_kind() {
-                                AdtKind::Enum => {
-                                    err.help("did you mean to use one of the enum's variants?");
-                                },
-                                AdtKind::Struct |
-                                AdtKind::Union => {
-                                    err.span_suggestion(
-                                        span,
-                                        "use curly brackets",
-                                        String::from("Self { /* fields */ }"),
-                                        Applicability::HasPlaceholders,
-                                    );
-                                }
-                            }
-                        }
-                        err.emit();
-
-                        (impl_def_id, tcx.types.err)
-                    }
-                }
-            }
-            _ => {
-                let def_id = def.def_id();
-
-                // The things we are substituting into the type should not contain
-                // escaping late-bound regions, and nor should the base type scheme.
-                let ty = tcx.type_of(def_id);
-                (def_id, ty)
-            }
-        };
 
         let substs = AstConv::create_substs_for_generic_args(
             tcx,
@@ -5573,7 +5574,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                ty_substituted);
         self.write_substs(hir_id, substs);
 
-        (ty_substituted, new_def)
+        (ty_substituted, def)
     }
 
     fn check_rustc_args_require_const(&self,
