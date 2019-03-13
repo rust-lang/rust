@@ -3314,13 +3314,27 @@ impl<'a> Resolver<'a> {
                                 show_label = false;
                             }
                             if let Ok(base_snippet) = base_snippet {
-                                err.span_suggestion(
-                                    base_span,
-                                    "maybe you meant to write an assignment here",
-                                    format!("let {}", base_snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                                show_label = false;
+                                let mut sp = after_colon_sp;
+                                for _ in 0..100 {
+                                    // Try to find an assignment
+                                    sp = cm.next_point(sp);
+                                    let snippet = cm.span_to_snippet(sp.to(cm.next_point(sp)));
+                                    match snippet {
+                                        Ok(ref x) if x.as_str() == "=" => {
+                                            err.span_suggestion(
+                                                base_span,
+                                                "maybe you meant to write an assignment here",
+                                                format!("let {}", base_snippet),
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                            show_label = false;
+                                            break;
+                                        }
+                                        Ok(ref x) if x.as_str() == "\n" => break,
+                                        Err(_) => break,
+                                        Ok(_) => {}
+                                    }
+                                }
                             }
                         }
                         if show_label {
