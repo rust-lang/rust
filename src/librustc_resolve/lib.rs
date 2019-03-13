@@ -3289,8 +3289,7 @@ impl<'a> Resolver<'a> {
                     let line_sp = cm.lookup_char_pos(sp.hi()).line;
                     let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
                     if snippet == ":" {
-                        err.span_label(base_span,
-                                       "expecting a type here because of type ascription");
+                        let mut show_label = true;
                         if line_sp != line_base_sp {
                             err.span_suggestion_short(
                                 sp,
@@ -3312,6 +3311,7 @@ impl<'a> Resolver<'a> {
                                     "::".to_string(),
                                     Applicability::MaybeIncorrect,
                                 );
+                                show_label = false;
                             }
                             if let Ok(base_snippet) = base_snippet {
                                 err.span_suggestion(
@@ -3320,7 +3320,12 @@ impl<'a> Resolver<'a> {
                                     format!("let {}", base_snippet),
                                     Applicability::MaybeIncorrect,
                                 );
+                                show_label = false;
                             }
+                        }
+                        if show_label {
+                            err.span_label(base_span,
+                                           "expecting a type here because of type ascription");
                         }
                         break;
                     } else if !snippet.trim().is_empty() {

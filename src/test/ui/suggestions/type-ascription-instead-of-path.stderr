@@ -8,10 +8,7 @@ error[E0423]: expected value, found module `std`
   --> $DIR/type-ascription-instead-of-path.rs:2:5
    |
 LL |     std:io::stdin();
-   |     ^^^
-   |     |
-   |     not a value
-   |     expecting a type here because of type ascription
+   |     ^^^ not a value
 help: maybe you meant to write a path separator here
    |
 LL |     std::io::stdin();

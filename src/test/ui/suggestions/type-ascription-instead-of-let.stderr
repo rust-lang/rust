@@ -5,7 +5,6 @@ LL |         temp: i32 = fun(5i32);
    |         ^^^^
    |         |
    |         not found in this scope
-   |         expecting a type here because of type ascription
    |         help: maybe you meant to write an assignment here: `let temp`
 
 error[E0425]: cannot find value `temp` in this scope
