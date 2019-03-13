@@ -18,7 +18,7 @@ use crate::{
 #[derive(Default, PartialEq, Eq)]
 pub(crate) struct RawItems {
     modules: Arena<Module, ModuleData>,
-    imports: Arena<Import, ImportData>,
+    imports: Arena<ImportId, ImportData>,
     defs: Arena<Def, DefData>,
     macros: Arena<Macro, MacroData>,
     /// items for top-level module
@@ -60,9 +60,9 @@ impl Index<Module> for RawItems {
     }
 }
 
-impl Index<Import> for RawItems {
+impl Index<ImportId> for RawItems {
     type Output = ImportData;
-    fn index(&self, idx: Import) -> &ImportData {
+    fn index(&self, idx: ImportId) -> &ImportData {
         &self.imports[idx]
     }
 }
@@ -84,7 +84,7 @@ impl Index<Macro> for RawItems {
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub(crate) enum RawItem {
     Module(Module),
-    Import(Import),
+    Import(ImportId),
     Def(Def),
     Macro(Macro),
 }
@@ -99,18 +99,8 @@ pub(crate) enum ModuleData {
     Definition { name: Name, items: Vec<RawItem> },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Import(RawId);
-impl_arena_id!(Import);
-
-#[derive(PartialEq, Eq)]
-pub(crate) struct ImportData {
-    path: Path,
-    alias: Option<Name>,
-    is_glob: bool,
-    is_prelude: bool,
-    is_extern_crate: bool,
-}
+pub(crate) use crate::nameres::lower::ImportId;
+pub(super) use crate::nameres::lower::ImportData;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Def(RawId);
@@ -144,6 +134,7 @@ pub(crate) struct MacroData {
     pub(crate) path: Path,
     pub(crate) name: Option<Name>,
     pub(crate) arg: tt::Subtree,
+    pub(crate) export: bool,
 }
 
 struct RawItemsCollector {
@@ -215,9 +206,7 @@ impl RawItemsCollector {
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: &ast::UseItem) {
-        let is_prelude = use_item
-            .attrs()
-            .any(|attr| attr.as_atom().map(|s| s == "prelude_import").unwrap_or(false));
+        let is_prelude = use_item.has_atom_attr("prelude_import");
 
         Path::expand_use_item(use_item, |path, segment, alias| {
             let import = self.raw_items.imports.alloc(ImportData {
@@ -261,7 +250,8 @@ impl RawItemsCollector {
 
         let name = m.name().map(|it| it.as_name());
         let source_item_id = self.source_file_items.id_of_unchecked(m.syntax());
-        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, arg, name });
+        let export = m.has_atom_attr("macro_export");
+        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, arg, name, export });
         self.push_item(current_module, RawItem::Macro(m));
     }
 

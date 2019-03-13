@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 use ra_arena::Arena;
+use test_utils::tested_by;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
     Crate, PersistentHirDatabase, HirFileId, Name, Path,
     KnownName,
-    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint},
+    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
     module_tree::resolve_module_declaration,
 };
@@ -19,12 +20,41 @@ pub(crate) fn crate_def_map_query(
     db: &impl PersistentHirDatabase,
     krate: Crate,
 ) -> Arc<CrateDefMap> {
-    let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
-    let root = modules.alloc(ModuleData::default());
+    let mut def_map = {
+        let edition = krate.edition(db);
+        let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
+        let root = modules.alloc(ModuleData::default());
+        CrateDefMap {
+            krate,
+            edition,
+            extern_prelude: FxHashMap::default(),
+            prelude: None,
+            root,
+            modules,
+            public_macros: FxHashMap::default(),
+        }
+    };
+
+    // populate external prelude
+    for dep in krate.dependencies(db) {
+        log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
+        if let Some(module) = dep.krate.root_module(db) {
+            def_map.extern_prelude.insert(dep.name.clone(), module.into());
+        }
+        // look for the prelude
+        if def_map.prelude.is_none() {
+            let item_map = db.item_map(dep.krate);
+            if item_map.prelude.is_some() {
+                def_map.prelude = item_map.prelude;
+            }
+        }
+    }
+
     let mut collector = DefCollector {
         db,
         krate,
-        def_map: CrateDefMap { modules, root },
+        def_map,
+        glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
         global_macro_scope: FxHashMap::default(),
@@ -39,8 +69,9 @@ struct DefCollector<DB> {
     db: DB,
     krate: Crate,
     def_map: CrateDefMap,
-    unresolved_imports: Vec<(ModuleId, raw::Import)>,
-    unexpanded_macros: Vec<(ModuleId, MacroCallId, tt::Subtree)>,
+    glob_imports: FxHashMap<ModuleId, Vec<(ModuleId, raw::ImportId)>>,
+    unresolved_imports: Vec<(ModuleId, raw::ImportId, raw::ImportData)>,
+    unexpanded_macros: Vec<(ModuleId, MacroCallId, Path, tt::Subtree)>,
     global_macro_scope: FxHashMap<Name, mbe::MacroRules>,
 }
 
@@ -83,8 +114,11 @@ where
         }
     }
 
-    fn define_macro(&mut self, name: Name, tt: &tt::Subtree) {
+    fn define_macro(&mut self, name: Name, tt: &tt::Subtree, export: bool) {
         if let Ok(rules) = mbe::MacroRules::parse(tt) {
+            if export {
+                self.def_map.public_macros.insert(name.clone(), rules.clone());
+            }
             self.global_macro_scope.insert(name, rules);
         }
     }
@@ -94,22 +128,218 @@ where
     }
 
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
+        let mut imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        let mut resolved = Vec::new();
+        imports.retain(|(module_id, import, import_data)| {
+            let (def, fp) = self.resolve_import(*module_id, import_data);
+            if fp == ReachedFixedPoint::Yes {
+                resolved.push((*module_id, def, *import, import_data.clone()))
+            }
+            fp == ReachedFixedPoint::No
+        });
+        self.unresolved_imports = imports;
         // Resolves imports, filling-in module scopes
-        ReachedFixedPoint::Yes
-    }
-
-    fn resolve_macros(&mut self) -> ReachedFixedPoint {
-        // Resolve macros, calling into `expand_macro` to actually do the
-        // expansion.
-        ReachedFixedPoint::Yes
-    }
-
-    #[allow(unused)]
-    fn expand_macro(&mut self, idx: usize, rules: &mbe::MacroRules) {
-        let (module_id, call_id, arg) = self.unexpanded_macros.swap_remove(idx);
-        if let Ok(tt) = rules.expand(&arg) {
-            self.collect_macro_expansion(module_id, call_id, tt);
+        let result =
+            if resolved.is_empty() { ReachedFixedPoint::Yes } else { ReachedFixedPoint::No };
+        for (module_id, def, import, import_data) in resolved {
+            self.record_resolved_import(module_id, def, import, &import_data)
         }
+        result
+    }
+
+    fn resolve_import(
+        &mut self,
+        module_id: ModuleId,
+        import: &raw::ImportData,
+    ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
+        log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
+        if import.is_extern_crate {
+            let res = self.def_map.resolve_name_in_extern_prelude(
+                &import
+                    .path
+                    .as_ident()
+                    .expect("extern crate should have been desugared to one-element path"),
+            );
+            // FIXME: why do we return No here?
+            (res, if res.is_none() { ReachedFixedPoint::No } else { ReachedFixedPoint::Yes })
+        } else {
+            let res =
+                self.def_map.resolve_path_fp(self.db, ResolveMode::Import, module_id, &import.path);
+
+            (res.resolved_def, res.reached_fixedpoint)
+        }
+    }
+
+    fn record_resolved_import(
+        &mut self,
+        module_id: ModuleId,
+        def: PerNs<ModuleDef>,
+        import_id: raw::ImportId,
+        import: &raw::ImportData,
+    ) {
+        if import.is_glob {
+            log::debug!("glob import: {:?}", import);
+            match def.take_types() {
+                Some(ModuleDef::Module(m)) => {
+                    if import.is_prelude {
+                        tested_by!(std_prelude);
+                        self.def_map.prelude = Some(m);
+                    } else if m.krate != self.krate {
+                        tested_by!(glob_across_crates);
+                        // glob import from other crate => we can just import everything once
+                        let item_map = self.db.item_map(m.krate);
+                        let scope = &item_map[m.module_id];
+                        let items = scope
+                            .items
+                            .iter()
+                            .map(|(name, res)| (name.clone(), res.clone()))
+                            .collect::<Vec<_>>();
+                        self.update(module_id, Some(import_id), &items);
+                    } else {
+                        // glob import from same crate => we do an initial
+                        // import, and then need to propagate any further
+                        // additions
+                        let scope = &self.def_map[m.module_id];
+                        let items = scope
+                            .items
+                            .iter()
+                            .map(|(name, res)| (name.clone(), res.clone()))
+                            .collect::<Vec<_>>();
+                        self.update(module_id, Some(import_id), &items);
+                        // record the glob import in case we add further items
+                        self.glob_imports
+                            .entry(m.module_id)
+                            .or_default()
+                            .push((module_id, import_id));
+                    }
+                }
+                Some(ModuleDef::Enum(e)) => {
+                    tested_by!(glob_enum);
+                    // glob import from enum => just import all the variants
+                    let variants = e.variants(self.db);
+                    let resolutions = variants
+                        .into_iter()
+                        .filter_map(|variant| {
+                            let res = Resolution {
+                                def: PerNs::both(variant.into(), variant.into()),
+                                import: Some(import_id),
+                            };
+                            let name = variant.name(self.db)?;
+                            Some((name, res))
+                        })
+                        .collect::<Vec<_>>();
+                    self.update(module_id, Some(import_id), &resolutions);
+                }
+                Some(d) => {
+                    log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
+                }
+                None => {
+                    log::debug!("glob import {:?} didn't resolve as type", import);
+                }
+            }
+        } else {
+            let last_segment = import.path.segments.last().unwrap();
+            let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
+            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+
+            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+            if let Some(root_module) = self.krate.root_module(self.db) {
+                if import.is_extern_crate && module_id == root_module.module_id {
+                    if let Some(def) = def.take_types() {
+                        self.def_map.extern_prelude.insert(name.clone(), def);
+                    }
+                }
+            }
+            let resolution = Resolution { def, import: Some(import_id) };
+            self.update(module_id, None, &[(name, resolution)]);
+        }
+    }
+
+    fn update(
+        &mut self,
+        module_id: ModuleId,
+        import: Option<raw::ImportId>,
+        resolutions: &[(Name, Resolution)],
+    ) {
+        self.update_recursive(module_id, import, resolutions, 0)
+    }
+
+    fn update_recursive(
+        &mut self,
+        module_id: ModuleId,
+        import: Option<raw::ImportId>,
+        resolutions: &[(Name, Resolution)],
+        depth: usize,
+    ) {
+        if depth > 100 {
+            // prevent stack overflows (but this shouldn't be possible)
+            panic!("infinite recursion in glob imports!");
+        }
+        let module_items = &mut self.def_map.modules[module_id].scope;
+        let mut changed = false;
+        for (name, res) in resolutions {
+            let existing = module_items.items.entry(name.clone()).or_default();
+            if existing.def.types.is_none() && res.def.types.is_some() {
+                existing.def.types = res.def.types;
+                existing.import = import.or(res.import);
+                changed = true;
+            }
+            if existing.def.values.is_none() && res.def.values.is_some() {
+                existing.def.values = res.def.values;
+                existing.import = import.or(res.import);
+                changed = true;
+            }
+        }
+        if !changed {
+            return;
+        }
+        let glob_imports = self
+            .glob_imports
+            .get(&module_id)
+            .into_iter()
+            .flat_map(|v| v.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        for (glob_importing_module, glob_import) in glob_imports {
+            // We pass the glob import so that the tracked import in those modules is that glob import
+            self.update_recursive(glob_importing_module, Some(glob_import), resolutions, depth + 1);
+        }
+    }
+
+    // XXX: this is just a pile of hacks now, because `PerNs` does not handle
+    // macro namespace.
+    fn resolve_macros(&mut self) -> ReachedFixedPoint {
+        let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
+        let mut resolved = Vec::new();
+        macros.retain(|(module_id, call_id, path, tt)| {
+            if path.segments.len() != 2 {
+                return true;
+            }
+            let crate_name = &path.segments[0].name;
+            let krate = match self.def_map.resolve_name_in_extern_prelude(crate_name).take_types() {
+                Some(ModuleDef::Module(m)) => m.krate(self.db),
+                _ => return true,
+            };
+            let krate = match krate {
+                Some(it) => it,
+                _ => return true,
+            };
+            // FIXME: this should be a proper query
+            let def_map = crate_def_map_query(self.db, krate);
+            let rules = def_map.public_macros.get(&path.segments[1].name).cloned();
+            resolved.push((*module_id, *call_id, rules, tt.clone()));
+            false
+        });
+        let res = if resolved.is_empty() { ReachedFixedPoint::Yes } else { ReachedFixedPoint::No };
+
+        for (module_id, macro_call_id, rules, arg) in resolved {
+            if let Some(rules) = rules {
+                if let Ok(tt) = rules.expand(&arg) {
+                    self.collect_macro_expansion(module_id, macro_call_id, tt);
+                }
+            }
+        }
+        res
     }
 
     fn collect_macro_expansion(
@@ -145,9 +375,11 @@ where
         for item in items {
             match *item {
                 raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
-                raw::RawItem::Import(import) => {
-                    self.def_collector.unresolved_imports.push((self.module_id, import))
-                }
+                raw::RawItem::Import(import) => self.def_collector.unresolved_imports.push((
+                    self.module_id,
+                    import,
+                    self.raw_items[import].clone(),
+                )),
                 raw::RawItem::Def(def) => self.define_def(&self.raw_items[def]),
                 raw::RawItem::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
             }
@@ -216,14 +448,14 @@ where
             raw::DefKind::TypeAlias => PerNs::types(TypeAlias { id: id!() }.into()),
         };
         let resolution = Resolution { def, import: None };
-        self.def_collector.def_map.modules[self.module_id].scope.items.insert(name, resolution);
+        self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
 
     fn collect_macro(&mut self, mac: &raw::MacroData) {
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                self.def_collector.define_macro(name.clone(), &mac.arg)
+                self.def_collector.define_macro(name.clone(), &mac.arg, mac.export)
             }
             return;
         }
@@ -247,7 +479,12 @@ where
         }
 
         // Case 3: path to a macro from another crate, expand during name resolution
-        self.def_collector.unexpanded_macros.push((self.module_id, macro_call_id, mac.arg.clone()))
+        self.def_collector.unexpanded_macros.push((
+            self.module_id,
+            macro_call_id,
+            mac.path.clone(),
+            mac.arg.clone(),
+        ))
     }
 }
 

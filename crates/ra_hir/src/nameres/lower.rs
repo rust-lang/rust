@@ -18,8 +18,8 @@ use crate::{
 pub struct ImportId(RawId);
 impl_arena_id!(ImportId);
 
-#[derive(Debug, PartialEq, Eq)]
-pub(super) struct ImportData {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportData {
     pub(super) path: Path,
     pub(super) alias: Option<Name>,
     pub(super) is_glob: bool,

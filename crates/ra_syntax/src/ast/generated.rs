@@ -2108,6 +2108,7 @@ impl ToOwned for MacroCall {
 
 
 impl ast::NameOwner for MacroCall {}
+impl ast::AttrsOwner for MacroCall {}
 impl MacroCall {
     pub fn token_tree(&self) -> Option<&TokenTree> {
         super::child_opt(self)

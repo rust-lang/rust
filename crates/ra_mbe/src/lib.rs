@@ -42,7 +42,7 @@ pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list};
 /// be very confusing is that AST has almost exactly the same shape as
 /// `tt::TokenTree`, but there's a crucial difference: in macro rules, `$ident`
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MacroRules {
     pub(crate) rules: Vec<Rule>,
 }
@@ -56,13 +56,13 @@ impl MacroRules {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Rule {
     pub(crate) lhs: Subtree,
     pub(crate) rhs: Subtree,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
@@ -70,7 +70,7 @@ pub(crate) enum TokenTree {
 }
 impl_froms!(TokenTree: Leaf, Subtree, Repeat);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Leaf {
     Literal(Literal),
     Punct(Punct),
@@ -79,37 +79,37 @@ pub(crate) enum Leaf {
 }
 impl_froms!(Leaf: Literal, Punct, Ident, Var);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Subtree {
     pub(crate) delimiter: Delimiter,
     pub(crate) token_trees: Vec<TokenTree>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Repeat {
     pub(crate) subtree: Subtree,
     pub(crate) kind: RepeatKind,
     pub(crate) separator: Option<char>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum RepeatKind {
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Literal {
     pub(crate) text: SmolStr,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Ident {
     pub(crate) text: SmolStr,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Var {
     pub(crate) text: SmolStr,
     pub(crate) kind: Option<SmolStr>,

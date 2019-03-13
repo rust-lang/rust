@@ -114,6 +114,9 @@ pub trait AttrsOwner: AstNode {
     fn attrs(&self) -> AstChildren<Attr> {
         children(self)
     }
+    fn has_atom_attr(&self, atom: &str) -> bool {
+        self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
+    }
 }
 
 pub trait DocCommentsOwner: AstNode {
@@ -150,12 +153,6 @@ pub trait DocCommentsOwner: AstNode {
         } else {
             Some(docs)
         }
-    }
-}
-
-impl FnDef {
-    pub fn has_atom_attr(&self, atom: &str) -> bool {
-        self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
     }
 }
 

@@ -40,16 +40,21 @@
 /// syntax.
 ///
 /// TBD;
+
 mod raw;
 mod collector;
+#[cfg(test)]
+mod tests;
 
 use rustc_hash::FxHashMap;
-use ra_arena::{Arena};
+use test_utils::tested_by;
+use ra_arena::Arena;
 
 use crate::{
-    Name,
+    Name, Module, Path, PathKind, ModuleDef, Crate,
+    PersistentHirDatabase,
     module_tree::ModuleId,
-    nameres::ModuleScope,
+    nameres::{ModuleScope, ResolveMode, ResolvePathResult, PerNs, Edition, ReachedFixedPoint},
 };
 
 #[derive(Default, Debug)]
@@ -62,143 +67,202 @@ struct ModuleData {
 /// Contans all top-level defs from a macro-expanded crate
 #[derive(Debug)]
 pub(crate) struct CrateDefMap {
+    krate: Crate,
+    edition: Edition,
+    /// The prelude module for this crate. This either comes from an import
+    /// marked with the `prelude_import` attribute, or (in the normal case) from
+    /// a dependency (`std` or `core`).
+    prelude: Option<Module>,
+    extern_prelude: FxHashMap<Name, ModuleDef>,
     root: ModuleId,
     modules: Arena<ModuleId, ModuleData>,
+    public_macros: FxHashMap<Name, mbe::MacroRules>,
 }
 
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use ra_db::SourceDatabase;
-    use insta::assert_snapshot_matches;
-
-    use crate::{Crate, mock::MockDatabase, nameres::Resolution};
-
-    use super::*;
-
-    fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
-        let db = MockDatabase::with_files(fixture);
-        let crate_id = db.crate_graph().iter().next().unwrap();
-        let krate = Crate { crate_id };
-        collector::crate_def_map_query(&db, krate)
+impl std::ops::Index<ModuleId> for CrateDefMap {
+    type Output = ModuleScope;
+    fn index(&self, id: ModuleId) -> &ModuleScope {
+        &self.modules[id].scope
     }
+}
 
-    fn render_crate_def_map(map: &CrateDefMap) -> String {
-        let mut buf = String::new();
-        go(&mut buf, map, "\ncrate", map.root);
-        return buf;
-
-        fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: ModuleId) {
-            *buf += path;
-            *buf += "\n";
-            for (name, res) in map.modules[module].scope.items.iter() {
-                *buf += &format!("{}: {}\n", name, dump_resolution(res))
+impl CrateDefMap {
+    // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
+    // the result.
+    #[allow(unused)]
+    fn resolve_path_fp(
+        &self,
+        db: &impl PersistentHirDatabase,
+        mode: ResolveMode,
+        original_module: ModuleId,
+        path: &Path,
+    ) -> ResolvePathResult {
+        let mut segments = path.segments.iter().enumerate();
+        let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
+            PathKind::Crate => {
+                PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
             }
-            for (name, child) in map.modules[module].children.iter() {
-                let path = path.to_string() + &format!("::{}", name);
-                go(buf, map, &path, *child);
+            PathKind::Self_ => {
+                PerNs::types(Module { krate: self.krate, module_id: original_module }.into())
             }
-        }
-
-        fn dump_resolution(resolution: &Resolution) -> &'static str {
-            match (resolution.def.types.is_some(), resolution.def.values.is_some()) {
-                (true, true) => "t v",
-                (true, false) => "t",
-                (false, true) => "v",
-                (false, false) => "_",
+            // plain import or absolute path in 2015: crate-relative with
+            // fallback to extern prelude (with the simplification in
+            // rust-lang/rust#57745)
+            // TODO there must be a nicer way to write this condition
+            PathKind::Plain | PathKind::Abs
+                if self.edition == Edition::Edition2015
+                    && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
+            {
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
+                };
+                log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
+                self.resolve_name_in_crate_root_or_extern_prelude(&segment.name)
             }
-        }
-    }
-
-    fn def_map(fixtute: &str) -> String {
-        let dm = compute_crate_def_map(fixtute);
-        render_crate_def_map(&dm)
-    }
-
-    #[test]
-    fn crate_def_map_smoke_test() {
-        let map = def_map(
-            "
-            //- /lib.rs
-            mod foo;
-            struct S;
-
-            //- /foo/mod.rs
-            pub mod bar;
-            fn f() {}
-
-            //- /foo/bar.rs
-            pub struct Baz;
-            enum E { V }
-        ",
-        );
-        assert_snapshot_matches!(
-        map,
-            @r###"
-crate
-S: t v
-
-crate::foo
-f: v
-
-crate::foo::bar
-Baz: t v
-E: t
-"###
-        )
-    }
-
-    #[test]
-    fn macro_rules_are_globally_visible() {
-        let map = def_map(
-            "
-            //- /lib.rs
-            macro_rules! structs {
-                ($($i:ident),*) => {
-                    $(struct $i { field: u32 } )*
+            PathKind::Plain => {
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
+                };
+                log::debug!("resolving {:?} in module", segment);
+                self.resolve_name_in_module(db, original_module, &segment.name)
+            }
+            PathKind::Super => {
+                if let Some(p) = self.modules[original_module].parent {
+                    PerNs::types(Module { krate: self.krate, module_id: p }.into())
+                } else {
+                    log::debug!("super path in root module");
+                    return ResolvePathResult::empty(ReachedFixedPoint::Yes);
                 }
             }
-            structs!(Foo);
-            mod nested;
+            PathKind::Abs => {
+                // 2018-style absolute path -- only extern prelude
+                let segment = match segments.next() {
+                    Some((_, segment)) => segment,
+                    None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
+                };
+                if let Some(def) = self.extern_prelude.get(&segment.name) {
+                    log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
+                    PerNs::types(*def)
+                } else {
+                    return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
+                }
+            }
+        };
 
-            //- /nested.rs
-            structs!(Bar, Baz);
-        ",
-        );
-        assert_snapshot_matches!(map, @r###"
-crate
-Foo: t v
+        for (i, segment) in segments {
+            let curr = match curr_per_ns.as_ref().take_types() {
+                Some(r) => r,
+                None => {
+                    // we still have path segments left, but the path so far
+                    // didn't resolve in the types namespace => no resolution
+                    // (don't break here because `curr_per_ns` might contain
+                    // something in the value namespace, and it would be wrong
+                    // to return that)
+                    return ResolvePathResult::empty(ReachedFixedPoint::No);
+                }
+            };
+            // resolve segment in curr
 
-crate::nested
-Bar: t v
-Baz: t v
-"###);
+            curr_per_ns = match curr {
+                ModuleDef::Module(module) => {
+                    if module.krate != self.krate {
+                        let path = Path {
+                            segments: path.segments[i..].iter().cloned().collect(),
+                            kind: PathKind::Self_,
+                        };
+                        log::debug!("resolving {:?} in other crate", path);
+                        let item_map = db.item_map(module.krate);
+                        let (def, s) = item_map.resolve_path(db, *module, &path);
+                        return ResolvePathResult::with(
+                            def,
+                            ReachedFixedPoint::Yes,
+                            s.map(|s| s + i),
+                        );
+                    }
+
+                    match self[module.module_id].items.get(&segment.name) {
+                        Some(res) if !res.def.is_none() => res.def,
+                        _ => {
+                            log::debug!("path segment {:?} not found", segment.name);
+                            return ResolvePathResult::empty(ReachedFixedPoint::No);
+                        }
+                    }
+                }
+                ModuleDef::Enum(e) => {
+                    // enum variant
+                    tested_by!(item_map_enum_importing);
+                    match e.variant(db, &segment.name) {
+                        Some(variant) => PerNs::both(variant.into(), variant.into()),
+                        None => {
+                            return ResolvePathResult::with(
+                                PerNs::types((*e).into()),
+                                ReachedFixedPoint::Yes,
+                                Some(i),
+                            );
+                        }
+                    }
+                }
+                s => {
+                    // could be an inherent method call in UFCS form
+                    // (`Struct::method`), or some other kind of associated item
+                    log::debug!(
+                        "path segment {:?} resolved to non-module {:?}, but is not last",
+                        segment.name,
+                        curr,
+                    );
+
+                    return ResolvePathResult::with(
+                        PerNs::types((*s).into()),
+                        ReachedFixedPoint::Yes,
+                        Some(i),
+                    );
+                }
+            };
+        }
+        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 
-    #[test]
-    fn macro_rules_can_define_modules() {
-        let map = def_map(
-            "
-            //- /lib.rs
-            macro_rules! m {
-                ($name:ident) => { mod $name;  }
-            }
-            m!(n1);
+    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+        let from_crate_root = self[self.root].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
-            //- /n1.rs
-            m!(n2)
-            //- /n1/n2.rs
-            struct X;
-        ",
-        );
-        assert_snapshot_matches!(map, @r###"
-crate
+        from_crate_root.or(from_extern_prelude)
+    }
 
-crate::n1
+    fn resolve_name_in_module(
+        &self,
+        db: &impl PersistentHirDatabase,
+        module: ModuleId,
+        name: &Name,
+    ) -> PerNs<ModuleDef> {
+        // Resolve in:
+        //  - current module / scope
+        //  - extern prelude
+        //  - std prelude
+        let from_scope = self[module].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_extern_prelude =
+            self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
+        let from_prelude = self.resolve_in_prelude(db, name);
 
-crate::n1::n2
-X: t v
-"###);
+        from_scope.or(from_extern_prelude).or(from_prelude)
+    }
+
+    fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+        self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
+    }
+
+    fn resolve_in_prelude(&self, db: &impl PersistentHirDatabase, name: &Name) -> PerNs<ModuleDef> {
+        if let Some(prelude) = self.prelude {
+            let resolution = if prelude.krate == self.krate {
+                self[prelude.module_id].items.get(name).cloned()
+            } else {
+                db.item_map(prelude.krate)[prelude.module_id].items.get(name).cloned()
+            };
+            resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
+        } else {
+            PerNs::none()
+        }
     }
 }
