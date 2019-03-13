@@ -1,6 +1,6 @@
 use crate::utils::{
-    has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir,
-    span_lint_hir_and_then, walk_ptrs_ty_depth,
+    has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
+    walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
