@@ -107,7 +107,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
             {
                 if let Some(items) = item.meta_item_list() {
                     if let Ok(subcommand) =
-                        Self::parse(tcx, trait_def_id, &items, item.span, false)
+                        Self::parse(tcx, trait_def_id, &items, item.span(), false)
                     {
                         subcommands.push(subcommand);
                     } else {
@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
             }
 
             // nothing found
-            parse_error(tcx, item.span,
+            parse_error(tcx, item.span(),
                         "this attribute must have a valid value",
                         "expected value here",
                         Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#));
@@ -177,10 +177,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(
-                        c.name().as_str().to_string(),
-                        c.value_str().map(|s| s.as_str().to_string())
-                    ))
+                    c.ident_str().map_or(false, |name| {
+                        options.contains(&(
+                            name.to_string(),
+                            c.value_str().map(|s| s.as_str().to_string())
+                        ))
+                    })
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue

@@ -56,10 +56,10 @@ pub fn load_plugins(sess: &Session,
 
             for plugin in plugins {
                 // plugins must have a name and can't be key = value
-                match plugin.name() {
+                match plugin.ident_str() {
                     Some(name) if !plugin.is_value_str() => {
                         let args = plugin.meta_item_list().map(ToOwned::to_owned);
-                        loader.load_plugin(plugin.span, &name.as_str(), args.unwrap_or_default());
+                        loader.load_plugin(plugin.span(), name, args.unwrap_or_default());
                     },
                     _ => call_malformed_plugin_attribute(sess, attr.span),
                 }

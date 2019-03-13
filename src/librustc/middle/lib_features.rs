@@ -65,9 +65,9 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                 for meta in metas {
                     if let Some(mi) = meta.meta_item() {
                         // Find the `feature = ".."` meta-item.
-                        match (&*mi.name().as_str(), mi.value_str()) {
-                            ("feature", val) => feature = val,
-                            ("since", val) => since = val,
+                        match (mi.ident_str(), mi.value_str()) {
+                            (Some("feature"), val) => feature = val,
+                            (Some("since"), val) => since = val,
                             _ => {}
                         }
                     }

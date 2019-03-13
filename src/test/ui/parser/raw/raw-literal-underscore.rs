@@ -1,3 +1,4 @@
-fn underscore_test(r#_: u32) {
-    //~^ ERROR `r#_` is not currently supported.
+fn main() {
+    let r#_;
+    //~^ ERROR `_` cannot be a raw identifier
 }

@@ -895,9 +895,7 @@ impl<'a> Parser<'a> {
                                            &format!("expected identifier, found {}",
                                                     self.this_token_descr()));
         if let token::Ident(ident, false) = &self.token {
-            if ident.is_reserved() && !ident.is_path_segment_keyword() &&
-                ident.name != keywords::Underscore.name()
-            {
+            if ident.is_raw_guess() {
                 err.span_suggestion(
                     self.span,
                     "you can escape reserved keywords to use them as identifiers",
@@ -2335,7 +2333,7 @@ impl<'a> Parser<'a> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.ident.clone()),
+                    ast::MetaItemKind::Word => Some(meta.path.clone()),
                     _ => None,
                 },
                 _ => None,

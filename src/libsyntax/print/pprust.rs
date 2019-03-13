@@ -768,11 +768,11 @@ pub trait PrintState<'a> {
     }
 
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) -> io::Result<()> {
-        match item.node {
-            ast::NestedMetaItemKind::MetaItem(ref mi) => {
+        match item {
+            ast::NestedMetaItem::MetaItem(ref mi) => {
                 self.print_meta_item(mi)
             },
-            ast::NestedMetaItemKind::Literal(ref lit) => {
+            ast::NestedMetaItem::Literal(ref lit) => {
                 self.print_literal(lit)
             }
         }
@@ -781,15 +781,15 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
-            ast::MetaItemKind::Word => self.print_attribute_path(&item.ident)?,
+            ast::MetaItemKind::Word => self.print_attribute_path(&item.path)?,
             ast::MetaItemKind::NameValue(ref value) => {
-                self.print_attribute_path(&item.ident)?;
+                self.print_attribute_path(&item.path)?;
                 self.writer().space()?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
             ast::MetaItemKind::List(ref items) => {
-                self.print_attribute_path(&item.ident)?;
+                self.print_attribute_path(&item.path)?;
                 self.popen()?;
                 self.commasep(Consistent,
                               &items[..],
