@@ -46,7 +46,8 @@
     "activationEvents": [
         "onLanguage:rust",
         "onCommand:rust-analyzer.analyzerStatus",
-        "onCommand:rust-analyzer.collectGarbage"
+        "onCommand:rust-analyzer.collectGarbage",
+        "workspaceContains:**/Cargo.toml"
     ],
     "main": "./out/extension",
     "contributes": {
