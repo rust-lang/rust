@@ -3611,15 +3611,33 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
-                let body_id = self.lower_async_body(&sig.decl, &sig.header.asyncness.node, body);
-                let impl_trait_return_allow = !self.is_in_trait_impl;
-                let (generics, sig) = self.lower_method_sig(
-                    &i.generics,
-                    sig,
-                    impl_item_def_id,
-                    impl_trait_return_allow,
-                    sig.header.asyncness.node.opt_return_id(),
-                );
+                let mut lower_method = |sig: &MethodSig| {
+                    let body_id = self.lower_async_body(
+                        &sig.decl, &sig.header.asyncness.node, body
+                    );
+                    let impl_trait_return_allow = !self.is_in_trait_impl;
+                    let (generics, sig) = self.lower_method_sig(
+                        &i.generics,
+                        sig,
+                        impl_item_def_id,
+                        impl_trait_return_allow,
+                        sig.header.asyncness.node.opt_return_id(),
+                    );
+                    (body_id, generics, sig)
+                };
+
+                let (body_id, generics, sig) = if let IsAsync::Async {
+                    ref arguments, ..
+                } = sig.header.asyncness.node {
+                    let mut sig = sig.clone();
+                    // Replace the arguments of this async function with the generated
+                    // arguments that will be moved into the closure.
+                    sig.decl.inputs = arguments.clone().drain(..).map(|a| a.arg).collect();
+                    lower_method(&sig)
+                } else {
+                    lower_method(sig)
+                };
+
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
             ImplItemKind::Type(ref ty) => (
