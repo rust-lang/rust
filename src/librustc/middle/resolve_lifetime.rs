@@ -2306,7 +2306,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Root => break None,
 
-                Scope::Binder { s, .. } => {
+                Scope::Binder { s, ref lifetimes, .. } => {
+                    // collect named lifetimes for suggestions
+                    for name in lifetimes.keys() {
+                        if let hir::ParamName::Plain(name) = name {
+                            lifetime_names.insert(*name);
+                        }
+                    }
                     late_depth += 1;
                     scope = s;
                 }
@@ -2323,6 +2329,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         Elide::Exact(l) => l.shifted(late_depth),
                         Elide::Error(ref e) => {
                             if let Scope::Binder { ref lifetimes, .. } = s {
+                                // collect named lifetimes for suggestions
                                 for name in lifetimes.keys() {
                                     if let hir::ParamName::Plain(name) = name {
                                         lifetime_names.insert(*name);
