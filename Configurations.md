@@ -2358,9 +2358,9 @@ Specifies which edition is used by the parser.
 - **Possible values**: `2015`, `2018`
 - **Stable**: Yes
 
-### Example
-
-If you want to format code that requires edition 2018, add the following to your config file:
+Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if executed
+through the Cargo's formatting tool `cargo fmt`. Otherwise, the edition needs to be specified
+in your config file:
 
 ```toml
 edition = "2018"
