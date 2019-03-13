@@ -2048,6 +2048,14 @@ impl<'a> LoweringContext<'a> {
         hir::Arg {
             hir_id,
             pat: self.lower_pat(&arg.pat),
+            source: self.lower_arg_source(&arg.source),
+        }
+    }
+
+    fn lower_arg_source(&mut self, source: &ArgSource) -> hir::ArgSource {
+        match source {
+            ArgSource::Normal => hir::ArgSource::Normal,
+            ArgSource::AsyncFn(pat) => hir::ArgSource::AsyncFn(self.lower_pat(pat)),
         }
     }
 
