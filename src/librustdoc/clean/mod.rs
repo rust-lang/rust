@@ -2921,6 +2921,25 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Clean<Constant> for ty::LazyConst<'tcx> {
+    fn clean(&self, cx: &DocContext<'_>) -> Constant {
+        if let ty::LazyConst::Evaluated(ct) = self {
+            ct.clean(cx)
+        } else {
+            unimplemented!() // FIXME(const_generics)
+        }
+    }
+}
+
+impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
+    fn clean(&self, cx: &DocContext<'_>) -> Constant {
+        Constant {
+            type_: self.ty.clean(cx),
+            expr: format!("{:?}", self.val), // FIXME(const_generics)
+        }
+    }
+}
+
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
