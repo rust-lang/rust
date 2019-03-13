@@ -17,10 +17,8 @@ exit 1
   set -x
 }
 
-TARGET=$1
-#ARCH=$1
-#TARGET=linux-musl-$ARCH
-ARCH=x86_64
+ARCH=$1
+TARGET=linux-musl-$ARCH
 
 OUTPUT=/usr/local
 shift
@@ -33,8 +31,7 @@ hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
 
 cd -
 
-# Make musl binaries executable
-
+# Install musl library to make binaries executable
 ln -s $OUTPUT/$TARGET/lib/libc.so /lib/ld-musl-$ARCH.so.1
 echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
 
@@ -50,6 +47,7 @@ if [ ! -d libunwind-release_$LLVM ]; then
   curl -L https://github.com/llvm-mirror/libunwind/archive/release_$LLVM.tar.gz | tar xzf -
 fi
 
+# fixme(mati865): Replace it with https://github.com/rust-lang/rust/pull/59089
 mkdir libunwind-build
 cd libunwind-build
 cmake ../libunwind-release_$LLVM \

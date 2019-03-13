@@ -27,7 +27,7 @@ WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
 RUN CFLAGS="-Wa,-mrelax-relocations=no" \
     CXXFLAGS="-Wa,-mrelax-relocations=no" \
-    bash musl-toolchain.sh x86_64-linux-musl && rm -rf build
+    bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
 
 COPY scripts/sccache.sh /scripts/

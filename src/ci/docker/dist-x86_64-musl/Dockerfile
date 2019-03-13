@@ -21,10 +21,9 @@ WORKDIR /build/
 
 COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
-# TODO: Check what this issue is and if we can ignore it
 RUN CFLAGS="-Wa,-mrelax-relocations=no" \
     CXXFLAGS="-Wa,-mrelax-relocations=no" \
-    bash musl-toolchain.sh x86_64-linux-musl && rm -rf build
+    bash musl-toolchain.sh x86_64 && rm -rf build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -45,9 +44,8 @@ ENV HOSTS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
 
-#    CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_LINKER=musl-gcc \
-#    CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="qemu-arm -L /musl-arm"
-
+# Musl defaults to static libs but we need them to be dynamic for host toolchain.
+# The toolchain will produce static libs by default.
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
