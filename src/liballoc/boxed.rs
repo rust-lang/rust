@@ -489,7 +489,7 @@ impl<T: ?Sized> From<Box<T>> for Pin<Box<T>> {
 }
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
+impl<T: Copy> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
@@ -503,7 +503,7 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
     ///
     /// println!("{:?}", boxed_slice);
     /// ```
-    fn from(slice: &'a [T]) -> Box<[T]> {
+    fn from(slice: &[T]) -> Box<[T]> {
         let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
         boxed.copy_from_slice(slice);
         boxed
@@ -511,7 +511,7 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 }
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<'a> From<&'a str> for Box<str> {
+impl From<&str> for Box<str> {
     /// Converts a `&str` into a `Box<str>`
     ///
     /// This conversion allocates on the heap
@@ -523,7 +523,7 @@ impl<'a> From<&'a str> for Box<str> {
     /// println!("{}", boxed);
     /// ```
     #[inline]
-    fn from(s: &'a str) -> Box<str> {
+    fn from(s: &str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
     }
 }

@@ -1004,26 +1004,26 @@ mod impls {
     // & pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
+    impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: & &'b B) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: & &B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: & &B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
+    impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A where A: PartialOrd<B> {
         #[inline]
-        fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
+        fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
         #[inline]
-        fn lt(&self, other: & &'b B) -> bool { PartialOrd::lt(*self, *other) }
+        fn lt(&self, other: & &B) -> bool { PartialOrd::lt(*self, *other) }
         #[inline]
-        fn le(&self, other: & &'b B) -> bool { PartialOrd::le(*self, *other) }
+        fn le(&self, other: & &B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: & &'b B) -> bool { PartialOrd::ge(*self, *other) }
+        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
         #[inline]
-        fn gt(&self, other: & &'b B) -> bool { PartialOrd::gt(*self, *other) }
+        fn gt(&self, other: & &B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &A where A: Ord {
@@ -1036,26 +1036,26 @@ mod impls {
     // &mut pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
+    impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &mut A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: &&mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: &&mut B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b mut B> for &'a mut A where A: PartialOrd<B> {
+    impl<A: ?Sized, B: ?Sized> PartialOrd<&mut B> for &mut A where A: PartialOrd<B> {
         #[inline]
-        fn partial_cmp(&self, other: &&'b mut B) -> Option<Ordering> {
+        fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
         }
         #[inline]
-        fn lt(&self, other: &&'b mut B) -> bool { PartialOrd::lt(*self, *other) }
+        fn lt(&self, other: &&mut B) -> bool { PartialOrd::lt(*self, *other) }
         #[inline]
-        fn le(&self, other: &&'b mut B) -> bool { PartialOrd::le(*self, *other) }
+        fn le(&self, other: &&mut B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: &&'b mut B) -> bool { PartialOrd::ge(*self, *other) }
+        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
         #[inline]
-        fn gt(&self, other: &&'b mut B) -> bool { PartialOrd::gt(*self, *other) }
+        fn gt(&self, other: &&mut B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &mut A where A: Ord {
@@ -1066,18 +1066,18 @@ mod impls {
     impl<A: ?Sized> Eq for &mut A where A: Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
+    impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: &&mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: &&mut B) -> bool { PartialEq::ne(*self, *other) }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
+    impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &mut A where A: PartialEq<B> {
         #[inline]
-        fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(*self, *other) }
+        fn eq(&self, other: &&B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
-        fn ne(&self, other: &&'b B) -> bool { PartialEq::ne(*self, *other) }
+        fn ne(&self, other: &&B) -> bool { PartialEq::ne(*self, *other) }
     }
 }

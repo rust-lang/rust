@@ -2747,7 +2747,7 @@ version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_fs_util 0.0.0",
@@ -2778,7 +2778,7 @@ dependencies = [
  "rustc_resolve 0.0.0",
  "rustc_traits 0.0.0",
  "rustc_typeck 0.0.0",
- "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",

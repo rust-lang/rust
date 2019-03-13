@@ -2837,15 +2837,15 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
-impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
-    fn from(reference: &'a mut T) -> Self {
+impl<T: ?Sized> From<&mut T> for Unique<T> {
+    fn from(reference: &mut T) -> Self {
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
-impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
-    fn from(reference: &'a T) -> Self {
+impl<T: ?Sized> From<&T> for Unique<T> {
+    fn from(reference: &T) -> Self {
         unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
     }
 }
@@ -2874,6 +2874,16 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// Usually this won't be necessary; covariance is correct for most safe abstractions,
 /// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
+///
+/// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
+/// not change the fact that mutating through a (pointer derived from a) shared
+/// reference is undefined behavior unless the mutation happens inside an
+/// [`UnsafeCell<T>`]. The same goes for creating a mutable reference from a shared
+/// reference. When using this `From` instance without an `UnsafeCell<T>`,
+/// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
+/// is never used for mutation.
+///
+/// [`UnsafeCell<T>`]: ../cell/struct.UnsafeCell.html
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -3049,17 +3059,17 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
+impl<T: ?Sized> From<&mut T> for NonNull<T> {
     #[inline]
-    fn from(reference: &'a mut T) -> Self {
+    fn from(reference: &mut T) -> Self {
         unsafe { NonNull { pointer: reference as *mut T } }
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
+impl<T: ?Sized> From<&T> for NonNull<T> {
     #[inline]
-    fn from(reference: &'a T) -> Self {
+    fn from(reference: &T) -> Self {
         unsafe { NonNull { pointer: reference as *const T } }
     }
 }

@@ -19,6 +19,7 @@ use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
 use rustc::hir::RangeEnd;
+use rustc::mir::interpret::truncate;
 
 use std::mem;
 
@@ -115,14 +116,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ty::Int(ity) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let max = !0u128 >> (128 - size.bits());
+                        let max = truncate(u128::max_value(), size);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
-                        let max = !0u128 >> (128 - size.bits());
+                        let max = truncate(u128::max_value(), size);
                         (Some((0, max, size)), 0)
                     }
                     _ => (None, 0),

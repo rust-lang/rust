@@ -482,8 +482,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         //
         // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
         // am looking forward to the future here.
-
-        if !data.has_escaping_bound_vars() {
+        if !data.has_escaping_bound_vars() && !region.has_escaping_bound_vars() {
             let implicit_bounds =
                 object_region_bounds(self.infcx.tcx, data);
 
