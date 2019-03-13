@@ -6,6 +6,7 @@ use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
+use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
@@ -26,7 +27,7 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
 
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
@@ -262,11 +263,19 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     }
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
-    // Buffer any reservation warnings.
+    // Convert any reservation warnings into lints.
     let reservation_warnings = mem::replace(&mut mbcx.reservation_warnings, Default::default());
     for (_, (place, span, context, bk, borrow)) in reservation_warnings {
-        let mut diag = mbcx.report_conflicting_borrow(context, (&place, span), bk, &borrow);
-        downgrade_if_error(&mut diag);
+        let mut initial_diag = mbcx.report_conflicting_borrow(context, (&place, span), bk, &borrow);
+
+        // Span and message don't matter; we overwrite them below anyway
+        let mut diag = mbcx.infcx.tcx.struct_span_lint_hir(
+            MUTABLE_BORROW_RESERVATION_CONFLICT, id, DUMMY_SP, "");
+
+        diag.message = initial_diag.styled_message().clone();
+        diag.span = initial_diag.span.clone();
+
+        initial_diag.cancel();
         diag.buffer(&mut mbcx.errors_buffer);
     }
 
