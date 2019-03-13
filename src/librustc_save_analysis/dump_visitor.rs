@@ -58,17 +58,19 @@ macro_rules! down_cast_data {
 }
 
 macro_rules! access_from {
+    ($save_ctxt:expr, $item:expr, $id:expr) => {
+        Access {
+            public: $item.vis.node.is_pub(),
+            reachable: $save_ctxt.access_levels.is_reachable($id),
+        }
+    };
+}
+
+macro_rules! access_from_vis {
     ($save_ctxt:expr, $vis:expr, $id:expr) => {
         Access {
             public: $vis.node.is_pub(),
             reachable: $save_ctxt.access_levels.is_reachable($id),
-        }
-    };
-
-    ($save_ctxt:expr, $item:expr) => {
-        Access {
-            public: $item.vis.node.is_pub(),
-            reachable: $save_ctxt.access_levels.is_reachable($item.id),
         }
     };
 }
@@ -303,7 +305,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             method_data.value = sig_str;
             method_data.sig = sig::method_signature(id, ident, generics, sig, &self.save_ctxt);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
+            let hir_id = self.tcx.hir().node_to_hir_id(id);
+            self.dumper.dump_def(&access_from_vis!(self.save_ctxt, vis, hir_id), method_data);
         }
 
         // walk arg and return types
@@ -324,7 +327,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            self.dumper.dump_def(&access_from!(self.save_ctxt, field), field_data);
+            let hir_id = self.tcx.hir().node_to_hir_id(field.id);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, field, hir_id), field_data);
         }
     }
 
@@ -389,7 +393,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 |v| v.process_formals(&decl.inputs, &fn_data.qualname),
             );
             self.process_generic_params(ty_params, &fn_data.qualname, item.id);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item), fn_data);
+            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item, hir_id), fn_data);
         }
 
         for arg in &decl.inputs {
@@ -409,10 +414,11 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         typ: &'l ast::Ty,
         expr: &'l ast::Expr,
     ) {
+        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item), var_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), var_data);
             }
             v.visit_ty(&typ);
             v.visit_expr(expr);
@@ -434,9 +440,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if !self.span.filter_generated(ident.span) {
             let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
             let span = self.span_from_span(ident.span);
+            let hir_id = self.tcx.hir().node_to_hir_id(id);
 
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, vis, id),
+                &access_from_vis!(self.save_ctxt, vis, hir_id),
                 Def {
                     kind: DefKind::Const,
                     id: id_from_node_id(id, &self.save_ctxt),
@@ -510,8 +517,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         if !self.span.filter_generated(item.ident.span) {
             let span = self.span_from_span(item.ident.span);
+            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item),
+                &access_from!(self.save_ctxt, item, hir_id),
                 Def {
                     kind,
                     id: id_from_node_id(item.id, &self.save_ctxt),
@@ -550,7 +558,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let access = access_from!(self.save_ctxt, item);
+        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let access = access_from!(self.save_ctxt, item, hir_id);
 
         for variant in &enum_definition.variants {
             let name = variant.node.ident.name.to_string();
@@ -698,8 +707,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 .iter()
                 .map(|i| id_from_node_id(i.id, &self.save_ctxt))
                 .collect();
+            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item),
+                &access_from!(self.save_ctxt, item, hir_id),
                 Def {
                     kind: DefKind::Trait,
                     id,
@@ -757,7 +767,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_mod(&mut self, item: &ast::Item) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item), mod_data);
+            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item, hir_id), mod_data);
         }
     }
 
@@ -1197,7 +1208,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // The access is calculated using the current tree ID, but with the root tree's visibility
         // (since nested trees don't have their own visibility).
-        let access = access_from!(self.save_ctxt, root_item.vis, id);
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let access = access_from!(self.save_ctxt, root_item, hir_id);
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
@@ -1394,9 +1406,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_node_id(item.id, &self.save_ctxt);
+                    let hir_id = self.tcx.hir().node_to_hir_id(item.id);
 
                     self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item),
+                        &access_from!(self.save_ctxt, item, hir_id),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1424,9 +1437,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_node_id(item.id, &self.save_ctxt);
+                    let hir_id = self.tcx.hir().node_to_hir_id(item.id);
 
                     self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item),
+                        &access_from!(self.save_ctxt, item, hir_id),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1624,7 +1638,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
-        let access = access_from!(self.save_ctxt, item);
+        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let access = access_from!(self.save_ctxt, item, hir_id);
 
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
