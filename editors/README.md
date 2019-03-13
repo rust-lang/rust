@@ -1,5 +1,5 @@
 
-Preqrequisites:
+Prerequisites:
 
 In order to build the VS Code plugin, you need to have node.js and npm with
 a minimum version of 10 installed. Please refer to
