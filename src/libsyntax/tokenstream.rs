@@ -181,8 +181,8 @@ impl TokenStream {
                         (_, (TokenTree::Token(_, token::Token::Comma), _)) => continue,
                         ((TokenTree::Token(sp, token_left), NonJoint),
                          (TokenTree::Token(_, token_right), _))
-                        if token_left.is_ident() || token_left.is_lit() &&
-                            token_right.is_ident() || token_right.is_lit() => *sp,
+                        if (token_left.is_ident() || token_left.is_lit()) &&
+                            (token_right.is_ident() || token_right.is_lit()) => *sp,
                         ((TokenTree::Delimited(sp, ..), NonJoint), _) => sp.entire(),
                         _ => continue,
                     };
