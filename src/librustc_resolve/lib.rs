@@ -1195,6 +1195,13 @@ impl<'a> ModuleData<'a> {
         }
     }
 
+    fn is_trait_alias(&self) -> bool {
+        match self.kind {
+            ModuleKind::Def(Def::TraitAlias(_), _) => true,
+            _ => false,
+        }
+    }
+
     fn nearest_item_scope(&'a self) -> Module<'a> {
         if self.is_trait() { self.parent.unwrap() } else { self }
     }
@@ -4369,8 +4376,10 @@ impl<'a> Resolver<'a> {
             let mut collected_traits = Vec::new();
             module.for_each_child(|name, ns, binding| {
                 if ns != TypeNS { return }
-                if let Def::Trait(_) = binding.def() {
-                    collected_traits.push((name, binding));
+                match binding.def() {
+                    Def::Trait(_) |
+                    Def::TraitAlias(_) => collected_traits.push((name, binding)),
+                    _ => (),
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -4834,6 +4843,7 @@ impl<'a> Resolver<'a> {
         let container = match parent.kind {
             ModuleKind::Def(Def::Mod(_), _) => "module",
             ModuleKind::Def(Def::Trait(_), _) => "trait",
+            ModuleKind::Def(Def::TraitAlias(_), _) => "trait alias",
             ModuleKind::Block(..) => "block",
             _ => "enum",
         };
@@ -4862,6 +4872,7 @@ impl<'a> Resolver<'a> {
             (TypeNS, _) if old_binding.is_extern_crate() => "extern crate",
             (TypeNS, Some(module)) if module.is_normal() => "module",
             (TypeNS, Some(module)) if module.is_trait() => "trait",
+            (TypeNS, Some(module)) if module.is_trait_alias() => "trait alias",
             (TypeNS, _) => "type",
         };
 
