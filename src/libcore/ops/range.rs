@@ -26,11 +26,13 @@ use hash::{Hash, Hasher};
 /// Used as a [slicing index], `RangeFull` produces the full array as a slice.
 ///
 /// ```
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
-/// assert_eq!(arr[ ..3], [0,1,2  ]);
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);  // RangeFull
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);
+/// assert_eq!(arr[1.. 3], [  1,2    ]);
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
@@ -60,11 +62,13 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!((3..5), std::ops::Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..6).sum());
 ///
-/// let arr = ['a', 'b', 'c', 'd'];
-/// assert_eq!(arr[ .. ], ['a', 'b', 'c', 'd']);
-/// assert_eq!(arr[ ..3], ['a', 'b', 'c',    ]);
-/// assert_eq!(arr[1.. ], [     'b', 'c', 'd']);
-/// assert_eq!(arr[1..3], [     'b', 'c'     ]);  // Range
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);
+/// assert_eq!(arr[1.. 3], [  1,2    ]);  // Range
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 #[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
@@ -160,11 +164,13 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// assert_eq!((2..), std::ops::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, (2..).take(3).sum());
 ///
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);
-/// assert_eq!(arr[ ..3], [0,1,2  ]);
-/// assert_eq!(arr[1.. ], [  1,2,3]);  // RangeFrom
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);  // RangeFrom
+/// assert_eq!(arr[1.. 3], [  1,2    ]);
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
@@ -240,11 +246,13 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// elements before the index indicated by `end`.
 ///
 /// ```
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);
-/// assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);  // RangeTo
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);
+/// assert_eq!(arr[1.. 3], [  1,2    ]);
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
@@ -312,9 +320,13 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 ///
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ ..=2], [0,1,2  ]);
-/// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);
+/// assert_eq!(arr[1.. 3], [  1,2    ]);
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
 #[derive(Clone)]  // not Copy -- see #27186
@@ -569,9 +581,13 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// array elements up to and including the index indicated by `end`.
 ///
 /// ```
-/// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ ..=2], [0,1,2  ]);  // RangeToInclusive
-/// assert_eq!(arr[1..=2], [  1,2  ]);
+/// let arr = [0, 1, 2, 3, 4];
+/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
+/// assert_eq!(arr[ .. 3], [0,1,2    ]);
+/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);  // RangeToInclusive
+/// assert_eq!(arr[1..  ], [  1,2,3,4]);
+/// assert_eq!(arr[1.. 3], [  1,2    ]);
+/// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 ///
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
@@ -676,7 +692,7 @@ pub enum Bound<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
-/// by range syntax like `..`, `a..`, `..b` or `c..d`.
+/// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
 pub trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///
