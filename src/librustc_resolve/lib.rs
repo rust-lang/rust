@@ -3264,11 +3264,21 @@ impl<'a> Resolver<'a> {
         resolution
     }
 
-    fn type_ascription_suggestion(&self,
-                                  err: &mut DiagnosticBuilder<'_>,
-                                  base_span: Span) {
+    /// Only used in a specific case of type ascription suggestions
+    #[doc(hidden)]
+    fn get_colon_suggestion_span(&self, start: Span) -> Span {
+        let cm = self.session.source_map();
+        start.to(cm.next_point(start))
+    }
+
+    fn type_ascription_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        base_span: Span,
+    ) {
         debug!("type_ascription_suggetion {:?}", base_span);
         let cm = self.session.source_map();
+        let base_snippet = cm.span_to_snippet(base_span);
         debug!("self.current_type_ascription {:?}", self.current_type_ascription);
         if let Some(sp) = self.current_type_ascription.last() {
             let mut sp = *sp;
@@ -3276,10 +3286,8 @@ impl<'a> Resolver<'a> {
                 // Try to find the `:`; bail on first non-':' / non-whitespace.
                 sp = cm.next_point(sp);
                 if let Ok(snippet) = cm.span_to_snippet(sp.to(cm.next_point(sp))) {
-                    debug!("snippet {:?}", snippet);
                     let line_sp = cm.lookup_char_pos(sp.hi()).line;
                     let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
-                    debug!("{:?} {:?}", line_sp, line_base_sp);
                     if snippet == ":" {
                         err.span_label(base_span,
                                        "expecting a type here because of type ascription");
@@ -3290,6 +3298,29 @@ impl<'a> Resolver<'a> {
                                 ";".to_string(),
                                 Applicability::MaybeIncorrect,
                             );
+                        } else {
+                            let colon_sp = self.get_colon_suggestion_span(sp);
+                            let after_colon_sp = self.get_colon_suggestion_span(
+                                colon_sp.shrink_to_hi(),
+                            );
+                            if !cm.span_to_snippet(after_colon_sp).map(|s| s == " ")
+                                .unwrap_or(false)
+                            {
+                                err.span_suggestion(
+                                    colon_sp,
+                                    "maybe you meant to write a path separator here",
+                                    "::".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            if let Ok(base_snippet) = base_snippet {
+                                err.span_suggestion(
+                                    base_span,
+                                    "maybe you meant to write an assignment here",
+                                    format!("let {}", base_snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
                         break;
                     } else if !snippet.trim().is_empty() {

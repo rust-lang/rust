@@ -1,0 +1,35 @@
+error[E0433]: failed to resolve: use of undeclared type or module `io`
+  --> $DIR/type-ascription-instead-of-path.rs:2:9
+   |
+LL |     std:io::stdin();
+   |         ^^ use of undeclared type or module `io`
+
+error[E0423]: expected value, found module `std`
+  --> $DIR/type-ascription-instead-of-path.rs:2:5
+   |
+LL |     std:io::stdin();
+   |     ^^^
+   |     |
+   |     not a value
+   |     expecting a type here because of type ascription
+help: maybe you meant to write a path separator here
+   |
+LL |     std::io::stdin();
+   |        ^^
+help: maybe you meant to write an assignment here
+   |
+LL |     let std:io::stdin();
+   |     ^^^^^^^
+
+error[E0658]: type ascription is experimental (see issue #23416)
+  --> $DIR/type-ascription-instead-of-path.rs:2:5
+   |
+LL |     std:io::stdin();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(type_ascription)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0423, E0433, E0658.
+For more information about an error, try `rustc --explain E0423`.
