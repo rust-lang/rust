@@ -15,7 +15,6 @@
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(nll)]
-#![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(optin_builtin_traits)]
 #![feature(concat_idents)]

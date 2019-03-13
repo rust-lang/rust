@@ -67,7 +67,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1..3], [     'b', 'c'     ]);  // Range
 /// ```
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -91,8 +91,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!(!(3..5).contains(&2));
@@ -108,7 +106,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
     /// ```
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
@@ -169,7 +167,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -190,8 +188,6 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!(!(3..).contains(&2));
@@ -202,7 +198,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// assert!(!(0.0..).contains(&f32::NAN));
     /// assert!(!(f32::NAN..).contains(&0.5));
     /// ```
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
@@ -272,8 +268,6 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!( (..5).contains(&-1_000_000_000));
@@ -284,7 +278,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// assert!(!(..1.0).contains(&f32::NAN));
     /// assert!(!(..f32::NAN).contains(&0.5));
     /// ```
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
@@ -317,7 +311,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
-#[derive(Clone)]  // not Copy -- see #27186
+#[derive(Clone)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     pub(crate) start: Idx,
@@ -353,7 +347,8 @@ impl<T: PartialOrd> RangeInclusiveEquality for T {
 impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.start == other.start && self.end == other.end
+        self.start == other.start
+            && self.end == other.end
             && RangeInclusiveEquality::canonicalized_is_empty(self)
                 == RangeInclusiveEquality::canonicalized_is_empty(other)
     }
@@ -385,7 +380,11 @@ impl<Idx> RangeInclusive<Idx> {
     #[inline]
     #[rustc_promotable]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self { start, end, is_empty: None }
+        Self {
+            start,
+            end,
+            is_empty: None,
+        }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -466,8 +465,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!(!(3..=5).contains(&2));
@@ -484,7 +481,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!(f32::NAN..=1.0).contains(&1.0));
     /// ```
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
@@ -593,15 +590,12 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!( (..=5).contains(&-1_000_000_000));
@@ -612,7 +606,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// assert!(!(..=1.0).contains(&f32::NAN));
     /// assert!(!(..=f32::NAN).contains(&0.5));
     /// ```
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
@@ -714,14 +708,11 @@ pub trait RangeBounds<T: ?Sized> {
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
 
-
     /// Returns `true` if `item` is contained in the range.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(range_contains)]
-    ///
     /// use std::f32;
     ///
     /// assert!( (3..5).contains(&4));
@@ -731,7 +722,7 @@ pub trait RangeBounds<T: ?Sized> {
     /// assert!(!(0.0..1.0).contains(&f32::NAN));
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
-    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    #[stable(feature = "range_contains", since = "1.35.0")]
     fn contains<U>(&self, item: &U) -> bool
     where
         T: PartialOrd<U>,
@@ -741,9 +732,7 @@ pub trait RangeBounds<T: ?Sized> {
             Included(ref start) => *start <= item,
             Excluded(ref start) => *start < item,
             Unbounded => true,
-        })
-        &&
-        (match self.end_bound() {
+        }) && (match self.end_bound() {
             Included(ref end) => item <= *end,
             Excluded(ref end) => item < *end,
             Unbounded => true,
@@ -819,7 +808,7 @@ impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
         match *self {
             (Included(ref start), _) => Included(start),
             (Excluded(ref start), _) => Excluded(start),
-            (Unbounded, _)           => Unbounded,
+            (Unbounded, _) => Unbounded,
         }
     }
 
@@ -827,7 +816,7 @@ impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
         match *self {
             (_, Included(ref end)) => Included(end),
             (_, Excluded(ref end)) => Excluded(end),
-            (_, Unbounded)         => Unbounded,
+            (_, Unbounded) => Unbounded,
         }
     }
 }
