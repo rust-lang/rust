@@ -16,6 +16,7 @@ use crate::session::Session;
 use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::replace;
@@ -31,7 +32,7 @@ use crate::hir::{self, GenericParamKind, LifetimeParamKind};
 /// The origin of a named lifetime definition.
 ///
 /// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum LifetimeDefOrigin {
     // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
     ExplicitOrElided,
@@ -62,7 +63,7 @@ pub enum LifetimeUseSet<'tcx> {
     Many,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
     EarlyBound(
@@ -161,7 +162,7 @@ impl Region {
 /// A set containing, at most, one known element.
 /// If two distinct values are inserted into a set, then it
 /// becomes `Many`, which can be used to detect ambiguities.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum Set1<T> {
     Empty,
     One(T),

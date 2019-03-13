@@ -27,6 +27,7 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::middle::region;
 use crate::mir::interpret::ErrorHandled;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::subst::{InternalSubsts, SubstsRef};
@@ -294,7 +295,7 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum WhereClause<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
     ProjectionEq(ty::ProjectionPredicate<'tcx>),
@@ -302,19 +303,19 @@ pub enum WhereClause<'tcx> {
     TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum WellFormed<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum FromEnv<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum DomainGoal<'tcx> {
     Holds(WhereClause<'tcx>),
     WellFormed(WellFormed<'tcx>),
@@ -324,13 +325,13 @@ pub enum DomainGoal<'tcx> {
 
 pub type PolyDomainGoal<'tcx> = ty::Binder<DomainGoal<'tcx>>;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum QuantifierKind {
     Universal,
     Existential,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum GoalKind<'tcx> {
     Implies(Clauses<'tcx>, Goal<'tcx>),
     And(Goal<'tcx>, Goal<'tcx>),
@@ -376,7 +377,7 @@ impl<'tcx> GoalKind<'tcx> {
 
 /// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
 /// Harrop Formulas".
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum Clause<'tcx> {
     Implies(ProgramClause<'tcx>),
     ForAll(ty::Binder<ProgramClause<'tcx>>),
@@ -400,7 +401,7 @@ pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 /// it with the reverse implication operator `:-` to emphasize the way
 /// that programs are actually solved (via backchaining, which starts
 /// with the goal to solve and proceeds from there).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct ProgramClause<'tcx> {
     /// This goal will be considered true ...
     pub goal: DomainGoal<'tcx>,
@@ -412,7 +413,7 @@ pub struct ProgramClause<'tcx> {
     pub category: ProgramClauseCategory,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum ProgramClauseCategory {
     ImpliedBound,
     WellFormed,
@@ -420,7 +421,7 @@ pub enum ProgramClauseCategory {
 }
 
 /// A set of clauses that we assume to be true.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct Environment<'tcx> {
     pub clauses: Clauses<'tcx>,
 }
@@ -435,7 +436,7 @@ impl Environment<'tcx> {
 }
 
 /// Something (usually a goal), along with an environment.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct InEnvironment<'tcx, G> {
     pub environment: Environment<'tcx>,
     pub goal: G,
@@ -514,7 +515,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -562,14 +563,14 @@ pub enum Vtable<'tcx, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: ty::GeneratorSubsts<'tcx>,
@@ -578,7 +579,7 @@ pub struct VtableGeneratorData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
@@ -587,20 +588,20 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -613,13 +614,13 @@ pub struct VtableObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VtableTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,

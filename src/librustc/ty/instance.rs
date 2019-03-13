@@ -3,18 +3,19 @@ use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
 use crate::traits;
 use rustc_target::spec::abi::Abi;
+use rustc_macros::HashStable;
 use crate::util::ppaux;
 
 use std::fmt;
 use std::iter;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
