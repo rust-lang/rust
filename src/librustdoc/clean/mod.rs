@@ -1045,7 +1045,7 @@ impl GenericBound {
         GenericBound::TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path,
-                typarams: None,
+                param_names: None,
                 did,
                 is_generic: false,
             },
@@ -1469,7 +1469,7 @@ impl<'tcx> Clean<GenericParamDef> for ty::GenericParamDef {
                 (self.name.to_string(), GenericParamDefKind::Lifetime)
             }
             ty::GenericParamDefKind::Type { has_default, .. } => {
-                cx.renderinfo.borrow_mut().external_typarams
+                cx.renderinfo.borrow_mut().external_param_names
                              .insert(self.def_id, self.name.clean(cx));
                 let default = if has_default {
                     Some(cx.tcx.type_of(self.def_id).clean(cx))

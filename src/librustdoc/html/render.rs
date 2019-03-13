@@ -368,7 +368,7 @@ pub struct Cache {
 pub struct RenderInfo {
     pub inlined: FxHashSet<DefId>,
     pub external_paths: crate::core::ExternalPaths,
-    pub external_typarams: FxHashMap<DefId, String>,
+    pub external_param_names: FxHashMap<DefId, String>,
     pub exact_paths: FxHashMap<DefId, Vec<String>>,
     pub access_levels: AccessLevels<DefId>,
     pub deref_trait_did: Option<DefId>,
@@ -601,7 +601,7 @@ pub fn run(mut krate: clean::Crate,
     let RenderInfo {
         inlined: _,
         external_paths,
-        external_typarams,
+        external_param_names,
         exact_paths,
         access_levels,
         deref_trait_did,
