@@ -2940,15 +2940,15 @@ mod tests {
             .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v4.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", json));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", json));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", json));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", json));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", json));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
