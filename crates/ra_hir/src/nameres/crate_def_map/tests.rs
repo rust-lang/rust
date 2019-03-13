@@ -15,7 +15,7 @@ fn compute_crate_def_map(fixture: &str, graph: Option<CrateGraphFixture>) -> Arc
     }
     let crate_id = db.crate_graph().iter().next().unwrap();
     let krate = Crate { crate_id };
-    collector::crate_def_map_query(&db, krate)
+    db.crate_def_map(krate)
 }
 
 fn render_crate_def_map(map: &CrateDefMap) -> String {

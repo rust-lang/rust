@@ -1,42 +1,25 @@
-use std::sync::Arc;
-
+use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
-use ra_arena::Arena;
+use relative_path::RelativePathBuf;
 use test_utils::tested_by;
+use ra_db::FileId;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    Crate, PersistentHirDatabase, HirFileId, Name, Path,
+    PersistentHirDatabase, HirFileId, Name, Path, Problem,
     KnownName,
     nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
-    module_tree::resolve_module_declaration,
 };
 
 use super::{CrateDefMap, ModuleId, ModuleData, raw};
 
-#[allow(unused)]
-pub(crate) fn crate_def_map_query(
+pub(super) fn collect_defs(
     db: &impl PersistentHirDatabase,
-    krate: Crate,
-) -> Arc<CrateDefMap> {
-    let mut def_map = {
-        let edition = krate.edition(db);
-        let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
-        let root = modules.alloc(ModuleData::default());
-        CrateDefMap {
-            krate,
-            edition,
-            extern_prelude: FxHashMap::default(),
-            prelude: None,
-            root,
-            modules,
-            public_macros: FxHashMap::default(),
-        }
-    };
-
+    mut def_map: CrateDefMap,
+) -> CrateDefMap {
     // populate external prelude
-    for dep in krate.dependencies(db) {
+    for dep in def_map.krate.dependencies(db) {
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
         if let Some(module) = dep.krate.root_module(db) {
             def_map.extern_prelude.insert(dep.name.clone(), module.into());
@@ -52,7 +35,6 @@ pub(crate) fn crate_def_map_query(
 
     let mut collector = DefCollector {
         db,
-        krate,
         def_map,
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
@@ -60,27 +42,17 @@ pub(crate) fn crate_def_map_query(
         global_macro_scope: FxHashMap::default(),
     };
     collector.collect();
-    let def_map = collector.finish();
-    Arc::new(def_map)
+    collector.finish()
 }
 
 /// Walks the tree of module recursively
 struct DefCollector<DB> {
     db: DB,
-    krate: Crate,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<ModuleId, Vec<(ModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(ModuleId, raw::ImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(ModuleId, MacroCallId, Path, tt::Subtree)>,
     global_macro_scope: FxHashMap<Name, mbe::MacroRules>,
-}
-
-/// Walks a single module, populating defs, imports and macros
-struct ModCollector<'a, D> {
-    def_collector: D,
-    module_id: ModuleId,
-    file_id: HirFileId,
-    raw_items: &'a raw::RawItems,
 }
 
 impl<'a, DB> DefCollector<&'a DB>
@@ -89,9 +61,10 @@ where
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
-        let file_id = crate_graph.crate_root(self.krate.crate_id());
-        let raw_items = raw::RawItems::raw_items_query(self.db, file_id);
+        let file_id = crate_graph.crate_root(self.def_map.krate.crate_id());
+        let raw_items = self.db.raw_items(file_id);
         let module_id = self.def_map.root;
+        self.def_map.modules[module_id].definition = Some(file_id);
         ModCollector {
             def_collector: &mut *self,
             module_id,
@@ -121,10 +94,6 @@ where
             }
             self.global_macro_scope.insert(name, rules);
         }
-    }
-
-    fn alloc_module(&mut self) -> ModuleId {
-        self.def_map.modules.alloc(ModuleData::default())
     }
 
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
@@ -184,7 +153,7 @@ where
                     if import.is_prelude {
                         tested_by!(std_prelude);
                         self.def_map.prelude = Some(m);
-                    } else if m.krate != self.krate {
+                    } else if m.krate != self.def_map.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.item_map(m.krate);
@@ -199,7 +168,7 @@ where
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
                         // additions
-                        let scope = &self.def_map[m.module_id];
+                        let scope = &self.def_map[m.module_id].scope;
                         let items = scope
                             .items
                             .iter()
@@ -243,11 +212,9 @@ where
             log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
             // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-            if let Some(root_module) = self.krate.root_module(self.db) {
-                if import.is_extern_crate && module_id == root_module.module_id {
-                    if let Some(def) = def.take_types() {
-                        self.def_map.extern_prelude.insert(name.clone(), def);
-                    }
+            if import.is_extern_crate && module_id == self.def_map.root {
+                if let Some(def) = def.take_types() {
+                    self.def_map.extern_prelude.insert(name.clone(), def);
                 }
             }
             let resolution = Resolution { def, import: Some(import_id) };
@@ -324,8 +291,7 @@ where
                 Some(it) => it,
                 _ => return true,
             };
-            // FIXME: this should be a proper query
-            let def_map = crate_def_map_query(self.db, krate);
+            let def_map = self.db.crate_def_map(krate);
             let rules = def_map.public_macros.get(&path.segments[1].name).cloned();
             resolved.push((*module_id, *call_id, rules, tt.clone()));
             false
@@ -367,6 +333,14 @@ where
     }
 }
 
+/// Walks a single module, populating defs, imports and macros
+struct ModCollector<'a, D> {
+    def_collector: D,
+    module_id: ModuleId,
+    file_id: HirFileId,
+    raw_items: &'a raw::RawItems,
+}
+
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
     DB: PersistentHirDatabase,
@@ -389,8 +363,12 @@ where
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items } => {
-                let module_id = self.push_child_module(name.clone());
+            raw::ModuleData::Definition { name, items, source_item_id } => {
+                let module_id = self.push_child_module(
+                    name.clone(),
+                    source_item_id.with_file_id(self.file_id),
+                    None,
+                );
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
@@ -400,13 +378,20 @@ where
                 .collect(&*items);
             }
             // out of line module, resovle, parse and recurse
-            raw::ModuleData::Declaration { name } => {
-                let module_id = self.push_child_module(name.clone());
+            raw::ModuleData::Declaration { name, source_item_id } => {
+                let source_item_id = source_item_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
-                if let Some(file_id) =
-                    resolve_module_declaration(self.def_collector.db, self.file_id, name, is_root)
-                {
-                    let raw_items = raw::RawItems::raw_items_query(self.def_collector.db, file_id);
+                let (file_ids, problem) =
+                    resolve_submodule(self.def_collector.db, self.file_id, name, is_root);
+
+                if let Some(problem) = problem {
+                    self.def_collector.def_map.problems.add(source_item_id, problem)
+                }
+
+                if let Some(&file_id) = file_ids.first() {
+                    let module_id =
+                        self.push_child_module(name.clone(), source_item_id, Some(file_id));
+                    let raw_items = self.def_collector.db.raw_items(file_id);
                     ModCollector {
                         def_collector: &mut *self.def_collector,
                         module_id,
@@ -419,15 +404,23 @@ where
         }
     }
 
-    fn push_child_module(&mut self, name: Name) -> ModuleId {
-        let res = self.def_collector.alloc_module();
-        self.def_collector.def_map.modules[res].parent = Some(self.module_id);
-        self.def_collector.def_map.modules[self.module_id].children.insert(name, res);
+    fn push_child_module(
+        &mut self,
+        name: Name,
+        declaration: SourceItemId,
+        definition: Option<FileId>,
+    ) -> ModuleId {
+        let modules = &mut self.def_collector.def_map.modules;
+        let res = modules.alloc(ModuleData::default());
+        modules[res].parent = Some(self.module_id);
+        modules[res].declaration = Some(declaration);
+        modules[res].definition = definition;
+        modules[self.module_id].children.insert(name, res);
         res
     }
 
     fn define_def(&mut self, def: &raw::DefData) {
-        let module = Module { krate: self.def_collector.krate, module_id: self.module_id };
+        let module = Module { krate: self.def_collector.def_map.krate, module_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id.into());
         macro_rules! id {
             () => {
@@ -462,7 +455,7 @@ where
 
         let source_item_id = SourceItemId { file_id: self.file_id, item_id: mac.source_item_id };
         let macro_call_id = MacroCallLoc {
-            module: Module { krate: self.def_collector.krate, module_id: self.module_id },
+            module: Module { krate: self.def_collector.def_map.krate, module_id: self.module_id },
             source_item_id,
         }
         .id(self.def_collector.db);
@@ -490,4 +483,45 @@ where
 
 fn is_macro_rules(path: &Path) -> bool {
     path.as_ident().and_then(Name::as_known_name) == Some(KnownName::MacroRules)
+}
+
+fn resolve_submodule(
+    db: &impl PersistentHirDatabase,
+    file_id: HirFileId,
+    name: &Name,
+    is_root: bool,
+) -> (Vec<FileId>, Option<Problem>) {
+    // FIXME: handle submodules of inline modules properly
+    let file_id = file_id.original_file(db);
+    let source_root_id = db.file_source_root(file_id);
+    let path = db.file_relative_path(file_id);
+    let root = RelativePathBuf::default();
+    let dir_path = path.parent().unwrap_or(&root);
+    let mod_name = path.file_stem().unwrap_or("unknown");
+    let is_dir_owner = is_root || mod_name == "mod";
+
+    let file_mod = dir_path.join(format!("{}.rs", name));
+    let dir_mod = dir_path.join(format!("{}/mod.rs", name));
+    let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
+    let mut candidates = ArrayVec::<[_; 2]>::new();
+    if is_dir_owner {
+        candidates.push(file_mod.clone());
+        candidates.push(dir_mod);
+    } else {
+        candidates.push(file_dir_mod.clone());
+    };
+    let sr = db.source_root(source_root_id);
+    let points_to = candidates
+        .into_iter()
+        .filter_map(|path| sr.files.get(&path))
+        .map(|&it| it)
+        .collect::<Vec<_>>();
+    let problem = if points_to.is_empty() {
+        Some(Problem::UnresolvedModule {
+            candidate: if is_dir_owner { file_mod } else { file_dir_mod },
+        })
+    } else {
+        None
+    };
+    (points_to, problem)
 }

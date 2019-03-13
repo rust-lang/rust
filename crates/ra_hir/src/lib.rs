@@ -26,7 +26,6 @@ pub mod source_binder;
 mod ids;
 mod macros;
 mod name;
-mod module_tree;
 mod nameres;
 mod adt;
 mod type_alias;

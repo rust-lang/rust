@@ -7,7 +7,7 @@ use crate::{
     ItemMap,
     PersistentHirDatabase,
     mock::MockDatabase,
-    module_tree::ModuleId,
+    nameres::crate_def_map::ModuleId,
 };
 use super::Resolution;
 
@@ -359,6 +359,7 @@ fn std_prelude() {
     let main_id = db.file_id_of("/main.rs");
 
     let module = crate::source_binder::module_from_file_id(&db, main_id).unwrap();
+    eprintln!("module = {:?}", module);
     let krate = module.krate(&db).unwrap();
     let item_map = db.item_map(krate);
 

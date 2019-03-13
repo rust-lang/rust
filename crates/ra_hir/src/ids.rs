@@ -296,6 +296,12 @@ impl AstItemDef<ast::TypeAliasDef> for TypeId {
 pub struct SourceFileItemId(RawId);
 impl_arena_id!(SourceFileItemId);
 
+impl SourceFileItemId {
+    pub(crate) fn with_file_id(self, file_id: HirFileId) -> SourceItemId {
+        SourceItemId { file_id, item_id: self }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
     pub(crate) file_id: HirFileId,

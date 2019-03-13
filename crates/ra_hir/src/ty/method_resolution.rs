@@ -7,10 +7,12 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    HirDatabase, module_tree::ModuleId, Module, Crate, Name, Function, Trait,
+    HirDatabase, Module, Crate, Name, Function, Trait,
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{AdtDef, Ty},
+    nameres::crate_def_map::ModuleId,
+
 };
 
 /// This is used as a key for indexing impls.

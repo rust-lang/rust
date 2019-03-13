@@ -15,7 +15,7 @@
 //! so that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
 pub(crate) mod lower;
-mod crate_def_map;
+pub(crate) mod crate_def_map;
 
 use std::{time, sync::Arc};
 
@@ -29,8 +29,10 @@ use crate::{
     Module, ModuleDef,
     Path, PathKind, PersistentHirDatabase,
     Crate, Name,
-    module_tree::{ModuleId, ModuleTree},
-    nameres::lower::{ImportId, LoweredModule, ImportData},
+    nameres::{
+        crate_def_map::{CrateDefMap, ModuleId},
+        lower::{ImportId, LoweredModule, ImportData}
+    },
 };
 
 /// `ItemMap` is the result of module name resolution. It contains, for each
@@ -160,7 +162,7 @@ struct Resolver<'a, DB> {
     db: &'a DB,
     input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
     krate: Crate,
-    module_tree: Arc<ModuleTree>,
+    def_map: Arc<CrateDefMap>,
     processed_imports: FxHashSet<(ModuleId, ImportId)>,
     /// If module `a` has `use b::*`, then this contains the mapping b -> a (and the import)
     glob_imports: FxHashMap<ModuleId, Vec<(ModuleId, ImportId)>>,
@@ -176,12 +178,11 @@ where
         input: &'a FxHashMap<ModuleId, Arc<LoweredModule>>,
         krate: Crate,
     ) -> Resolver<'a, DB> {
-        let module_tree = db.module_tree(krate);
         Resolver {
             db,
             input,
             krate,
-            module_tree,
+            def_map: db.crate_def_map(krate),
             processed_imports: FxHashSet::default(),
             glob_imports: FxHashMap::default(),
             result: ItemMap {
@@ -254,9 +255,9 @@ where
         }
 
         // Populate modules
-        for (name, module_id) in module_id.children(&self.module_tree) {
-            let module = Module { module_id, krate: self.krate };
-            self.add_module_item(&mut module_items, name, PerNs::types(module.into()));
+        for (name, module_id) in self.def_map[module_id].children.iter() {
+            let module = Module { module_id: *module_id, krate: self.krate };
+            self.add_module_item(&mut module_items, name.clone(), PerNs::types(module.into()));
         }
 
         self.result.per_module.insert(module_id, module_items);
@@ -479,8 +480,8 @@ enum ReachedFixedPoint {
 impl ItemMap {
     pub(crate) fn item_map_query(db: &impl PersistentHirDatabase, krate: Crate) -> Arc<ItemMap> {
         let start = time::Instant::now();
-        let module_tree = db.module_tree(krate);
-        let input = module_tree
+        let def_map = db.crate_def_map(krate);
+        let input = def_map
             .modules()
             .map(|module_id| (module_id, db.lower_module(Module { krate, module_id })))
             .collect::<FxHashMap<_, _>>();

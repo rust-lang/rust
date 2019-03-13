@@ -48,25 +48,40 @@ mod tests;
 
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
-use ra_arena::Arena;
+use ra_arena::{Arena, RawId, impl_arena_id};
+use ra_db::FileId;
+
+use std::sync::Arc;
 
 use crate::{
-    Name, Module, Path, PathKind, ModuleDef, Crate,
+    Name, Module, Path, PathKind, ModuleDef, Crate, Problem, HirFileId,
     PersistentHirDatabase,
-    module_tree::ModuleId,
     nameres::{ModuleScope, ResolveMode, ResolvePathResult, PerNs, Edition, ReachedFixedPoint},
+    ids::{SourceItemId, SourceFileItemId},
 };
 
-#[derive(Default, Debug)]
-struct ModuleData {
-    parent: Option<ModuleId>,
-    children: FxHashMap<Name, ModuleId>,
-    scope: ModuleScope,
+pub(crate) use self::raw::RawItems;
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub(crate) struct ModuleData {
+    pub(crate) parent: Option<ModuleId>,
+    pub(crate) children: FxHashMap<Name, ModuleId>,
+    pub(crate) scope: ModuleScope,
+    /// None for root
+    pub(crate) declaration: Option<SourceItemId>,
+    /// None for inline modules.
+    ///
+    /// Note that non-inline modules, by definition, live inside non-macro file.
+    pub(crate) definition: Option<FileId>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ModuleId(RawId);
+impl_arena_id!(ModuleId);
+
 /// Contans all top-level defs from a macro-expanded crate
-#[derive(Debug)]
-pub(crate) struct CrateDefMap {
+#[derive(Debug, PartialEq, Eq)]
+pub struct CrateDefMap {
     krate: Crate,
     edition: Edition,
     /// The prelude module for this crate. This either comes from an import
@@ -77,19 +92,85 @@ pub(crate) struct CrateDefMap {
     root: ModuleId,
     modules: Arena<ModuleId, ModuleData>,
     public_macros: FxHashMap<Name, mbe::MacroRules>,
+    problems: CrateDefMapProblems,
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub(crate) struct CrateDefMapProblems {
+    problems: Vec<(SourceItemId, Problem)>,
+}
+
+impl CrateDefMapProblems {
+    fn add(&mut self, source_item_id: SourceItemId, problem: Problem) {
+        self.problems.push((source_item_id, problem))
+    }
+
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (&'a SourceItemId, &'a Problem)> + 'a {
+        self.problems.iter().map(|(s, p)| (s, p))
+    }
 }
 
 impl std::ops::Index<ModuleId> for CrateDefMap {
-    type Output = ModuleScope;
-    fn index(&self, id: ModuleId) -> &ModuleScope {
-        &self.modules[id].scope
+    type Output = ModuleData;
+    fn index(&self, id: ModuleId) -> &ModuleData {
+        &self.modules[id]
     }
 }
 
 impl CrateDefMap {
+    pub(crate) fn crate_def_map_query(
+        db: &impl PersistentHirDatabase,
+        krate: Crate,
+    ) -> Arc<CrateDefMap> {
+        let def_map = {
+            let edition = krate.edition(db);
+            let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
+            let root = modules.alloc(ModuleData::default());
+            CrateDefMap {
+                krate,
+                edition,
+                extern_prelude: FxHashMap::default(),
+                prelude: None,
+                root,
+                modules,
+                public_macros: FxHashMap::default(),
+                problems: CrateDefMapProblems::default(),
+            }
+        };
+        let def_map = collector::collect_defs(db, def_map);
+        Arc::new(def_map)
+    }
+
+    pub(crate) fn root(&self) -> ModuleId {
+        self.root
+    }
+
+    pub(crate) fn problems(&self) -> &CrateDefMapProblems {
+        &self.problems
+    }
+
+    pub(crate) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
+        self.modules.iter().map(|(id, _data)| id)
+    }
+
+    pub(crate) fn find_module_by_source(
+        &self,
+        file_id: HirFileId,
+        decl_id: Option<SourceFileItemId>,
+    ) -> Option<ModuleId> {
+        let decl_id = decl_id.map(|it| it.with_file_id(file_id));
+        let (module_id, _module_data) = self.modules.iter().find(|(_module_id, module_data)| {
+            if decl_id.is_some() {
+                module_data.declaration == decl_id
+            } else {
+                module_data.definition.map(|it| it.into()) == Some(file_id)
+            }
+        })?;
+        Some(module_id)
+    }
+
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
     // the result.
-    #[allow(unused)]
     fn resolve_path_fp(
         &self,
         db: &impl PersistentHirDatabase,
@@ -182,7 +263,7 @@ impl CrateDefMap {
                         );
                     }
 
-                    match self[module.module_id].items.get(&segment.name) {
+                    match self[module.module_id].scope.items.get(&segment.name) {
                         Some(res) if !res.def.is_none() => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
@@ -225,7 +306,8 @@ impl CrateDefMap {
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
-        let from_crate_root = self[self.root].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_crate_root =
+            self[self.root].scope.items.get(name).map_or(PerNs::none(), |it| it.def);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         from_crate_root.or(from_extern_prelude)
@@ -241,7 +323,7 @@ impl CrateDefMap {
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
-        let from_scope = self[module].items.get(name).map_or(PerNs::none(), |it| it.def);
+        let from_scope = self[module].scope.items.get(name).map_or(PerNs::none(), |it| it.def);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
@@ -256,7 +338,7 @@ impl CrateDefMap {
     fn resolve_in_prelude(&self, db: &impl PersistentHirDatabase, name: &Name) -> PerNs<ModuleDef> {
         if let Some(prelude) = self.prelude {
             let resolution = if prelude.krate == self.krate {
-                self[prelude.module_id].items.get(name).cloned()
+                self[prelude.module_id].scope.items.get(name).cloned()
             } else {
                 db.item_map(prelude.krate)[prelude.module_id].items.get(name).cloned()
             };

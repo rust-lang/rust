@@ -3,6 +3,7 @@ use std::{
     ops::Index,
 };
 
+use test_utils::tested_by;
 use ra_db::FileId;
 use ra_arena::{Arena, impl_arena_id, RawId};
 use ra_syntax::{
@@ -15,8 +16,8 @@ use crate::{
     ids::{SourceFileItemId, SourceFileItems},
 };
 
-#[derive(Default, PartialEq, Eq)]
-pub(crate) struct RawItems {
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct RawItems {
     modules: Arena<Module, ModuleData>,
     imports: Arena<ImportId, ImportData>,
     defs: Arena<Def, DefData>,
@@ -26,18 +27,21 @@ pub(crate) struct RawItems {
 }
 
 impl RawItems {
-    pub(crate) fn items(&self) -> &[RawItem] {
-        &self.items
-    }
-
-    pub(crate) fn raw_items_query(db: &impl PersistentHirDatabase, file_id: FileId) -> RawItems {
+    pub(crate) fn raw_items_query(
+        db: &impl PersistentHirDatabase,
+        file_id: FileId,
+    ) -> Arc<RawItems> {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_file_items: db.file_items(file_id.into()),
         };
         let source_file = db.parse(file_id);
         collector.process_module(None, &*source_file);
-        collector.raw_items
+        Arc::new(collector.raw_items)
+    }
+
+    pub(crate) fn items(&self) -> &[RawItem] {
+        &self.items
     }
 
     // We can't use queries during name resolution for fear of cycles, so this
@@ -81,7 +85,7 @@ impl Index<Macro> for RawItems {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum RawItem {
     Module(Module),
     Import(ImportId),
@@ -89,24 +93,24 @@ pub(crate) enum RawItem {
     Macro(Macro),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Module(RawId);
 impl_arena_id!(Module);
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ModuleData {
-    Declaration { name: Name },
-    Definition { name: Name, items: Vec<RawItem> },
+    Declaration { name: Name, source_item_id: SourceFileItemId },
+    Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
 }
 
 pub(crate) use crate::nameres::lower::ImportId;
 pub(super) use crate::nameres::lower::ImportData;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Def(RawId);
 impl_arena_id!(Def);
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct DefData {
     pub(crate) source_item_id: SourceFileItemId,
     pub(crate) name: Name,
@@ -124,11 +128,11 @@ pub(crate) enum DefKind {
     TypeAlias,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Macro(RawId);
 impl_arena_id!(Macro);
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct MacroData {
     pub(crate) source_item_id: SourceFileItemId,
     pub(crate) path: Path,
@@ -191,18 +195,25 @@ impl RawItemsCollector {
             Some(it) => it.as_name(),
             None => return,
         };
+        let source_item_id = self.source_file_items.id_of_unchecked(module.syntax());
         if module.has_semi() {
-            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name });
+            let item =
+                self.raw_items.modules.alloc(ModuleData::Declaration { name, source_item_id });
             self.push_item(current_module, RawItem::Module(item));
             return;
         }
 
         if let Some(item_list) = module.item_list() {
-            let item =
-                self.raw_items.modules.alloc(ModuleData::Definition { name, items: Vec::new() });
+            let item = self.raw_items.modules.alloc(ModuleData::Definition {
+                name,
+                source_item_id,
+                items: Vec::new(),
+            });
             self.process_module(Some(item), item_list);
             self.push_item(current_module, RawItem::Module(item));
+            return;
         }
+        tested_by!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: &ast::UseItem) {
