@@ -8858,15 +8858,16 @@ impl<'a> Parser<'a> {
                     }),
                 };
 
-                // Construct a `let <pat>: <ty> = __argN;` statement to insert at the top of the
+                // Construct a `let <pat> = __argN;` statement to insert at the top of the
                 // async closure.
                 let local = P(Local {
                     pat: input.pat.clone(),
-                    ty: Some(P(Ty {
-                        id,
-                        node: input.ty.node.clone(),
-                        span: input.ty.span,
-                    })),
+                    // We explicitly do not specify the type for this statement. When the user's
+                    // argument type is `impl Trait` then this would require the
+                    // `impl_trait_in_bindings` feature to also be present for that same type to
+                    // be valid in this binding. At the time of writing (13 Mar 19),
+                    // `impl_trait_in_bindings` is not stable.
+                    ty: None,
                     init: Some(P(Expr {
                         id,
                         node: ExprKind::Path(None, ast::Path {
