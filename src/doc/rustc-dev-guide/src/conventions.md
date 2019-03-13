@@ -11,7 +11,7 @@ rustc is slowly moving towards the [Rust standard coding style][fmt];
 at the moment, however, it follows a rather more *chaotic* style.  We
 do have some mandatory formatting conventions, which are automatically
 enforced by a script we affectionately call the "tidy" script.  The
-tidy script runs automatically when you do `./x.py test` and can be run 
+tidy script runs automatically when you do `./x.py test` and can be run
 in isolation with `./x.py test src/tools/tidy`.
 
 [fmt]: https://github.com/rust-lang-nursery/fmt-rfcs
@@ -20,11 +20,12 @@ in isolation with `./x.py test src/tools/tidy`.
 
 ### Copyright notice
 
-Some existing files begin with a copyright and license notice. Please omit this
-notice for new files licensed under the standard terms (dual MIT/Apache-2.0).
-For existing files, the year at the top is not meaningful: copyright
-protections are in fact automatic from the moment of authorship. We do not
-typically edit the years on existing files.
+In the past, files begin with a copyright and license notice. Please **omit**
+this notice for new files licensed under the standard terms (dual
+MIT/Apache-2.0).
+
+All of the copyright notices should be gone by now, but if you come across one
+in the rust-lang/rust repo, feel free to open a PR to remove it.
 
 ## Line length
 
@@ -132,3 +133,18 @@ require that every intermediate commit successfully builds – we only
 expect to be able to bisect at a PR level. However, if you *can* make
 individual commits build, that is always helpful.
 
+# Naming conventions
+
+Apart from normal Rust style/naming conventions, there are also some specific
+to the compiler.
+
+- `cx` tends to be short for "context" and is often used as a suffix. For
+  example, `tcx` is a common name for the [Typing Context][tcx].
+
+- [`'tcx` and `'gcx`][tcx] are used as the lifetime names for the Typing
+  Context.
+
+- Because `crate` is a keyword, if you need a variable to represent something
+  crate-related, often the spelling is changed to `krate`.
+
+[tcx]: ./ty.md

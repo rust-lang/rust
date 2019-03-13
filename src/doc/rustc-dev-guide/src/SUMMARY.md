@@ -20,6 +20,7 @@
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
 - [Coding conventions](./conventions.md)
+- [crates.io Dependencies](./crates-io.md)
 
 ---
 
