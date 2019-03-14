@@ -307,7 +307,7 @@ impl fmt::Display for clean::GenericArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             clean::GenericArgs::AngleBracketed { ref args, ref bindings } => {
-            if !args.is_empty() || !bindings.is_empty() {
+                if !args.is_empty() || !bindings.is_empty() {
                     if f.alternate() {
                         f.write_str("<")?;
                     } else {
