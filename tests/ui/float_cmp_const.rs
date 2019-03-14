@@ -19,7 +19,8 @@ fn main() {
     TWO == ONE;
     TWO != ONE;
     ONE + ONE == TWO;
-    1 as f32 == ONE;
+    let x = 1;
+    x as f32 == ONE;
 
     let v = 0.9;
     v == ONE;

@@ -10,7 +10,7 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
@@ -1150,6 +1150,16 @@ fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
     false
 }
 
+/// Returns the mantissa bits wide of a fp type.
+/// Will return 0 if the type is not a fp
+fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
+    match typ.sty {
+        ty::Float(FloatTy::F32) => 23,
+        ty::Float(FloatTy::F64) | ty::Infer(InferTy::FloatVar(_)) => 52,
+        _ => 0,
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Cast(ref ex, _) = expr.node {
@@ -1157,6 +1167,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let ExprKind::Lit(ref lit) = ex.node {
                 use syntax::ast::{LitIntType, LitKind};
+                if let LitKind::Int(n, _) = lit.node {
+                    if cast_to.is_fp() {
+                        let from_nbits = 128 - n.leading_zeros();
+                        let to_nbits = fp_ty_mantissa_nbits(cast_to);
+                        if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits {
+                            span_lint_and_sugg(
+                                cx,
+                                UNNECESSARY_CAST,
+                                expr.span,
+                                &format!("casting integer literal to {} is unnecessary", cast_to),
+                                "try",
+                                format!("{}_{}", n, cast_to),
+                                Applicability::MachineApplicable,
+                            );
+                            return;
+                        }
+                    }
+                }
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
                     _ => {
