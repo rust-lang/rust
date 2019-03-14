@@ -8,22 +8,22 @@ fn assert_inorder<T: PartialEq + PartialOrd>(a: &[T]) {
             if i < j {
                 assert!(a[i] < a[j]);
                 assert!(a[i] <= a[j]);
-                assert!(!(a[i] == a[j]));
-                assert!(a[i] != a[j]);
+                assert_eq!(!(a[i], a[j]));
+                assert_ne!(a[i], a[j]);
                 assert!(!(a[i] >= a[j]));
                 assert!(!(a[i] > a[j]));
             } else if i == j {
                 assert!(!(a[i] < a[j]));
                 assert!(a[i] <= a[j]);
-                assert!(a[i] == a[j]);
-                assert!(!(a[i] != a[j]));
+                assert_eq!(a[i], a[j]);
+                assert_ne!(!(a[i], a[j]));
                 assert!(a[i] >= a[j]);
                 assert!(!(a[i] > a[j]));
             } else {
                 assert!(!(a[i] < a[j]));
                 assert!(!(a[i] <= a[j]));
-                assert!(!(a[i] == a[j]));
-                assert!(a[i] != a[j]);
+                assert_eq!(!(a[i], a[j]));
+                assert_ne!(a[i], a[j]);
                 assert!(a[i] >= a[j]);
                 assert!(a[i] > a[j]);
             }
