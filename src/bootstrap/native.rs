@@ -18,6 +18,7 @@ use build_helper::output;
 use cmake;
 use cc;
 
+use crate::channel;
 use crate::util::{self, exe};
 use build_helper::up_to_date;
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
@@ -231,7 +232,26 @@ impl Step for Llvm {
         }
 
         if let Some(ref suffix) = builder.config.llvm_version_suffix {
-            cfg.define("LLVM_VERSION_SUFFIX", suffix);
+            // Allow version-suffix="" to not define a version suffix at all.
+            if !suffix.is_empty() {
+                cfg.define("LLVM_VERSION_SUFFIX", suffix);
+            }
+        } else {
+            let mut default_suffix = format!(
+                "-rust-{}-{}",
+                channel::CFG_RELEASE_NUM,
+                builder.config.channel,
+            );
+            let llvm_info = if self.emscripten {
+                &builder.emscripten_llvm_info
+            } else {
+                &builder.in_tree_llvm_info
+            };
+            if let Some(sha) = llvm_info.sha_short() {
+                default_suffix.push_str("-");
+                default_suffix.push_str(sha);
+            }
+            cfg.define("LLVM_VERSION_SUFFIX", default_suffix);
         }
 
         if let Some(ref linker) = builder.config.llvm_use_linker {
