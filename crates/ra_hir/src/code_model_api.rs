@@ -186,11 +186,11 @@ impl Module {
     }
 
     pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
-        let lowered_module = db.lower_module(self);
-        lowered_module
-            .declarations
-            .values()
-            .cloned()
+        let def_map = db.crate_def_map(self.krate);
+        def_map[self.module_id]
+            .scope
+            .entries()
+            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
             .flat_map(|per_ns| {
                 per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
             })

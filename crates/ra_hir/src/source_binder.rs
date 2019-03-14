@@ -7,13 +7,13 @@
 /// purely for "IDE needs".
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SmolStr, TextRange, SyntaxNode,
+    SyntaxNode,
     ast::{self, AstNode, NameOwner},
     algo::{find_node_at_offset, find_leaf_at_offset},
 };
 
 use crate::{
-    HirDatabase, Function, ModuleDef, Struct, Enum,
+    HirDatabase, Function, Struct, Enum,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::{LocationCtx, SourceFileItemId},
     expr
@@ -150,44 +150,6 @@ pub fn trait_from_module(
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Trait { id: ctx.to_def(trait_def) }
-}
-
-pub fn macro_symbols(db: &impl HirDatabase, file_id: FileId) -> Vec<(SmolStr, TextRange)> {
-    let module = match module_from_file_id(db, file_id) {
-        Some(it) => it,
-        None => return Vec::new(),
-    };
-    let items = db.lower_module(module);
-    let mut res = Vec::new();
-
-    for macro_call_id in items
-        .declarations
-        .iter()
-        .filter_map(|(_, it)| it.clone().take_types())
-        .filter_map(|it| match it {
-            ModuleDef::Trait(it) => Some(it),
-            _ => None,
-        })
-        .filter_map(|it| it.source(db).0.as_macro_call_id())
-    {
-        if let Some(exp) = db.expand_macro_invocation(macro_call_id) {
-            let loc = macro_call_id.loc(db);
-            let syntax = db.file_item(loc.source_item_id);
-            let macro_call = ast::MacroCall::cast(&syntax).unwrap();
-            let off = macro_call.token_tree().unwrap().syntax().range().start();
-            let file = exp.file();
-            for trait_def in file.syntax().descendants().filter_map(ast::TraitDef::cast) {
-                if let Some(name) = trait_def.name() {
-                    let dst_range = name.syntax().range();
-                    if let Some(src_range) = exp.map_range_back(dst_range) {
-                        res.push((name.text().clone(), src_range + off))
-                    }
-                }
-            }
-        }
-    }
-
-    res
 }
 
 pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {

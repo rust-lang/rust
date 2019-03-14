@@ -7,7 +7,7 @@ source: "crates\\ra_ide_api\\tests\\test\\main.rs"
 [
     Diagnostic {
         message: "unresolved module",
-        range: [4; 7),
+        range: [0; 8),
         fix: Some(
             SourceChange {
                 label: "create module",

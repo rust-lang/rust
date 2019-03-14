@@ -10,7 +10,7 @@ use crate::{
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
     macros::MacroExpansion,
-    nameres::{Namespace, lower::{LoweredModule, ImportSourceMap}, crate_def_map::{RawItems, CrateDefMap}},
+    nameres::{Namespace, lower::{ImportSourceMap}, crate_def_map::{RawItems, CrateDefMap}},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},
@@ -38,17 +38,11 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::ids::SourceFileItems::file_item_query)]
     fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
 
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_with_source_map_query)]
-    fn lower_module_with_source_map(
-        &self,
-        module: Module,
-    ) -> (Arc<LoweredModule>, Arc<ImportSourceMap>);
-
-    #[salsa::invoke(crate::nameres::lower::LoweredModule::lower_module_query)]
-    fn lower_module(&self, module: Module) -> Arc<LoweredModule>;
-
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: FileId) -> Arc<RawItems>;
+
+    #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
+    fn raw_items_with_source_map(&self, file_id: FileId) -> (Arc<RawItems>, Arc<ImportSourceMap>);
 
     #[salsa::invoke(CrateDefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: Crate) -> Arc<CrateDefMap>;

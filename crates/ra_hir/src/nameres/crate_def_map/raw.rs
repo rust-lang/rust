@@ -14,6 +14,7 @@ use ra_syntax::{
 use crate::{
     PersistentHirDatabase, Name, AsName, Path, HirFileId,
     ids::{SourceFileItemId, SourceFileItems},
+    nameres::lower::ImportSourceMap,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -31,13 +32,21 @@ impl RawItems {
         db: &impl PersistentHirDatabase,
         file_id: FileId,
     ) -> Arc<RawItems> {
+        db.raw_items_with_source_map(file_id).0
+    }
+
+    pub(crate) fn raw_items_with_source_map_query(
+        db: &impl PersistentHirDatabase,
+        file_id: FileId,
+    ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_file_items: db.file_items(file_id.into()),
+            source_map: ImportSourceMap::default(),
         };
         let source_file = db.parse(file_id);
         collector.process_module(None, &*source_file);
-        Arc::new(collector.raw_items)
+        (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
     pub(crate) fn items(&self) -> &[RawItem] {
@@ -51,6 +60,7 @@ impl RawItems {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_file_items: Arc::new(source_file_items),
+            source_map: ImportSourceMap::default(),
         };
         collector.process_module(None, &*source_file);
         collector.raw_items
@@ -144,6 +154,7 @@ pub(crate) struct MacroData {
 struct RawItemsCollector {
     raw_items: RawItems,
     source_file_items: Arc<SourceFileItems>,
+    source_map: ImportSourceMap,
 }
 
 impl RawItemsCollector {
@@ -227,6 +238,9 @@ impl RawItemsCollector {
                 is_prelude,
                 is_extern_crate: false,
             });
+            if let Some(segment) = segment {
+                self.source_map.insert(import, segment)
+            }
             self.push_item(current_module, RawItem::Import(import))
         })
     }

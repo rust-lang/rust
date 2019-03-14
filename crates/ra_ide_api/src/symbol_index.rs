@@ -30,7 +30,7 @@ use std::{
 use fst::{self, Streamer};
 use ra_syntax::{
     SyntaxNode, SyntaxNodePtr, SourceFile, SmolStr, TreeArc, AstNode,
-    algo::{visit::{visitor, Visitor}, find_covering_node},
+    algo::{visit::{visitor, Visitor}},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
     WalkEvent,
@@ -66,14 +66,9 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     db.check_canceled();
     let source_file = db.parse(file_id);
 
-    let mut symbols = source_file_to_file_symbols(&source_file, file_id);
+    let symbols = source_file_to_file_symbols(&source_file, file_id);
 
-    for (name, text_range) in hir::source_binder::macro_symbols(db, file_id) {
-        let node = find_covering_node(source_file.syntax(), text_range);
-        let ptr = SyntaxNodePtr::new(node);
-        // TODO: Should we get container name for macro symbols?
-        symbols.push(FileSymbol { file_id, name, ptr, name_range: None, container_name: None })
-    }
+    // TODO: add macros here
 
     Arc::new(SymbolIndex::new(symbols))
 }

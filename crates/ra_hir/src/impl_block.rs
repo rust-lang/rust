@@ -4,7 +4,8 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
     AstPtr, SourceFile, TreeArc,
-ast::{self, AstNode}};
+    ast::{self, AstNode}
+};
 
 use crate::{
     Const, TypeAlias, Function, HirFileId,
@@ -13,7 +14,7 @@ use crate::{
     type_ref::TypeRef,
     ids::LocationCtx,
     resolve::Resolver,
-    ty::Ty, generics::GenericParams
+    ty::Ty, generics::GenericParams,
 };
 
 use crate::code_model_api::{Module, ModuleSource};

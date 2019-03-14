@@ -224,7 +224,7 @@ where
                 }
             }
             let resolution = Resolution { def, import: Some(import_id) };
-            self.update(module_id, None, &[(name, resolution)]);
+            self.update(module_id, Some(import_id), &[(name, resolution)]);
         }
     }
 
@@ -261,6 +261,13 @@ where
                 existing.def.values = res.def.values;
                 existing.import = import.or(res.import);
                 changed = true;
+            }
+            if existing.def.is_none()
+                && res.def.is_none()
+                && existing.import.is_none()
+                && res.import.is_some()
+            {
+                existing.import = res.import;
             }
         }
         if !changed {
