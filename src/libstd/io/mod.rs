@@ -1336,7 +1336,7 @@ pub trait Seek {
     /// method returns successfully, the seek position is unchanged (i.e. the
     /// position before calling this method is the same as afterwards).
     /// However, if this method returns an error, the seek position is
-    /// undefined.
+    /// unspecified.
     ///
     /// If you need to obtain the length of *many* streams and you don't care
     /// about the seek position afterwards, you can reduce the number of seek
