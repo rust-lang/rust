@@ -1,0 +1,19 @@
+// run-rustfix
+
+#![allow(dead_code, unused_variables)]
+#![warn(clippy::string_lit_as_bytes)]
+
+fn str_lit_as_bytes() {
+    let bs = b"hello there";
+
+    let bs = br###"raw string with three ### in it and some " ""###;
+
+    // no warning, because this cannot be written as a byte string literal:
+    let ubs = "☃".as_bytes();
+
+    let strify = stringify!(foobar).as_bytes();
+
+    let includestr = include_bytes!("entry.rs");
+}
+
+fn main() {}
