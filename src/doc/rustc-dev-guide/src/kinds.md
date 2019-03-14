@@ -21,7 +21,7 @@ constructing such substitution slices.
 
 ## `Kind`
 The actual `Kind` struct is optimised for space, storing the type, lifetime or
-const as an interned pointer containing a mask identifying its kind (in the
+const as an interned pointer containing a tag identifying its kind (in the
 lowest 2 bits). Unless you are working with the `Subst` implementation
 specifically, you should generally not have to deal with `Kind` and instead
 make use of the safe [`UnpackedKind`](#unpackedkind) abstraction.
