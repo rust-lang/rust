@@ -35,6 +35,7 @@ use std::rc::Rc;
 use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
+use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::{MultiSpan, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
@@ -745,6 +746,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     format!("`{}`", self.loan_path_to_string(moved_lp))
                 },
                 moved_lp.ty));
+        }
+        if let (Some(CompilerDesugaringKind::ForLoop), Ok(snippet)) = (
+            move_span.compiler_desugaring_kind(),
+            self.tcx.sess.source_map().span_to_snippet(move_span),
+         ) {
+            if !snippet.starts_with("&") {
+                err.span_suggestion(
+                    move_span,
+                    "consider borrowing this to avoid moving it into the for loop",
+                    format!("&{}", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         // Note: we used to suggest adding a `ref binding` or calling
