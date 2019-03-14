@@ -1,7 +1,7 @@
 //! This modules takes care of rendering various defenitions as completion items.
 use join_to_string::join;
 use test_utils::tested_by;
-use hir::{Docs, PerNs, Resolution};
+use hir::{Docs, PerNs, Resolution, HirDisplay};
 use ra_syntax::ast::NameOwner;
 
 use crate::completion::{
@@ -22,7 +22,7 @@ impl Completions {
             field.name(ctx.db).to_string(),
         )
         .kind(CompletionItemKind::Field)
-        .detail(field.ty(ctx.db).subst(substs).to_string())
+        .detail(field.ty(ctx.db).subst(substs).display(ctx.db).to_string())
         .set_documentation(field.docs(ctx.db))
         .add_to(self);
     }
@@ -30,7 +30,7 @@ impl Completions {
     pub(crate) fn add_pos_field(&mut self, ctx: &CompletionContext, field: usize, ty: &hir::Ty) {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), field.to_string())
             .kind(CompletionItemKind::Field)
-            .detail(ty.to_string())
+            .detail(ty.display(ctx.db).to_string())
             .add_to(self);
     }
 
@@ -154,7 +154,10 @@ impl Completions {
             None => return,
         };
         let detail_types = variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
-        let detail = join(detail_types).separator(", ").surround_with("(", ")").to_string();
+        let detail = join(detail_types.map(|t| t.display(ctx.db).to_string()))
+            .separator(", ")
+            .surround_with("(", ")")
+            .to_string();
 
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
             .kind(CompletionItemKind::EnumVariant)

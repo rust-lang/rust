@@ -56,7 +56,7 @@ pub use self::{
     ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{ItemMap, PerNs, Namespace},
-    ty::{Ty, Substs},
+    ty::{Ty, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,

@@ -10,6 +10,7 @@ use test_utils::covers;
 use crate::{
     source_binder,
     mock::MockDatabase,
+    ty::display::HirDisplay,
 };
 
 // These tests compare the inference results for all expressions in a file
@@ -2142,7 +2143,7 @@ fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let node = algo::find_node_at_offset::<ast::Expr>(syntax.syntax(), pos.offset).unwrap();
     let expr = body_source_map.node_expr(node).unwrap();
     let ty = &inference_result[expr];
-    ty.to_string()
+    ty.display(db).to_string()
 }
 
 fn infer(content: &str) -> String {
@@ -2178,7 +2179,7 @@ fn infer(content: &str) -> String {
                 "{} '{}': {}\n",
                 syntax_ptr.range(),
                 ellipsize(node.text().to_string().replace("\n", " "), 15),
-                ty
+                ty.display(&db)
             )
             .unwrap();
         }
