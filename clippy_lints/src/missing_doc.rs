@@ -53,16 +53,14 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
-    #[allow(clippy::needless_bool)]
     fn has_include(meta: Option<MetaItem>) -> bool {
         if_chain! {
             if let Some(meta) = meta;
             if let MetaItemKind::List(list) = meta.node;
             if let Some(meta) = list.get(0);
             if let Some(name) = meta.name();
-            if name == "include";
             then {
-                true
+                name == "include"
             } else {
                 false
             }
