@@ -7,7 +7,7 @@ use syntax::symbol::keywords;
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity};
-use crate::expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix};
+use crate::expr::{format_expr, rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ExprType};
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
@@ -132,6 +132,7 @@ where
 
 #[derive(Debug)]
 pub enum SegmentParam<'a> {
+    Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
     Binding(&'a ast::TypeBinding),
@@ -142,7 +143,7 @@ impl<'a> SegmentParam<'a> {
         match arg {
             ast::GenericArg::Lifetime(ref lt) => SegmentParam::LifeTime(lt),
             ast::GenericArg::Type(ref ty) => SegmentParam::Type(ty),
-            ast::GenericArg::Const(..) => unreachable!(), // FIXME(#3336)
+            ast::GenericArg::Const(const_) => SegmentParam::Const(const_),
         }
     }
 }
@@ -150,6 +151,7 @@ impl<'a> SegmentParam<'a> {
 impl<'a> Spanned for SegmentParam<'a> {
     fn span(&self) -> Span {
         match *self {
+            SegmentParam::Const(const_) => const_.value.span,
             SegmentParam::LifeTime(lt) => lt.ident.span,
             SegmentParam::Type(ty) => ty.span,
             SegmentParam::Binding(binding) => binding.span,
@@ -160,6 +162,7 @@ impl<'a> Spanned for SegmentParam<'a> {
 impl<'a> Rewrite for SegmentParam<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
+            SegmentParam::Const(const_) => const_.rewrite(context, shape),
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(binding) => {
@@ -454,7 +457,7 @@ impl Rewrite for ast::GenericArg {
         match *self {
             ast::GenericArg::Lifetime(ref lt) => lt.rewrite(context, shape),
             ast::GenericArg::Type(ref ty) => ty.rewrite(context, shape),
-            ast::GenericArg::Const(..) => unreachable!(), // FIXME(#3336)
+            ast::GenericArg::Const(ref const_) => const_.rewrite(context, shape),
         }
     }
 }
@@ -479,6 +482,12 @@ fn rewrite_bounded_lifetime(
             join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
         );
         Some(result)
+    }
+}
+
+impl Rewrite for ast::AnonConst {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        format_expr(&self.value, ExprType::SubExpression, context, shape)
     }
 }
 
@@ -525,7 +534,16 @@ impl Rewrite for ast::GenericParam {
             Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
             _ => (),
         }
-        result.push_str(rewrite_ident(context, self.ident));
+
+        if let syntax::ast::GenericParamKind::Const { ref ty } = &self.kind {
+            result.push_str("const ");
+            result.push_str(rewrite_ident(context, self.ident));
+            result.push_str(": ");
+            result.push_str(&ty.rewrite(context, shape)?);
+        } else {
+            result.push_str(rewrite_ident(context, self.ident));
+        }
+
         if !self.bounds.is_empty() {
             result.push_str(type_bound_colon(context));
             result.push_str(&self.bounds.rewrite(context, shape)?)
