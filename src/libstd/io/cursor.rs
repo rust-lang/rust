@@ -212,6 +212,14 @@ impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
                            "invalid seek to a negative or overflowing position"))
         }
     }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        Ok(self.inner.as_ref().len() as u64)
+    }
+
+    fn stream_position(&mut self) -> io::Result<u64> {
+        Ok(self.pos)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
