@@ -26,7 +26,13 @@ pub trait LineRangeUtils {
 
 impl<'a> SpanUtils for SnippetProvider<'a> {
     fn span_after(&self, original: Span, needle: &str) -> BytePos {
-        self.opt_span_after(original, needle).expect("bad span")
+        self.opt_span_after(original, needle).unwrap_or_else(|| {
+            panic!(
+                "bad span: `{}`: `{}`",
+                needle,
+                self.span_to_snippet(original).unwrap()
+            )
+        })
     }
 
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos {
@@ -43,7 +49,7 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
     fn span_before(&self, original: Span, needle: &str) -> BytePos {
         self.opt_span_before(original, needle).unwrap_or_else(|| {
             panic!(
-                "bad span: {}: {}",
+                "bad span: `{}`: `{}`",
                 needle,
                 self.span_to_snippet(original).unwrap()
             )

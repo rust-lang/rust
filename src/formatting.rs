@@ -83,7 +83,7 @@ fn format_project<T: FormatHandler>(
 
     // Suppress error output if we have to do any further parsing.
     let silent_emitter = silent_emitter(source_map);
-    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
+    parse_session.span_diagnostic = Handler::with_emitter(true, None, silent_emitter);
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
 
@@ -657,7 +657,7 @@ fn silent_emitter(source_map: Rc<SourceMap>) -> Box<EmitterWriter> {
 fn make_parse_sess(source_map: Rc<SourceMap>, config: &Config) -> ParseSess {
     let tty_handler = if config.hide_parse_errors() {
         let silent_emitter = silent_emitter(source_map.clone());
-        Handler::with_emitter(true, false, silent_emitter)
+        Handler::with_emitter(true, None, silent_emitter)
     } else {
         let supports_color = term::stderr().map_or(false, |term| term.supports_color());
         let color_cfg = if supports_color {
@@ -665,7 +665,7 @@ fn make_parse_sess(source_map: Rc<SourceMap>, config: &Config) -> ParseSess {
         } else {
             ColorConfig::Never
         };
-        Handler::with_tty_emitter(color_cfg, true, false, Some(source_map.clone()))
+        Handler::with_tty_emitter(color_cfg, true, None, Some(source_map.clone()))
     };
 
     ParseSess::with_span_handler(tty_handler, source_map)

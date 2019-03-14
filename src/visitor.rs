@@ -388,7 +388,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                 self.visit_static(&StaticParts::from_item(item));
             }
-            ast::ItemKind::Fn(ref decl, fn_header, ref generics, ref body) => {
+            ast::ItemKind::Fn(ref decl, ref fn_header, ref generics, ref body) => {
                 let inner_attrs = inner_attributes(&item.attrs);
                 self.visit_fn(
                     visit::FnKind::ItemFn(item.ident, fn_header, &item.vis, body),

@@ -47,7 +47,6 @@ pub fn foo() {}
 
 // path attrs
 #[clippy::bar]
-#[clippy::bar=foo]
 #[clippy::bar(a, b, c)]
 pub fn foo() {}
 

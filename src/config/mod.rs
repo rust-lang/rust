@@ -21,10 +21,10 @@ pub mod file_lines;
 pub mod license;
 pub mod lists;
 
-/// This macro defines configuration options used in rustfmt. Each option
-/// is defined as follows:
-///
-/// `name: value type, default value, is stable, description;`
+// This macro defines configuration options used in rustfmt. Each option
+// is defined as follows:
+//
+// `name: value type, default value, is stable, description;`
 create_config! {
     // Fundamental stuff
     max_width: usize, 100, true, "Maximum width of each line";

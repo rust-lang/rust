@@ -23,7 +23,7 @@ impl Trait for T
 where
     T: P,
 {
-    fn f(x: T) -> T
+    fn f(x: T,) -> T
     where
         T: Q + R,
     {

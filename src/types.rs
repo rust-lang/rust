@@ -302,24 +302,6 @@ where
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    // Code for handling variadics is somewhat duplicated for items, but they
-    // are different enough to need some serious refactoring to share code.
-    enum ArgumentKind<T>
-    where
-        T: Deref,
-        <T as Deref>::Target: Rewrite + Spanned,
-    {
-        Regular(T),
-        Variadic(BytePos),
-    }
-
-    let variadic_arg = if variadic {
-        let variadic_start = context.snippet_provider.span_before(span, "...");
-        Some(ArgumentKind::Variadic(variadic_start))
-    } else {
-        None
-    };
-
     let list_shape = if context.use_block_indent() {
         Shape::indented(
             shape.block().indent.block_indent(context.config),
@@ -335,21 +317,12 @@ where
     let list_lo = context.snippet_provider.span_after(span, "(");
     let items = itemize_list(
         context.snippet_provider,
-        inputs.map(ArgumentKind::Regular).chain(variadic_arg),
+        inputs,
         ")",
         ",",
-        |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.span().lo(),
-            ArgumentKind::Variadic(start) => start,
-        },
-        |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.span().hi(),
-            ArgumentKind::Variadic(start) => start + BytePos(3),
-        },
-        |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.rewrite(context, list_shape),
-            ArgumentKind::Variadic(_) => Some("...".to_owned()),
-        },
+        |arg| arg.span().lo(),
+        |arg| arg.span().hi(),
+        |arg| arg.rewrite(context, list_shape),
         list_lo,
         span.hi(),
         false,
@@ -697,6 +670,7 @@ impl Rewrite for ast::Ty {
             ast::TyKind::ImplTrait(_, ref it) => it
                 .rewrite(context, shape)
                 .map(|it_str| format!("impl {}", it_str)),
+            ast::TyKind::CVarArgs => Some("...".to_owned()),
             ast::TyKind::Err | ast::TyKind::Typeof(..) => unreachable!(),
         }
     }
@@ -741,7 +715,7 @@ fn rewrite_bare_fn(
     let rewrite = format_function_type(
         bare_fn.decl.inputs.iter(),
         &bare_fn.decl.output,
-        bare_fn.decl.variadic,
+        bare_fn.decl.c_variadic,
         span,
         context,
         func_ty_shape,
