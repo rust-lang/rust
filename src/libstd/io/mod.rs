@@ -1332,10 +1332,11 @@ pub trait Seek {
 
     /// Returns the length of this stream (in bytes).
     ///
-    /// This method is implemented using three seek operations. If this method
-    /// returns successfully, the seek position is unchanged (i.e. the position
-    /// before calling this method is the same as afterwards). However, if this
-    /// method returns an error, the seek position is undefined.
+    /// This method is implemented using up to three seek operations. If this
+    /// method returns successfully, the seek position is unchanged (i.e. the
+    /// position before calling this method is the same as afterwards).
+    /// However, if this method returns an error, the seek position is
+    /// undefined.
     ///
     /// If you need to obtain the length of *many* streams and you don't care
     /// about the seek position afterwards, you can reduce the number of seek
@@ -1368,7 +1369,13 @@ pub trait Seek {
     fn stream_len(&mut self) -> Result<u64> {
         let old_pos = self.stream_position()?;
         let len = self.seek(SeekFrom::End(0))?;
-        self.seek(SeekFrom::Start(old_pos))?;
+
+        // Avoid seeking a third time when we were already at the end of the
+        // stream. The branch is usually way cheaper than a seek operation.
+        if old_pos != len {
+            self.seek(SeekFrom::Start(old_pos))?;
+        }
+
         Ok(len)
     }
 
