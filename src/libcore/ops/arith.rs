@@ -1,6 +1,6 @@
 /// The addition operator `+`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory. For
+/// Note that `Rhs` is `Self` by default, but this is not mandatory. For
 /// example, [`std::time::SystemTime`] implements `Add<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime + Duration`.
 ///
@@ -67,18 +67,18 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        all(_Self="{integer}", RHS="{float}"),
+        all(_Self="{integer}", Rhs="{float}"),
         message="cannot add a float to an integer",
     ),
     on(
-        all(_Self="{float}", RHS="{integer}"),
+        all(_Self="{float}", Rhs="{integer}"),
         message="cannot add an integer to a float",
     ),
-    message="cannot add `{RHS}` to `{Self}`",
-    label="no implementation for `{Self} + {RHS}`",
+    message="cannot add `{Rhs}` to `{Self}`",
+    label="no implementation for `{Self} + {Rhs}`",
 )]
 #[doc(alias = "+")]
-pub trait Add<RHS=Self> {
+pub trait Add<Rhs=Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -86,7 +86,7 @@ pub trait Add<RHS=Self> {
     /// Performs the `+` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn add(self, rhs: RHS) -> Self::Output;
+    fn add(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! add_impl {
@@ -108,7 +108,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The subtraction operator `-`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory. For
+/// Note that `Rhs` is `Self` by default, but this is not mandatory. For
 /// example, [`std::time::SystemTime`] implements `Sub<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime - Duration`.
 ///
@@ -173,10 +173,10 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="cannot subtract `{RHS}` from `{Self}`",
-                         label="no implementation for `{Self} - {RHS}`")]
+#[rustc_on_unimplemented(message="cannot subtract `{Rhs}` from `{Self}`",
+                         label="no implementation for `{Self} - {Rhs}`")]
 #[doc(alias = "-")]
-pub trait Sub<RHS=Self> {
+pub trait Sub<Rhs=Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -184,7 +184,7 @@ pub trait Sub<RHS=Self> {
     /// Performs the `-` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn sub(self, rhs: RHS) -> Self::Output;
+    fn sub(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! sub_impl {
@@ -206,7 +206,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The multiplication operator `*`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -293,10 +293,10 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="cannot multiply `{RHS}` to `{Self}`",
-                         label="no implementation for `{Self} * {RHS}`")]
+#[rustc_on_unimplemented(message="cannot multiply `{Rhs}` to `{Self}`",
+                         label="no implementation for `{Self} * {Rhs}`")]
 #[doc(alias = "*")]
-pub trait Mul<RHS=Self> {
+pub trait Mul<Rhs=Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -304,7 +304,7 @@ pub trait Mul<RHS=Self> {
     /// Performs the `*` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn mul(self, rhs: RHS) -> Self::Output;
+    fn mul(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! mul_impl {
@@ -326,7 +326,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The division operator `/`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -417,10 +417,10 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="cannot divide `{Self}` by `{RHS}`",
-                         label="no implementation for `{Self} / {RHS}`")]
+#[rustc_on_unimplemented(message="cannot divide `{Self}` by `{Rhs}`",
+                         label="no implementation for `{Self} / {Rhs}`")]
 #[doc(alias = "/")]
-pub trait Div<RHS=Self> {
+pub trait Div<Rhs=Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -428,7 +428,7 @@ pub trait Div<RHS=Self> {
     /// Performs the `/` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn div(self, rhs: RHS) -> Self::Output;
+    fn div(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! div_impl_integer {
@@ -467,7 +467,7 @@ div_impl_float! { f32 f64 }
 
 /// The remainder operator `%`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -502,10 +502,10 @@ div_impl_float! { f32 f64 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="cannot mod `{Self}` by `{RHS}`",
-                         label="no implementation for `{Self} % {RHS}`")]
+#[rustc_on_unimplemented(message="cannot mod `{Self}` by `{Rhs}`",
+                         label="no implementation for `{Self} % {Rhs}`")]
 #[doc(alias = "%")]
-pub trait Rem<RHS=Self> {
+pub trait Rem<Rhs=Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
@@ -513,7 +513,7 @@ pub trait Rem<RHS=Self> {
     /// Performs the `%` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rem(self, rhs: RHS) -> Self::Output;
+    fn rem(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! rem_impl_integer {
