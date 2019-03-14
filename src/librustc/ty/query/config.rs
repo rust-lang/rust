@@ -38,10 +38,7 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
 
-    fn hash_result(
-        hcx: &mut StableHashingContext<'_>,
-        result: &Self::Value
-    ) -> Option<Fingerprint>;
+    fn hash_result() -> Option<fn(&mut StableHashingContext<'_>, &Self::Value) -> Fingerprint>;
 
     fn handle_cycle_error(tcx: TyCtxt<'tcx>, error: CycleError<'tcx>) -> Self::Value;
 }

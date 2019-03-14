@@ -79,14 +79,14 @@ struct DepGraphData {
     loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
-pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
+pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
 where
     R: for<'a> HashStable<StableHashingContext<'a>>,
 {
     let mut stable_hasher = StableHasher::new();
     result.hash_stable(hcx, &mut stable_hasher);
 
-    Some(stable_hasher.finish())
+    stable_hasher.finish()
 }
 
 impl DepGraph {
@@ -193,7 +193,7 @@ impl DepGraph {
         cx: C,
         arg: A,
         task: fn(C, A) -> R,
-        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<impl FnOnce(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
         C: DepGraphSafe + StableHashingContextProvider<'a>,
@@ -229,7 +229,8 @@ impl DepGraph {
             |data, key, fingerprint, _| {
                 data.borrow_mut().alloc_node(key, SmallVec::new(), fingerprint)
             },
-            hash_result::<R>)
+            Some(hash_result::<R>)
+        )
     }
 
     fn with_task_impl<'a, C, A, R>(
@@ -244,7 +245,7 @@ impl DepGraph {
                                           DepNode,
                                           Fingerprint,
                                           Option<TaskDeps>) -> DepNodeIndex,
-        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<impl FnOnce(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
         C: DepGraphSafe + StableHashingContextProvider<'a>,
@@ -252,16 +253,13 @@ impl DepGraph {
         if let Some(ref data) = self.data {
             let task_deps = create_task(key).map(|deps| Lock::new(deps));
 
-            // In incremental mode, hash the result of the task. We don't
-            // do anything with the hash yet, but we are computing it
-            // anyway so that
-            //  - we make sure that the infrastructure works and
-            //  - we can get an idea of the runtime cost.
-            let mut hcx = cx.get_stable_hashing_context();
-
-            if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
-            };
+            let hcx = hash_result.as_ref().map(|_| {
+                let hcx = cx.get_stable_hashing_context();
+                if cfg!(debug_assertions) {
+                    profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
+                };
+                hcx
+            });
 
             let result = if no_tcx {
                 task(cx, arg)
@@ -279,10 +277,12 @@ impl DepGraph {
             };
 
             if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
+                hcx.as_ref().map(|hcx| profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd));
             };
 
-            let current_fingerprint = hash_result(&mut hcx, &result);
+            let current_fingerprint = hash_result.map(|hash_result| {
+                hash_result(&mut hcx.unwrap(), &result)
+            });
 
             let dep_node_index = finish_task_and_alloc_depnode(
                 &data.current,
@@ -291,7 +291,9 @@ impl DepGraph {
                 task_deps.map(|lock| lock.into_inner()),
             );
 
-            let print_status = cfg!(debug_assertions) && hcx.sess().opts.debugging_opts.dep_tasks;
+            let print_status = cfg!(debug_assertions) && ty::tls::with_opt(|tcx| {
+                tcx.map(|tcx| tcx.sess.opts.debugging_opts.dep_tasks).unwrap_or(false)
+            });
 
             // Determine the color of the new DepNode.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -378,7 +380,7 @@ impl DepGraph {
         cx: C,
         arg: A,
         task: fn(C, A) -> R,
-        hash_result: impl FnOnce(&mut StableHashingContext<'_>, &R) -> Option<Fingerprint>,
+        hash_result: Option<impl FnOnce(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
         C: DepGraphSafe + StableHashingContextProvider<'a>,

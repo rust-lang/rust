@@ -25,9 +25,8 @@ use parking_lot::ReentrantMutex;
 
 use std::cell::RefCell;
 use std::mem;
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::Arc;
-use std::rc::Rc;
 
 use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
@@ -45,7 +44,7 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
-    pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
+    pub resolver: Lrc<Option<Lock<interface::BoxedResolver>>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Lrc<CStore>,

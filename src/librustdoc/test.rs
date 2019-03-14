@@ -78,28 +78,29 @@ pub fn run(options: Options) -> i32 {
     let display_warnings = options.display_warnings;
 
     let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
-        let lower_to_hir = compiler.lower_to_hir()?;
-
-        let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
-        opts.display_warnings |= options.display_warnings;
-        let mut collector = Collector::new(
-            compiler.crate_name()?.peek().to_string(),
-            options.cfgs,
-            options.libs,
-            options.codegen_options,
-            options.externs,
-            false,
-            opts,
-            options.maybe_sysroot,
-            Some(compiler.source_map().clone()),
-            None,
-            options.linker,
-            options.edition,
-            options.persist_doctests,
-        );
-
         let mut global_ctxt = compiler.global_ctxt()?.take();
+
         global_ctxt.enter(|tcx| {
+            let lower_to_hir = tcx.lower_ast_to_hir(())?;
+
+            let mut opts = scrape_test_config(lower_to_hir.forest.krate());
+            opts.display_warnings |= options.display_warnings;
+            let mut collector = Collector::new(
+                compiler.crate_name()?.peek().to_string(),
+                options.cfgs,
+                options.libs,
+                options.codegen_options,
+                options.externs,
+                false,
+                opts,
+                options.maybe_sysroot,
+                Some(compiler.source_map().clone()),
+                None,
+                options.linker,
+                options.edition,
+                options.persist_doctests,
+            );
+
             let krate = tcx.hir().krate();
             let mut hir_collector = HirCollector {
                 sess: compiler.session(),
@@ -111,9 +112,8 @@ pub fn run(options: Options) -> i32 {
             hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
                 intravisit::walk_crate(this, krate);
             });
-        });
-
-        Ok(collector.tests)
+            Ok(collector.tests)
+        })
     }).expect("compiler aborted in rustdoc!");
 
     test_args.insert(0, "rustdoctest".to_string());

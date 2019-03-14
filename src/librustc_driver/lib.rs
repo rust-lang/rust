@@ -255,11 +255,10 @@ pub fn run_compiler(
             if ppm.needs_ast_map(&opt_uii) {
                 pretty::visit_crate(sess, &mut compiler.parse()?.peek_mut(), ppm);
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
-                    let expanded_crate = compiler.expansion()?.take().0;
                     pretty::print_after_hir_lowering(
                         tcx,
                         compiler.input(),
-                        &expanded_crate,
+                        &tcx.ast_crate.borrow(),
                         ppm,
                         opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
@@ -299,7 +298,10 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.prepare_outputs()?;
+        compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+            tcx.prepare_outputs(())?;
+            Ok(())
+        })?;
 
         if sess.opts.output_types.contains_key(&OutputType::DepInfo)
             && sess.opts.output_types.len() == 1
@@ -307,7 +309,10 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.global_ctxt()?;
+        compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+            tcx.lower_ast_to_hir(())?;
+            Ok(())
+        })?;
 
         if sess.opts.debugging_opts.no_analysis ||
            sess.opts.debugging_opts.ast_json {
@@ -315,19 +320,18 @@ pub fn run_compiler(
         }
 
         if sess.opts.debugging_opts.save_analysis {
-            let expanded_crate = &compiler.expansion()?.peek().0;
-            let crate_name = compiler.crate_name()?.peek().clone();
             compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(LOCAL_CRATE);
+                let crate_name = &tcx.crate_name.as_str();
 
                 time(sess, "save analysis", || {
                     save::process_crate(
                         tcx,
-                        &expanded_crate,
-                        &crate_name,
+                        &tcx.ast_crate.borrow(),
+                        crate_name,
                         &compiler.input(),
                         None,
-                        DumpHandler::new(compiler.output_dir().as_ref().map(|p| &**p), &crate_name)
+                        DumpHandler::new(compiler.output_dir().as_ref().map(|p| &**p), crate_name)
                     )
                 });
 
@@ -336,8 +340,10 @@ pub fn run_compiler(
                 // (needed by the RLS)
             })?;
         } else {
-            // Drop AST after creating GlobalCtxt to free memory
-            mem::drop(compiler.expansion()?.take());
+            compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+                // Drop AST after lowering HIR to free memory
+                mem::drop(tcx.ast_crate.steal());
+            });
         }
 
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
@@ -347,7 +353,10 @@ pub fn run_compiler(
         }
 
         if sess.opts.debugging_opts.save_analysis {
-            mem::drop(compiler.expansion()?.take());
+            compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+                // Drop AST after lowering HIR to free memory
+                mem::drop(tcx.ast_crate.steal());
+            });
         }
 
         compiler.ongoing_codegen()?;

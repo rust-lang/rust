@@ -310,8 +310,7 @@ macro_rules! define_dep_nodes {
             pub fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
                     let def_path_hash = DefPathHash(self.hash);
-                    tcx.def_path_hash_to_def_id.as_ref()?
-                        .get(&def_path_hash).cloned()
+                    tcx.def_path_hash_to_def_id()?.get(&def_path_hash).cloned()
                 } else {
                     None
                 }
@@ -445,6 +444,12 @@ pub trait RecoverKey<'tcx>: Sized {
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
 }
 
+impl RecoverKey<'tcx> for () {
+    fn recover(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
+        Some(())
+    }
+}
+
 impl RecoverKey<'tcx> for CrateNum {
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
         dep_node.extract_def_id(tcx).map(|id| id.krate)
@@ -536,6 +541,18 @@ impl<'tcx> DepNodeParams<'tcx> for CrateNum {
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.crate_name(*self).as_str().to_string()
+    }
+}
+
+impl<'tcx> DepNodeParams<'tcx> for () {
+    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+
+    fn to_fingerprint(&self, _: TyCtxt<'_>) -> Fingerprint {
+        Fingerprint::ZERO
+    }
+
+    fn to_debug_str(&self, _: TyCtxt<'tcx>) -> String {
+        "<no-params>".to_string()
     }
 }
 

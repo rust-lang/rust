@@ -31,6 +31,18 @@ use syntax_pos::symbol::InternedString;
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
     Other {
+        query prepare_outputs(_: ()) -> Result<Arc<OutputFilenames>, ErrorReported> {
+            no_hash
+            eval_always
+            desc { "preparing outputs" }
+        }
+
+        query lower_ast_to_hir(_: ()) -> Result<&'tcx hir::LoweredHir, ErrorReported> {
+            no_hash
+            eval_always
+            desc { "lowering AST to HIR" }
+        }
+
         query hir_map(_: CrateNum) -> &'tcx hir::map::Map<'tcx> {
             no_hash
             eval_always

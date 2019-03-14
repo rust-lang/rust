@@ -22,7 +22,6 @@ use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir::print::Nested;
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
-use crate::ich::StableHashingContext;
 
 use std::io;
 use std::result::Result::Err;
@@ -1258,23 +1257,22 @@ impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate(tcx: TyCtxt<'_>) -> Map<'_> {
+    // FIXME: Error handling here?
+    let hir = tcx.lowered_hir();
+
     // Build the reverse mapping of `node_to_hir_id`.
-    let hir_to_node_id = tcx.hir_defs.node_to_hir_id.iter_enumerated()
+    let hir_to_node_id = hir.defs.node_to_hir_id.iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
 
     let (map, crate_hash) = {
-        let krate = tcx.hir_forest.untracked_krate();
-        let hcx = StableHashingContext::new(
-            tcx.sess,
-            krate,
-            &tcx.hir_defs,
-            tcx.cstore
-        );
+        let hcx = tcx.create_stable_hashing_context();
+        let krate = hir.forest.untracked_krate();
+
         let mut collector = NodeCollector::root(
             tcx.sess,
             krate,
             &tcx.dep_graph,
-            &tcx.hir_defs,
+            &hir.defs,
             &hir_to_node_id,
             hcx
         );
@@ -1290,12 +1288,12 @@ pub fn map_crate(tcx: TyCtxt<'_>) -> Map<'_> {
     };
 
     let map = Map {
-        forest: &tcx.hir_forest,
+        forest: &hir.forest,
         dep_graph: tcx.dep_graph.clone(),
         crate_hash,
         map,
         hir_to_node_id,
-        definitions: &tcx.hir_defs,
+        definitions: &hir.defs,
     };
 
     time(tcx.sess, "validate hir map", || {

@@ -672,7 +672,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx> {
         let def_path_hash = DefPathHash::decode(self)?;
 
         // Using the DefPathHash, we can lookup the new DefId
-        Ok(self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash])
+        Ok(self.tcx().def_path_hash_to_def_id().unwrap()[&def_path_hash])
     }
 }
 
@@ -690,8 +690,7 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
 
         // Use the DefPathHash to map to the current DefId.
         let def_id = self.tcx()
-                         .def_path_hash_to_def_id
-                         .as_ref()
+                         .def_path_hash_to_def_id()
                          .unwrap()[&def_path_hash];
 
         debug_assert!(def_id.is_local());

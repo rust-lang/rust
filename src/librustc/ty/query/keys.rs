@@ -64,6 +64,15 @@ impl Key for CrateNum {
     }
 }
 
+impl Key for () {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl Key for DefIndex {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE

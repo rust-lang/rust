@@ -496,6 +496,15 @@ impl BorrowckMode {
     }
 }
 
+#[derive(Clone)]
+pub struct InputsAndOutputs {
+    pub input: Input,
+    pub input_path: Option<PathBuf>,
+    pub output_dir: Option<PathBuf>,
+    pub output_file: Option<PathBuf>,
+}
+
+#[derive(Clone)]
 pub enum Input {
     /// Loads source from file
     File(PathBuf),

@@ -154,7 +154,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
         // If the extern crate isn't in the extern prelude,
         // there is no way it can be written as an `use`.
         let orig_name = extern_crate.orig_name.unwrap_or(item.ident.name);
-        if !tcx.extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
+        if !tcx.lowered_hir()
+               .extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
             continue;
         }
 
