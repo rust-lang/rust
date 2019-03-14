@@ -69,7 +69,7 @@ pub struct Module {
 }
 
 /// The defs which can be visible in the module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleDef {
     Module(Module),
     Function(Function),
