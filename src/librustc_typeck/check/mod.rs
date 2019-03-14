@@ -2424,7 +2424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
         AstConv::ast_const_to_const(self, ast_c, ty)
     }
 
@@ -4594,7 +4594,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if element_ty.references_error() {
                     tcx.types.err
                 } else if let Ok(count) = count {
-                    tcx.mk_ty(ty::Array(t, tcx.mk_lazy_const(ty::LazyConst::Evaluated(count))))
+                    tcx.mk_ty(ty::Array(t, tcx.mk_const(count)))
                 } else {
                     tcx.types.err
                 }

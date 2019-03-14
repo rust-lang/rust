@@ -1,6 +1,6 @@
 use crate::ty::context::TyCtxt;
 use crate::ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use crate::ty::{self, DefId, SubstsRef};
+use crate::ty::{DefId, SubstsRef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::TyKind::*;
 
@@ -212,17 +212,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }))
             }
 
-            Array(ty, len) => {
-                match len {
-                    ty::LazyConst::Unevaluated(..) => DefIdForest::empty(),
-                    ty::LazyConst::Evaluated(len) => match len.assert_usize(tcx) {
-                        // If the array is definitely non-empty, it's uninhabited if
-                        // the type of its elements is uninhabited.
-                        Some(n) if n != 0 => ty.uninhabited_from(tcx),
-                        _ => DefIdForest::empty()
-                    },
-                }
-            }
+            Array(ty, len) => match len.assert_usize(tcx) {
+                // If the array is definitely non-empty, it's uninhabited if
+                // the type of its elements is uninhabited.
+                Some(n) if n != 0 => ty.uninhabited_from(tcx),
+                _ => DefIdForest::empty()
+            },
 
             // References to uninitialised memory is valid for any type, including
             // uninhabited types, in unsafe code, so we treat all references as

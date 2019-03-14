@@ -16,6 +16,7 @@ use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
+use rustc::mir::interpret::ConstValue;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
@@ -199,12 +200,12 @@ trait Qualif {
             Operand::Move(ref place) => Self::in_place(cx, place),
 
             Operand::Constant(ref constant) => {
-                if let ty::LazyConst::Unevaluated(def_id, _) = constant.literal {
+                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
-                    if cx.tcx.trait_of_item(*def_id).is_some() {
+                    if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.ty).unwrap_or(false)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(*def_id);
+                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = PerQualif::decode_from_bits(bits).0[Self::IDX];
 

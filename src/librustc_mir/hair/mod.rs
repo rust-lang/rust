@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserType};
+use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, UserType};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax_pos::Span;
@@ -289,7 +289,7 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: &'tcx LazyConst<'tcx>,
+        literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     InlineAsm {

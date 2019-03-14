@@ -76,6 +76,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let val = match val.val {
+            ConstValue::Unevaluated(..) => bug!("unevaluated constant in `OperandRef::from_const`"),
             ConstValue::Param(_) => bug!("encountered a ConstValue::Param in codegen"),
             ConstValue::Infer(_) => bug!("encountered a ConstValue::Infer in codegen"),
             ConstValue::Scalar(x) => {

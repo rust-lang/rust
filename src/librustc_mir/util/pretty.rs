@@ -417,21 +417,12 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
         self.push(&format!("+ literal: {:?}", literal));
     }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::LazyConst<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
-        match constant {
-            ty::LazyConst::Evaluated(constant) => {
-                let ty::Const { ty, val, .. } = constant;
-                self.push("ty::Const");
-                self.push(&format!("+ ty: {:?}", ty));
-                self.push(&format!("+ val: {:?}", val));
-            },
-            ty::LazyConst::Unevaluated(did, substs) => {
-                self.push("ty::LazyConst::Unevaluated");
-                self.push(&format!("+ did: {:?}", did));
-                self.push(&format!("+ substs: {:?}", substs));
-            },
-        }
+        let ty::Const { ty, val, .. } = constant;
+        self.push("ty::Const");
+        self.push(&format!("+ ty: {:?}", ty));
+        self.push(&format!("+ val: {:?}", val));
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {

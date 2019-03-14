@@ -232,7 +232,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_const(&mut self,
-                           constant: & $($mutability)? &'tcx ty::LazyConst<'tcx>,
+                           constant: & $($mutability)? &'tcx ty::Const<'tcx>,
                            _: Location) {
                 self.super_const(constant);
             }
@@ -886,7 +886,7 @@ macro_rules! make_mir_visitor {
             fn super_region(&mut self, _region: & $($mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::LazyConst<'tcx>) {
+            fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::Const<'tcx>) {
             }
 
             fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {

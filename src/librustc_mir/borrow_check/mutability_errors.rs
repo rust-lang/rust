@@ -471,13 +471,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             Terminator {
                                 kind: TerminatorKind::Call {
                                     func: Operand::Constant(box Constant {
-                                        literal: ty::LazyConst::Evaluated(Const {
+                                        literal: Const {
                                             ty: &TyS {
                                                 sty: TyKind::FnDef(id, substs),
                                                 ..
                                             },
                                             ..
-                                        }),
+                                        },
                                         ..
                                     }),
                                     ..

@@ -547,7 +547,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_lazy_const_to_op(*constant.literal, layout)?,
+            Constant(ref constant) => self.eval_const_to_op(*constant.literal, layout)?,
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -563,36 +563,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Used when Miri runs into a constant, and by const propagation.
-    crate fn eval_lazy_const_to_op(
-        &self,
-        val: ty::LazyConst<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        trace!("const_to_op: {:?}", val);
-        match val {
-            ty::LazyConst::Unevaluated(def_id, substs) => {
-                let instance = self.resolve(def_id, substs)?;
-                return Ok(OpTy::from(self.const_eval_raw(GlobalId {
-                    instance,
-                    promoted: None,
-                })?));
-            },
-            ty::LazyConst::Evaluated(c) => self.const_to_op(c, layout),
-        }
-    }
-
     // Used when the miri-engine runs into a constant and for extracting information from constants
     // in patterns via the `const_eval` module
-    crate fn const_to_op(
+    crate fn eval_const_to_op(
         &self,
         val: ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let val = self.monomorphize(val)?;
-        let layout = from_known_layout(layout, || {
-            self.layout_of(val.ty)
-        })?;
         let op = match val.val {
             ConstValue::Param(_) | ConstValue::Infer(_) => bug!(),
             ConstValue::ByRef(ptr, alloc) => {
@@ -609,7 +586,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 )).with_default_tag(),
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag(),
+            ConstValue::Unevaluated(def_id, substs) => {
+                let instance = self.resolve(def_id, substs)?;
+                return Ok(OpTy::from(self.const_eval_raw(GlobalId {
+                    instance,
+                    promoted: None,
+                })?));
+            },
         };
+        let layout = from_known_layout(layout, || {
+            self.layout_of(self.monomorphize(val.ty)?)
+        })?;
         Ok(OpTy {
             op,
             layout,

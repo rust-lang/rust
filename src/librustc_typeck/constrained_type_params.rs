@@ -78,12 +78,9 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
         false
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Param(data),
-            ..
-        }) = c {
-            self.parameters.push(Parameter::from(*data));
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        if let ConstValue::Param(data) = c.val {
+            self.parameters.push(Parameter::from(data));
         }
         false
     }

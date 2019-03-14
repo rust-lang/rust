@@ -222,7 +222,7 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
                 assert_eq!(t, u);
                 ConstValue::Slice(
                     Scalar::Ptr(p),
-                    n.map_evaluated(|val| val.val.try_to_scalar())
+                    n.val.try_to_scalar()
                         .unwrap()
                         .to_usize(&self.tcx)
                         .unwrap(),

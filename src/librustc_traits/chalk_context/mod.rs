@@ -288,13 +288,10 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
                     }
                     _ => false,
                 },
-                UnpackedKind::Const(ct) => match ct {
-                    ty::LazyConst::Evaluated(ty::Const {
-                        val: ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)),
-                        ..
-                    }) => {
-                        debug_assert_eq!(*debruijn, ty::INNERMOST);
-                        cvar == *bound_ct
+                UnpackedKind::Const(ct) => match ct.val {
+                    ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)) => {
+                        debug_assert_eq!(debruijn, ty::INNERMOST);
+                        cvar == bound_ct
                     }
                     _ => false,
                 }

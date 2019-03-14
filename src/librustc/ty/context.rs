@@ -28,7 +28,7 @@ use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{TyS, TyKind, List};
-use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
+use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use crate::ty::RegionKind;
 use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid, ConstVid};
@@ -126,7 +126,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind<'tcx>>>,
-    lazy_const: InternedSet<'tcx, LazyConst<'tcx>>,
+    const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -144,7 +144,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
-            lazy_const: Default::default(),
+            const_: Default::default(),
         }
     }
 
@@ -874,14 +874,11 @@ impl CanonicalUserType<'gcx> {
                             _ => false,
                         },
 
-                        UnpackedKind::Const(ct) => match ct {
-                            ty::LazyConst::Evaluated(ty::Const {
-                                val: ConstValue::Infer(InferConst::Canonical(debruijn, b)),
-                                ..
-                            }) => {
+                        UnpackedKind::Const(ct) => match ct.val {
+                            ConstValue::Infer(InferConst::Canonical(debruijn, b)) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
-                                assert_eq!(*debruijn, ty::INNERMOST);
-                                cvar == *b
+                                assert_eq!(debruijn, ty::INNERMOST);
+                                cvar == b
                             }
                             _ => false,
                         },
@@ -1788,7 +1785,7 @@ macro_rules! nop_list_lift {
 nop_lift!{Ty<'a> => Ty<'tcx>}
 nop_lift!{Region<'a> => Region<'tcx>}
 nop_lift!{Goal<'a> => Goal<'tcx>}
-nop_lift!{&'a LazyConst<'a> => &'tcx LazyConst<'tcx>}
+nop_lift!{&'a Const<'a> => &'tcx Const<'tcx>}
 
 nop_list_lift!{Goal<'a> => Goal<'tcx>}
 nop_list_lift!{Clause<'a> => Clause<'tcx>}
@@ -2274,12 +2271,6 @@ impl<'tcx: 'lcx, 'lcx> Borrow<GoalKind<'lcx>> for Interned<'tcx, GoalKind<'tcx>>
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<LazyConst<'lcx>> for Interned<'tcx, LazyConst<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a LazyConst<'lcx> {
-        &self.0
-    }
-}
-
 impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'lcx>] {
@@ -2387,7 +2378,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
     goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>,
-    lazy_const: mk_lazy_const(|c: &LazyConst<'_>| keep_local(&c)) -> LazyConst<'tcx>
+    const_: mk_const(|c: &Const<'_>| keep_local(&c)) -> Const<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2575,8 +2566,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, self.mk_lazy_const(
-            ty::LazyConst::Evaluated(ty::Const::from_usize(self.global_tcx(), n))
+        self.mk_ty(Array(ty, self.mk_const(
+            ty::Const::from_usize(self.global_tcx(), n)
         )))
     }
 
@@ -2670,11 +2661,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx LazyConst<'tcx> {
-        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
+        self.mk_const(ty::Const {
             val: ConstValue::Infer(InferConst::Var(v)),
             ty,
-        }))
+        })
     }
 
     #[inline]
@@ -2705,11 +2696,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         index: u32,
         name: InternedString,
         ty: Ty<'tcx>
-    ) -> &'tcx LazyConst<'tcx> {
-        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+    ) -> &'tcx Const<'tcx> {
+        self.mk_const(ty::Const {
             val: ConstValue::Param(ParamConst { index, name }),
             ty,
-        }))
+        })
     }
 
     #[inline]

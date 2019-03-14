@@ -32,7 +32,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
         *region = self.tcx.types.re_erased;
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::LazyConst<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
         *constant = self.tcx.erase_regions(constant);
     }
 

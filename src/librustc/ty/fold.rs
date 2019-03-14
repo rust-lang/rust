@@ -32,7 +32,7 @@
 //! looking for, and does not need to visit anything else.
 
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
+use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags, flags::FlagComputation};
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -167,7 +167,7 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         c.super_fold_with(self)
     }
 }
@@ -185,7 +185,7 @@ pub trait TypeVisitor<'tcx> : Sized {
         r.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
         c.super_visit_with(self)
     }
 }
@@ -842,14 +842,10 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         flags.intersects(self.flags)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
-        let flags = c.type_flags();
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        let flags = FlagComputation::for_const(c);
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
-        if flags.intersects(self.flags) {
-            true
-        } else {
-            c.super_visit_with(self)
-        }
+        flags.intersects(self.flags) || c.super_visit_with(self)
     }
 }
 

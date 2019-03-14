@@ -118,7 +118,7 @@ pub enum TyKind<'tcx> {
     Str,
 
     /// An array with the given length. Written as `[T; n]`.
-    Array(Ty<'tcx>, &'tcx ty::LazyConst<'tcx>),
+    Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(Ty<'tcx>),
@@ -1089,7 +1089,7 @@ impl<'a, 'gcx, 'tcx> ParamConst {
         ParamConst::new(def.index, def.name)
     }
 
-    pub fn to_const(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx LazyConst<'tcx> {
+    pub fn to_const(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         tcx.mk_const_param(self.index, self.name, ty)
     }
 }
@@ -2096,52 +2096,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable,
-         Eq, PartialEq, Ord, PartialOrd, HashStable)]
-/// Used in the HIR by using `Unevaluated` everywhere and later normalizing to `Evaluated` if the
-/// code is monomorphic enough for that.
-pub enum LazyConst<'tcx> {
-    Unevaluated(DefId, SubstsRef<'tcx>),
-    Evaluated(Const<'tcx>),
-}
-
-#[cfg(target_arch = "x86_64")]
-static_assert!(LAZY_CONST_SIZE: ::std::mem::size_of::<LazyConst<'static>>() == 56);
-
-impl<'tcx> LazyConst<'tcx> {
-    pub fn map_evaluated<R>(self, f: impl FnOnce(Const<'tcx>) -> Option<R>) -> Option<R> {
-        match self {
-            LazyConst::Evaluated(c) => f(c),
-            LazyConst::Unevaluated(..) => None,
-        }
-    }
-
-    pub fn assert_usize(self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
-        self.map_evaluated(|c| c.assert_usize(tcx))
-    }
-
-    #[inline]
-    pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
-        self.assert_usize(tcx).expect("expected `LazyConst` to contain a usize")
-    }
-
-    pub fn type_flags(&self) -> TypeFlags {
-        // FIXME(const_generics): incorporate substs flags.
-        let flags = match self {
-            LazyConst::Unevaluated(..) => {
-                TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION
-            }
-            LazyConst::Evaluated(c) => {
-                c.type_flags()
-            }
-        };
-
-        debug!("type_flags({:?}) = {:?}", self, flags);
-
-        flags
-    }
-}
-
 /// Typed constant value.
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable,
          Eq, PartialEq, Ord, PartialOrd, HashStable)]
@@ -2256,36 +2210,9 @@ impl<'tcx> Const<'tcx> {
         self.assert_usize(tcx).unwrap_or_else(||
             bug!("expected constant usize, got {:#?}", self))
     }
-
-    pub fn type_flags(&self) -> TypeFlags {
-        let mut flags = self.ty.flags;
-
-        match self.val {
-            ConstValue::Param(_) => {
-                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
-                flags |= TypeFlags::HAS_PARAMS;
-            }
-            ConstValue::Infer(infer) => {
-                flags |= TypeFlags::HAS_FREE_LOCAL_NAMES;
-                flags |= TypeFlags::HAS_CT_INFER;
-                match infer {
-                    InferConst::Fresh(_) |
-                    InferConst::Canonical(_, _) => {}
-                    InferConst::Var(_) => {
-                        flags |= TypeFlags::KEEP_IN_LOCAL_TCX;
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        debug!("type_flags({:?}) = {:?}", self, flags);
-
-        flags
-    }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,
