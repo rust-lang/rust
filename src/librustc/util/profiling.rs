@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::mem;
@@ -20,12 +21,12 @@ pub enum ProfileCategory {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProfilerEvent {
     QueryStart { query_name: &'static str, category: ProfileCategory, time: u64 },
     QueryEnd { query_name: &'static str, category: ProfileCategory, time: u64 },
-    GenericActivityStart { category: ProfileCategory, time: u64 },
-    GenericActivityEnd { category: ProfileCategory, time: u64 },
+    GenericActivityStart { category: ProfileCategory, label: Cow<'static, str>, time: u64 },
+    GenericActivityEnd { category: ProfileCategory, label: Cow<'static, str>, time: u64 },
     IncrementalLoadResultStart { query_name: &'static str, time: u64 },
     IncrementalLoadResultEnd { query_name: &'static str, time: u64 },
     QueryCacheHit { query_name: &'static str, category: ProfileCategory, time: u64 },
@@ -75,17 +76,27 @@ impl SelfProfiler {
     }
 
     #[inline]
-    pub fn start_activity(&mut self, category: ProfileCategory) {
+    pub fn start_activity(
+        &mut self,
+        category: ProfileCategory,
+        label: impl Into<Cow<'static, str>>,
+    ) {
         self.record(ProfilerEvent::GenericActivityStart {
             category,
+            label: label.into(),
             time: self.get_time_from_start(),
         })
     }
 
     #[inline]
-    pub fn end_activity(&mut self, category: ProfileCategory) {
+    pub fn end_activity(
+        &mut self,
+        category: ProfileCategory,
+        label: impl Into<Cow<'static, str>>,
+    ) {
         self.record(ProfilerEvent::GenericActivityEnd {
             category,
+            label: label.into(),
             time: self.get_time_from_start(),
         })
     }
@@ -273,11 +284,12 @@ impl SelfProfiler {
                             nanos,
                             thread_id,
                         ).unwrap(),
-                    GenericActivityStart { category, time: _ } =>
+                    GenericActivityStart { category, label, time: _ } =>
                         write!(file,
                             "{{
                                 \"GenericActivityStart\": {{\
                                     \"category\": \"{:?}\",\
+                                    \"label\": \"{}\",\
                                     \"time\": {{\
                                         \"secs\": {},\
                                         \"nanos\": {}\
@@ -286,15 +298,17 @@ impl SelfProfiler {
                                 }}\
                             }}",
                             category,
+                            label,
                             secs,
                             nanos,
                             thread_id,
                         ).unwrap(),
-                    GenericActivityEnd { category, time: _ } =>
+                    GenericActivityEnd { category, label, time: _ } =>
                         write!(file,
                             "{{\
                                 \"GenericActivityEnd\": {{\
                                     \"category\": \"{:?}\",\
+                                    \"label\": \"{}\",\
                                     \"time\": {{\
                                         \"secs\": {},\
                                         \"nanos\": {}\
@@ -303,6 +317,7 @@ impl SelfProfiler {
                                 }}\
                             }}",
                             category,
+                            label,
                             secs,
                             nanos,
                             thread_id,
@@ -418,7 +433,7 @@ impl SelfProfiler {
                             secs,
                             nanos,
                             thread_id,
-                        ).unwrap()
+                        ).unwrap(),
                 }
             }
         }

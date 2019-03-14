@@ -53,7 +53,6 @@ use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModul
 use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
-use rustc::util::time_graph::Timeline;
 use syntax_pos::symbol::InternedString;
 use rustc::mir::mono::Stats;
 pub use llvm_util::target_features;
@@ -66,7 +65,6 @@ use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
 use rustc::ty::{self, TyCtxt};
-use rustc::util::time_graph;
 use rustc::util::profiling::ProfileCategory;
 use rustc::util::common::ErrorReported;
 use rustc_mir::monomorphize;
@@ -167,42 +165,37 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-        timeline: &mut Timeline
     ) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        back::lto::run_fat(cgcx, modules, cached_modules, timeline)
+        back::lto::run_fat(cgcx, modules, cached_modules)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-        timeline: &mut Timeline
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
-        back::lto::run_thin(cgcx, modules, cached_modules, timeline)
+        back::lto::run_thin(cgcx, modules, cached_modules)
     }
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-        timeline: &mut Timeline
     ) -> Result<(), FatalError> {
-        back::write::optimize(cgcx, diag_handler, module, config, timeline)
+        back::write::optimize(cgcx, diag_handler, module, config)
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: &mut ThinModule<Self>,
-        timeline: &mut Timeline
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::lto::optimize_thin_module(thin, cgcx, timeline)
+        back::lto::optimize_thin_module(thin, cgcx)
     }
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-        timeline: &mut Timeline
     ) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, diag_handler, module, config, timeline)
+        back::write::codegen(cgcx, diag_handler, module, config)
     }
     fn prepare_thin(
         module: ModuleCodegen<Self::Module>
@@ -336,12 +329,12 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.profiler(|p| p.start_activity(ProfileCategory::Linking));
+        sess.profiler(|p| p.start_activity(ProfileCategory::Linking, "link_crate"));
         time(sess, "linking", || {
             back::link::link_binary(sess, &codegen_results,
                                     outputs, &codegen_results.crate_name.as_str());
         });
-        sess.profiler(|p| p.end_activity(ProfileCategory::Linking));
+        sess.profiler(|p| p.end_activity(ProfileCategory::Linking, "link_crate"));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)

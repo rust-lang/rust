@@ -2,7 +2,6 @@ use super::write::CodegenContext;
 use crate::traits::*;
 use crate::ModuleCodegen;
 
-use rustc::util::time_graph::Timeline;
 use rustc_errors::FatalError;
 
 use std::sync::Arc;
@@ -67,7 +66,6 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub unsafe fn optimize(
         &mut self,
         cgcx: &CodegenContext<B>,
-        timeline: &mut Timeline
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
         match *self {
             LtoModuleCodegen::Fat { ref mut module, .. } => {
@@ -75,11 +73,10 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 {
                     let config = cgcx.config(module.kind);
                     B::run_lto_pass_manager(cgcx, &module, config, false);
-                    timeline.record("fat-done");
                 }
                 Ok(module)
             }
-            LtoModuleCodegen::Thin(ref mut thin) => B::optimize_thin(cgcx, thin, timeline),
+            LtoModuleCodegen::Thin(ref mut thin) => B::optimize_thin(cgcx, thin),
         }
     }
 
