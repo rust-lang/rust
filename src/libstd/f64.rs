@@ -878,6 +878,27 @@ impl f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
+    /// Returns max if self is greater than max, and min if self is less than min.
+    /// Otherwise this returns self.  Panics if min > max, min equals NaN, or max equals NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp)]
+    /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
+    /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
+    /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
+    /// ```
+    #[unstable(feature = "clamp", issue = "44095")]
+    #[inline]
+    pub fn clamp(self, min: f64, max: f64) -> f64 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min { x = min; }
+        if x > max { x = max; }
+        x
+    }
+
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
     // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
     // of expected NaN).
