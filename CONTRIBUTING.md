@@ -154,6 +154,15 @@ been approved. The PR then enters the [merge queue][merge-queue], where [@bors][
 will run all the tests on every platform we support. If it all works out,
 [@bors][bors] will merge your code into `master` and close the pull request.
 
+Depending on the scale of the change, you may see a slightly different form of `r+`:
+
+    @bors r+ rollup
+
+The additional `rollup` tells [@bors][bors] that this change is eligible for to be
+"rolled up". Changes that are rolled up are tested and merged at the same time, to
+speed the process up. Typically only small changes that are expected not to conflict
+with one another are rolled up.
+
 [rust-highfive]: https://github.com/rust-highfive
 [steveklabnik]: https://github.com/steveklabnik
 [bors]: https://github.com/bors
@@ -298,18 +307,8 @@ the submodule to. Running `./x.py build` should work now.
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in `src/doc` in the tree, and standard API documentation is generated
-from the source code itself.
-
-Documentation pull requests function in the same way as other pull requests,
-though you may see a slightly different form of `r+`:
-
-    @bors r+ rollup
-
-That additional `rollup` tells [@bors][bors] that this change is eligible for a 'rollup'.
-To save [@bors][bors] some work, and to get small changes through more quickly, when
-[@bors][bors] attempts to merge a commit that's rollup-eligible, it will also merge
-the other rollup-eligible patches too, and they'll get tested and merged at
-the same time.
+from the source code itself. Documentation pull requests function in the same way
+as other pull requests.
 
 To find documentation-related issues, sort by the [T-doc label][tdoc].
 
