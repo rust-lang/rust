@@ -331,7 +331,7 @@ fn invoke_rustdoc(
 
     let path = builder.src.join("src/doc").join(markdown);
 
-    let favicon = builder.src.join("src/doc/favicon.inc");
+    let header = builder.src.join("src/doc/redirect.inc");
     let footer = builder.src.join("src/doc/footer.inc");
     let version_info = out.join("version_info.html");
 
@@ -341,7 +341,7 @@ fn invoke_rustdoc(
 
     cmd.arg("--html-after-content").arg(&footer)
         .arg("--html-before-content").arg(&version_info)
-        .arg("--html-in-header").arg(&favicon)
+        .arg("--html-in-header").arg(&header)
         .arg("--markdown-no-toc")
         .arg("--markdown-playground-url")
         .arg("https://play.rust-lang.org/")
