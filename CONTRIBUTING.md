@@ -147,7 +147,7 @@ of a random person. This is entirely optional.
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
 
-    @bors: r+ 38fe8d2
+    @bors r+
 
 This tells [@bors][bors], our lovable integration bot, that your pull request has
 been approved. The PR then enters the [merge queue][merge-queue], where @bors
@@ -302,7 +302,7 @@ from the source code itself.
 Documentation pull requests function in the same way as other pull requests,
 though you may see a slightly different form of `r+`:
 
-    @bors: r+ 38fe8d2 rollup
+    @bors r+ rollup
 
 That additional `rollup` tells @bors that this change is eligible for a 'rollup'.
 To save @bors some work, and to get small changes through more quickly, when
