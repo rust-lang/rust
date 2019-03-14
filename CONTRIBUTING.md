@@ -433,7 +433,8 @@ are:
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
-* For [@bors][bors], [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
+* For [@bors][bors], [this cheat sheet][cheatsheet] is helpful
+(though you'll need to replace `@homu` with `@bors` in any commands)
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
