@@ -16,7 +16,7 @@ use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
 use rustc::session::{CompileResult, CrateDisambiguator, Session};
-use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
+use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType, InputsAndOutputs};
 use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
@@ -25,8 +25,9 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
+use rustc_data_structures::stable_hasher::{StableHasher, StableVec};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{self, Lrc, Lock, OneThread, ParallelIterator, par_iter};
 use rustc_incremental;
 use rustc_incremental::DepGraphFuture;
 use rustc_metadata::creader::CrateLoader;
@@ -63,7 +64,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::mem;
 use std::ops::Generator;
 
@@ -167,8 +168,8 @@ pub fn configure_and_expand(
 }
 
 pub struct ExpansionResult {
-    pub defs: Steal<hir::map::Definitions>,
-    pub resolutions: Steal<Resolutions>,
+    pub defs: hir::map::Definitions,
+    pub resolutions: Resolutions,
 }
 
 impl ExpansionResult {
@@ -176,8 +177,8 @@ impl ExpansionResult {
         resolver: Resolver<'_>,
     ) -> Self {
         ExpansionResult {
-            defs: Steal::new(resolver.definitions),
-            resolutions: Steal::new(Resolutions {
+            defs: resolver.definitions,
+            resolutions: Resolutions {
                 export_map: resolver.export_map,
                 trait_map: resolver.trait_map,
                 glob_map: resolver.glob_map,
@@ -186,7 +187,7 @@ impl ExpansionResult {
                 extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                     (ident.name, entry.introduced_by_item)
                 }).collect(),
-            }),
+            },
         }
     }
 
@@ -194,8 +195,8 @@ impl ExpansionResult {
         resolver: &Resolver<'_>,
     ) -> Self {
         ExpansionResult {
-            defs: Steal::new(resolver.definitions.clone()),
-            resolutions: Steal::new(Resolutions {
+            defs: resolver.definitions.clone(),
+            resolutions: Resolutions {
                 export_map: resolver.export_map.clone(),
                 trait_map: resolver.trait_map.clone(),
                 glob_map: resolver.glob_map.clone(),
@@ -204,20 +205,19 @@ impl ExpansionResult {
                 extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
                     (ident.name, entry.introduced_by_item)
                 }).collect(),
-            }),
+            },
         }
     }
 }
 
 impl BoxedResolver {
     pub fn to_expansion_result(
-        mut resolver: Rc<Option<RefCell<BoxedResolver>>>,
+        resolver: &mut Lrc<Option<Lock<BoxedResolver>>>,
     ) -> ExpansionResult {
-        if let Some(resolver) = Rc::get_mut(&mut resolver) {
+        if let Some(resolver) = Lrc::get_mut(resolver) {
             mem::replace(resolver, None).unwrap().into_inner().complete()
         } else {
-            let resolver = &*resolver;
-            resolver.as_ref().unwrap().borrow_mut().access(|resolver| {
+            (**resolver).as_ref().unwrap().lock().access(|resolver| {
                 ExpansionResult::from_resolver_ref(resolver)
             })
         }
@@ -548,26 +548,43 @@ fn configure_and_expand_inner<'a>(
     Ok((krate, resolver))
 }
 
-pub fn lower_to_hir(
-    sess: &Session,
-    cstore: &CStore,
-    resolver: &mut Resolver<'_>,
-    dep_graph: &DepGraph,
-    krate: &ast::Crate,
-) -> Result<hir::map::Forest> {
+fn lower_ast_to_hir(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<&'_ hir::LoweredHir> {
+    tcx.prepare_outputs(())?;
+
+    let sess = tcx.sess;
+
+    let boxed_resolver: Box<dyn Any> = OneThread::into_inner(tcx.boxed_resolver.steal());
+    let mut boxed_resolver: Box<Lrc<Option<Lock<BoxedResolver>>>> =
+        boxed_resolver.downcast().unwrap();
+
     // Lower ast -> hir
-    let hir_forest = time(sess, "lowering ast -> hir", || {
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
+    let forest = time(sess, "lowering ast -> hir", || {
+        (**boxed_resolver).as_ref().unwrap().lock().access(|resolver| {
+            let hir_crate = lower_crate(
+                sess,
+                tcx.cstore,
+                &tcx.dep_graph,
+                &tcx.ast_crate.borrow(),
+                resolver,
+            );
 
-        if sess.opts.debugging_opts.hir_stats {
-            hir_stats::print_hir_stats(&hir_crate);
-        }
+            if sess.opts.debugging_opts.hir_stats {
+                hir_stats::print_hir_stats(&hir_crate);
+            }
 
-        hir::map::Forest::new(hir_crate, &dep_graph)
+            hir::map::Forest::new(hir_crate, &tcx.dep_graph)
+        })
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate, false, rustc_lint::BuiltinCombinedEarlyLintPass::new())
+        lint::check_ast_crate(
+            sess,
+            &tcx.ast_crate.borrow(),
+            false,rustc_lint::BuiltinCombinedEarlyLintPass::new()
+        )
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.
@@ -575,7 +592,76 @@ pub fn lower_to_hir(
         syntax::ext::hygiene::clear_markings();
     }
 
-    Ok(hir_forest)
+    let ExpansionResult {
+        defs,
+        resolutions,
+    } = BoxedResolver::to_expansion_result(&mut *boxed_resolver);
+
+    let def_path_hash_to_def_id = if tcx.sess.opts.build_dep_graph() {
+        let upstream_def_path_tables: Vec<(CrateNum, Lrc<_>)> = tcx.cstore
+            .crates_untracked()
+            .iter()
+            .map(|&cnum| (cnum, tcx.cstore.def_path_table(cnum)))
+            .collect();
+
+        let def_path_tables = || {
+            upstream_def_path_tables
+                .iter()
+                .map(|&(cnum, ref rc)| (cnum, &**rc))
+                .chain(iter::once((LOCAL_CRATE, defs.def_path_table())))
+        };
+
+        // Precompute the capacity of the hashmap so we don't have to
+        // re-allocate when populating it.
+        let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
+
+        let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
+            capacity,
+            ::std::default::Default::default()
+        );
+
+        for (cnum, def_path_table) in def_path_tables() {
+            def_path_table.add_def_path_hashes_to(cnum, &mut map);
+        }
+
+        Some(map)
+    } else {
+        None
+    };
+
+    let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
+    for (k, v) in resolutions.trait_map {
+        let hir_id = defs.node_to_hir_id(k);
+        let map = trait_map.entry(hir_id.owner).or_default();
+        map.insert(hir_id.local_id, StableVec::new(v));
+    }
+
+    Ok(tcx.arena.alloc(hir::LoweredHir {
+        forest,
+        export_map: resolutions.export_map.into_iter().map(|(k, v)| {
+            let exports: Vec<_> = v.into_iter().map(|e| {
+                e.map_id(|id| defs.node_to_hir_id(id))
+            }).collect();
+            (k, exports)
+        }).collect(),
+        maybe_unused_trait_imports:
+            resolutions.maybe_unused_trait_imports
+                .into_iter()
+                .map(|id| defs.local_def_id(id))
+                .collect(),
+        maybe_unused_extern_crates:
+            resolutions.maybe_unused_extern_crates
+                .into_iter()
+                .map(|(id, sp)| (defs.local_def_id(id), sp))
+                .collect(),
+        glob_map: resolutions.glob_map.into_iter().map(|(id, names)| {
+            (defs.local_def_id(id), names)
+        }).collect(),
+        defs,
+        extern_prelude: resolutions.extern_prelude,
+        def_path_hash_to_def_id,
+        trait_map,
+    }))
 }
 
 // Returns all the paths that correspond to generated files.
@@ -697,33 +783,31 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[Pa
     }
 }
 
-pub fn prepare_outputs(
-    sess: &Session,
-    compiler: &Compiler,
-    krate: &ast::Crate,
-    crate_name: &str
-) -> Result<OutputFilenames> {
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
+fn prepare_outputs(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<Arc<OutputFilenames>> {
+    // FIXME: rustdoc passes &[] instead of &tcx.ast_krate.borrow().attrs here
     let outputs = util::build_output_filenames(
-        &compiler.input,
-        &compiler.output_dir,
-        &compiler.output_file,
-        &krate.attrs,
-        sess
+        &tcx.io.input,
+        &tcx.io.output_dir,
+        &tcx.io.output_file,
+        &tcx.ast_crate.borrow().attrs,
+        tcx.sess
     );
 
     let output_paths = generated_output_paths(
-        sess,
+        tcx.sess,
         &outputs,
-        compiler.output_file.is_some(),
-        &crate_name,
+        tcx.io.output_file.is_some(),
+        &tcx.crate_name.as_str(),
     );
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = compiler.input_path {
-        if sess.opts.will_create_output_file() {
+    if let Some(ref input_path) = tcx.io.input_path {
+        if tcx.sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.err(&format!(
+                tcx.sess.err(&format!(
                     "the input file \"{}\" would be overwritten by the generated \
                         executable",
                     input_path.display()
@@ -731,7 +815,7 @@ pub fn prepare_outputs(
                 return Err(ErrorReported);
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.err(&format!(
+                tcx.sess.err(&format!(
                     "the generated executable for the input file \"{}\" conflicts with the \
                         existing directory \"{}\"",
                     input_path.display(),
@@ -742,26 +826,28 @@ pub fn prepare_outputs(
         }
     }
 
-    write_out_deps(sess, &outputs, &output_paths);
+    write_out_deps(tcx.sess, &outputs, &output_paths);
 
-    let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
-        && sess.opts.output_types.len() == 1;
+    let only_dep_info = tcx.sess.opts.output_types.contains_key(&OutputType::DepInfo)
+        && tcx.sess.opts.output_types.len() == 1;
 
     if !only_dep_info {
-        if let Some(ref dir) = compiler.output_dir {
+        if let Some(ref dir) = tcx.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by --out-dir");
+                tcx.sess.err("failed to find or create the directory specified by --out-dir");
                 return Err(ErrorReported);
             }
         }
     }
 
-    Ok(outputs)
+    Ok(Arc::new(outputs))
 }
 
 pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     providers.hir_map = hir_map;
+    providers.lower_ast_to_hir = lower_ast_to_hir;
+    providers.prepare_outputs = prepare_outputs;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
@@ -807,10 +893,10 @@ impl BoxedGlobalCtxt {
 
 pub fn create_global_ctxt(
     compiler: &Compiler,
-    hir_forest: hir::map::Forest,
-    defs: hir::map::Definitions,
-    resolutions: Resolutions,
-    outputs: OutputFilenames,
+    dep_graph: DepGraph,
+    ast_krate: ast::Crate,
+    boxed_resolver: Box<Lrc<Option<Lock<BoxedResolver>>>>,
+    io: InputsAndOutputs,
     tx: mpsc::Sender<Box<dyn Any + Send>>,
     crate_name: &str,
 ) -> BoxedGlobalCtxt {
@@ -844,13 +930,13 @@ pub fn create_global_ctxt(
             local_providers,
             extern_providers,
             &arenas,
-            resolutions,
-            hir_forest,
-            defs,
+            dep_graph,
+            ast_krate,
+            boxed_resolver,
             query_result_on_disk_cache,
             &crate_name,
             tx,
-            &outputs
+            io,
         );
 
         global_ctxt = Some(gcx);

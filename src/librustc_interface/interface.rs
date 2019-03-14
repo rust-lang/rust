@@ -4,7 +4,7 @@ use crate::profile;
 pub use crate::passes::BoxedResolver;
 
 use rustc::lint;
-use rustc::session::config::{self, Input};
+use rustc::session::config::{self, Input, InputsAndOutputs};
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -29,10 +29,7 @@ pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
     source_map: Lrc<SourceMap>,
-    pub(crate) input: Input,
-    pub(crate) input_path: Option<PathBuf>,
-    pub(crate) output_dir: Option<PathBuf>,
-    pub(crate) output_file: Option<PathBuf>,
+    pub(crate) io: InputsAndOutputs,
     pub(crate) queries: Queries,
     pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
@@ -52,13 +49,13 @@ impl Compiler {
         &self.source_map
     }
     pub fn input(&self) -> &Input {
-        &self.input
+        &self.io.input
     }
     pub fn output_dir(&self) -> &Option<PathBuf> {
-        &self.output_dir
+        &self.io.output_dir
     }
     pub fn output_file(&self) -> &Option<PathBuf> {
-        &self.output_file
+        &self.io.output_file
     }
 }
 
@@ -104,10 +101,12 @@ where
         codegen_backend,
         source_map,
         cstore,
-        input: config.input,
-        input_path: config.input_path,
-        output_dir: config.output_dir,
-        output_file: config.output_file,
+        io: InputsAndOutputs {
+            input: config.input,
+            input_path: config.input_path,
+            output_dir: config.output_dir,
+            output_file: config.output_file,
+        },
         queries: Default::default(),
         crate_name: config.crate_name,
     };

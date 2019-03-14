@@ -112,7 +112,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
         tcx,
         cgu_name,
         module_codegen,
-        dep_graph::hash_result,
+        Some(dep_graph::hash_result),
     );
     let time_to_codegen = start_time.elapsed();
 

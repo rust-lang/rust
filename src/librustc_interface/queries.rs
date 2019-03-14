@@ -2,14 +2,14 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 use rustc::session::config::{Input, OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::util::common::{time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
 use rustc::lint;
 use rustc::hir;
-use rustc::hir::def_id::LOCAL_CRATE;
+    use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
@@ -18,7 +18,7 @@ use rustc_plugin::registry::Registry;
 use serialize::json;
 use std::cell::{Ref, RefMut, RefCell};
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::mpsc;
 use std::any::Any;
 use std::mem;
@@ -88,14 +88,12 @@ pub(crate) struct Queries {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, PluginInfo)>,
-    expansion: Query<(ast::Crate, Rc<Option<RefCell<BoxedResolver>>>)>,
+    expansion: Query<(ast::Crate, Lrc<Option<Lock<BoxedResolver>>>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(Steal<hir::map::Forest>, ExpansionResult)>,
-    prepare_outputs: Query<OutputFilenames>,
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
-    ongoing_codegen: Query<Box<dyn Any>>,
+    ongoing_codegen: Query<(Box<dyn Any>, Arc<OutputFilenames>)>,
     link: Query<()>,
 }
 
@@ -112,7 +110,7 @@ impl Compiler {
 
     pub fn parse(&self) -> Result<&Query<ast::Crate>> {
         self.queries.parse.compute(|| {
-            passes::parse(self.session(), &self.input).map_err(
+            passes::parse(self.session(), self.input()).map_err(
                 |mut parse_error| {
                     parse_error.emit();
                     ErrorReported
@@ -145,7 +143,7 @@ impl Compiler {
                 None => rustc_codegen_utils::link::find_crate_name(
                     Some(self.session()),
                     &krate.attrs,
-                    &self.input
+                    self.input(),
                 ),
             };
             Ok(result)
@@ -154,7 +152,7 @@ impl Compiler {
 
     pub fn expansion(
         &self
-    ) -> Result<&Query<(ast::Crate, Rc<Option<RefCell<BoxedResolver>>>)>> {
+    ) -> Result<&Query<(ast::Crate, Lrc<Option<Lock<BoxedResolver>>>)>> {
         self.queries.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, plugin_info) = self.register_plugins()?.take();
@@ -164,7 +162,7 @@ impl Compiler {
                 krate,
                 &crate_name,
                 plugin_info,
-            ).map(|(krate, resolver)| (krate, Rc::new(Some(RefCell::new(resolver)))))
+            ).map(|(krate, resolver)| (krate, Lrc::new(Some(Lock::new(resolver)))))
         })
     }
 
@@ -185,36 +183,6 @@ impl Compiler {
         })
     }
 
-    pub fn lower_to_hir(&self) -> Result<&Query<(Steal<hir::map::Forest>, ExpansionResult)>> {
-        self.queries.lower_to_hir.compute(|| {
-            let expansion_result = self.expansion()?;
-            let (krate, resolver) = expansion_result.take();
-            let resolver_ref = &*resolver;
-            let hir = Steal::new(resolver_ref.as_ref().unwrap().borrow_mut().access(|resolver| {
-                passes::lower_to_hir(
-                    self.session(),
-                    self.cstore(),
-                    resolver,
-                    &*self.dep_graph()?.peek(),
-                    &krate
-                )
-            })?);
-            expansion_result.give((krate, Rc::new(None)));
-            Ok((hir, BoxedResolver::to_expansion_result(resolver)))
-        })
-    }
-
-    pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
-        self.queries.prepare_outputs.compute(|| {
-            self.lower_to_hir()?;
-            let krate = self.expansion()?;
-            let krate = krate.peek();
-            let crate_name = self.crate_name()?;
-            let crate_name = crate_name.peek();
-            passes::prepare_outputs(self.session(), self, &krate.0, &*crate_name)
-        })
-    }
-
     pub fn codegen_channel(&self) -> Result<&Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                                                     Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>> {
         self.queries.codegen_channel.compute(|| {
@@ -226,38 +194,37 @@ impl Compiler {
     pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
         self.queries.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let outputs = self.prepare_outputs()?.peek().clone();
-            let hir = self.lower_to_hir()?;
-            let hir = hir.peek();
-            let (ref hir_forest, ref expansion) = *hir;
+            let expansion_result = self.expansion()?;
+            let (krate, resolver) = expansion_result.take();
             let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
-                hir_forest.steal(),
-                expansion.defs.steal(),
-                expansion.resolutions.steal(),
-                outputs,
+                self.dep_graph()?.peek().clone(),
+                krate,
+                Box::new(resolver),
+                self.io.clone(),
                 tx,
                 &crate_name))
         })
     }
 
-    pub fn ongoing_codegen(&self) -> Result<&Query<Box<dyn Any>>> {
+    pub fn ongoing_codegen(&self) -> Result<&Query<(Box<dyn Any>, Arc<OutputFilenames>)>> {
         self.queries.ongoing_codegen.compute(|| {
             let rx = self.codegen_channel()?.peek().1.steal();
-            let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
 
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
-                Ok(passes::start_codegen(
+                let outputs = tcx.prepare_outputs(())?;
+
+                Ok((passes::start_codegen(
                     &***self.codegen_backend(),
                     tcx,
                     rx,
-                    &*outputs.peek()
-                ))
+                    &outputs,
+                ), outputs))
             })
         })
     }
@@ -266,13 +233,13 @@ impl Compiler {
         self.queries.link.compute(|| {
             let sess = self.session();
 
-            let ongoing_codegen = self.ongoing_codegen()?.take();
+            let (ongoing_codegen, outputs) = self.ongoing_codegen()?.take();
 
             self.codegen_backend().join_codegen_and_link(
                 ongoing_codegen,
                 sess,
                 &*self.dep_graph()?.peek(),
-                &*self.prepare_outputs()?.peek(),
+                &outputs,
             ).map_err(|_| ErrorReported)?;
 
             Ok(())
@@ -280,7 +247,10 @@ impl Compiler {
     }
 
     pub fn compile(&self) -> Result<()> {
-        self.prepare_outputs()?;
+        self.global_ctxt()?.peek_mut().enter(|tcx| {
+            tcx.prepare_outputs(())?;
+            Ok(())
+        })?;
 
         if self.session().opts.output_types.contains_key(&OutputType::DepInfo)
             && self.session().opts.output_types.len() == 1
@@ -288,10 +258,13 @@ impl Compiler {
             return Ok(())
         }
 
-        self.global_ctxt()?;
-
         // Drop AST after creating GlobalCtxt to free memory
-        mem::drop(self.expansion()?.take());
+        self.global_ctxt()?.peek_mut().enter(|tcx| {
+            tcx.lower_ast_to_hir(())?;
+            // Drop AST after lowering HIR to free memory
+            mem::drop(tcx.ast_crate.steal());
+            Ok(())
+        })?;
 
         self.ongoing_codegen()?;
 
