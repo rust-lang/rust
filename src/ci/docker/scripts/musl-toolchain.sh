@@ -1,3 +1,9 @@
+# This script runs `musl-cross-make` to prepare C toolchain (Binutils, GCC, musl itself)
+# and builds static libunwind that we distribute for static target.
+#
+# Versions of the toolchain components are configurable in `musl-cross-make/Makefile` and
+# musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
+# Right now we have: Binutils 2.27, GCC 6.3.0, musl 1.1.18
 set -ex
 
 hide_output() {

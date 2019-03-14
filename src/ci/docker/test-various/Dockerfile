@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   gdb \
   xz-utils \
-  # for musl
   wget \
   patch
 
@@ -25,9 +24,7 @@ RUN curl -sL https://nodejs.org/dist/v9.2.0/node-v9.2.0-linux-x64.tar.xz | \
 
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
-RUN CFLAGS="-Wa,-mrelax-relocations=no" \
-    CXXFLAGS="-Wa,-mrelax-relocations=no" \
-    bash musl-toolchain.sh x86_64 && rm -rf build
+RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
 
 COPY scripts/sccache.sh /scripts/
