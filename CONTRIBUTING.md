@@ -132,7 +132,7 @@ request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git
 before every push to make sure you never forget to make this check.
 
 All pull requests are reviewed by another person. We have a bot,
-@rust-highfive, that will automatically assign a random person to review your
+[@rust-highfive][rust-highfive], that will automatically assign a random person to review your
 request.
 
 If you want to request that a specific person reviews your pull request,
@@ -149,11 +149,13 @@ on the pull request with an `r+`. It will look something like this:
 
     @bors: r+ 38fe8d2
 
-This tells @bors, our lovable integration bot, that your pull request has
+This tells [@bors][bors], our lovable integration bot, that your pull request has
 been approved. The PR then enters the [merge queue][merge-queue], where @bors
 will run all the tests on every platform we support. If it all works out,
 @bors will merge your code into `master` and close the pull request.
 
+[rust-highfive]: https://github.com/rust-highfive
+[bors]: https://github.com/bors
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
