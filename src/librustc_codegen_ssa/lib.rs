@@ -7,6 +7,7 @@
 #![feature(libc)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(stmt_expr_attributes)]
+#![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![allow(unused_attributes)]
