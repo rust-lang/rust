@@ -800,6 +800,7 @@ macro_rules! options {
         pub const parse_opt_pathbuf: Option<&str> = Some("a path");
         pub const parse_list: Option<&str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_opt_comma_list: Option<&str> = Some("a comma-separated list of strings");
         pub const parse_uint: Option<&str> = Some("a number");
         pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
@@ -919,6 +920,18 @@ macro_rules! options {
             match v {
                 Some(s) => {
                     let v = s.split_whitespace().map(|s| s.to_string()).collect();
+                    *slot = Some(v);
+                    true
+                },
+                None => false,
+            }
+        }
+
+        fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>)
+                      -> bool {
+            match v {
+                Some(s) => {
+                    let v = s.split(',').map(|s| s.to_string()).collect();
                     *slot = Some(v);
                     true
                 },
