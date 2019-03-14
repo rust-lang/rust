@@ -3,7 +3,7 @@
 
 fn test_nil() {
     assert_eq!((), ());
-    assert!((!(() != ())));
+    assert_ne!((!((), ())));
     assert!((!(() < ())));
     assert!((() <= ()));
     assert!((!(() > ())));
@@ -40,7 +40,7 @@ fn test_ptr() {
         let p3: *const u8 = ::std::mem::transmute(1_usize);
 
         assert_eq!(p1, p2);
-        assert!(p1 != p3);
+        assert_ne!(p1, p3);
         assert!(p1 < p3);
         assert!(p1 <= p3);
         assert!(p3 > p1);
@@ -74,9 +74,9 @@ fn test_class() {
   }
   assert_eq!(q, r);
   r.y = 17;
-  assert!((r.y != q.y));
+  assert_ne!((r.y, q.y));
   assert_eq!(r.y, 17);
-  assert!((q != r));
+  assert_ne!((q, r));
 }
 
 pub fn main() {
