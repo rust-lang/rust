@@ -721,6 +721,16 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     return err
 }
 
+pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
+    let attrs = tcx.hir().attrs_by_hir_id(id);
+    for attr in attrs {
+        if Level::from_str(&attr.name().as_str()).is_some() {
+            return true;
+        }
+    }
+    false
+}
+
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
     -> Lrc<LintLevelMap>
 {
@@ -731,9 +741,10 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
     };
     let krate = tcx.hir().krate();
 
-    builder.with_lint_attrs(hir::CRATE_HIR_ID, &krate.attrs, |builder| {
-        intravisit::walk_crate(builder, krate);
-    });
+    let push = builder.levels.push(&krate.attrs);
+    builder.levels.register_id(hir::CRATE_HIR_ID);
+    intravisit::walk_crate(&mut builder, krate);
+    builder.levels.pop(push);
 
     Lrc::new(builder.levels.build_map())
 }
@@ -751,7 +762,9 @@ impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
         where F: FnOnce(&mut Self)
     {
         let push = self.levels.push(attrs);
-        self.levels.register_id(id);
+        if push.changed {
+            self.levels.register_id(id);
+        }
         f(self);
         self.levels.pop(push);
     }

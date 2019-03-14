@@ -44,7 +44,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
-                lint_level: cx.lint_level_of(self.hir_id),
+                lint_level: LintLevel::Explicit(self.hir_id),
             },
         };
 
