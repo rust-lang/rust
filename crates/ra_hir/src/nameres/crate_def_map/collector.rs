@@ -85,6 +85,12 @@ where
                 break;
             }
         }
+
+        let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        // show unresolved imports in completion, etc
+        for (module_id, import, import_data) in unresolved_imports {
+            self.record_resolved_import(module_id, PerNs::none(), import, &import_data)
+        }
     }
 
     fn define_macro(&mut self, name: Name, tt: &tt::Subtree, export: bool) {
@@ -415,7 +421,14 @@ where
         modules[res].parent = Some(self.module_id);
         modules[res].declaration = Some(declaration);
         modules[res].definition = definition;
-        modules[self.module_id].children.insert(name, res);
+        modules[self.module_id].children.insert(name.clone(), res);
+        let resolution = Resolution {
+            def: PerNs::types(
+                Module { krate: self.def_collector.def_map.krate, module_id: res }.into(),
+            ),
+            import: None,
+        };
+        self.def_collector.update(self.module_id, None, &[(name, resolution)]);
         res
     }
 

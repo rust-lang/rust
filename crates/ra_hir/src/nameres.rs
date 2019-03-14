@@ -661,7 +661,7 @@ impl ItemMap {
                 }
                 ModuleDef::Enum(e) => {
                     // enum variant
-                    tested_by!(item_map_enum_importing);
+                    tested_by!(can_import_enum_variant);
                     match e.variant(db, &segment.name) {
                         Some(variant) => PerNs::both(variant.into(), variant.into()),
                         None => {
@@ -693,6 +693,3 @@ impl ItemMap {
         ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 }
-
-#[cfg(test)]
-mod tests;
