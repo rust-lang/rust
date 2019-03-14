@@ -52,25 +52,5 @@ error: you added something to a string. Consider using `String::push_str()` inst
 LL |     let z = y + "...";
    |             ^^^^^^^^^
 
-error: calling `as_bytes()` on a string literal
-  --> $DIR/strings.rs:48:14
-   |
-LL |     let bs = "hello there".as_bytes();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"hello there"`
-   |
-   = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
-
-error: calling `as_bytes()` on a string literal
-  --> $DIR/strings.rs:50:14
-   |
-LL |     let bs = r###"raw string with three ### in it and some " ""###.as_bytes();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `br###"raw string with three ### in it and some " ""###`
-
-error: calling `as_bytes()` on `include_str!(..)`
-  --> $DIR/strings.rs:57:22
-   |
-LL |     let includestr = include_str!("entry.rs").as_bytes();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry.rs")`
-
-error: aborting due to 11 previous errors
+error: aborting due to 8 previous errors
 
