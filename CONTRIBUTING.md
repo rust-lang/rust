@@ -28,6 +28,7 @@ can give you a good example of how a typical contribution would go.
 [pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
 [coc]: https://www.rust-lang.org/conduct.html
+[rustc-guide]: https://rust-lang.github.io/rustc-guide/
 [walkthrough]: https://rust-lang.github.io/rustc-guide/walkthrough.html
 
 ## Feature Requests
