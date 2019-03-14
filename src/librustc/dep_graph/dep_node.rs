@@ -462,7 +462,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] CollectModItemTypes(DefId),
 
     [] Reachability,
-    [eval_always] CrateVariances,
+    [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
