@@ -1,6 +1,7 @@
 macro_rules! import {
-    ( $($name:ident),* ) => {
+    ( $(($path:expr, $name:ident)),* ) => {
         $(
+            #[path = $path]
             mod $name;
             pub use self::$name;
             //~^ ERROR the name `issue_56411_aux` is defined multiple times
@@ -10,7 +11,7 @@ macro_rules! import {
     }
 }
 
-import!(issue_56411_aux);
+import!(("issue-56411-aux.rs", issue_56411_aux));
 
 fn main() {
     println!("Hello, world!");

@@ -1,5 +1,6 @@
-// aux-build:orphan_check_diagnostics.rs
-// see #22388
+// aux-build:orphan-check-diagnostics.rs
+
+// See issue #22388.
 
 extern crate orphan_check_diagnostics;
 

@@ -1,7 +1,7 @@
 // run-pass
 #![allow(unused_imports)]
-// aux-build:issue_12612_1.rs
-// aux-build:issue_12612_2.rs
+// aux-build:issue-12612-1.rs
+// aux-build:issue-12612-2.rs
 
 // pretty-expanded FIXME #23616
 

@@ -1,6 +1,6 @@
 // run-pass
-// aux-build:issue_2316_a.rs
-// aux-build:issue_2316_b.rs
+// aux-build:issue-2316-a.rs
+// aux-build:issue-2316-b.rs
 
 // pretty-expanded FIXME #23616
 

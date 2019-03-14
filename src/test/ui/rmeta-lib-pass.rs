@@ -1,5 +1,5 @@
 // compile-flags: --emit=metadata
-// aux-build:rmeta_rlib.rs
+// aux-build:rmeta-rlib.rs
 // no-prefer-dynamic
 // compile-pass
 

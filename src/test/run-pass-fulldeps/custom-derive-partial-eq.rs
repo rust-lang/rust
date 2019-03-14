@@ -1,4 +1,4 @@
-// aux-build:custom_derive_partial_eq.rs
+// aux-build:custom-derive-partial-eq.rs
 // ignore-stage1
 #![feature(plugin)]
 #![plugin(custom_derive_partial_eq)]

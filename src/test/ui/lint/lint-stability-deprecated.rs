@@ -2,7 +2,7 @@
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
-// aux-build:stability_cfg2.rs
+// aux-build:stability-cfg2.rs
 // ignore-tidy-linelength
 #![warn(deprecated)]
 #![allow(dead_code, unused_extern_crates)]

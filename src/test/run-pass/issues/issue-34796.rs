@@ -8,8 +8,8 @@
 // the symbol name.
 // The fix was to make the order in which predicates get encoded stable.
 
-// aux-build:issue34796aux.rs
-extern crate issue34796aux;
+// aux-build:issue-34796-aux.rs
+extern crate issue_34796_aux;
 
 fn mk<T>() -> T { loop {} }
 
@@ -19,7 +19,7 @@ struct Data<T, E> {
 }
 
 fn main() {
-    issue34796aux::bar(|()| {
+    issue_34796_aux::bar(|()| {
         Data::<(), std::io::Error> {
             data: mk(),
             error: mk(),

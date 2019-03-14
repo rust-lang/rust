@@ -1,4 +1,4 @@
-// aux-build:lint_plugin_test.rs
+// aux-build:lint-plugin-test.rs
 // ignore-stage1
 
 #![feature(plugin)]
