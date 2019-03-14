@@ -16,6 +16,14 @@ pub trait Print<'gcx, 'tcx, P> {
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error>;
 }
 
+/// Interface for outputting user-facing "type-system entities"
+/// (paths, types, lifetimes, constants, etc.) as a side-effect
+/// (e.g. formatting, like `PrettyPrinter` implementors do) or by
+/// constructing some alternative representation (e.g. an AST),
+/// which the associated types allow passing through the methods.
+///
+/// For pretty-printing/formatting in particular, see `PrettyPrinter`.
+// FIXME(eddyb) find a better name, this is more general than "printing".
 pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     type Error;
 
