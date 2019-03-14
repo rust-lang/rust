@@ -173,7 +173,7 @@ impl Module {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(&self, db: &impl HirDatabase) -> ModuleScope {
-        db.item_map(self.krate)[self.module_id].clone()
+        db.crate_def_map(self.krate)[self.module_id].scope.clone()
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
@@ -181,8 +181,8 @@ impl Module {
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
-        let item_map = db.item_map(self.krate);
-        Resolver::default().push_module_scope(item_map, *self)
+        let def_map = db.crate_def_map(self.krate);
+        Resolver::default().push_module_scope(def_map, self.module_id)
     }
 
     pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {

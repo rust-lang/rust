@@ -26,9 +26,9 @@ pub(super) fn collect_defs(
         }
         // look for the prelude
         if def_map.prelude.is_none() {
-            let item_map = db.item_map(dep.krate);
-            if item_map.prelude.is_some() {
-                def_map.prelude = item_map.prelude;
+            let map = db.crate_def_map(dep.krate);
+            if map.prelude.is_some() {
+                def_map.prelude = map.prelude;
             }
         }
     }
@@ -162,8 +162,8 @@ where
                     } else if m.krate != self.def_map.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
-                        let item_map = self.db.item_map(m.krate);
-                        let scope = &item_map[m.module_id];
+                        let item_map = self.db.crate_def_map(m.krate);
+                        let scope = &item_map[m.module_id].scope;
                         let items = scope
                             .items
                             .iter()

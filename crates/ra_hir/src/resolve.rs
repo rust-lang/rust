@@ -4,10 +4,10 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    ModuleDef, Module,
+    ModuleDef,
     db::HirDatabase,
     name::{Name, KnownName},
-    nameres::{PerNs, ItemMap},
+    nameres::{PerNs, CrateDefMap, ModuleId},
     generics::GenericParams,
     expr::{scope::{ExprScopes, ScopeId}, PatId, Body},
     impl_block::ImplBlock,
@@ -22,8 +22,8 @@ pub struct Resolver {
 // TODO how to store these best
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleItemMap {
-    item_map: Arc<ItemMap>,
-    module: Module,
+    crate_def_map: Arc<CrateDefMap>,
+    module_id: ModuleId,
 }
 
 #[derive(Debug, Clone)]
@@ -175,9 +175,9 @@ impl Resolver {
         names
     }
 
-    fn module(&self) -> Option<(&ItemMap, Module)> {
+    fn module(&self) -> Option<(&CrateDefMap, ModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
-            Scope::ModuleScope(m) => Some((&*m.item_map, m.module.clone())),
+            Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
             _ => None,
         })
@@ -206,8 +206,12 @@ impl Resolver {
         self.push_scope(Scope::ImplBlockScope(impl_block))
     }
 
-    pub(crate) fn push_module_scope(self, item_map: Arc<ItemMap>, module: Module) -> Resolver {
-        self.push_scope(Scope::ModuleScope(ModuleItemMap { item_map, module }))
+    pub(crate) fn push_module_scope(
+        self,
+        crate_def_map: Arc<CrateDefMap>,
+        module_id: ModuleId,
+    ) -> Resolver {
+        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
     }
 
     pub(crate) fn push_expr_scope(
@@ -224,9 +228,11 @@ impl Scope {
         match self {
             Scope::ModuleScope(m) => {
                 if let Some(KnownName::SelfParam) = name.as_known_name() {
-                    PerNs::types(Resolution::Def(m.module.into()))
+                    PerNs::types(Resolution::Def(m.crate_def_map.mk_module(m.module_id).into()))
                 } else {
-                    m.item_map.resolve_name_in_module(db, m.module, name).map(Resolution::Def)
+                    m.crate_def_map
+                        .resolve_name_in_module(db, m.module_id, name)
+                        .map(Resolution::Def)
                 }
             }
             Scope::GenericParams(gp) => match gp.find_by_name(name) {
@@ -261,15 +267,15 @@ impl Scope {
                 //         def: m.module.into(),
                 //     }),
                 // );
-                m.item_map[m.module.module_id].entries().for_each(|(name, res)| {
+                m.crate_def_map[m.module_id].scope.entries().for_each(|(name, res)| {
                     f(name.clone(), res.def.map(Resolution::Def));
                 });
-                m.item_map.extern_prelude.iter().for_each(|(name, def)| {
+                m.crate_def_map.extern_prelude().iter().for_each(|(name, def)| {
                     f(name.clone(), PerNs::types(Resolution::Def(*def)));
                 });
-                if let Some(prelude) = m.item_map.prelude {
-                    let prelude_item_map = db.item_map(prelude.krate);
-                    prelude_item_map[prelude.module_id].entries().for_each(|(name, res)| {
+                if let Some(prelude) = m.crate_def_map.prelude() {
+                    let prelude_def_map = db.crate_def_map(prelude.krate);
+                    prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
                         f(name.clone(), res.def.map(Resolution::Def));
                     });
                 }

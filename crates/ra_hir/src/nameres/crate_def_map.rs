@@ -149,8 +149,16 @@ impl CrateDefMap {
         &self.problems
     }
 
-    pub(crate) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
-        self.modules.iter().map(|(id, _data)| id)
+    pub(crate) fn mk_module(&self, module_id: ModuleId) -> Module {
+        Module { krate: self.krate, module_id }
+    }
+
+    pub(crate) fn prelude(&self) -> Option<Module> {
+        self.prelude
+    }
+
+    pub(crate) fn extern_prelude(&self) -> &FxHashMap<Name, ModuleDef> {
+        &self.extern_prelude
     }
 
     pub(crate) fn find_module_by_source(
@@ -167,6 +175,16 @@ impl CrateDefMap {
             }
         })?;
         Some(module_id)
+    }
+
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl PersistentHirDatabase,
+        original_module: ModuleId,
+        path: &Path,
+    ) -> (PerNs<ModuleDef>, Option<usize>) {
+        let res = self.resolve_path_fp(db, ResolveMode::Other, original_module, path);
+        (res.resolved_def, res.segment_index)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
@@ -254,8 +272,8 @@ impl CrateDefMap {
                             kind: PathKind::Self_,
                         };
                         log::debug!("resolving {:?} in other crate", path);
-                        let item_map = db.item_map(module.krate);
-                        let (def, s) = item_map.resolve_path(db, *module, &path);
+                        let defp_map = db.crate_def_map(module.krate);
+                        let (def, s) = defp_map.resolve_path(db, module.module_id, &path);
                         return ResolvePathResult::with(
                             def,
                             ReachedFixedPoint::Yes,
@@ -313,7 +331,7 @@ impl CrateDefMap {
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_name_in_module(
+    pub(crate) fn resolve_name_in_module(
         &self,
         db: &impl PersistentHirDatabase,
         module: ModuleId,
@@ -340,7 +358,7 @@ impl CrateDefMap {
             let resolution = if prelude.krate == self.krate {
                 self[prelude.module_id].scope.items.get(name).cloned()
             } else {
-                db.item_map(prelude.krate)[prelude.module_id].items.get(name).cloned()
+                db.crate_def_map(prelude.krate)[prelude.module_id].scope.items.get(name).cloned()
             };
             resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
         } else {
