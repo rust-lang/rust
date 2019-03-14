@@ -8,7 +8,7 @@
 //!
 //! The [`Command`] struct is used to configure and spawn processes:
 //!
-//! ```
+//! ```no_run
 //! use std::process::Command;
 //!
 //! let output = Command::new("echo")
