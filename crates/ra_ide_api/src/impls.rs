@@ -81,8 +81,9 @@ mod tests {
     fn check_goto(fixture: &str, expected: &[&str]) {
         let (analysis, pos) = analysis_and_position(fixture);
 
-        let navs = analysis.goto_implementation(pos).unwrap().unwrap().info;
+        let mut navs = analysis.goto_implementation(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), expected.len());
+        navs.sort_by_key(|nav| (nav.file_id(), nav.full_range().start()));
         navs.into_iter().enumerate().for_each(|(i, nav)| nav.assert_match(expected[i]));
     }
 
