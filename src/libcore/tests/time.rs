@@ -2,7 +2,7 @@ use core::time::Duration;
 
 #[test]
 fn creation() {
-    assert!(Duration::from_secs(1) != Duration::from_secs(0));
+    assert_ne!(Duration::from_secs(1), Duration::from_secs(0));
     assert_eq!(Duration::from_secs(1) + Duration::from_secs(2),
                Duration::from_secs(3));
     assert_eq!(Duration::from_millis(10) + Duration::from_secs(4),
