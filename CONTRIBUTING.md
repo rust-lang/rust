@@ -136,12 +136,12 @@ All pull requests are reviewed by another person. We have a bot,
 request.
 
 If you want to request that a specific person reviews your pull request,
-you can add an `r?` to the message. For example, Steve usually reviews
+you can add an `r?` to the message. For example, [Steve][steveklabnik] usually reviews
 documentation changes. So if you were to make a documentation change, add
 
     r? @steveklabnik
 
-to the end of the message, and @rust-highfive will assign @steveklabnik instead
+to the end of the message, and @rust-highfive will assign [@steveklabnik][steveklabnik] instead
 of a random person. This is entirely optional.
 
 After someone has reviewed your pull request, they will leave an annotation
@@ -150,11 +150,12 @@ on the pull request with an `r+`. It will look something like this:
     @bors r+
 
 This tells [@bors][bors], our lovable integration bot, that your pull request has
-been approved. The PR then enters the [merge queue][merge-queue], where @bors
+been approved. The PR then enters the [merge queue][merge-queue], where [@bors][bors]
 will run all the tests on every platform we support. If it all works out,
-@bors will merge your code into `master` and close the pull request.
+[@bors][bors] will merge your code into `master` and close the pull request.
 
 [rust-highfive]: https://github.com/rust-highfive
+[steveklabnik]: https://github.com/steveklabnik
 [bors]: https://github.com/bors
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
@@ -304,9 +305,9 @@ though you may see a slightly different form of `r+`:
 
     @bors r+ rollup
 
-That additional `rollup` tells @bors that this change is eligible for a 'rollup'.
-To save @bors some work, and to get small changes through more quickly, when
-@bors attempts to merge a commit that's rollup-eligible, it will also merge
+That additional `rollup` tells [@bors][bors] that this change is eligible for a 'rollup'.
+To save [@bors][bors] some work, and to get small changes through more quickly, when
+[@bors][bors] attempts to merge a commit that's rollup-eligible, it will also merge
 the other rollup-eligible patches too, and they'll get tested and merged at
 the same time.
 
@@ -433,7 +434,7 @@ are:
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
-* For @bors, [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
+* For [@bors][bors], [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
