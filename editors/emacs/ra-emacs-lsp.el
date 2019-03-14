@@ -58,17 +58,16 @@
 
 (defun rust-analyzer--apply-source-change (data)
   ;; TODO fileSystemEdits
-  (--each (-> data (ht-get "workspaceEdit") (ht-get "documentChanges"))
+  (seq-doseq (it (-> data (ht-get "workspaceEdit") (ht-get "documentChanges")))
     (rust-analyzer--apply-text-document-edit it))
   (-when-let (cursor-position (ht-get data "cursorPosition"))
     (let ((filename (rust-analyzer--uri-filename (ht-get cursor-position "textDocument")))
           (position (ht-get cursor-position "position")))
       (find-file filename)
-      (rust-analyzer--goto-lsp-loc position)
-      )))
+      (rust-analyzer--goto-lsp-loc position))))
 
 (defun rust-analyzer--apply-source-change-command (p)
-  (let ((data (-> p (ht-get "arguments") (car))))
+  (let ((data (-> p (ht-get "arguments") (seq-first))))
     (rust-analyzer--apply-source-change data)))
 
 (lsp-register-client
@@ -126,7 +125,7 @@
      "rust-analyzer/extendSelection"
      (rust-analyzer--extend-selection-params)))
    (ht-get "selections")
-   (car)))
+   (seq-first)))
 
 (defun rust-analyzer--add-er-expansion ()
   (make-variable-buffer-local 'er/try-expand-list)
