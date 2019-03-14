@@ -35,7 +35,7 @@ can give you a good example of how a typical contribution would go.
 [feature-requests]: #feature-requests
 
 To request a change to the way the Rust language works, please head over
-to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the
 [README](https://github.com/rust-lang/rfcs/blob/master/README.md)
 for instructions.
 
@@ -191,7 +191,7 @@ before the PR is merged.
 [breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
 
 Rust's build system builds a number of tools that make use of the
-internals of the compiler. This includes 
+internals of the compiler. This includes
 [Clippy](https://github.com/rust-lang/rust-clippy),
 [RLS](https://github.com/rust-lang/rls) and
 [rustfmt](https://github.com/rust-lang/rustfmt). If these tools
