@@ -15,7 +15,7 @@ links to the major sections:
 * [Helpful Links and Information](#helpful-links-and-information)
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
-hop on [#rust-internals][pound-rust-internals].
+hop on the [Rust Discord server][rust-discord], [Rust Zulip server][rust-zulip] or [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
@@ -27,6 +27,8 @@ can give you a good example of how a typical contribution would go.
 
 [pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
+[rust-discord]: http://discord.gg/rust-lang
+[rust-zulip]: https://rust-lang.zulipchat.com
 [coc]: https://www.rust-lang.org/conduct.html
 [rustc-guide]: https://rust-lang.github.io/rustc-guide/
 [walkthrough]: https://rust-lang.github.io/rustc-guide/walkthrough.html
