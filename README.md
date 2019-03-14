@@ -4,9 +4,10 @@
 
 Rust Analyzer is an **experimental** modular compiler frontend for the Rust
 language. It is a part of a larger rls-2.0 effort to create excellent IDE
-support for Rust. If you want to get involved, check rls-2.0 working group repository:
+support for Rust. If you want to get involved, check the rls-2.0 working group
+in the compiler-team repository:
 
-https://github.com/rust-analyzer/WG-rls2.0
+https://github.com/rust-lang/compiler-team/tree/master/working-groups/rls-2.0
 
 Work on the Rust Analyzer is sponsored by
 
