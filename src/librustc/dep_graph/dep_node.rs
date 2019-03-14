@@ -486,7 +486,7 @@ define_dep_nodes!( <'tcx>
 
     [] Reachability,
     [] MirKeys,
-    [eval_always] CrateVariances,
+    [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
