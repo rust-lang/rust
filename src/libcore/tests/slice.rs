@@ -3,19 +3,19 @@ use core::result::Result::{Ok, Err};
 #[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().position(|&v| v == 9) == None);
-    assert!(b.iter().position(|&v| v == 5) == Some(3));
-    assert!(b.iter().position(|&v| v == 3) == Some(2));
-    assert!(b.iter().position(|&v| v == 0) == None);
+    assert_eq!(b.iter().position(|&v| v == 9), None);
+    assert_eq!(b.iter().position(|&v| v == 5), Some(3));
+    assert_eq!(b.iter().position(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().position(|&v| v == 0), None);
 }
 
 #[test]
 fn test_rposition() {
     let b = [1, 2, 3, 5, 5];
-    assert!(b.iter().rposition(|&v| v == 9) == None);
-    assert!(b.iter().rposition(|&v| v == 5) == Some(4));
-    assert!(b.iter().rposition(|&v| v == 3) == Some(2));
-    assert!(b.iter().rposition(|&v| v == 0) == None);
+    assert_eq!(b.iter().rposition(|&v| v == 9), None);
+    assert_eq!(b.iter().rposition(|&v| v == 5), Some(4));
+    assert_eq!(b.iter().rposition(|&v| v == 3), Some(2));
+    assert_eq!(b.iter().rposition(|&v| v == 0), None);
 }
 
 #[test]
@@ -1081,7 +1081,7 @@ fn sort_unstable() {
 
     let mut v = [0xDEADBEEFu64];
     v.sort_unstable();
-    assert!(v == [0xDEADBEEF]);
+    assert_eq!(v, [0xDEADBEEF]);
 }
 
 pub mod memchr {
