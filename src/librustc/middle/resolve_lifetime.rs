@@ -2299,6 +2299,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let span = lifetime_refs[0].span;
         let mut late_depth = 0;
         let mut scope = self.scope;
+        let mut lifetime_names = FxHashSet::default();
         let error = loop {
             match *scope {
                 // Do not assign any resolution, it will be inferred.
@@ -2306,12 +2307,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Root => break None,
 
-                Scope::Binder { s, .. } => {
+                Scope::Binder { s, ref lifetimes, .. } => {
+                    // collect named lifetimes for suggestions
+                    for name in lifetimes.keys() {
+                        if let hir::ParamName::Plain(name) = name {
+                            lifetime_names.insert(*name);
+                        }
+                    }
                     late_depth += 1;
                     scope = s;
                 }
 
-                Scope::Elision { ref elide, .. } => {
+                Scope::Elision { ref elide, ref s, .. } => {
                     let lifetime = match *elide {
                         Elide::FreshLateAnon(ref counter) => {
                             for lifetime_ref in lifetime_refs {
@@ -2321,7 +2328,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             return;
                         }
                         Elide::Exact(l) => l.shifted(late_depth),
-                        Elide::Error(ref e) => break Some(e),
+                        Elide::Error(ref e) => {
+                            if let Scope::Binder { ref lifetimes, .. } = s {
+                                // collect named lifetimes for suggestions
+                                for name in lifetimes.keys() {
+                                    if let hir::ParamName::Plain(name) = name {
+                                        lifetime_names.insert(*name);
+                                    }
+                                }
+                            }
+                            break Some(e);
+                        }
                     };
                     for lifetime_ref in lifetime_refs {
                         self.insert_lifetime(lifetime_ref, lifetime);
@@ -2344,7 +2361,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
         if add_label {
-            add_missing_lifetime_specifiers_label(&mut err, span, lifetime_refs.len());
+            add_missing_lifetime_specifiers_label(
+                &mut err,
+                span,
+                lifetime_refs.len(),
+                &lifetime_names,
+                self.tcx.sess.source_map().span_to_snippet(span).ok().as_ref().map(|s| s.as_str()),
+            );
         }
 
         err.emit();
@@ -2885,10 +2908,23 @@ fn add_missing_lifetime_specifiers_label(
     err: &mut DiagnosticBuilder<'_>,
     span: Span,
     count: usize,
+    lifetime_names: &FxHashSet<ast::Ident>,
+    snippet: Option<&str>,
 ) {
     if count > 1 {
         err.span_label(span, format!("expected {} lifetime parameters", count));
+    } else if let (1, Some(name), Some("&")) = (
+        lifetime_names.len(),
+        lifetime_names.iter().next(),
+        snippet,
+    ) {
+        err.span_suggestion(
+            span,
+            "consider using the named lifetime",
+            format!("&{} ", name),
+            Applicability::MaybeIncorrect,
+        );
     } else {
         err.span_label(span, "expected lifetime parameter");
-    };
+    }
 }
