@@ -10,8 +10,10 @@ use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::Span;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_macros::HashStable;
 use errors::DiagnosticId;
 
+#[derive(HashStable)]
 pub struct LibFeatures {
     // A map from feature to stabilisation version.
     pub stable: FxHashMap<Symbol, Symbol>,

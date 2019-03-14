@@ -1,0 +1,11 @@
+error: implementation of `DistributedIteratorMulti` is not general enough
+  --> $DIR/issue-55731.rs:48:5
+   |
+LL |     multi(Map {
+   |     ^^^^^
+   |
+   = note: `DistributedIteratorMulti<&'0 ()>` would have to be implemented for the type `Cloned<&()>`, for any lifetime `'0`
+   = note: but `DistributedIteratorMulti<&'1 ()>` is actually implemented for the type `Cloned<&'1 ()>`, for some specific lifetime `'1`
+
+error: aborting due to previous error
+

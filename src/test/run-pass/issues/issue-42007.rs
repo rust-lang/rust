@@ -1,6 +1,6 @@
 // run-pass
 #![allow(dead_code)]
-// aux-build:issue_42007_s.rs
+// aux-build:issue-42007-s.rs
 
 extern crate issue_42007_s;
 

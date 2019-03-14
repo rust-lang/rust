@@ -917,7 +917,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::empty();
+        let param_env = tcx.param_env(impl_c.def_id);
         let inh = Inherited::new(infcx, impl_c.def_id);
         let infcx = &inh.infcx;
 

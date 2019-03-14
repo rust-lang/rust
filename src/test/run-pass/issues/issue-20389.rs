@@ -1,6 +1,6 @@
 // run-pass
 #![allow(dead_code)]
-// aux-build:issue_20389.rs
+// aux-build:issue-20389.rs
 
 // pretty-expanded FIXME #23616
 

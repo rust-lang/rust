@@ -24,6 +24,7 @@
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable;
 use serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
@@ -41,7 +42,7 @@ mod substitute;
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub struct Canonical<'gcx, V> {
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'gcx>,
@@ -61,7 +62,7 @@ impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 /// vectors with the original values that were replaced by canonical
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, Kind<'tcx>>,
 }
@@ -99,7 +100,7 @@ impl Default for OriginalQueryValues<'tcx> {
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub struct CanonicalVarInfo {
     pub kind: CanonicalVarKind,
 }
@@ -122,7 +123,7 @@ impl CanonicalVarInfo {
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub enum CanonicalVarKind {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -159,7 +160,7 @@ impl CanonicalVarKind {
 /// 22.) can only be instantiated with integral/float types (e.g.,
 /// usize or f32). In order to faithfully reproduce a type, we need to
 /// know what set of types a given type variable can be unified with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.
     General(ty::UniverseIndex),
@@ -174,7 +175,7 @@ pub enum CanonicalTyVarKind {
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, HashStable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: Vec<QueryRegionConstraint<'tcx>>,
@@ -189,7 +190,7 @@ pub type CanonicalizedQueryResponse<'gcx, T> =
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum Certainty {
     /// The query is known to be true, presuming that you apply the
     /// given `var_values` and the region-constraints are satisfied.

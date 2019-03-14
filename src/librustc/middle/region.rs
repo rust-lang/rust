@@ -13,6 +13,7 @@ use crate::ty;
 use std::mem;
 use std::fmt;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -90,7 +91,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 // placate the same deriving in `ty::FreeRegion`, but we may want to
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct Scope {
     pub id: hir::ItemLocalId,
     pub data: ScopeData,
@@ -113,7 +115,8 @@ impl fmt::Debug for Scope {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum ScopeData {
     Node,
 

@@ -1,4 +1,4 @@
-// aux-build:roman_numerals.rs
+// aux-build:roman-numerals.rs
 // ignore-stage1
 
 #![feature(plugin)]

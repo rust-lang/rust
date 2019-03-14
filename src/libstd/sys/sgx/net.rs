@@ -420,10 +420,10 @@ impl Iterator for LookupHost {
     }
 }
 
-impl<'a> TryFrom<&'a str> for LookupHost {
+impl TryFrom<&str> for LookupHost {
     type Error = io::Error;
 
-    fn try_from(v: &'a str) -> io::Result<LookupHost> {
+    fn try_from(v: &str) -> io::Result<LookupHost> {
         LookupHost::new(v.to_owned())
     }
 }

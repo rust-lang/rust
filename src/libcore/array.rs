@@ -139,7 +139,7 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "try_from", since = "1.34.0")]
-            impl<'a, T> TryFrom<&'a [T]> for [T; $N] where T: Copy {
+            impl<T> TryFrom<&[T]> for [T; $N] where T: Copy {
                 type Error = TryFromSliceError;
 
                 fn try_from(slice: &[T]) -> Result<[T; $N], TryFromSliceError> {

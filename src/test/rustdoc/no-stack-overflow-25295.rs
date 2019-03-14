@@ -1,5 +1,5 @@
-// ensure this code doesn't stack overflow
-// aux-build:enum_primitive.rs
+// Ensure this code doesn't stack overflow.
+// aux-build:enum-primitive.rs
 
 #[macro_use] extern crate enum_primitive;
 
@@ -33,4 +33,3 @@ enum_from_primitive! {
         Z1,Z2,Z3,Z4,Z5,Z6,
     }
 }
-

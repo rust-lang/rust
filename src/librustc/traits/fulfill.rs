@@ -275,6 +275,8 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                 self.selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate);
         }
 
+        debug!("process_obligation: obligation = {:?}", obligation);
+
         match obligation.predicate {
             ty::Predicate::Trait(ref data) => {
                 let trait_obligation = obligation.with(data.clone());

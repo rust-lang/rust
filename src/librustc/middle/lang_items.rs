@@ -20,6 +20,7 @@ use crate::util::nodemap::FxHashMap;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
 
@@ -45,6 +46,7 @@ impl LangItem {
     }
 }
 
+#[derive(HashStable)]
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
     pub missing: Vec<LangItem>,

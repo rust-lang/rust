@@ -1,0 +1,25 @@
+warning: lint name `test_lint` is deprecated and does not have an effect anymore. Use: clippy::test_lint
+   |
+   = note: requested on the command line with `-A test_lint`
+
+warning: item is named 'lintme'
+  --> $DIR/lint-tool-cmdline-allow.rs:10:1
+   |
+LL | fn lintme() {}
+   | ^^^^^^^^^^^^^^
+   |
+   = note: #[warn(clippy::test_lint)] on by default
+
+warning: function is never used: `lintme`
+  --> $DIR/lint-tool-cmdline-allow.rs:10:1
+   |
+LL | fn lintme() {}
+   | ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-tool-cmdline-allow.rs:7:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(dead_code)] implied by #[warn(unused)]
+

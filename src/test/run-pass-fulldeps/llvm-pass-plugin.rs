@@ -1,4 +1,4 @@
-// aux-build:llvm_pass_plugin.rs
+// aux-build:llvm-pass-plugin.rs
 // ignore-stage1
 
 #![feature(plugin)]

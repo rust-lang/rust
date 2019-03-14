@@ -2182,25 +2182,25 @@ impl<T> AsMut<[T]> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+impl<T: Clone> From<&[T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
 
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
-impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
+impl<T: Clone> From<&mut [T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
@@ -2231,8 +2231,8 @@ impl<T> From<Vec<T>> for Box<[T]> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Vec<u8> {
-    fn from(s: &'a str) -> Vec<u8> {
+impl From<&str> for Vec<u8> {
+    fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }
 }

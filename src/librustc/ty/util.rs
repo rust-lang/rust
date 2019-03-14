@@ -18,6 +18,7 @@ use crate::middle::lang_items;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_macros::HashStable;
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -1005,7 +1006,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ))
 }
 
-#[derive(Clone)]
+#[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

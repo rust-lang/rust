@@ -286,13 +286,15 @@ macro_rules! newtype_index {
     );
 
     // Append comma to end of derives list if it's missing
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
         newtype_index!(
+            @attrs        [$(#[$attrs])*]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
@@ -303,7 +305,8 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists. When encodable is custom, just use the derives list as-is.
-    (@type         [$type:ident]
+    (@attrs        [$(#[$attrs:meta])*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
@@ -311,6 +314,7 @@ macro_rules! newtype_index {
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
         newtype_index!(
+            @attrs        [$(#[$attrs])*]
             @derives      [$($derives,)+]
             @type         [$type]
             @max          [$max]

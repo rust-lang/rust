@@ -1,4 +1,4 @@
-// aux-build:attr_plugin_test.rs
+// aux-build:attr-plugin-test.rs
 // ignore-cross-compile
 //
 // attr_plugin_test will not compile on a cross-compiled target because

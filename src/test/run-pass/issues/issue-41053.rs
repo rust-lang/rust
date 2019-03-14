@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:issue_41053.rs
+// aux-build:issue-41053.rs
 
 pub trait Trait { fn foo(&self) {} }
 

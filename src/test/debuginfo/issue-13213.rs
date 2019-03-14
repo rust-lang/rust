@@ -1,8 +1,8 @@
 // min-lldb-version: 310
 
-// aux-build:issue13213aux.rs
+// aux-build:issue-13213-aux.rs
 
-extern crate issue13213aux;
+extern crate issue_13213_aux;
 
 // compile-flags:-g
 
@@ -10,6 +10,6 @@ extern crate issue13213aux;
 // statics that are marked with AvailableExternallyLinkage in the importing crate, may actually not
 // be available because they have been optimized out from the exporting crate.
 fn main() {
-    let b: issue13213aux::S = issue13213aux::A;
+    let b: issue_13213_aux::S = issue_13213_aux::A;
     println!("Nothing to do here...");
 }

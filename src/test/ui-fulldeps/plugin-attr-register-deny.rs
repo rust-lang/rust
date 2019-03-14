@@ -1,4 +1,4 @@
-// aux-build:attr_plugin_test.rs
+// aux-build:attr-plugin-test.rs
 // ignore-stage1
 
 #![feature(plugin)]

@@ -65,6 +65,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
+use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
@@ -316,7 +317,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 }
 
 /// All information necessary to validate and reveal an `impl Trait` or `existential Type`
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct ResolvedOpaqueTy<'tcx> {
     /// The revealed type as seen by this function.
     pub concrete_type: Ty<'tcx>,
@@ -808,6 +809,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
 newtype_index! {
     pub struct UserTypeAnnotationIndex {
+        derive [HashStable]
         DEBUG_FORMAT = "UserType({})",
         const START_INDEX = 0,
     }
@@ -817,7 +819,7 @@ newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
@@ -893,7 +895,7 @@ impl CanonicalUserType<'gcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -1440,16 +1442,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      |_, x| x, // No transformation needed
                                      dep_graph::hash_result,
             );
-        }
-    }
-
-    // This method exercises the `in_scope_traits_map` query for all possible
-    // values so that we have their fingerprints available in the DepGraph.
-    // This is only required as long as we still use the old dependency tracking
-    // which needs to have the fingerprints of all input nodes beforehand.
-    pub fn precompute_in_scope_traits_hashes(self) {
-        for &def_index in self.trait_map.keys() {
-            self.in_scope_traits_map(def_index);
         }
     }
 

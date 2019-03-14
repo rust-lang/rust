@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-// aux-build:macro_crate_test.rs
+// aux-build:macro-crate-test.rs
 // ignore-stage1
 
 #![feature(rustc_attrs)]

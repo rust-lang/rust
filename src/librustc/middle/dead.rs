@@ -3,7 +3,7 @@
 // from live codes are live, and everything else is dead.
 
 use crate::hir::Node;
-use crate::hir::{self, PatKind};
+use crate::hir::{self, PatKind, TyKind};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 
@@ -281,6 +281,17 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
         self.handle_definition(path.def);
         intravisit::walk_path(self, path);
+    }
+
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        match ty.node {
+            TyKind::Def(item_id, _) => {
+                let item = self.tcx.hir().expect_item(item_id.id);
+                intravisit::walk_item(self, item);
+            }
+            _ => ()
+        }
+        intravisit::walk_ty(self, ty);
     }
 }
 
