@@ -1117,11 +1117,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     // with rustdoc running in parallel.
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
-    if options.enable_minification {
-        try_err!(writeln!(&mut w, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
-    } else {
-        try_err!(writeln!(&mut w, "var searchIndex={{}};"), &dst);
-    }
+    try_err!(writeln!(&mut w, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
     try_err!(write_minify_replacer(&mut w,
                                    &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
                                    options.enable_minification),
