@@ -245,6 +245,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(checked_duration_since)]
+#![feature(clamp)]
 #![feature(compiler_builtins_lib)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
