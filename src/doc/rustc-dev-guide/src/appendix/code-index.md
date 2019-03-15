@@ -7,7 +7,7 @@ compiler.
 Item            |  Kind    | Short description           | Chapter            | Declaration
 ----------------|----------|-----------------------------|--------------------|-------------------
 `BodyId` | struct | One of four types of HIR node identifiers | [Identifiers in the HIR] | [src/librustc/hir/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.BodyId.html)
-`CompileState` | struct | State that is passed to a callback at each compiler pass | [The Rustc Driver] | [src/librustc_driver/driver.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/struct.CompileState.html)
+`Compiler` | struct | Represents a compiler session and can be used to drive a compilation. | [The Rustc Driver and Interface] | [src/librustc_interface/interface.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html)
 `ast::Crate` | struct | A syntax-level representation of a parsed crate | [The parser] | [src/librustc/hir/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/struct.Crate.html)
 `hir::Crate` | struct | A more abstract, compiler-friendly form of a crate's AST | [The Hir] | [src/librustc/hir/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/struct.Crate.html)
 `DefId` | struct | One of four types of HIR node identifiers | [Identifiers in the HIR] | [src/librustc/hir/def_id.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/def_id/struct.DefId.html)
@@ -18,8 +18,9 @@ Item            |  Kind    | Short description           | Chapter            | 
 `P` | struct | An owned immutable smart pointer. By contrast, `&T` is not owned, and `Box<T>` is not immutable. | None | [src/syntax/ptr.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ptr/struct.P.html)
 `ParamEnv` | struct | Information about generic parameters or `Self`, useful for working with associated or generic items | [Parameter Environment] | [src/librustc/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.ParamEnv.html)
 `ParseSess` | struct | This struct contains information about a parsing session | [The parser] | [src/libsyntax/parse/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/struct.ParseSess.html)
+`Query` | struct | Represents the result of query to the `Compiler` interface and allows stealing, borrowing, and returning the results of compiler passes. | [The Rustc Driver and Interface] | [src/librustc_interface/queries.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/queries/struct.Query.html)
 `Rib` | struct | Represents a single scope of names | [Name resolution] | [src/librustc_resolve/lib.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Rib.html)
-`Session` | struct | The data associated with a compilation session | [The parser], [The Rustc Driver] | [src/librustc/session/mod.html](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html)
+`Session` | struct | The data associated with a compilation session | [The parser], [The Rustc Driver and Interface] | [src/librustc/session/mod.html](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html)
 `SourceFile` | struct | Part of the `SourceMap`. Maps AST nodes to their source code for a single source file. Was previously called FileMap | [The parser] | [src/libsyntax_pos/lib.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceFile.html)
 `SourceMap` | struct | Maps AST nodes to their source code. It is composed of `SourceFile`s. Was previously called CodeMap | [The parser] | [src/libsyntax/source_map.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html)
 `Span` | struct  | A location in the user's source code, used for error reporting primarily | [Emitting Diagnostics] | [src/libsyntax_pos/span_encoding.rs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html)
@@ -33,7 +34,7 @@ Item            |  Kind    | Short description           | Chapter            | 
 [The HIR]: ../hir.html
 [Identifiers in the HIR]: ../hir.html#hir-id
 [The parser]: ../the-parser.html
-[The Rustc Driver]: ../rustc-driver.html
+[The Rustc Driver and Interface]: ../rustc-driver.html
 [Type checking]: ../type-checking.html
 [The `ty` modules]: ../ty.html
 [Rustdoc]: ../rustdoc.html

@@ -26,7 +26,7 @@
 
 - [Part 2: How rustc works](./part-2-intro.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
-- [The Rustc Driver](./rustc-driver.md)
+- [The Rustc Driver and Interface](./rustc-driver.md)
     - [Rustdoc](./rustdoc.md)
 - [Queries: demand-driven compilation](./query.md)
     - [The Query Evaluation Model in Detail](./queries/query-evaluation-model-in-detail.md)

@@ -1,9 +1,12 @@
 # Appendix A: A tutorial on creating a drop-in replacement for rustc
 
 > **Note:** This is a copy of `@nrc`'s amazing [stupid-stats]. You should find
-> a copy of the code on the GitHub repository although due to the compiler's
-> constantly evolving nature, there is no guarantee it'll compile on the first
-> go.
+> a copy of the code on the GitHub repository.
+>
+> Due to the compiler's constantly evolving nature, the `rustc_driver`
+> mechanisms described in this chapter have been replaced by a new
+> [`rustc_interface`] crate. See [The Rustc Driver and Interface] for more
+> information.
 
 Many tools benefit from being a drop-in replacement for a compiler. By this, I
 mean that any user of the tool can use `mytool` in all the ways they would
@@ -92,7 +95,7 @@ translation).
 > and [`librustc_codegen_utils`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_utils/index.html).
 
 All these phases are coordinated by the driver. To see the exact sequence, look
-at [the `compile_input` function in `librustc_driver`][compile-input].
+at the `compile_input` function in `librustc_driver`.
 The driver handles all the highest level coordination of compilation -
     1. handling command-line arguments
     2. maintaining compilation state (primarily in the `Session`)
@@ -100,9 +103,6 @@ The driver handles all the highest level coordination of compilation -
     4. handles high level coordination of pretty printing and testing.
 To create a drop-in compiler replacement or a compiler replacement,
 we leave most of compilation alone and customise the driver using its APIs.
-
-[compile-input]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/fn.compile_input.html
-
 
 ## The driver customisation APIs
 
@@ -410,3 +410,5 @@ internally (I already changed save-analysis to use `CompilerController`). I've
 been experimenting with a prototype rustfmt which also uses these APIs.
 
 [stupid-stats]: https://github.com/nrc/stupid-stats
+[`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
+[The Rustc Driver and Interface]: ../rustc-driver.html
