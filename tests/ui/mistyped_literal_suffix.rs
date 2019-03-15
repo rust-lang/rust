@@ -2,7 +2,6 @@
 
 #![allow(dead_code, unused_variables, clippy::excessive_precision)]
 
-
 fn main() {
     let fail14 = 2_32;
     let fail15 = 4_64;
