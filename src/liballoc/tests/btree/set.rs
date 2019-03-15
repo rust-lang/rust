@@ -10,7 +10,7 @@ fn test_clone_eq() {
     m.insert(1);
     m.insert(2);
 
-    assert!(m.clone() == m);
+    assert_eq!(m.clone(), m);
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn test_hash() {
     y.insert(2);
     y.insert(1);
 
-    assert!(hash(&x) == hash(&y));
+    assert_eq!(hash(&x), hash(&y));
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
