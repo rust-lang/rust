@@ -24,7 +24,7 @@ exit 1
 }
 
 ARCH=$1
-TARGET=linux-musl-$ARCH
+TARGET=$ARCH-linux-musl
 
 OUTPUT=/usr/local
 shift
