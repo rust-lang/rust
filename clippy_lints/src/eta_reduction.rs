@@ -134,7 +134,7 @@ fn get_ufcs_type_name(
 
     if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
         if match_borrow_depth(expected_type_of_self, actual_type_of_self) {
-            return Some(cx.tcx.item_path_str(trait_id));
+            return Some(cx.tcx.def_path_str(trait_id));
         }
     }
 
@@ -174,7 +174,7 @@ fn match_types(lhs: &ty::TyKind<'_>, rhs: &ty::TyKind<'_>) -> bool {
 
 fn get_type_name(cx: &LateContext<'_, '_>, kind: &ty::TyKind<'_>) -> String {
     match kind {
-        ty::Adt(t, _) => cx.tcx.item_path_str(t.did),
+        ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
         ty::Ref(_, r, _) => get_type_name(cx, &r.sty),
         _ => kind.to_string(),
     }

@@ -539,7 +539,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                     String::new()
                 };
                 // This path assumes that the enum type is imported into scope.
-                format!("{}{}{}", ident_str, cx.tcx.item_path_str(v.did), suffix)
+                format!("{}{}{}", ident_str, cx.tcx.def_path_str(v.did), suffix)
             })
             .collect();
 
