@@ -323,22 +323,20 @@ pub fn register_plugins<'a>(
         ..
     } = registry;
 
-    sess.track_errors(|| {
-        let mut ls = sess.lint_store.borrow_mut();
-        for pass in early_lint_passes {
-            ls.register_early_pass(Some(sess), true, false, pass);
-        }
-        for pass in late_lint_passes {
-            ls.register_late_pass(Some(sess), true, pass);
-        }
+    let mut ls = sess.lint_store.borrow_mut();
+    for pass in early_lint_passes {
+        ls.register_early_pass(Some(sess), true, false, pass);
+    }
+    for pass in late_lint_passes {
+        ls.register_late_pass(Some(sess), true, pass);
+    }
 
-        for (name, (to, deprecated_name)) in lint_groups {
-            ls.register_group(Some(sess), true, name, deprecated_name, to);
-        }
+    for (name, (to, deprecated_name)) in lint_groups {
+        ls.register_group(Some(sess), true, name, deprecated_name, to);
+    }
 
-        *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        *sess.plugin_attributes.borrow_mut() = attributes.clone();
-    })?;
+    *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
+    *sess.plugin_attributes.borrow_mut() = attributes.clone();
 
     Ok((krate, PluginInfo {
         syntax_exts,
