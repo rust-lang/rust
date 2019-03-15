@@ -382,20 +382,19 @@ impl<'a> Linker for GccLinker<'a> {
 
         if self.sess.target.target.options.is_like_osx {
             // Write a plain, newline-separated list of symbols
-            let res = (|| -> io::Result<()> {
+            let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 for sym in self.info.exports[&crate_type].iter() {
                     debug!("  _{}", sym);
                     writeln!(f, "_{}", sym)?;
                 }
-                Ok(())
-            })();
+            };
             if let Err(e) = res {
                 self.sess.fatal(&format!("failed to write lib.def file: {}", e));
             }
         } else {
             // Write an LD version script
-            let res = (|| -> io::Result<()> {
+            let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{\n  global:")?;
                 for sym in self.info.exports[&crate_type].iter() {
@@ -403,8 +402,7 @@ impl<'a> Linker for GccLinker<'a> {
                     writeln!(f, "    {};", sym)?;
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
-                Ok(())
-            })();
+            };
             if let Err(e) = res {
                 self.sess.fatal(&format!("failed to write version script: {}", e));
             }
@@ -644,7 +642,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                       tmpdir: &Path,
                       crate_type: CrateType) {
         let path = tmpdir.join("lib.def");
-        let res = (|| -> io::Result<()> {
+        let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
 
             // Start off with the standard module name header and then go
@@ -655,8 +653,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                 debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;
             }
-            Ok(())
-        })();
+        };
         if let Err(e) = res {
             self.sess.fatal(&format!("failed to write lib.def file: {}", e));
         }
