@@ -11,7 +11,7 @@ mod tests {
     fn test_overflows() {
         assert!(MAX > 0);
         assert!(MIN <= 0);
-        assert!((MIN + MAX).wrapping_add(1) == 0);
+        assert_eq!((MIN + MAX).wrapping_add(1), 0);
     }
 
     #[test]
@@ -21,12 +21,12 @@ mod tests {
 
     #[test]
     fn test_bitwise_operators() {
-        assert!(0b1110 as $T == (0b1100 as $T).bitor(0b1010 as $T));
-        assert!(0b1000 as $T == (0b1100 as $T).bitand(0b1010 as $T));
-        assert!(0b0110 as $T == (0b1100 as $T).bitxor(0b1010 as $T));
-        assert!(0b1110 as $T == (0b0111 as $T).shl(1));
-        assert!(0b0111 as $T == (0b1110 as $T).shr(1));
-        assert!(MAX - (0b1011 as $T) == (0b1011 as $T).not());
+        assert_eq!(0b1110 as $T, (0b1100 as $T).bitor(0b1010 as $T));
+        assert_eq!(0b1000 as $T, (0b1100 as $T).bitand(0b1010 as $T));
+        assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(0b1010 as $T));
+        assert_eq!(0b1110 as $T, (0b0111 as $T).shl(1));
+        assert_eq!(0b0111 as $T, (0b1110 as $T).shr(1));
+        assert_eq!(MAX - (0b1011 as $T), (0b1011 as $T).not());
     }
 
     const A: $T = 0b0101100;
@@ -38,17 +38,17 @@ mod tests {
 
     #[test]
     fn test_count_ones() {
-        assert!(A.count_ones() == 3);
-        assert!(B.count_ones() == 2);
-        assert!(C.count_ones() == 5);
+        assert_eq!(A.count_ones(), 3);
+        assert_eq!(B.count_ones(), 2);
+        assert_eq!(C.count_ones(), 5);
     }
 
     #[test]
     fn test_count_zeros() {
         let bits = mem::size_of::<$T>() * 8;
-        assert!(A.count_zeros() == bits as u32 - 3);
-        assert!(B.count_zeros() == bits as u32 - 2);
-        assert!(C.count_zeros() == bits as u32 - 5);
+        assert_eq!(A.count_zeros(), bits as u32 - 3);
+        assert_eq!(B.count_zeros(), bits as u32 - 2);
+        assert_eq!(C.count_zeros(), bits as u32 - 5);
     }
 
     #[test]
@@ -122,8 +122,8 @@ mod tests {
 
     #[test]
     fn test_unsigned_checked_div() {
-        assert!((10 as $T).checked_div(2) == Some(5));
-        assert!((5 as $T).checked_div(0) == None);
+        assert_eq!((10 as $T).checked_div(2), Some(5));
+        assert_eq!((5 as $T).checked_div(0), None);
     }
 
     fn from_str<T: FromStr>(t: &str) -> Option<T> {
