@@ -17,4 +17,9 @@ fn main() {
     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
     let good_sci = 1.1234e1;
     let bad_sci = 1.123456e1;
+
+    let fail9 = 0xabcdef;
+    let fail10: u32 = 0xBAFEBAFE;
+    let fail11 = 0xabcdeff;
+    let fail12: i128 = 0xabcabcabcabcabcabc;
 }
