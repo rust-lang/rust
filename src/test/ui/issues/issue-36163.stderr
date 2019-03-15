@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when processing `Foo::B::{{constant}}`
+error[E0391]: cycle detected when processing `Foo::B::{{constant}}#0`
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
@@ -9,8 +9,8 @@ note: ...which requires processing `A`...
    |
 LL | const A: isize = Foo::B as isize;
    |                  ^^^^^^^^^^^^^^^
-   = note: ...which again requires processing `Foo::B::{{constant}}`, completing the cycle
-note: cycle used when const-evaluating `Foo::B::{{constant}}`
+   = note: ...which again requires processing `Foo::B::{{constant}}#0`, completing the cycle
+note: cycle used when const-evaluating `Foo::B::{{constant}}#0`
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,

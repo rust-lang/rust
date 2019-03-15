@@ -319,7 +319,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                     if edef.is_enum() && edef.variants.iter().any(|variant| {
                         variant.ident == ident && variant.ctor_kind == CtorKind::Const
                     }) {
-                        let ty_path = cx.tcx.item_path_str(edef.did);
+                        let ty_path = cx.tcx.def_path_str(edef.did);
                         let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
                             "pattern binding `{}` is named the same as one \
                             of the variants of the type `{}`",

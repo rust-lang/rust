@@ -20,8 +20,9 @@ use rustc::mir::interpret::GlobalId;
 use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::hir::map::DisambiguatedDefPathData;
+use rustc::ty::subst::{Kind, InternalSubsts, SubstsRef};
+use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -3971,7 +3972,7 @@ pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
         Def::ForeignTy(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
-        Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),
+        Def::Variant(i) => (cx.tcx.parent(i).expect("cannot get parent def id"),
                             TypeKind::Enum),
         Def::Macro(i, mac_kind) => match mac_kind {
             MacroKind::Bang => (i, TypeKind::Macro),
@@ -4223,32 +4224,113 @@ pub fn path_to_def(tcx: &TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
     }
 }
 
-pub fn get_path_for_type<F>(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, def_ctor: F) -> hir::Path
-where F: Fn(DefId) -> Def {
-    #[derive(Debug)]
-    struct AbsolutePathBuffer {
-        names: Vec<String>,
+pub fn get_path_for_type(
+    tcx: TyCtxt<'_, '_, '_>,
+    def_id: DefId,
+    def_ctor: impl Fn(DefId) -> Def,
+) -> hir::Path {
+    use rustc::ty::print::Printer;
+
+    struct AbsolutePathPrinter<'a, 'tcx> {
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
-    impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
-        fn root_mode(&self) -> &ty::item_path::RootMode {
-            const ABSOLUTE: &'static ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
-            ABSOLUTE
+    impl Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
+        type Error = !;
+
+        type Path = Vec<String>;
+        type Region = ();
+        type Type = ();
+        type DynExistential = ();
+
+        fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+            self.tcx
         }
 
-        fn push(&mut self, text: &str) {
-            self.names.push(text.to_owned());
+        fn print_region(
+            self,
+            _region: ty::Region<'_>,
+        ) -> Result<Self::Region, Self::Error> {
+            Ok(())
+        }
+
+        fn print_type(
+            self,
+            _ty: Ty<'tcx>,
+        ) -> Result<Self::Type, Self::Error> {
+            Ok(())
+        }
+
+        fn print_dyn_existential(
+            self,
+            _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        ) -> Result<Self::DynExistential, Self::Error> {
+            Ok(())
+        }
+
+        fn path_crate(
+            self,
+            cnum: CrateNum,
+        ) -> Result<Self::Path, Self::Error> {
+            Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
+        }
+        fn path_qualified(
+            self,
+            self_ty: Ty<'tcx>,
+            trait_ref: Option<ty::TraitRef<'tcx>>,
+        ) -> Result<Self::Path, Self::Error> {
+            // This shouldn't ever be needed, but just in case:
+            Ok(vec![match trait_ref {
+                Some(trait_ref) => format!("{:?}", trait_ref),
+                None => format!("<{}>", self_ty),
+            }])
+        }
+
+        fn path_append_impl(
+            self,
+            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+            _disambiguated_data: &DisambiguatedDefPathData,
+            self_ty: Ty<'tcx>,
+            trait_ref: Option<ty::TraitRef<'tcx>>,
+        ) -> Result<Self::Path, Self::Error> {
+            let mut path = print_prefix(self)?;
+
+            // This shouldn't ever be needed, but just in case:
+            path.push(match trait_ref {
+                Some(trait_ref) => {
+                    format!("<impl {} for {}>", trait_ref, self_ty)
+                }
+                None => format!("<impl {}>", self_ty),
+            });
+
+            Ok(path)
+        }
+        fn path_append(
+            self,
+            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+            disambiguated_data: &DisambiguatedDefPathData,
+        ) -> Result<Self::Path, Self::Error> {
+            let mut path = print_prefix(self)?;
+            path.push(disambiguated_data.data.as_interned_str().to_string());
+            Ok(path)
+        }
+        fn path_generic_args(
+            self,
+            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+            _args: &[Kind<'tcx>],
+        ) -> Result<Self::Path, Self::Error> {
+            print_prefix(self)
         }
     }
 
-    let mut apb = AbsolutePathBuffer { names: vec![] };
-
-    tcx.push_item_path(&mut apb, def_id, false);
+    let names = AbsolutePathPrinter { tcx: tcx.global_tcx() }
+        .print_def_path(def_id, &[])
+        .unwrap();
 
     hir::Path {
         span: DUMMY_SP,
         def: def_ctor(def_id),
-        segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
+        segments: hir::HirVec::from_vec(names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
             hir_id: None,
             def: None,

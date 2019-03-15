@@ -12,8 +12,8 @@ use smallvec::SmallVec;
 use rustc_macros::HashStable;
 
 use core::intrinsics;
-use std::cmp::Ordering;
 use std::fmt;
+use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -70,6 +70,16 @@ impl<'tcx> UnpackedKind<'tcx> {
     }
 }
 
+impl fmt::Debug for Kind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => lt.fmt(f),
+            UnpackedKind::Type(ty) => ty.fmt(f),
+            UnpackedKind::Const(ct) => ct.fmt(f),
+        }
+    }
+}
+
 impl<'tcx> Ord for Kind<'tcx> {
     fn cmp(&self, other: &Kind<'_>) -> Ordering {
         self.unpack().cmp(&other.unpack())
@@ -115,34 +125,14 @@ impl<'tcx> Kind<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
-            UnpackedKind::Lifetime(lt) => write!(f, "{:?}", lt),
-            UnpackedKind::Type(ty) => write!(f, "{:?}", ty),
-            UnpackedKind::Const(ct) => write!(f, "{:?}", ct),
-        }
-    }
-}
-
-impl<'tcx> fmt::Display for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
-            UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
-            UnpackedKind::Type(ty) => write!(f, "{}", ty),
-            UnpackedKind::Const(ct) => write!(f, "{}", ct),
-        }
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
     type Lifted = Kind<'tcx>;
 
     fn lift_to_tcx<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match self.unpack() {
-            UnpackedKind::Lifetime(lt) => lt.lift_to_tcx(tcx).map(|lt| lt.into()),
-            UnpackedKind::Type(ty) => ty.lift_to_tcx(tcx).map(|ty| ty.into()),
-            UnpackedKind::Const(ct) => ct.lift_to_tcx(tcx).map(|ct| ct.into()),
+            UnpackedKind::Lifetime(lt) => tcx.lift(&lt).map(|lt| lt.into()),
+            UnpackedKind::Type(ty) => tcx.lift(&ty).map(|ty| ty.into()),
+            UnpackedKind::Const(ct) => tcx.lift(&ct).map(|ct| ct.into()),
         }
     }
 }

@@ -351,10 +351,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     let tcx = relation.tcx();
-    let a_sty = &a.sty;
-    let b_sty = &b.sty;
-    debug!("super_relate_tys: a_sty={:?} b_sty={:?}", a_sty, b_sty);
-    match (a_sty, b_sty) {
+    debug!("super_relate_tys: a={:?} b={:?}", a, b);
+    match (&a.sty, &b.sty) {
         (&ty::Infer(_), _) |
         (_, &ty::Infer(_)) =>
         {

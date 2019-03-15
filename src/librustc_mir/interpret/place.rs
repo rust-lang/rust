@@ -354,7 +354,7 @@ where
             ty::Ref(_, _, mutbl) => Some(mutbl),
             ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
             ty::RawPtr(_) => None,
-            _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+            _ => bug!("Unexpected pointer type {}", val.layout.ty),
         };
         place.mplace.ptr = M::tag_dereference(self, place, mutbl)?;
         Ok(place)

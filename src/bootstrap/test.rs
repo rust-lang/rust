@@ -897,12 +897,10 @@ host_test!(Rustdoc {
     suite: "rustdoc"
 });
 
-test!(Pretty {
+host_test!(Pretty {
     path: "src/test/pretty",
     mode: "pretty",
-    suite: "pretty",
-    default: false,
-    host: true
+    suite: "pretty"
 });
 test!(RunPassPretty {
     path: "src/test/run-pass/pretty",
@@ -993,11 +991,7 @@ impl Step for Compiletest {
             });
         }
 
-        if suite.ends_with("fulldeps") ||
-            // FIXME: Does pretty need librustc compiled? Note that there are
-            // fulldeps test suites with mode = pretty as well.
-            mode == "pretty"
-        {
+        if suite.ends_with("fulldeps") {
             builder.ensure(compile::Rustc { compiler, target });
         }
 

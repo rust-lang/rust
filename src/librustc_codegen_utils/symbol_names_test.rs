@@ -1,7 +1,7 @@
 //! Walks the crate looking for items/impl-items/trait-items that have
-//! either a `rustc_symbol_name` or `rustc_item_path` attribute and
+//! either a `rustc_symbol_name` or `rustc_def_path` attribute and
 //! generates an error giving, respectively, the symbol name or
-//! item-path. This is used for unit testing the code that generates
+//! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc::hir;
@@ -10,7 +10,7 @@ use rustc::ty::TyCtxt;
 use rustc_mir::monomorphize::Instance;
 
 const SYMBOL_NAME: &'static str = "rustc_symbol_name";
-const ITEM_PATH: &'static str = "rustc_item_path";
+const DEF_PATH: &'static str = "rustc_def_path";
 
 pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // if the `rustc_attrs` feature is not enabled, then the
@@ -41,9 +41,9 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
                 let instance = Instance::mono(tcx, def_id);
                 let name = self.tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", name));
-            } else if attr.check_name(ITEM_PATH) {
-                let path = tcx.item_path_str(def_id);
-                tcx.sess.span_err(attr.span, &format!("item-path({})", path));
+            } else if attr.check_name(DEF_PATH) {
+                let path = tcx.def_path_str(def_id);
+                tcx.sess.span_err(attr.span, &format!("def-path({})", path));
             }
 
             // (*) The formatting of `tag({})` is chosen so that tests can elect

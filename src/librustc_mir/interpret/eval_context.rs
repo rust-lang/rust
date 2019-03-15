@@ -283,7 +283,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
             } else {
-                err!(NoMirFor(self.tcx.item_path_str(def_id)))
+                err!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
             _ => Ok(self.tcx.instance_mir(instance)),
         }
@@ -450,7 +450,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
-        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+        if self.stack.len() > 0 {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
@@ -525,9 +525,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             self.frame_mut().locals = locals;
         }
 
-        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
-        }
+        info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
             err!(StackFrameLimitReached)
@@ -537,9 +535,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
-        if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
-        }
+        info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
@@ -591,7 +587,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             StackPopCleanup::None { .. } => {}
         }
 
-        if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
+        if self.stack.len() > 0 {
             info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
         }
 

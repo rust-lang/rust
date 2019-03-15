@@ -104,7 +104,7 @@ use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, TyCtxt, InstanceDef};
-use rustc::ty::item_path::characteristic_def_id_of_type;
+use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
 use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};

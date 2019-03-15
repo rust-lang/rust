@@ -93,19 +93,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         // Extract the type of the closure.
-        let (closure_def_id, substs) = match self.node_ty(closure_hir_id).sty {
+        let ty = self.node_ty(closure_hir_id);
+        let (closure_def_id, substs) = match ty.sty {
             ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ty::Error => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
             }
-            ref t => {
+            _ => {
                 span_bug!(
                     span,
                     "type of closure expr {:?} is not a closure {:?}",
                     closure_hir_id,
-                    t
+                    ty
                 );
             }
         };

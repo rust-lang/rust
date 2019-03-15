@@ -854,10 +854,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => vec![ArgKind::empty()],
                 };
 
-                let expected = match expected_trait_ref.skip_binder().substs.type_at(1).sty {
+                let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
+                let expected = match expected_ty.sty {
                     ty::Tuple(ref tys) => tys.iter()
                         .map(|t| ArgKind::from_expected_ty(t, Some(span))).collect(),
-                    ref sty => vec![ArgKind::Arg("_".to_owned(), sty.to_string())],
+                    _ => vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())],
                 };
 
                 if found.len() == expected.len() {
@@ -1284,11 +1285,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
-                                       self.item_path_str(type_def_id));
+                                       self.def_path_str(type_def_id));
         err.span_label(span, "recursive type has infinite size");
         err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
-                          self.item_path_str(type_def_id)));
+                          self.def_path_str(type_def_id)));
         err
     }
 
@@ -1298,7 +1299,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                       violations: Vec<ObjectSafetyViolation>)
                                       -> DiagnosticBuilder<'tcx>
     {
-        let trait_str = self.item_path_str(trait_def_id);
+        let trait_str = self.def_path_str(trait_def_id);
         let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(
             self.sess, span, E0038,
@@ -1523,7 +1524,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   region, object_ty));
             }
             ObligationCauseCode::ItemObligation(item_def_id) => {
-                let item_name = tcx.item_path_str(item_def_id);
+                let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
 
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
@@ -1686,10 +1687,10 @@ impl ArgKind {
             ty::Tuple(ref tys) => ArgKind::Tuple(
                 span,
                 tys.iter()
-                   .map(|ty| ("_".to_owned(), ty.sty.to_string()))
+                   .map(|ty| ("_".to_owned(), ty.to_string()))
                    .collect::<Vec<_>>()
             ),
-            _ => ArgKind::Arg("_".to_owned(), t.sty.to_string()),
+            _ => ArgKind::Arg("_".to_owned(), t.to_string()),
         }
     }
 }

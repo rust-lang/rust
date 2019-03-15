@@ -142,7 +142,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
-    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+    let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
     assert!(mir.arg_count == 0);
@@ -602,14 +602,15 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             other => return other,
         }
     }
-    // the first trace is for replicating an ice
-    // There's no tracking issue, but the next two lines concatenated link to the discussion on
-    // zulip. It's not really possible to test this, because it doesn't show up in diagnostics
-    // or MIR.
-    // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
-    // subject/anon_const_instance_printing/near/135980032
-    trace!("const eval: {}", key.value.instance);
-    trace!("const eval: {:?}", key);
+    if cfg!(debug_assertions) {
+        // Make sure we format the instance even if we do not print it.
+        // This serves as a regression test against an ICE on printing.
+        // The next two lines concatenated contain some discussion:
+        // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
+        // subject/anon_const_instance_printing/near/135980032
+        let instance = key.value.instance.to_string();
+        trace!("const eval: {:?} ({})", key, instance);
+    }
 
     let cid = key.value;
     let def_id = cid.instance.def.def_id();

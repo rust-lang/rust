@@ -31,6 +31,7 @@
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 
+#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
@@ -134,7 +135,6 @@ pub mod ty;
 pub mod util {
     pub mod captures;
     pub mod common;
-    pub mod ppaux;
     pub mod nodemap;
     pub mod profiling;
     pub mod bug;

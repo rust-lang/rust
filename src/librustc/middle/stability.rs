@@ -593,7 +593,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
                 if !skip {
-                    let path = self.item_path_str(def_id);
+                    let path = self.def_path_str(def_id);
                     let message = format!("use of deprecated item '{}'", path);
                     lint_deprecated(def_id,
                                     id,
@@ -620,7 +620,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = id {
             if let Some(stability) = stability {
                 if let Some(depr) = &stability.rustc_depr {
-                    let path = self.item_path_str(def_id);
+                    let path = self.def_path_str(def_id);
                     if deprecation_in_effect(&depr.since.as_str()) {
                         let message = format!("use of deprecated item '{}'", path);
                         lint_deprecated(def_id,

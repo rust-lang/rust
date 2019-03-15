@@ -20,9 +20,9 @@ error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - has type `&std::cell::Cell<&'1 u32>`
+   |                                                ---------  - has type `&'_#7r std::cell::Cell<&'1 u32>`
    |                                                |
-   |                                                has type `&std::cell::Cell<&'2 &u32>`
+   |                                                has type `&'_#5r std::cell::Cell<&'2 &'_#1r u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

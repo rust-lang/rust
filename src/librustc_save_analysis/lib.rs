@@ -20,7 +20,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::{CrateType, Input, OutputType};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
@@ -134,7 +134,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
-        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+        let qualname = format!("::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
@@ -184,7 +185,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
                 filter!(self.span_utils, item.ident.span);
                 Some(Data::DefData(Def {
                     kind: DefKind::Function,
@@ -202,7 +204,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Static(ref typ, ..) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
 
                 filter!(self.span_utils, item.ident.span);
 
@@ -225,7 +228,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Const(ref typ, _) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -247,7 +251,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
 
                 let cm = self.tcx.sess.source_map();
                 let filename = cm.span_to_filename(m.inner);
@@ -274,7 +279,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ItemKind::Enum(ref def, _) => {
                 let name = item.ident.to_string();
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
                 filter!(self.span_utils, item.ident.span);
                 let variants_str = def.variants
                     .iter()
@@ -358,7 +364,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<Def> {
         if let Some(ident) = field.ident {
             let name = ident.to_string();
-            let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
+            let qualname = format!("::{}::{}",
+                self.tcx.def_path_str(self.tcx.hir().local_def_id(scope)),
+                ident);
             filter!(self.span_utils, ident.span);
             let def_id = self.tcx.hir().local_def_id(field.id);
             let typ = self.tcx.type_of(def_id).to_string();
@@ -411,7 +419,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             if let Some(def_id) = trait_id {
                                 // A method in a trait impl.
                                 qualname.push_str(" as ");
-                                qualname.push_str(&self.tcx.item_path_str(def_id));
+                                qualname.push_str(&self.tcx.def_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
                                     .find(|item| item.ident.name == ident.name)
@@ -451,7 +459,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         }
 
                         (
-                            format!("::{}", self.tcx.item_path_str(def_id)),
+                            format!("::{}", self.tcx.def_path_str(def_id)),
                             Some(def_id),
                             None,
                             docs,
@@ -763,7 +771,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.
-                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref {
                     kind: RefKind::Type,
                     span,

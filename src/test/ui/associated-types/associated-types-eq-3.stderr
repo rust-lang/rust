@@ -29,7 +29,7 @@ LL |     baz(&a);
    |
    = note: expected type `usize`
               found type `Bar`
-   = note: required for the cast to the object type `dyn Foo<A=Bar>`
+   = note: required for the cast to the object type `dyn Foo<A = Bar>`
 
 error: aborting due to 3 previous errors
 

@@ -679,13 +679,13 @@ impl DefPathData {
                 return name
             }
             // note that this does not show up in user printouts
-            CrateRoot => "{{root}}",
+            CrateRoot => "{{crate}}",
             Impl => "{{impl}}",
-            Misc => "{{?}}",
+            Misc => "{{misc}}",
             ClosureExpr => "{{closure}}",
             StructCtor => "{{constructor}}",
             AnonConst => "{{constant}}",
-            ImplTrait => "{{impl-Trait}}",
+            ImplTrait => "{{opaque}}",
         };
 
         Symbol::intern(s).as_interned_str()

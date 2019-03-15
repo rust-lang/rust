@@ -68,7 +68,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
 
     debug!("check_item_well_formed(it.hir_id={:?}, it.name={})",
            item.hir_id,
-           tcx.item_path_str(def_id));
+           tcx.def_path_str(def_id));
 
     match item.node {
         // Right now we check that every default trait implementation
@@ -618,7 +618,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) -> Vec<ty::Predicate<'tcx>> {
-    trace!("check_existential_types: {:?}, {:?}", ty, ty.sty);
+    trace!("check_existential_types: {:?}", ty);
     let mut substituted_predicates = Vec::new();
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
@@ -976,7 +976,7 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(def_id) = suggested_marker_id {
         err.help(&format!("consider removing `{}` or using a marker such as `{}`",
                           param_name,
-                          tcx.item_path_str(def_id)));
+                          tcx.def_path_str(def_id)));
     }
     err.emit();
 }

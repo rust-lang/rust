@@ -223,7 +223,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     self.hir().span_by_hir_id(node),
                 ),
                 _ => (
-                    format!("the lifetime {} as defined on", fr.bound_region),
+                    format!("the lifetime {} as defined on", region),
                     cm.def_span(self.hir().span_by_hir_id(node)),
                 ),
             },
@@ -444,17 +444,109 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         terr: &TypeError<'tcx>,
         sp: Span,
     ) {
+        use hir::def_id::CrateNum;
+        use hir::map::DisambiguatedDefPathData;
+        use ty::print::Printer;
+        use ty::subst::Kind;
+
+        struct AbsolutePathPrinter<'a, 'gcx, 'tcx> {
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        }
+
+        struct NonTrivialPath;
+
+        impl<'gcx, 'tcx> Printer<'gcx, 'tcx> for AbsolutePathPrinter<'_, 'gcx, 'tcx> {
+            type Error = NonTrivialPath;
+
+            type Path = Vec<String>;
+            type Region = !;
+            type Type = !;
+            type DynExistential = !;
+
+            fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+                self.tcx
+            }
+
+            fn print_region(
+                self,
+                _region: ty::Region<'_>,
+            ) -> Result<Self::Region, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_type(
+                self,
+                _ty: Ty<'tcx>,
+            ) -> Result<Self::Type, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_dyn_existential(
+                self,
+                _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+            ) -> Result<Self::DynExistential, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn path_crate(
+                self,
+                cnum: CrateNum,
+            ) -> Result<Self::Path, Self::Error> {
+                Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
+            }
+            fn path_qualified(
+                self,
+                _self_ty: Ty<'tcx>,
+                _trait_ref: Option<ty::TraitRef<'tcx>>,
+            ) -> Result<Self::Path, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn path_append_impl(
+                self,
+                _print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                _disambiguated_data: &DisambiguatedDefPathData,
+                _self_ty: Ty<'tcx>,
+                _trait_ref: Option<ty::TraitRef<'tcx>>,
+            ) -> Result<Self::Path, Self::Error> {
+                Err(NonTrivialPath)
+            }
+            fn path_append(
+                self,
+                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                disambiguated_data: &DisambiguatedDefPathData,
+            ) -> Result<Self::Path, Self::Error> {
+                let mut path = print_prefix(self)?;
+                path.push(disambiguated_data.data.as_interned_str().to_string());
+                Ok(path)
+            }
+            fn path_generic_args(
+                self,
+                print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+                _args: &[Kind<'tcx>],
+            ) -> Result<Self::Path, Self::Error> {
+                print_prefix(self)
+            }
+        }
+
         let report_path_match = |err: &mut DiagnosticBuilder<'_>, did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
-                let exp_path = self.tcx.item_path_str(did1);
-                let found_path = self.tcx.item_path_str(did2);
-                let exp_abs_path = self.tcx.absolute_item_path_str(did1);
-                let found_abs_path = self.tcx.absolute_item_path_str(did2);
+                let abs_path = |def_id| {
+                    AbsolutePathPrinter { tcx: self.tcx }
+                        .print_def_path(def_id, &[])
+                };
+
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
-                if exp_path == found_path || exp_abs_path == found_abs_path {
+                let same_path = || -> Result<_, NonTrivialPath> {
+                    Ok(
+                        self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2) ||
+                        abs_path(did1)? == abs_path(did2)?
+                    )
+                };
+                if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
                     err.span_note(
                         sp,
@@ -658,7 +750,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 return Some(());
             }
             if let &ty::Adt(def, _) = &ta.sty {
-                let path_ = self.tcx.item_path_str(def.did.clone());
+                let path_ = self.tcx.def_path_str(def.did.clone());
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                     return Some(());
@@ -683,7 +775,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// For generic types with parameters with defaults, remove the parameters corresponding to
-    /// the defaults. This repeats a lot of the logic found in `PrintContext::parameterized`.
+    /// the defaults. This repeats a lot of the logic found in `ty::print::pretty`.
     fn strip_generic_default_params(
         &self,
         def_id: DefId,
@@ -742,11 +834,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             mutbl: hir::Mutability,
             s: &mut DiagnosticStyledString,
         ) {
-            let r = &r.to_string();
+            let mut r = r.to_string();
+            if r == "'_" {
+                r.clear();
+            } else {
+                r.push(' ');
+            }
             s.push_highlighted(format!(
-                "&{}{}{}",
+                "&{}{}",
                 r,
-                if r == "" { "" } else { " " },
                 if mutbl == hir::MutMutable { "mut " } else { "" }
             ));
             s.push_normal(ty.to_string());
@@ -757,8 +853,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                let path1 = self.tcx.item_path_str(def1.did.clone());
-                let path2 = self.tcx.item_path_str(def2.did.clone());
+                let path1 = self.tcx.def_path_str(def1.did.clone());
+                let path2 = self.tcx.def_path_str(def2.did.clone());
                 if def1.did == def2.did {
                     // Easy case. Replace same types with `_` to shorten the output and highlight
                     // the differing ones.
@@ -1013,7 +1109,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             if exp_is_struct && &exp_found.expected == ret_ty.skip_binder() {
                                 let message = format!(
                                     "did you mean `{}(/* fields */)`?",
-                                    self.tcx.item_path_str(def_id)
+                                    self.tcx.def_path_str(def_id)
                                 );
                                 diag.span_label(span, message);
                             }
@@ -1425,7 +1521,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         var_origin: RegionVariableOrigin,
     ) -> DiagnosticBuilder<'tcx> {
         let br_string = |br: ty::BoundRegion| {
-            let mut s = br.to_string();
+            let mut s = match br {
+                ty::BrNamed(_, name) => name.to_string(),
+                _ => String::new(),
+            };
             if !s.is_empty() {
                 s.push_str(" ");
             }

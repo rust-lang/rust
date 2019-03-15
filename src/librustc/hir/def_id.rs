@@ -249,7 +249,7 @@ impl DefId {
         if self.is_local() && self.index == CRATE_DEF_INDEX {
             format!("top-level module")
         } else {
-            format!("module `{}`", tcx.item_path_str(*self))
+            format!("module `{}`", tcx.def_path_str(*self))
         }
     }
 }

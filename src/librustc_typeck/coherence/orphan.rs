@@ -121,7 +121,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                 format!("cross-crate traits with a default impl, like `{}`, \
                                          can only be implemented for a struct/enum type \
                                          defined in the current crate",
-                                        self.tcx.item_path_str(trait_def_id)),
+                                        self.tcx.def_path_str(trait_def_id)),
                                 "can't implement cross-crate trait for type in another crate"
                             ))
                         }
@@ -129,7 +129,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     _ => {
                         Some((format!("cross-crate traits with a default impl, like `{}`, can \
                                        only be implemented for a struct/enum type, not `{}`",
-                                      self.tcx.item_path_str(trait_def_id),
+                                      self.tcx.def_path_str(trait_def_id),
                                       self_ty),
                               "can't implement cross-crate trait with a default impl for \
                                non-struct/enum type"))

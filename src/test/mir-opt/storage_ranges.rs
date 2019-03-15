@@ -18,7 +18,7 @@ fn main() {
 //         StorageLive(_4);
 //         StorageLive(_5);
 //         _5 = _1;
-//         _4 = std::option::Option<i32>::Some(move _5,);
+//         _4 = std::option::Option::<i32>::Some(move _5,);
 //         StorageDead(_5);
 //         _3 = &_4;
 //         FakeRead(ForLet, _3);

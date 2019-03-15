@@ -16,7 +16,8 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
         let user_provided_types = self.tables().user_provided_types();
         let mut user_ty = *user_provided_types.get(hir_id)?;
         debug!("user_subts_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
-        match &self.tables().node_type(hir_id).sty {
+        let ty = self.tables().node_type(hir_id);
+        match ty.sty {
             ty::Adt(adt_def, ..) => {
                 if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {
                     *did = adt_def.did;
@@ -24,8 +25,11 @@ crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
                 Some(user_ty)
             }
             ty::FnDef(..) => Some(user_ty),
-            sty =>
-                bug!("sty: {:?} should not have user provided type {:?} recorded ", sty, user_ty),
+            _ => bug!(
+                "ty: {:?} should not have user provided type {:?} recorded ",
+                ty,
+                user_ty
+            ),
         }
     }
 }

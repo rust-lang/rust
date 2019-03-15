@@ -151,7 +151,7 @@ LL |         PubTupleStruct;
 LL |     m::m!();
    |     -------- in this macro invocation
 
-error: type `for<'r> fn(&'r m::Pub<u8>) {<m::Pub<u8>>::priv_method}` is private
+error: type `for<'r> fn(&'r m::Pub<u8>) {m::Pub::<u8>::priv_method}` is private
   --> $DIR/private-inferred-type.rs:49:18
    |
 LL |         Pub(0u8).priv_method();
