@@ -7,7 +7,7 @@ fn test_le() {
     assert!("" <= "");
     assert!("" <= "foo");
     assert!("foo" <= "foo");
-    assert!("foo" != "bar");
+    assert_ne!("foo", "bar");
 }
 
 #[test]
