@@ -1111,11 +1111,12 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// ```
 ///
 /// The compiler then knows to not make any incorrect assumptions or optimizations on this code.
+//
 // FIXME before stabilizing, explain how to initialize a struct field-by-field.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
 #[derive(Copy)]
-// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::uninitialized`.
+// NOTE: after stabilizing `MaybeUninit`, proceed to deprecate `mem::uninitialized`.
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
@@ -1125,13 +1126,13 @@ pub union MaybeUninit<T> {
 impl<T: Copy> Clone for MaybeUninit<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
-        // Not calling T::clone(), we cannot know if we are initialized enough for that.
+        // Not calling `T::clone()`, we cannot know if we are initialized enough for that.
         *self
     }
 }
 
 impl<T> MaybeUninit<T> {
-    /// Create a new `MaybeUninit<T>` initialized with the given value.
+    /// Creates a new `MaybeUninit<T>` initialized with the given value.
     ///
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
@@ -1239,6 +1240,7 @@ impl<T> MaybeUninit<T> {
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
+    ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[unstable(feature = "maybe_uninit", issue = "53491")]
@@ -1277,6 +1279,7 @@ impl<T> MaybeUninit<T> {
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
+    ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
     #[unstable(feature = "maybe_uninit", issue = "53491")]
