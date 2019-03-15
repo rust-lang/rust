@@ -7,11 +7,11 @@ fn test_range() {
     let r = Range { start: 2, end: 10 };
     let mut count = 0;
     for (i, ri) in r.enumerate() {
-        assert!(ri == i + 2);
+        assert_eq!(ri, i + 2);
         assert!(ri >= 2 && ri < 10);
         count += 1;
     }
-    assert!(count == 8);
+    assert_eq!(count, 8);
 }
 
 #[test]
@@ -19,11 +19,11 @@ fn test_range_from() {
     let r = RangeFrom { start: 2 };
     let mut count = 0;
     for (i, ri) in r.take(10).enumerate() {
-        assert!(ri == i + 2);
+        assert_eq!(ri, i + 2);
         assert!(ri >= 2 && ri < 12);
         count += 1;
     }
-    assert!(count == 10);
+    assert_eq!(count, 10);
 }
 
 #[test]
