@@ -1910,7 +1910,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => false,
             Int(..) | Uint(..) | Float(..) => true,
             _ => false,
         }
