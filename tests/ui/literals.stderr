@@ -94,99 +94,25 @@ LL |     let fail13 = 0x1_23456_78901_usize;
    |
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
-error: mistyped literal suffix
-  --> $DIR/literals.rs:42:18
-   |
-LL |     let fail14 = 2_32;
-   |                  ^^^^ help: did you mean to write: `2_i32`
-   |
-   = note: #[deny(clippy::mistyped_literal_suffixes)] on by default
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:43:18
-   |
-LL |     let fail15 = 4_64;
-   |                  ^^^^ help: did you mean to write: `4_i64`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:44:18
-   |
-LL |     let fail16 = 7_8;
-   |                  ^^^ help: did you mean to write: `7_i8`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:45:18
-   |
-LL |     let fail17 = 23_16;
-   |                  ^^^^^ help: did you mean to write: `23_i16`
-
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:47:18
+  --> $DIR/literals.rs:42:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
-error: mistyped literal suffix
-  --> $DIR/literals.rs:48:18
-   |
-LL |     let fail20 = 2__8;
-   |                  ^^^^ help: did you mean to write: `2_i8`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:49:18
-   |
-LL |     let fail21 = 4___16;
-   |                  ^^^^^^ help: did you mean to write: `4_i16`
-
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:50:18
+  --> $DIR/literals.rs:43:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:51:18
+  --> $DIR/literals.rs:44:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
-error: mistyped literal suffix
-  --> $DIR/literals.rs:53:18
-   |
-LL |     let fail24 = 12.34_64;
-   |                  ^^^^^^^^ help: did you mean to write: `12.34_f64`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:54:18
-   |
-LL |     let fail25 = 1E2_32;
-   |                  ^^^^^^ help: did you mean to write: `1E2_f32`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:55:18
-   |
-LL |     let fail26 = 43E7_64;
-   |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:56:18
-   |
-LL |     let fail27 = 243E17_32;
-   |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:57:18
-   |
-LL |     let fail28 = 241251235E723_64;
-   |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
-
-error: mistyped literal suffix
-  --> $DIR/literals.rs:58:18
-   |
-LL |     let fail29 = 42279.911_32;
-   |                  ^^^^^^^^^^^^ help: did you mean to write: `42_279.911_f32`
-
-error: aborting due to 27 previous errors
+error: aborting due to 15 previous errors
 
