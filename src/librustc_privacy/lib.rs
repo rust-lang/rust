@@ -1041,8 +1041,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             hir::ExprKind::MethodCall(_, span, _) => {
                 // Method calls have to be checked specially.
                 self.span = span;
-                if let Some(def) = self.tables.type_dependent_defs().get(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def.def_id())) {
+                if let Some(def_id) = self.tables.type_dependent_def_id(expr.hir_id) {
+                    if self.visit(self.tcx.type_of(def_id)) {
                         return;
                     }
                 } else {
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                 _ => None,
             }
             hir::QPath::TypeRelative(..) => {
-                self.tables.type_dependent_defs().get(id).cloned()
+                self.tables.type_dependent_def(id)
             }
         };
         if let Some(def) = def {

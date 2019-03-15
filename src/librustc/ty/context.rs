@@ -482,6 +482,15 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
+    pub fn type_dependent_def(&self, id: HirId) -> Option<Def> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
+        self.type_dependent_defs.get(&id.local_id).cloned()
+    }
+
+    pub fn type_dependent_def_id(&self, id: HirId) -> Option<DefId> {
+        self.type_dependent_def(id).map(|def| def.def_id())
+    }
+
     pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<'_, Def> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
