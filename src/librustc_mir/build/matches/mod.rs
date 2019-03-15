@@ -438,7 +438,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // always convert all match-pairs into bindings.
         self.simplify_candidate(&mut candidate);
 
-        if !candidate.match_pairs.is_empty() {
+        if !candidate.match_pairs.is_empty() && self.hir.tcx().sess.err_count() == 0 {
+            // Only abort compilation if no other errors have been emitted. This used to be a hard
+            // error that wouldn't be reached because `hair::pattern::check_match::check_match`
+            // wouldn't have let the compiler continue. In our tests this is only ever hit by
+            // `ui/consts/const-match-check.rs` with `--cfg eval1`, and that file already generates
+            // a different error before hand.
             span_bug!(
                 candidate.match_pairs[0].pattern.span,
                 "match pairs {:?} remaining after simplifying \
