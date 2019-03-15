@@ -243,6 +243,7 @@ pub fn register_plugins<'a>(
         krate,
         &sess.parse_sess,
         sess.edition(),
+        &sess.opts.debugging_opts.allow_features,
     );
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
