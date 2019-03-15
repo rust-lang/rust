@@ -569,6 +569,20 @@ pub struct RefCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
+/// An enumeration of values returned from the `state` method on a `RefCell<T>`.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "borrow_state", issue = "27733")]
+#[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+#[allow(deprecated)]
+pub enum BorrowState {
+    /// The cell is currently being read, there is at least one active `borrow`.
+    Reading,
+    /// The cell is currently being written to, there is an active `borrow_mut`.
+    Writing,
+    /// There are no outstanding borrows on this cell.
+    Unused,
+}
+
 /// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowError {
@@ -753,6 +767,41 @@ impl<T> RefCell<T> {
 }
 
 impl<T: ?Sized> RefCell<T> {
+    /// Query the current state of this `RefCell`
+    ///
+    /// The returned value can be dispatched on to determine if a call to
+    /// `borrow` or `borrow_mut` would succeed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(borrow_state)]
+    ///
+    /// use std::cell::{BorrowState, RefCell};
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// match c.borrow_state() {
+    ///     BorrowState::Writing => println!("Cannot be borrowed"),
+    ///     BorrowState::Reading => println!("Cannot be borrowed mutably"),
+    ///     BorrowState::Unused => println!("Can be borrowed (mutably as well)"),
+    /// }
+    /// ```
+    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[rustc_deprecated(since = "1.15.0", reason = "use `try_borrow` instead")]
+    #[allow(deprecated)]
+    #[inline]
+    pub fn borrow_state(&self) -> BorrowState {
+        let borrow = self.borrow.get();
+        if is_writing(borrow) {
+            BorrowState::Writing
+        } else if is_reading(borrow) {
+            BorrowState::Reading
+        } else {
+            BorrowState::Unused
+        }
+    }
+
     /// Immutably borrows the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
