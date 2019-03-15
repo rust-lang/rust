@@ -245,7 +245,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     let def = self.tables.qpath_def(qpath, callee.hir_id);
                     if let Some(def_id) = def.opt_def_id();
                     let def_path = get_def_path(self.tcx, def_id);
-                    if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
+                    if let &["core", "num", impl_ty, "max_value"] = &def_path.iter().map(|s| s.as_str()).collect::<Vec<_>>()[..];
                     then {
                        let value = match impl_ty {
                            "<impl i8>" => i8::max_value() as u128,

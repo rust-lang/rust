@@ -1,6 +1,7 @@
 // error-pattern:cargo-clippy
 
 #![feature(box_syntax)]
+#![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]

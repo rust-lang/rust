@@ -352,7 +352,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     }
 }
 
-fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
+fn is_relevant_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
     } else {
@@ -360,14 +360,14 @@ fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(tcx: TyCtxt<'_, '_, '_>, item: &ImplItem) -> bool {
+fn is_relevant_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
+fn is_relevant_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
@@ -377,7 +377,7 @@ fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
+fn is_relevant_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.node {
             StmtKind::Local(_) => true,
@@ -389,7 +389,7 @@ fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, blo
     }
 }
 
-fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
+fn is_relevant_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
     match &expr.node {
         ExprKind::Block(block, _) => is_relevant_block(tcx, tables, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(tcx, tables, e),

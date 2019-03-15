@@ -12,6 +12,7 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_tool_lint, lint_array};
+use rustc::ty::print::Printer;
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
@@ -1135,15 +1136,14 @@ impl LintPass for CastPass {
 
 // Check if the given type is either `core::ffi::c_void` or
 // one of the platform specific `libc::<platform>::c_void` of libc.
-fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+fn is_c_void<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.sty {
-        let mut apb = AbsolutePathBuffer { names: vec![] };
-        tcx.push_item_path(&mut apb, adt.did, false);
+        let names = AbsolutePathBuffer { tcx }.print_def_path(adt.did, &[]).unwrap();
 
-        if apb.names.is_empty() {
+        if names.is_empty() {
             return false;
         }
-        if apb.names[0] == "libc" || apb.names[0] == "core" && *apb.names.last().unwrap() == "c_void" {
+        if names[0] == "libc" || names[0] == "core" && *names.last().unwrap() == "c_void" {
             return true;
         }
     }
