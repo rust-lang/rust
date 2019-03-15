@@ -5,15 +5,15 @@ use std::mem::drop;
 #[test]
 fn smoketest_cell() {
     let x = Cell::new(10);
-    assert!(x == Cell::new(10));
-    assert!(x.get() == 10);
+    assert_eq!(x, Cell::new(10));
+    assert_eq!(x.get(), 10);
     x.set(20);
-    assert!(x == Cell::new(20));
-    assert!(x.get() == 20);
+    assert_eq!(x, Cell::new(20));
+    assert_eq!(x.get(), 20);
 
     let y = Cell::new((30, 40));
-    assert!(y == Cell::new((30, 40)));
-    assert!(y.get() == (30, 40));
+    assert_eq!(y, Cell::new((30, 40)));
+    assert_eq!(y.get(), (30, 40));
 }
 
 #[test]
