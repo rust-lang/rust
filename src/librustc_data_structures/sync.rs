@@ -68,6 +68,59 @@ cfg_if! {
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         #[derive(Debug)]
+        pub struct AtomicCell<T: Copy>(Cell<T>);
+
+        impl<T: Copy> AtomicCell<T> {
+            #[inline]
+            pub fn new(v: T) -> Self {
+                AtomicCell(Cell::new(v))
+            }
+        }
+
+        impl<T: Copy> AtomicCell<T> {
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            #[inline]
+            pub fn load(&self) -> T {
+                self.0.get()
+            }
+
+            #[inline]
+            pub fn store(&self, val: T) {
+                self.0.set(val)
+            }
+
+            pub fn swap(&self, val: T) -> T {
+                self.0.replace(val)
+            }
+        }
+
+        impl<T: Copy + PartialEq> AtomicCell<T> {
+            pub fn compare_exchange(&self,
+                                    current: T,
+                                    new: T)
+                                    -> Result<T, T> {
+                let read = self.0.get();
+                if read == current {
+                    self.0.set(new);
+                    Ok(read)
+                } else {
+                    Err(read)
+                }
+            }
+        }
+
+        impl<T: Add<Output=T> + Copy> AtomicCell<T> {
+            pub fn fetch_add(&self, val: T) -> T {
+                let old = self.0.get();
+                self.0.set(old + val);
+                old
+            }
+        }
+
+        #[derive(Debug)]
         pub struct Atomic<T: Copy>(Cell<T>);
 
         impl<T: Copy> Atomic<T> {
@@ -77,7 +130,7 @@ cfg_if! {
             }
         }
 
-        impl<T: Copy + PartialEq> Atomic<T> {
+        impl<T: Copy> Atomic<T> {
             pub fn into_inner(self) -> T {
                 self.0.into_inner()
             }
@@ -95,7 +148,9 @@ cfg_if! {
             pub fn swap(&self, val: T, _: Ordering) -> T {
                 self.0.replace(val)
             }
+        }
 
+        impl<T: Copy + PartialEq> Atomic<T> {
             pub fn compare_exchange(&self,
                                     current: T,
                                     new: T,
@@ -270,6 +325,8 @@ cfg_if! {
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
+
+        pub use crossbeam_utils::atomic::AtomicCell;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
