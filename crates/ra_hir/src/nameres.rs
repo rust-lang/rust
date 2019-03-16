@@ -180,6 +180,7 @@ impl CrateDefMap {
         db: &impl PersistentHirDatabase,
         krate: Crate,
     ) -> Arc<CrateDefMap> {
+        let start = std::time::Instant::now();
         let def_map = {
             let edition = krate.edition(db);
             let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
@@ -196,6 +197,7 @@ impl CrateDefMap {
             }
         };
         let def_map = collector::collect_defs(db, def_map);
+        log::info!("crate_def_map_query: {:?}", start.elapsed());
         Arc::new(def_map)
     }
 
