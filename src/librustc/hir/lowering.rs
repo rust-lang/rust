@@ -361,9 +361,40 @@ impl<'a> LoweringContext<'a> {
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
+        impl MiscCollector<'_, '_> {
+            fn allocate_use_tree_hir_id_counters(
+                &mut self,
+                tree: &UseTree,
+                owner: DefIndex,
+            ) {
+                match tree.kind {
+                    UseTreeKind::Simple(_, id1, id2) => {
+                        for &id in &[id1, id2] {
+                            self.lctx.resolver.definitions().create_def_with_parent(
+                                owner,
+                                id,
+                                DefPathData::Misc,
+                                DefIndexAddressSpace::High,
+                                Mark::root(),
+                                tree.prefix.span,
+                            );
+                            self.lctx.allocate_hir_id_counter(id, &tree);
+                        }
+                    }
+                    UseTreeKind::Glob => (),
+                    UseTreeKind::Nested(ref trees) => {
+                        for &(ref use_tree, id) in trees {
+                            let hir_id = self.lctx.allocate_hir_id_counter(id, &use_tree).hir_id;
+                            self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
+                        }
+                    }
+                }
+            }
+        }
+
         impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
             fn visit_item(&mut self, item: &'lcx Item) {
-                self.lctx.allocate_hir_id_counter(item.id, item);
+                let hir_id = self.lctx.allocate_hir_id_counter(item.id, item).hir_id;
 
                 match item.node {
                     ItemKind::Struct(_, ref generics)
@@ -382,6 +413,9 @@ impl<'a> LoweringContext<'a> {
                             })
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id, count);
+                    }
+                    ItemKind::Use(ref use_tree) => {
+                        self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
                     }
                     _ => {}
                 }
@@ -517,6 +551,8 @@ impl<'a> LoweringContext<'a> {
 
     fn insert_item(&mut self, item: hir::Item) {
         let id = item.hir_id;
+        // FIXME: Use debug_asset-rt
+        assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
         self.items.insert(id, item);
         self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
     }
@@ -3065,7 +3101,6 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
 
-                let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
                 let mut defs = self.expect_full_def_from_use(id);
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
@@ -3084,14 +3119,6 @@ impl<'a> LoweringContext<'a> {
                         seg.id = self.sess.next_node_id();
                     }
                     let span = path.span;
-                    self.resolver.definitions().create_def_with_parent(
-                        parent_def_index,
-                        new_node_id,
-                        DefPathData::Misc,
-                        DefIndexAddressSpace::High,
-                        Mark::root(),
-                        span);
-                    self.allocate_hir_id_counter(new_node_id, &path);
 
                     self.with_hir_id_owner(new_node_id, |this| {
                         let new_id = this.lower_node_id(new_node_id);
@@ -3173,8 +3200,6 @@ impl<'a> LoweringContext<'a> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    self.allocate_hir_id_counter(id, &use_tree);
-
                     let LoweredNodeId {
                         node_id: new_id,
                         hir_id: new_hir_id,
@@ -3469,9 +3494,11 @@ impl<'a> LoweringContext<'a> {
             _ => smallvec![i.id],
         };
 
-        node_ids.into_iter()
-                .map(|node_id| hir::ItemId { id: self.lower_node_id(node_id).hir_id })
-                .collect()
+        node_ids.into_iter().map(|node_id| hir::ItemId {
+            id: self.lower_node_id_generic(node_id, |_| {
+                panic!("expected node_id to be lowered already {:#?}", i)
+            }).hir_id
+        }).collect()
     }
 
     fn lower_item_id_use_tree(&mut self,
