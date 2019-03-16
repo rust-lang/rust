@@ -132,6 +132,122 @@ macro_rules! assert_ne {
     });
 }
 
+/// Asserts that the right hand side expression is greater than the left hand side
+/// expression (using [`PartialEq`]).
+///
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
+///
+/// Like [`assert!`], this macro has a second form, where a custom
+/// panic message can be provided.
+///
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`assert!`]: macro.assert.html
+///
+/// # Examples
+///
+/// ```
+/// let a = 2;
+/// let b = 3;
+/// assert_gt!(a, b); // This will panic
+///
+/// assert_gt!(a, b, "we found that a is not greater than b");
+/// ```
+#[macro_export]
+#[stable(feature = "assert_gt", since = "1.33.0")]
+macro_rules! assert_gt {
+    ($left:expr, $right:expr) => ({
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(*left_val > *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    panic!(r#"assertion failed: `(left <= right)`
+  left: `{:?}`,
+ right: `{:?}`"#, &*left_val, &*right_val)
+                }
+            }
+        }
+    });
+    ($left:expr, $right:expr,) => {
+        assert_gt!($left, $right)
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
+                if !(*left_val > *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    panic!(r#"assertion failed: `(left <= right)`
+  left: `{:?}`,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
+                           format_args!($($arg)+))
+                }
+            }
+        }
+    });
+}
+
+/// Asserts that the right hand side expression is smaller than the left hand side
+/// expression (using [`PartialEq`]).
+///
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
+///
+/// Like [`assert!`], this macro has a second form, where a custom
+/// panic message can be provided.
+///
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`assert!`]: macro.assert.html
+///
+/// # Examples
+///
+/// ```
+/// let a = 3;
+/// let b = 2;
+/// assert_gt!(a, b); // This will panic
+///
+/// assert_gt!(a, b, "we found that a is not smaller than b");
+/// ```
+#[macro_export]
+#[stable(feature = "assert_lt", since = "1.33.0")]
+macro_rules! assert_lt {
+    ($left:expr, $right:expr) => ({
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(*left_val < *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    panic!(r#"assertion failed: `(left >= right)`
+  left: `{:?}`,
+ right: `{:?}`"#, &*left_val, &*right_val)
+                }
+            }
+        }
+    });
+    ($left:expr, $right:expr,) => {
+        assert_lt!($left, $right)
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
+                if !(*left_val < *right_val) {
+                    // The reborrows below are intentional. Without them, the stack slot for the
+                    // borrow is initialized even before the values are compared, leading to a
+                    // noticeable slow down.
+                    panic!(r#"assertion failed: `(left >= right)`
+  left: `{:?}`,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
+                           format_args!($($arg)+))
+                }
+            }
+        }
+    });
+}
+
 /// Ensure that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the [`panic!`] macro if the provided expression cannot be
