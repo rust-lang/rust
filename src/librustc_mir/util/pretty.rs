@@ -1,4 +1,5 @@
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def::CtorKind;
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
@@ -596,7 +597,8 @@ fn write_mir_sig(
     trace!("write_mir_sig: {:?}", src.instance);
     let descr = tcx.describe_def(src.def_id());
     let is_function = match descr {
-        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::StructCtor(..)) => true,
+        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::Variant(..)) |
+        Some(Def::StructCtor(_, CtorKind::Fn)) => true,
         _ => tcx.is_closure(src.def_id()),
     };
     match (descr, src.promoted) {
