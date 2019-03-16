@@ -991,8 +991,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Guarantees that any lifetimes which appear in the type of the node `id` (after applying
-    /// adjustments) are valid for at least `minimum_lifetime`
+    /// Guarantees that any lifetimes that appear in the type of the node `id` (after applying
+    /// adjustments) are valid for at least `minimum_lifetime`.
     fn type_of_node_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,

@@ -195,6 +195,12 @@ enum ImplTraitContext<'a> {
     /// (e.g., for consts and statics).
     Existential(Option<DefId> /* fn def-ID */),
 
+    /// Treat `impl Trait` as a bound on the associated type applied to the trait.
+    /// Example: `trait Foo { type Bar: Iterator<Item = impl Debug>; }` is conceptually
+    /// equivalent to `trait Foo where <Self::Bar as Iterator>::Item: Debug
+    /// { type Bar: Iterator; }`.
+    AssociatedTy,
+
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
 }
@@ -217,6 +223,7 @@ impl<'a> ImplTraitContext<'a> {
         match self {
             Universal(params) => Universal(params),
             Existential(fn_def_id) => Existential(*fn_def_id),
+            AssociatedTy => AssociatedTy,
             Disallowed(pos) => Disallowed(*pos),
         }
     }
@@ -1537,6 +1544,16 @@ impl<'a> LoweringContext<'a> {
                             }),
                         ))
                     }
+                    ImplTraitContext::AssociatedTy => {
+                        let hir_bounds = self.lower_param_bounds(
+                            bounds,
+                            ImplTraitContext::AssociatedTy,
+                        );
+
+                        hir::TyKind::AssocTyExistential(
+                            hir_bounds,
+                        )
+                    }
                     ImplTraitContext::Disallowed(pos) => {
                         let allowed_in = if self.sess.features_untracked()
                                                 .impl_trait_in_bindings {
@@ -1640,8 +1657,8 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    /// Registers a new existential type with the proper `NodeId`ss and
-    /// returns the lowered node ID for the existential type.
+    /// Registers a new existential type with the proper `NodeId`s and
+    /// returns the lowered node-ID for the existential type.
     fn generate_existential_type(
         &mut self,
         exist_ty_node_id: NodeId,
@@ -2226,8 +2243,9 @@ impl<'a> LoweringContext<'a> {
         (
             hir::GenericArgs {
                 args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-                bindings: constraints.iter().map(
-                    |b| self.lower_assoc_ty_constraint(b, itctx.reborrow())).collect(),
+                bindings: constraints.iter()
+                    .map(|b| self.lower_assoc_ty_constraint(b, itctx.reborrow()))
+                    .collect(),
                 parenthesized: false,
             },
             !has_types && param_mode == ParamMode::Optional
@@ -3257,13 +3275,13 @@ impl<'a> LoweringContext<'a> {
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
             ItemKind::Ty(ref t, ref generics) => hir::ItemKind::Ty(
-                self.lower_ty(t, ImplTraitContext::disallowed()),
-                self.lower_generics(generics, ImplTraitContext::disallowed()),
+                self.lower_ty(t, ImplTraitContext::AssociatedTy),
+                self.lower_generics(generics, ImplTraitContext::AssociatedTy),
             ),
             ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(
                 hir::ExistTy {
-                    generics: self.lower_generics(generics, ImplTraitContext::disallowed()),
-                    bounds: self.lower_param_bounds(b, ImplTraitContext::Existential(None)),
+                    generics: self.lower_generics(generics, ImplTraitContext::AssociatedTy),
+                    bounds: self.lower_param_bounds(b, ImplTraitContext::AssociatedTy),
                     impl_trait_fn: None,
                     origin: hir::ExistTyOrigin::ExistentialType,
                 },
@@ -3276,20 +3294,20 @@ impl<'a> LoweringContext<'a> {
                         .map(|x| self.lower_variant(x))
                         .collect(),
                 },
-                self.lower_generics(generics, ImplTraitContext::disallowed()),
+                self.lower_generics(generics, ImplTraitContext::AssociatedTy),
             ),
             ItemKind::Struct(ref struct_def, ref generics) => {
                 let struct_def = self.lower_variant_data(struct_def);
                 hir::ItemKind::Struct(
                     struct_def,
-                    self.lower_generics(generics, ImplTraitContext::disallowed()),
+                    self.lower_generics(generics, ImplTraitContext::AssociatedTy),
                 )
             }
             ItemKind::Union(ref vdata, ref generics) => {
                 let vdata = self.lower_variant_data(vdata);
                 hir::ItemKind::Union(
                     vdata,
-                    self.lower_generics(generics, ImplTraitContext::disallowed()),
+                    self.lower_generics(generics, ImplTraitContext::AssociatedTy),
                 )
             }
             ItemKind::Impl(
@@ -3656,15 +3674,17 @@ impl<'a> LoweringContext<'a> {
                 );
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
-            TraitItemKind::Type(ref bounds, ref default) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::TraitItemKind::Type(
-                    self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
+            TraitItemKind::Type(ref bounds, ref default) => {
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::AssociatedTy);
+                let node = hir::TraitItemKind::Type(
+                    self.lower_param_bounds(bounds, ImplTraitContext::AssociatedTy),
                     default
                         .as_ref()
                         .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
-                ),
-            ),
+                );
+
+                (generics, node)
+            },
             TraitItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
         };
 

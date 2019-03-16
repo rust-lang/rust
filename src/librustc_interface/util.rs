@@ -726,7 +726,8 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                                 any_assoc_ty_bounds ||
                                 any_involves_impl_trait(types.into_iter()) ||
                                 any_involves_impl_trait(data.constraints.iter().filter_map(|c| {
-                                    if let ast::AssocTyConstraintKind::Equality { ref ty } = c.kind {
+                                    if let ast::AssocTyConstraintKind::Equality { ref ty }
+                                            = c.kind {
                                         Some(ty)
                                     } else {
                                         None

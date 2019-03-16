@@ -2445,7 +2445,7 @@ pub struct PolyTrait {
 
 /// A representation of a type suitable for hyperlinking purposes. Ideally, one can get the original
 /// type out of the AST/`TyCtxt` given one of these, if more information is needed. Most
-/// importantly, it does not preserve mutability or boxes.
+/// importanntly, it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
     /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
@@ -2939,6 +2939,9 @@ impl Clean<Type> for hir::Ty {
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("Unimplemented type {:?}", self.node),
             TyKind::CVarArgs(_) => CVarArgs,
+            TyKind::AssocTyExistential(ref bounds) => {
+                ImplTrait(bounds.into_iter().map(|b| b.clean(cx)).collect())
+            }
         }
     }
 }

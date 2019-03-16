@@ -626,6 +626,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyKind::CVarArgs(ref lt) => {
             visitor.visit_lifetime(lt)
         }
+        TyKind::AssocTyExistential(ref bounds) => {
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
         TyKind::Infer | TyKind::Err => {}
     }
 }

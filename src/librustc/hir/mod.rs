@@ -1898,6 +1898,8 @@ pub enum TyKind {
     /// Placeholder for C-variadic arguments. We "spoof" the `VaList` created
     /// from the variadic arguments. This type is only valid up to typeck.
     CVarArgs(Lifetime),
+    /// The existential type (i.e., `impl Trait`) that constrains an associated type.
+    AssocTyExistential(HirVec<GenericBound>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]

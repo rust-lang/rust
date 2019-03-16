@@ -409,6 +409,9 @@ impl<'a> State<'a> {
             hir::TyKind::CVarArgs(_) => {
                 self.s.word("...")?;
             }
+            hir::TyKind::AssocTyExistential(ref bounds) => {
+                self.print_bounds(":", bounds)?;
+            }
         }
         self.end()
     }
