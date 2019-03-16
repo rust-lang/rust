@@ -1,6 +1,7 @@
 // A generic trait to abstract the rewriting of an element (of the AST).
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use syntax::parse::ParseSess;
 use syntax::ptr;
@@ -39,7 +40,7 @@ pub struct RewriteContext<'a> {
     // Used for `format_snippet`
     pub(crate) macro_rewrite_failure: RefCell<bool>,
     pub(crate) report: FormatReport,
-    pub skip_macro_names: Vec<String>,
+    pub skip_macro_names: Rc<RefCell<Vec<String>>>,
 }
 
 impl<'a> RewriteContext<'a> {

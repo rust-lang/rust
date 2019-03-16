@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use syntax::parse::{token, ParseSess};
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
@@ -67,7 +68,7 @@ pub struct FmtVisitor<'a> {
     pub skipped_range: Vec<(usize, usize)>,
     pub macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
-    pub skip_macro_names: Vec<String>,
+    pub skip_macro_names: Rc<RefCell<Vec<String>>>,
 }
 
 impl<'a> Drop for FmtVisitor<'a> {
@@ -441,7 +442,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
         };
-        self.skip_macro_names.clear();
+        self.skip_macro_names.borrow_mut().clear();
     }
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
@@ -620,7 +621,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             skipped_range: vec![],
             macro_rewrite_failure: false,
             report,
-            skip_macro_names: vec![],
+            skip_macro_names: Rc::new(RefCell::new(vec![])),
         }
     }
 
@@ -846,7 +847,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             if let token::Token::Ident(_, _) = token {
                                 // FIXME ident.span.lo() and ident.span.hi() are 0
                                 let macro_name = self.get_context().snippet(span).to_owned();
-                                self.skip_macro_names.push(macro_name);
+                                self.skip_macro_names.borrow_mut().push(macro_name);
                             }
                         }
                     }

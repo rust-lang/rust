@@ -192,6 +192,7 @@ pub fn format_expr(
         ast::ExprKind::Mac(ref mac) => {
             let should_skip = context
                 .skip_macro_names
+                .borrow()
                 .contains(&context.snippet(mac.node.path.span).to_owned());
             if should_skip {
                 None
