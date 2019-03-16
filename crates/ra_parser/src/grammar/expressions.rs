@@ -155,6 +155,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
             (PLUS, EQ) => return (1, Op::Composite(PLUSEQ, 2)),
             (MINUS, EQ) => return (1, Op::Composite(MINUSEQ, 2)),
             (STAR, EQ) => return (1, Op::Composite(STAREQ, 2)),
+            (PERCENT, EQ) => return (1, Op::Composite(PERCENTEQ, 2)),
             (SLASH, EQ) => return (1, Op::Composite(SLASHEQ, 2)),
             (PIPE, EQ) => return (1, Op::Composite(PIPEEQ, 2)),
             (AMP, EQ) => return (1, Op::Composite(AMPEQ, 2)),
