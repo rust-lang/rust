@@ -98,13 +98,13 @@ pub fn in_macro(span: Span) -> bool {
 /// Used to store the absolute path to a type.
 ///
 /// See `match_def_path` for usage.
-pub struct AbsolutePathBuffer<'a, 'tcx> {
+pub struct AbsolutePathPrinter<'a, 'tcx> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 use rustc::ty::print::Printer;
 
-impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathBuffer<'_, 'tcx> {
+impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
     type Error = !;
 
     type Path = Vec<String>;
@@ -201,7 +201,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathBuffer<'_, 'tcx> {
 ///
 /// See also the `paths` module.
 pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path: &[&str]) -> bool {
-    let names = AbsolutePathBuffer { tcx }.print_def_path(def_id, &[]).unwrap();
+    let names = AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap();
 
     names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
@@ -216,7 +216,7 @@ pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path
 /// };
 /// ```
 pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<String> {
-    AbsolutePathBuffer { tcx }.print_def_path(def_id, &[]).unwrap()
+    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap()
 }
 
 /// Checks if type is struct, enum or union type with the given def path.

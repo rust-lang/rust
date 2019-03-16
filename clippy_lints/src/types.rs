@@ -25,7 +25,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathPrinter,
 };
 
 /// Handles all the linting of funky types
@@ -1138,7 +1138,7 @@ impl LintPass for CastPass {
 // one of the platform specific `libc::<platform>::c_void` of libc.
 fn is_c_void<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.sty {
-        let names = AbsolutePathBuffer { tcx }.print_def_path(adt.did, &[]).unwrap();
+        let names = AbsolutePathPrinter { tcx }.print_def_path(adt.did, &[]).unwrap();
 
         if names.is_empty() {
             return false;
