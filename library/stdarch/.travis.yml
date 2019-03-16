@@ -64,6 +64,24 @@ matrix:
       env: TARGET=thumbv7em-none-eabi NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "thumbv7em-none-eabihf - build libcore only"
       env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1 NO_DOCKER=1
+    - name: "Game Boy Advance - build libcore only"
+      env: NORUN=1 NOSTD=1 NO_DOCKER=1
+      install: cargo install xargo
+      script:
+        # Obtain the devkitPro tools, using `target/` as a temp directory. This
+        # is required because we need to use their linker. `lld` uses the `BLX`
+        # instruction, which was not available in thumb state code until ARMv5.
+        - mkdir -p target
+        - cd target
+        - wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb
+        - sudo dpkg -i devkitpro-pacman.deb
+        - sudo dkp-pacman -Sy
+        - sudo dkp-pacman -Syu
+        - sudo dkp-pacman -S -v --noconfirm gba-tools devkitARM
+        - export PATH="$PATH:/opt/devkitpro/devkitARM/bin"
+        - export PATH="$PATH:/opt/devkitpro/tools/bin"
+        - cd ..
+        - xargo build --all --target=ci/gba.json
     - name: "Documentation"
       install: true
       script: ci/dox.sh

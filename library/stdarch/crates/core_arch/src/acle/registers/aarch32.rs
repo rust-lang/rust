@@ -1,5 +1,9 @@
 /// Application Program Status Register
 pub struct APSR;
 
-#[cfg(any(not(target_feature = "thumb-mode"), target_feature = "v6t2"))]
-rsr!(APSR);
+// Note (@Lokathor): Because this breaks the use of Rust on the Game Boy
+// Advance, this change must be reverted until Rust learns to handle cpu state
+// properly. See also: https://github.com/rust-lang-nursery/stdsimd/issues/702
+
+//#[cfg(any(not(target_feature = "thumb-state"), target_feature = "v6t2"))]
+//rsr!(APSR);
