@@ -89,13 +89,13 @@ pub enum Ty {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(FnSig),
+    FnPtr(Substs),
 
     /// The never type `!`.
     Never,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    Tuple(Arc<[Ty]>),
+    Tuple(Substs),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
@@ -127,6 +127,10 @@ impl Substs {
         Substs(Arc::new([]))
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Ty> {
+        self.0.iter()
+    }
+
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.0.iter().cloned().collect();
@@ -148,6 +152,11 @@ impl FnSig {
         params.push(ret);
         FnSig { params_and_return: params.into() }
     }
+
+    pub fn from_fn_ptr_substs(substs: &Substs) -> FnSig {
+        FnSig { params_and_return: Arc::clone(&substs.0) }
+    }
+
     pub fn params(&self) -> &[Ty] {
         &self.params_and_return[0..self.params_and_return.len() - 1]
     }
@@ -168,7 +177,7 @@ impl FnSig {
 
 impl Ty {
     pub fn unit() -> Self {
-        Ty::Tuple(Arc::new([]))
+        Ty::Tuple(Substs::empty())
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -182,10 +191,9 @@ impl Ty {
                 }
             }
             Ty::FnPtr(sig) => {
-                for input in sig.params() {
-                    input.walk(f);
+                for t in sig.iter() {
+                    t.walk(f);
                 }
-                sig.ret().walk(f);
             }
             Ty::FnDef { substs, .. } => {
                 for t in substs.0.iter() {
@@ -216,12 +224,7 @@ impl Ty {
             Ty::RawPtr(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Ref(t, _) => Arc::make_mut(t).walk_mut(f),
             Ty::Tuple(ts) => {
-                // Without an Arc::make_mut_slice, we can't avoid the clone here:
-                let mut v: Vec<_> = ts.iter().cloned().collect();
-                for t in &mut v {
-                    t.walk_mut(f);
-                }
-                *ts = v.into();
+                ts.walk_mut(f);
             }
             Ty::FnPtr(sig) => {
                 sig.walk_mut(f);
@@ -324,15 +327,16 @@ impl HirDisplay for Ty {
             }
             Ty::Never => write!(f, "!")?,
             Ty::Tuple(ts) => {
-                if ts.len() == 1 {
-                    write!(f, "({},)", ts[0].display(f.db))?;
+                if ts.0.len() == 1 {
+                    write!(f, "({},)", ts.0[0].display(f.db))?;
                 } else {
                     write!(f, "(")?;
-                    f.write_joined(&**ts, ", ")?;
+                    f.write_joined(&*ts.0, ", ")?;
                     write!(f, ")")?;
                 }
             }
             Ty::FnPtr(sig) => {
+                let sig = FnSig::from_fn_ptr_substs(sig);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
                 write!(f, ") -> {}", sig.ret().display(f.db))?;

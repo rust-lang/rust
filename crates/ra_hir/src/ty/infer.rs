@@ -38,7 +38,7 @@ use crate::{
     resolve::{Resolver, Resolution},
     nameres::Namespace
 };
-use super::{Ty, TypableDef, Substs, primitive, op};
+use super::{Ty, TypableDef, Substs, primitive, op, FnSig};
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
@@ -257,10 +257,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.unify_inner(t1, t2, depth + 1)
             }
             (Ty::Ref(t1, m1), Ty::Ref(t2, m2)) if m1 == m2 => self.unify_inner(t1, t2, depth + 1),
-            (Ty::FnPtr(sig1), Ty::FnPtr(sig2)) if sig1 == sig2 => true,
-            (Ty::Tuple(ts1), Ty::Tuple(ts2)) if ts1.len() == ts2.len() => {
-                ts1.iter().zip(ts2.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth + 1))
-            }
+            (Ty::FnPtr(sig1), Ty::FnPtr(sig2)) => self.unify_substs(sig1, sig2, depth + 1),
+            (Ty::Tuple(ts1), Ty::Tuple(ts2)) => self.unify_substs(ts1, ts2, depth + 1),
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
             | (Ty::Infer(InferTy::FloatVar(tv1)), Ty::Infer(InferTy::FloatVar(tv2))) => {
@@ -632,7 +630,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty = match &body[pat] {
             Pat::Tuple(ref args) => {
                 let expectations = match *expected {
-                    Ty::Tuple(ref tuple_args) => &**tuple_args,
+                    Ty::Tuple(ref tuple_args) => &*tuple_args.0,
                     _ => &[],
                 };
                 let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
@@ -644,7 +642,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .collect::<Vec<_>>()
                     .into();
 
-                Ty::Tuple(inner_tys)
+                Ty::Tuple(Substs(inner_tys))
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match *expected {
@@ -789,7 +787,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::FnPtr(sig) => (sig.params().to_vec(), sig.ret().clone()),
+                    Ty::FnPtr(sig) => {
+                        let sig = FnSig::from_fn_ptr_substs(sig);
+                        (sig.params().to_vec(), sig.ret().clone())
+                    }
                     Ty::FnDef { substs, def, .. } => {
                         let sig = self.db.callable_item_signature(*def);
                         let ret_ty = sig.ret().clone().subst(&substs);
@@ -828,6 +829,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
+                        let sig = FnSig::from_fn_ptr_substs(sig);
                         if !sig.params().is_empty() {
                             (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
                         } else {
@@ -923,7 +925,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .find_map(|derefed_ty| match derefed_ty {
                         Ty::Tuple(fields) => {
                             let i = name.to_string().parse::<usize>().ok();
-                            i.and_then(|i| fields.get(i).cloned())
+                            i.and_then(|i| fields.0.get(i).cloned())
                         }
                         Ty::Adt { def_id: AdtDef::Struct(s), ref substs, .. } => {
                             s.field(self.db, name).map(|field| {
@@ -1016,7 +1018,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
                 }
 
-                Ty::Tuple(Arc::from(ty_vec))
+                Ty::Tuple(Substs(ty_vec.into()))
             }
             Expr::Array { exprs } => {
                 let elem_ty = match &expected.ty {
