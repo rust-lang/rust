@@ -74,28 +74,28 @@ pub struct CrateDefMap {
     /// a dependency (`std` or `core`).
     prelude: Option<Module>,
     extern_prelude: FxHashMap<Name, ModuleDef>,
-    root: ModuleId,
-    modules: Arena<ModuleId, ModuleData>,
+    root: CrateModuleId,
+    modules: Arena<CrateModuleId, ModuleData>,
     public_macros: FxHashMap<Name, mbe::MacroRules>,
     problems: CrateDefMapProblems,
 }
 
-impl std::ops::Index<ModuleId> for CrateDefMap {
+impl std::ops::Index<CrateModuleId> for CrateDefMap {
     type Output = ModuleData;
-    fn index(&self, id: ModuleId) -> &ModuleData {
+    fn index(&self, id: CrateModuleId) -> &ModuleData {
         &self.modules[id]
     }
 }
 
 /// An ID of a module, **local** to a specific crate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct ModuleId(RawId);
-impl_arena_id!(ModuleId);
+struct CrateModuleId(RawId);
+impl_arena_id!(CrateModuleId);
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ModuleData {
-    pub(crate) parent: Option<ModuleId>,
-    pub(crate) children: FxHashMap<Name, ModuleId>,
+    pub(crate) parent: Option<CrateModuleId>,
+    pub(crate) children: FxHashMap<Name, CrateModuleId>,
     pub(crate) scope: ModuleScope,
     /// None for root
     pub(crate) declaration: Option<SourceItemId>,
@@ -183,7 +183,7 @@ impl CrateDefMap {
         let start = std::time::Instant::now();
         let def_map = {
             let edition = krate.edition(db);
-            let mut modules: Arena<ModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,
@@ -201,7 +201,7 @@ impl CrateDefMap {
         Arc::new(def_map)
     }
 
-    pub(crate) fn root(&self) -> ModuleId {
+    pub(crate) fn root(&self) -> CrateModuleId {
         self.root
     }
 
@@ -209,7 +209,7 @@ impl CrateDefMap {
         &self.problems
     }
 
-    pub(crate) fn mk_module(&self, module_id: ModuleId) -> Module {
+    pub(crate) fn mk_module(&self, module_id: CrateModuleId) -> Module {
         Module { krate: self.krate, module_id }
     }
 
@@ -225,7 +225,7 @@ impl CrateDefMap {
         &self,
         file_id: HirFileId,
         decl_id: Option<SourceFileItemId>,
-    ) -> Option<ModuleId> {
+    ) -> Option<CrateModuleId> {
         let decl_id = decl_id.map(|it| it.with_file_id(file_id));
         let (module_id, _module_data) = self.modules.iter().find(|(_module_id, module_data)| {
             if decl_id.is_some() {
@@ -240,7 +240,7 @@ impl CrateDefMap {
     pub(crate) fn resolve_path(
         &self,
         db: &impl PersistentHirDatabase,
-        original_module: ModuleId,
+        original_module: CrateModuleId,
         path: &Path,
     ) -> (PerNs<ModuleDef>, Option<usize>) {
         let res = self.resolve_path_fp(db, ResolveMode::Other, original_module, path);
@@ -253,7 +253,7 @@ impl CrateDefMap {
         &self,
         db: &impl PersistentHirDatabase,
         mode: ResolveMode,
-        original_module: ModuleId,
+        original_module: CrateModuleId,
         path: &Path,
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
@@ -394,7 +394,7 @@ impl CrateDefMap {
     pub(crate) fn resolve_name_in_module(
         &self,
         db: &impl PersistentHirDatabase,
-        module: ModuleId,
+        module: CrateModuleId,
         name: &Name,
     ) -> PerNs<ModuleDef> {
         // Resolve in:

@@ -3,7 +3,7 @@ use ra_syntax::{ast, SyntaxNode, TreeArc, AstNode};
 
 use crate::{
     Module, ModuleSource, Problem, Name,
-    nameres::{ModuleId, ImportId},
+    nameres::{CrateModuleId, ImportId},
     HirDatabase, PersistentHirDatabase,
     HirFileId, SourceItemId,
 };
@@ -31,7 +31,7 @@ impl ModuleSource {
 }
 
 impl Module {
-    fn with_module_id(&self, module_id: ModuleId) -> Module {
+    fn with_module_id(&self, module_id: CrateModuleId) -> Module {
         Module { module_id, krate: self.krate }
     }
 

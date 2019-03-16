@@ -373,6 +373,7 @@ impl SourceFileItems {
 impl std::ops::Index<SourceFileItemId> for SourceFileItems {
     type Output = SyntaxNodePtr;
     fn index(&self, idx: SourceFileItemId) -> &SyntaxNodePtr {
+        eprintln!("invalid SourceFileItemId({:?}) for file({:?})", idx, self.file_id);
         &self.arena[idx]
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     ModuleDef,
     db::HirDatabase,
     name::{Name, KnownName},
-    nameres::{PerNs, CrateDefMap, ModuleId},
+    nameres::{PerNs, CrateDefMap, CrateModuleId},
     generics::GenericParams,
     expr::{scope::{ExprScopes, ScopeId}, PatId, Body},
     impl_block::ImplBlock,
@@ -23,7 +23,7 @@ pub struct Resolver {
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleItemMap {
     crate_def_map: Arc<CrateDefMap>,
-    module_id: ModuleId,
+    module_id: CrateModuleId,
 }
 
 #[derive(Debug, Clone)]
@@ -175,7 +175,7 @@ impl Resolver {
         names
     }
 
-    fn module(&self) -> Option<(&CrateDefMap, ModuleId)> {
+    fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
@@ -209,7 +209,7 @@ impl Resolver {
     pub(crate) fn push_module_scope(
         self,
         crate_def_map: Arc<CrateDefMap>,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
     ) -> Resolver {
         self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
     }

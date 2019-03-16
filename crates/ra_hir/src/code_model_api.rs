@@ -8,7 +8,7 @@ use crate::{
     Name, ScopesWithSourceMap, Ty, HirFileId,
     HirDatabase, PersistentHirDatabase,
     type_ref::TypeRef,
-    nameres::{ModuleScope, Namespace, ImportId, ModuleId},
+    nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
@@ -64,7 +64,7 @@ impl Crate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) krate: Crate,
-    pub(crate) module_id: ModuleId,
+    pub(crate) module_id: CrateModuleId,
 }
 
 /// The defs which can be visible in the module.

@@ -27,7 +27,7 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
     go(&mut buf, map, "\ncrate", map.root);
     return buf;
 
-    fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: ModuleId) {
+    fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: CrateModuleId) {
         *buf += path;
         *buf += "\n";
         for (name, res) in map.modules[module].scope.items.iter() {

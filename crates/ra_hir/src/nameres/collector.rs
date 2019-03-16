@@ -12,7 +12,7 @@ use crate::{
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
 };
 
-use super::{CrateDefMap, ModuleId, ModuleData};
+use super::{CrateDefMap, CrateModuleId, ModuleData};
 
 pub(super) fn collect_defs(
     db: &impl PersistentHirDatabase,
@@ -49,9 +49,9 @@ pub(super) fn collect_defs(
 struct DefCollector<DB> {
     db: DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<ModuleId, Vec<(ModuleId, raw::ImportId)>>,
-    unresolved_imports: Vec<(ModuleId, raw::ImportId, raw::ImportData)>,
-    unexpanded_macros: Vec<(ModuleId, MacroCallId, Path, tt::Subtree)>,
+    glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
+    unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
+    unexpanded_macros: Vec<(CrateModuleId, MacroCallId, Path, tt::Subtree)>,
     global_macro_scope: FxHashMap<Name, mbe::MacroRules>,
 }
 
@@ -124,7 +124,7 @@ where
 
     fn resolve_import(
         &mut self,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
         import: &raw::ImportData,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
@@ -147,7 +147,7 @@ where
 
     fn record_resolved_import(
         &mut self,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
         def: PerNs<ModuleDef>,
         import_id: raw::ImportId,
         import: &raw::ImportData,
@@ -234,7 +234,7 @@ where
 
     fn update(
         &mut self,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
         import: Option<raw::ImportId>,
         resolutions: &[(Name, Resolution)],
     ) {
@@ -243,7 +243,7 @@ where
 
     fn update_recursive(
         &mut self,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
         import: Option<raw::ImportId>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
@@ -327,7 +327,7 @@ where
 
     fn collect_macro_expansion(
         &mut self,
-        module_id: ModuleId,
+        module_id: CrateModuleId,
         macro_call_id: MacroCallId,
         expansion: tt::Subtree,
     ) {
@@ -353,7 +353,7 @@ where
 /// Walks a single module, populating defs, imports and macros
 struct ModCollector<'a, D> {
     def_collector: D,
-    module_id: ModuleId,
+    module_id: CrateModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
 }
@@ -426,7 +426,7 @@ where
         name: Name,
         declaration: SourceItemId,
         definition: Option<FileId>,
-    ) -> ModuleId {
+    ) -> CrateModuleId {
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
