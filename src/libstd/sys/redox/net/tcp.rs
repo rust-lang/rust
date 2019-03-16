@@ -35,10 +35,7 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
-        match bufs.iter_mut().find(|b| !b.is_empty()) {
-            Some(buf) => self.read(buf),
-            None => Ok(0),
-        }
+        io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> Result<usize> {
@@ -46,10 +43,7 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
-        match bufs.iter().find(|b| !b.is_empty()) {
-            Some(buf) => self.write(buf),
-            None => Ok(0),
-        }
+        io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     pub fn take_error(&self) -> Result<Option<Error>> {
