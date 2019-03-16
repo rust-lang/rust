@@ -1,6 +1,7 @@
 // edition:2018
 
 #![allow(non_camel_case_types)]
+#![allow(redundant_import)]
 
 mod T {
     pub struct U;
