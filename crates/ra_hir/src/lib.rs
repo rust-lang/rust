@@ -24,7 +24,6 @@ mod path;
 pub mod source_binder;
 
 mod ids;
-mod macros;
 mod name;
 mod nameres;
 mod adt;
@@ -53,7 +52,6 @@ pub use self::{
     path::{Path, PathKind},
     name::Name,
     ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
-    macros::{MacroDef, MacroInput, MacroExpansion},
     nameres::{PerNs, Namespace},
     ty::{Ty, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},

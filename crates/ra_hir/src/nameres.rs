@@ -57,7 +57,7 @@ use test_utils::tested_by;
 use crate::{
     ModuleDef, Name, Crate, Module, Problem,
     PersistentHirDatabase, Path, PathKind, HirFileId,
-    ids::{SourceItemId, SourceFileItemId},
+    ids::{SourceItemId, SourceFileItemId, MacroCallId},
 };
 
 pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
@@ -76,7 +76,9 @@ pub struct CrateDefMap {
     extern_prelude: FxHashMap<Name, ModuleDef>,
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
-    public_macros: FxHashMap<Name, mbe::MacroRules>,
+    macros: Arena<CrateMacroId, mbe::MacroRules>,
+    public_macros: FxHashMap<Name, CrateMacroId>,
+    macro_resolutions: FxHashMap<MacroCallId, (Crate, CrateMacroId)>,
     problems: CrateDefMapProblems,
 }
 
@@ -87,9 +89,21 @@ impl std::ops::Index<CrateModuleId> for CrateDefMap {
     }
 }
 
+impl std::ops::Index<CrateMacroId> for CrateDefMap {
+    type Output = mbe::MacroRules;
+    fn index(&self, id: CrateMacroId) -> &mbe::MacroRules {
+        &self.macros[id]
+    }
+}
+
+/// An ID of a macro, **local** to a specific crate
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct CrateMacroId(RawId);
+impl_arena_id!(CrateMacroId);
+
 /// An ID of a module, **local** to a specific crate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct CrateModuleId(RawId);
+pub(crate) struct CrateModuleId(RawId);
 impl_arena_id!(CrateModuleId);
 
 #[derive(Default, Debug, PartialEq, Eq)]
@@ -192,7 +206,9 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
+                macros: Arena::default(),
                 public_macros: FxHashMap::default(),
+                macro_resolutions: FxHashMap::default(),
                 problems: CrateDefMapProblems::default(),
             }
         };
@@ -219,6 +235,13 @@ impl CrateDefMap {
 
     pub(crate) fn extern_prelude(&self) -> &FxHashMap<Name, ModuleDef> {
         &self.extern_prelude
+    }
+
+    pub(crate) fn resolve_macro(
+        &self,
+        macro_call_id: MacroCallId,
+    ) -> Option<(Crate, CrateMacroId)> {
+        self.macro_resolutions.get(&macro_call_id).map(|&it| it)
     }
 
     pub(crate) fn find_module_by_source(

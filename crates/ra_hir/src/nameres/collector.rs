@@ -6,13 +6,13 @@ use ra_db::FileId;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    PersistentHirDatabase, HirFileId, Name, Path, Problem,
+    PersistentHirDatabase, HirFileId, Name, Path, Problem, Crate,
     KnownName,
     nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
 };
 
-use super::{CrateDefMap, CrateModuleId, ModuleData};
+use super::{CrateDefMap, CrateModuleId, ModuleData, CrateMacroId};
 
 pub(super) fn collect_defs(
     db: &impl PersistentHirDatabase,
@@ -52,7 +52,7 @@ struct DefCollector<DB> {
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(CrateModuleId, MacroCallId, Path, tt::Subtree)>,
-    global_macro_scope: FxHashMap<Name, mbe::MacroRules>,
+    global_macro_scope: FxHashMap<Name, CrateMacroId>,
 }
 
 impl<'a, DB> DefCollector<&'a DB>
@@ -95,10 +95,11 @@ where
 
     fn define_macro(&mut self, name: Name, tt: &tt::Subtree, export: bool) {
         if let Ok(rules) = mbe::MacroRules::parse(tt) {
+            let macro_id = self.def_map.macros.alloc(rules);
             if export {
-                self.def_map.public_macros.insert(name.clone(), rules.clone());
+                self.def_map.public_macros.insert(name.clone(), macro_id);
             }
-            self.global_macro_scope.insert(name, rules);
+            self.global_macro_scope.insert(name, macro_id);
         }
     }
 
@@ -295,6 +296,7 @@ where
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         let mut resolved = Vec::new();
+        let mut res = ReachedFixedPoint::Yes;
         macros.retain(|(module_id, call_id, path, tt)| {
             if path.segments.len() != 2 {
                 return true;
@@ -308,19 +310,16 @@ where
                 Some(it) => it,
                 _ => return true,
             };
+            res = ReachedFixedPoint::No;
             let def_map = self.db.crate_def_map(krate);
-            let rules = def_map.public_macros.get(&path.segments[1].name).cloned();
-            resolved.push((*module_id, *call_id, rules, tt.clone()));
+            if let Some(macro_id) = def_map.public_macros.get(&path.segments[1].name).cloned() {
+                resolved.push((*module_id, *call_id, (krate, macro_id), tt.clone()));
+            }
             false
         });
-        let res = if resolved.is_empty() { ReachedFixedPoint::Yes } else { ReachedFixedPoint::No };
 
-        for (module_id, macro_call_id, rules, arg) in resolved {
-            if let Some(rules) = rules {
-                if let Ok(tt) = rules.expand(&arg) {
-                    self.collect_macro_expansion(module_id, macro_call_id, tt);
-                }
-            }
+        for (module_id, macro_call_id, macro_def_id, arg) in resolved {
+            self.collect_macro_expansion(module_id, macro_call_id, macro_def_id, arg);
         }
         res
     }
@@ -329,20 +328,32 @@ where
         &mut self,
         module_id: CrateModuleId,
         macro_call_id: MacroCallId,
-        expansion: tt::Subtree,
+        macro_def_id: (Crate, CrateMacroId),
+        macro_arg: tt::Subtree,
     ) {
-        // XXX: this **does not** go through a database, because we can't
-        // identify macro_call without adding the whole state of name resolution
-        // as a parameter to the query.
-        //
-        // So, we run the queries "manually" and we must ensure that
-        // `db.hir_parse(macro_call_id)` returns the same source_file.
-        let file_id: HirFileId = macro_call_id.into();
-        let source_file = mbe::token_tree_to_ast_item_list(&expansion);
+        let (macro_krate, macro_id) = macro_def_id;
+        let dm;
+        let rules = if macro_krate == self.def_map.krate {
+            &self.def_map[macro_id]
+        } else {
+            dm = self.db.crate_def_map(macro_krate);
+            &dm[macro_id]
+        };
+        if let Ok(expansion) = rules.expand(&macro_arg) {
+            self.def_map.macro_resolutions.insert(macro_call_id, macro_def_id);
+            // XXX: this **does not** go through a database, because we can't
+            // identify macro_call without adding the whole state of name resolution
+            // as a parameter to the query.
+            //
+            // So, we run the queries "manually" and we must ensure that
+            // `db.hir_parse(macro_call_id)` returns the same source_file.
+            let file_id: HirFileId = macro_call_id.into();
+            let source_file = mbe::token_tree_to_ast_item_list(&expansion);
 
-        let raw_items = raw::RawItems::from_source_file(&source_file, file_id);
-        ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-            .collect(raw_items.items())
+            let raw_items = raw::RawItems::from_source_file(&source_file, file_id);
+            ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
+                .collect(raw_items.items())
+        }
     }
 
     fn finish(self) -> CrateDefMap {
@@ -486,12 +497,15 @@ where
 
         // Case 2: try to expand macro_rules from this crate, triggering
         // recursive item collection.
-        if let Some(rules) =
+        if let Some(&macro_id) =
             mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(name))
         {
-            if let Ok(tt) = rules.expand(&mac.arg) {
-                self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, tt);
-            }
+            self.def_collector.collect_macro_expansion(
+                self.module_id,
+                macro_call_id,
+                (self.def_collector.def_map.krate, macro_id),
+                mac.arg.clone(),
+            );
             return;
         }
 

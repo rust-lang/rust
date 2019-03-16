@@ -4,12 +4,10 @@ use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
 use ra_db::{SourceDatabase, salsa, FileId};
 
 use crate::{
-    MacroCallId, HirFileId,
-    SourceFileItems, SourceItemId, Crate, Module, HirInterner,
+    HirFileId, SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
-    macros::MacroExpansion,
     nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
     adt::{StructData, EnumData},
@@ -22,9 +20,6 @@ use crate::{
 pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(HirFileId::hir_parse)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
-
-    #[salsa::invoke(crate::macros::expand_macro_invocation)]
-    fn expand_macro_invocation(&self, invoc: MacroCallId) -> Option<Arc<MacroExpansion>>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;

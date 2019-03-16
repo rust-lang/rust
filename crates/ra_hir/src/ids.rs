@@ -89,15 +89,29 @@ impl HirFileId {
     ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
-            HirFileIdRepr::Macro(m) => {
-                if let Some(exp) = db.expand_macro_invocation(m) {
-                    return exp.file();
-                }
+            HirFileIdRepr::Macro(macro_call_id) => {
                 // returning an empty string looks fishy...
-                SourceFile::parse("")
+                parse_macro(db, macro_call_id).unwrap_or_else(|| SourceFile::parse(""))
             }
         }
     }
+}
+
+fn parse_macro(
+    db: &impl PersistentHirDatabase,
+    macro_call_id: MacroCallId,
+) -> Option<TreeArc<SourceFile>> {
+    let loc = macro_call_id.loc(db);
+    let syntax = db.file_item(loc.source_item_id);
+    let macro_call = ast::MacroCall::cast(&syntax).unwrap();
+    let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
+
+    let def_map = db.crate_def_map(loc.module.krate);
+    let (krate, macro_id) = def_map.resolve_macro(macro_call_id)?;
+    let def_map = db.crate_def_map(krate);
+    let macro_rules = &def_map[macro_id];
+    let tt = macro_rules.expand(&macro_arg).ok()?;
+    Some(mbe::token_tree_to_ast_item_list(&tt))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -373,7 +387,6 @@ impl SourceFileItems {
 impl std::ops::Index<SourceFileItemId> for SourceFileItems {
     type Output = SyntaxNodePtr;
     fn index(&self, idx: SourceFileItemId) -> &SyntaxNodePtr {
-        eprintln!("invalid SourceFileItemId({:?}) for file({:?})", idx, self.file_id);
         &self.arena[idx]
     }
 }
