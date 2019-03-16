@@ -52,5 +52,51 @@ error: imports cannot refer to local variables
 LL |     use {T as _, x};
    |                  ^
 
+warning: the item `T` is imported redundantly
+  --> $DIR/future-proofing-locals.rs:19:9
+   |
+LL | / mod T {
+LL | |     pub struct U;
+LL | | }
+   | |_- the item `T` was already imported here
+...
+LL |       use T;
+   |           ^
+   |
+   = note: #[warn(redundant_import)] on by default
+
+warning: the item `x` is imported redundantly
+  --> $DIR/future-proofing-locals.rs:31:9
+   |
+LL | / mod x {
+LL | |     pub struct y;
+LL | | }
+   | |_- the item `x` was already imported here
+...
+LL |       use x;
+   |           ^
+
+warning: the item `x` is imported redundantly
+  --> $DIR/future-proofing-locals.rs:37:17
+   |
+LL | / mod x {
+LL | |     pub struct y;
+LL | | }
+   | |_- the item `x` was already imported here
+...
+LL |               use x;
+   |                   ^
+
+warning: the item `x` is imported redundantly
+  --> $DIR/future-proofing-locals.rs:45:18
+   |
+LL | / mod x {
+LL | |     pub struct y;
+LL | | }
+   | |_- the item `x` was already imported here
+...
+LL |       use {T as _, x};
+   |                    ^
+
 error: aborting due to 9 previous errors
 
