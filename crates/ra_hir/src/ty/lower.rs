@@ -51,12 +51,10 @@ impl Ty {
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
-                let mut inner_tys =
+                let inner_tys =
                     params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
-                let return_ty =
-                    inner_tys.pop().expect("TypeRef::Fn should always have at least return type");
-                let sig = FnSig { input: inner_tys, output: return_ty };
-                Ty::FnPtr(Arc::new(sig))
+                let sig = FnSig { params_and_return: inner_tys.into() };
+                Ty::FnPtr(sig)
             }
             TypeRef::Error => Ty::Unknown,
         }
@@ -214,6 +212,15 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
     }
 }
 
+/// Build the signature of a callable item (function, struct or enum variant).
+pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
+    match def {
+        CallableDef::Function(f) => fn_sig_for_fn(db, f),
+        CallableDef::Struct(s) => fn_sig_for_struct_constructor(db, s),
+        CallableDef::EnumVariant(e) => fn_sig_for_enum_variant_constructor(db, e),
+    }
+}
+
 /// Build the type of a specific field of a struct or enum variant.
 pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
@@ -226,18 +233,21 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     Ty::from_hir(db, &resolver, type_ref)
 }
 
+fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
+    let signature = def.signature(db);
+    let resolver = def.resolver(db);
+    let params =
+        signature.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
+    let ret = Ty::from_hir(db, &resolver, signature.ret_type());
+    FnSig::from_params_and_return(params, ret)
+}
+
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
-    let signature = def.signature(db);
-    let resolver = def.resolver(db);
     let generics = def.generic_params(db);
-    let input =
-        signature.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
-    let output = Ty::from_hir(db, &resolver, signature.ret_type());
-    let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
 }
 
 /// Build the declared type of a const.
@@ -256,42 +266,58 @@ fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
     Ty::from_hir(db, &resolver, signature.type_ref())
 }
 
-/// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
+fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
     let var_data = def.variant_data(db);
     let fields = match var_data.fields() {
         Some(fields) => fields,
-        None => return type_for_struct(db, def), // Unit struct
+        None => panic!("fn_sig_for_struct_constructor called on unit struct"),
     };
     let resolver = def.resolver(db);
-    let generics = def.generic_params(db);
-    let input = fields
+    let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let output = type_for_struct(db, def);
-    let sig = Arc::new(FnSig { input, output });
+    let ret = type_for_struct(db, def);
+    FnSig::from_params_and_return(params, ret)
+}
+
+/// Build the type of a tuple struct constructor.
+fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
+    let var_data = def.variant_data(db);
+    if var_data.fields().is_none() {
+        return type_for_struct(db, def); // Unit struct
+    }
+    let generics = def.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
+}
+
+fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> FnSig {
+    let var_data = def.variant_data(db);
+    let fields = match var_data.fields() {
+        Some(fields) => fields,
+        None => panic!("fn_sig_for_enum_variant_constructor called for unit variant"),
+    };
+    let resolver = def.parent_enum(db).resolver(db);
+    let params = fields
+        .iter()
+        .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
+        .collect::<Vec<_>>();
+    let generics = def.parent_enum(db).generic_params(db);
+    let substs = make_substs(&generics);
+    let ret = type_for_enum(db, def.parent_enum(db)).subst(&substs);
+    FnSig::from_params_and_return(params, ret)
 }
 
 /// Build the type of a tuple enum variant constructor.
 fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> Ty {
     let var_data = def.variant_data(db);
-    let fields = match var_data.fields() {
-        Some(fields) => fields,
-        None => return type_for_enum(db, def.parent_enum(db)), // Unit variant
-    };
-    let resolver = def.parent_enum(db).resolver(db);
+    if var_data.fields().is_none() {
+        return type_for_enum(db, def.parent_enum(db)); // Unit variant
+    }
     let generics = def.parent_enum(db).generic_params(db);
-    let input = fields
-        .iter()
-        .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
-        .collect::<Vec<_>>();
     let substs = make_substs(&generics);
-    let output = type_for_enum(db, def.parent_enum(db)).subst(&substs);
-    let sig = Arc::new(FnSig { input, output });
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {

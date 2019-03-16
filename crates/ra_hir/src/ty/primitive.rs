@@ -10,14 +10,6 @@ pub enum UncertainIntTy {
 }
 
 impl UncertainIntTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
-            UncertainIntTy::Unknown => "{integer}",
-            UncertainIntTy::Signed(ty) => ty.ty_to_string(),
-            UncertainIntTy::Unsigned(ty) => ty.ty_to_string(),
-        }
-    }
-
     pub fn from_name(name: &Name) -> Option<UncertainIntTy> {
         if let Some(ty) = IntTy::from_name(name) {
             Some(UncertainIntTy::Signed(ty))
@@ -29,6 +21,16 @@ impl UncertainIntTy {
     }
 }
 
+impl fmt::Display for UncertainIntTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UncertainIntTy::Unknown => write!(f, "{{integer}}"),
+            UncertainIntTy::Signed(ty) => write!(f, "{}", ty),
+            UncertainIntTy::Unsigned(ty) => write!(f, "{}", ty),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
 pub enum UncertainFloatTy {
     Unknown,
@@ -36,18 +38,20 @@ pub enum UncertainFloatTy {
 }
 
 impl UncertainFloatTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
-            UncertainFloatTy::Unknown => "{float}",
-            UncertainFloatTy::Known(ty) => ty.ty_to_string(),
-        }
-    }
-
     pub fn from_name(name: &Name) -> Option<UncertainFloatTy> {
         if let Some(ty) = FloatTy::from_name(name) {
             Some(UncertainFloatTy::Known(ty))
         } else {
             None
+        }
+    }
+}
+
+impl fmt::Display for UncertainFloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UncertainFloatTy::Unknown => write!(f, "{{float}}"),
+            UncertainFloatTy::Known(ty) => write!(f, "{}", ty),
         }
     }
 }
@@ -70,22 +74,19 @@ impl fmt::Debug for IntTy {
 
 impl fmt::Display for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
-impl IntTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
+        let s = match *self {
             IntTy::Isize => "isize",
             IntTy::I8 => "i8",
             IntTy::I16 => "i16",
             IntTy::I32 => "i32",
             IntTy::I64 => "i64",
             IntTy::I128 => "i128",
-        }
+        };
+        write!(f, "{}", s)
     }
+}
 
+impl IntTy {
     pub fn from_name(name: &Name) -> Option<IntTy> {
         match name.as_known_name()? {
             KnownName::Isize => Some(IntTy::Isize),
@@ -109,18 +110,21 @@ pub enum UintTy {
     U128,
 }
 
-impl UintTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
+impl fmt::Display for UintTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match *self {
             UintTy::Usize => "usize",
             UintTy::U8 => "u8",
             UintTy::U16 => "u16",
             UintTy::U32 => "u32",
             UintTy::U64 => "u64",
             UintTy::U128 => "u128",
-        }
+        };
+        write!(f, "{}", s)
     }
+}
 
+impl UintTy {
     pub fn from_name(name: &Name) -> Option<UintTy> {
         match name.as_known_name()? {
             KnownName::Usize => Some(UintTy::Usize),
@@ -137,12 +141,6 @@ impl UintTy {
 impl fmt::Debug for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
     }
 }
 
