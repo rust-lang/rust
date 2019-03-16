@@ -12,7 +12,7 @@ try:
 except ImportError:
     import urllib.request as urllib2
 
-# List of people to ping when the status of a tool changed.
+# List of people to ping when the status of a tool or a book changed.
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch',
@@ -22,6 +22,10 @@ MAINTAINERS = {
     'nomicon': '@frewsxcv @Gankro',
     'reference': '@steveklabnik @Havvy @matthewjasper @alercah',
     'rust-by-example': '@steveklabnik @marioidival @projektir',
+    'embedded-book': (
+        '@adamgreig @andre-richter @jamesmunns @korken89 '
+        '@ryankurte @thejpster @therealprof'
+    ),
 }
 
 REPOS = {
@@ -33,6 +37,7 @@ REPOS = {
     'nomicon': 'https://github.com/rust-lang-nursery/nomicon',
     'reference': 'https://github.com/rust-lang-nursery/reference',
     'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
+    'embedded-book': 'https://github.com/rust-embedded/book',
 }
 
 
@@ -70,7 +75,7 @@ def issue(
 
             cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
 
-            ''').format(relevant_pr_number, tool, REPOS[tool], relevant_pr_user, pr_reviewer),
+            ''').format(relevant_pr_number, tool, REPOS.get(tool), relevant_pr_user, pr_reviewer),
             'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
             'assignees': assignees,
             'labels': ['T-compiler', 'I-nominated'],
@@ -137,7 +142,7 @@ def update_latest(
             if build_failed:
                 try:
                     issue(
-                        tool, MAINTAINERS.get(tool),
+                        tool, MAINTAINERS.get(tool, ''),
                         relevant_pr_number, relevant_pr_user, pr_reviewer,
                     )
                 except IOError as e:
