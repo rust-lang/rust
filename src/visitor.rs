@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
-use syntax::parse::ParseSess;
+use syntax::parse::{token, ParseSess};
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
+use syntax::tokenstream::TokenTree;
 use syntax::{ast, visit};
 
 use crate::attr::*;
@@ -66,6 +67,7 @@ pub struct FmtVisitor<'a> {
     pub skipped_range: Vec<(usize, usize)>,
     pub macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
+    pub skip_macro_names: Vec<String>,
 }
 
 impl<'a> Drop for FmtVisitor<'a> {
@@ -331,6 +333,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
             }
         }
+        self.get_skip_macros(&attrs);
 
         match item.node {
             ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
@@ -437,7 +440,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
                 self.push_rewrite(item.span, rewrite);
             }
-        }
+        };
+        self.skip_macro_names.clear();
     }
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
@@ -616,6 +620,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             skipped_range: vec![],
             macro_rewrite_failure: false,
             report,
+            skip_macro_names: vec![],
         }
     }
 
@@ -640,10 +645,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
-            } else if attr.path.segments[0].ident.to_string() == "rustfmt"
-                && (attr.path.segments.len() == 1
-                    || attr.path.segments[1].ident.to_string() != "skip")
-            {
+            } else if self.is_rustfmt_macro_error(&attr.path.segments) {
                 let file_name = self.source_map.span_to_filename(attr.span).into();
                 self.report.append(
                     file_name,
@@ -669,6 +671,20 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_rewrite(span, rewrite);
 
         false
+    }
+
+    fn is_rustfmt_macro_error(&self, segments: &Vec<syntax::ast::PathSegment>) -> bool {
+        if segments[0].ident.to_string() != "rustfmt" {
+            return false;
+        }
+
+        match segments.len() {
+            2 => segments[1].ident.to_string() != "skip",
+            3 => {
+                segments[1].ident.to_string() != "skip" || segments[2].ident.to_string() != "macros"
+            }
+            _ => false,
+        }
     }
 
     fn walk_mod_items(&mut self, m: &ast::Mod) {
@@ -817,6 +833,25 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             snippet_provider: self.snippet_provider,
             macro_rewrite_failure: RefCell::new(false),
             report: self.report.clone(),
+            skip_macro_names: self.skip_macro_names.clone(),
+        }
+    }
+
+    pub fn get_skip_macros(&mut self, attrs: &[ast::Attribute]) {
+        for attr in attrs {
+            for token in attr.tokens.trees() {
+                if let TokenTree::Delimited(_, _, stream) = token {
+                    for inner_token in stream.trees() {
+                        if let TokenTree::Token(span, token) = inner_token {
+                            if let token::Token::Ident(_, _) = token {
+                                // FIXME ident.span.lo() and ident.span.hi() are 0
+                                let macro_name = self.get_context().snippet(span).to_owned();
+                                self.skip_macro_names.push(macro_name);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

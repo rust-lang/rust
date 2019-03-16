@@ -39,6 +39,7 @@ pub struct RewriteContext<'a> {
     // Used for `format_snippet`
     pub(crate) macro_rewrite_failure: RefCell<bool>,
     pub(crate) report: FormatReport,
+    pub skip_macro_names: Vec<String>,
 }
 
 impl<'a> RewriteContext<'a> {
