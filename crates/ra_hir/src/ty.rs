@@ -16,7 +16,7 @@ use std::{fmt, mem};
 
 use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase};
 
-pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field};
+pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field, callable_item_sig};
 pub(crate) use infer::{infer, InferenceResult, InferTy};
 use display::{HirDisplay, HirFormatter};
 
@@ -77,8 +77,6 @@ pub enum Ty {
     FnDef {
         /// The definition of the function / constructor.
         def: CallableDef,
-        /// Parameters and return type
-        sig: FnSig,
         /// Substitutions for the generic parameters of the type
         substs: Substs,
     },
@@ -189,11 +187,7 @@ impl Ty {
                 }
                 sig.ret().walk(f);
             }
-            Ty::FnDef { substs, sig, .. } => {
-                for input in sig.params() {
-                    input.walk(f);
-                }
-                sig.ret().walk(f);
+            Ty::FnDef { substs, .. } => {
                 for t in substs.0.iter() {
                     t.walk(f);
                 }
@@ -232,8 +226,7 @@ impl Ty {
             Ty::FnPtr(sig) => {
                 sig.walk_mut(f);
             }
-            Ty::FnDef { substs, sig, .. } => {
-                sig.walk_mut(f);
+            Ty::FnDef { substs, .. } => {
                 substs.walk_mut(f);
             }
             Ty::Adt { substs, .. } => {
@@ -275,7 +268,7 @@ impl Ty {
     pub fn apply_substs(self, substs: Substs) -> Ty {
         match self {
             Ty::Adt { def_id, .. } => Ty::Adt { def_id, substs },
-            Ty::FnDef { def, sig, .. } => Ty::FnDef { def, sig, substs },
+            Ty::FnDef { def, .. } => Ty::FnDef { def, substs },
             _ => self,
         }
     }
@@ -344,7 +337,8 @@ impl HirDisplay for Ty {
                 f.write_joined(sig.params(), ", ")?;
                 write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
-            Ty::FnDef { def, substs, sig, .. } => {
+            Ty::FnDef { def, substs, .. } => {
+                let sig = f.db.callable_item_signature(*def);
                 let name = match def {
                     CallableDef::Function(ff) => ff.name(f.db),
                     CallableDef::Struct(s) => s.name(f.db).unwrap_or_else(Name::missing),

@@ -725,7 +725,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::FnPtr(sig) => (sig.params().to_vec(), sig.ret().clone()),
-                    Ty::FnDef { substs, sig, .. } => {
+                    Ty::FnDef { substs, def, .. } => {
+                        let sig = self.db.callable_item_signature(*def);
                         let ret_ty = sig.ret().clone().subst(&substs);
                         let param_tys =
                             sig.params().iter().map(|ty| ty.clone().subst(&substs)).collect();
@@ -768,7 +769,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             (Ty::Unknown, Vec::new(), sig.ret().clone())
                         }
                     }
-                    Ty::FnDef { substs, sig, .. } => {
+                    Ty::FnDef { substs, def, .. } => {
+                        let sig = self.db.callable_item_signature(*def);
                         let ret_ty = sig.ret().clone().subst(&substs);
 
                         if !sig.params().is_empty() {

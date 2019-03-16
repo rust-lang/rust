@@ -212,6 +212,15 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
     }
 }
 
+/// Build the signature of a callable item (function, struct or enum variant).
+pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
+    match def {
+        CallableDef::Function(f) => fn_sig_for_fn(db, f),
+        CallableDef::Struct(s) => fn_sig_for_struct_constructor(db, s),
+        CallableDef::EnumVariant(e) => fn_sig_for_enum_variant_constructor(db, e),
+    }
+}
+
 /// Build the type of a specific field of a struct or enum variant.
 pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
@@ -236,10 +245,9 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
-    let sig = fn_sig_for_fn(db, def);
     let generics = def.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
 }
 
 /// Build the declared type of a const.
@@ -279,10 +287,9 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     if var_data.fields().is_none() {
         return type_for_struct(db, def); // Unit struct
     }
-    let sig = fn_sig_for_struct_constructor(db, def);
     let generics = def.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> FnSig {
@@ -308,10 +315,9 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     if var_data.fields().is_none() {
         return type_for_enum(db, def.parent_enum(db)); // Unit variant
     }
-    let sig = fn_sig_for_enum_variant_constructor(db, def);
     let generics = def.parent_enum(db).generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, substs }
+    Ty::FnDef { def: def.into(), substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {

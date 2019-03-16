@@ -12,7 +12,7 @@ use crate::{
     macros::MacroExpansion,
     module_tree::ModuleTree,
     nameres::{ItemMap, lower::{LoweredModule, ImportSourceMap}},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
@@ -104,6 +104,9 @@ pub trait HirDatabase: PersistentHirDatabase {
 
     #[salsa::invoke(crate::ty::type_for_field)]
     fn type_for_field(&self, field: StructField) -> Ty;
+
+    #[salsa::invoke(crate::ty::callable_item_sig)]
+    fn callable_item_signature(&self, def: CallableDef) -> FnSig;
 
     #[salsa::invoke(crate::expr::body_with_source_map_query)]
     fn body_with_source_map(
