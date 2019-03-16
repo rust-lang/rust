@@ -9,36 +9,6 @@ use ra_fmt::{leading_indent, reindent};
 
 use itertools::Itertools;
 
-/// Given an `ast::ImplBlock`, resolves the target trait (the one being
-/// implemented) to a `ast::TraitDef`.
-fn resolve_target_trait_def(
-    db: &impl HirDatabase,
-    resolver: &Resolver,
-    impl_block: &ast::ImplBlock,
-) -> Option<TreeArc<ast::TraitDef>> {
-    let ast_path = impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?;
-    let hir_path = ast_path.path().and_then(hir::Path::from_ast)?;
-
-    match resolver.resolve_path(db, &hir_path).take_types() {
-        Some(hir::Resolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
-        _ => None,
-    }
-}
-
-fn build_func_body(def: &ast::FnDef) -> String {
-    let mut buf = String::new();
-
-    for child in def.syntax().children() {
-        if child.kind() == SyntaxKind::SEMI {
-            buf.push_str(" { unimplemented!() }")
-        } else {
-            child.text().push_to(&mut buf);
-        }
-    }
-
-    buf.trim_end().to_string()
-}
-
 pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let impl_node = ctx.node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
@@ -111,6 +81,36 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
     });
 
     ctx.build()
+}
+
+/// Given an `ast::ImplBlock`, resolves the target trait (the one being
+/// implemented) to a `ast::TraitDef`.
+fn resolve_target_trait_def(
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    impl_block: &ast::ImplBlock,
+) -> Option<TreeArc<ast::TraitDef>> {
+    let ast_path = impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?;
+    let hir_path = ast_path.path().and_then(hir::Path::from_ast)?;
+
+    match resolver.resolve_path(db, &hir_path).take_types() {
+        Some(hir::Resolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
+        _ => None,
+    }
+}
+
+fn build_func_body(def: &ast::FnDef) -> String {
+    let mut buf = String::new();
+
+    for child in def.syntax().children() {
+        if child.kind() == SyntaxKind::SEMI {
+            buf.push_str(" { unimplemented!() }")
+        } else {
+            child.text().push_to(&mut buf);
+        }
+    }
+
+    buf.trim_end().to_string()
 }
 
 #[cfg(test)]
