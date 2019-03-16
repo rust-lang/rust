@@ -24,10 +24,10 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::map::DisambiguatedDefPathData;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::DisambiguatedDefPathData;
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
@@ -43,7 +43,7 @@ use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
-use syntax::symbol::{keywords, Symbol, LocalInternedString};
+use syntax::symbol::{keywords, LocalInternedString, Symbol};
 
 use crate::reexport::*;
 
@@ -116,31 +116,22 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self.tcx
     }
 
-    fn print_region(
-        self,
-        _region: ty::Region<'_>,
-        ) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
         Ok(())
     }
 
-    fn print_type(
-        self,
-        _ty: Ty<'tcx>,
-        ) -> Result<Self::Type, Self::Error> {
+    fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         Ok(())
     }
 
     fn print_dyn_existential(
         self,
         _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
-        ) -> Result<Self::DynExistential, Self::Error> {
+    ) -> Result<Self::DynExistential, Self::Error> {
         Ok(())
     }
 
-    fn path_crate(
-        self,
-        cnum: CrateNum,
-        ) -> Result<Self::Path, Self::Error> {
+    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         Ok(vec![self.tcx.original_crate_name(cnum).as_str()])
     }
 
@@ -148,7 +139,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self::Path, Self::Error> {
         // This shouldn't ever be needed, but just in case:
         Ok(vec![match trait_ref {
             Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
@@ -162,14 +153,12 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         _disambiguated_data: &DisambiguatedDefPathData,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
-        ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self::Path, Self::Error> {
         let mut path = print_prefix(self)?;
 
         // This shouldn't ever be needed, but just in case:
         path.push(match trait_ref {
-            Some(trait_ref) => {
-                Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str()
-            }
+            Some(trait_ref) => Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str(),
             None => Symbol::intern(&format!("<impl {}>", self_ty)).as_str(),
         });
 
@@ -180,7 +169,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
-        ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self::Path, Self::Error> {
         let mut path = print_prefix(self)?;
         path.push(disambiguated_data.data.as_interned_str().as_str());
         Ok(path)
@@ -190,7 +179,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         _args: &[Kind<'tcx>],
-        ) -> Result<Self::Path, Self::Error> {
+    ) -> Result<Self::Path, Self::Error> {
         print_prefix(self)
     }
 }
@@ -219,7 +208,12 @@ pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path
 /// };
 /// ```
 pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<&'static str> {
-    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap().iter().map(LocalInternedString::get).collect()
+    AbsolutePathPrinter { tcx }
+        .print_def_path(def_id, &[])
+        .unwrap()
+        .iter()
+        .map(LocalInternedString::get)
+        .collect()
 }
 
 /// Checks if type is struct, enum or union type with the given def path.

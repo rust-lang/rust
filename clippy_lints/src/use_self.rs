@@ -4,8 +4,8 @@ use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Vi
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
 use rustc::ty::DefIdTree;
+use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
 
