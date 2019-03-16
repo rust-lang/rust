@@ -765,10 +765,14 @@ impl<T> RefCell<T> {
 }
 
 impl<T: ?Sized> RefCell<T> {
-    /// Query the current state of this `RefCell`
+    /// Queries the current state of this `RefCell`.
     ///
-    /// The returned value can be dispatched on to determine if a call to
-    /// `borrow` or `borrow_mut` would succeed.
+    /// A return value of `BorrowState::Writing` signals that this `RefCell`
+    /// is currently mutably borrowed, while `BorrowState::Reading` signals
+    /// that it is immutably borrowed.
+    ///
+    /// This is mostly useful in rare use cases with `RefCell::as_ptr` to
+    /// access the data without changing its borrow state, use with care.
     ///
     /// # Examples
     ///
@@ -780,9 +784,9 @@ impl<T: ?Sized> RefCell<T> {
     /// let c = RefCell::new(5);
     ///
     /// match c.borrow_state() {
-    ///     BorrowState::Writing => println!("Cannot be borrowed"),
-    ///     BorrowState::Reading => println!("Cannot be borrowed mutably"),
-    ///     BorrowState::Unused => println!("Can be borrowed (mutably as well)"),
+    ///     BorrowState::Writing => println!("currently borrowed mutably"),
+    ///     BorrowState::Reading => println!("currently borrowed immutably"),
+    ///     BorrowState::Unused => println!("not borrowed"),
     /// }
     /// ```
     #[unstable(feature = "borrow_state", issue = "27733")]
