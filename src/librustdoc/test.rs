@@ -371,8 +371,7 @@ pub fn make_test(s: &str,
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = crate::syntax::with_globals(|| {
-        use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
-        use crate::syntax_pos::FileName;
+        use crate::syntax::{parse::{self, ParseSess}, source_map::FilePathMapping};
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
