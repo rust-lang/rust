@@ -379,8 +379,8 @@ impl VisibilityLike for Option<AccessLevel> {
     // (which require reaching the `DefId`s in them).
     const SHALLOW: bool = true;
     fn new_min<'a, 'tcx>(find: &FindMin<'a, 'tcx, Self>, def_id: DefId) -> Self {
-        cmp::min(if let Some(node_id) = find.tcx.hir().as_local_node_id(def_id) {
-            find.access_levels.map.get(&node_id).cloned()
+        cmp::min(if let Some(hir_id) = find.tcx.hir().as_local_hir_id(def_id) {
+            find.access_levels.map.get(&hir_id).cloned()
         } else {
             Self::MAX
         }, find.min)
@@ -410,8 +410,7 @@ struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn get(&self, id: hir::HirId) -> Option<AccessLevel> {
-        let node_id = self.tcx.hir().hir_to_node_id(id);
-        self.access_levels.map.get(&node_id).cloned()
+        self.access_levels.map.get(&id).cloned()
     }
 
     // Updates node level and returns the updated level.
@@ -419,8 +418,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         let old_level = self.get(id);
         // Accessibility levels can only grow.
         if level > old_level {
-            let node_id = self.tcx.hir().hir_to_node_id(id);
-            self.access_levels.map.insert(node_id, level.unwrap());
+            self.access_levels.map.insert(id, level.unwrap());
             self.changed = true;
             level
         } else {
@@ -1197,8 +1195,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn trait_is_public(&self, trait_id: hir::HirId) -> bool {
         // FIXME: this would preferably be using `exported_items`, but all
         // traits are exported currently (see `EmbargoVisitor.exported_trait`).
-        let node_id = self.tcx.hir().hir_to_node_id(trait_id);
-        self.access_levels.is_public(node_id)
+        self.access_levels.is_public(trait_id)
     }
 
     fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
@@ -1210,8 +1207,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn item_is_public(&self, id: &hir::HirId, vis: &hir::Visibility) -> bool {
-        let node_id = self.tcx.hir().hir_to_node_id(*id);
-        self.access_levels.is_reachable(node_id) || vis.node.is_pub()
+        self.access_levels.is_reachable(*id) || vis.node.is_pub()
     }
 }
 
@@ -1325,8 +1321,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                          hir::ImplItemKind::Const(..) |
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(
-                                                self.tcx.hir().hir_to_node_id(
-                                                    impl_item_ref.id.hir_id))
+                                                impl_item_ref.id.hir_id)
                                          }
                                          hir::ImplItemKind::Existential(..) |
                                          hir::ImplItemKind::Type(_) => false,
@@ -1455,8 +1450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
-        let node_id = self.tcx.hir().hir_to_node_id(item.hir_id);
-        if self.access_levels.is_reachable(node_id) {
+        if self.access_levels.is_reachable(item.hir_id) {
             intravisit::walk_foreign_item(self, item)
         }
     }
@@ -1474,8 +1468,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        let node_id = self.tcx.hir().hir_to_node_id(v.node.data.hir_id());
-        if self.access_levels.is_reachable(node_id) {
+        if self.access_levels.is_reachable(v.node.data.hir_id()) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
