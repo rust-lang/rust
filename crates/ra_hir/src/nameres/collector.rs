@@ -213,18 +213,22 @@ where
                 }
             }
         } else {
-            let last_segment = import.path.segments.last().unwrap();
-            let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
-            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+            match import.path.segments.last() {
+                Some(last_segment) => {
+                    let name = import.alias.clone().unwrap_or_else(|| last_segment.name.clone());
+                    log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
-            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-            if import.is_extern_crate && module_id == self.def_map.root {
-                if let Some(def) = def.take_types() {
-                    self.def_map.extern_prelude.insert(name.clone(), def);
+                    // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+                    if import.is_extern_crate && module_id == self.def_map.root {
+                        if let Some(def) = def.take_types() {
+                            self.def_map.extern_prelude.insert(name.clone(), def);
+                        }
+                    }
+                    let resolution = Resolution { def, import: Some(import_id) };
+                    self.update(module_id, Some(import_id), &[(name, resolution)]);
                 }
+                None => tested_by!(bogus_paths),
             }
-            let resolution = Resolution { def, import: Some(import_id) };
-            self.update(module_id, Some(import_id), &[(name, resolution)]);
         }
     }
 

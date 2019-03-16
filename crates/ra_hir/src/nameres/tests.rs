@@ -97,6 +97,32 @@ E: t
 }
 
 #[test]
+fn bogus_paths() {
+    covers!(bogus_paths);
+    let map = def_map(
+        "
+        //- /lib.rs
+        mod foo;
+        struct S;
+        use self;
+
+        //- /foo/mod.rs
+        use super;
+        use crate;
+
+        ",
+    );
+    assert_snapshot_matches!(map, @r###"
+crate
+foo: t
+S: t v
+
+crate::foo
+"###
+    )
+}
+
+#[test]
 fn use_as() {
     let map = def_map(
         "

@@ -30,13 +30,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[macro_export]
 macro_rules! tested_by {
-    ($ident:ident) => {
+    ($ident:ident) => {{
         #[cfg(test)]
         {
             // sic! use call-site crate
             crate::marks::$ident.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
-    };
+    }};
 }
 
 #[macro_export]

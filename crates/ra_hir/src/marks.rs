@@ -1,4 +1,5 @@
 test_utils::marks!(
+    bogus_paths
     name_res_works_for_broken_modules
     can_import_enum_variant
     type_var_cycles_resolve_completely
