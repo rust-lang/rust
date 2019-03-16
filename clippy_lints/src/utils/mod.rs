@@ -104,6 +104,7 @@ pub struct AbsolutePathPrinter<'a, 'tcx> {
 
 use rustc::ty::print::Printer;
 
+#[allow(clippy::diverging_sub_expression)]
 impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
     type Error = !;
 
