@@ -64,7 +64,7 @@ pub fn clif_type_from_ty<'a, 'tcx: 'a>(
                 return None;
             }
         }
-        ty::Param(_) => bug!("{:?}: {:?}", ty, ty.sty),
+        ty::Param(_) => bug!("ty param {:?}", ty),
         _ => return None,
     })
 }
@@ -335,7 +335,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     // &'a T -> &'b T is allowed
                 }
                 (ty::Ref(_, _, MutImmutable), ty::Ref(_, _, MutMutable)) => {
-                    panic!("Cant assign value of type {} to place of type {}", from_ty.sty, to_ty.sty)
+                    panic!("Cant assign value of type {} to place of type {}", from_ty, to_ty)
                 }
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
                     let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
@@ -374,8 +374,8 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                         from_ty,
                         to_ty,
                         "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
-                        from_ty.sty,
-                        to_ty.sty,
+                        from_ty,
+                        to_ty,
                         fx,
                     );
                 }
