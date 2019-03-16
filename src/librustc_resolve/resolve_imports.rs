@@ -1252,11 +1252,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         target_bindings: &PerNS<Cell<Option<&'b NameBinding<'b>>>>,
         target: Ident,
     ) {
-        // Check if we are at the root of a macro expansion and skip if we are.
+        // Skip if the import was produced by a macro.
         if directive.parent_scope.expansion != Mark::root() {
             return;
         }
 
+        // Skip if we are inside a named module (in contrast to an anonymous
+        // module defined by a block).
         if let ModuleKind::Def(_, _) = directive.parent_scope.module.kind {
             return;
         }
