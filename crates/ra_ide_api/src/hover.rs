@@ -3,6 +3,7 @@ use ra_syntax::{
     AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
     algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
 };
+use hir::HirDisplay;
 
 use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, NavigationTarget};
 
@@ -134,9 +135,9 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     let infer = function.infer(db);
     let source_map = function.body_source_map(db);
     if let Some(expr) = ast::Expr::cast(node).and_then(|e| source_map.node_expr(e)) {
-        Some(infer[expr].to_string())
+        Some(infer[expr].display(db).to_string())
     } else if let Some(pat) = ast::Pat::cast(node).and_then(|p| source_map.node_pat(p)) {
-        Some(infer[pat].to_string())
+        Some(infer[pat].display(db).to_string())
     } else {
         None
     }

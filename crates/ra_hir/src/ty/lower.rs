@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use crate::{
-    Function, Struct, StructField, Enum, EnumVariant, Path, Name,
+    Function, Struct, StructField, Enum, EnumVariant, Path,
     ModuleDef, TypeAlias,
     Const, Static,
     HirDatabase,
@@ -232,13 +232,12 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let signature = def.signature(db);
     let resolver = def.resolver(db);
     let generics = def.generic_params(db);
-    let name = def.name(db);
     let input =
         signature.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
     let output = Ty::from_hir(db, &resolver, signature.ret_type());
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, name, substs }
+    Ty::FnDef { def: def.into(), sig, substs }
 }
 
 /// Build the declared type of a const.
@@ -266,7 +265,6 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     };
     let resolver = def.resolver(db);
     let generics = def.generic_params(db);
-    let name = def.name(db).unwrap_or_else(Name::missing);
     let input = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
@@ -274,7 +272,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     let output = type_for_struct(db, def);
     let sig = Arc::new(FnSig { input, output });
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), sig, name, substs }
+    Ty::FnDef { def: def.into(), sig, substs }
 }
 
 /// Build the type of a tuple enum variant constructor.
@@ -286,7 +284,6 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     };
     let resolver = def.parent_enum(db).resolver(db);
     let generics = def.parent_enum(db).generic_params(db);
-    let name = def.name(db).unwrap_or_else(Name::missing);
     let input = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
@@ -294,7 +291,7 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     let substs = make_substs(&generics);
     let output = type_for_enum(db, def.parent_enum(db)).subst(&substs);
     let sig = Arc::new(FnSig { input, output });
-    Ty::FnDef { def: def.into(), sig, name, substs }
+    Ty::FnDef { def: def.into(), sig, substs }
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
@@ -310,20 +307,12 @@ fn make_substs(generics: &GenericParams) -> Substs {
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
     let generics = s.generic_params(db);
-    Ty::Adt {
-        def_id: s.into(),
-        name: s.name(db).unwrap_or_else(Name::missing),
-        substs: make_substs(&generics),
-    }
+    Ty::Adt { def_id: s.into(), substs: make_substs(&generics) }
 }
 
 fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     let generics = s.generic_params(db);
-    Ty::Adt {
-        def_id: s.into(),
-        name: s.name(db).unwrap_or_else(Name::missing),
-        substs: make_substs(&generics),
-    }
+    Ty::Adt { def_id: s.into(), substs: make_substs(&generics) }
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {

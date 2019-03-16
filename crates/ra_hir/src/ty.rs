@@ -9,16 +9,16 @@ pub(crate) mod method_resolution;
 mod op;
 mod lower;
 mod infer;
+pub(crate) mod display;
 
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use join_to_string::join;
-
-use crate::{Name, AdtDef, type_ref::Mutability};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase};
 
 pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field};
 pub(crate) use infer::{infer, InferenceResult, InferTy};
+use display::{HirDisplay, HirFormatter};
 
 /// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
 ///
@@ -42,8 +42,6 @@ pub enum Ty {
     Adt {
         /// The definition of the struct/enum.
         def_id: AdtDef,
-        /// The name, for displaying.
-        name: Name,
         /// Substitutions for the generic parameters of the type.
         substs: Substs,
     },
@@ -79,8 +77,6 @@ pub enum Ty {
     FnDef {
         /// The definition of the function / constructor.
         def: CallableDef,
-        /// For display
-        name: Name,
         /// Parameters and return type
         sig: Arc<FnSig>,
         /// Substitutions for the generic parameters of the type
@@ -265,8 +261,8 @@ impl Ty {
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(self, substs: Substs) -> Ty {
         match self {
-            Ty::Adt { def_id, name, .. } => Ty::Adt { def_id, name, substs },
-            Ty::FnDef { def, name, sig, .. } => Ty::FnDef { def, name, sig, substs },
+            Ty::Adt { def_id, .. } => Ty::Adt { def_id, substs },
+            Ty::FnDef { def, sig, .. } => Ty::FnDef { def, sig, substs },
             _ => self,
         }
     }
@@ -297,50 +293,80 @@ impl Ty {
     }
 }
 
-impl fmt::Display for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl HirDisplay for &Ty {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        HirDisplay::hir_fmt(*self, f)
+    }
+}
+
+impl HirDisplay for Ty {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
-            Ty::Bool => write!(f, "bool"),
-            Ty::Char => write!(f, "char"),
-            Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
-            Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
-            Ty::Str => write!(f, "str"),
-            Ty::Slice(t) | Ty::Array(t) => write!(f, "[{}]", t),
-            Ty::RawPtr(t, m) => write!(f, "*{}{}", m.as_keyword_for_ptr(), t),
-            Ty::Ref(t, m) => write!(f, "&{}{}", m.as_keyword_for_ref(), t),
-            Ty::Never => write!(f, "!"),
+            Ty::Bool => write!(f, "bool")?,
+            Ty::Char => write!(f, "char")?,
+            Ty::Int(t) => write!(f, "{}", t.ty_to_string())?,
+            Ty::Float(t) => write!(f, "{}", t.ty_to_string())?,
+            Ty::Str => write!(f, "str")?,
+            Ty::Slice(t) | Ty::Array(t) => {
+                write!(f, "[{}]", t.display(f.db))?;
+            }
+            Ty::RawPtr(t, m) => {
+                write!(f, "*{}{}", m.as_keyword_for_ptr(), t.display(f.db))?;
+            }
+            Ty::Ref(t, m) => {
+                write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
+            }
+            Ty::Never => write!(f, "!")?,
             Ty::Tuple(ts) => {
                 if ts.len() == 1 {
-                    write!(f, "({},)", ts[0])
+                    write!(f, "({},)", ts[0].display(f.db))?;
                 } else {
-                    join(ts.iter()).surround_with("(", ")").separator(", ").to_fmt(f)
+                    write!(f, "(")?;
+                    f.write_joined(&**ts, ", ")?;
+                    write!(f, ")")?;
                 }
             }
             Ty::FnPtr(sig) => {
-                join(sig.input.iter()).surround_with("fn(", ")").separator(", ").to_fmt(f)?;
-                write!(f, " -> {}", sig.output)
+                write!(f, "fn(")?;
+                f.write_joined(&sig.input, ", ")?;
+                write!(f, ") -> {}", sig.output.display(f.db))?;
             }
-            Ty::FnDef { def, name, substs, sig, .. } => {
+            Ty::FnDef { def, substs, sig, .. } => {
+                let name = match def {
+                    CallableDef::Function(ff) => ff.name(f.db),
+                    CallableDef::Struct(s) => s.name(f.db).unwrap_or_else(Name::missing),
+                    CallableDef::EnumVariant(e) => e.name(f.db).unwrap_or_else(Name::missing),
+                };
                 match def {
                     CallableDef::Function(_) => write!(f, "fn {}", name)?,
                     CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
                 }
                 if substs.0.len() > 0 {
-                    join(substs.0.iter()).surround_with("<", ">").separator(", ").to_fmt(f)?;
+                    write!(f, "<")?;
+                    f.write_joined(&*substs.0, ", ")?;
+                    write!(f, ">")?;
                 }
-                join(sig.input.iter()).surround_with("(", ")").separator(", ").to_fmt(f)?;
-                write!(f, " -> {}", sig.output)
+                write!(f, "(")?;
+                f.write_joined(&sig.input, ", ")?;
+                write!(f, ") -> {}", sig.output.display(f.db))?;
             }
-            Ty::Adt { name, substs, .. } => {
+            Ty::Adt { def_id, substs, .. } => {
+                let name = match def_id {
+                    AdtDef::Struct(s) => s.name(f.db),
+                    AdtDef::Enum(e) => e.name(f.db),
+                }
+                .unwrap_or_else(Name::missing);
                 write!(f, "{}", name)?;
                 if substs.0.len() > 0 {
-                    join(substs.0.iter()).surround_with("<", ">").separator(", ").to_fmt(f)?;
+                    write!(f, "<")?;
+                    f.write_joined(&*substs.0, ", ")?;
+                    write!(f, ">")?;
                 }
-                Ok(())
             }
-            Ty::Param { name, .. } => write!(f, "{}", name),
-            Ty::Unknown => write!(f, "{{unknown}}"),
-            Ty::Infer(..) => write!(f, "_"),
+            Ty::Param { name, .. } => write!(f, "{}", name)?,
+            Ty::Unknown => write!(f, "{{unknown}}")?,
+            Ty::Infer(..) => write!(f, "_")?,
         }
+        Ok(())
     }
 }
