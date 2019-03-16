@@ -1,13 +1,3 @@
-warning: duplicate auto trait `::marker[0]::Send[0]` found in type parameter bounds
-  --> $DIR/type-alias-bounds.rs:8:14
-   |
-LL | type SVec<T: Send + Send> = Vec<T>;
-   |              ^^^^   ^^^^ subsequent use of auto trait
-   |              |
-   |              first use of auto trait
-   |
-   = note: #[warn(duplicate_auto_traits_in_bounds)] on by default
-
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:8:14
    |

@@ -18,5 +18,5 @@ fn record_type<Id: AstId>(i: Id::Untyped) -> u8 {
 }
 
 pub fn main() {
-   assert_eq!(record_type::<u32>(3), 42);
+    assert_eq!(record_type::<u32>(3), 42);
 }
