@@ -2,7 +2,7 @@ use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 
-use errors::Applicability;
+use errors::{Applicability, DiagnosticBuilder};
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -232,6 +232,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
+    /// Give appropriate suggestion when encountering `||{/* not callable */}()`, where the
+    /// likely intention is to call the closure, suggest `(||{})()`. (#55851)
+    fn identify_bad_closure_def_and_call(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        hir_id: hir::HirId,
+        callee_node: &hir::ExprKind,
+        callee_span: Span,
+    ) {
+        let hir_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let parent_node = self.tcx.hir().get_by_hir_id(hir_id);
+        if let (
+            hir::Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
+            hir::ExprKind::Block(..),
+        ) = (parent_node, callee_node) {
+            let start = sp.shrink_to_lo();
+            let end = self.tcx.sess.source_map().next_point(callee_span);
+            err.multipart_suggestion(
+                "if you meant to create this closure and immediately call it, surround the \
+                closure with parenthesis",
+                vec![(start, "(".to_string()), (end, ")".to_string())],
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     fn confirm_builtin_call(
         &self,
         call_expr: &hir::Expr,
@@ -266,6 +292,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             Some(ref path) => format!("enum variant `{}`", path),
                             None => format!("`{}`", callee_ty),
                         }
+                    );
+
+                    self.identify_bad_closure_def_and_call(
+                        &mut err,
+                        call_expr.hir_id,
+                        &callee.node,
+                        callee.span,
                     );
 
                     if let Some(ref path) = unit_variant {
