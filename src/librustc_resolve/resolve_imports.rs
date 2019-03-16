@@ -1306,21 +1306,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if !is_redundant.is_empty() &&
             is_redundant.present_items().all(|is_redundant| is_redundant)
         {
-            self.session.buffer_lint(
+            self.session.buffer_lint_with_diagnostic(
                 REDUNDANT_IMPORT,
                 directive.id,
                 directive.span,
                 &format!("the item `{}` is imported redundantly", ident),
+                BuiltinLintDiagnostics::RedundantImport(
+                    redundant_span.present_items().collect(),
+                    ident,
+                ),
             );
-
-            for span in redundant_span.present_items() {
-                self.session.buffer_lint(
-                    REDUNDANT_IMPORT,
-                    directive.id,
-                    span,
-                    "another import"
-                );
-            }
         }
     }
 
