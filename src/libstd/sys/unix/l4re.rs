@@ -292,6 +292,10 @@ pub mod net {
 
         pub fn into_socket(self) -> Socket { self.inner }
 
+        pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+            unimpl!();
+        }
+
         pub fn socket_addr(&self) -> io::Result<SocketAddr> {
             unimpl!();
         }
@@ -463,4 +467,3 @@ pub mod net {
         }
     }
 }
-
