@@ -66,7 +66,9 @@ matrix:
       env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1 NO_DOCKER=1
     - name: "Game Boy Advance - build libcore only"
       env: NORUN=1 NOSTD=1 NO_DOCKER=1
-      install: cargo install xargo
+      install:
+        - rustup component add rust-src
+        - cargo install xargo
       script:
         # Obtain the devkitPro tools, using `target/` as a temp directory. This
         # is required because we need to use their linker. `lld` uses the `BLX`
