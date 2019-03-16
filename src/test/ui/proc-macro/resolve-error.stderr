@@ -20,7 +20,7 @@ error: cannot find derive macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:44:10
    |
 LL | #[derive(attr_proc_macra)]
-   |          ^^^^^^^^^^^^^^^ help: try: `attr_proc_macro`
+   |          ^^^^^^^^^^^^^^^
 
 error: cannot find macro `FooWithLongNama!` in this scope
   --> $DIR/resolve-error.rs:49:5
