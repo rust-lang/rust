@@ -2,7 +2,7 @@ warning: the item `Bar` is imported redundantly
   --> $DIR/use-redundant.rs:14:9
    |
 LL | use crate::foo::Bar;
-   |     --------------- the item `Bar` was already imported here
+   |     --------------- the item `Bar` was imported here
 ...
 LL |     use crate::foo::Bar;
    |         ^^^^^^^^^^^^^^^
