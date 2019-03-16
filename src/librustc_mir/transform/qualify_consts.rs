@@ -499,6 +499,8 @@ impl Qualif for IsNotConst {
 
 // Refers to temporaries which cannot be promoted as
 // promote_consts decided they weren't simple enough.
+// FIXME(oli-obk,eddyb): Remove this flag entirely and
+// solely process this information via `IsNotConst`.
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
@@ -507,7 +509,7 @@ impl Qualif for IsNotPromotable {
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
         callee: &Operand<'tcx>,
-        _args: &[Operand<'tcx>],
+        args: &[Operand<'tcx>],
         _return_ty: Ty<'tcx>,
     ) -> bool {
         if cx.mode == Mode::Fn {
@@ -520,10 +522,7 @@ impl Qualif for IsNotPromotable {
             }
         }
 
-        // FIXME(eddyb) do we need "not promotable" in anything
-        // other than `Mode::Fn` by any chance?
-
-        false
+        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
     }
 }
 

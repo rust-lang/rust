@@ -47,6 +47,14 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
+    fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
+        for promoted in mir.promoted.iter_mut() {
+            self.visit_mir(promoted);
+        }
+
+        self.super_mir(mir);
+    }
+
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         debug!("visit_ty(ty={:?}, ty_context={:?})", ty, ty_context);
 

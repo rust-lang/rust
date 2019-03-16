@@ -1,0 +1,23 @@
+error: incorrect close delimiter: `}`
+  --> $DIR/unclosed_delim_mod.rs:5:1
+   |
+LL | pub fn new() -> Result<Value, ()> {
+   |                                   - close delimiter possibly meant for this
+LL |     Ok(Value {
+   |       - un-closed delimiter
+LL |     }
+LL | }
+   | ^ incorrect close delimiter
+
+error[E0308]: mismatched types
+  --> $DIR/unclosed-delimiter-in-dep.rs:4:20
+   |
+LL |     let _: usize = unclosed_delim_mod::new();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ expected usize, found enum `std::result::Result`
+   |
+   = note: expected type `usize`
+              found type `std::result::Result<unclosed_delim_mod::Value, ()>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

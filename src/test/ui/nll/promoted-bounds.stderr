@@ -1,0 +1,15 @@
+error[E0597]: `l` does not live long enough
+  --> $DIR/promoted-bounds.rs:21:17
+   |
+LL |     let ptr = {
+   |         --- borrow later stored here
+LL |         let l = 3;
+LL |         let b = &l; //~ ERROR does not live long enough
+   |                 ^^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `l` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

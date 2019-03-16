@@ -6,6 +6,7 @@ use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
 use crate::symbol::Symbol;
+use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
@@ -141,8 +142,14 @@ pub fn parse_stream_from_source_str(
     source: String,
     sess: &ParseSess,
     override_span: Option<Span>,
-) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
-    source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
+) -> TokenStream {
+    let (stream, mut errors) = source_file_to_stream(
+        sess,
+        sess.source_map().new_source_file(name, source),
+        override_span,
+    );
+    emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
+    stream
 }
 
 /// Creates a new parser from a source string.
