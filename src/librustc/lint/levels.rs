@@ -194,7 +194,7 @@ impl<'a> LintLevelsBuilder<'a> {
             struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
-            let level = match Level::from_str(&attr.name().as_str()) {
+            let level = match attr.ident_str().and_then(|name| Level::from_str(name)) {
                 None => continue,
                 Some(lvl) => lvl,
             };
@@ -221,7 +221,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 match item.node {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.ident == "reason" {
+                        if item.path == "reason" {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
@@ -255,13 +255,13 @@ impl<'a> LintLevelsBuilder<'a> {
             }
 
             for li in metas {
-                let word = match li.word() {
-                    Some(word) => word,
-                    None => {
-                        let mut err = bad_attr(li.span);
+                let meta_item = match li.meta_item() {
+                    Some(meta_item) if meta_item.is_word() => meta_item,
+                    _ => {
+                        let mut err = bad_attr(li.span());
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
-                                if item.ident == "reason" {
+                                if item.path == "reason" {
                                     err.help("reason in lint attribute must come last");
                                 }
                             }
@@ -270,26 +270,27 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue;
                     }
                 };
-                let tool_name = if let Some(lint_tool) = word.is_scoped() {
-                    if !attr::is_known_lint_tool(lint_tool) {
+                let tool_name = if meta_item.path.segments.len() > 1 {
+                    let tool_ident = meta_item.path.segments[0].ident;
+                    if !attr::is_known_lint_tool(tool_ident) {
                         span_err!(
                             sess,
-                            lint_tool.span,
+                            tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            word.ident
+                            meta_item.path
                         );
                         continue;
                     }
 
-                    Some(lint_tool.as_str())
+                    Some(tool_ident.as_str())
                 } else {
                     None
                 };
-                let name = word.name();
+                let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span, reason);
+                        let src = LintSource::Node(name, li.span(), reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -300,7 +301,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintSource::Node(
-                                    Symbol::intern(complete_name), li.span, reason
+                                    Symbol::intern(complete_name), li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -322,18 +323,18 @@ impl<'a> LintLevelsBuilder<'a> {
                                     lint,
                                     lvl,
                                     src,
-                                    Some(li.span.into()),
+                                    Some(li.span().into()),
                                     &msg,
                                 );
                                 err.span_suggestion(
-                                    li.span,
+                                    li.span(),
                                     "change it to",
                                     new_lint_name.to_string(),
                                     Applicability::MachineApplicable,
                                 ).emit();
 
                                 let src = LintSource::Node(
-                                    Symbol::intern(&new_lint_name), li.span, reason
+                                    Symbol::intern(&new_lint_name), li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -360,11 +361,11 @@ impl<'a> LintLevelsBuilder<'a> {
                                                               lint,
                                                               level,
                                                               src,
-                                                              Some(li.span.into()),
+                                                              Some(li.span().into()),
                                                               &msg);
                         if let Some(new_name) = renamed {
                             err.span_suggestion(
-                                li.span,
+                                li.span(),
                                 "use the new name",
                                 new_name,
                                 Applicability::MachineApplicable
@@ -383,12 +384,12 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 lint,
                                                 level,
                                                 src,
-                                                Some(li.span.into()),
+                                                Some(li.span().into()),
                                                 &msg);
 
                         if let Some(suggestion) = suggestion {
                             db.span_suggestion(
-                                li.span,
+                                li.span(),
                                 "did you mean",
                                 suggestion.to_string(),
                                 Applicability::MachineApplicable,

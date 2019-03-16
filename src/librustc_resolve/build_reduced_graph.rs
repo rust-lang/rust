@@ -463,10 +463,9 @@ impl<'a> Resolver<'a> {
                 if let Some(attr) = attr::find_by_name(&item.attrs, "proc_macro_derive") {
                     if let Some(trait_attr) =
                             attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-                        if let Some(ident) = trait_attr.name().map(Ident::with_empty_ctxt) {
-                            let sp = trait_attr.span;
+                        if let Some(ident) = trait_attr.ident() {
                             let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
-                            self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
+                            self.define(parent, ident, MacroNS, (def, vis, ident.span, expansion));
                         }
                     }
                 }
@@ -812,14 +811,14 @@ impl<'a> Resolver<'a> {
                             break;
                         }
                         MetaItemKind::List(nested_metas) => for nested_meta in nested_metas {
-                            match nested_meta.word() {
-                                Some(word) => single_imports.push((word.name(), word.span)),
-                                None => ill_formed(nested_meta.span),
+                            match nested_meta.ident() {
+                                Some(ident) if nested_meta.is_word() => single_imports.push(ident),
+                                _ => ill_formed(nested_meta.span()),
                             }
                         }
                         MetaItemKind::NameValue(..) => ill_formed(meta.span),
                     }
-                    None => ill_formed(attr.span()),
+                    None => ill_formed(attr.span),
                 }
             }
         }
@@ -850,23 +849,23 @@ impl<'a> Resolver<'a> {
                 self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
-            for (name, span) in single_imports.iter().cloned() {
-                let ident = Ident::with_empty_ctxt(name);
+            for ident in single_imports.iter().cloned() {
                 let result = self.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
                     None,
                     false,
-                    span,
+                    ident.span,
                 );
                 if let Ok(binding) = result {
-                    let directive = macro_use_directive(span);
+                    let directive = macro_use_directive(ident.span);
                     self.potentially_unused_imports.push(directive);
                     let imported_binding = self.import(binding, directive);
-                    self.legacy_import_macro(name, imported_binding, span, allow_shadowing);
+                    self.legacy_import_macro(ident.name, imported_binding,
+                                             ident.span, allow_shadowing);
                 } else {
-                    span_err!(self.session, span, E0469, "imported macro not found");
+                    span_err!(self.session, ident.span, E0469, "imported macro not found");
                 }
             }
         }

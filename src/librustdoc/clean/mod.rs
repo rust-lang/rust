@@ -492,7 +492,7 @@ impl Item {
 
     pub fn is_non_exhaustive(&self) -> bool {
         self.attrs.other_attrs.iter()
-            .any(|a| a.name().as_str() == "non_exhaustive")
+            .any(|a| a.check_name("non_exhaustive"))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -777,15 +777,15 @@ pub struct Attributes {
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use syntax::ast::NestedMetaItemKind::MetaItem;
+        use syntax::ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.node {
             if nmis.len() == 1 {
-                if let MetaItem(ref cfg_mi) = nmis[0].node {
+                if let MetaItem(ref cfg_mi) = nmis[0] {
                     if cfg_mi.check_name("cfg") {
                         if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.node {
                             if cfg_nmis.len() == 1 {
-                                if let MetaItem(ref content_mi) = cfg_nmis[0].node {
+                                if let MetaItem(ref content_mi) = cfg_nmis[0] {
                                     return Some(content_mi);
                                 }
                             }
@@ -3683,7 +3683,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
 
         let please_inline = self.vis.node.is_pub() && self.attrs.iter().any(|a| {
-            a.name() == "doc" && match a.meta_item_list() {
+            a.check_name("doc") && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "inline"),
                 None => false,
             }
@@ -3722,7 +3722,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub() || self.attrs.iter().any(|a| {
-            a.name() == "doc" && match a.meta_item_list() {
+            a.check_name("doc") && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "no_inline") ||
                            attr::list_contains_name(&l, "hidden"),
                 None => false,

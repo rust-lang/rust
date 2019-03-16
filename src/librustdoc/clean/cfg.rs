@@ -8,7 +8,7 @@ use std::fmt::{self, Write};
 use std::ops;
 
 use syntax::symbol::Symbol;
-use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, LitKind};
+use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
 use syntax::parse::ParseSess;
 use syntax::feature_gate::Features;
 
@@ -41,9 +41,9 @@ pub struct InvalidCfgError {
 impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
     fn parse_nested(nested_cfg: &NestedMetaItem) -> Result<Cfg, InvalidCfgError> {
-        match nested_cfg.node {
-            NestedMetaItemKind::MetaItem(ref cfg) => Cfg::parse(cfg),
-            NestedMetaItemKind::Literal(ref lit) => Err(InvalidCfgError {
+        match nested_cfg {
+            NestedMetaItem::MetaItem(ref cfg) => Cfg::parse(cfg),
+            NestedMetaItem::Literal(ref lit) => Err(InvalidCfgError {
                 msg: "unexpected literal",
                 span: lit.span,
             }),
@@ -58,7 +58,13 @@ impl Cfg {
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
     pub fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        let name = cfg.name();
+        let name = match cfg.ident() {
+            Some(ident) => ident.name,
+            None => return Err(InvalidCfgError {
+                msg: "expected a single identifier",
+                span: cfg.span
+            }),
+        };
         match cfg.node {
             MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),
             MetaItemKind::NameValue(ref lit) => match lit.node {
@@ -424,7 +430,7 @@ mod test {
 
     fn dummy_meta_item_word(name: &str) -> MetaItem {
         MetaItem {
-            ident: Path::from_ident(Ident::from_str(name)),
+            path: Path::from_ident(Ident::from_str(name)),
             node: MetaItemKind::Word,
             span: DUMMY_SP,
         }
@@ -433,12 +439,12 @@ mod test {
     macro_rules! dummy_meta_item_list {
         ($name:ident, [$($list:ident),* $(,)?]) => {
             MetaItem {
-                ident: Path::from_ident(Ident::from_str(stringify!($name))),
+                path: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
-                        dummy_spanned(NestedMetaItemKind::MetaItem(
+                        NestedMetaItem::MetaItem(
                             dummy_meta_item_word(stringify!($list)),
-                        )),
+                        ),
                     )*
                 ]),
                 span: DUMMY_SP,
@@ -447,10 +453,10 @@ mod test {
 
         ($name:ident, [$($list:expr),* $(,)?]) => {
             MetaItem {
-                ident: Path::from_ident(Ident::from_str(stringify!($name))),
+                path: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
-                        dummy_spanned(NestedMetaItemKind::MetaItem($list)),
+                        NestedMetaItem::MetaItem($list),
                     )*
                 ]),
                 span: DUMMY_SP,
@@ -587,7 +593,7 @@ mod test {
             assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
             let mi = MetaItem {
-                ident: Path::from_ident(Ident::from_str("all")),
+                path: Path::from_ident(Ident::from_str("all")),
                 node: MetaItemKind::NameValue(dummy_spanned(LitKind::Str(
                     Symbol::intern("done"),
                     StrStyle::Cooked,
@@ -622,7 +628,7 @@ mod test {
     fn test_parse_err() {
         with_globals(|| {
             let mi = MetaItem {
-                ident: Path::from_ident(Ident::from_str("foo")),
+                path: Path::from_ident(Ident::from_str("foo")),
                 node: MetaItemKind::NameValue(dummy_spanned(LitKind::Bool(false))),
                 span: DUMMY_SP,
             };

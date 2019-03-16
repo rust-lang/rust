@@ -1,7 +1,7 @@
 use crate::ast::{self, Ident};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::parse::{token, ParseSess};
-use crate::symbol::{Symbol, keywords};
+use crate::symbol::Symbol;
 
 use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
 use syntax_pos::{BytePos, CharPos, Pos, Span, NO_EXPANSION};
@@ -1249,15 +1249,11 @@ impl<'a> StringReader<'a> {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
                     let ident = self.mk_ident(string);
 
-                    if is_raw_ident && (ident.is_path_segment_keyword() ||
-                                        ident.name == keywords::Underscore.name()) {
-                        self.fatal_span_(raw_start, self.pos,
-                            &format!("`r#{}` is not currently supported.", ident.name)
-                        ).raise();
-                    }
-
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);
+                        if !ident.can_be_raw() {
+                            self.err_span(span, &format!("`{}` cannot be a raw identifier", ident));
+                        }
                         self.sess.raw_identifier_spans.borrow_mut().push(span);
                     }
 

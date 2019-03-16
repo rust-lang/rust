@@ -430,13 +430,13 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             if DepNode::has_label_string(label) {
                 if out.contains(label) {
                     self.tcx.sess.span_fatal(
-                        item.span,
+                        item.span(),
                         &format!("dep-node label `{}` is repeated", label));
                 }
                 out.insert(label.to_string());
             } else {
                 self.tcx.sess.span_fatal(
-                    item.span,
+                    item.span(),
                     &format!("dep-node label `{}` not recognized", label));
             }
         }
@@ -576,13 +576,13 @@ fn expect_associated_value(tcx: TyCtxt<'_, '_, '_>, item: &NestedMetaItem) -> as
     if let Some(value) = item.value_str() {
         value
     } else {
-        let msg = if let Some(name) = item.name() {
+        let msg = if let Some(name) = item.ident_str() {
             format!("associated value expected for `{}`", name)
         } else {
             "expected an associated value".to_string()
         };
 
-        tcx.sess.span_fatal(item.span, &msg);
+        tcx.sess.span_fatal(item.span(), &msg);
     }
 }
 

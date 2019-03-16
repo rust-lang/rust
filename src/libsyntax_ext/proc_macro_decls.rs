@@ -109,52 +109,67 @@ impl<'a> CollectProcMacros<'a> {
             None => return,
         };
         if list.len() != 1 && list.len() != 2 {
-            self.handler.span_err(attr.span(),
+            self.handler.span_err(attr.span,
                                   "attribute must have either one or two arguments");
             return
         }
-        let trait_attr = &list[0];
-        let attributes_attr = list.get(1);
-        let trait_name = match trait_attr.name() {
-            Some(name) => name,
+        let trait_attr = match list[0].meta_item() {
+            Some(meta_item) => meta_item,
             _ => {
-                self.handler.span_err(trait_attr.span(), "not a meta item");
+                self.handler.span_err(list[0].span(), "not a meta item");
                 return
             }
         };
-        if !trait_attr.is_word() {
-            self.handler.span_err(trait_attr.span(), "must only be one word");
+        let trait_ident = match trait_attr.ident() {
+            Some(trait_ident) if trait_attr.is_word() => trait_ident,
+            _ => {
+                self.handler.span_err(trait_attr.span, "must only be one word");
+                return
+            }
+        };
+
+        if !trait_ident.can_be_raw() {
+            self.handler.span_err(trait_attr.span,
+                                  &format!("`{}` cannot be a name of derive macro", trait_ident));
+        }
+        if deriving::is_builtin_trait(trait_ident.name) {
+            self.handler.span_err(trait_attr.span,
+                                  "cannot override a built-in derive macro");
         }
 
-        if deriving::is_builtin_trait(trait_name) {
-            self.handler.span_err(trait_attr.span(),
-                                  "cannot override a built-in #[derive] mode");
-        }
-
+        let attributes_attr = list.get(1);
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
             if !attr.check_name("attributes") {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")
             }
             attr.meta_item_list().unwrap_or_else(|| {
                 self.handler.span_err(attr.span(),
-                                      "attribute must be of form: \
-                                       `attributes(foo, bar)`");
+                                      "attribute must be of form: `attributes(foo, bar)`");
                 &[]
             }).into_iter().filter_map(|attr| {
-                let name = match attr.name() {
-                    Some(name) => name,
+                let attr = match attr.meta_item() {
+                    Some(meta_item) => meta_item,
                     _ => {
                         self.handler.span_err(attr.span(), "not a meta item");
                         return None;
-                    },
+                    }
                 };
 
-                if !attr.is_word() {
-                    self.handler.span_err(attr.span(), "must only be one word");
-                    return None;
+                let ident = match attr.ident() {
+                    Some(ident) if attr.is_word() => ident,
+                    _ => {
+                        self.handler.span_err(attr.span, "must only be one word");
+                        return None;
+                    }
+                };
+                if !ident.can_be_raw() {
+                    self.handler.span_err(
+                        attr.span,
+                        &format!("`{}` cannot be a name of derive helper attribute", ident),
+                    );
                 }
 
-                Some(name)
+                Some(ident.name)
             }).collect()
         } else {
             Vec::new()
@@ -163,7 +178,7 @@ impl<'a> CollectProcMacros<'a> {
         if self.in_root && item.vis.node.is_pub() {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
-                trait_name,
+                trait_name: trait_ident.name,
                 function_name: item.ident,
                 attrs: proc_attrs,
             });
@@ -247,8 +262,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                                 to the same function", attr.path, prev_attr.path)
                     };
 
-                    self.handler.struct_span_err(attr.span(), &msg)
-                        .span_note(prev_attr.span(), "Previous attribute here")
+                    self.handler.struct_span_err(attr.span, &msg)
+                        .span_note(prev_attr.span, "Previous attribute here")
                         .emit();
 
                     return;
@@ -273,7 +288,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             let msg = format!("the `#[{}]` attribute may only be used on bare functions",
                               attr.path);
 
-            self.handler.span_err(attr.span(), &msg);
+            self.handler.span_err(attr.span, &msg);
             return;
         }
 
@@ -285,7 +300,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             let msg = format!("the `#[{}]` attribute is only usable with crates of the \
                               `proc-macro` crate type", attr.path);
 
-            self.handler.span_err(attr.span(), &msg);
+            self.handler.span_err(attr.span, &msg);
             return;
         }
 

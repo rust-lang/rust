@@ -724,7 +724,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
     let attrs = tcx.hir().attrs_by_hir_id(id);
     for attr in attrs {
-        if Level::from_str(&attr.name().as_str()).is_some() {
+        if attr.ident_str().and_then(Level::from_str).is_some() {
             return true;
         }
     }

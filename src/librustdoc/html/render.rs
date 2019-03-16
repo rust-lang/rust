@@ -562,8 +562,7 @@ pub fn run(mut krate: clean::Crate,
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
         for attr in attrs.lists("doc") {
-            let name = attr.name().map(|s| s.as_str());
-            match (name.as_ref().map(|s| &s[..]), attr.value_str()) {
+            match (attr.ident_str(), attr.value_str()) {
                 (Some("html_favicon_url"), Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
@@ -3714,19 +3713,19 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let name = attr.name();
+    let path = attr.path.to_string();
 
     if attr.is_word() {
-        Some(name.to_string())
+        Some(path)
     } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", name, v.as_str()))
+        Some(format!("{} = {:?}", path, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
         let display: Vec<_> = values.iter().filter_map(|attr| {
             attr.meta_item().and_then(|mi| render_attribute(mi))
         }).collect();
 
         if display.len() > 0 {
-            Some(format!("{}({})", name, display.join(", ")))
+            Some(format!("{}({})", path, display.join(", ")))
         } else {
             None
         }
@@ -3750,8 +3749,7 @@ fn render_attributes(w: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::Resul
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        let name = attr.name();
-        if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
+        if !attr.ident_str().map_or(false, |name| ATTRIBUTE_WHITELIST.contains(&name)) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {
