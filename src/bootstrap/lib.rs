@@ -241,6 +241,8 @@ pub struct Build {
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
+    in_tree_llvm_info: channel::GitInfo,
+    emscripten_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
@@ -363,6 +365,8 @@ impl Build {
         let clippy_info = channel::GitInfo::new(&config, &src.join("src/tools/clippy"));
         let miri_info = channel::GitInfo::new(&config, &src.join("src/tools/miri"));
         let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
+        let in_tree_llvm_info = channel::GitInfo::new(&config, &src.join("src/llvm-project"));
+        let emscripten_llvm_info = channel::GitInfo::new(&config, &src.join("src/llvm-emscripten"));
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -386,6 +390,8 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
+            in_tree_llvm_info,
+            emscripten_llvm_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
