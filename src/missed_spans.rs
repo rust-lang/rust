@@ -252,7 +252,12 @@ impl<'a> FmtVisitor<'a> {
         // - if there isn't one already
         // - otherwise, only if the last line is a line comment
         if status.line_start <= snippet.len() {
-            match snippet[status.line_start..].chars().next() {
+            match snippet[status.line_start..]
+                .chars()
+                // skip trailing whitespaces
+                .skip_while(|c| *c == ' ' || *c == '\t')
+                .next()
+            {
                 Some('\n') | Some('\r') => {
                     if !subslice.trim_end().ends_with("*/") {
                         self.push_str("\n");
