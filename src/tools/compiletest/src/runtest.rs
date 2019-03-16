@@ -3110,7 +3110,7 @@ impl<'test> TestCx<'test> {
 
         // Remove test annotations like `//~ ERROR text` from the output,
         // since they duplicate actual errors and make the output hard to read.
-        normalized = Regex::new("\\s*//~.*").unwrap()
+        normalized = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap()
             .replace_all(&normalized, "").into_owned();
 
         for rule in custom_rules {
