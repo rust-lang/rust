@@ -83,7 +83,9 @@ matrix:
         - export PATH="$PATH:/opt/devkitpro/devkitARM/bin"
         - export PATH="$PATH:/opt/devkitpro/tools/bin"
         - cd ..
-        - xargo build --all --target=ci/gba.json
+        # Pull the target spec up into the current directory and then build
+        - mv ci/gba.json gba.json
+        - xargo build --all --target=gba
     - name: "Documentation"
       install: true
       script: ci/dox.sh
