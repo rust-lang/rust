@@ -156,6 +156,10 @@ impl UdpSocket {
         unsupported()
     }
 
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        match self.0 {}
+    }
+
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         match self.0 {}
     }
