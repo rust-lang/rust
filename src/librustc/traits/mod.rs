@@ -650,7 +650,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
 ) -> bool {
     debug!("type_known_to_meet_bound_modulo_regions(ty={:?}, bound={:?})",
            ty,
-           infcx.tcx.item_path_str(def_id));
+           infcx.tcx.def_path_str(def_id));
 
     let trait_ref = ty::TraitRef {
         def_id,
@@ -665,7 +665,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
     debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
-           ty, infcx.tcx.item_path_str(def_id), result);
+           ty, infcx.tcx.def_path_str(def_id), result);
 
     if result && (ty.has_infer_types() || ty.has_closure_types()) {
         // Because of inference "guessing", selection can sometimes claim
@@ -692,13 +692,13 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
             Ok(()) => {
                 debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
                        ty,
-                       infcx.tcx.item_path_str(def_id));
+                       infcx.tcx.def_path_str(def_id));
                 true
             }
             Err(e) => {
                 debug!("type_known_to_meet_bound_modulo_regions: ty={:?} bound={} errors={:?}",
                        ty,
-                       infcx.tcx.item_path_str(def_id),
+                       infcx.tcx.def_path_str(def_id),
                        e);
                 false
             }

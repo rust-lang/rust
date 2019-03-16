@@ -1,5 +1,5 @@
 error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
-  --> $DIR/issue-3907-2.rs:10:1
+  --> $DIR/issue-3907-2.rs:11:1
    |
 LL | fn bar(_x: Foo) {}
    | ^^^^^^^^^^^^^^^ the trait `issue_3907::Foo` cannot be made into an object

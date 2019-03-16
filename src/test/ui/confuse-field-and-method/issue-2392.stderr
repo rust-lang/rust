@@ -75,7 +75,7 @@ LL |     w.wrap.not_closure();
    |
    = help: did you mean to write `w.wrap.not_closure` instead of `w.wrap.not_closure(...)`?
 
-error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<(dyn std::boxed::FnBox<(), Output=u32> + 'static)>>` in the current scope
+error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<(dyn std::boxed::FnBox<(), Output = u32> + 'static)>>` in the current scope
   --> $DIR/issue-2392.rs:62:24
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {

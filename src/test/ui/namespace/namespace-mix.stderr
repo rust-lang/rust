@@ -462,11 +462,11 @@ note: required by `check`
 LL | fn check<T: Impossible>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `fn() -> namespace_mix::c::E {namespace_mix::c::E::TV}: Impossible` is not satisfied
+error[E0277]: the trait bound `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}: Impossible` is not satisfied
   --> $DIR/namespace-mix.rs:128:5
    |
 LL |     check(xm9::TV);
-   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::E {namespace_mix::c::E::TV}`
+   |     ^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}`
    |
 note: required by `check`
   --> $DIR/namespace-mix.rs:21:1

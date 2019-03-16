@@ -29,10 +29,10 @@ impl MirPass for SanityCheck {
         let def_id = src.def_id();
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
-            debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
+            debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
             return;
         } else {
-            debug!("running rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
+            debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
         }
 
         let attributes = tcx.get_attrs(def_id);

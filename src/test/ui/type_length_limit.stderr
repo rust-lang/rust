@@ -1,6 +1,10 @@
-error: reached the type-length limit while instantiating `std::mem::drop::<std::option::Option<((((((G, G, G), (G, G, G), ...`
+error: reached the type-length limit while instantiating `std::mem::drop::<std::option::Op... G), (G, G, G), (G, G, G))))))>>`
+  --> $SRC_DIR/libcore/mem.rs:LL:COL
    |
-   = note: consider adding a `#![type_length_limit="512"]` attribute to your crate
+LL | pub fn drop<T>(_x: T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider adding a `#![type_length_limit="1094"]` attribute to your crate
 
 error: aborting due to previous error
 

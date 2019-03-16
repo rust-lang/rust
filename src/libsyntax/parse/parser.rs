@@ -5116,12 +5116,8 @@ impl<'a> Parser<'a> {
 
                 let ident = self.parse_ident()?;
                 let (delim, tokens) = self.expect_delimited_token_tree()?;
-                if delim != MacDelimiter::Brace {
-                    if !self.eat(&token::Semi) {
-                        let msg = "macros that expand to items must either \
-                                   be surrounded with braces or followed by a semicolon";
-                        self.span_err(self.prev_span, msg);
-                    }
+                if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
+                    self.report_invalid_macro_expansion_item();
                 }
 
                 (ident, ast::MacroDef { tokens: tokens, legacy: true })
@@ -5264,13 +5260,8 @@ impl<'a> Parser<'a> {
                 // if it has a special ident, it's definitely an item
                 //
                 // Require a semicolon or braces.
-                if style != MacStmtStyle::Braces {
-                    if !self.eat(&token::Semi) {
-                        self.span_err(self.prev_span,
-                                      "macros that expand to items must \
-                                       either be surrounded with braces or \
-                                       followed by a semicolon");
-                    }
+                if style != MacStmtStyle::Braces && !self.eat(&token::Semi) {
+                    self.report_invalid_macro_expansion_item();
                 }
                 let span = lo.to(hi);
                 Stmt {
@@ -8360,13 +8351,8 @@ impl<'a> Parser<'a> {
             };
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != MacDelimiter::Brace {
-                if !self.eat(&token::Semi) {
-                    self.span_err(self.prev_span,
-                                  "macros that expand to items must either \
-                                   be surrounded with braces or followed by \
-                                   a semicolon");
-                }
+            if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
+                self.report_invalid_macro_expansion_item();
             }
 
             let hi = self.prev_span;
@@ -8596,6 +8582,25 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
         }
+    }
+
+    fn report_invalid_macro_expansion_item(&self) {
+        self.struct_span_err(
+            self.prev_span,
+            "macros that expand to items must be delimited with braces or followed by a semicolon",
+        ).multipart_suggestion(
+            "change the delimiters to curly braces",
+            vec![
+                (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), String::from(" {")),
+                (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        ).span_suggestion(
+            self.sess.source_map.next_point(self.prev_span),
+            "add a semicolon",
+            ';'.to_string(),
+            Applicability::MaybeIncorrect,
+        ).emit();
     }
 }
 

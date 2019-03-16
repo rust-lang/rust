@@ -472,7 +472,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 instantiated_ty.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx().global_tcx(),
                     fldop: |ty| {
-                        trace!("checking type {:?}: {:#?}", ty, ty.sty);
+                        trace!("checking type {:?}", ty);
                         // find a type parameter
                         if let ty::Param(..) = ty.sty {
                             // look it up in the substitution list

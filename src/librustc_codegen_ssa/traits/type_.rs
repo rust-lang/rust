@@ -148,7 +148,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
         match tail.sty {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+            _ => bug!("unexpected unsized tail: {:?}", tail),
         }
     }
 }

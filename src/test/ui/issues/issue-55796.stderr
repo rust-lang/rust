@@ -16,8 +16,8 @@ LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node> + 'static)>
-              found std::boxed::Box<dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node>>
+           expected std::boxed::Box<(dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>
+              found std::boxed::Box<dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node>>
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/issue-55796.rs:21:9
@@ -37,8 +37,8 @@ LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node> + 'static)>
-              found std::boxed::Box<dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node>>
+           expected std::boxed::Box<(dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node> + 'static)>
+              found std::boxed::Box<dyn std::iter::Iterator<Item = <Self as Graph<'a>>::Node>>
 
 error: aborting due to 2 previous errors
 

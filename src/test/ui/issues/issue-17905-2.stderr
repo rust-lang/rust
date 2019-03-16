@@ -4,7 +4,7 @@ error[E0308]: mismatched method receiver
 LL |     fn say(self: &Pair<&str, isize>) {
    |                  ^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Pair<&'_ str, _>`
+   = note: expected type `Pair<&str, _>`
               found type `Pair<&str, _>`
 note: the anonymous lifetime #2 defined on the method body at 8:5...
   --> $DIR/issue-17905-2.rs:8:5
@@ -27,7 +27,7 @@ error[E0308]: mismatched method receiver
 LL |     fn say(self: &Pair<&str, isize>) {
    |                  ^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Pair<&'_ str, _>`
+   = note: expected type `Pair<&str, _>`
               found type `Pair<&str, _>`
 note: the lifetime '_ as defined on the impl at 5:5...
   --> $DIR/issue-17905-2.rs:5:5

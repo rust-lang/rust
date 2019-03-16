@@ -17,7 +17,7 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::Input;
 use rustc::span_bug;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 use std::path::Path;
@@ -429,7 +429,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         vis: ast::Visibility,
         attrs: &'l [Attribute],
     ) {
-        let qualname = format!("::{}", self.tcx.node_path_str(id));
+        let qualname = format!("::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(id)));
 
         if !self.span.filter_generated(ident.span) {
             let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
@@ -470,7 +471,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ) {
         debug!("process_struct {:?} {:?}", item, item.span);
         let name = item.ident.to_string();
-        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+        let qualname = format!("::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
 
         let kind = match item.node {
             ast::ItemKind::Struct(_, _) => DefKind::Struct,
@@ -682,7 +684,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         methods: &'l [ast::TraitItem],
     ) {
         let name = item.ident.to_string();
-        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+        let qualname = format!("::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
         let mut val = name.clone();
         if !generics.params.is_empty() {
             val.push_str(&generic_params_to_string(&generics.params));
@@ -1093,7 +1096,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             ast::TraitItemKind::Type(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
-                let qualname = format!("::{}", self.tcx.node_path_str(trait_item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(trait_item.id)));
 
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
@@ -1201,7 +1205,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
-            .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+            .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);
 
         match use_tree.kind {
@@ -1300,7 +1304,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         // only get called for the root module of a crate.
         assert_eq!(id, ast::CRATE_NODE_ID);
 
-        let qualname = format!("::{}", self.tcx.node_path_str(id));
+        let qualname = format!("::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id(id)));
 
         let cm = self.tcx.sess.source_map();
         let filename = cm.span_to_filename(span);
@@ -1350,7 +1355,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
                     let parent = self.save_ctxt.tcx.hir().opt_local_def_id(item.id)
-                        .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+                        .and_then(|id| self.save_ctxt.tcx.parent(id))
                         .map(id_from_def_id);
                     self.dumper.import(
                         &Access {
@@ -1389,7 +1394,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 self.nest_scope(item.id, |v| visit::walk_mod(v, m));
             }
             Ty(ref ty, ref ty_params) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
                 let value = ty_to_string(&ty);
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
@@ -1418,7 +1424,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
             Existential(ref _bounds, ref ty_params) => {
-                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                let qualname = format!("::{}",
+                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
                 // FIXME do something with _bounds
                 let value = String::new();
                 if !self.span.filter_generated(item.ident.span) {

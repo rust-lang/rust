@@ -1253,7 +1253,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     if !self.span.allows_unstable(&feature.as_str()) {
                                         let mut err = self.tcx.sess.struct_span_err(self.span,
                                             &format!("`{}` is not yet stable as a const fn",
-                                                    self.tcx.item_path_str(def_id)));
+                                                    self.tcx.def_path_str(def_id)));
                                         if nightly_options::is_nightly_build() {
                                             help!(&mut err,
                                                   "add `#![feature({})]` to the \

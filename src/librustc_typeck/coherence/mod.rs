@@ -28,7 +28,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
         debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
                trait_ref,
-               tcx.item_path_str(impl_def_id));
+               tcx.def_path_str(impl_def_id));
 
         // Skip impls where one of the self type is an error type.
         // This occurs with e.g., resolve failures (#30589).
@@ -204,10 +204,10 @@ fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeI
                                      E0371,
                                      "the object type `{}` automatically implements the trait `{}`",
                                      trait_ref.self_ty(),
-                                     tcx.item_path_str(trait_def_id))
+                                     tcx.def_path_str(trait_def_id))
                         .span_label(sp, format!("`{}` automatically implements trait `{}`",
                                                 trait_ref.self_ty(),
-                                                tcx.item_path_str(trait_def_id)))
+                                                tcx.def_path_str(trait_def_id)))
                         .emit();
                 }
             }

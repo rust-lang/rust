@@ -95,10 +95,10 @@ mod erase_regions;
 pub mod fast_reject;
 pub mod fold;
 pub mod inhabitedness;
-pub mod item_path;
 pub mod layout;
 pub mod _match;
 pub mod outlives;
+pub mod print;
 pub mod query;
 pub mod relate;
 pub mod steal;
@@ -1000,7 +1000,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Clone, Default, HashStable)]
+#[derive(Clone, Default, Debug, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: Vec<(Predicate<'tcx>, Span)>,
@@ -1505,7 +1505,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
@@ -2055,7 +2055,7 @@ impl ReprOptions {
         }
 
         // This is here instead of layout because the choice must make it into metadata.
-        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
+        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
         ReprOptions { int: size, align: max_align, pack: min_pack, flags: flags }
@@ -2892,14 +2892,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
             Def::Variant(did) | Def::VariantCtor(did, ..) => {
-                let enum_did = self.parent_def_id(did).unwrap();
+                let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
             }
             Def::StructCtor(ctor_did, ..) => {
-                let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
+                let did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(did).non_enum_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)

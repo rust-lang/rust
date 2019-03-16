@@ -4,11 +4,11 @@ error: symbol-name(_ZN5basic4main17h08bcaf310214ed52E)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: item-path(main)
+error: def-path(main)
   --> $DIR/basic.rs:4:1
    |
-LL | #[rustc_item_path]
-   | ^^^^^^^^^^^^^^^^^^
+LL | #[rustc_def_path]
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                   -> String
     {
         let name = tcx.item_name(trait_ref.def_id);
-        let trait_str = tcx.item_path_str(trait_ref.def_id);
+        let trait_str = tcx.def_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics.params.iter().filter_map(|param| {
             let value = match param.kind {

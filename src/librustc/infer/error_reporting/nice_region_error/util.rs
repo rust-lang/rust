@@ -3,7 +3,7 @@
 
 use crate::hir;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::ty::{self, Region, Ty};
+use crate::ty::{self, DefIdTree, Region, Ty};
 use crate::hir::def_id::DefId;
 use syntax_pos::Span;
 
@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
             ty::ReEarlyBound(ref ebr) => (
-                self.tcx().parent_def_id(ebr.def_id).unwrap(),
+                self.tcx().parent(ebr.def_id).unwrap(),
                 ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region

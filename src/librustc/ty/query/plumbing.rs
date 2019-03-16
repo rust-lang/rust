@@ -4,11 +4,10 @@
 
 use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
 use crate::ty::tls;
-use crate::ty::{TyCtxt};
+use crate::ty::{self, TyCtxt};
 use crate::ty::query::Query;
 use crate::ty::query::config::{QueryConfig, QueryDescription};
 use crate::ty::query::job::{QueryJob, QueryResult, QueryInfo};
-use crate::ty::item_path;
 
 use crate::util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
@@ -299,7 +298,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // sometimes cycles itself, leading to extra cycle errors.
         // (And cycle errors around impls tend to occur during the
         // collect/coherence phases anyhow.)
-        item_path::with_forced_impl_filename_line(|| {
+        ty::print::with_forced_impl_filename_line(|| {
             let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
             let mut err = struct_span_err!(self.sess,
                                            span,

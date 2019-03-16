@@ -1,4 +1,4 @@
-// aux-build:lint_for_crate.rs
+// aux-build:lint-for-crate.rs
 // ignore-stage1
 // compile-flags: -D crate-not-okay
 

@@ -1195,7 +1195,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // `report_method_error()`.
         diag.help(&format!(
             "call with fully qualified syntax `{}(...)` to keep using the current method",
-            self.tcx.item_path_str(stable_pick.item.def_id),
+            self.tcx.def_path_str(stable_pick.item.def_id),
         ));
 
         if nightly_options::is_nightly_build() {
@@ -1203,7 +1203,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 diag.help(&format!(
                     "add #![feature({})] to the crate attributes to enable `{}`",
                     feature,
-                    self.tcx.item_path_str(candidate.item.def_id),
+                    self.tcx.def_path_str(candidate.item.def_id),
                 ));
             }
         }

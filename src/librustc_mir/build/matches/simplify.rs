@@ -114,14 +114,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
                     ty::Int(ity) => {
-                        // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
                         let max = truncate(u128::max_value(), size);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
-                        // FIXME(49937): refactor these bit manipulations into interpret.
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
                         let max = truncate(u128::max_value(), size);
                         (Some((0, max, size)), 0)

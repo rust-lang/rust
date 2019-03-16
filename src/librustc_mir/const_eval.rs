@@ -65,12 +65,12 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 fn mplace_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     mplace: MPlaceTy<'tcx>,
-) -> EvalResult<'tcx, ty::Const<'tcx>> {
+) -> ty::Const<'tcx> {
     let MemPlace { ptr, align, meta } = *mplace;
     // extract alloc-offset pair
     assert!(meta.is_none());
-    let ptr = ptr.to_ptr()?;
-    let alloc = ecx.memory.get(ptr.alloc_id)?;
+    let ptr = ptr.to_ptr().unwrap();
+    let alloc = ecx.memory.get(ptr.alloc_id).unwrap();
     assert!(alloc.align >= align);
     assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
     let mut alloc = alloc.clone();
@@ -79,16 +79,16 @@ fn mplace_to_const<'tcx>(
     // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
     let alloc = ecx.tcx.intern_const_alloc(alloc);
     let val = ConstValue::ByRef(ptr, alloc);
-    Ok(ty::Const { val, ty: mplace.layout.ty })
+    ty::Const { val, ty: mplace.layout.ty }
 }
 
 fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
-) -> EvalResult<'tcx, ty::Const<'tcx>> {
-    // We do not normalize just any data.  Only scalar layout and slices.
+) -> ty::Const<'tcx> {
+    // We do not normalize just any data.  Only non-union scalars and slices.
     let normalize = match op.layout.abi {
-        layout::Abi::Scalar(..) => true,
+        layout::Abi::Scalar(..) => op.layout.ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
         layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
         _ => false,
     };
@@ -100,11 +100,11 @@ fn op_to_const<'tcx>(
     let val = match normalized_op {
         Ok(mplace) => return mplace_to_const(ecx, mplace),
         Err(Immediate::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef()?),
+            ConstValue::Scalar(x.not_undef().unwrap()),
         Err(Immediate::ScalarPair(a, b)) =>
-            ConstValue::Slice(a.not_undef()?, b.to_usize(ecx)?),
+            ConstValue::Slice(a.not_undef().unwrap(), b.to_usize(ecx).unwrap()),
     };
-    Ok(ty::Const { val, ty: op.layout.ty })
+    ty::Const { val, ty: op.layout.ty }
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -142,7 +142,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
-    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+    let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
     assert!(mir.arg_count == 0);
@@ -488,7 +488,7 @@ pub fn const_field<'a, 'tcx>(
     let field = ecx.operand_field(down, field.index() as u64).unwrap();
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
-    op_to_const(&ecx, field).unwrap()
+    op_to_const(&ecx, field)
 }
 
 // this function uses `unwrap` copiously, because an already validated constant must have valid
@@ -534,9 +534,9 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
         if tcx.is_static(def_id).is_some() || cid.promoted.is_some() {
-            mplace_to_const(&ecx, mplace)
+            Ok(mplace_to_const(&ecx, mplace))
         } else {
-            op_to_const(&ecx, mplace.into())
+            Ok(op_to_const(&ecx, mplace.into()))
         }
     })();
 
@@ -602,14 +602,15 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             other => return other,
         }
     }
-    // the first trace is for replicating an ice
-    // There's no tracking issue, but the next two lines concatenated link to the discussion on
-    // zulip. It's not really possible to test this, because it doesn't show up in diagnostics
-    // or MIR.
-    // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
-    // subject/anon_const_instance_printing/near/135980032
-    trace!("const eval: {}", key.value.instance);
-    trace!("const eval: {:?}", key);
+    if cfg!(debug_assertions) {
+        // Make sure we format the instance even if we do not print it.
+        // This serves as a regression test against an ICE on printing.
+        // The next two lines concatenated contain some discussion:
+        // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
+        // subject/anon_const_instance_printing/near/135980032
+        let instance = key.value.instance.to_string();
+        trace!("const eval: {:?} ({})", key, instance);
+    }
 
     let cid = key.value;
     let def_id = cid.instance.def.def_id();

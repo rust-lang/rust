@@ -827,7 +827,10 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
+#[cfg(not(any(target_os = "linux",
+              target_os = "android",
+              target_os = "macos",
+              target_os = "ios")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::fs::File;
     if !from.is_file() {
@@ -936,4 +939,86 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
     writer.set_permissions(perm)?;
     Ok(written)
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    const COPYFILE_ACL: u32 = 1 << 0;
+    const COPYFILE_STAT: u32 = 1 << 1;
+    const COPYFILE_XATTR: u32 = 1 << 2;
+    const COPYFILE_DATA: u32 = 1 << 3;
+
+    const COPYFILE_SECURITY: u32 = COPYFILE_STAT | COPYFILE_ACL;
+    const COPYFILE_METADATA: u32 = COPYFILE_SECURITY | COPYFILE_XATTR;
+    const COPYFILE_ALL: u32 = COPYFILE_METADATA | COPYFILE_DATA;
+
+    const COPYFILE_STATE_COPIED: u32 = 8;
+
+    #[allow(non_camel_case_types)]
+    type copyfile_state_t = *mut libc::c_void;
+    #[allow(non_camel_case_types)]
+    type copyfile_flags_t = u32;
+
+    extern "C" {
+        fn copyfile(
+            from: *const libc::c_char,
+            to: *const libc::c_char,
+            state: copyfile_state_t,
+            flags: copyfile_flags_t,
+        ) -> libc::c_int;
+        fn copyfile_state_alloc() -> copyfile_state_t;
+        fn copyfile_state_free(state: copyfile_state_t) -> libc::c_int;
+        fn copyfile_state_get(
+            state: copyfile_state_t,
+            flag: u32,
+            dst: *mut libc::c_void,
+        ) -> libc::c_int;
+    }
+
+    struct FreeOnDrop(copyfile_state_t);
+    impl Drop for FreeOnDrop {
+        fn drop(&mut self) {
+            // The code below ensures that `FreeOnDrop` is never a null pointer
+            unsafe {
+                // `copyfile_state_free` returns -1 if the `to` or `from` files
+                // cannot be closed. However, this is not considerd this an
+                // error.
+                copyfile_state_free(self.0);
+            }
+        }
+    }
+
+    if !from.is_file() {
+        return Err(Error::new(ErrorKind::InvalidInput,
+                              "the source path is not an existing regular file"))
+    }
+
+    // We ensure that `FreeOnDrop` never contains a null pointer so it is
+    // always safe to call `copyfile_state_free`
+    let state = unsafe {
+        let state = copyfile_state_alloc();
+        if state.is_null() {
+            return Err(crate::io::Error::last_os_error());
+        }
+        FreeOnDrop(state)
+    };
+
+    cvt(unsafe {
+        copyfile(
+            cstr(from)?.as_ptr(),
+            cstr(to)?.as_ptr(),
+            state.0,
+            COPYFILE_ALL,
+        )
+    })?;
+
+    let mut bytes_copied: libc::off_t = 0;
+    cvt(unsafe {
+        copyfile_state_get(
+            state.0,
+            COPYFILE_STATE_COPIED,
+            &mut bytes_copied as *mut libc::off_t as *mut libc::c_void,
+        )
+    })?;
+    Ok(bytes_copied as u64)
 }

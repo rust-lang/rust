@@ -210,7 +210,7 @@ impl<T> Option<T> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Converts from `Option<T>` to `Option<&T>`.
+    /// Converts from `&Option<T>` to `Option<&T>`.
     ///
     /// # Examples
     ///
@@ -239,7 +239,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Converts from `Option<T>` to `Option<&mut T>`.
+    /// Converts from `&mut Option<T>` to `Option<&mut T>`.
     ///
     /// # Examples
     ///
@@ -881,15 +881,13 @@ impl<T: Copy> Option<&T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(copied)]
-    ///
     /// let x = 12;
     /// let opt_x = Some(&x);
     /// assert_eq!(opt_x, Some(&12));
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
-    #[unstable(feature = "copied", issue = "57126")]
+    #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
         self.map(|&t| t)
     }
@@ -902,15 +900,13 @@ impl<T: Copy> Option<&mut T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(copied)]
-    ///
     /// let mut x = 12;
     /// let opt_x = Some(&mut x);
     /// assert_eq!(opt_x, Some(&mut 12));
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
-    #[unstable(feature = "copied", issue = "57126")]
+    #[stable(feature = "copied", since = "1.35.0")]
     pub fn copied(self) -> Option<T> {
         self.map(|&mut t| t)
     }

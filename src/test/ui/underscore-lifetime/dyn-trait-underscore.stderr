@@ -19,8 +19,8 @@ LL |     Box::new(items.iter())
    |              ^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn std::iter::Iterator<Item=&T> + 'static)>
-              found std::boxed::Box<dyn std::iter::Iterator<Item=&T>>
+           expected std::boxed::Box<(dyn std::iter::Iterator<Item = &T> + 'static)>
+              found std::boxed::Box<dyn std::iter::Iterator<Item = &T>>
 
 error: aborting due to previous error
 

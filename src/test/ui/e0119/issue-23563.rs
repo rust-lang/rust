@@ -1,4 +1,4 @@
-// aux-build:issue_23563_a.rs
+// aux-build:issue-23563-a.rs
 
 // Ref: https://github.com/rust-lang/rust/issues/23563#issuecomment-260751672
 

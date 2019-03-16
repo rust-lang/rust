@@ -206,7 +206,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx.sess.span_err(
                     target_span,
                     &format!("no path from `{}` to `{}`",
-                             tcx.item_path_str(source_def_id),
+                             tcx.def_path_str(source_def_id),
                              target_pass));
             } else {
                 tcx.sess.span_err(

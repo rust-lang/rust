@@ -1,4 +1,4 @@
-// aux-build:reexp_stripped.rs
+// aux-build:reexp-stripped.rs
 // build-aux-docs
 // ignore-cross-compile
 

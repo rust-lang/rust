@@ -16,7 +16,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       -  -  ^^^^^^ assignment requires that `'1` must outlive `'2`
    |                                       |  |
    |                                       |  has type `&'1 i32`
-   |                                       has type `&mut &'2 i32`
+   |                                       has type `&'_#2r mut &'2 i32`
 
 note: No external requirements
   --> $DIR/escape-argument-callee.rs:20:1

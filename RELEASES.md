@@ -110,8 +110,11 @@ Compatibility Notes
   methods instead.
 - The `Error::cause` method has been deprecated in favor of `Error::source` which supports
   downcasting.
+- [Libtest no longer creates a new thread for each test when
+  `--test-threads=1`.  It also runs the tests in deterministic order][56243]
 
 [55982]: https://github.com/rust-lang/rust/pull/55982/
+[56243]: https://github.com/rust-lang/rust/pull/56243
 [56303]: https://github.com/rust-lang/rust/pull/56303/
 [56351]: https://github.com/rust-lang/rust/pull/56351/
 [56362]: https://github.com/rust-lang/rust/pull/56362

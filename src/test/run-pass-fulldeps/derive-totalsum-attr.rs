@@ -1,4 +1,4 @@
-// aux-build:custom_derive_plugin_attr.rs
+// aux-build:custom-derive-plugin-attr.rs
 // ignore-stage1
 
 #![feature(plugin, rustc_attrs)]

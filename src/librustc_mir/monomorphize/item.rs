@@ -216,9 +216,8 @@ impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 // These keys are used by the handwritten auto-tests, so they need to be
 // predictable and human-readable.
 //
-// Note: A lot of this could looks very similar to what's already in the
-//       ppaux module. It would be good to refactor things so we only have one
-//       parameterizable implementation for printing types.
+// Note: A lot of this could looks very similar to what's already in `ty::print`.
+// FIXME(eddyb) implement a custom `PrettyPrinter` for this.
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.

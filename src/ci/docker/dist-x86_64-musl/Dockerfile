@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
   file \
+  wget \
   curl \
   ca-certificates \
   python2.7 \
@@ -18,19 +19,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build/
 
-COPY scripts/musl.sh /build/
+COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
-RUN CC=gcc \
-    CFLAGS="-Wa,-mrelax-relocations=no" \
-    CXX=g++ \
+RUN CFLAGS="-Wa,-mrelax-relocations=no" \
     CXXFLAGS="-Wa,-mrelax-relocations=no" \
-    bash musl.sh x86_64 && rm -rf /build
+    bash musl-toolchain.sh x86_64 && rm -rf build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
-      --musl-root-x86_64=/musl-x86_64 \
+      --musl-root-x86_64=/usr/local/x86_64-linux-musl \
       --enable-extended \
       --disable-docs
 
@@ -41,6 +40,12 @@ ENV RUST_CONFIGURE_ARGS \
 # See: https://github.com/rust-lang/rust/issues/34978
 ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
-ENV SCRIPT \
-      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
-      python2.7 ../x.py dist --target x86_64-unknown-linux-musl
+ENV HOSTS=x86_64-unknown-linux-musl \
+    CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
+    CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
+
+# Musl defaults to static libs but we need them to be dynamic for host toolchain.
+# The toolchain will produce static libs by default.
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
+ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

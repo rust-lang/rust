@@ -288,6 +288,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if ori_link.contains('/') {
                 continue;
             }
+
+            // [] is mostly likely not supposed to be a link
+            if ori_link.is_empty() {
+                continue;
+            }
+
             let link = ori_link.replace("`", "");
             let (def, fragment) = {
                 let mut kind = PathKind::Unknown;

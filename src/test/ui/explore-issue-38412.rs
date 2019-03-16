@@ -1,4 +1,4 @@
-// aux-build:pub_and_stability.rs
+// aux-build:pub-and-stability.rs
 
 #![feature(unused_feature)]
 
@@ -63,5 +63,4 @@ fn main() {
     t.pub_crate();                        //~ ERROR `pub_crate` is private
     t.pub_mod();                          //~ ERROR `pub_mod` is private
     t.private();                          //~ ERROR `private` is private
-
 }

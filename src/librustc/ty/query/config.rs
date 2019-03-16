@@ -71,7 +71,7 @@ pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
 impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
-            format!("processing `{}`", tcx.item_path_str(def_id)).into()
+            format!("processing `{}`", tcx.def_path_str(def_id)).into()
         } else {
             let name = unsafe { ::std::intrinsics::type_name::<M>() };
             format!("processing {:?} with query `{}`", def_id, name).into()
@@ -301,7 +301,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::layout_raw<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         format!("computing the supertraits of `{}`",
-                tcx.item_path_str(def_id)).into()
+                tcx.def_path_str(def_id)).into()
     }
 }
 
@@ -322,7 +322,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::coherent_trait<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         format!("coherence checking all impls of trait `{}`",
-                tcx.item_path_str(def_id)).into()
+                tcx.def_path_str(def_id)).into()
     }
 }
 
@@ -359,7 +359,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::inferred_outlives_crate<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::mir_shims<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def: ty::InstanceDef<'tcx>) -> Cow<'static, str> {
         format!("generating MIR shim for `{}`",
-                tcx.item_path_str(def.def_id())).into()
+                tcx.def_path_str(def.def_id())).into()
     }
 }
 
@@ -394,7 +394,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
     ) -> Cow<'static, str> {
         format!(
             "const-evaluating + checking `{}`",
-            tcx.item_path_str(key.value.instance.def.def_id()),
+            tcx.def_path_str(key.value.instance.def.def_id()),
         ).into()
     }
 
@@ -415,7 +415,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval_raw<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
         -> Cow<'static, str>
     {
-        format!("const-evaluating `{}`", tcx.item_path_str(key.value.instance.def.def_id())).into()
+        format!("const-evaluating `{}`", tcx.def_path_str(key.value.instance.def.def_id())).into()
     }
 
     #[inline]
@@ -513,7 +513,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::trait_of_item<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_static<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         format!("const checking if rvalue is promotable to static `{}`",
-            tcx.item_path_str(def_id)).into()
+            tcx.def_path_str(def_id)).into()
     }
 
     #[inline]
@@ -532,21 +532,21 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_sta
 impl<'tcx> QueryDescription<'tcx> for queries::rvalue_promotable_map<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         format!("checking which parts of `{}` are promotable to static",
-                tcx.item_path_str(def_id)).into()
+                tcx.def_path_str(def_id)).into()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_mir_available<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
         format!("checking if item is mir available: `{}`",
-                tcx.item_path_str(def_id)).into()
+                tcx.def_path_str(def_id)).into()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>,
                 key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Cow<'static, str> {
-        format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
+        format!("checking if `{}` fulfills its obligations", tcx.def_path_str(key.1.def_id()))
             .into()
     }
 
@@ -565,19 +565,19 @@ impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> 
 
 impl<'tcx> QueryDescription<'tcx> for queries::trait_impls_of<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
-        format!("trait impls of `{}`", tcx.item_path_str(def_id)).into()
+        format!("trait impls of `{}`", tcx.def_path_str(def_id)).into()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_object_safe<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
-        format!("determine object safety of trait `{}`", tcx.item_path_str(def_id)).into()
+        format!("determine object safety of trait `{}`", tcx.def_path_str(def_id)).into()
     }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_const_fn_raw<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
-        format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id)).into()
+        format!("checking if item is const fn: `{}`", tcx.def_path_str(def_id)).into()
     }
 }
 
@@ -883,7 +883,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::vtable_methods<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: ty::PolyTraitRef<'tcx> ) -> Cow<'static, str> {
-        format!("finding all methods for trait {}", tcx.item_path_str(key.def_id())).into()
+        format!("finding all methods for trait {}", tcx.def_path_str(key.def_id())).into()
     }
 }
 
@@ -927,7 +927,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, SubstsRef<'tcx>)) -> Cow<'static, str> {
-        format!("testing substituted normalized predicates:`{}`", tcx.item_path_str(key.0)).into()
+        format!("testing substituted normalized predicates:`{}`", tcx.def_path_str(key.0)).into()
     }
 }
 
@@ -945,7 +945,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, def: ty::InstanceDef<'tcx>) -> Cow<'static, str> {
-        format!("estimating size for `{}`", tcx.item_path_str(def.def_id())).into()
+        format!("estimating size for `{}`", tcx.def_path_str(def.def_id())).into()
     }
 }
 

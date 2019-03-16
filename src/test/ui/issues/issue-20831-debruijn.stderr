@@ -11,7 +11,7 @@ LL | |     }
    | |_____^ lifetime mismatch
    |
    = note: expected type `'a`
-              found type ``
+              found type `'_`
 note: the anonymous lifetime #2 defined on the method body at 28:5...
   --> $DIR/issue-20831-debruijn.rs:28:5
    |
@@ -42,7 +42,7 @@ LL | |     }
    | |_____^ lifetime mismatch
    |
    = note: expected type `'a`
-              found type ``
+              found type `'_`
 note: the lifetime 'a as defined on the impl at 26:6...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |

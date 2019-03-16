@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // See the examples in `run-pass/match-defbm*.rs`.
             let mut pat_adjustments = vec![];
             while let ty::Ref(_, inner_ty, inner_mutability) = exp_ty.sty {
-                debug!("inspecting {:?} with type {:?}", exp_ty, exp_ty.sty);
+                debug!("inspecting {:?}", exp_ty);
 
                 debug!("current discriminant is Ref, inserting implicit deref");
                 // Preserve the reference type. We'll need it later during HAIR lowering.
@@ -894,7 +894,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
             let substs = match pat_ty.sty {
                 ty::Adt(_, substs) => substs,
-                ref ty => bug!("unexpected pattern type {:?}", ty),
+                _ => bug!("unexpected pattern type {:?}", pat_ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
@@ -1001,13 +1001,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                            E0026,
                                            "{} `{}` does not have {}",
                                            kind_name,
-                                           tcx.item_path_str(variant.did),
+                                           tcx.def_path_str(variant.did),
                                            field_names);
             if let Some((span, ident)) = inexistent_fields.last() {
                 err.span_label(*span,
                                format!("{} `{}` does not have {} field{}",
                                        kind_name,
-                                       tcx.item_path_str(variant.did),
+                                       tcx.def_path_str(variant.did),
                                        t,
                                        plural));
                 if plural == "" {

@@ -1549,7 +1549,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
         // should have failed in astconv.
         bug!("No associated type `{}` for {}",
              assoc_ty_name,
-             tcx.item_path_str(impl_def_id))
+             tcx.def_path_str(impl_def_id))
     }
 }
 

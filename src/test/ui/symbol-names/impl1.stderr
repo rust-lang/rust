@@ -4,11 +4,11 @@ error: symbol-name(_ZN5impl13foo3Foo3bar17hc487d6ec13fe9124E)
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: item-path(foo::Foo::bar)
+error: def-path(foo::Foo::bar)
   --> $DIR/impl1.rs:9:9
    |
-LL |         #[rustc_item_path]
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h38577281258e1527E)
   --> $DIR/impl1.rs:18:9
@@ -16,11 +16,11 @@ error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h385772
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: item-path(bar::<impl foo::Foo>::baz)
+error: def-path(bar::<impl foo::Foo>::baz)
   --> $DIR/impl1.rs:19:9
    |
-LL |         #[rustc_item_path]
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

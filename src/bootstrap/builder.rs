@@ -374,6 +374,7 @@ impl<'a> Builder<'a> {
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
+                test::Assembly,
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
@@ -408,12 +409,11 @@ impl<'a> Builder<'a> {
                 test::RustdocJSStd,
                 test::RustdocJSNotStd,
                 test::RustdocTheme,
+                test::RustdocUi,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
-                test::RustdocUi,
-                test::Assembly,
             ),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(

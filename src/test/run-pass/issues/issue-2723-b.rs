@@ -1,5 +1,5 @@
 // run-pass
-// aux-build:issue_2723_a.rs
+// aux-build:issue-2723-a.rs
 
 extern crate issue_2723_a;
 use issue_2723_a::f;

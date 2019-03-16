@@ -5,15 +5,15 @@ use std::mem::drop;
 #[test]
 fn smoketest_cell() {
     let x = Cell::new(10);
-    assert!(x == Cell::new(10));
-    assert!(x.get() == 10);
+    assert_eq!(x, Cell::new(10));
+    assert_eq!(x.get(), 10);
     x.set(20);
-    assert!(x == Cell::new(20));
-    assert!(x.get() == 20);
+    assert_eq!(x, Cell::new(20));
+    assert_eq!(x.get(), 20);
 
     let y = Cell::new((30, 40));
-    assert!(y == Cell::new((30, 40)));
-    assert!(y.get() == (30, 40));
+    assert_eq!(y, Cell::new((30, 40)));
+    assert_eq!(y.get(), (30, 40));
 }
 
 #[test]
@@ -109,7 +109,6 @@ fn double_borrow_single_release_no_borrow_mut() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn discard_doesnt_unborrow() {
     let x = RefCell::new(0);
     let _b = x.borrow();
@@ -350,7 +349,6 @@ fn refcell_ref_coercion() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn refcell_swap_borrows() {
     let x = RefCell::new(0);
     let _b = x.borrow();
@@ -360,7 +358,6 @@ fn refcell_swap_borrows() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn refcell_replace_borrows() {
     let x = RefCell::new(0);
     let _b = x.borrow();

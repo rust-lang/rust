@@ -712,13 +712,6 @@ mod tests {
         assert_almost_eq!(a - second + second, a);
         assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
-        // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
-        if !(cfg!(unix) && crate::mem::size_of::<libc::time_t>() <= 4) {
-            let eighty_years = second * 60 * 60 * 24 * 365 * 80;
-            assert_almost_eq!(a - eighty_years + eighty_years, a);
-            assert_almost_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);
-        }
-
         let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
         let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
             + Duration::new(0, 500_000_000);
@@ -747,8 +740,8 @@ mod tests {
     #[test]
     fn since_epoch() {
         let ts = SystemTime::now();
-        let a = ts.duration_since(UNIX_EPOCH).unwrap();
-        let b = ts.duration_since(UNIX_EPOCH - Duration::new(1, 0)).unwrap();
+        let a = ts.duration_since(UNIX_EPOCH + Duration::new(1, 0)).unwrap();
+        let b = ts.duration_since(UNIX_EPOCH).unwrap();
         assert!(b > a);
         assert_eq!(b - a, Duration::new(1, 0));
 

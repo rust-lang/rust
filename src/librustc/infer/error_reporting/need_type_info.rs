@@ -1,8 +1,10 @@
+use crate::hir::def::Namespace;
 use crate::hir::{self, Local, Pat, Body, HirId};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::infer::InferCtxt;
 use crate::infer::type_variable::TypeVariableOrigin;
 use crate::ty::{self, Ty, Infer, TyVar};
+use crate::ty::print::Print;
 use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
@@ -64,18 +66,26 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
 
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    pub fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
+    pub fn extract_type_name(
+        &self,
+        ty: &'a Ty<'tcx>,
+        highlight: Option<ty::print::RegionHighlightMode>,
+    ) -> String {
         if let ty::Infer(ty::TyVar(ty_vid)) = (*ty).sty {
             let ty_vars = self.type_variables.borrow();
             if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
                 *ty_vars.var_origin(ty_vid) {
-                name.to_string()
-            } else {
-                ty.to_string()
+                return name.to_string();
             }
-        } else {
-            ty.to_string()
         }
+
+        let mut s = String::new();
+        let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
+        if let Some(highlight) = highlight {
+            printer.region_highlight_mode = highlight;
+        }
+        let _ = ty.print(printer);
+        s
     }
 
     pub fn need_type_info_err(&self,
@@ -84,7 +94,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             ty: Ty<'tcx>)
                             -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        let name = self.extract_type_name(&ty);
+        let name = self.extract_type_name(&ty, None);
 
         let mut err_span = span;
         let mut labels = vec![(

@@ -29,7 +29,7 @@ use rustc::mir::visit::{
 };
 use rustc::mir::Local;
 use rustc::mir::*;
-use rustc::ty::{item_path, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
@@ -265,9 +265,9 @@ pub fn dump_mir<'a, 'tcx>(
     if !dump_enabled(tcx, pass_name, source) {
         return;
     }
-    let node_path = item_path::with_forced_impl_filename_line(|| {
+    let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
 }

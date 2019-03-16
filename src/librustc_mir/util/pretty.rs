@@ -1,8 +1,8 @@
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def::CtorKind;
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Display;
@@ -78,9 +78,9 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
         return;
     }
 
-    let node_path = item_path::with_forced_impl_filename_line(|| {
+    let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     dump_matched_mir_node(
         tcx,
@@ -103,9 +103,9 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         None => return false,
         Some(ref filters) => filters,
     };
-    let node_path = item_path::with_forced_impl_filename_line(|| {
+    let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
@@ -115,7 +115,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
 }
 
 // #41697 -- we use `with_forced_impl_filename_line()` because
-// `item_path_str()` would otherwise trigger `type_of`, and this can
+// `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
 fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
@@ -597,7 +597,8 @@ fn write_mir_sig(
     trace!("write_mir_sig: {:?}", src.instance);
     let descr = tcx.describe_def(src.def_id());
     let is_function = match descr {
-        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::StructCtor(..)) => true,
+        Some(Def::Fn(_)) | Some(Def::Method(_)) | Some(Def::Variant(..)) |
+        Some(Def::StructCtor(_, CtorKind::Fn)) => true,
         _ => tcx.is_closure(src.def_id()),
     };
     match (descr, src.promoted) {
@@ -612,9 +613,9 @@ fn write_mir_sig(
         _ => bug!("Unexpected def description {:?}", descr),
     }
 
-    item_path::with_forced_impl_filename_line(|| {
+    ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.item_path_str(src.def_id()))
+        write!(w, " {}", tcx.def_path_str(src.def_id()))
     })?;
 
     if src.promoted.is_none() && is_function {

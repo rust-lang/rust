@@ -12,7 +12,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, DefIdTree, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
@@ -922,7 +922,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      "the value of the associated type `{}` (from the trait `{}`) \
                                       is already specified",
                                      binding.item_name,
-                                     tcx.item_path_str(assoc_ty.container.id()))
+                                     tcx.def_path_str(assoc_ty.container.id()))
                         .span_label(binding.span, "re-bound here")
                         .span_label(*prev_span, format!("`{}` bound here first", binding.item_name))
                         .emit();
@@ -959,7 +959,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// removing the dummy `Self` type (`TRAIT_OBJECT_DUMMY_SELF`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
-        assert_eq!(trait_ref.self_ty().sty, TRAIT_OBJECT_DUMMY_SELF);
+        if trait_ref.self_ty().sty != TRAIT_OBJECT_DUMMY_SELF {
+            bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
+        }
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
@@ -1069,7 +1071,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 format!(
                     "`{}` (from the trait `{}`)",
                     assoc_item.ident,
-                    tcx.item_path_str(trait_def_id),
+                    tcx.def_path_str(trait_def_id),
                 )
             }).collect::<Vec<_>>().join(", ");
             let mut err = struct_span_err!(
@@ -1450,14 +1452,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                    -> Ty<'tcx>
     {
         let tcx = self.tcx();
-        let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
+        let trait_def_id = tcx.parent(item_def_id).unwrap();
 
         self.prohibit_generics(slice::from_ref(item_segment));
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
         } else {
-            let path_str = tcx.item_path_str(trait_def_id);
+            let path_str = tcx.def_path_str(trait_def_id);
             self.report_ambiguous_associated_type(span,
                                                   "Type",
                                                   &path_str,
@@ -1619,7 +1621,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else if last >= 1 && segments[last - 1].args.is_some() {
                     // Everything but the penultimate segment should have no
                     // parameters at all.
-                    let enum_def_id = tcx.parent_def_id(def_id).unwrap();
+                    let enum_def_id = tcx.parent(def_id).unwrap();
                     (enum_def_id, last - 1)
                 } else {
                     // FIXME: lint here recommending `Enum::<...>::Variant` form

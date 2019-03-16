@@ -1,0 +1,13 @@
+error[E0597]: `arena` does not live long enough
+  --> $DIR/dropck-tarena-unsound-drop.rs:41:8
+   |
+LL |     f(&arena);
+   |        ^^^^^ borrowed value does not live long enough
+LL | }
+   | - `arena` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

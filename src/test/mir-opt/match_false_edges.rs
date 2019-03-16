@@ -42,7 +42,7 @@ fn main() {
 // START rustc.full_tested_match.QualifyAndPromoteConstants.after.mir
 //  bb0: {
 //      ...
-//      _2 = std::option::Option<i32>::Some(const 42i32,);
+//      _2 = std::option::Option::<i32>::Some(const 42i32,);
 //      FakeRead(ForMatchedPlace, _2);
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [0isize: bb4, 1isize: bb2, otherwise: bb7];
@@ -111,7 +111,7 @@ fn main() {
 // START rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
 //  bb0: {
 //      ...
-//      _2 = std::option::Option<i32>::Some(const 42i32,);
+//      _2 = std::option::Option::<i32>::Some(const 42i32,);
 //      FakeRead(ForMatchedPlace, _2);
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [0isize: bb3, 1isize: bb2, otherwise: bb7];
@@ -180,7 +180,7 @@ fn main() {
 // START rustc.main.QualifyAndPromoteConstants.before.mir
 // bb0: {
 //     ...
-//      _2 = std::option::Option<i32>::Some(const 1i32,);
+//      _2 = std::option::Option::<i32>::Some(const 1i32,);
 //      FakeRead(ForMatchedPlace, _2);
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [1isize: bb2, otherwise: bb3];

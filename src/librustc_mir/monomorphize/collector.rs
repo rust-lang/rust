@@ -198,6 +198,8 @@ use crate::monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMod
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
+use std::iter;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum MonoItemCollectionMode {
     Eager,
@@ -487,21 +489,33 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // We include the const length in the type length, as it's better
     // to be overly conservative.
     if type_length + const_length > type_length_limit {
-        // The instance name is already known to be too long for rustc. Use
-        // `{:.64}` to avoid blasting the user's terminal with thousands of
-        // lines of type-name.
-        let instance_name = instance.to_string();
-        let msg = format!("reached the type-length limit while instantiating `{:.64}...`",
-                          instance_name);
-        let mut diag = if let Some(hir_id) = tcx.hir().as_local_hir_id(instance.def_id()) {
-            tcx.sess.struct_span_fatal(tcx.hir().span_by_hir_id(hir_id), &msg)
-        } else {
-            tcx.sess.struct_fatal(&msg)
-        };
+        // The instance name is already known to be too long for rustc.
+        // Show only the first and last 32 characters to avoid blasting
+        // the user's terminal with thousands of lines of type-name.
+        let shrink = |s: String, before: usize, after: usize| {
+            // An iterator of all byte positions including the end of the string.
+            let positions = || s.char_indices().map(|(i, _)| i).chain(iter::once(s.len()));
 
+            let shrunk = format!(
+                "{before}...{after}",
+                before = &s[..positions().nth(before).unwrap_or(s.len())],
+                after = &s[positions().rev().nth(after).unwrap_or(0)..],
+            );
+
+            // Only use the shrunk version if it's really shorter.
+            // This also avoids the case where before and after slices overlap.
+            if shrunk.len() < s.len() {
+                shrunk
+            } else {
+                s
+            }
+        };
+        let msg = format!("reached the type-length limit while instantiating `{}`",
+                          shrink(instance.to_string(), 32, 32));
+        let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
         diag.note(&format!(
             "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
-            type_length_limit * 2));
+            type_length));
         diag.emit();
         tcx.sess.abort_if_errors();
     }
@@ -836,7 +850,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match tail.sty {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-                _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+                _ => bug!("unexpected unsized tail: {:?}", tail),
             }
         };
         if type_has_metadata(inner_source) {
