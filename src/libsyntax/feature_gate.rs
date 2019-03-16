@@ -2008,7 +2008,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 }
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
-                    crate_edition: Edition) -> Features {
+                    crate_edition: Edition, allow_features: &Option<Vec<String>>) -> Features {
     fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
         let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
         if let Some(reason) = reason {
@@ -2127,6 +2127,15 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
+                if let Some(allowed) = allow_features.as_ref() {
+                    if allowed.iter().find(|f| *f == name.as_str()).is_none() {
+                        span_err!(span_handler, mi.span, E0725,
+                                  "the feature `{}` is not in the list of allowed features",
+                                  name);
+                        continue;
+                    }
+                }
+
                 set(&mut features, mi.span);
                 features.declared_lang_features.push((name, mi.span, None));
                 continue
