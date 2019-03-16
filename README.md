@@ -205,6 +205,19 @@ needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
   | coverage | displays how much of the input file was processed | Yes |
   | checkstyle | emits in a checkstyle format | Yes |
 
+* For things you do not want rustfmt to mangle for some macro,
+  use `#[rustfmt::skip::macros(target_macro_name)]`
+
+  Example:
+
+```rust
+#[rustfmt::skip::macros(html)]
+fn main() {
+    let macro_result1 = html! { <div>
+Hello</div>
+    }.to_string();
+```
+
 ## License
 
 Rustfmt is distributed under the terms of both the MIT license and the
