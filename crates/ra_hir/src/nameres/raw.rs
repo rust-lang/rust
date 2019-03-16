@@ -5,16 +5,15 @@ use std::{
 
 use test_utils::tested_by;
 use ra_db::FileId;
-use ra_arena::{Arena, impl_arena_id, RawId};
+use ra_arena::{Arena, impl_arena_id, RawId, map::ArenaMap};
 use ra_syntax::{
-    AstNode, SourceFile,
+    AstNode, SourceFile, AstPtr, TreeArc,
     ast::{self, NameOwner, AttrsOwner},
 };
 
 use crate::{
-    PersistentHirDatabase, Name, AsName, Path, HirFileId,
+    PersistentHirDatabase, Name, AsName, Path, HirFileId, ModuleSource,
     ids::{SourceFileItemId, SourceFileItems},
-    nameres::lower::ImportSourceMap,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -25,6 +24,26 @@ pub struct RawItems {
     macros: Arena<Macro, MacroData>,
     /// items for top-level module
     items: Vec<RawItem>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct ImportSourceMap {
+    map: ArenaMap<ImportId, AstPtr<ast::PathSegment>>,
+}
+
+impl ImportSourceMap {
+    pub(crate) fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
+        self.map.insert(import, AstPtr::new(segment))
+    }
+
+    pub fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
+        let file = match source {
+            ModuleSource::SourceFile(file) => &*file,
+            ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
+        };
+
+        self.map[import].to_node(file).to_owned()
+    }
 }
 
 impl RawItems {
@@ -113,8 +132,18 @@ pub(crate) enum ModuleData {
     Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
 }
 
-pub(crate) use crate::nameres::lower::ImportId;
-pub(super) use crate::nameres::lower::ImportData;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImportId(RawId);
+impl_arena_id!(ImportId);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportData {
+    pub(crate) path: Path,
+    pub(crate) alias: Option<Name>,
+    pub(crate) is_glob: bool,
+    pub(crate) is_prelude: bool,
+    pub(crate) is_extern_crate: bool,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Def(RawId);

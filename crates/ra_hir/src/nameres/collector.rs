@@ -8,11 +8,11 @@ use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
     PersistentHirDatabase, HirFileId, Name, Path, Problem,
     KnownName,
-    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode},
+    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
 };
 
-use super::{CrateDefMap, ModuleId, ModuleData, raw};
+use super::{CrateDefMap, ModuleId, ModuleData};
 
 pub(super) fn collect_defs(
     db: &impl PersistentHirDatabase,

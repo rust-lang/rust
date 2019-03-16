@@ -3,8 +3,7 @@ use ra_syntax::{ast, SyntaxNode, TreeArc, AstNode};
 
 use crate::{
     Module, ModuleSource, Problem, Name,
-    nameres::crate_def_map::ModuleId,
-    nameres::lower::ImportId,
+    nameres::{ModuleId, ImportId},
     HirDatabase, PersistentHirDatabase,
     HirFileId, SourceItemId,
 };

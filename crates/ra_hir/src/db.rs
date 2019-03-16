@@ -10,7 +10,7 @@ use crate::{
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
     macros::MacroExpansion,
-    nameres::{Namespace, lower::{ImportSourceMap}, crate_def_map::{RawItems, CrateDefMap}},
+    nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap},

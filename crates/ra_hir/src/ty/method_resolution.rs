@@ -11,7 +11,7 @@ use crate::{
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{AdtDef, Ty},
-    nameres::crate_def_map::ModuleId,
+    nameres::ModuleId,
 
 };
 
