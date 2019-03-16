@@ -14,7 +14,6 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
-use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
 use log::debug;
@@ -141,8 +140,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               assignee_cmt: &mc::cmt_<'tcx>,
               _: euv::MutateMode)
     {
-        let node_id = self.bccx.tcx.hir().hir_to_node_id(assignment_id);
-        self.guarantee_assignment_valid(node_id,
+        self.guarantee_assignment_valid(assignment_id,
                                         assignment_span,
                                         assignee_cmt);
     }
@@ -256,7 +254,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
     /// Guarantees that `cmt` is assignable, or reports an error.
     fn guarantee_assignment_valid(&mut self,
-                                  assignment_id: ast::NodeId,
+                                  assignment_id: hir::HirId,
                                   assignment_span: Span,
                                   cmt: &mc::cmt_<'tcx>) {
 
@@ -290,8 +288,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                self.bccx.tcx.hir().node_to_hir_id(assignment_id)
-                                                    .local_id,
+                                                assignment_id.local_id,
                                                 assignment_span,
                                                 lp);
             }

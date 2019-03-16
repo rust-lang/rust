@@ -121,7 +121,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 impl_items: _,
                 bodies: _,
                 trait_impls: _,
-                trait_auto_impl: _,
                 body_ids: _,
                 modules: _,
             } = *krate;

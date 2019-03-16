@@ -34,7 +34,6 @@ use std::fmt;
 use std::rc::Rc;
 use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
-use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
@@ -399,12 +398,12 @@ pub enum LoanPathElem<'tcx> {
 }
 
 fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt<'_, '_, '_>) -> ast::NodeId {
+                    tcx: TyCtxt<'_, '_, '_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
-                tcx.hir().hir_to_node_id(body_id.hir_id)
+                body_id.hir_id
             }
             _ => {
                 bug!("encountered non-closure id: {}", closure_id)
@@ -422,8 +421,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             }
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
-                let hir_id = bccx.tcx.hir().node_to_hir_id(block_id);
-                region::Scope { id: hir_id.local_id, data: region::ScopeData::Node }
+                region::Scope { id: block_id.local_id, data: region::ScopeData::Node }
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(bccx),

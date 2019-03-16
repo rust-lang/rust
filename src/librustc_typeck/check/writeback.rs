@@ -15,7 +15,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
-use syntax::ast;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -444,8 +443,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
-            let node_id = self.tcx().hir().as_local_node_id(def_id).unwrap();
-            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &node_id);
+            let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
+            let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
             let generics = self.tcx().generics_of(def_id);
 
@@ -728,12 +727,6 @@ trait Locatable {
 impl Locatable for Span {
     fn to_span(&self, _: &TyCtxt<'_, '_, '_>) -> Span {
         *self
-    }
-}
-
-impl Locatable for ast::NodeId {
-    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
-        tcx.hir().span(*self)
     }
 }
 

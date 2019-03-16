@@ -373,7 +373,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// finish building it.
     guard_context: Vec<GuardFrame>,
 
-    /// Maps `NodeId`s of variable bindings to the `Local`s created for them.
+    /// Maps `HirId`s of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: HirIdMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -451,7 +451,7 @@ impl BlockContext {
 
 #[derive(Debug)]
 enum LocalsForNode {
-    /// In the usual case, a `NodeId` for an identifier maps to at most
+    /// In the usual case, a `HirId` for an identifier maps to at most
     /// one `Local` declaration.
     One(Local),
 

@@ -727,8 +727,7 @@ pub struct Crate {
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: BTreeMap<BodyId, Body>,
-    pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_auto_impl: BTreeMap<DefId, NodeId>,
+    pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies
