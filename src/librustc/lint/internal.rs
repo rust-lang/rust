@@ -11,7 +11,7 @@ use syntax::ast::Ident;
 
 declare_lint! {
     pub DEFAULT_HASH_TYPES,
-    Warn,
+    Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
 
@@ -64,7 +64,7 @@ impl EarlyLintPass for DefaultHashTypes {
 
 declare_lint! {
     pub USAGE_OF_TY_TYKIND,
-    Warn,
+    Allow,
     "Usage of `ty::TyKind` outside of the `ty::sty` module"
 }
 
