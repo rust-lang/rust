@@ -22,7 +22,7 @@ error[E0026]: struct `Foo` does not have a field named `absent`
   --> $DIR/struct-field-cfg.rs:16:42
    |
 LL |     let Foo { present: (), #[cfg(all())] absent: () } = foo;
-   |                                          ^^^^^^^^^^ struct `Foo` does not have this field
+   |                                          ^^^^^^ struct `Foo` does not have this field
 
 error: aborting due to 4 previous errors
 
