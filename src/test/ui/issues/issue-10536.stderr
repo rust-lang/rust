@@ -1,8 +1,16 @@
-error: macros that expand to items must either be surrounded with braces or followed by a semicolon
+error: macros that expand to items must be delimited with braces or followed by a semicolon
   --> $DIR/issue-10536.rs:14:22
    |
 LL |     assert!({one! two()});
    |                      ^^
+help: change the delimiters to curly braces
+   |
+LL |     assert!({one! two {}});
+   |                       ^^
+help: add a semicolon
+   |
+LL |     assert!({one! two();});
+   |                        ^
 
 error: expected `(` or `{`, found `}`
   --> $DIR/issue-10536.rs:21:22
