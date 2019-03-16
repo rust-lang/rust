@@ -369,7 +369,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
 
-    fn pretty_print_string(&mut self, s: Cow<'static, str>, len: isize) -> io::Result<()> {
+    fn pretty_print_string<'s>(&mut self, s: Cow<'s, str>, len: isize) -> io::Result<()> {
         if self.scan_stack.is_empty() {
             debug!("pp String('{}')/print Vec<{},{}>",
                    s, self.left, self.right);
@@ -378,7 +378,10 @@ impl<'a> Printer<'a> {
             debug!("pp String('{}')/buffer Vec<{},{}>",
                    s, self.left, self.right);
             self.advance_right();
-            self.buf[self.right] = BufEntry { token: Token::String(s, len), size: len };
+            self.buf[self.right] = BufEntry {
+                token: Token::String(s.into_owned().into(), len),
+                size: len
+            };
             self.right_total += len;
             self.check_stream()
         }
@@ -576,7 +579,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn print_string(&mut self, s: Cow<'static, str>, len: isize) -> io::Result<()> {
+    pub fn print_string(&mut self, s: Cow<'_, str>, len: isize) -> io::Result<()> {
         debug!("print String({})", s);
         // assert!(len <= space);
         self.space -= len;
@@ -641,7 +644,7 @@ impl<'a> Printer<'a> {
         self.pretty_print_eof()
     }
 
-    pub fn word<S: Into<Cow<'static, str>>>(&mut self, wrd: S) -> io::Result<()> {
+    pub fn word<'s, S: Into<Cow<'s, str>>>(&mut self, wrd: S) -> io::Result<()> {
         let s = wrd.into();
         let len = s.len() as isize;
         self.pretty_print_string(s, len)

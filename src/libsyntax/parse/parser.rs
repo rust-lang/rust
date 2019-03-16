@@ -2165,9 +2165,11 @@ impl<'a> Parser<'a> {
                     suffix,
                 ) = self.token {
                     let suffix = suffix.and_then(|s| {
-                        let s = s.as_str().get();
-                        if ["f32", "f64"].contains(&s) {
-                            Some(s)
+                        let s = s.as_str();
+                        if s == "f32" {
+                            Some("f32")
+                        } else if s == "f64" {
+                            Some("f64")
                         } else {
                             None
                         }
