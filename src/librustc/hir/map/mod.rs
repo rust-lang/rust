@@ -541,7 +541,8 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
         match self.get_by_hir_id(id) {
-            Node::Item(&Item { node: ItemKind::Trait(..), .. }) => id,
+            Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
+            Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
             _ => bug!("ty_param_owner: {} not a type parameter", self.hir_to_string(id))
         }
@@ -549,7 +550,8 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: HirId) -> Name {
         match self.get_by_hir_id(id) {
-            Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfUpper.name(),
+            Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
+            Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => keywords::SelfUpper.name(),
             Node::GenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.hir_to_string(id)),
         }

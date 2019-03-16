@@ -35,7 +35,7 @@ fn main() {
         .arg("--cfg")
         .arg("dox")
         .arg("--sysroot")
-        .arg(sysroot)
+        .arg(&sysroot)
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
@@ -72,7 +72,13 @@ fn main() {
     }
 
     if verbose > 1 {
-        eprintln!("rustdoc command: {:?}", cmd);
+        eprintln!(
+            "rustdoc command: {:?}={:?} {:?}",
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+            cmd,
+        );
+        eprintln!("sysroot: {:?}", sysroot);
         eprintln!("libdir: {:?}", libdir);
     }
 

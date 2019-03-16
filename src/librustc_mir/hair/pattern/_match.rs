@@ -172,7 +172,7 @@ use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::{ConstValue, Scalar};
+use rustc::mir::interpret::{ConstValue, Scalar, truncate};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -678,16 +678,14 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             ]
         }
         ty::Int(ity) => {
-            // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
-            let max = (1u128 << (bits - 1)) - 1;
+            let max = min - 1;
             vec![ConstantRange(min, max, pcx.ty, RangeEnd::Included)]
         }
         ty::Uint(uty) => {
-            // FIXME(49937): refactor these bit manipulations into interpret.
-            let bits = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size().bits() as u128;
-            let max = !0u128 >> (128 - bits);
+            let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
+            let max = truncate(u128::max_value(), size);
             vec![ConstantRange(0, max, pcx.ty, RangeEnd::Included)]
         }
         _ => {

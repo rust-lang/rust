@@ -78,7 +78,7 @@ pub fn parse_decimal(s: &str) -> ParseResult {
     }
 }
 
-/// Carve off decimal digits up to the first non-digit character.
+/// Carves off decimal digits up to the first non-digit character.
 fn eat_digits(s: &[u8]) -> (&[u8], &[u8]) {
     let mut i = 0;
     while i < s.len() && b'0' <= s[i] && s[i] <= b'9' {

@@ -190,7 +190,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
-    /// // As long as the value inside the `Mutex` is false, we wait.
+    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }
@@ -254,7 +254,7 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// // As long as the value inside the `Mutex` is false, we wait.
+    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
     /// ```
     #[unstable(feature = "wait_until", issue = "47960")]
@@ -311,7 +311,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
-    /// // As long as the value inside the `Mutex` is false, we wait.
+    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// loop {
     ///     let result = cvar.wait_timeout_ms(started, 10).unwrap();
     ///     // 10 milliseconds have passed, or maybe the value changed!
@@ -384,7 +384,7 @@ impl Condvar {
     /// // wait for the thread to start up
     /// let &(ref lock, ref cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
-    /// // as long as the value inside the `Mutex` is false, we wait
+    /// // as long as the value inside the `Mutex<bool>` is `false`, we wait
     /// loop {
     ///     let result = cvar.wait_timeout(started, Duration::from_millis(10)).unwrap();
     ///     // 10 milliseconds have passed, or maybe the value changed!
@@ -518,7 +518,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
-    /// // As long as the value inside the `Mutex` is false, we wait.
+    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }
@@ -558,7 +558,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
-    /// // As long as the value inside the `Mutex` is false, we wait.
+    /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
     ///     started = cvar.wait(started).unwrap();
     /// }

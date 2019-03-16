@@ -39,8 +39,7 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
-/// The `repeat()` function repeats a single value over and over and over and
-/// over and over and 🔁.
+/// The `repeat()` function repeats a single value over and over again.
 ///
 /// Infinite iterators like `repeat()` are often used with adapters like
 /// [`take`], in order to make them finite.
@@ -128,8 +127,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
 ///
-/// The `repeat_with()` function calls the repeater over and over and over and
-/// over and over and 🔁.
+/// The `repeat_with()` function calls the repeater over and over again.
 ///
 /// Infinite iterators like `repeat_with()` are often used with adapters like
 /// [`take`], in order to make them finite.

@@ -7,7 +7,7 @@ fn test_le() {
     assert!("" <= "");
     assert!("" <= "foo");
     assert!("foo" <= "foo");
-    assert!("foo" != "bar");
+    assert_ne!("foo", "bar");
 }
 
 #[test]
@@ -351,7 +351,6 @@ mod slice_index {
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "out of bounds")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn assert_range_eq_can_fail_by_panic() {
         assert_range_eq!("abc", 0..5, "abc");
     }
@@ -361,7 +360,6 @@ mod slice_index {
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "==")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn assert_range_eq_can_fail_by_inequality() {
         assert_range_eq!("abc", 0..2, "abc");
     }
@@ -409,7 +407,6 @@ mod slice_index {
 
                 #[test]
                 #[should_panic(expected = $expect_msg)]
-                #[cfg(not(miri))] // Miri does not support panics
                 fn index_fail() {
                     let v: String = $data.into();
                     let v: &str = &v;
@@ -418,7 +415,6 @@ mod slice_index {
 
                 #[test]
                 #[should_panic(expected = $expect_msg)]
-                #[cfg(not(miri))] // Miri does not support panics
                 fn index_mut_fail() {
                     let mut v: String = $data.into();
                     let v: &mut str = &mut v;
@@ -514,7 +510,6 @@ mod slice_index {
 
     #[test]
     #[should_panic]
-    #[cfg(not(miri))] // Miri does not support panics
     fn test_slice_fail() {
         &"中华Việt Nam"[0..2];
     }
@@ -666,14 +661,12 @@ mod slice_index {
     // check the panic includes the prefix of the sliced string
     #[test]
     #[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn test_slice_fail_truncated_1() {
         &LOREM_PARAGRAPH[..1024];
     }
     // check the truncation in the panic message
     #[test]
     #[should_panic(expected="luctus, im`[...]")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn test_slice_fail_truncated_2() {
         &LOREM_PARAGRAPH[..1024];
     }
@@ -688,7 +681,6 @@ fn test_str_slice_rangetoinclusive_ok() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_str_slice_rangetoinclusive_notok() {
     let s = "abcαβγ";
     &s[..=3];
@@ -704,7 +696,6 @@ fn test_str_slicemut_rangetoinclusive_ok() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_str_slicemut_rangetoinclusive_notok() {
     let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
@@ -894,7 +885,6 @@ fn test_as_bytes() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_as_bytes_fail() {
     // Don't double free. (I'm not sure if this exercises the
     // original problem code path anymore.)
@@ -984,7 +974,6 @@ fn test_split_at_mut() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
     s.split_at(1);

@@ -304,8 +304,8 @@ fn simplify(decimal: &mut Decimal) {
     }
 }
 
-/// Quick and dirty upper bound on the size (log10) of the largest value that Algorithm R and
-/// Algorithm M will compute while working on the given decimal.
+/// Returns a quick-an-dirty upper bound on the size (log10) of the largest value that Algorithm R
+/// and Algorithm M will compute while working on the given decimal.
 fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
     // We don't need to worry too much about overflow here thanks to trivial_cases() and the
     // parser, which filter out the most extreme inputs for us.
@@ -324,7 +324,7 @@ fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
     }
 }
 
-/// Detect obvious overflows and underflows without even looking at the decimal digits.
+/// Detects obvious overflows and underflows without even looking at the decimal digits.
 fn trivial_cases<T: RawFloat>(decimal: &Decimal) -> Option<T> {
     // There were zeros but they were stripped by simplify()
     if decimal.integral.is_empty() && decimal.fractional.is_empty() {

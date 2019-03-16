@@ -1198,7 +1198,7 @@ impl<I: Iterator> Peekable<I> {
     }
 }
 
-/// An iterator that rejects elements while `predicate` is true.
+/// An iterator that rejects elements while `predicate` returns `true`.
 ///
 /// This `struct` is created by the [`skip_while`] method on [`Iterator`]. See its
 /// documentation for more.
@@ -1286,7 +1286,7 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 impl<I, P> FusedIterator for SkipWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
-/// An iterator that only accepts elements while `predicate` is true.
+/// An iterator that only accepts elements while `predicate` returns `true`.
 ///
 /// This `struct` is created by the [`take_while`] method on [`Iterator`]. See its
 /// documentation for more.

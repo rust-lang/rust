@@ -1,6 +1,5 @@
 #![feature(box_syntax)]
 #![feature(cell_update)]
-#![feature(copied)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
