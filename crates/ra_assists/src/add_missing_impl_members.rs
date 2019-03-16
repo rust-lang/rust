@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 /// Given an `ast::ImplBlock`, resolves the target trait (the one being
 /// implemented) to a `ast::TraitDef`.
-pub(crate) fn resolve_target_trait_def(
+fn resolve_target_trait_def(
     db: &impl HirDatabase,
     resolver: &Resolver,
     impl_block: &ast::ImplBlock,
@@ -25,7 +25,7 @@ pub(crate) fn resolve_target_trait_def(
     }
 }
 
-pub(crate) fn build_func_body(def: &ast::FnDef) -> String {
+fn build_func_body(def: &ast::FnDef) -> String {
     let mut buf = String::new();
 
     for child in def.syntax().children() {
@@ -40,17 +40,12 @@ pub(crate) fn build_func_body(def: &ast::FnDef) -> String {
 }
 
 pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let node = ctx.covering_node();
-    let impl_node = node.ancestors().find_map(ast::ImplBlock::cast)?;
+    let impl_node = ctx.node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
-    // Don't offer the assist when cursor is at the end, outside the block itself.
-    let cursor_range = TextRange::from_to(node.range().end(), node.range().end());
-    if node.range().end() == impl_node.syntax().range().end() {
-        return None;
-    }
 
     let trait_def = {
-        let position = FilePosition { file_id: ctx.frange.file_id, offset: cursor_range.end() };
+        let file_id = ctx.frange.file_id;
+        let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
         let resolver = hir::source_binder::resolver_for_position(ctx.db, position);
 
         resolve_target_trait_def(ctx.db, &resolver, impl_node)?
@@ -94,10 +89,13 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         };
 
         let changed_range = {
-            let last_whitespace = impl_item_list.syntax().children();
-            let last_whitespace = last_whitespace.filter_map(ast::Whitespace::cast).last();
+            let children = impl_item_list.syntax().children();
+            let last_whitespace = children.filter_map(ast::Whitespace::cast).last();
 
-            last_whitespace.map(|w| w.syntax().range()).unwrap_or(cursor_range)
+            last_whitespace.map(|w| w.syntax().range()).unwrap_or_else(|| {
+                let in_brackets = impl_item_list.syntax().range().end() - TextUnit::of_str("}");
+                TextRange::from_to(in_brackets, in_brackets)
+            })
         };
 
         let func_bodies = format!("\n{}", missing_fns.into_iter().map(build_func_body).join("\n"));
@@ -207,12 +205,18 @@ impl Foo for S {
 
     #[test]
     fn test_cursor_after_empty_impl_block() {
-        check_assist_not_applicable(
+        check_assist(
             add_missing_impl_members,
             "
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {}<|>",
+            "
+trait Foo { fn foo(&self); }
+struct S;
+impl Foo for S {
+    fn foo(&self) { unimplemented!() }<|>
+}",
         )
     }
 
