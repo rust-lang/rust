@@ -1,0 +1,20 @@
+error: use of SIMD type `v1024` in FFI not supported by any target features
+  --> $DIR/simd-ffi.rs:8:15
+   |
+LL |     fn foo(x: v1024);
+   |               ^^^^^
+
+error: use of SIMD type `v1024` in FFI not supported by any target features
+  --> $DIR/simd-ffi.rs:9:23
+   |
+LL |     fn bar(x: i32, y: v1024);
+   |                       ^^^^^
+
+error: use of SIMD type `v1024` in FFI not supported by any target features
+  --> $DIR/simd-ffi.rs:10:23
+   |
+LL |     fn baz(x: i32) -> v1024;
+   |                       ^^^^^
+
+error: aborting due to 3 previous errors
+

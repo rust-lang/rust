@@ -2256,6 +2256,95 @@ fn predicates_from_bound<'tcx>(
     }
 }
 
+/// Returns the minimum required target-feature name to use a SIMD type on C FFI:
+fn simd_ffi_min_target_feature(simd_width: usize) -> Option<&'static str> {
+    // FIXME: this needs to be architecture dependent and
+    // should probably belong somewhere else:
+    // * on arm: 8 => neon
+    // * on aarch64: 8 | 16 => neon,
+    // * on mips: 16 => msa,
+    // * on ppc: 16
+    //     if vec elem is 64-bit wide => vsx
+    //     otherwise => altivec
+    // * wasm: 16 => simd128
+    match simd_width {
+        16 => Some("sse"),
+        32 => Some("avx"),
+        64 => Some("avx512"),
+        _ => None,
+    }
+}
+
+/// Returns true if the target-feature allows using the SIMD type on C FFI:
+fn simd_ffi_feature_check(simd_width: usize, feature: &'static str) -> bool {
+    // FIXME: see simd_ffi_min_target_feature
+    match simd_width {
+        16 => feature.contains("sse") || feature.contains("ssse") || feature.contains("avx"),
+        32 => feature.contains("avx"),
+        64 => feature.contains("avx512"),
+        _ => false,
+    }
+}
+
+fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, ast_ty: &hir::Ty, ty: Ty<'b>,
+    attrs: &mut Option<CodegenFnAttrs>
+) {
+    if !ty.is_simd() {
+        return;
+    }
+
+    // The use of SIMD types in FFI is feature-gated:
+    if !tcx.features().simd_ffi {
+        tcx.sess
+            .struct_span_err(
+                ast_ty.span,
+                &format!(
+                    "use of SIMD type `{}` in FFI is unstable",
+                    tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
+                ),
+            )
+            .help("add #![feature(simd_ffi)] to the crate attributes to enable")
+            .emit();
+        return;
+    }
+
+    if attrs.is_none() {
+        *attrs = Some(codegen_fn_attrs(tcx, def_id));
+    }
+
+    // Skip LLVM intrinsics:
+    if let Some(link_name) = attrs.as_ref().unwrap().link_name {
+        if link_name.as_str().get().starts_with("llvm.") {
+            return;
+        }
+    }
+
+    let features = &attrs.as_ref().unwrap().target_features;
+    let simd_len = tcx.layout_of(ty::ParamEnvAnd{
+        param_env: ty::ParamEnv::empty(),
+        value: ty,
+    }).unwrap().details.size.bytes() as usize;
+
+    if !features.iter().any(|f| simd_ffi_feature_check(simd_len, f.as_str().get())) {
+        let type_str = tcx.hir().hir_to_pretty_string(ast_ty.hir_id);
+        let error_msg = if let Some(min_feature) = simd_ffi_min_target_feature(simd_len) {
+            format!(
+                "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",
+                type_str, min_feature,
+            )
+        } else {
+            format!(
+                "use of SIMD type `{}` in FFI not supported by any target features",
+                type_str
+            )
+        };
+        tcx.sess
+            .struct_span_err(ast_ty.span, &error_msg)
+            .emit();
+    }
+}
+
 fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -2269,32 +2358,19 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     };
     let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl);
 
-    // feature gate SIMD types in FFI, since I (huonw) am not sure the
-    // ABIs are handled at all correctly.
+    // Using SIMD types in FFI signatures requires the
+    // signature to have appropriate `#[target_feature]`s enabled.
     if abi != abi::Abi::RustIntrinsic
         && abi != abi::Abi::PlatformIntrinsic
-        && !tcx.features().simd_ffi
     {
-        let check = |ast_ty: &hir::Ty, ty: Ty<'_>| {
-            if ty.is_simd() {
-                tcx.sess
-                   .struct_span_err(
-                       ast_ty.span,
-                       &format!(
-                           "use of SIMD type `{}` in FFI is highly experimental and \
-                            may result in invalid code",
-                           tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
-                       ),
-                   )
-                   .help("add #![feature(simd_ffi)] to the crate attributes to enable")
-                   .emit();
-            }
-        };
+        // Compute function attrs at most once per FFI decl.
+        let mut attrs = None;
+
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
-            check(&input, ty)
+            simd_ffi_check(tcx, def_id, &input, ty, &mut attrs)
         }
         if let hir::Return(ref ty) = decl.output {
-            check(&ty, *fty.output().skip_binder())
+            simd_ffi_check(tcx, def_id, &ty, *fty.output().skip_binder(), &mut attrs)
         }
     }
 
