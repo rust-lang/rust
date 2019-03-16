@@ -43,7 +43,7 @@ use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{keywords, Symbol, LocalInternedString};
 
 use crate::reexport::*;
 
@@ -107,7 +107,7 @@ use rustc::ty::print::Printer;
 impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
     type Error = !;
 
-    type Path = Vec<String>;
+    type Path = Vec<LocalInternedString>;
     type Region = ();
     type Type = ();
     type DynExistential = ();
@@ -141,8 +141,9 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self,
         cnum: CrateNum,
         ) -> Result<Self::Path, Self::Error> {
-        Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
+        Ok(vec![self.tcx.original_crate_name(cnum).as_str()])
     }
+
     fn path_qualified(
         self,
         self_ty: Ty<'tcx>,
@@ -150,8 +151,8 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         ) -> Result<Self::Path, Self::Error> {
         // This shouldn't ever be needed, but just in case:
         Ok(vec![match trait_ref {
-            Some(trait_ref) => format!("{:?}", trait_ref),
-            None => format!("<{}>", self_ty),
+            Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
+            None => Symbol::intern(&format!("<{}>", self_ty)).as_str(),
         }])
     }
 
@@ -167,22 +168,24 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         // This shouldn't ever be needed, but just in case:
         path.push(match trait_ref {
             Some(trait_ref) => {
-                format!("<impl {} for {}>", trait_ref, self_ty)
+                Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str()
             }
-            None => format!("<impl {}>", self_ty),
+            None => Symbol::intern(&format!("<impl {}>", self_ty)).as_str(),
         });
 
         Ok(path)
     }
+
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
         ) -> Result<Self::Path, Self::Error> {
         let mut path = print_prefix(self)?;
-        path.push(disambiguated_data.data.as_interned_str().to_string());
+        path.push(disambiguated_data.data.as_interned_str().as_str());
         Ok(path)
     }
+
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
@@ -215,8 +218,8 @@ pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path
 ///     // The given `def_id` is that of an `Option` type
 /// };
 /// ```
-pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<String> {
-    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap()
+pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<&'static str> {
+    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap().iter().map(LocalInternedString::get).collect()
 }
 
 /// Checks if type is struct, enum or union type with the given def path.
