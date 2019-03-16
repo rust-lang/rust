@@ -193,7 +193,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
 ///
 /// See also the `paths` module.
 pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path: &[&str]) -> bool {
-    let names = AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap();
+    let names = get_def_path(tcx, def_id);
 
     names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
