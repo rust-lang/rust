@@ -34,11 +34,34 @@ error: unused import: `foo::Square`
 LL |         use foo::Square;
    |             ^^^^^^^^^^^
 
+warning: the item `g` is imported redundantly
+  --> $DIR/lint-unused-imports.rs:68:9
+   |
+LL | / fn g() {
+LL | |     use self::g;
+   | |         ^^^^^^^
+LL | |     fn f() {
+LL | |         self::g();
+LL | |     }
+LL | | }
+   | |_- the item `g` was already imported here
+   |
+   = note: #[warn(redundant_import)] on by default
+
 error: unused import: `self::g`
   --> $DIR/lint-unused-imports.rs:68:9
    |
 LL |     use self::g;
    |         ^^^^^^^
+
+warning: the item `foo` is imported redundantly
+  --> $DIR/lint-unused-imports.rs:77:9
+   |
+LL | use test2::{foo, bar};
+   |             --- the item `foo` was already imported here
+...
+LL |     use test2::foo;
+   |         ^^^^^^^^^^
 
 error: unused import: `test2::foo`
   --> $DIR/lint-unused-imports.rs:77:9
