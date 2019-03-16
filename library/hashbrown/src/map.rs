@@ -2535,7 +2535,7 @@ fn assert_covariance() {
 mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
-    use super::HashMap;
+    use super::{HashMap, RawEntryMut};
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
     use std::usize;
@@ -3531,4 +3531,48 @@ mod test_map {
         }
     }
 
+    #[test]
+    fn test_key_without_hash_impl() {
+        #[derive(Debug)]
+        struct IntWrapper(u64);
+
+        let mut m: HashMap<IntWrapper, ()> = HashMap::new();
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 0"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(0, IntWrapper(0), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_none());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(1, |k| k.0 == 1) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 1"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(1, IntWrapper(1), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let occupied_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(e) => e,
+                RawEntryMut::Vacant(..) => panic!("Couldn't find entry for key 0"),
+            };
+            occupied_entry.remove();
+        }
+        assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+        assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+    }
 }
