@@ -489,7 +489,7 @@ pub enum BuiltinLintDiagnostics {
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
     NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
-    RedundantImport(Vec<Span>, ast::Ident),
+    RedundantImport(Vec<(Span, bool)>, ast::Ident),
 }
 
 impl BuiltinLintDiagnostics {
@@ -587,10 +587,11 @@ impl BuiltinLintDiagnostics {
                 db.span_label(inner_impl_trait_span, "nested `impl Trait` here");
             }
             BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
-                for span in spans {
+                for (span, is_imported) in spans {
+                    let introduced = if is_imported { "imported" } else { "defined" };
                     db.span_label(
                         span,
-                        format!("the item `{}` was already imported here", ident)
+                        format!("the item `{}` was {} here", ident, introduced)
                     );
                 }
             }

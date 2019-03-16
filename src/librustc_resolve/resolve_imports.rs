@@ -1295,7 +1295,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             ) {
                 Ok(other_binding) => {
                     is_redundant[ns] = Some(binding.def() == other_binding.def());
-                    redundant_span[ns] = Some(other_binding.span);
+                    redundant_span[ns] =
+                        Some((other_binding.span, other_binding.is_import()));
                 }
                 Err(_) => is_redundant[ns] = Some(false)
             }
