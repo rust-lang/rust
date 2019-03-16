@@ -1329,7 +1329,7 @@ where
 
 impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
 where
-    S: BuildHasher
+    S: BuildHasher,
 {
     /// Create a `RawEntryMut` from the given hash.
     #[inline]
@@ -1637,16 +1637,20 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 
     /// Set the value of an entry with a custom hasher function.
     #[inline]
-    pub fn insert_with_hasher<H>(self, hash: u64, key: K, value: V, hasher: H) -> (&'a mut K, &'a mut V)
+    pub fn insert_with_hasher<H>(
+        self,
+        hash: u64,
+        key: K,
+        value: V,
+        hasher: H,
+    ) -> (&'a mut K, &'a mut V)
     where
         S: BuildHasher,
         H: Fn(&K) -> u64,
     {
         self.table.reserve(1, |x| hasher(&x.0));
         unsafe {
-            let elem = self
-                .table
-                .insert(hash, (key, value), |x| hasher(&x.0));
+            let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
             let &mut (ref mut key, ref mut value) = elem.as_mut();
             (key, value)
         }
