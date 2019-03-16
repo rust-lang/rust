@@ -453,51 +453,55 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Base(PlaceBase::Local(index)) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Place::Base(PlaceBase::Promoted(box (index, sty))) => {
-                let sty = self.sanitize_type(place, sty);
+            Place::Base(PlaceBase::Static(box Static { def_id, ty: sty, promoted })) => {
+                match promoted {
+                    Some(pr) => {
+                        let sty = self.sanitize_type(place, sty);
 
-                if !self.errors_reported {
-                    let promoted_mir = &self.mir.promoted[index];
-                    self.sanitize_promoted(promoted_mir, location);
+                        if !self.errors_reported {
+                            let promoted_mir = &self.mir.promoted[pr];
+                            self.sanitize_promoted(promoted_mir, location);
 
-                    let promoted_ty = promoted_mir.return_ty();
+                            let promoted_ty = promoted_mir.return_ty();
 
-                    if let Err(terr) = self.cx.eq_types(
-                        sty,
-                        promoted_ty,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    ) {
-                        span_mirbug!(
-                            self,
-                            place,
-                            "bad promoted type ({:?}: {:?}): {:?}",
-                            promoted_ty,
-                            sty,
-                            terr
-                        );
-                    };
+                            if let Err(terr) = self.cx.eq_types(
+                                sty,
+                                promoted_ty,
+                                location.to_locations(),
+                                ConstraintCategory::Boring,
+                            ) {
+                                span_mirbug!(
+                                    self,
+                                    place,
+                                    "bad promoted type ({:?}: {:?}): {:?}",
+                                    promoted_ty,
+                                    sty,
+                                    terr
+                                );
+                            };
+                        }
+                        PlaceTy::Ty { ty: sty }
+                    }
+                    None => {
+                        let sty = self.sanitize_type(place, sty);
+                        let ty = self.tcx().type_of(def_id);
+                        let ty = self.cx.normalize(ty, location);
+                        if let Err(terr) =
+                            self.cx
+                                .eq_types(ty, sty, location.to_locations(), ConstraintCategory::Boring)
+                        {
+                            span_mirbug!(
+                                self,
+                                place,
+                                "bad static type ({:?}: {:?}): {:?}",
+                                ty,
+                                sty,
+                                terr
+                            );
+                        }
+                        PlaceTy::Ty { ty: sty }
+                    }
                 }
-                PlaceTy::Ty { ty: sty }
-            }
-            Place::Base(PlaceBase::Static(box Static { def_id, ty: sty })) => {
-                let sty = self.sanitize_type(place, sty);
-                let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(ty, location);
-                if let Err(terr) =
-                    self.cx
-                        .eq_types(ty, sty, location.to_locations(), ConstraintCategory::Boring)
-                {
-                    span_mirbug!(
-                        self,
-                        place,
-                        "bad static type ({:?}: {:?}): {:?}",
-                        ty,
-                        sty,
-                        terr
-                    );
-                }
-                PlaceTy::Ty { ty: sty }
             }
             Place::Projection(ref proj) => {
                 let base_context = if context.is_mutating_use() {

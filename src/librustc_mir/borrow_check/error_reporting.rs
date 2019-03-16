@@ -1598,14 +1598,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match *place {
-            Place::Base(PlaceBase::Promoted(_)) => {
-                buf.push_str("promoted");
-            }
             Place::Base(PlaceBase::Local(local)) => {
                 self.append_local_to_string(local, buf)?;
             }
             Place::Base(PlaceBase::Static(ref static_)) => {
-                buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
+                match static_.promoted {
+                    Some(_) => {
+                        buf.push_str("promoted");
+                    }
+                    None => {
+                        buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
+                    }
+                }
             }
             Place::Projection(ref proj) => {
                 match proj.elem {
@@ -1744,8 +1748,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
-            Place::Base(PlaceBase::Promoted(ref prom)) =>
-                self.describe_field_from_ty(&prom.1, field),
             Place::Base(PlaceBase::Static(ref static_)) =>
                 self.describe_field_from_ty(&static_.ty, field),
             Place::Projection(ref proj) => match proj.elem {
@@ -1828,8 +1830,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         match place {
             Place::Base(PlaceBase::Local(_)) |
-            Place::Base(PlaceBase::Static(_)) |
-            Place::Base(PlaceBase::Promoted(_)) => {
+            Place::Base(PlaceBase::Static(_)) => {
                 StorageDeadOrDrop::LocalStorageDead
             }
             Place::Projection(box PlaceProjection { base, elem }) => {

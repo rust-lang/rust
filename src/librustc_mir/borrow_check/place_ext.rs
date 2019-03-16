@@ -30,8 +30,6 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {
         match self {
-            Place::Base(PlaceBase::Promoted(_)) => false,
-
             // If a local variable is immutable, then we only need to track borrows to guard
             // against two kinds of errors:
             // * The variable being dropped while still borrowed (e.g., because the fn returns
@@ -52,7 +50,12 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                 }
             }
             Place::Base(PlaceBase::Static(static_)) => {
-                tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
+                match static_.promoted {
+                    Some(_) => false,
+                    None => {
+                        tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
+                    }
+                }
             }
             Place::Projection(proj) => match proj.elem {
                 ProjectionElem::Field(..)
@@ -88,7 +91,6 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         loop {
             match p {
                 Place::Projection(pi) => p = &pi.base,
-                Place::Base(PlaceBase::Promoted(_)) |
                 Place::Base(PlaceBase::Static(_)) => return None,
                 Place::Base(PlaceBase::Local(l)) => return Some(*l),
             }

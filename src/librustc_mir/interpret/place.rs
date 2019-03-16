@@ -583,35 +583,38 @@ where
         use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
         Ok(match *mir_place {
-            Base(PlaceBase::Promoted(ref promoted)) => {
-                let instance = self.frame().instance;
-                self.const_eval_raw(GlobalId {
-                    instance,
-                    promoted: Some(promoted.0),
-                })?
-            }
-
             Base(PlaceBase::Static(ref static_)) => {
-                assert!(!static_.ty.needs_subst());
-                let layout = self.layout_of(static_.ty)?;
-                let instance = ty::Instance::mono(*self.tcx, static_.def_id);
-                let cid = GlobalId {
-                    instance,
-                    promoted: None
-                };
-                // Just create a lazy reference, so we can support recursive statics.
-                // tcx takes are of assigning every static one and only one unique AllocId.
-                // When the data here is ever actually used, memory will notice,
-                // and it knows how to deal with alloc_id that are present in the
-                // global table but not in its local memory: It calls back into tcx through
-                // a query, triggering the CTFE machinery to actually turn this lazy reference
-                // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
-                // this EvalContext uses another Machine (e.g., in miri).  This is what we
-                // want!  This way, computing statics works concistently between codegen
-                // and miri: They use the same query to eventually obtain a `ty::Const`
-                // and use that for further computation.
-                let alloc = self.tcx.alloc_map.lock().intern_static(cid.instance.def_id());
-                MPlaceTy::from_aligned_ptr(Pointer::from(alloc).with_default_tag(), layout)
+                match static_.promoted {
+                    Some(promoted) => {
+                        let instance = self.frame().instance;
+                        self.const_eval_raw(GlobalId {
+                            instance,
+                            promoted: Some(promoted),
+                        })?
+                    }
+                    None => {
+                        assert!(!static_.ty.needs_subst());
+                        let layout = self.layout_of(static_.ty)?;
+                        let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None
+                        };
+                        // Just create a lazy reference, so we can support recursive statics.
+                        // tcx takes are of assigning every static one and only one unique AllocId.
+                        // When the data here is ever actually used, memory will notice,
+                        // and it knows how to deal with alloc_id that are present in the
+                        // global table but not in its local memory: It calls back into tcx through
+                        // a query, triggering the CTFE machinery to actually turn this lazy reference
+                        // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
+                        // this EvalContext uses another Machine (e.g., in miri).  This is what we
+                        // want!  This way, computing statics works concistently between codegen
+                        // and miri: They use the same query to eventually obtain a `ty::Const`
+                        // and use that for further computation.
+                        let alloc = self.tcx.alloc_map.lock().intern_static(cid.instance.def_id());
+                        MPlaceTy::from_aligned_ptr(Pointer::from(alloc).with_default_tag(), layout)
+                    }
+                }
             }
 
             _ => bug!("eval_place_to_mplace called on {:?}", mir_place),

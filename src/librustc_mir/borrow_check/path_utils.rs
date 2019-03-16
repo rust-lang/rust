@@ -138,7 +138,6 @@ pub(super) fn is_active<'tcx>(
 /// This is called for all Yield statements on movable generators
 pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
     match place {
-        Place::Base(PlaceBase::Promoted(_)) |
         Place::Base(PlaceBase::Static(..)) => false,
         Place::Base(PlaceBase::Local(..)) => true,
         Place::Projection(box proj) => {

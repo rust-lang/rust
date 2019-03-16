@@ -282,25 +282,31 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 // an `Index` projection would throw us off-track.
                 _ => None,
             },
-            Place::Base(PlaceBase::Promoted(ref promoted)) => {
-                let generics = self.tcx.generics_of(self.source.def_id());
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
+            Place::Base(PlaceBase::Static(ref static_)) => {
+                match static_.promoted {
+                    Some(promoted) => {
+                        let generics = self.tcx.generics_of(self.source.def_id());
+                        if generics.requires_monomorphization(self.tcx) {
+                            // FIXME: can't handle code with generics
+                            return None;
+                        }
+                        let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
+                        let instance = Instance::new(self.source.def_id(), substs);
+                        let cid = GlobalId {
+                            instance,
+                            promoted: Some(promoted),
+                        };
+                        // cannot use `const_eval` here, because that would require having the MIR
+                        // for the current function available, but we're producing said MIR right now
+                        let res = self.use_ecx(source_info, |this| {
+                            eval_promoted(this.tcx, cid, this.mir, this.param_env)
+                        })?;
+                        trace!("evaluated promoted {:?} to {:?}", promoted, res);
+                        Some((res.into(), source_info.span))
+                    }
+                    None => None
                 }
-                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
-                let instance = Instance::new(self.source.def_id(), substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(promoted.0),
-                };
-                // cannot use `const_eval` here, because that would require having the MIR
-                // for the current function available, but we're producing said MIR right now
-                let res = self.use_ecx(source_info, |this| {
-                    eval_promoted(this.tcx, cid, this.mir, this.param_env)
-                })?;
-                trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                Some((res.into(), source_info.span))
+
             },
             _ => None,
         }

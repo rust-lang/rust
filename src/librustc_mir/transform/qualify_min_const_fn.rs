@@ -256,10 +256,13 @@ fn check_place(
 ) -> McfResult {
     match place {
         Place::Base(PlaceBase::Local(_)) => Ok(()),
-        // promoteds are always fine, they are essentially constants
-        Place::Base(PlaceBase::Promoted(_)) => Ok(()),
-        Place::Base(PlaceBase::Static(_)) =>
-            Err((span, "cannot access `static` items in const fn".into())),
+        Place::Base(PlaceBase::Static(st)) => {
+            match st.promoted {
+                // promoteds are always fine, they are essentially constants
+                Some(..) => Ok(()),
+                None => Err((span, "cannot access `static` items in const fn".into())),
+            }
+        }
         Place::Projection(proj) => {
             match proj.elem {
                 | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
