@@ -724,11 +724,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::FnPtr(sig) => (sig.input.clone(), sig.output.clone()),
+                    Ty::FnPtr(sig) => (sig.params().to_vec(), sig.ret().clone()),
                     Ty::FnDef { substs, sig, .. } => {
-                        let ret_ty = sig.output.clone().subst(&substs);
+                        let ret_ty = sig.ret().clone().subst(&substs);
                         let param_tys =
-                            sig.input.iter().map(|ty| ty.clone().subst(&substs)).collect();
+                            sig.params().iter().map(|ty| ty.clone().subst(&substs)).collect();
                         (param_tys, ret_ty)
                     }
                     _ => {
@@ -762,19 +762,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::FnPtr(sig) => {
-                        if !sig.input.is_empty() {
-                            (sig.input[0].clone(), sig.input[1..].to_vec(), sig.output.clone())
+                        if !sig.params().is_empty() {
+                            (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
                         } else {
-                            (Ty::Unknown, Vec::new(), sig.output.clone())
+                            (Ty::Unknown, Vec::new(), sig.ret().clone())
                         }
                     }
                     Ty::FnDef { substs, sig, .. } => {
-                        let ret_ty = sig.output.clone().subst(&substs);
+                        let ret_ty = sig.ret().clone().subst(&substs);
 
-                        if !sig.input.is_empty() {
-                            let mut arg_iter = sig.input.iter().map(|ty| ty.clone().subst(&substs));
-                            let receiver_ty = arg_iter.next().unwrap();
-                            (receiver_ty, arg_iter.collect(), ret_ty)
+                        if !sig.params().is_empty() {
+                            let mut params_iter =
+                                sig.params().iter().map(|ty| ty.clone().subst(&substs));
+                            let receiver_ty = params_iter.next().unwrap();
+                            (receiver_ty, params_iter.collect(), ret_ty)
                         } else {
                             (Ty::Unknown, Vec::new(), ret_ty)
                         }

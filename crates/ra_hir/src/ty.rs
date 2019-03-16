@@ -78,7 +78,7 @@ pub enum Ty {
         /// The definition of the function / constructor.
         def: CallableDef,
         /// Parameters and return type
-        sig: Arc<FnSig>,
+        sig: FnSig,
         /// Substitutions for the generic parameters of the type
         substs: Substs,
     },
@@ -91,7 +91,7 @@ pub enum Ty {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(Arc<FnSig>),
+    FnPtr(FnSig),
 
     /// The never type `!`.
     Never,
@@ -128,13 +128,44 @@ impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
     }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        // Without an Arc::make_mut_slice, we can't avoid the clone here:
+        let mut v: Vec<_> = self.0.iter().cloned().collect();
+        for t in &mut v {
+            t.walk_mut(f);
+        }
+        self.0 = v.into();
+    }
 }
 
 /// A function signature.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FnSig {
-    input: Vec<Ty>,
-    output: Ty,
+    params_and_return: Arc<[Ty]>,
+}
+
+impl FnSig {
+    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty) -> FnSig {
+        params.push(ret);
+        FnSig { params_and_return: params.into() }
+    }
+    pub fn params(&self) -> &[Ty] {
+        &self.params_and_return[0..self.params_and_return.len() - 1]
+    }
+
+    pub fn ret(&self) -> &Ty {
+        &self.params_and_return[self.params_and_return.len() - 1]
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        // Without an Arc::make_mut_slice, we can't avoid the clone here:
+        let mut v: Vec<_> = self.params_and_return.iter().cloned().collect();
+        for t in &mut v {
+            t.walk_mut(f);
+        }
+        self.params_and_return = v.into();
+    }
 }
 
 impl Ty {
@@ -153,16 +184,16 @@ impl Ty {
                 }
             }
             Ty::FnPtr(sig) => {
-                for input in &sig.input {
+                for input in sig.params() {
                     input.walk(f);
                 }
-                sig.output.walk(f);
+                sig.ret().walk(f);
             }
             Ty::FnDef { substs, sig, .. } => {
-                for input in &sig.input {
+                for input in sig.params() {
                     input.walk(f);
                 }
-                sig.output.walk(f);
+                sig.ret().walk(f);
                 for t in substs.0.iter() {
                     t.walk(f);
                 }
@@ -199,32 +230,14 @@ impl Ty {
                 *ts = v.into();
             }
             Ty::FnPtr(sig) => {
-                let sig_mut = Arc::make_mut(sig);
-                for input in &mut sig_mut.input {
-                    input.walk_mut(f);
-                }
-                sig_mut.output.walk_mut(f);
+                sig.walk_mut(f);
             }
             Ty::FnDef { substs, sig, .. } => {
-                let sig_mut = Arc::make_mut(sig);
-                for input in &mut sig_mut.input {
-                    input.walk_mut(f);
-                }
-                sig_mut.output.walk_mut(f);
-                // Without an Arc::make_mut_slice, we can't avoid the clone here:
-                let mut v: Vec<_> = substs.0.iter().cloned().collect();
-                for t in &mut v {
-                    t.walk_mut(f);
-                }
-                substs.0 = v.into();
+                sig.walk_mut(f);
+                substs.walk_mut(f);
             }
             Ty::Adt { substs, .. } => {
-                // Without an Arc::make_mut_slice, we can't avoid the clone here:
-                let mut v: Vec<_> = substs.0.iter().cloned().collect();
-                for t in &mut v {
-                    t.walk_mut(f);
-                }
-                substs.0 = v.into();
+                substs.walk_mut(f);
             }
             Ty::Bool
             | Ty::Char
@@ -328,8 +341,8 @@ impl HirDisplay for Ty {
             }
             Ty::FnPtr(sig) => {
                 write!(f, "fn(")?;
-                f.write_joined(&sig.input, ", ")?;
-                write!(f, ") -> {}", sig.output.display(f.db))?;
+                f.write_joined(sig.params(), ", ")?;
+                write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
             Ty::FnDef { def, substs, sig, .. } => {
                 let name = match def {
@@ -347,8 +360,8 @@ impl HirDisplay for Ty {
                     write!(f, ">")?;
                 }
                 write!(f, "(")?;
-                f.write_joined(&sig.input, ", ")?;
-                write!(f, ") -> {}", sig.output.display(f.db))?;
+                f.write_joined(sig.params(), ", ")?;
+                write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
             Ty::Adt { def_id, substs, .. } => {
                 let name = match def_id {
