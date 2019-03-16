@@ -304,8 +304,8 @@ impl HirDisplay for Ty {
         match self {
             Ty::Bool => write!(f, "bool")?,
             Ty::Char => write!(f, "char")?,
-            Ty::Int(t) => write!(f, "{}", t.ty_to_string())?,
-            Ty::Float(t) => write!(f, "{}", t.ty_to_string())?,
+            Ty::Int(t) => write!(f, "{}", t)?,
+            Ty::Float(t) => write!(f, "{}", t)?,
             Ty::Str => write!(f, "str")?,
             Ty::Slice(t) | Ty::Array(t) => {
                 write!(f, "[{}]", t.display(f.db))?;
