@@ -3,7 +3,7 @@ error[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              -- lifetime `'a` defined here
-LL |     &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *s.0
    |     ^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }
@@ -14,7 +14,7 @@ error[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    -- lifetime `'a` defined here
-LL |     &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *(*s).0
    |     ^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }
@@ -25,7 +25,7 @@ error[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          -- lifetime `'a` defined here
-LL |     &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *(**s).0
    |     ^^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }

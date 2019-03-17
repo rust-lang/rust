@@ -10,8 +10,8 @@ help: consider changing this to accept closures that implement `FnMut`
 LL |       call(|| {
    |  __________^
 LL | |         counter += 1;
-LL | |         //[ast]~^ ERROR cannot assign to data in a captured outer variable in an `Fn` closure
-LL | |         //[mir]~^^ ERROR cannot assign to `counter`
+LL | |
+LL | |
 LL | |     });
    | |_____^
 

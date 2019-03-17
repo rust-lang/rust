@@ -3,9 +3,9 @@ error[E0503]: cannot use `x` because it was mutably borrowed
    |
 LL |     let wrapper = Wrap { w: &mut x };
    |                             ------ borrow of `x` occurs here
-LL |     x += 1; //[ast]~ ERROR cannot assign to `x` because it is borrowed [E0506]
+LL |     x += 1;
    |     ^^^^^^ use of borrowed `x`
-LL |     //[mir]~^ ERROR cannot use `x` because it was mutably borrowed [E0503]
+LL |
 LL |     *wrapper.w += 1;
    |     --------------- borrow later used here
 

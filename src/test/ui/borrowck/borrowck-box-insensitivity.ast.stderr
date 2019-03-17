@@ -3,8 +3,8 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = a.y; //[ast]~ ERROR use of moved
+LL |
+LL |     let _y = a.y;
    |         ^^ value used here after move
    |
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -14,8 +14,8 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = a.y; //[ast]~ ERROR use of moved
+LL |
+LL |     let _y = a.y;
    |         ^^ value used here after move
    |
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -25,8 +25,8 @@ error[E0382]: use of moved value: `a`
    |
 LL |     let _x = a.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = &a.y; //[ast]~ ERROR use of moved
+LL |
+LL |     let _y = &a.y;
    |               ^^^ value used here after move
    |
    = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -44,7 +44,7 @@ error[E0503]: cannot use `a.y` because it was mutably borrowed
    |
 LL |     let _x = &mut a.x;
    |                   --- borrow of `a.x` occurs here
-LL |     let _y = a.y; //[ast]~ ERROR cannot use
+LL |     let _y = a.y;
    |         ^^ use of borrowed `a.x`
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
@@ -60,7 +60,7 @@ error[E0502]: cannot borrow `a` (via `a.y`) as immutable because `a` is also bor
    |
 LL |     let _x = &mut a.x;
    |                   --- mutable borrow occurs here (via `a.x`)
-LL |     let _y = &a.y; //[ast]~ ERROR cannot borrow
+LL |     let _y = &a.y;
    |               ^^^ immutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
 ...
 LL | }
@@ -71,7 +71,7 @@ error[E0502]: cannot borrow `a` (via `a.y`) as mutable because `a` is also borro
    |
 LL |     let _x = &a.x;
    |               --- immutable borrow occurs here (via `a.x`)
-LL |     let _y = &mut a.y; //[ast]~ ERROR cannot borrow
+LL |     let _y = &mut a.y;
    |                   ^^^ mutable borrow of `a.y` -- which overlaps with `a.x` -- occurs here
 ...
 LL | }
@@ -82,8 +82,8 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = a.y; //[ast]~ ERROR use of collaterally moved
+LL |
+LL |     let _y = a.y;
    |         ^^ value used here after move
    |
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -93,8 +93,8 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = a.y; //[ast]~ ERROR use of collaterally moved
+LL |
+LL |     let _y = a.y;
    |         ^^ value used here after move
    |
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -104,8 +104,8 @@ error[E0382]: use of collaterally moved value: `a.y`
    |
 LL |     let _x = a.x.x;
    |         -- value moved here
-LL |     //[ast]~^ value moved here
-LL |     let _y = &a.y; //[ast]~ ERROR use of collaterally moved
+LL |
+LL |     let _y = &a.y;
    |               ^^^ value used here after move
    |
    = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -115,7 +115,7 @@ error[E0505]: cannot move out of `a.y` because it is borrowed
    |
 LL |     let _x = &a.x.x;
    |               ----- borrow of `a.x.x` occurs here
-LL |     //[ast]~^ borrow of `a.x.x` occurs here
+LL |
 LL |     let _y = a.y;
    |         ^^ move out of `a.y` occurs here
 
@@ -124,7 +124,7 @@ error[E0503]: cannot use `a.y` because it was mutably borrowed
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- borrow of `a.x.x` occurs here
-LL |     let _y = a.y; //[ast]~ ERROR cannot use
+LL |     let _y = a.y;
    |         ^^ use of borrowed `a.x.x`
 
 error[E0505]: cannot move out of `a.y` because it is borrowed
@@ -140,8 +140,8 @@ error[E0502]: cannot borrow `a.y` as immutable because `a.x.x` is also borrowed 
    |
 LL |     let _x = &mut a.x.x;
    |                   ----- mutable borrow occurs here
-LL |     //[ast]~^ mutable borrow occurs here
-LL |     let _y = &a.y; //[ast]~ ERROR cannot borrow
+LL |
+LL |     let _y = &a.y;
    |               ^^^ immutable borrow occurs here
 ...
 LL | }
@@ -152,8 +152,8 @@ error[E0502]: cannot borrow `a.y` as mutable because `a.x.x` is also borrowed as
    |
 LL |     let _x = &a.x.x;
    |               ----- immutable borrow occurs here
-LL |     //[ast]~^ immutable borrow occurs here
-LL |     let _y = &mut a.y; //[ast]~ ERROR cannot borrow
+LL |
+LL |     let _y = &mut a.y;
    |                   ^^^ mutable borrow occurs here
 ...
 LL | }

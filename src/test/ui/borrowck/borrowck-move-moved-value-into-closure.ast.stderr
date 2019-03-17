@@ -3,7 +3,7 @@ error[E0382]: capture of moved value: `t`
    |
 LL |     call_f(move|| { *t + 1 });
    |            ------ value moved (into closure) here
-LL |     call_f(move|| { *t + 1 }); //[ast]~ ERROR capture of moved value
+LL |     call_f(move|| { *t + 1 });
    |                      ^ value captured here after move
    |
    = note: move occurs because `t` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait

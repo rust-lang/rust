@@ -3,8 +3,8 @@ error[E0594]: cannot assign to field `_iter.node` of immutable binding
    |
 LL |       let _iter = TrieMapIterator{node: &a};
    |           ----- help: make this binding mutable: `mut _iter`
-LL | /     _iter.node = & //[ast]~ ERROR cannot assign to field `_iter.node` of immutable binding
-LL | |                    //[mir]~^ ERROR cannot assign to field `_iter.node` of immutable binding (Ast)
+LL | /     _iter.node = &
+LL | |
 LL | |                    // MIR doesn't generate an error because the code isn't reachable. This is OK
 LL | |                    // because the test is here to check that the compiler doesn't ICE (cf. #5500).
 LL | |     panic!()

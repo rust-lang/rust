@@ -3,7 +3,7 @@ error[E0503]: cannot use `f.x` because it was mutably borrowed
    |
 LL |         let x = f.x();
    |                 - borrow of `f` occurs here
-LL |         f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowed
+LL |         f.x;
    |         ^^^ use of borrowed `f`
 
 error[E0503]: cannot use `g.0` because it was mutably borrowed
@@ -11,7 +11,7 @@ error[E0503]: cannot use `g.0` because it was mutably borrowed
    |
 LL |         let x = g.x();
    |                 - borrow of `g` occurs here
-LL |         g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowed
+LL |         g.0;
    |         ^^^ use of borrowed `g`
 
 error[E0503]: cannot use `h.0` because it was mutably borrowed
@@ -19,7 +19,7 @@ error[E0503]: cannot use `h.0` because it was mutably borrowed
    |
 LL |         let x = &mut h.0;
    |                      --- borrow of `h.0` occurs here
-LL |         h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowed
+LL |         h.0;
    |         ^^^ use of borrowed `h.0`
 
 error[E0503]: cannot use `e.0` because it was mutably borrowed
@@ -36,7 +36,7 @@ error[E0503]: cannot use `u.a` because it was mutably borrowed
    |
 LL |         let x = &mut u.a;
    |                      --- borrow of `u.a` occurs here
-LL |         u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
+LL |         u.a;
    |         ^^^ use of borrowed `u.a`
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
@@ -44,7 +44,7 @@ error[E0503]: cannot use `f.x` because it was mutably borrowed
    |
 LL |         let x = f.x();
    |                 - borrow of `*f` occurs here
-LL |         f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowed
+LL |         f.x;
    |         ^^^ use of borrowed `*f`
 
 error[E0503]: cannot use `g.0` because it was mutably borrowed
@@ -52,7 +52,7 @@ error[E0503]: cannot use `g.0` because it was mutably borrowed
    |
 LL |         let x = g.x();
    |                 - borrow of `*g` occurs here
-LL |         g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowed
+LL |         g.0;
    |         ^^^ use of borrowed `*g`
 
 error[E0503]: cannot use `h.0` because it was mutably borrowed
@@ -60,7 +60,7 @@ error[E0503]: cannot use `h.0` because it was mutably borrowed
    |
 LL |         let x = &mut h.0;
    |                      --- borrow of `h.0` occurs here
-LL |         h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowed
+LL |         h.0;
    |         ^^^ use of borrowed `h.0`
 
 error[E0503]: cannot use `e.0` because it was mutably borrowed
@@ -77,7 +77,7 @@ error[E0503]: cannot use `u.a` because it was mutably borrowed
    |
 LL |         let x = &mut u.a;
    |                      --- borrow of `u.a` occurs here
-LL |         u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
+LL |         u.a;
    |         ^^^ use of borrowed `u.a`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
@@ -213,7 +213,7 @@ error[E0499]: cannot borrow `**x` as mutable more than once at a time
    |
 LL |             let y = &mut x;
    |                          - first mutable borrow occurs here
-LL |             &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
+LL |             &mut x;
    |                  ^ second mutable borrow occurs here
 ...
 LL |         };
@@ -224,7 +224,7 @@ error[E0499]: cannot borrow `**x` as mutable more than once at a time
    |
 LL |                    let y = &mut x;
    |                                 - first mutable borrow occurs here
-LL |                    &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
+LL |                    &mut x;
    |                         ^ second mutable borrow occurs here
 ...
 LL |                 }
@@ -235,7 +235,7 @@ error[E0382]: use of moved value: `x`
    |
 LL |                 drop(x);
    |                      - value moved here
-LL |                 drop(x); //[ast]~ ERROR use of moved value: `x`
+LL |                 drop(x);
    |                      ^ value used here after move
    |
    = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait

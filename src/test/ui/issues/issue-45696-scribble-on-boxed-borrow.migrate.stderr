@@ -3,7 +3,7 @@ warning[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              -- lifetime `'a` defined here
-LL |     &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *s.0
    |     ^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }
@@ -17,7 +17,7 @@ warning[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    -- lifetime `'a` defined here
-LL |     &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *(*s).0
    |     ^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }
@@ -31,7 +31,7 @@ warning[E0713]: borrow may still be in use when destructor runs
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          -- lifetime `'a` defined here
-LL |     &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+LL |     &mut *(**s).0
    |     ^^^^^^^^^^^^^ returning this value requires that `*s.0` is borrowed for `'a`
 ...
 LL | }
@@ -43,8 +43,8 @@ LL | }
 error: compilation successful
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:1
    |
-LL | / fn main() { //[ast]~ ERROR compilation successful
-LL | |      //[migrate]~^ ERROR compilation successful
+LL | / fn main() {
+LL | |
 LL | |     let mut x = 1;
 LL | |     {
 ...  |

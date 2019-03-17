@@ -3,7 +3,7 @@ error[E0594]: cannot assign to `***p` which is behind a `&` reference
    |
 LL |     let p = &y;
    |             -- help: consider changing this to be a mutable reference: `&mut y`
-LL |     ***p = 2; //[ast]~ ERROR cannot assign to data in a `&` reference
+LL |     ***p = 2;
    |     ^^^^^^^^ `p` is a `&` reference, so the data it refers to cannot be written
 
 error[E0506]: cannot assign to `**y` because it is borrowed
@@ -12,9 +12,9 @@ error[E0506]: cannot assign to `**y` because it is borrowed
 LL |     let p = &y;
    |             -- borrow of `**y` occurs here
 LL |     let q = &***p;
-LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+LL |     **y = 2;
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -24,9 +24,9 @@ error[E0506]: cannot assign to `**y` because it is borrowed
 LL |     let p = &y;
    |             -- borrow of `**y` occurs here
 LL |     let q = &***p;
-LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+LL |     **y = 2;
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -36,9 +36,9 @@ error[E0506]: cannot assign to `**y` because it is borrowed
 LL |     let p = &y;
    |             -- borrow of `**y` occurs here
 LL |     let q = &***p;
-LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+LL |     **y = 2;
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -48,9 +48,9 @@ error[E0506]: cannot assign to `**y` because it is borrowed
 LL |     let p = &y;
    |             -- borrow of `**y` occurs here
 LL |     let q = &***p;
-LL |     **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
+LL |     **y = 2;
    |     ^^^^^^^ assignment to borrowed `**y` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -60,9 +60,9 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
 LL |     let p = &y.a;
    |             ---- borrow of `**y.a` occurs here
 LL |     let q = &***p;
-LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     **y.a = 2;
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
-LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -72,9 +72,9 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
 LL |     let p = &y.a;
    |             ---- borrow of `**y.a` occurs here
 LL |     let q = &***p;
-LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     **y.a = 2;
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
-LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -84,9 +84,9 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
 LL |     let p = &y.a;
    |             ---- borrow of `**y.a` occurs here
 LL |     let q = &***p;
-LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     **y.a = 2;
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
-LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 
@@ -96,9 +96,9 @@ error[E0506]: cannot assign to `**y.a` because it is borrowed
 LL |     let p = &y.a;
    |             ---- borrow of `**y.a` occurs here
 LL |     let q = &***p;
-LL |     **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
+LL |     **y.a = 2;
    |     ^^^^^^^^^ assignment to borrowed `**y.a` occurs here
-LL |                //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+LL |
 LL |     drop(p);
    |          - borrow later used here
 

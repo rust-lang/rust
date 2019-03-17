@@ -1,7 +1,7 @@
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:13:35
    |
-LL |             1 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
+LL |             1 => { addr.push(&mut x); }
    |                                   ^ mutable borrow starts here in previous iteration of loop
 ...
 LL | }
@@ -10,10 +10,10 @@ LL | }
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:15:35
    |
-LL |             1 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
+LL |             1 => { addr.push(&mut x); }
    |                                   - first mutable borrow occurs here
-LL |             //[mir]~^ ERROR [E0499]
-LL |             2 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
+LL |
+LL |             2 => { addr.push(&mut x); }
    |                                   ^ second mutable borrow occurs here
 ...
 LL | }
@@ -22,10 +22,10 @@ LL | }
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:17:35
    |
-LL |             1 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
+LL |             1 => { addr.push(&mut x); }
    |                                   - first mutable borrow occurs here
 ...
-LL |             _ => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
+LL |             _ => { addr.push(&mut x); }
    |                                   ^ second mutable borrow occurs here
 ...
 LL | }

@@ -10,7 +10,7 @@ LL |             (|| { let bar = foo; bar.take() })();
 error: compilation successful
   --> $DIR/match-guards-always-borrow.rs:47:1
    |
-LL | / fn main() { //[ast]~ ERROR compilation successful
+LL | / fn main() {
 LL | |     should_reject_destructive_mutate_in_guard();
 LL | |     allow_mutate_in_arm_body();
 LL | |     allow_move_into_arm_body();

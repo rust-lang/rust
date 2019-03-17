@@ -4,7 +4,7 @@ error[E0384]: cannot assign twice to immutable variable `v`
 LL |     let v: isize;
    |         - help: make this binding mutable: `mut v`
 ...
-LL |         v = 1; //[ast]~ ERROR cannot assign twice to immutable variable
+LL |         v = 1;
    |         ^^^^^ cannot assign twice to immutable variable
 
 error: aborting due to previous error

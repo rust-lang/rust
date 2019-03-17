@@ -4,7 +4,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
 LL |       Some(ref i) => {
    |            ----- borrow of `x` occurs here
 LL |           // But on this branch, `i` is an outstanding borrow
-LL |           x = Some(*i+1); //[ast]~ ERROR cannot assign to `x`
+LL |           x = Some(*i+1);
    |           ^^^^^^^^^^^^^^ assignment to borrowed `x` occurs here
 
 error: aborting due to previous error

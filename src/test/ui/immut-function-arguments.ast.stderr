@@ -3,13 +3,13 @@ error[E0594]: cannot assign to immutable `Box` content `*y`
    |
 LL | fn f(y: Box<isize>) {
    |      - help: make this binding mutable: `mut y`
-LL |     *y = 5; //[ast]~ ERROR cannot assign
+LL |     *y = 5;
    |     ^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable `Box` content `*q`
   --> $DIR/immut-function-arguments.rs:10:35
    |
-LL |     let _frob = |q: Box<isize>| { *q = 2; }; //[ast]~ ERROR cannot assign
+LL |     let _frob = |q: Box<isize>| { *q = 2; };
    |                  -                ^^^^^^ cannot borrow as mutable
    |                  |
    |                  help: make this binding mutable: `mut q`

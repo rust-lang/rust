@@ -1,7 +1,7 @@
 error[E0658]: the semantics of constant patterns is not yet settled (see issue #31434)
   --> $DIR/feature-gate.rs:13:1
    |
-LL | #[structural_match] //[no_gate]~ ERROR semantics of constant patterns is not yet settled
+LL | #[structural_match]
    | ^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(structural_match)] to the crate attributes to enable

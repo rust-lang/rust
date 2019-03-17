@@ -1,7 +1,7 @@
 error: compilation successful
   --> $DIR/feature-gate.rs:21:1
    |
-LL | / fn main() { //[with_gate]~ ERROR compilation successful
+LL | / fn main() {
 LL | |     let y = Foo { x: 1 };
 LL | |     match y {
 LL | |         FOO => { }

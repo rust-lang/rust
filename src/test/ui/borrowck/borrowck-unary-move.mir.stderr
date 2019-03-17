@@ -3,9 +3,9 @@ error[E0505]: cannot move out of `x` because it is borrowed
    |
 LL |     let y = &*x;
    |             --- borrow of `*x` occurs here
-LL |     free(x); //[ast]~ ERROR cannot move out of `x` because it is borrowed
+LL |     free(x);
    |          ^ move out of `x` occurs here
-LL |     //[mir]~^ ERROR cannot move out of `x` because it is borrowed
+LL |
 LL |     *y
    |     -- borrow later used here
 

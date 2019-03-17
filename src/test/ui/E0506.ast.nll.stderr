@@ -3,7 +3,7 @@ error[E0506]: cannot assign to `fancy_num` because it is borrowed
    |
 LL |     let fancy_ref = &fancy_num;
    |                     ---------- borrow of `fancy_num` occurs here
-LL |     fancy_num = FancyNum { num: 6 }; //[ast]~ ERROR E0506
+LL |     fancy_num = FancyNum { num: 6 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to borrowed `fancy_num` occurs here
 ...
 LL |     println!("Num: {}, Ref: {}", fancy_num.num, fancy_ref.num);

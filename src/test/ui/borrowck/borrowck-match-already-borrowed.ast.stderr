@@ -4,7 +4,7 @@ error[E0503]: cannot use `(foo as Foo::A).0` because it was mutably borrowed
 LL |     let p = &mut foo;
    |                  --- borrow of `foo` occurs here
 ...
-LL |         Foo::A(x) => x //[ast]~ ERROR [E0503]
+LL |         Foo::A(x) => x
    |                ^ use of borrowed `foo`
 
 error[E0503]: cannot use `x` because it was mutably borrowed
@@ -13,7 +13,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
 LL |     let r = &mut x;
    |                  - borrow of `x` occurs here
 LL |     let _ = match x {
-LL |         x => x + 1, //[ast]~ ERROR [E0503]
+LL |         x => x + 1,
    |         ^ use of borrowed `x`
 
 error[E0503]: cannot use `x` because it was mutably borrowed
@@ -22,7 +22,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
 LL |     let r = &mut x;
    |                  - borrow of `x` occurs here
 ...
-LL |         y => y + 2, //[ast]~ ERROR [E0503]
+LL |         y => y + 2,
    |         ^ use of borrowed `x`
 
 error: aborting due to 3 previous errors

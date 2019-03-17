@@ -3,9 +3,9 @@ error[E0502]: cannot borrow `u.a` as mutable because it is also borrowed as immu
    |
 LL |             let ra = &u.a;
    |                      ---- immutable borrow occurs here
-LL |             let rma = &mut u.a; //[ast]~ ERROR cannot borrow `u.a` as mutable because it is also borrowed as immutable
+LL |             let rma = &mut u.a;
    |                       ^^^^^^^^ mutable borrow occurs here
-LL |                                 //[mir]~^ ERROR cannot borrow `u.a` as mutable because it is also borrowed as immutable
+LL |
 LL |             drop(ra);
    |                  -- immutable borrow later used here
 
@@ -14,9 +14,9 @@ error[E0506]: cannot assign to `u.a` because it is borrowed
    |
 LL |             let ra = &u.a;
    |                      ---- borrow of `u.a` occurs here
-LL |             u.a = 1; //[ast]~ ERROR cannot assign to `u.a` because it is borrowed
+LL |             u.a = 1;
    |             ^^^^^^^ assignment to borrowed `u.a` occurs here
-LL |                      //[mir]~^ ERROR cannot assign to `u.a` because it is borrowed
+LL |
 LL |             drop(ra);
    |                  -- borrow later used here
 
@@ -25,9 +25,9 @@ error[E0502]: cannot borrow `u.b` as mutable because it is also borrowed as immu
    |
 LL |             let ra = &u.a;
    |                      ---- immutable borrow occurs here
-LL |             let rmb = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as mutable because `u` is also borrowed as immutable (via `u.a`)
+LL |             let rmb = &mut u.b;
    |                       ^^^^^^^^ mutable borrow occurs here
-LL |                                 //[mir]~^ ERROR cannot borrow `u.b` as mutable because it is also borrowed as immutable
+LL |
 LL |             drop(ra);
    |                  -- immutable borrow later used here
 
@@ -36,9 +36,9 @@ error[E0506]: cannot assign to `u.b` because it is borrowed
    |
 LL |             let ra = &u.a;
    |                      ---- borrow of `u.b` occurs here
-LL |             u.b = 1; //[ast]~ ERROR cannot assign to `u.b` because it is borrowed
+LL |             u.b = 1;
    |             ^^^^^^^ assignment to borrowed `u.b` occurs here
-LL |                      //[mir]~^ ERROR cannot assign to `u.b` because it is borrowed
+LL |
 LL |             drop(ra);
    |                  -- borrow later used here
 
@@ -47,9 +47,9 @@ error[E0502]: cannot borrow `u.a` as immutable because it is also borrowed as mu
    |
 LL |             let rma = &mut u.a;
    |                       -------- mutable borrow occurs here
-LL |             let ra = &u.a; //[ast]~ ERROR cannot borrow `u.a` as immutable because it is also borrowed as mutable
+LL |             let ra = &u.a;
    |                      ^^^^ immutable borrow occurs here
-LL |                          //[mir]~^ ERROR cannot borrow `u.a` as immutable because it is also borrowed as mutable
+LL |
 LL |             drop(rma);
    |                  --- mutable borrow later used here
 
@@ -58,9 +58,9 @@ error[E0503]: cannot use `u.a` because it was mutably borrowed
    |
 LL |             let ra = &mut u.a;
    |                      -------- borrow of `u.a` occurs here
-LL |             let a = u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
+LL |             let a = u.a;
    |                     ^^^ use of borrowed `u.a`
-LL |                          //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed
+LL |
 LL |             drop(ra);
    |                  -- borrow later used here
 
@@ -69,9 +69,9 @@ error[E0499]: cannot borrow `u.a` as mutable more than once at a time
    |
 LL |             let rma = &mut u.a;
    |                       -------- first mutable borrow occurs here
-LL |             let rma2 = &mut u.a; //[ast]~ ERROR cannot borrow `u.a` as mutable more than once at a time
+LL |             let rma2 = &mut u.a;
    |                        ^^^^^^^^ second mutable borrow occurs here
-LL |                                  //[mir]~^ ERROR cannot borrow `u.a` as mutable more than once at a time
+LL |
 LL |             drop(rma);
    |                  --- first borrow later used here
 
@@ -80,9 +80,9 @@ error[E0506]: cannot assign to `u.a` because it is borrowed
    |
 LL |             let rma = &mut u.a;
    |                       -------- borrow of `u.a` occurs here
-LL |             u.a = 1; //[ast]~ ERROR cannot assign to `u.a` because it is borrowed
+LL |             u.a = 1;
    |             ^^^^^^^ assignment to borrowed `u.a` occurs here
-LL |                      //[mir]~^ ERROR cannot assign to `u.a` because it is borrowed
+LL |
 LL |             drop(rma);
    |                  --- borrow later used here
 
@@ -91,9 +91,9 @@ error[E0502]: cannot borrow `u.b` as immutable because it is also borrowed as mu
    |
 LL |             let rma = &mut u.a;
    |                       -------- mutable borrow occurs here
-LL |             let rb = &u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as immutable because `u` is also borrowed as mutable (via `u.a`)
+LL |             let rb = &u.b;
    |                      ^^^^ immutable borrow occurs here
-LL |                            //[mir]~^ ERROR cannot borrow `u.b` as immutable because it is also borrowed as mutable
+LL |
 LL |             drop(rma);
    |                  --- mutable borrow later used here
 
@@ -102,7 +102,7 @@ error[E0503]: cannot use `u.b` because it was mutably borrowed
    |
 LL |             let ra = &mut u.a;
    |                      -------- borrow of `u.a` occurs here
-LL |             let b = u.b; //[ast]~ ERROR cannot use `u.b` because it was mutably borrowed
+LL |             let b = u.b;
    |                     ^^^ use of borrowed `u.a`
 ...
 LL |             drop(ra);
@@ -113,9 +113,9 @@ error[E0499]: cannot borrow `u.b` as mutable more than once at a time
    |
 LL |             let rma = &mut u.a;
    |                       -------- first mutable borrow occurs here
-LL |             let rmb2 = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as mutable more than once at a time
+LL |             let rmb2 = &mut u.b;
    |                        ^^^^^^^^ second mutable borrow occurs here
-LL |                                  //[mir]~^ ERROR cannot borrow `u.b` as mutable more than once at a time
+LL |
 LL |             drop(rma);
    |                  --- first borrow later used here
 
@@ -124,9 +124,9 @@ error[E0506]: cannot assign to `u.b` because it is borrowed
    |
 LL |             let rma = &mut u.a;
    |                       -------- borrow of `u.b` occurs here
-LL |             u.b = 1; //[ast]~ ERROR cannot assign to `u.b` because it is borrowed
+LL |             u.b = 1;
    |             ^^^^^^^ assignment to borrowed `u.b` occurs here
-LL |                      //[mir]~^ ERROR cannot assign to `u.b` because it is borrowed
+LL |
 LL |             drop(rma);
    |                  --- borrow later used here
 
