@@ -149,7 +149,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                             success.set(false);
                             self.tcx.mk_param_from_def(def)
                         }
-                    }
+                    },
+                    GenericParamDefKind::Const => unreachable!(),
                 });
 
             if success.get() {

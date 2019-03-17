@@ -143,6 +143,7 @@ impl IdMapping {
         match param.kind {
             GenericParamDefKind::Lifetime => unreachable!(),
             GenericParamDefKind::Type { .. } => (),
+            GenericParamDefKind::Const => unreachable!(),
         };
 
         self.type_params.insert(param.def_id, param.clone());

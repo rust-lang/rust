@@ -195,7 +195,8 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                 } else {
                     self.infcx.tcx.mk_param_from_def(def)
                 }
-            }
+            },
+            GenericParamDefKind::Const => unreachable!(),
         })
     }
 

@@ -1,18 +1,20 @@
 #![feature(rustc_private)]
+#![feature(result_map_or_else)]
 
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate syntax;
 
 use log::debug;
 use rustc::{hir::def_id::*, middle::cstore::ExternCrate};
-use rustc_driver::{driver::CompileController, Compilation};
+use rustc_driver::Callbacks;
+use rustc_interface::interface;
 use semverver::run_analysis;
-use std::convert::TryInto;
 use std::{
     path::Path,
     process::{exit, Command},
@@ -33,7 +35,7 @@ fn main() {
 
     debug!("running rust-semverver compiler driver");
     exit(
-        rustc_driver::run(move || {
+        {
             use std::env;
 
             if std::env::args().any(|a| a == "--version" || a == "-V") {
@@ -86,59 +88,67 @@ fn main() {
                     .collect()
             };
 
-            let verbose = std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
-            let api_guidelines = std::env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
-            let version = if let Ok(ver) = std::env::var("RUST_SEMVER_CRATE_VERSION") {
-                ver
-            } else {
-                "no_version".to_owned()
-            };
+            struct SemverCallbacks;
 
-            let mut controller = CompileController::basic();
+            impl Callbacks for SemverCallbacks {
+                fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
+                    debug!("running rust-semverver after_analysis callback");
 
-            controller.after_analysis.callback = Box::new(move |state| {
-                debug!("running rust-semverver after_analysis...");
-                let tcx = state.tcx.unwrap();
+                    let verbose =
+                        std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
+                    let api_guidelines =
+                        std::env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
+                    let version = if let Ok(ver) = std::env::var("RUST_SEMVER_CRATE_VERSION") {
+                        ver
+                    } else {
+                        "no_version".to_owned()
+                    };
 
-                // To select the old and new crates we look at the position of the declaration in the
-                // source file.  The first one will be the `old` and the other will be `new`.  This is
-                // unfortunately a bit hacky... See issue #64 for details.
+                    compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+                        // To select the old and new crates we look at the position of the
+                        // declaration in the source file. The first one will be the `old`
+                        // and the other will be `new`. This is unfortunately a bit hacky...
+                        // See issue #64 for details.
 
-                let mut crates: Vec<_> = tcx
-                    .crates()
-                    .iter()
-                    .flat_map(|crate_num| {
-                        let def_id = DefId {
-                            krate: *crate_num,
-                            index: CRATE_DEF_INDEX,
-                        };
+                        let mut crates: Vec<_> = tcx
+                            .crates()
+                            .iter()
+                            .flat_map(|crate_num| {
+                                let def_id = DefId {
+                                    krate: *crate_num,
+                                    index: CRATE_DEF_INDEX,
+                                };
 
-                        match *tcx.extern_crate(def_id) {
-                            Some(ExternCrate {
-                                span, direct: true, ..
-                            }) if span.data().lo.to_usize() > 0 => Some((span.data().lo.to_usize(), def_id)),
-                            _ => None,
+                                match *tcx.extern_crate(def_id) {
+                                    Some(ExternCrate {
+                                        span, direct: true, ..
+                                    }) if span.data().lo.to_usize() > 0 =>
+                                        Some((span.data().lo.to_usize(), def_id)),
+                                    _ => None,
+                                }
+                            })
+                            .collect();
+
+                        crates.sort_by_key(|&(span_lo, _)| span_lo);
+
+                        if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
+                            debug!("running semver analysis");
+                            let changes = run_analysis(tcx, old_def_id, new_def_id);
+                            changes.output(tcx.sess, &version, verbose, api_guidelines);
+                        } else {
+                            tcx.sess.err("could not find crate old and new crates");
                         }
-                    })
-                    .collect();
+                    });
 
-                crates.sort_by_key(|&(span_lo, _)| span_lo);
+                    debug!("rust-semverver after_analysis callback finished!");
 
-                if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
-                    debug!("running semver analysis");
-                    let changes = run_analysis(tcx, old_def_id, new_def_id);
-                    changes.output(tcx.sess, &version, verbose, api_guidelines);
-                } else {
-                    tcx.sess.err("could not find crate old and new crates");
+                    false
                 }
-
-                debug!("running rust-semverver after_analysis finished!");
-            });
-            controller.after_analysis.stop = Compilation::Stop;
+            }
 
             let args = args;
-            rustc_driver::run_compiler(&args, Box::new(controller), None, None)
-        }).try_into()
-            .expect("exit code too large"),
+            rustc_driver::run_compiler(&args, &mut SemverCallbacks, None, None)
+        }
+        .map_or_else(|_| 1, |_| 0),
     )
 }

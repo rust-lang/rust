@@ -24,8 +24,8 @@ use rustc::{
     },
     ty::{
         subst::{InternalSubsts, Subst},
-        AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt, Visibility,
-        Visibility::Public,
+        AssociatedItem, DefIdTree, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
+        Visibility, Visibility::Public,
     },
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
@@ -1036,7 +1036,7 @@ fn diff_trait_impls<'a, 'tcx>(
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
 
         let old_impl_parent_def = tcx
-            .parent_def_id(*old_impl_def_id)
+            .parent(*old_impl_def_id)
             .and_then(|did| tcx.describe_def(did));
         let old_impl_parent_is_fn = match old_impl_parent_def {
             Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
@@ -1050,7 +1050,7 @@ fn diff_trait_impls<'a, 'tcx>(
         if !match_trait_impl(tcx, &to_new, *old_impl_def_id) {
             changes.new_change_impl(
                 *old_impl_def_id,
-                tcx.item_path_str(*old_impl_def_id),
+                tcx.def_path_str(*old_impl_def_id),
                 tcx.def_span(*old_impl_def_id),
             );
             changes.add_change(ChangeType::TraitImplTightened, *old_impl_def_id, None);
@@ -1064,7 +1064,7 @@ fn diff_trait_impls<'a, 'tcx>(
         let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
 
         let new_impl_parent_def = tcx
-            .parent_def_id(*new_impl_def_id)
+            .parent(*new_impl_def_id)
             .and_then(|did| tcx.describe_def(did));
         let new_impl_parent_is_fn = match new_impl_parent_def {
             Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
@@ -1078,7 +1078,7 @@ fn diff_trait_impls<'a, 'tcx>(
         if !match_trait_impl(tcx, &to_old, *new_impl_def_id) {
             changes.new_change_impl(
                 *new_impl_def_id,
-                tcx.item_path_str(*new_impl_def_id),
+                tcx.def_path_str(*new_impl_def_id),
                 tcx.def_span(*new_impl_def_id),
             );
             changes.add_change(ChangeType::TraitImplLoosened, *new_impl_def_id, None);
