@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use failure::Fail;
-use syntax::ast;
+use syntax::{ast, parse::DirectoryOwnership};
 
 use crate::comment::LineClasses;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
@@ -584,6 +584,24 @@ impl Input {
         match *self {
             Input::File(ref file) => FileName::Real(file.clone()),
             Input::Text(..) => FileName::Stdin,
+        }
+    }
+
+    fn to_directory_ownership(&self) -> Option<DirectoryOwnership> {
+        match self {
+            Input::File(ref file) => {
+                // If there exists a directory with the same name as an input,
+                // then the input should be parsed as a sub module.
+                let file_stem = file.file_stem()?;
+                if file.parent()?.to_path_buf().join(file_stem).is_dir() {
+                    Some(DirectoryOwnership::Owned {
+                        relative: file_stem.to_str().map(ast::Ident::from_str),
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }

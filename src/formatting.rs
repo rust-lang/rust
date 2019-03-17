@@ -10,7 +10,7 @@ use syntax::ast;
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
-use syntax::source_map::{FilePathMapping, SourceMap, Span};
+use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
@@ -73,7 +73,14 @@ fn format_project<T: FormatHandler>(
     let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
     let mut parse_session = make_parse_sess(source_map.clone(), config);
     let mut report = FormatReport::new();
-    let krate = match parse_crate(input, &parse_session, config, &mut report) {
+    let directory_ownership = input.to_directory_ownership();
+    let krate = match parse_crate(
+        input,
+        &parse_session,
+        config,
+        &mut report,
+        directory_ownership,
+    ) {
         Ok(krate) => krate,
         // Surface parse error via Session (errors are merged there from report)
         Err(ErrorKind::ParseError) => return Ok(report),
@@ -87,8 +94,14 @@ fn format_project<T: FormatHandler>(
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
 
-    let files = modules::list_files(&krate, context.parse_session.source_map())?;
-    for (path, module) in files {
+    let files = modules::ModResolver::new(
+        context.parse_session.source_map(),
+        directory_ownership.unwrap_or(parse::DirectoryOwnership::UnownedViaMod(false)),
+        input_is_stdin,
+    )
+    .visit_crate(&krate)
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    for (path, (module, _)) in files {
         if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
             continue;
         }
@@ -593,11 +606,19 @@ fn parse_crate(
     parse_session: &ParseSess,
     config: &Config,
     report: &mut FormatReport,
+    directory_ownership: Option<parse::DirectoryOwnership>,
 ) -> Result<ast::Crate, ErrorKind> {
     let input_is_stdin = input.is_text();
 
     let parser = match input {
-        Input::File(file) => Ok(parse::new_parser_from_file(parse_session, &file)),
+        Input::File(ref file) => {
+            // Use `new_sub_parser_from_file` when we the input is a submodule.
+            Ok(if let Some(dir_own) = directory_ownership {
+                parse::new_sub_parser_from_file(parse_session, file, dir_own, None, DUMMY_SP)
+            } else {
+                parse::new_parser_from_file(parse_session, file)
+            })
+        }
         Input::Text(text) => parse::maybe_new_parser_from_source_str(
             parse_session,
             syntax::source_map::FileName::Custom("stdin".to_owned()),
