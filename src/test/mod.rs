@@ -17,6 +17,19 @@ use crate::{FormatReport, Input, Session};
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";
 
+// A list of files on which we want to skip testing.
+const SKIP_FILE_WHITE_LIST: &[&str] = &[
+    // We want to make sure that the `skip_children` is correctly working,
+    // so we do not want to test this file directly.
+    "configs/skip_children/foo/mod.rs",
+];
+
+fn is_file_skip(path: &Path) -> bool {
+    SKIP_FILE_WHITE_LIST
+        .iter()
+        .any(|file_path| path.ends_with(file_path))
+}
+
 // Returns a `Vec` containing `PathBuf`s of files with an  `rs` extension in the
 // given path. The `recursive` argument controls if files from subdirectories
 // are also returned.
@@ -31,7 +44,7 @@ fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
             let path = entry.path();
             if path.is_dir() && recursive {
                 files.append(&mut get_test_files(&path, recursive));
-            } else if path.extension().map_or(false, |f| f == "rs") {
+            } else if path.extension().map_or(false, |f| f == "rs") && !is_file_skip(&path) {
                 files.push(path);
             }
         }
