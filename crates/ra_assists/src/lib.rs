@@ -90,6 +90,7 @@ mod add_impl;
 mod flip_comma;
 mod change_visibility;
 mod fill_match_arms;
+mod fill_struct_fields;
 mod introduce_variable;
 mod replace_if_let_with_match;
 mod split_import;
@@ -102,6 +103,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         add_impl::add_impl,
         change_visibility::change_visibility,
         fill_match_arms::fill_match_arms,
+        fill_struct_fields::fill_struct_fields,
         flip_comma::flip_comma,
         introduce_variable::introduce_variable,
         replace_if_let_with_match::replace_if_let_with_match,
