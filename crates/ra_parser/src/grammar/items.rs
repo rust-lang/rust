@@ -35,54 +35,42 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
 ];
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
-    let m = p.start();
+    let mut m = p.start();
     attributes::outer_attributes(p);
-    match maybe_item(p, flavor) {
-        MaybeItem::Item(kind) => {
-            m.complete(p, kind);
-        }
-        MaybeItem::None => {
-            if paths::is_path_start(p) {
-                match macro_call(p) {
-                    BlockLike::Block => (),
-                    BlockLike::NotBlock => {
-                        p.expect(SEMI);
-                    }
-                }
-                m.complete(p, MACRO_CALL);
-            } else {
-                m.abandon(p);
-                if p.at(L_CURLY) {
-                    error_block(p, "expected an item");
-                } else if p.at(R_CURLY) && !stop_on_r_curly {
-                    let e = p.start();
-                    p.error("unmatched `}`");
-                    p.bump();
-                    e.complete(p, ERROR);
-                } else if !p.at(EOF) && !p.at(R_CURLY) {
-                    p.err_and_bump("expected an item");
-                } else {
-                    p.error("expected an item");
-                }
+    m = match maybe_item(p, m, flavor) {
+        Some(m) => m,
+        None => return,
+    };
+    if paths::is_path_start(p) {
+        match macro_call(p) {
+            BlockLike::Block => (),
+            BlockLike::NotBlock => {
+                p.expect(SEMI);
             }
         }
-        MaybeItem::Modifiers => {
-            p.error("expected fn, trait or impl");
-            m.complete(p, ERROR);
+        m.complete(p, MACRO_CALL);
+    } else {
+        m.abandon(p);
+        if p.at(L_CURLY) {
+            error_block(p, "expected an item");
+        } else if p.at(R_CURLY) && !stop_on_r_curly {
+            let e = p.start();
+            p.error("unmatched `}`");
+            p.bump();
+            e.complete(p, ERROR);
+        } else if !p.at(EOF) && !p.at(R_CURLY) {
+            p.err_and_bump("expected an item");
+        } else {
+            p.error("expected an item");
         }
     }
 }
 
-pub(super) enum MaybeItem {
-    None,
-    Item(SyntaxKind),
-    Modifiers,
-}
-
-pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
+pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Option<Marker> {
     opt_visibility(p);
     if let Some(kind) = items_without_modifiers(p) {
-        return MaybeItem::Item(kind);
+        m.complete(p, kind);
+        return None;
     }
 
     let mut has_mods = false;
@@ -115,7 +103,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     }
 
     // items
-    let kind = match p.current() {
+    match p.current() {
         // test async_fn
         // async fn foo() {}
 
@@ -135,7 +123,8 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // unsafe fn foo() {}
         FN_KW => {
             fn_def(p, flavor);
-            FN_DEF
+            m.complete(p, FN_DEF);
+            None
         }
 
         // test unsafe_trait
@@ -148,7 +137,8 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // unsafe auto trait T {}
         TRAIT_KW => {
             traits::trait_def(p);
-            TRAIT_DEF
+            m.complete(p, TRAIT_DEF);
+            None
         }
 
         // test unsafe_impl
@@ -161,14 +151,19 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // unsafe default impl Foo {}
         IMPL_KW => {
             traits::impl_block(p);
-            IMPL_BLOCK
+            m.complete(p, IMPL_BLOCK);
+            None
         }
         _ => {
-            return if has_mods { MaybeItem::Modifiers } else { MaybeItem::None };
+            if has_mods {
+                p.error("expected fn, trait or impl");
+                m.complete(p, ERROR);
+                None
+            } else {
+                Some(m)
+            }
         }
-    };
-
-    MaybeItem::Item(kind)
+    }
 }
 
 fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
