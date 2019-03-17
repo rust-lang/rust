@@ -585,7 +585,7 @@ impl BuiltinLintDiagnostics {
                     let introduced = if is_imported { "imported" } else { "defined" };
                     db.span_label(
                         span,
-                        format!("the item `{}` was already {} here", ident, introduced)
+                        format!("the item `{}` is already {} here", ident, introduced)
                     );
                 }
             }

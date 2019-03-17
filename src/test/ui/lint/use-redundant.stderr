@@ -20,7 +20,7 @@ warning: the item `Bar` is imported redundantly
   --> $DIR/use-redundant.rs:21:9
    |
 LL | use crate::foo::Bar;
-   |     --------------- the item `Bar` was already imported here
+   |     --------------- the item `Bar` is already imported here
 ...
 LL |     use crate::foo::Bar;
    |         ^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ warning: the item `S` is imported redundantly
   --> $DIR/use-redundant.rs:25:9
    |
 LL | use m1::*;
-   |     ----- the item `S` was already imported here
+   |     ----- the item `S` is already imported here
 ...
 LL |     use m1::S;
    |         ^^^^^
