@@ -1770,7 +1770,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
             }
             Res::SelfTy(Some(_), None) => {
-                // `Self` in trait.
+                // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
                 tcx.mk_self_type()
