@@ -833,7 +833,8 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 /// Returns whether `span` originates in a foreign crate's external macro.
 ///
-/// This is used to test whether a lint should be entirely aborted above.
+/// This is used to test whether a lint should not even begin to figure out whether it should
+/// be reported on the current node.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let info = match span.ctxt().outer().expn_info() {
         Some(info) => info,
@@ -857,5 +858,19 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         Ok(code) => !code.starts_with("macro_rules"),
         // no snippet = external macro or compiler-builtin expansion
         Err(_) => true,
+    }
+}
+
+/// Returns whether `span` originates in a derive macro's expansion
+pub fn in_derive_expansion(span: Span) -> bool {
+    let info = match span.ctxt().outer().expn_info() {
+        Some(info) => info,
+        // no ExpnInfo means this span doesn't come from a macro
+        None => return false,
+    };
+
+    match info.format {
+        ExpnFormat::MacroAttribute(symbol) => symbol.as_str().starts_with("derive("),
+        _ => false,
     }
 }

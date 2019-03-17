@@ -3,7 +3,7 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::lint::{self, Lint};
+use crate::lint::{self, Lint, in_derive_expansion};
 use crate::hir::{self, Item, Generics, StructField, Variant, HirId};
 use crate::hir::def::Def;
 use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
@@ -562,6 +562,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                suggestion: Option<Symbol>,
                                message: &str,
                                lint: &'static Lint| {
+            if in_derive_expansion(span) {
+                return;
+            }
             let msg = if let Some(note) = note {
                 format!("{}: {}", message, note)
             } else {
