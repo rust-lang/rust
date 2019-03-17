@@ -223,7 +223,7 @@ impl RootDatabase {
         self.query(hir::db::FileItemsQuery).sweep(sweep);
         self.query(hir::db::FileItemQuery).sweep(sweep);
 
-        self.query(hir::db::LowerModuleWithSourceMapQuery).sweep(sweep);
+        self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
     }
 }

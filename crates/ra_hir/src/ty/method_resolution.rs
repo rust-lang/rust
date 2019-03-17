@@ -7,10 +7,12 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    HirDatabase, module_tree::ModuleId, Module, Crate, Name, Function, Trait,
+    HirDatabase, Module, Crate, Name, Function, Trait,
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{AdtDef, Ty},
+    nameres::CrateModuleId,
+
 };
 
 /// This is used as a key for indexing impls.
@@ -33,10 +35,10 @@ impl TyFingerprint {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateImplBlocks {
-    /// To make sense of the ModuleIds, we need the source root.
+    /// To make sense of the CrateModuleIds, we need the source root.
     krate: Crate,
-    impls: FxHashMap<TyFingerprint, Vec<(ModuleId, ImplId)>>,
-    impls_by_trait: FxHashMap<TraitId, Vec<(ModuleId, ImplId)>>,
+    impls: FxHashMap<TyFingerprint, Vec<(CrateModuleId, ImplId)>>,
+    impls_by_trait: FxHashMap<TraitId, Vec<(CrateModuleId, ImplId)>>,
 }
 
 impl CrateImplBlocks {

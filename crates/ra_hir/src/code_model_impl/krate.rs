@@ -18,9 +18,7 @@ impl Crate {
             .collect()
     }
     pub(crate) fn root_module_impl(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
-        let module_tree = db.module_tree(*self);
-        let module_id = module_tree.modules().next()?;
-
+        let module_id = db.crate_def_map(*self).root();
         let module = Module { krate: *self, module_id };
         Some(module)
     }

@@ -155,7 +155,14 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 _ => return Err(ExpandError::UnexpectedToken),
             },
             crate::TokenTree::Repeat(crate::Repeat { subtree, kind: _, separator }) => {
+                // Dirty hack to make macro-expansion terminate.
+                // This should be replaced by a propper macro-by-example implementation
+                let mut limit = 128;
                 while let Ok(nested) = match_lhs(subtree, input) {
+                    limit -= 1;
+                    if limit == 0 {
+                        break;
+                    }
                     res.push_nested(nested)?;
                     if let Some(separator) = *separator {
                         if !input.is_eof() {
@@ -196,7 +203,14 @@ fn expand_tt(
         crate::TokenTree::Repeat(repeat) => {
             let mut token_trees = Vec::new();
             nesting.push(0);
+            // Dirty hack to make macro-expansion terminate.
+            // This should be replaced by a propper macro-by-example implementation
+            let mut limit = 128;
             while let Ok(t) = expand_subtree(&repeat.subtree, bindings, nesting) {
+                limit -= 1;
+                if limit == 0 {
+                    break;
+                }
                 let idx = nesting.pop().unwrap();
                 nesting.push(idx + 1);
                 token_trees.push(t.into())

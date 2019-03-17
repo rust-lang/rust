@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use ra_syntax::{
     TextRange, SyntaxNode,
-    ast::{self, AstNode, NameOwner, ModuleItemOwner},
+    ast::{self, AstNode, NameOwner, ModuleItemOwner, AttrsOwner},
 };
 use ra_db::SourceDatabase;
 

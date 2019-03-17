@@ -8,13 +8,12 @@ use crate::{
     Name, ScopesWithSourceMap, Ty, HirFileId,
     HirDatabase, PersistentHirDatabase,
     type_ref::TypeRef,
-    nameres::{ModuleScope, Namespace, lower::ImportId},
+    nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
-    module_tree::ModuleId,
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplBlock,
     resolve::Resolver,
@@ -65,7 +64,7 @@ impl Crate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) krate: Crate,
-    pub(crate) module_id: ModuleId,
+    pub(crate) module_id: CrateModuleId,
 }
 
 /// The defs which can be visible in the module.
@@ -173,7 +172,7 @@ impl Module {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(&self, db: &impl HirDatabase) -> ModuleScope {
-        db.item_map(self.krate)[self.module_id].clone()
+        db.crate_def_map(self.krate)[self.module_id].scope.clone()
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
@@ -181,16 +180,16 @@ impl Module {
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
-        let item_map = db.item_map(self.krate);
-        Resolver::default().push_module_scope(item_map, *self)
+        let def_map = db.crate_def_map(self.krate);
+        Resolver::default().push_module_scope(def_map, self.module_id)
     }
 
     pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
-        let lowered_module = db.lower_module(self);
-        lowered_module
-            .declarations
-            .values()
-            .cloned()
+        let def_map = db.crate_def_map(self.krate);
+        def_map[self.module_id]
+            .scope
+            .entries()
+            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
             .flat_map(|per_ns| {
                 per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
             })

@@ -557,7 +557,7 @@ Grammar(
         "Name": (),
         "NameRef": (),
         "MacroCall": (
-            traits: [ "NameOwner" ],
+            traits: [ "NameOwner", "AttrsOwner" ],
             options: [ "TokenTree", "Path" ],
         ),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
