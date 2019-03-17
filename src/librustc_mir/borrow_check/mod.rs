@@ -156,7 +156,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
-        id,
+        def_id,
         &attributes,
         &dead_unwinds,
         MaybeInitializedPlaces::new(tcx, mir, &mdpe),
@@ -191,7 +191,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let flow_borrows = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
-        id,
+        def_id,
         &attributes,
         &dead_unwinds,
         Borrows::new(tcx, mir, regioncx.clone(), &borrow_set),
@@ -200,7 +200,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let flow_uninits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
-        id,
+        def_id,
         &attributes,
         &dead_unwinds,
         MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
@@ -209,7 +209,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
-        id,
+        def_id,
         &attributes,
         &dead_unwinds,
         EverInitializedPlaces::new(tcx, mir, &mdpe),

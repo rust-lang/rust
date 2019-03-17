@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::mir::{self, Mir, Location};
 use rustc_data_structures::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
@@ -27,7 +27,6 @@ impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource<'tcx>, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id();
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
             return;
@@ -41,26 +40,26 @@ impl MirPass for SanityCheck {
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
         let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
         let flow_inits =
-            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+            do_dataflow(tcx, mir, def_id, &attributes, &dead_unwinds,
                         MaybeInitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_uninits =
-            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+            do_dataflow(tcx, mir, def_id, &attributes, &dead_unwinds,
                         MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_def_inits =
-            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+            do_dataflow(tcx, mir, def_id, &attributes, &dead_unwinds,
                         DefinitelyInitializedPlaces::new(tcx, mir, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
 
         if has_rustc_mir_with(&attributes, "rustc_peek_maybe_init").is_some() {
-            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, mir, def_id, &attributes, &flow_inits);
         }
         if has_rustc_mir_with(&attributes, "rustc_peek_maybe_uninit").is_some() {
-            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, mir, def_id, &attributes, &flow_uninits);
         }
         if has_rustc_mir_with(&attributes, "rustc_peek_definite_init").is_some() {
-            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(tcx, mir, def_id, &attributes, &flow_def_inits);
         }
         if has_rustc_mir_with(&attributes, "stop_after_dataflow").is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");
@@ -86,12 +85,12 @@ impl MirPass for SanityCheck {
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
-                                                id: hir::HirId,
+                                                def_id: DefId,
                                                 _attributes: &[ast::Attribute],
                                                 results: &DataflowResults<'tcx, O>)
     where O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
 {
-    debug!("sanity_check_via_rustc_peek id: {:?}", id);
+    debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
     // FIXME: this is not DRY. Figure out way to abstract this and
     // `dataflow::build_sets`. (But note it is doing non-standard
     // stuff, so such generalization may not be realistic.)
