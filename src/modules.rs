@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use syntax::ast;
@@ -8,25 +7,157 @@ use syntax::source_map;
 use syntax_pos::symbol::Symbol;
 
 use crate::config::FileName;
+use crate::items::is_mod_decl;
 use crate::utils::contains_skip;
 
-/// List all the files containing modules of a crate.
-/// If a file is used twice in a crate, it appears only once.
-pub fn list_files<'a>(
-    krate: &'a ast::Crate,
-    source_map: &source_map::SourceMap,
-) -> Result<BTreeMap<FileName, &'a ast::Mod>, io::Error> {
-    let mut result = BTreeMap::new(); // Enforce file order determinism
-    let root_filename = source_map.span_to_filename(krate.span);
-    {
-        let parent = match root_filename {
-            source_map::FileName::Real(ref path) => path.parent().unwrap(),
-            _ => Path::new(""),
-        };
-        list_submodules(&krate.module, parent, None, source_map, &mut result)?;
+type FileModMap<'a> = BTreeMap<FileName, (&'a ast::Mod, &'a str)>;
+
+/// Maps each module to the corresponding file.
+pub struct ModResolver<'a, 'b> {
+    source_map: &'b source_map::SourceMap,
+    directory: Directory,
+    file_map: FileModMap<'a>,
+    is_input_stdin: bool,
+}
+
+#[derive(Clone)]
+struct Directory {
+    path: PathBuf,
+    ownership: DirectoryOwnership,
+}
+
+impl<'a, 'b> ModResolver<'a, 'b> {
+    /// Creates a new `ModResolver`.
+    pub fn new(
+        source_map: &'b source_map::SourceMap,
+        directory_ownership: DirectoryOwnership,
+        is_input_stdin: bool,
+    ) -> Self {
+        ModResolver {
+            directory: Directory {
+                path: PathBuf::new(),
+                ownership: directory_ownership,
+            },
+            file_map: BTreeMap::new(),
+            source_map,
+            is_input_stdin,
+        }
     }
-    result.insert(root_filename.into(), &krate.module);
-    Ok(result)
+
+    /// Creates a map that maps a file name to the module in AST.
+    pub fn visit_crate(mut self, krate: &'a ast::Crate) -> Result<FileModMap<'a>, String> {
+        let root_filename = self.source_map.span_to_filename(krate.span);
+        self.directory.path = match root_filename {
+            source_map::FileName::Real(ref path) => path
+                .parent()
+                .expect("Parent directory should exists")
+                .to_path_buf(),
+            _ => PathBuf::new(),
+        };
+
+        // Skip visiting sub modules when the input is from stdin.
+        if !self.is_input_stdin {
+            self.visit_mod(&krate.module)?;
+        }
+
+        self.file_map
+            .insert(root_filename.into(), (&krate.module, ""));
+        Ok(self.file_map)
+    }
+
+    fn visit_mod(&mut self, module: &'a ast::Mod) -> Result<(), String> {
+        for item in &module.items {
+            if let ast::ItemKind::Mod(ref sub_mod) = item.node {
+                if contains_skip(&item.attrs) {
+                    continue;
+                }
+
+                let old_direcotry = self.directory.clone();
+                if is_mod_decl(item) {
+                    // mod foo;
+                    // Look for an extern file.
+                    let (mod_path, directory_ownership) =
+                        self.find_external_module(item.ident, &item.attrs)?;
+                    self.file_map.insert(
+                        FileName::Real(mod_path.clone()),
+                        (sub_mod, item.ident.name.as_str().get()),
+                    );
+                    self.directory = Directory {
+                        path: mod_path.parent().unwrap().to_path_buf(),
+                        ownership: directory_ownership,
+                    }
+                } else {
+                    // An internal module (`mod foo { /* ... */ }`);
+                    if let Some(path) = find_path_value(&item.attrs) {
+                        // All `#[path]` files are treated as though they are a `mod.rs` file.
+                        self.directory = Directory {
+                            path: Path::new(&path.as_str()).to_path_buf(),
+                            ownership: DirectoryOwnership::Owned { relative: None },
+                        };
+                    } else {
+                        self.push_inline_mod_directory(item.ident, &item.attrs);
+                    }
+                }
+                self.visit_mod(sub_mod)?;
+                self.directory = old_direcotry;
+            }
+        }
+        Ok(())
+    }
+
+    fn find_external_module(
+        &self,
+        mod_name: ast::Ident,
+        attrs: &[ast::Attribute],
+    ) -> Result<(PathBuf, DirectoryOwnership), String> {
+        if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &self.directory.path) {
+            return Ok((path, DirectoryOwnership::Owned { relative: None }));
+        }
+
+        let relative = match self.directory.ownership {
+            DirectoryOwnership::Owned { relative } => relative,
+            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod(_) => None,
+        };
+        match parser::Parser::default_submod_path(
+            mod_name,
+            relative,
+            &self.directory.path,
+            self.source_map,
+        )
+        .result
+        {
+            Ok(parser::ModulePathSuccess {
+                path,
+                directory_ownership,
+                ..
+            }) => Ok((path, directory_ownership)),
+            Err(_) => Err(format!(
+                "Failed to find module {} in {:?} {:?}",
+                mod_name, self.directory.path, relative,
+            )),
+        }
+    }
+
+    fn push_inline_mod_directory(&mut self, id: ast::Ident, attrs: &[ast::Attribute]) {
+        if let Some(path) = find_path_value(attrs) {
+            self.directory.path.push(&path.as_str());
+            self.directory.ownership = DirectoryOwnership::Owned { relative: None };
+        } else {
+            // We have to push on the current module name in the case of relative
+            // paths in order to ensure that any additional module paths from inline
+            // `mod x { ... }` come after the relative extension.
+            //
+            // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+            // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+            if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
+                if let Some(ident) = relative.take() {
+                    // remove the relative offset
+                    self.directory.path.push(ident.as_str());
+                }
+            }
+            self.directory.path.push(&id.as_str());
+        }
+    }
 }
 
 fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
@@ -42,70 +173,4 @@ fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
 // as unused attributes.
 fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().flat_map(path_value).next()
-}
-
-/// Recursively list all external modules included in a module.
-fn list_submodules<'a>(
-    module: &'a ast::Mod,
-    search_dir: &Path,
-    relative: Option<ast::Ident>,
-    source_map: &source_map::SourceMap,
-    result: &mut BTreeMap<FileName, &'a ast::Mod>,
-) -> Result<(), io::Error> {
-    debug!("list_submodules: search_dir: {:?}", search_dir);
-    for item in &module.items {
-        if let ast::ItemKind::Mod(ref sub_mod) = item.node {
-            if !contains_skip(&item.attrs) {
-                let is_internal = source_map.span_to_filename(item.span)
-                    == source_map.span_to_filename(sub_mod.inner);
-                let (dir_path, relative) = if is_internal {
-                    if let Some(path) = find_path_value(&item.attrs) {
-                        (search_dir.join(&path.as_str()), None)
-                    } else {
-                        (search_dir.join(&item.ident.to_string()), None)
-                    }
-                } else {
-                    let (mod_path, relative) =
-                        module_file(item.ident, &item.attrs, search_dir, relative, source_map)?;
-                    let dir_path = mod_path.parent().unwrap().to_owned();
-                    result.insert(FileName::Real(mod_path), sub_mod);
-                    (dir_path, relative)
-                };
-                list_submodules(sub_mod, &dir_path, relative, source_map, result)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Finds the file corresponding to an external mod
-fn module_file(
-    id: ast::Ident,
-    attrs: &[ast::Attribute],
-    dir_path: &Path,
-    relative: Option<ast::Ident>,
-    source_map: &source_map::SourceMap,
-) -> Result<(PathBuf, Option<ast::Ident>), io::Error> {
-    if let Some(path) = parser::Parser::submod_path_from_attr(attrs, dir_path) {
-        return Ok((path, None));
-    }
-
-    match parser::Parser::default_submod_path(id, relative, dir_path, source_map).result {
-        Ok(parser::ModulePathSuccess {
-            path,
-            directory_ownership,
-            ..
-        }) => {
-            let relative = if let DirectoryOwnership::Owned { relative } = directory_ownership {
-                relative
-            } else {
-                None
-            };
-            Ok((path, relative))
-        }
-        Err(_) => Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("Couldn't find module {}", id),
-        )),
-    }
 }
