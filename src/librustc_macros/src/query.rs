@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{
-    Token, Ident, Type, Attribute, ReturnType, Expr,
+    Token, Ident, Type, Attribute, ReturnType, Expr, Block,
     braced, parenthesized, parse_macro_input,
 };
 use syn::parse::{Result, Parse, ParseStream};
@@ -25,6 +25,7 @@ impl Parse for IdentOrWild {
 enum QueryAttribute {
     Desc(Option<Ident>, Punctuated<Expr, Token![,]>),
     Cache(Option<Ident>, Expr),
+    LoadCached(Ident, Ident, Block),
     FatalCycle,
 }
 
@@ -63,6 +64,17 @@ impl Parse for QueryAttribute {
                 panic!("unexpected tokens in block");
             };
             Ok(QueryAttribute::Cache(tcx, expr))
+        } else if attr == "load_cached" {
+            let args;
+            parenthesized!(args in input);
+            let tcx = args.parse()?;
+            args.parse::<Token![,]>()?;
+            let id = args.parse()?;
+            if !args.is_empty() {
+                panic!("unexpected tokens in arguments");
+            };
+            let block = input.parse()?;
+            Ok(QueryAttribute::LoadCached(tcx, id, block))
         } else if attr == "fatal_cycle" {
             Ok(QueryAttribute::FatalCycle)
         } else {
@@ -153,22 +165,6 @@ impl Parse for Group {
     }
 }
 
-fn camel_case(string: &str) -> String {
-    let mut pos = vec![0];
-    for (i, c) in string.chars().enumerate() {
-        if c == '_' {
-            pos.push(i + 1);
-        }
-    }
-    string.chars().enumerate().filter(|c| c.1 != '_').flat_map(|(i, c)| {
-        if pos.contains(&i) {
-            c.to_uppercase().collect::<Vec<char>>()
-        } else {
-            vec![c]
-        }
-    }).collect()
-}
-
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let groups = parse_macro_input!(input as List<Group>);
 
@@ -181,9 +177,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         let mut group_stream = quote! {};
         for query in &group.queries.0 {
             let name = &query.name;
-            let dep_node_name = Ident::new(
-                &camel_case(&name.to_string()),
-                name.span());
             let arg = &query.arg;
             let key = &query.key.0;
             let result_full = &query.result;
@@ -192,11 +185,38 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 _ => quote! { #result_full },
             };
 
+            let load_cached = query.attrs.0.iter().find_map(|attr| match attr {
+                QueryAttribute::LoadCached(tcx, id, block) => Some((tcx, id, block)),
+                _ => None,
+            });
+
             // Find out if we should cache the query on disk
             let cache = query.attrs.0.iter().find_map(|attr| match attr {
                 QueryAttribute::Cache(tcx, expr) => Some((tcx, expr)),
                 _ => None,
             }).map(|(tcx, expr)| {
+                let try_load_from_disk = if let Some((tcx, id, block)) = load_cached {
+                    quote! {
+                        #[inline]
+                        fn try_load_from_disk(
+                            #tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                            #id: SerializedDepNodeIndex
+                        ) -> Option<Self::Value> {
+                            #block
+                        }
+                    }
+                } else {
+                    quote! {
+                        #[inline]
+                        fn try_load_from_disk(
+                            tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                            id: SerializedDepNodeIndex
+                        ) -> Option<Self::Value> {
+                            tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
+                        }
+                    }
+                };
+
                 let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
                 quote! {
                     #[inline]
@@ -204,15 +224,13 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                         #expr
                     }
 
-                    #[inline]
-                    fn try_load_from_disk(
-                        tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                        id: SerializedDepNodeIndex
-                    ) -> Option<Self::Value> {
-                        tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
-                    }
+                    #try_load_from_disk
                 }
             });
+
+            if cache.is_none() && load_cached.is_some() {
+                panic!("load_cached modifier on query `{}` without a cache modifier", name);
+            }
 
             let fatal_cycle = query.attrs.0.iter().find_map(|attr| match attr {
                 QueryAttribute::FatalCycle => Some(()),
@@ -220,7 +238,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             }).map(|_| quote! { fatal_cycle }).unwrap_or(quote! {});
 
             group_stream.extend(quote! {
-                [#fatal_cycle] fn #name: #dep_node_name(#arg) #result,
+                [#fatal_cycle] fn #name: #name(#arg) #result,
             });
 
             let desc = query.attrs.0.iter().find_map(|attr| match attr {
@@ -251,10 +269,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             }
 
             dep_node_def_stream.extend(quote! {
-                [] #dep_node_name(#arg),
+                [] #name(#arg),
             });
             dep_node_force_stream.extend(quote! {
-                DepKind::#dep_node_name => {
+                DepKind::#name => {
                     if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
                         force_ex!($tcx, #name, key);
                     } else {

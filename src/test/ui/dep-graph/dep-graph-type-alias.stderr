@@ -1,44 +1,44 @@
-error: no path from `TypeAlias` to `TypeOfItem`
+error: no path from `TypeAlias` to `type_of`
   --> $DIR/dep-graph-type-alias.rs:17:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:19:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `TypeAlias` to `TypeOfItem`
+error: no path from `TypeAlias` to `type_of`
   --> $DIR/dep-graph-type-alias.rs:24:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:27:9
    |
-LL |         #[rustc_then_this_would_need(TypeOfItem)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(type_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `TypeAlias` to `TypeOfItem`
+error: no path from `TypeAlias` to `type_of`
   --> $DIR/dep-graph-type-alias.rs:33:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `TypeAlias` to `TypeOfItem`
+error: no path from `TypeAlias` to `type_of`
   --> $DIR/dep-graph-type-alias.rs:41:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:48:1
    |
-LL | #[rustc_then_this_would_need(TypeOfItem)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(type_of)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:51:1

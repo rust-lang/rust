@@ -937,21 +937,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
-    #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, def_id: Self::Key) -> bool {
-        def_id.is_local()
-    }
-
-    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: SerializedDepNodeIndex)
-                              -> Option<Self::Value> {
-        let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
-                                                .try_load_query_result(tcx, id);
-        generics.map(|x| tcx.alloc_generics(x))
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
         "generating chalk-style clauses".into()

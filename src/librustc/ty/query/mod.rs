@@ -104,27 +104,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
         /// Run analysis passes on the crate
         [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
 
-        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
-        /// associated generics.
-        [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
-
-        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
-        /// predicates (where-clauses) that must be proven true in order
-        /// to reference it. This is almost always the "predicates query"
-        /// that you want.
-        ///
-        /// `predicates_of` builds on `predicates_defined_on` -- in fact,
-        /// it is almost always the same as that query, except for the
-        /// case of traits. For traits, `predicates_of` contains
-        /// an additional `Self: Trait<...>` predicate that users don't
-        /// actually write. This reflects the fact that to invoke the
-        /// trait (e.g., via `Default::default`) you must supply types
-        /// that actually implement the trait. (However, this extra
-        /// predicate gets in the way of some checks, which are intended
-        /// to operate over only the actual where-clauses written by the
-        /// user.)
-        [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
-
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
         /// predicates (where-clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the

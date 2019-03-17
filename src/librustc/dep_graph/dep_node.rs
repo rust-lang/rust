@@ -492,8 +492,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // table in the tcx (or elsewhere) maps to one of these
     // nodes.
     [] AssociatedItems(DefId),
-    [] GenericsOfItem(DefId),
-    [] PredicatesOfItem(DefId),
     [] ExplicitPredicatesOfItem(DefId),
     [] PredicatesDefinedOnItem(DefId),
     [] InferredOutlivesOf(DefId),

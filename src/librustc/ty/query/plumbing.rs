@@ -1285,8 +1285,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
         DepKind::AssociatedItems => { force!(associated_item, def_id!()); }
-        DepKind::GenericsOfItem => { force!(generics_of, def_id!()); }
-        DepKind::PredicatesOfItem => { force!(predicates_of, def_id!()); }
         DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
         DepKind::ExplicitPredicatesOfItem => { force!(explicit_predicates_of, def_id!()); }
         DepKind::InferredOutlivesOf => { force!(inferred_outlives_of, def_id!()); }
@@ -1501,9 +1499,9 @@ impl_load_from_cache!(
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     CheckMatch => check_match,
-    TypeOf => type_of,
-    GenericsOfItem => generics_of,
-    PredicatesOfItem => predicates_of,
+    type_of => type_of,
+    generics_of => generics_of,
+    predicates_of => predicates_of,
     UsedTraitImports => used_trait_imports,
     CodegenFnAttrs => codegen_fn_attrs,
     SpecializationGraph => specialization_graph_of,
