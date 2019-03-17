@@ -660,18 +660,12 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                match sz {
-                    ty::LazyConst::Unevaluated(_def_id, _substs) => {
-                        p!(write("_"));
-                    }
-                    ty::LazyConst::Evaluated(c) => {
-                        match c.val {
-                            ConstValue::Infer(..) => p!(write("_")),
-                            ConstValue::Param(ParamConst { name, .. }) =>
-                                p!(write("{}", name)),
-                            _ => p!(write("{}", c.unwrap_usize(self.tcx()))),
-                        }
-                    }
+                match sz.val {
+                    ConstValue::Unevaluated(..) |
+                    ConstValue::Infer(..) => p!(write("_")),
+                    ConstValue::Param(ParamConst { name, .. }) =>
+                        p!(write("{}", name)),
+                    _ => p!(write("{}", sz.unwrap_usize(self.tcx()))),
                 }
                 p!(write("]"))
             }
@@ -1533,23 +1527,12 @@ define_print_and_forward_display! {
         p!(print_def_path(self.def_id, self.substs));
     }
 
-    ConstValue<'tcx> {
-        match self {
+    &'tcx ty::Const<'tcx> {
+        match self.val {
+            ConstValue::Unevaluated(..) |
             ConstValue::Infer(..) => p!(write("_")),
             ConstValue::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             _ => p!(write("{:?}", self)),
-        }
-    }
-
-    ty::Const<'tcx> {
-        p!(write("{} : {}", self.val, self.ty))
-    }
-
-    &'tcx ty::LazyConst<'tcx> {
-        match self {
-            // FIXME(const_generics) this should print at least the type.
-            ty::LazyConst::Unevaluated(..) => p!(write("_ : _")),
-            ty::LazyConst::Evaluated(c) => p!(write("{}", c)),
         }
     }
 

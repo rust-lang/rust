@@ -8,7 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{GlobalId, ConstValue};
 use crate::util::common::ErrorReported;
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
@@ -466,9 +466,9 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            let to_u64 = |x: ty::LazyConst<'tcx>| -> Result<u64, ErrorReported> {
-                match x {
-                    ty::LazyConst::Unevaluated(def_id, substs) => {
+            let to_u64 = |x: ty::Const<'tcx>| -> Result<u64, ErrorReported> {
+                match x.val {
+                    ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
                         if let Some(substs) = tcx.lift_to_global(&substs) {
@@ -494,7 +494,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             "array length could not be evaluated");
                         Err(ErrorReported)
                     }
-                    ty::LazyConst::Evaluated(c) => c.assert_usize(tcx).ok_or_else(|| {
+                    _ => x.assert_usize(tcx).ok_or_else(|| {
                         tcx.sess.delay_span_bug(DUMMY_SP,
                             "array length could not be evaluated");
                         ErrorReported

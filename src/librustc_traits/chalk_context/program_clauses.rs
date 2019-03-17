@@ -239,7 +239,7 @@ fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
 
 fn wf_clause_for_array<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    length: &'tcx ty::LazyConst<'tcx>
+    length: &'tcx ty::Const<'tcx>
 ) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
     let array_ty = tcx.mk_ty(ty::Array(ty, length));

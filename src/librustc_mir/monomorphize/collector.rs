@@ -381,7 +381,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let param_env = ty::ParamEnv::reveal_all();
 
             if let Ok(val) = tcx.const_eval(param_env.and(cid)) {
-                collect_const(tcx, val, &mut neighbors);
+                collect_const(tcx, val, InternalSubsts::empty(), &mut neighbors);
             }
         }
         MonoItem::Fn(instance) => {
@@ -468,15 +468,7 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      instance: Instance<'tcx>)
 {
     let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
-    let const_length = instance.substs.consts()
-        .flat_map(|ct| {
-            let ty = match ct {
-                ty::LazyConst::Evaluated(ct) => ct.ty,
-                ty::LazyConst::Unevaluated(def_id, _) => tcx.type_of(*def_id),
-            };
-            ty.walk()
-        })
-        .count();
+    let const_length = instance.substs.consts().flat_map(|ct| ct.ty.walk()).count();
     debug!(" => type length={}, const length={}", type_length, const_length);
 
     // Rust code can easily create exponentially-long types using only a
@@ -606,10 +598,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::LazyConst<'tcx>, location: Location) {
+    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        collect_lazy_const(self.tcx, constant, self.param_substs, self.output);
+        collect_const(self.tcx, **constant, self.param_substs, self.output);
 
         self.super_const(constant);
     }
@@ -1013,7 +1005,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let param_env = ty::ParamEnv::reveal_all();
 
                 if let Ok(val) = self.tcx.const_eval(param_env.and(cid)) {
-                    collect_const(self.tcx, val, &mut self.output);
+                    collect_const(self.tcx, val, InternalSubsts::empty(), &mut self.output);
                 }
             }
             hir::ItemKind::Fn(..) => {
@@ -1224,7 +1216,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             promoted: Some(i),
         };
         match tcx.const_eval(param_env.and(cid)) {
-            Ok(val) => collect_const(tcx, val, output),
+            Ok(val) => collect_const(tcx, val, instance.substs, output),
             Err(ErrorHandled::Reported) => {},
             Err(ErrorHandled::TooGeneric) => span_bug!(
                 mir.promoted[i].span, "collection encountered polymorphic constant",
@@ -1242,43 +1234,10 @@ fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     output
 }
 
-fn collect_lazy_const<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    constant: &ty::LazyConst<'tcx>,
-    param_substs: SubstsRef<'tcx>,
-    output: &mut Vec<MonoItem<'tcx>>,
-) {
-    let (def_id, substs) = match *constant {
-        ty::LazyConst::Evaluated(c) => return collect_const(tcx, c, output),
-        ty::LazyConst::Unevaluated(did, substs) => (did, substs),
-    };
-    let param_env = ty::ParamEnv::reveal_all();
-    let substs = tcx.subst_and_normalize_erasing_regions(
-        param_substs,
-        param_env,
-        &substs,
-    );
-    let instance = ty::Instance::resolve(tcx,
-                                        param_env,
-                                        def_id,
-                                        substs).unwrap();
-
-    let cid = GlobalId {
-        instance,
-        promoted: None,
-    };
-    match tcx.const_eval(param_env.and(cid)) {
-        Ok(val) => collect_const(tcx, val, output),
-        Err(ErrorHandled::Reported) => {},
-        Err(ErrorHandled::TooGeneric) => span_bug!(
-            tcx.def_span(def_id), "collection encountered polymorphic constant",
-        ),
-    }
-}
-
 fn collect_const<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     constant: ty::Const<'tcx>,
+    param_substs: SubstsRef<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     debug!("visiting const {:?}", constant);
@@ -1290,6 +1249,30 @@ fn collect_const<'a, 'tcx>(
         ConstValue::ByRef(_ptr, alloc) => {
             for &((), id) in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
+            }
+        }
+        ConstValue::Unevaluated(did, substs) => {
+            let param_env = ty::ParamEnv::reveal_all();
+            let substs = tcx.subst_and_normalize_erasing_regions(
+                param_substs,
+                param_env,
+                &substs,
+            );
+            let instance = ty::Instance::resolve(tcx,
+                                                param_env,
+                                                did,
+                                                substs).unwrap();
+
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            match tcx.const_eval(param_env.and(cid)) {
+                Ok(val) => collect_const(tcx, val, param_substs, output),
+                Err(ErrorHandled::Reported) => {},
+                Err(ErrorHandled::TooGeneric) => span_bug!(
+                    tcx.def_span(did), "collection encountered polymorphic constant",
+                ),
             }
         }
         _ => {},

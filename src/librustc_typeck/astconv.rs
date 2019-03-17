@@ -1870,16 +1870,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         &self,
         ast_const: &hir::AnonConst,
         ty: Ty<'tcx>
-    ) -> &'tcx ty::LazyConst<'tcx> {
+    ) -> &'tcx ty::Const<'tcx> {
         debug!("ast_const_to_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
 
         let tcx = self.tcx();
         let def_id = tcx.hir().local_def_id_from_hir_id(ast_const.hir_id);
 
-        let mut lazy_const = ty::LazyConst::Unevaluated(
-            def_id,
-            InternalSubsts::identity_for_item(tcx, def_id),
-        );
+        let mut const_ = ty::Const {
+            val: ConstValue::Unevaluated(
+                def_id,
+                InternalSubsts::identity_for_item(tcx, def_id),
+            ),
+            ty,
+        };
 
         let expr = &tcx.hir().body(ast_const.body).value;
         if let ExprKind::Path(ref qpath) = expr.node {
@@ -1891,15 +1894,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let generics = tcx.generics_of(item_def_id);
                     let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
                     let name = tcx.hir().name(node_id).as_interned_str();
-                    lazy_const = ty::LazyConst::Evaluated(ty::Const {
-                        val: ConstValue::Param(ty::ParamConst::new(index, name)),
-                        ty,
-                    })
+                    const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
                 }
             }
         };
 
-        tcx.mk_lazy_const(lazy_const)
+        tcx.mk_const(const_)
     }
 
     pub fn impl_trait_ty_to_ty(

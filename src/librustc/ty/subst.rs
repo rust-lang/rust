@@ -26,7 +26,7 @@ use std::num::NonZeroUsize;
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Kind<'tcx> {
     ptr: NonZeroUsize,
-    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, &'tcx ty::LazyConst<'tcx>)>
+    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, &'tcx ty::Const<'tcx>)>
 }
 
 const TAG_MASK: usize = 0b11;
@@ -38,7 +38,7 @@ const CONST_TAG: usize = 0b10;
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
-    Const(&'tcx ty::LazyConst<'tcx>),
+    Const(&'tcx ty::Const<'tcx>),
 }
 
 impl<'tcx> UnpackedKind<'tcx> {
@@ -104,8 +104,8 @@ impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx ty::LazyConst<'tcx>> for Kind<'tcx> {
-    fn from(c: &'tcx ty::LazyConst<'tcx>) -> Kind<'tcx> {
+impl<'tcx> From<&'tcx ty::Const<'tcx>> for Kind<'tcx> {
+    fn from(c: &'tcx ty::Const<'tcx>) -> Kind<'tcx> {
         UnpackedKind::Const(c).pack()
     }
 }
@@ -208,12 +208,12 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
                 }
 
                 ty::GenericParamDefKind::Const => {
-                    tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const {
+                    tcx.mk_const(ty::Const {
                         val: ConstValue::Infer(
                             InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from(param.index))
                         ),
                         ty: tcx.type_of(def_id),
-                    })).into()
+                    }).into()
                 }
             }
         })
@@ -304,7 +304,7 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn consts(&'a self) -> impl DoubleEndedIterator<Item = &'tcx ty::LazyConst<'tcx>> + 'a {
+    pub fn consts(&'a self) -> impl DoubleEndedIterator<Item = &'tcx ty::Const<'tcx>> + 'a {
         self.iter().filter_map(|k| {
             if let UnpackedKind::Const(ct) = k.unpack() {
                 Some(ct)
@@ -345,7 +345,7 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn const_at(&self, i: usize) -> &'tcx ty::LazyConst<'tcx> {
+    pub fn const_at(&self, i: usize) -> &'tcx ty::Const<'tcx> {
         if let UnpackedKind::Const(ct) = self[i].unpack() {
             ct
         } else {
@@ -522,16 +522,13 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         return t1;
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if !c.needs_subst() {
             return c;
         }
 
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Param(p),
-            ..
-        }) = c {
-            self.const_for_param(*p, c)
+        if let ConstValue::Param(p) = c.val {
+            self.const_for_param(p, c)
         } else {
             c.super_fold_with(self)
         }
@@ -564,8 +561,8 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn const_for_param(
         &self,
         p: ParamConst,
-        source_cn: &'tcx ty::LazyConst<'tcx>
-    ) -> &'tcx ty::LazyConst<'tcx> {
+        source_cn: &'tcx ty::Const<'tcx>
+    ) -> &'tcx ty::Const<'tcx> {
         // Look up the const in the substitutions. It really should be in there.
         let opt_cn = self.substs.get(p.index as usize).map(|k| k.unpack());
         let cn = match opt_cn {

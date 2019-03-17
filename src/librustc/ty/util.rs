@@ -497,10 +497,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
-                    UnpackedKind::Const(&ty::LazyConst::Evaluated(ty::Const {
+                    UnpackedKind::Const(&ty::Const {
                         val: ConstValue::Param(ref pc),
                         ..
-                    })) => {
+                    }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop
                     }
                     UnpackedKind::Lifetime(_) |

@@ -13,7 +13,7 @@ use crate::hair::constant::*;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, DefIdTree, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
@@ -1233,9 +1233,6 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
         return fallback();
     }
 
-    let tcx = tcx.global_tcx();
-    let (a, b, ty) = (a, b, ty).lift_to_tcx(tcx).unwrap();
-
     // FIXME: This should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices
     if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
@@ -1251,11 +1248,12 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
                 let r = ::rustc_apfloat::ieee::Double::from_bits(b);
                 l.partial_cmp(&r)
             }
-            ty::Int(_) => {
-                let layout = tcx.layout_of(ty).ok()?;
-                assert!(layout.abi.is_signed());
-                let a = sign_extend(a, layout.size);
-                let b = sign_extend(b, layout.size);
+            ty::Int(ity) => {
+                use rustc::ty::layout::{Integer, IntegerExt};
+                use syntax::attr::SignedInt;
+                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                let a = sign_extend(a, size);
+                let b = sign_extend(b, size);
                 Some((a as i128).cmp(&(b as i128)))
             }
             _ => Some(a.cmp(&b)),

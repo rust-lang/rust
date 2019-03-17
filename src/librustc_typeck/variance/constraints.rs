@@ -452,7 +452,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraints_from_const(
         &mut self,
         current: &CurrentItem,
-        ct: &ty::LazyConst<'tcx>,
+        ct: &ty::Const<'tcx>,
         variance: VarianceTermPtr<'a>
     ) {
         debug!(
@@ -461,11 +461,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             variance
         );
 
-        if let ty::LazyConst::Evaluated(ct) = ct {
-            self.add_constraints_from_ty(current, ct.ty, variance);
-            if let ConstValue::Param(ref data) = ct.val {
-                self.add_constraint(current, data.index, variance);
-            }
+        self.add_constraints_from_ty(current, ct.ty, variance);
+        if let ConstValue::Param(ref data) = ct.val {
+            self.add_constraint(current, data.index, variance);
         }
     }
 

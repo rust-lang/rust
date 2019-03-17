@@ -506,11 +506,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 true
             }
 
-            fn visit_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> bool {
-                if let ty::LazyConst::Evaluated(ty::Const {
-                    val: ConstValue::Param(param),
-                    ..
-                }) = c {
+            fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+                if let ConstValue::Param(param) = c.val {
                     self.params.insert(param.index);
                 }
                 c.super_visit_with(self)
@@ -678,11 +675,8 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                                     }
                                 }
 
-                                ty::subst::UnpackedKind::Const(ct) => match ct {
-                                    ty::LazyConst::Evaluated(ty::Const {
-                                        val: ConstValue::Param(_),
-                                        ..
-                                    }) => {}
+                                ty::subst::UnpackedKind::Const(ct) => match ct.val {
+                                    ConstValue::Param(_) => {}
                                     _ => {
                                         tcx.sess
                                             .struct_span_err(

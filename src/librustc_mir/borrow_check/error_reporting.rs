@@ -1505,10 +1505,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
-                literal: ty::LazyConst::Evaluated(ty::Const {
+                literal: ty::Const {
                     ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  },
                     ..
-                }),
+                },
                 ..
             }),
             args,

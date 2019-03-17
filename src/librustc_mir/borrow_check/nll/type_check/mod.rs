@@ -28,7 +28,7 @@ use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+use rustc::mir::interpret::{EvalErrorKind::BoundsCheck, ConstValue};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
@@ -296,37 +296,33 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 );
             }
         } else {
-            match *constant.literal {
-                ty::LazyConst::Unevaluated(def_id, substs) => {
-                    if let Err(terr) = self.cx.fully_perform_op(
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            constant.ty, def_id, UserSubsts { substs, user_self_ty: None },
-                        )),
-                    ) {
-                        span_mirbug!(
-                            self,
-                            constant,
-                            "bad constant type {:?} ({:?})",
-                            constant,
-                            terr
-                        );
-                    }
+            if let ConstValue::Unevaluated(def_id, substs) = constant.literal.val {
+                if let Err(terr) = self.cx.fully_perform_op(
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                    self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                        constant.ty, def_id, UserSubsts { substs, user_self_ty: None },
+                    )),
+                ) {
+                    span_mirbug!(
+                        self,
+                        constant,
+                        "bad constant type {:?} ({:?})",
+                        constant,
+                        terr
+                    );
                 }
-                ty::LazyConst::Evaluated(lit) => {
-                    if let ty::FnDef(def_id, substs) = lit.ty.sty {
-                        let tcx = self.tcx();
+            }
+            if let ty::FnDef(def_id, substs) = constant.literal.ty.sty {
+                let tcx = self.tcx();
 
-                        let instantiated_predicates = tcx
-                            .predicates_of(def_id)
-                            .instantiate(tcx, substs);
-                        self.cx.normalize_and_prove_instantiated_predicates(
-                            instantiated_predicates,
-                            location.to_locations(),
-                        );
-                    }
-                }
+                let instantiated_predicates = tcx
+                    .predicates_of(def_id)
+                    .instantiate(tcx, substs);
+                self.cx.normalize_and_prove_instantiated_predicates(
+                    instantiated_predicates,
+                    location.to_locations(),
+                );
             }
         }
     }
@@ -418,10 +414,11 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             constant, location
         );
 
-        let literal = match constant.literal {
-            ty::LazyConst::Evaluated(lit) => lit,
-            ty::LazyConst::Unevaluated(..) => return,
-        };
+        let literal = constant.literal;
+
+        if let ConstValue::Unevaluated(..) = literal.val {
+            return;
+        }
 
         debug!("sanitize_constant: expected_ty={:?}", literal.ty);
 

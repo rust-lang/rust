@@ -7,6 +7,7 @@ use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax_pos::Span;
 use crate::middle::lang_items;
+use crate::mir::interpret::ConstValue;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -203,8 +204,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
-    fn compute_array_len(&mut self, constant: ty::LazyConst<'tcx>) {
-        if let ty::LazyConst::Unevaluated(def_id, substs) = constant {
+    fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 

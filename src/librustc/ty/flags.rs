@@ -24,6 +24,12 @@ impl FlagComputation {
         result
     }
 
+    pub fn for_const(c: &ty::Const<'_>) -> TypeFlags {
+        let mut result = FlagComputation::new();
+        result.add_const(c);
+        result.flags
+    }
+
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | (flags & TypeFlags::NOMINAL_FLAGS);
     }
@@ -173,10 +179,7 @@ impl FlagComputation {
 
             &ty::Array(tt, len) => {
                 self.add_ty(tt);
-                if let ty::LazyConst::Unevaluated(_, substs) = len {
-                    self.add_flags(TypeFlags::HAS_PROJECTION);
-                    self.add_substs(substs);
-                }
+                self.add_const(len);
             }
 
             &ty::Slice(tt) => {
@@ -233,19 +236,26 @@ impl FlagComputation {
         }
     }
 
-    fn add_const(&mut self, c: &ty::LazyConst<'_>) {
-        match c {
-            ty::LazyConst::Unevaluated(_, substs) => self.add_substs(substs),
-            // Only done to add the binder for the type. The type flags are
-            // included in `Const::type_flags`.
-            ty::LazyConst::Evaluated(ty::Const { ty, val }) => {
-                self.add_ty(ty);
-                if let ConstValue::Infer(InferConst::Canonical(debruijn, _)) = val {
-                    self.add_binder(*debruijn)
+    fn add_const(&mut self, c: &ty::Const<'_>) {
+        self.add_ty(c.ty);
+        match c.val {
+            ConstValue::Unevaluated(_, substs) => {
+                self.add_substs(substs);
+                self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION | TypeFlags::HAS_PROJECTION);
+            },
+            ConstValue::Infer(infer) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
+                match infer {
+                    InferConst::Fresh(_) => {}
+                    InferConst::Canonical(debruijn, _) => self.add_binder(debruijn),
+                    InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
                 }
             }
+            ConstValue::Param(_) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_PARAMS);
+            }
+            _ => {},
         }
-        self.add_flags(c.type_flags());
     }
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {

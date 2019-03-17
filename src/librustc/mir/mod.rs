@@ -2179,8 +2179,8 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: tcx.mk_lazy_const(
-                ty::LazyConst::Evaluated(ty::Const::zero_sized(ty)),
+            literal: tcx.mk_const(
+                ty::Const::zero_sized(ty),
             ),
         })
     }
@@ -2497,7 +2497,7 @@ pub struct Constant<'tcx> {
     /// Needed for NLL to impose user-given type constraints.
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
-    pub literal: &'tcx ty::LazyConst<'tcx>,
+    pub literal: &'tcx ty::Const<'tcx>,
 }
 
 /// A collection of projections into user types.
@@ -2696,18 +2696,9 @@ newtype_index! {
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(fmt, "const ")?;
-        fmt_lazy_const_val(fmt, self.literal)
+        fmt_const_val(fmt, *self.literal)
     }
 }
-
-/// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_lazy_const_val(f: &mut impl Write, const_val: &ty::LazyConst<'_>) -> fmt::Result {
-    match *const_val {
-        ty::LazyConst::Unevaluated(..) => write!(f, "{:?}", const_val),
-        ty::LazyConst::Evaluated(c) => fmt_const_val(f, c),
-    }
-}
-
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Result {
     use crate::ty::TyKind::*;
@@ -2760,7 +2751,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Resul
         }
     }
     // just raw dump everything else
-    write!(f, "{:?}:{}", value, ty)
+    write!(f, "{:?} : {}", value, ty)
 }
 
 fn def_path_str(def_id: DefId) -> String {

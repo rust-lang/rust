@@ -16,7 +16,7 @@ use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
-use rustc::mir::interpret::GlobalId;
+use rustc::mir::interpret::{GlobalId, ConstValue};
 use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -2551,7 +2551,7 @@ impl Clean<Type> for hir::Ty {
                     promoted: None
                 };
                 let length = match cx.tcx.const_eval(param_env.and(cid)) {
-                    Ok(length) => print_const(cx, ty::LazyConst::Evaluated(length)),
+                    Ok(length) => print_const(cx, length),
                     Err(_) => "_".to_string(),
                 };
                 Array(box ty.clean(cx), length)
@@ -2739,14 +2739,14 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = *cx.tcx.lift(&n).expect("array lift failed");
-                if let ty::LazyConst::Unevaluated(def_id, substs) = n {
+                if let ConstValue::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
                         instance: ty::Instance::new(def_id, substs),
                         promoted: None
                     };
                     if let Ok(new_n) = cx.tcx.const_eval(param_env.and(cid)) {
-                        n = ty::LazyConst::Evaluated(new_n);
+                        n = new_n;
                     }
                 };
                 let n = print_const(cx, n);
@@ -3900,16 +3900,16 @@ fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-fn print_const(cx: &DocContext<'_>, n: ty::LazyConst<'_>) -> String {
-    match n {
-        ty::LazyConst::Unevaluated(def_id, _) => {
+fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
+    match n.val {
+        ConstValue::Unevaluated(def_id, _) => {
             if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
             }
         },
-        ty::LazyConst::Evaluated(n) => {
+        _ => {
             let mut s = String::new();
             ::rustc::mir::fmt_const_val(&mut s, n).expect("fmt_const_val failed");
             // array lengths are obviously usize

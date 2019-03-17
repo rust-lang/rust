@@ -275,13 +275,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: expr_span,
                             ty: this.hir.tcx().types.u32,
                             user_ty: None,
-                            literal: this.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(
+                            literal: this.hir.tcx().mk_const(
                                 ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,
                                     ty::ParamEnv::empty().and(this.hir.tcx().types.u32),
                                 ),
-                            )),
+                            ),
                         }));
                         box AggregateKind::Generator(closure_id, substs, movability)
                     }

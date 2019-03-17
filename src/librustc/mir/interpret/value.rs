@@ -1,7 +1,8 @@
 use std::fmt;
 use rustc_macros::HashStable;
 
-use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}};
+use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
+use crate::hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -42,6 +43,10 @@ pub enum ConstValue<'tcx> {
     /// An allocation together with a pointer into the allocation.
     /// Invariant: the pointer's `AllocId` resolves to the allocation.
     ByRef(Pointer, &'tcx Allocation),
+
+    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
+    /// variants when the code is monomorphic enough for that.
+    Unevaluated(DefId, SubstsRef<'tcx>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -54,6 +59,7 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::Param(_) |
             ConstValue::Infer(_) |
             ConstValue::ByRef(..) |
+            ConstValue::Unevaluated(..) |
             ConstValue::Slice(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }
