@@ -1648,7 +1648,6 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         S: BuildHasher,
         H: Fn(&K) -> u64,
     {
-        self.table.reserve(1, |x| hasher(&x.0));
         unsafe {
             let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
             let &mut (ref mut key, ref mut value) = elem.as_mut();
