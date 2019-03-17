@@ -624,6 +624,10 @@ fn parse_crate(
             syntax::source_map::FileName::Custom("stdin".to_owned()),
             text,
         )
+        .map(|mut parser| {
+            parser.recurse_into_file_modules = false;
+            parser
+        })
         .map_err(|diags| {
             diags
                 .into_iter()
