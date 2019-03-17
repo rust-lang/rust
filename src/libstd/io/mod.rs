@@ -1340,11 +1340,11 @@ pub trait Seek {
     ///
     /// If you need to obtain the length of *many* streams and you don't care
     /// about the seek position afterwards, you can reduce the number of seek
-    /// operations by simply calling `seek(SeekFrom::End(0))` and use its
+    /// operations by simply calling `seek(SeekFrom::End(0))` and using its
     /// return value (it is also the stream length).
     ///
     /// Note that length of a stream can change over time (for example, when
-    /// data is appended to a file). So calling this method multiply times does
+    /// data is appended to a file). So calling this method multiple times does
     /// not necessarily return the same length each time.
     ///
     ///
