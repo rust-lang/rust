@@ -246,7 +246,7 @@ fn idempotence_tests() {
 fn self_tests() {
     match option_env!("CFG_RELEASE_CHANNEL") {
         None | Some("nightly") => {}
-        _ => return, // these tests require nightly
+        _ => return, // Issue-3443: these tests require nightly
     }
     let mut files = get_test_files(Path::new("tests"), false);
     let bin_directories = vec!["cargo-fmt", "git-rustfmt", "bin", "format-diff"];
