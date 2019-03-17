@@ -136,8 +136,7 @@ where
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
             );
-            // FIXME: why do we return No here?
-            (res, if res.is_none() { ReachedFixedPoint::No } else { ReachedFixedPoint::Yes })
+            (res, ReachedFixedPoint::Yes)
         } else {
             let res =
                 self.def_map.resolve_path_fp(self.db, ResolveMode::Import, module_id, &import.path);
