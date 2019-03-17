@@ -197,7 +197,7 @@ fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 
     state.finish()
 }
 
-impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
+impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -233,7 +233,6 @@ impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
 
 impl<K, V, S> HashMap<K, V, S>
 where
-    K: Eq + Hash,
     S: BuildHasher,
 {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
@@ -327,108 +326,6 @@ where
     #[inline]
     pub fn capacity(&self) -> usize {
         self.table.capacity()
-    }
-
-    /// Reserves capacity for at least `additional` more elements to be inserted
-    /// in the `HashMap`. The collection may reserve more space to avoid
-    /// frequent reallocations.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new allocation size overflows [`usize`].
-    ///
-    /// [`usize`]: https://doc.rust-lang.org/std/primitive.usize.html
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::new();
-    /// map.reserve(10);
-    /// ```
-    #[inline]
-    pub fn reserve(&mut self, additional: usize) {
-        let hash_builder = &self.hash_builder;
-        self.table
-            .reserve(additional, |x| make_hash(hash_builder, &x.0));
-    }
-
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
-    /// frequent reallocations.
-    ///
-    /// # Errors
-    ///
-    /// If the capacity overflows, or the allocator reports a failure, then an error
-    /// is returned.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    /// let mut map: HashMap<&str, isize> = HashMap::new();
-    /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
-    /// ```
-    #[inline]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
-        let hash_builder = &self.hash_builder;
-        self.table
-            .try_reserve(additional, |x| make_hash(hash_builder, &x.0))
-    }
-
-    /// Shrinks the capacity of the map as much as possible. It will drop
-    /// down as much as possible while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map: HashMap<i32, i32> = HashMap::with_capacity(100);
-    /// map.insert(1, 2);
-    /// map.insert(3, 4);
-    /// assert!(map.capacity() >= 100);
-    /// map.shrink_to_fit();
-    /// assert!(map.capacity() >= 2);
-    /// ```
-    #[inline]
-    pub fn shrink_to_fit(&mut self) {
-        let hash_builder = &self.hash_builder;
-        self.table.shrink_to(0, |x| make_hash(hash_builder, &x.0));
-    }
-
-    /// Shrinks the capacity of the map with a lower limit. It will drop
-    /// down no lower than the supplied limit while maintaining the internal rules
-    /// and possibly leaving some space in accordance with the resize policy.
-    ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map: HashMap<i32, i32> = HashMap::with_capacity(100);
-    /// map.insert(1, 2);
-    /// map.insert(3, 4);
-    /// assert!(map.capacity() >= 100);
-    /// map.shrink_to(10);
-    /// assert!(map.capacity() >= 10);
-    /// map.shrink_to(0);
-    /// assert!(map.capacity() >= 2);
-    /// ```
-    #[inline]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(
-            self.capacity() >= min_capacity,
-            "Tried to shrink to a larger capacity"
-        );
-
-        let hash_builder = &self.hash_builder;
-        self.table
-            .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
     }
 
     /// An iterator visiting all keys in arbitrary order.
@@ -566,43 +463,6 @@ where
         }
     }
 
-    /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut letters = HashMap::new();
-    ///
-    /// for ch in "a short treatise on fungi".chars() {
-    ///     let counter = letters.entry(ch).or_insert(0);
-    ///     *counter += 1;
-    /// }
-    ///
-    /// assert_eq!(letters[&'s'], 2);
-    /// assert_eq!(letters[&'t'], 3);
-    /// assert_eq!(letters[&'u'], 1);
-    /// assert_eq!(letters.get(&'y'), None);
-    /// ```
-    #[inline]
-    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
-        let hash = make_hash(&self.hash_builder, &key);
-        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
-            Entry::Occupied(OccupiedEntry {
-                key: Some(key),
-                elem,
-                table: self,
-            })
-        } else {
-            Entry::Vacant(VacantEntry {
-                hash,
-                key,
-                table: self,
-            })
-        }
-    }
-
     #[cfg(test)]
     #[inline]
     fn raw_capacity(&self) -> usize {
@@ -688,6 +548,151 @@ where
     #[inline]
     pub fn clear(&mut self) {
         self.table.clear();
+    }
+}
+
+impl<K, V, S> HashMap<K, V, S>
+where
+    K: Eq + Hash,
+    S: BuildHasher,
+{
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// in the `HashMap`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new allocation size overflows [`usize`].
+    ///
+    /// [`usize`]: https://doc.rust-lang.org/std/primitive.usize.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// map.reserve(10);
+    /// ```
+    #[inline]
+    pub fn reserve(&mut self, additional: usize) {
+        let hash_builder = &self.hash_builder;
+        self.table
+            .reserve(additional, |x| make_hash(hash_builder, &x.0));
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// let mut map: HashMap<&str, isize> = HashMap::new();
+    /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// ```
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        let hash_builder = &self.hash_builder;
+        self.table
+            .try_reserve(additional, |x| make_hash(hash_builder, &x.0))
+    }
+
+    /// Shrinks the capacity of the map as much as possible. It will drop
+    /// down as much as possible while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = HashMap::with_capacity(100);
+    /// map.insert(1, 2);
+    /// map.insert(3, 4);
+    /// assert!(map.capacity() >= 100);
+    /// map.shrink_to_fit();
+    /// assert!(map.capacity() >= 2);
+    /// ```
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        let hash_builder = &self.hash_builder;
+        self.table.shrink_to(0, |x| make_hash(hash_builder, &x.0));
+    }
+
+    /// Shrinks the capacity of the map with a lower limit. It will drop
+    /// down no lower than the supplied limit while maintaining the internal rules
+    /// and possibly leaving some space in accordance with the resize policy.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = HashMap::with_capacity(100);
+    /// map.insert(1, 2);
+    /// map.insert(3, 4);
+    /// assert!(map.capacity() >= 100);
+    /// map.shrink_to(10);
+    /// assert!(map.capacity() >= 10);
+    /// map.shrink_to(0);
+    /// assert!(map.capacity() >= 2);
+    /// ```
+    #[inline]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        assert!(
+            self.capacity() >= min_capacity,
+            "Tried to shrink to a larger capacity"
+        );
+
+        let hash_builder = &self.hash_builder;
+        self.table
+            .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
+    }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut letters = HashMap::new();
+    ///
+    /// for ch in "a short treatise on fungi".chars() {
+    ///     let counter = letters.entry(ch).or_insert(0);
+    ///     *counter += 1;
+    /// }
+    ///
+    /// assert_eq!(letters[&'s'], 2);
+    /// assert_eq!(letters[&'t'], 3);
+    /// assert_eq!(letters[&'u'], 1);
+    /// assert_eq!(letters.get(&'y'), None);
+    /// ```
+    #[inline]
+    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+        let hash = make_hash(&self.hash_builder, &key);
+        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+            Entry::Occupied(OccupiedEntry {
+                key: Some(key),
+                elem,
+                table: self,
+            })
+        } else {
+            Entry::Vacant(VacantEntry {
+                hash,
+                key,
+                table: self,
+            })
+        }
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -954,7 +959,6 @@ where
 
 impl<K, V, S> HashMap<K, V, S>
 where
-    K: Eq + Hash,
     S: BuildHasher,
 {
     /// Creates a raw entry builder for the HashMap.
@@ -990,7 +994,6 @@ where
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
-        self.reserve(1);
         RawEntryBuilderMut { map: self }
     }
 
@@ -1041,7 +1044,7 @@ where
 
 impl<K, V, S> Debug for HashMap<K, V, S>
 where
-    K: Eq + Hash + Debug,
+    K: Debug,
     V: Debug,
     S: BuildHasher,
 {
@@ -1052,7 +1055,6 @@ where
 
 impl<K, V, S> Default for HashMap<K, V, S>
 where
-    K: Eq + Hash,
     S: BuildHasher + Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
@@ -1323,6 +1325,21 @@ where
     {
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
+}
+
+impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
+where
+    S: BuildHasher,
+{
+    /// Create a `RawEntryMut` from the given hash.
+    #[inline]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
+    where
+        for<'b> F: FnMut(&'b K) -> bool,
+    {
+        self.search(hash, is_match)
+    }
 
     #[inline]
     fn search<F>(self, hash: u64, mut is_match: F) -> RawEntryMut<'a, K, V, S>
@@ -1339,16 +1356,6 @@ where
                 hash_builder: &self.map.hash_builder,
             }),
         }
-    }
-
-    /// Create a `RawEntryMut` from the given hash.
-    #[inline]
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
-    where
-        for<'b> F: FnMut(&'b K) -> bool,
-    {
-        self.search(hash, is_match)
     }
 }
 
@@ -1624,11 +1631,25 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
+        let hash_builder = self.hash_builder;
+        self.insert_with_hasher(hash, key, value, |k| make_hash(hash_builder, k))
+    }
+
+    /// Set the value of an entry with a custom hasher function.
+    #[inline]
+    pub fn insert_with_hasher<H>(
+        self,
+        hash: u64,
+        key: K,
+        value: V,
+        hasher: H,
+    ) -> (&'a mut K, &'a mut V)
+    where
+        S: BuildHasher,
+        H: Fn(&K) -> u64,
+    {
         unsafe {
-            let hash_builder = self.hash_builder;
-            let elem = self
-                .table
-                .insert(hash, (key, value), |x| make_hash(hash_builder, &x.0));
+            let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
             let &mut (ref mut key, ref mut value) = elem.as_mut();
             (key, value)
         }
@@ -2517,7 +2538,7 @@ fn assert_covariance() {
 mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
-    use super::HashMap;
+    use super::{HashMap, RawEntryMut};
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
     use std::usize;
@@ -3513,4 +3534,48 @@ mod test_map {
         }
     }
 
+    #[test]
+    fn test_key_without_hash_impl() {
+        #[derive(Debug)]
+        struct IntWrapper(u64);
+
+        let mut m: HashMap<IntWrapper, ()> = HashMap::new();
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 0"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(0, IntWrapper(0), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_none());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(1, |k| k.0 == 1) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 1"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(1, IntWrapper(1), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let occupied_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(e) => e,
+                RawEntryMut::Vacant(..) => panic!("Couldn't find entry for key 0"),
+            };
+            occupied_entry.remove();
+        }
+        assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+        assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+    }
 }
