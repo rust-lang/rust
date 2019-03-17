@@ -87,14 +87,12 @@ pub(crate) fn reference_definition(
 
             if let Some(expr) = struct_lit.and_then(|lit| source_map.node_expr(lit.into())) {
                 let ty = infer_result[expr].clone();
-                if let hir::Ty::Adt { def_id, .. } = ty {
-                    if let hir::AdtDef::Struct(s) = def_id {
-                        let hir_path = hir::Path::from_name_ref(name_ref);
-                        let hir_name = hir_path.as_ident().unwrap();
+                if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
+                    let hir_path = hir::Path::from_name_ref(name_ref);
+                    let hir_name = hir_path.as_ident().unwrap();
 
-                        if let Some(field) = s.field(db, hir_name) {
-                            return Exact(NavigationTarget::from_field(db, field));
-                        }
+                    if let Some(field) = s.field(db, hir_name) {
+                        return Exact(NavigationTarget::from_field(db, field));
                     }
                 }
             }
@@ -124,7 +122,7 @@ pub(crate) fn reference_definition(
             Some(Resolution::SelfType(impl_block)) => {
                 let ty = impl_block.target_ty(db);
 
-                if let hir::Ty::Adt { def_id, .. } = ty {
+                if let Some((def_id, _)) = ty.as_adt() {
                     return Exact(NavigationTarget::from_adt_def(db, def_id));
                 }
             }

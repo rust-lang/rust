@@ -1,4 +1,4 @@
-use hir::{Ty, AdtDef};
+use hir::AdtDef;
 
 use crate::completion::{CompletionContext, Completions};
 
@@ -15,8 +15,8 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
     let ty = infer_result[expr].clone();
-    let (adt, substs) = match ty {
-        Ty::Adt { def_id, ref substs, .. } => (def_id, substs),
+    let (adt, substs) = match ty.as_adt() {
+        Some(res) => res,
         _ => return,
     };
     match adt {

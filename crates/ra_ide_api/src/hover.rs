@@ -517,23 +517,8 @@ The Some variant
         assert_eq!("u32", &type_name);
     }
 
-    // FIXME: improve type_of to make this work
     #[test]
-    fn test_type_of_for_expr_1() {
-        let (analysis, range) = single_file_with_range(
-            "
-            fn main() {
-                let foo = <|>1 + foo_test<|>;
-            }
-            ",
-        );
-
-        let type_name = analysis.type_of(range).unwrap().unwrap();
-        assert_eq!("{unknown}", &type_name);
-    }
-
-    #[test]
-    fn test_type_of_for_expr_2() {
+    fn test_type_of_for_expr() {
         let (analysis, range) = single_file_with_range(
             "
             fn main() {

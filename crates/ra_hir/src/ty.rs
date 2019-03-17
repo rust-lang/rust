@@ -20,7 +20,7 @@ pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field, ca
 pub(crate) use infer::{infer, InferenceResult, InferTy};
 use display::{HirDisplay, HirFormatter};
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TypeName {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -96,79 +96,10 @@ pub struct ApplicationTy {
 /// This should be cheap to clone.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Ty {
+    /// A nominal type with (maybe 0) type parameters. This might be a primitive
+    /// type like `bool`, a struct, tuple, function pointer, reference or
+    /// several other things.
     Apply(ApplicationTy),
-
-    /// The primitive boolean type. Written as `bool`.
-    Bool,
-
-    /// The primitive character type; holds a Unicode scalar value
-    /// (a non-surrogate code point). Written as `char`.
-    Char,
-
-    /// A primitive integer type. For example, `i32`.
-    Int(primitive::UncertainIntTy),
-
-    /// A primitive floating-point type. For example, `f64`.
-    Float(primitive::UncertainFloatTy),
-
-    /// Structures, enumerations and unions.
-    Adt {
-        /// The definition of the struct/enum.
-        def_id: AdtDef,
-        /// Substitutions for the generic parameters of the type.
-        substs: Substs,
-    },
-
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
-    /// The pointee of an array slice.  Written as `[T]`.
-    Slice(Arc<Ty>),
-
-    /// An array with the given length. Written as `[T; n]`.
-    Array(Arc<Ty>),
-
-    /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(Arc<Ty>, Mutability),
-
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
-    Ref(Arc<Ty>, Mutability),
-
-    /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type, which is output (for a function
-    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
-    ///
-    /// This includes tuple struct / enum variant constructors as well.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```rust
-    /// fn foo() -> i32 { 1 }
-    /// let bar = foo; // bar: fn() -> i32 {foo}
-    /// ```
-    FnDef {
-        /// The definition of the function / constructor.
-        def: CallableDef,
-        /// Substitutions for the generic parameters of the type
-        substs: Substs,
-    },
-
-    /// A pointer to a function.  Written as `fn() -> i32`.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```rust
-    /// fn foo() -> i32 { 1 }
-    /// let bar: fn() -> i32 = foo;
-    /// ```
-    FnPtr(Substs),
-
-    /// The never type `!`.
-    Never,
-
-    /// A tuple type.  For example, `(i32, bool)`.
-    Tuple(Substs),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
@@ -198,6 +129,10 @@ pub struct Substs(Arc<[Ty]>);
 impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
+    }
+
+    pub fn single(ty: Ty) -> Substs {
+        Substs(Arc::new([ty]))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Ty> {
@@ -256,6 +191,12 @@ impl FnSig {
 }
 
 impl Ty {
+    pub fn simple(name: TypeName) -> Ty {
+        Ty::Apply(ApplicationTy { name, parameters: Substs::empty() })
+    }
+    pub fn apply_one(name: TypeName, param: Ty) -> Ty {
+        Ty::Apply(ApplicationTy { name, parameters: Substs::single(param) })
+    }
     pub fn apply(name: TypeName, parameters: Substs) -> Ty {
         Ty::Apply(ApplicationTy { name, parameters })
     }
@@ -270,38 +211,7 @@ impl Ty {
                     t.walk(f);
                 }
             }
-            Ty::Slice(t) | Ty::Array(t) => t.walk(f),
-            Ty::RawPtr(t, _) => t.walk(f),
-            Ty::Ref(t, _) => t.walk(f),
-            Ty::Tuple(ts) => {
-                for t in ts.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::FnPtr(sig) => {
-                for t in sig.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::FnDef { substs, .. } => {
-                for t in substs.0.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::Adt { substs, .. } => {
-                for t in substs.0.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::Bool
-            | Ty::Char
-            | Ty::Int(_)
-            | Ty::Float(_)
-            | Ty::Str
-            | Ty::Never
-            | Ty::Param { .. }
-            | Ty::Infer(_)
-            | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -311,30 +221,7 @@ impl Ty {
             Ty::Apply(a_ty) => {
                 a_ty.parameters.walk_mut(f);
             }
-            Ty::Slice(t) | Ty::Array(t) => Arc::make_mut(t).walk_mut(f),
-            Ty::RawPtr(t, _) => Arc::make_mut(t).walk_mut(f),
-            Ty::Ref(t, _) => Arc::make_mut(t).walk_mut(f),
-            Ty::Tuple(ts) => {
-                ts.walk_mut(f);
-            }
-            Ty::FnPtr(sig) => {
-                sig.walk_mut(f);
-            }
-            Ty::FnDef { substs, .. } => {
-                substs.walk_mut(f);
-            }
-            Ty::Adt { substs, .. } => {
-                substs.walk_mut(f);
-            }
-            Ty::Bool
-            | Ty::Char
-            | Ty::Int(_)
-            | Ty::Float(_)
-            | Ty::Str
-            | Ty::Never
-            | Ty::Param { .. }
-            | Ty::Infer(_)
-            | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -347,6 +234,31 @@ impl Ty {
         self
     }
 
+    pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
+        match self {
+            Ty::Apply(ApplicationTy { name: TypeName::Ref(mutability), parameters }) => {
+                Some((parameters.as_single(), *mutability))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_adt(&self) -> Option<(AdtDef, &Substs)> {
+        match self {
+            Ty::Apply(ApplicationTy { name: TypeName::Adt(adt_def), parameters }) => {
+                Some((*adt_def, parameters))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_tuple(&self) -> Option<&Substs> {
+        match self {
+            Ty::Apply(ApplicationTy { name: TypeName::Tuple, parameters }) => Some(parameters),
+            _ => None,
+        }
+    }
+
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.name {
@@ -354,8 +266,6 @@ impl Ty {
                 TypeName::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 _ => None,
             },
-            Ty::Ref(t, _) => Some(Ty::clone(t)),
-            Ty::RawPtr(t, _) => Some(Ty::clone(t)),
             _ => None,
         }
     }
@@ -369,8 +279,6 @@ impl Ty {
             Ty::Apply(ApplicationTy { name, .. }) => {
                 Ty::Apply(ApplicationTy { name, parameters: substs })
             }
-            Ty::Adt { def_id, .. } => Ty::Adt { def_id, substs },
-            Ty::FnDef { def, .. } => Ty::FnDef { def, substs },
             _ => self,
         }
     }
@@ -396,7 +304,6 @@ impl Ty {
     fn substs(&self) -> Option<Substs> {
         match self {
             Ty::Apply(ApplicationTy { parameters, .. }) => Some(parameters.clone()),
-            Ty::Adt { substs, .. } | Ty::FnDef { substs, .. } => Some(substs.clone()),
             _ => None,
         }
     }
@@ -487,69 +394,6 @@ impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
-            Ty::Bool => write!(f, "bool")?,
-            Ty::Char => write!(f, "char")?,
-            Ty::Int(t) => write!(f, "{}", t)?,
-            Ty::Float(t) => write!(f, "{}", t)?,
-            Ty::Str => write!(f, "str")?,
-            Ty::Slice(t) | Ty::Array(t) => {
-                write!(f, "[{}]", t.display(f.db))?;
-            }
-            Ty::RawPtr(t, m) => {
-                write!(f, "*{}{}", m.as_keyword_for_ptr(), t.display(f.db))?;
-            }
-            Ty::Ref(t, m) => {
-                write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
-            }
-            Ty::Never => write!(f, "!")?,
-            Ty::Tuple(ts) => {
-                if ts.0.len() == 1 {
-                    write!(f, "({},)", ts.0[0].display(f.db))?;
-                } else {
-                    write!(f, "(")?;
-                    f.write_joined(&*ts.0, ", ")?;
-                    write!(f, ")")?;
-                }
-            }
-            Ty::FnPtr(sig) => {
-                let sig = FnSig::from_fn_ptr_substs(sig);
-                write!(f, "fn(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
-            }
-            Ty::FnDef { def, substs, .. } => {
-                let sig = f.db.callable_item_signature(*def);
-                let name = match def {
-                    CallableDef::Function(ff) => ff.name(f.db),
-                    CallableDef::Struct(s) => s.name(f.db).unwrap_or_else(Name::missing),
-                    CallableDef::EnumVariant(e) => e.name(f.db).unwrap_or_else(Name::missing),
-                };
-                match def {
-                    CallableDef::Function(_) => write!(f, "fn {}", name)?,
-                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
-                }
-                if substs.0.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*substs.0, ", ")?;
-                    write!(f, ">")?;
-                }
-                write!(f, "(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
-            }
-            Ty::Adt { def_id, substs, .. } => {
-                let name = match def_id {
-                    AdtDef::Struct(s) => s.name(f.db),
-                    AdtDef::Enum(e) => e.name(f.db),
-                }
-                .unwrap_or_else(Name::missing);
-                write!(f, "{}", name)?;
-                if substs.0.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*substs.0, ", ")?;
-                    write!(f, ">")?;
-                }
-            }
             Ty::Param { name, .. } => write!(f, "{}", name)?,
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
