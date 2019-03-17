@@ -681,12 +681,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
                 let bound_ty = match mode {
-                    BindingMode::Ref(Mutability::Shared) => {
-                        Ty::Ref(inner_ty.clone().into(), Mutability::Shared)
-                    }
-                    BindingMode::Ref(Mutability::Mut) => {
-                        Ty::Ref(inner_ty.clone().into(), Mutability::Mut)
-                    }
+                    BindingMode::Ref(mutability) => Ty::Ref(inner_ty.clone().into(), mutability),
                     BindingMode::Move => inner_ty.clone(),
                 };
                 let bound_ty = self.resolve_ty_as_possible(&mut vec![], bound_ty);
