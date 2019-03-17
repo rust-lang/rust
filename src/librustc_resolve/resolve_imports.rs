@@ -18,7 +18,7 @@ use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{
     DUPLICATE_MACRO_EXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    REDUNDANT_IMPORT,
+    UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::def::*;
@@ -1308,7 +1308,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             is_redundant.present_items().all(|is_redundant| is_redundant)
         {
             self.session.buffer_lint_with_diagnostic(
-                REDUNDANT_IMPORT,
+                UNUSED_IMPORTS,
                 directive.id,
                 directive.span,
                 &format!("the item `{}` is imported redundantly", ident),
