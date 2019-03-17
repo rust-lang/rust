@@ -5,7 +5,7 @@ LL |     let c1 = || x = 4;
    |              -- - previous borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here
-LL |     let c2 = || x * 5; //[ast]~ ERROR cannot borrow `x`
+LL |     let c2 = || x * 5;
    |              ^^ - borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
@@ -20,7 +20,7 @@ LL |     let c1 = || set(&mut x);
    |              --          - previous borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here
-LL |     let c2 = || get(&x); //[ast]~ ERROR cannot borrow `x`
+LL |     let c2 = || get(&x);
    |              ^^      - borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
@@ -35,7 +35,7 @@ LL |     let c1 = || set(&mut x);
    |              --          - previous borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here
-LL |     let c2 = || x * 5; //[ast]~ ERROR cannot borrow `x`
+LL |     let c2 = || x * 5;
    |              ^^ - borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
@@ -48,7 +48,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |     let c2 = || x * 5;
    |              -- borrow of `x` occurs here
-LL |     x = 5; //[ast]~ ERROR cannot assign
+LL |     x = 5;
    |     ^^^^^ assignment to borrowed `x` occurs here
 
 error[E0506]: cannot assign to `x` because it is borrowed
@@ -56,7 +56,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |     let c1 = || get(&x);
    |              -- borrow of `x` occurs here
-LL |     x = 5; //[ast]~ ERROR cannot assign
+LL |     x = 5;
    |     ^^^^^ assignment to borrowed `x` occurs here
 
 error[E0506]: cannot assign to `*x` because it is borrowed
@@ -64,7 +64,7 @@ error[E0506]: cannot assign to `*x` because it is borrowed
    |
 LL |     let c1 = || get(&*x);
    |              -- borrow of `*x` occurs here
-LL |     *x = 5; //[ast]~ ERROR cannot assign to `*x`
+LL |     *x = 5;
    |     ^^^^^^ assignment to borrowed `*x` occurs here
 
 error[E0506]: cannot assign to `*x.f` because it is borrowed
@@ -72,7 +72,7 @@ error[E0506]: cannot assign to `*x.f` because it is borrowed
    |
 LL |     let c1 = || get(&*x.f);
    |              -- borrow of `*x.f` occurs here
-LL |     *x.f = 5; //[ast]~ ERROR cannot assign to `*x.f`
+LL |     *x.f = 5;
    |     ^^^^^^^^ assignment to borrowed `*x.f` occurs here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
@@ -82,7 +82,7 @@ LL |     let c1 = || get(&*x.f);
    |              --       - previous borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
-LL |     let c2 = || *x.f = 5; //[ast]~ ERROR cannot borrow `x` as mutable
+LL |     let c2 = || *x.f = 5;
    |              ^^  - borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here

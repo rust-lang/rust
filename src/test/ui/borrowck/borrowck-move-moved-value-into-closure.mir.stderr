@@ -8,7 +8,7 @@ LL |     call_f(move|| { *t + 1 });
    |            ------    - variable moved due to use in closure
    |            |
    |            value moved into closure here
-LL |     call_f(move|| { *t + 1 }); //[ast]~ ERROR capture of moved value
+LL |     call_f(move|| { *t + 1 });
    |            ^^^^^^    - use occurs due to use in closure
    |            |
    |            value used here after move

@@ -1,10 +1,10 @@
 error[E0384]: cannot assign twice to immutable variable `v`
   --> $DIR/liveness-assign-imm-local-in-op-eq.rs:10:5
    |
-LL |     v = 2;  //[ast]~ NOTE first assignment
+LL |     v = 2;
    |     ----- first assignment to `v`
-LL |             //[mir]~^ NOTE first assignment
-LL |     v += 1; //[ast]~ ERROR cannot assign twice to immutable variable
+LL |
+LL |     v += 1;
    |     ^^^^^^ cannot assign twice to immutable variable
 
 error: aborting due to previous error

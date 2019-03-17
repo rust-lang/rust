@@ -1,7 +1,7 @@
 error[E0499]: cannot borrow `l.0` as mutable more than once at a time
   --> $DIR/issue-25579.rs:14:32
    |
-LL |         &mut Sexpression::Cons(ref mut expr) => { //[ast]~ ERROR [E0499]
+LL |         &mut Sexpression::Cons(ref mut expr) => {
    |                                ^^^^^^^^^^^^ mutable borrow starts here in previous iteration of loop
 ...
 LL | }
@@ -10,9 +10,9 @@ LL | }
 error[E0506]: cannot assign to `l` because it is borrowed
   --> $DIR/issue-25579.rs:15:13
    |
-LL |         &mut Sexpression::Cons(ref mut expr) => { //[ast]~ ERROR [E0499]
+LL |         &mut Sexpression::Cons(ref mut expr) => {
    |                                ------------ borrow of `l` occurs here
-LL |             l = &mut **expr; //[ast]~ ERROR [E0506]
+LL |             l = &mut **expr;
    |             ^^^^^^^^^^^^^^^ assignment to borrowed `l` occurs here
 
 error: aborting due to 2 previous errors

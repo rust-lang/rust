@@ -5,7 +5,7 @@ LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
 LL |     { let z = &x; read(z); }
    |               ^^ immutable borrow occurs here
-LL |     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+LL |
 LL |     *y += 1;
    |     ------- mutable borrow later used here
 
@@ -16,7 +16,7 @@ LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
 LL |     let z = &x;
    |             ^^ immutable borrow occurs here
-LL |     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+LL |
 LL |     *y += 1;
    |     ------- mutable borrow later used here
 
@@ -38,7 +38,7 @@ LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
 LL |     let _z = &x;
    |              ^^ immutable borrow occurs here
-LL |     //[nll_target]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+LL |
 LL |     *y += 1;
    |     ------- mutable borrow later used here
 

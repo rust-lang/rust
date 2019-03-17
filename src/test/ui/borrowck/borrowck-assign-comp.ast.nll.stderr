@@ -4,9 +4,9 @@ error[E0506]: cannot assign to `p.x` because it is borrowed
 LL |     let q = &p;
    |             -- borrow of `p.x` occurs here
 ...
-LL |     p.x = 5; //[ast]~ ERROR cannot assign to `p.x`
+LL |     p.x = 5;
    |     ^^^^^^^ assignment to borrowed `p.x` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `p.x` because it is borrowed
+LL |
 LL |     q.x;
    |     --- borrow later used here
 
@@ -15,7 +15,7 @@ error[E0506]: cannot assign to `p` because it is borrowed
    |
 LL |     let q = &p.y;
    |             ---- borrow of `p` occurs here
-LL |     p = Point {x: 5, y: 7};//[ast]~ ERROR cannot assign to `p`
+LL |     p = Point {x: 5, y: 7};
    |     ^^^^^^^^^^^^^^^^^^^^^^ assignment to borrowed `p` occurs here
 ...
 LL |     *q; // stretch loan
@@ -26,9 +26,9 @@ error[E0506]: cannot assign to `p.y` because it is borrowed
    |
 LL |     let q = &p.y;
    |             ---- borrow of `p.y` occurs here
-LL |     p.y = 5; //[ast]~ ERROR cannot assign to `p.y`
+LL |     p.y = 5;
    |     ^^^^^^^ assignment to borrowed `p.y` occurs here
-LL |              //[mir]~^ ERROR cannot assign to `p.y` because it is borrowed
+LL |
 LL |     *q;
    |     -- borrow later used here
 

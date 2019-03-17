@@ -3,7 +3,7 @@ error[E0596]: cannot borrow immutable local variable `x` as mutable
    |
 LL |     let x = 1;
    |         - help: make this binding mutable: `mut x`
-LL |     let y = &mut x; //[ast]~ ERROR [E0596]
+LL |     let y = &mut x;
    |                  ^ cannot borrow mutably
 
 error: aborting due to previous error

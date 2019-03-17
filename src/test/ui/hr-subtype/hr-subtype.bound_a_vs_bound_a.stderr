@@ -2,11 +2,11 @@ error: compilation successful
   --> $DIR/hr-subtype.rs:100:1
    |
 LL | / fn main() {
-LL | | //[bound_a_vs_bound_a]~^ ERROR compilation successful
-LL | | //[bound_a_vs_bound_b]~^^ ERROR compilation successful
-LL | | //[bound_inv_a_vs_bound_inv_b]~^^^ ERROR compilation successful
-LL | | //[bound_co_a_vs_bound_co_b]~^^^^ ERROR compilation successful
-LL | | //[free_x_vs_free_x]~^^^^^ ERROR compilation successful
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |
 LL | | }
    | |_^
 

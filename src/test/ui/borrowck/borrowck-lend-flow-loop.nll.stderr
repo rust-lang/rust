@@ -4,7 +4,7 @@ error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mut
 LL |     let mut x = &mut v;
    |                 ------ mutable borrow occurs here
 LL |     for _ in 0..3 {
-LL |         borrow(&*v); //[ast]~ ERROR cannot borrow
+LL |         borrow(&*v);
    |                ^^^ immutable borrow occurs here
 ...
 LL |     *x = box 5;
@@ -15,10 +15,10 @@ error[E0502]: cannot borrow `*v` as immutable because it is also borrowed as mut
    |
 LL |         **x += 1;
    |         -------- mutable borrow later used here
-LL |         borrow(&*v); //[ast]~ ERROR cannot borrow
+LL |         borrow(&*v);
    |                ^^^ immutable borrow occurs here
 ...
-LL |             x = &mut v; //[ast]~ ERROR cannot borrow
+LL |             x = &mut v;
    |                 ------ mutable borrow occurs here
 
 error: aborting due to 2 previous errors

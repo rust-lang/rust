@@ -1,8 +1,8 @@
 error: compilation successful
   --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:1
    |
-LL | / fn main() { //[ast]~ ERROR compilation successful
-LL | |      //[migrate]~^ ERROR compilation successful
+LL | / fn main() {
+LL | |
 LL | |     let mut x = 1;
 LL | |     {
 ...  |

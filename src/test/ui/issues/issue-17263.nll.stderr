@@ -1,10 +1,10 @@
 error: compilation successful
   --> $DIR/issue-17263.rs:15:1
    |
-LL | / fn main() { //[nll]~ ERROR compilation successful
+LL | / fn main() {
 LL | |     let mut x: Box<_> = box Foo { a: 1, b: 2 };
 LL | |     let (a, b) = (&mut x.a, &mut x.b);
-LL | |     //[ast]~^ ERROR cannot borrow `x` (via `x.b`) as mutable more than once at a time
+LL | |
 ...  |
 LL | |     use_mut(a);
 LL | | }

@@ -3,9 +3,9 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |
 LL |         Some(ref r) => {
    |              ----- borrow of `x` occurs here
-LL |             x = Some(1); //[ast]~ ERROR cannot assign
+LL |             x = Some(1);
    |             ^^^^^^^^^^^ assignment to borrowed `x` occurs here
-LL |             //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+LL |
 LL |             drop(r);
    |                  - borrow later used here
 

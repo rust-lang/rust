@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-thread-local-static-borrow-outlives-fn.rs:11:21
    |
-LL |      assert_static(&FOO); //[ast]~ ERROR [E0597]
+LL |      assert_static(&FOO);
    |                     ^^^ - borrowed value only lives until here
    |                     |
    |                     borrowed value does not live long enough

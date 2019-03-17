@@ -6,7 +6,7 @@ LL |         x => {
    |         |
    |         first assignment to `x`
    |         help: make this binding mutable: `mut x`
-LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
@@ -17,7 +17,7 @@ LL |         E::Foo(x) => {
    |                |
    |                first assignment to `x`
    |                help: make this binding mutable: `mut x`
-LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
@@ -28,7 +28,7 @@ LL |         S { bar: x } => {
    |                  |
    |                  first assignment to `x`
    |                  help: make this binding mutable: `mut x`
-LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
@@ -39,7 +39,7 @@ LL |         (x,) => {
    |          |
    |          first assignment to `x`
    |          help: make this binding mutable: `mut x`
-LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
@@ -50,7 +50,7 @@ LL |         [x,_,_] => {
    |          |
    |          first assignment to `x`
    |          help: make this binding mutable: `mut x`
-LL |             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
+LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
 error: aborting due to 5 previous errors

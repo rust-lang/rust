@@ -6,7 +6,7 @@ LL |     let &mut x = foo;
    |              |
    |              first assignment to `x`
    |              help: make this binding mutable: `mut x`
-LL |     x += 1; //[ast]~ ERROR cannot assign twice to immutable variable
+LL |     x += 1;
    |     ^^^^^^ cannot assign twice to immutable variable
 
 error[E0506]: cannot assign to `*foo` because it is borrowed
@@ -14,9 +14,9 @@ error[E0506]: cannot assign to `*foo` because it is borrowed
    |
 LL |     let &mut ref x = foo;
    |              ----- borrow of `*foo` occurs here
-LL |     *foo += 1; //[ast]~ ERROR cannot assign to `*foo` because it is borrowed
+LL |     *foo += 1;
    |     ^^^^^^^^^ assignment to borrowed `*foo` occurs here
-LL |     //[mir]~^ ERROR cannot assign to `*foo` because it is borrowed
+LL |
 LL |     drop(x);
    |          - borrow later used here
 

@@ -6,7 +6,7 @@ LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                        |
    |                        this parameter and the return type are declared with different lifetimes...
 ...
-LL |    (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
+LL |    (a, b)
    |     ^ ...but data from `y` is returned here
 
 error[E0623]: lifetime mismatch
@@ -17,7 +17,7 @@ LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                                    |
    |                                    this parameter and the return type are declared with different lifetimes...
 ...
-LL |    (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
+LL |    (a, b)
    |        ^ ...but data from `x` is returned here
 
 error: aborting due to 2 previous errors

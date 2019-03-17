@@ -1,13 +1,13 @@
 error[E0017]: references in statics may only refer to immutable values
   --> $DIR/issue-46604.rs:4:25
    |
-LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];   //[ast]~ ERROR E0017
+LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
    |                         ^^^^^^^^^^^^^^^^^^^^ statics require immutable values
 
 error[E0389]: cannot assign to data in a `&` reference
   --> $DIR/issue-46604.rs:10:5
    |
-LL |     buf[0]=2;                                   //[ast]~ ERROR E0389
+LL |     buf[0]=2;
    |     ^^^^^^^^ assignment into an immutable reference
 
 error: aborting due to 2 previous errors

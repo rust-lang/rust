@@ -1,28 +1,28 @@
 error[E0384]: cannot assign twice to immutable variable `b`
   --> $DIR/issue-45199.rs:10:5
    |
-LL |     b = Box::new(1);    //[ast]~ NOTE first assignment
+LL |     b = Box::new(1);
    |     --------------- first assignment to `b`
-LL |                         //[mir]~^ NOTE first assignment
-LL |     b = Box::new(2);    //[ast]~ ERROR cannot assign twice to immutable variable
+LL |
+LL |     b = Box::new(2);
    |     ^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `b`
   --> $DIR/issue-45199.rs:21:5
    |
-LL |     let b = Box::new(1);    //[ast]~ NOTE first assignment
+LL |     let b = Box::new(1);
    |         - first assignment to `b`
 ...
-LL |     b = Box::new(2);        //[ast]~ ERROR cannot assign twice to immutable variable
+LL |     b = Box::new(2);
    |     ^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `b`
   --> $DIR/issue-45199.rs:30:5
    |
-LL | fn test_args(b: Box<i32>) {  //[ast]~ NOTE first assignment
+LL | fn test_args(b: Box<i32>) {
    |              - first assignment to `b`
 ...
-LL |     b = Box::new(2);            //[ast]~ ERROR cannot assign twice to immutable variable
+LL |     b = Box::new(2);
    |     ^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
 
 error: aborting due to 3 previous errors

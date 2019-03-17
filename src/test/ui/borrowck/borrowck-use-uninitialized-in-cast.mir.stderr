@@ -1,7 +1,7 @@
 error[E0381]: borrow of possibly uninitialized variable: `x`
   --> $DIR/borrowck-use-uninitialized-in-cast.rs:10:13
    |
-LL |     let y = x as *const i32; //[ast]~ ERROR use of possibly uninitialized variable: `*x` [E0381]
+LL |     let y = x as *const i32;
    |             ^ use of possibly uninitialized `*x`
 
 error: aborting due to previous error
