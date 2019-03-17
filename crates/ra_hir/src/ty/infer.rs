@@ -81,6 +81,12 @@ impl BindingMode {
     }
 }
 
+impl Default for BindingMode {
+    fn default() -> Self {
+        BindingMode::Move
+    }
+}
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
@@ -761,7 +767,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::For { iterable, body, pat } => {
                 let _iterable_ty = self.infer_expr(*iterable, &Expectation::none());
-                self.infer_pat(*pat, &Ty::Unknown, BindingMode::Move);
+                self.infer_pat(*pat, &Ty::Unknown, BindingMode::default());
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
@@ -775,7 +781,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     } else {
                         Ty::Unknown
                     };
-                    self.infer_pat(*arg_pat, &expected, BindingMode::Move);
+                    self.infer_pat(*arg_pat, &expected, BindingMode::default());
                 }
 
                 // TODO: infer lambda type etc.
@@ -865,7 +871,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 for arm in arms {
                     for &pat in &arm.pats {
-                        let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::Move);
+                        let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
                     }
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(guard_expr, &Expectation::has_type(Ty::Bool));
@@ -1065,7 +1071,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         decl_ty
                     };
 
-                    self.infer_pat(*pat, &ty, BindingMode::Move);
+                    self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {
                     self.infer_expr(*expr, &Expectation::none());
@@ -1081,7 +1087,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for (type_ref, pat) in signature.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
 
-            self.infer_pat(*pat, &ty, BindingMode::Move);
+            self.infer_pat(*pat, &ty, BindingMode::default());
         }
         self.return_ty = self.make_ty(signature.ret_type());
     }
