@@ -453,8 +453,13 @@ pub(crate) fn named_field_list(p: &mut Parser) {
     p.bump();
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
-            IDENT => {
+            // test struct_literal_field_with_attr
+            // fn main() {
+            //     S { #[cfg(test)] field: 1 }
+            // }
+            IDENT | POUND => {
                 let m = p.start();
+                attributes::outer_attributes(p);
                 name_ref(p);
                 if p.eat(COLON) {
                     expr(p);
