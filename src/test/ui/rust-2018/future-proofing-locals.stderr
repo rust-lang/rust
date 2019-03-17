@@ -1,102 +1,56 @@
 error: imports cannot refer to type parameters
-  --> $DIR/future-proofing-locals.rs:13:9
+  --> $DIR/future-proofing-locals.rs:14:9
    |
 LL |     use T as _;
    |         ^
 
 error: imports cannot refer to type parameters
-  --> $DIR/future-proofing-locals.rs:14:9
+  --> $DIR/future-proofing-locals.rs:15:9
    |
 LL |     use T::U;
    |         ^
 
 error: imports cannot refer to type parameters
-  --> $DIR/future-proofing-locals.rs:15:9
+  --> $DIR/future-proofing-locals.rs:16:9
    |
 LL |     use T::*;
    |         ^
 
 error: imports cannot refer to type parameters
-  --> $DIR/future-proofing-locals.rs:19:9
+  --> $DIR/future-proofing-locals.rs:20:9
    |
 LL |     use T;
    |         ^
 
 error: imports cannot refer to local variables
-  --> $DIR/future-proofing-locals.rs:25:9
+  --> $DIR/future-proofing-locals.rs:26:9
    |
 LL |     use x as _;
    |         ^
 
 error: imports cannot refer to local variables
-  --> $DIR/future-proofing-locals.rs:31:9
+  --> $DIR/future-proofing-locals.rs:32:9
    |
 LL |     use x;
    |         ^
 
 error: imports cannot refer to local variables
-  --> $DIR/future-proofing-locals.rs:37:17
+  --> $DIR/future-proofing-locals.rs:38:17
    |
 LL |             use x;
    |                 ^
 
 error: imports cannot refer to type parameters
-  --> $DIR/future-proofing-locals.rs:45:10
+  --> $DIR/future-proofing-locals.rs:46:10
    |
 LL |     use {T as _, x};
    |          ^
 
 error: imports cannot refer to local variables
-  --> $DIR/future-proofing-locals.rs:45:18
+  --> $DIR/future-proofing-locals.rs:46:18
    |
 LL |     use {T as _, x};
    |                  ^
-
-warning: the item `T` is imported redundantly
-  --> $DIR/future-proofing-locals.rs:19:9
-   |
-LL | / mod T {
-LL | |     pub struct U;
-LL | | }
-   | |_- the item `T` was already imported here
-...
-LL |       use T;
-   |           ^
-   |
-   = note: #[warn(redundant_import)] on by default
-
-warning: the item `x` is imported redundantly
-  --> $DIR/future-proofing-locals.rs:31:9
-   |
-LL | / mod x {
-LL | |     pub struct y;
-LL | | }
-   | |_- the item `x` was already imported here
-...
-LL |       use x;
-   |           ^
-
-warning: the item `x` is imported redundantly
-  --> $DIR/future-proofing-locals.rs:37:17
-   |
-LL | / mod x {
-LL | |     pub struct y;
-LL | | }
-   | |_- the item `x` was already imported here
-...
-LL |               use x;
-   |                   ^
-
-warning: the item `x` is imported redundantly
-  --> $DIR/future-proofing-locals.rs:45:18
-   |
-LL | / mod x {
-LL | |     pub struct y;
-LL | | }
-   | |_- the item `x` was already imported here
-...
-LL |       use {T as _, x};
-   |                    ^
 
 error: aborting due to 9 previous errors
 

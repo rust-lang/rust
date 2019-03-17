@@ -1,6 +1,5 @@
 #![deny(unused_imports)]
 #![allow(dead_code)]
-#![allow(redundant_import)]
 
 use bar::c::cc as cal;
 
