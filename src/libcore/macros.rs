@@ -236,6 +236,70 @@ macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
 
+/// Asserts that an expression matches a certain pattern.
+///
+/// On panic, this macro will print the debug representation of the expression
+/// with the given pattern.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(assert_matches)]
+///
+/// assert_matches!(Some(3), Some(3) | None | Some(2));
+/// assert_matches!(Err(3), Ok(x) | Err(x) if x >= 3);
+/// ```
+#[macro_export]
+#[unstable(feature = "assert_matches", issue = "0")]
+macro_rules! assert_matches {
+    ($e:expr, $($pat:pat)|+) => {
+        match $e {
+            $($pat)|+ => (),
+            ref e => panic!("assertion failed: `{:?}` does not match `{}`",
+                            e, stringify!($($pat)|+))
+        }
+    };
+    ($e:expr, $($pat:pat)|+ if $cond:expr) => {
+        match $e {
+            $($pat)|+ if $cond => (),
+            ref e => panic!("assertion failed: `{:?}` does not match `{}`",
+                            e, stringify!($($pat)|+ if $cond))
+        }
+    };
+}
+
+/// Asserts that an expression matches a certain pattern.
+///
+/// On panic, this macro will print the debug representation of the expression
+/// with the given pattern.
+///
+/// Unlike [`assert_matches!`], `debug_assert_matches!` statements are only enabled in
+/// non optimized builds by default. An optimized build will omit all
+/// `debug_assert_matches!` statements unless `-C debug-assertions` is passed to the
+/// compiler. This makes `debug_assert_matches!` useful for checks that are too
+/// expensive to be present in a release build but may be helpful during
+/// development.
+///
+/// [`assert_matches!`]: ../std/macro.assert_matches.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(assert_matches)]
+///
+/// debug_assert_matches!(Some(3), Some(_));
+/// debug_assert_matches!(Err(3), Ok(x) | Err(x) if x >= 3);
+/// ```
+#[macro_export]
+#[unstable(feature = "assert_matches", issue = "0")]
+macro_rules! debug_assert_matches {
+    ($($tt:tt)*) => {{
+        if cfg!(debug_assertions) {
+            assert_matches!($($tt)*);
+        }
+    }}
+}
+
 /// Helper macro for reducing boilerplate code for matching `Result` together
 /// with converting downstream errors.
 ///
