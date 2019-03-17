@@ -243,7 +243,7 @@ macro_rules! debug_assert_ne {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// #![feature(assert_matches)]
 ///
 /// assert_matches!(Some(3), Some(3) | None | Some(2));
@@ -284,7 +284,7 @@ macro_rules! assert_matches {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// #![feature(assert_matches)]
 ///
 /// debug_assert_matches!(Some(3), Some(_));
