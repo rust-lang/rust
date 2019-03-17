@@ -8,4 +8,5 @@ test_utils::marks!(
     glob_enum
     glob_across_crates
     std_prelude
+    match_ergonomics_ref
 );

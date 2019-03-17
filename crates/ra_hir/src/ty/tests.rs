@@ -831,6 +831,60 @@ fn test(x: &i32) {
 }
 
 #[test]
+fn infer_pattern_match_ergonomics() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct A<T>(T);
+
+fn test() {
+    let A(n) = &A(1);
+    let A(n) = &mut A(1);
+}
+"#),
+    @r###"
+[28; 79) '{     ...(1); }': ()
+[38; 42) 'A(n)': A<i32>
+[40; 41) 'n': &i32
+[45; 50) '&A(1)': &A<i32>
+[46; 47) 'A': A<i32>(T) -> A<T>
+[46; 50) 'A(1)': A<i32>
+[48; 49) '1': i32
+[60; 64) 'A(n)': A<i32>
+[62; 63) 'n': &mut i32
+[67; 76) '&mut A(1)': &mut A<i32>
+[72; 73) 'A': A<i32>(T) -> A<T>
+[72; 76) 'A(1)': A<i32>
+[74; 75) '1': i32"###
+    );
+}
+
+#[test]
+fn infer_pattern_match_ergonomics_ref() {
+    covers!(match_ergonomics_ref);
+    assert_snapshot_matches!(
+        infer(r#"
+fn test() {
+    let v = &(1, &2);
+    let (_, &w) = v;
+}
+"#),
+    @r###"
+[11; 57) '{     ...= v; }': ()
+[21; 22) 'v': &(i32, &i32)
+[25; 33) '&(1, &2)': &(i32, &i32)
+[26; 33) '(1, &2)': (i32, &i32)
+[27; 28) '1': i32
+[30; 32) '&2': &i32
+[31; 32) '2': i32
+[43; 50) '(_, &w)': (i32, &i32)
+[44; 45) '_': i32
+[47; 49) '&w': &i32
+[48; 49) 'w': i32
+[53; 54) 'v': &(i32, &i32)"###
+    );
+}
+
+#[test]
 fn infer_adt_pattern() {
     assert_snapshot_matches!(
         infer(r#"
