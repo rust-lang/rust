@@ -130,12 +130,12 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 {
     let tcx = relation.tcx();
 
-    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
+    let params = a_subst.iter().zip(b_subst.iter()).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
         relation.relate_with_variance(variance, a, b)
     });
 
-    Ok(tcx.mk_substs(params)?)
+    Ok(tcx.mk_substs(params)?.into())
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
@@ -222,7 +222,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
             let substs = relation.relate(&a.substs, &b.substs)?;
             Ok(ty::ProjectionTy {
                 item_def_id: a.item_def_id,
-                substs: &substs,
+                substs: substs,
             })
         }
     }
@@ -631,7 +631,7 @@ impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
                            -> RelateResult<'tcx, SubstsRef<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        relate_substs(relation, None, a, b)
+        relate_substs(relation, None, *a, *b)
     }
 }
 

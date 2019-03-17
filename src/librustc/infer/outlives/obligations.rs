@@ -431,7 +431,7 @@ where
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for k in projection_ty.substs {
+            for k in projection_ty.substs.iter() {
                 match k.unpack() {
                     UnpackedKind::Lifetime(lt) => {
                         self.delegate.push_sub_region_constraint(origin.clone(), region, lt);

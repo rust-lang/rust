@@ -415,7 +415,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
         });
 
-        let result = receiver_ty.subst(self, substs);
+        let result = receiver_ty.subst(self, &substs);
         debug!("receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
                receiver_ty, self_ty, method_def_id, result);
         result

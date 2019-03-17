@@ -159,7 +159,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
                     |cx: Self| if trait_qualify_parent {
                         let trait_ref = ty::TraitRef::new(
                             parent_def_id,
-                            cx.tcx().intern_substs(parent_substs),
+                            cx.tcx().intern_substs(parent_substs).into(),
                         );
                         cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                     } else {

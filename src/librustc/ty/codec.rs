@@ -212,7 +212,7 @@ pub fn decode_substs<'a, 'tcx, D>(decoder: &mut D) -> Result<SubstsRef<'tcx>, D:
 {
     let len = decoder.read_usize()?;
     let tcx = decoder.tcx();
-    Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
+    Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?.into())
 }
 
 #[inline]

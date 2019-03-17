@@ -96,7 +96,7 @@ impl FlagComputation {
             &ty::Generator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_substs(&substs.substs);
+                self.add_substs(substs.substs);
             }
 
             &ty::GeneratorWitness(ref ts) => {
@@ -108,7 +108,7 @@ impl FlagComputation {
             &ty::Closure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_substs(&substs.substs);
+                self.add_substs(substs.substs);
             }
 
             &ty::Bound(debruijn, _) => {
@@ -268,7 +268,7 @@ impl FlagComputation {
     }
 
     fn add_substs(&mut self, substs: SubstsRef<'_>) {
-        for kind in substs {
+        for kind in substs.iter() {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => self.add_ty(ty),
                 UnpackedKind::Lifetime(lt) => self.add_region(lt),

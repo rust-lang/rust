@@ -96,7 +96,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             value,
             param_env,
         );
-        let substituted = value.subst(self, param_substs);
+        let substituted = value.subst(self, &param_substs);
         self.normalize_erasing_regions(param_env, substituted)
     }
 }

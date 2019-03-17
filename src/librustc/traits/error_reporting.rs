@@ -305,7 +305,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
-                    .subst(tcx, impl_substs);
+                    .subst(tcx, &impl_substs);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 

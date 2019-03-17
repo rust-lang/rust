@@ -408,7 +408,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         substs,
                         item_def_id: _,
                     }) => {
-                        for k in substs {
+                        for k in substs.iter() {
                             match k.unpack() {
                                 UnpackedKind::Lifetime(lt) => bound_region(lt),
                                 UnpackedKind::Type(ty) => types.push(ty),
@@ -653,7 +653,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                     },
                 ));
 
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs: substs.into() })
             }
 
             _ => ty.super_fold_with(self),

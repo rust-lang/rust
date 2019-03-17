@@ -475,8 +475,8 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 p!(write(")"))
             }
             ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
-                p!(print(sig), write(" {{"), print_value_path(def_id, substs), write("}}"));
+                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), &substs);
+                p!(print(sig), write(" {{"), print_value_path(def_id, &substs), write("}}"));
             }
             ty::FnPtr(ref bare_fn) => {
                 p!(print(bare_fn))
@@ -498,7 +498,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 }
             }
             ty::Adt(def, substs) => {
-                p!(print_def_path(def.did, substs));
+                p!(print_def_path(def.did, &substs));
             }
             ty::Dynamic(data, r) => {
                 let print_r = self.region_should_not_be_omitted(r);
@@ -717,7 +717,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
 
                 let args = self.generic_args_to_print(
                     self.tcx().generics_of(principal.def_id),
-                    principal.substs,
+                    &principal.substs,
                 );
 
                 // Don't print `'_` if there's no unerased regions.
@@ -1529,7 +1529,7 @@ define_print_and_forward_display! {
     }
 
     ty::TraitRef<'tcx> {
-        p!(print_def_path(self.def_id, self.substs));
+        p!(print_def_path(self.def_id, &self.substs));
     }
 
     &'tcx ty::Const<'tcx> {
@@ -1562,7 +1562,7 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionTy<'tcx> {
-        p!(print_def_path(self.item_def_id, self.substs));
+        p!(print_def_path(self.item_def_id, &self.substs));
     }
 
     ty::ClosureKind {
@@ -1593,7 +1593,7 @@ define_print_and_forward_display! {
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
                 p!(write("the constant `"),
-                   print_value_path(def_id, substs),
+                   print_value_path(def_id, &substs),
                    write("` can be evaluated"))
             }
         }

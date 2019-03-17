@@ -180,7 +180,32 @@ impl<'tcx> Decodable for Kind<'tcx> {
 /// A substitution mapping generic parameters to new values.
 pub type InternalSubsts<'tcx> = List<Kind<'tcx>>;
 
-pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
+pub struct SubstsRef<'tcx> {
+    inner: &'tcx InternalSubsts<'tcx>,
+}
+
+impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {
+    fn from(inner: &'tcx InternalSubsts<'tcx>) -> Self {
+        Self { inner }
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for SubstsRef<'tcx> {
+        type Lifted = SubstsRef<'tcx>;
+        inner,
+    }
+}
+
+impl<'tcx> core::ops::Deref for SubstsRef<'tcx> {
+    type Target = InternalSubsts<'tcx>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.inner
+    }
+}
 
 impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.
@@ -243,7 +268,7 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
         let count = defs.count();
         let mut substs = SmallVec::with_capacity(count);
         Self::fill_item(&mut substs, tcx, defs, &mut mk_kind);
-        tcx.intern_substs(&substs)
+        tcx.intern_substs(&substs).into()
     }
 
     pub fn extend_to<F>(&self,
@@ -377,12 +402,12 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
                        target_substs: SubstsRef<'tcx>)
                        -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned())
+        tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned()).into()
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, generics: &ty::Generics)
                        -> SubstsRef<'tcx> {
-        tcx.mk_substs(self.iter().take(generics.count()).cloned())
+        tcx.mk_substs(self.iter().take(generics.count()).cloned()).into()
     }
 }
 
@@ -393,9 +418,9 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         // If folding doesn't change the substs, it's faster to avoid
         // calling `mk_substs` and instead reuse the existing substs.
         if params[..] == self[..] {
-            self
+            *self
         } else {
-            folder.tcx().intern_substs(&params)
+            folder.tcx().intern_substs(&params).into()
         }
     }
 

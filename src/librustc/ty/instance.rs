@@ -81,7 +81,7 @@ impl<'a, 'tcx> Instance<'tcx> {
                 let pin_did = tcx.lang_items().pin_type().unwrap();
                 let pin_adt_ref = tcx.adt_def(pin_did);
                 let pin_substs = tcx.intern_substs(&[env_ty.into()]);
-                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs.into());
 
                 sig.map_bound(|sig| {
                     let state_did = tcx.lang_items().gen_state().unwrap();
@@ -90,7 +90,7 @@ impl<'a, 'tcx> Instance<'tcx> {
                         sig.yield_ty.into(),
                         sig.return_ty.into(),
                     ]);
-                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs.into());
 
                     tcx.mk_fn_sig(iter::once(env_ty),
                         ret_ty,
@@ -177,7 +177,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ty::tls::with(|tcx| {
             let substs = tcx.lift(&self.substs).expect("could not lift for printing");
             FmtPrinter::new(tcx, &mut *f, Namespace::ValueNS)
-                .print_def_path(self.def_id(), substs)?;
+                .print_def_path(self.def_id(), &substs)?;
             Ok(())
         })?;
 

@@ -824,7 +824,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if !has_default {
                     break;
                 }
-                if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
+                if self.tcx.type_of(def_id).subst(self.tcx, &substs) != actual {
                     break;
                 }
                 num_supplied_defaults += 1;

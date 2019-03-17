@@ -572,7 +572,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty())
+        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty().into())
     }
 
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
@@ -2835,7 +2835,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                      rest: &[Kind<'tcx>])
                     -> SubstsRef<'tcx>
     {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned())).into()
     }
 
     pub fn mk_clauses<I: InternAs<[Clause<'tcx>], Clauses<'tcx>>>(self, iter: I) -> I::Output {
