@@ -737,16 +737,6 @@ macro_rules! make_mir_visitor {
                         self.visit_local(local, context, location);
                     }
                     Place::Base(PlaceBase::Static(static_)) => {
-                        match static_.promoted {
-                            None => {
-                                self.visit_static(static_, context, location);
-                            }
-                            Some(_) => {
-                                self.visit_ty(
-                                    & $($mutability)? static_.ty, TyContext::Location(location)
-                                );
-                            }
-                        }
                         self.visit_static(static_, context, location);
                     }
                     Place::Projection(proj) => {

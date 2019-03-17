@@ -130,18 +130,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
 
             Place::Base(PlaceBase::Static(box Static { def_id, ty: _, promoted })) => {
-                match promoted {
-                    Some(_) => unreachable!(),
-                    None => {
-                        if let Place::Base(PlaceBase::Static(_)) = access_place {
-                            item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
-                            reason = String::new();
-                        } else {
-                            item_msg = format!("`{}`", access_place_desc.unwrap());
-                            let static_name = &self.infcx.tcx.item_name(*def_id);
-                            reason = format!(", as `{}` is an immutable static item", static_name);
-                        }
-                    }
+                assert!(promoted.is_none());
+                if let Place::Base(PlaceBase::Static(_)) = access_place {
+                    item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
+                    reason = String::new();
+                } else {
+                    item_msg = format!("`{}`", access_place_desc.unwrap());
+                    let static_name = &self.infcx.tcx.item_name(*def_id);
+                    reason = format!(", as `{}` is an immutable static item", static_name);
                 }
             }
 

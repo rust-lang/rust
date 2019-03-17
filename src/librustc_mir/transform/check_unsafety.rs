@@ -301,32 +301,27 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // locals are safe
             }
             &Place::Base(PlaceBase::Static(box Static { def_id, ty: _, promoted })) => {
-                match promoted {
-                    Some(..) => {
-                        bug!("unsafety checking should happen before promotion")
-                    }
-                    None => {
-                        if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
-                            self.require_unsafe("use of mutable static",
-                                "mutable statics can be mutated by multiple threads: aliasing violations \
-                                 or data races will cause undefined behavior",
-                                 UnsafetyViolationKind::General);
-                        } else if self.tcx.is_foreign_item(def_id) {
-                            let source_info = self.source_info;
-                            let lint_root =
-                                self.source_scope_local_data[source_info.scope].lint_root;
-                            self.register_violations(&[UnsafetyViolation {
-                                source_info,
-                                description: Symbol::intern("use of extern static").as_interned_str(),
-                                details:
-                                    Symbol::intern("extern statics are not controlled by the Rust type \
-                                                    system: invalid data, aliasing violations or data \
-                                                    races will cause undefined behavior")
-                                        .as_interned_str(),
-                                kind: UnsafetyViolationKind::ExternStatic(lint_root)
-                            }], &[]);
-                        }
-                    }
+                assert!(promoted.is_none(), "unsafety checking should happen before promotion");
+
+                if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
+                    self.require_unsafe("use of mutable static",
+                        "mutable statics can be mutated by multiple threads: aliasing violations \
+                         or data races will cause undefined behavior",
+                         UnsafetyViolationKind::General);
+                } else if self.tcx.is_foreign_item(def_id) {
+                    let source_info = self.source_info;
+                    let lint_root =
+                        self.source_scope_local_data[source_info.scope].lint_root;
+                    self.register_violations(&[UnsafetyViolation {
+                        source_info,
+                        description: Symbol::intern("use of extern static").as_interned_str(),
+                        details:
+                            Symbol::intern("extern statics are not controlled by the Rust type \
+                                            system: invalid data, aliasing violations or data \
+                                            races will cause undefined behavior")
+                                .as_interned_str(),
+                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
+                    }], &[]);
                 }
             }
         };

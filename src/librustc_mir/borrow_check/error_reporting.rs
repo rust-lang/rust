@@ -1602,13 +1602,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.append_local_to_string(local, buf)?;
             }
             Place::Base(PlaceBase::Static(ref static_)) => {
-                match static_.promoted {
-                    Some(_) => {
-                        buf.push_str("promoted");
-                    }
-                    None => {
-                        buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
-                    }
+                if static_.promoted.is_some() {
+                    buf.push_str("promoted");
+                } else {
+                    buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
                 }
             }
             Place::Projection(ref proj) => {

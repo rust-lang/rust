@@ -387,7 +387,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 },
                 (Some(p1), Some(p2)) => {
                     if p1 == p2 {
-                        if let ty::Array(_, size) =s1.ty.sty {
+                        if let ty::Array(_, size) = s1.ty.sty {
                             if size.unwrap_usize(tcx) == 0 {
                                 // Ignore conflicts with promoted [T; 0].
                                 debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
@@ -404,7 +404,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                     }
                 },
                 (p1_, p2_) => {
-                    debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");
+                    debug!("place_element_conflict: DISJOINT-STATIC-PROMOTED");
                     Overlap::Disjoint
                 }
             }

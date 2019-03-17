@@ -1309,15 +1309,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: allow thread-locals to borrow other thread locals?
         let (might_be_alive, will_be_dropped) = match root_place {
             Place::Base(PlaceBase::Static(st)) => {
-                match st.promoted {
-                    None => {
-                        // Thread-locals might be dropped after the function exits, but
-                        // "true" statics will never be.
-                        let is_thread_local = self.is_place_thread_local(&root_place);
-                        (true, is_thread_local)
-                    }
-                    Some(_) => (true, false),
-                }
+                (true, st.promoted.is_none() && self.is_place_thread_local(&root_place))
             }
             Place::Base(PlaceBase::Local(_)) => {
                 // Locals are always dropped at function exit, and if they
@@ -1990,27 +1982,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
-//            Place::Base(PlaceBase::Promoted(_)) => Ok(RootPlace {
-//                place,
-//                is_local_mutation_allowed,
-//            }),
             Place::Base(PlaceBase::Static(ref static_)) => {
-                match static_.promoted {
-                    Some(_) => {
+                if static_.promoted.is_some() {
+                    Ok(RootPlace {
+                        place,
+                        is_local_mutation_allowed,
+                    })
+                } else {
+                    if self.infcx.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
+                        Err(place)
+                    } else {
                         Ok(RootPlace {
                             place,
                             is_local_mutation_allowed,
                         })
-                    }
-                    None => {
-                        if self.infcx.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
-                            Err(place)
-                        } else {
-                            Ok(RootPlace {
-                                place,
-                                is_local_mutation_allowed,
-                            })
-                        }
                     }
                 }
             }

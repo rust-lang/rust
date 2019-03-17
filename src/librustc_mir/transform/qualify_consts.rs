@@ -189,10 +189,8 @@ trait Qualif {
         match *place {
             Place::Base(PlaceBase::Local(local)) => Self::in_local(cx, local),
             Place::Base(PlaceBase::Static(ref static_)) => {
-                match static_.promoted {
-                    Some(..) => bug!("qualifying already promoted MIR"),
-                    None => Self::in_static(cx, static_),
-                 }
+                assert!(static_.promoted.is_none(), "qualifying already promoted MIR");
+                Self::in_static(cx, static_)
             },
             Place::Projection(ref proj) => Self::in_projection(cx, proj),
         }
@@ -773,19 +771,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     dest = &proj.base;
                 },
                 Place::Base(PlaceBase::Static(st)) => {
-                    match st.promoted {
-                        Some(..) => bug!("promoteds don't exist yet during promotion"),
-                        None => {
-                            // Catch more errors in the destination. `visit_place` also checks that we
-                            // do not try to access statics from constants or try to mutate statics
-                            self.visit_place(
-                                dest,
-                                PlaceContext::MutatingUse(MutatingUseContext::Store),
-                                location
-                            );
-                            return;
-                        }
-                    }
+                    assert!(st.promoted.is_none(), "promoteds don't exist yet during promotion");
+                    // Catch more errors in the destination. `visit_place` also checks that we
+                    // do not try to access statics from constants or try to mutate statics
+                    self.visit_place(
+                        dest,
+                        PlaceContext::MutatingUse(MutatingUseContext::Store),
+                        location
+                    );
+                    return;
                 }
             }
         };
@@ -928,53 +922,49 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *place {
             Place::Base(PlaceBase::Local(_)) => {}
             Place::Base(PlaceBase::Static(ref global)) => {
-                match global.promoted {
-                    Some(..) => {}
-                    None => {
-                        if self.tcx
-                               .get_attrs(global.def_id)
-                               .iter()
-                               .any(|attr| attr.check_name("thread_local")) {
-                            if self.mode != Mode::Fn {
-                                span_err!(self.tcx.sess, self.span, E0625,
-                                          "thread-local statics cannot be \
-                                           accessed at compile-time");
-                            }
-                            return;
-                        }
-
-                        // Only allow statics (not consts) to refer to other statics.
-                        if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                            if self.mode == Mode::Static && context.is_mutating_use() {
-                                // this is not strictly necessary as miri will also bail out
-                                // For interior mutability we can't really catch this statically as that
-                                // goes through raw pointers and intermediate temporaries, so miri has
-                                // to catch this anyway
-                                self.tcx.sess.span_err(
-                                    self.span,
-                                    "cannot mutate statics in the initializer of another static",
-                                );
-                            }
-                            return;
-                        }
-                        unleash_miri!(self);
-
-                        if self.mode != Mode::Fn {
-                            let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                           "{}s cannot refer to statics, use \
-                                                            a constant instead", self.mode);
-                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note(
-                                    "Static and const variables can refer to other const variables. But a \
-                                     const variable cannot refer to a static variable."
-                                );
-                                err.help(
-                                    "To fix this, the value can be extracted as a const and then used."
-                                );
-                            }
-                            err.emit()
-                        }
+                assert!(global.promoted.is_none(), {});
+                if self.tcx
+                       .get_attrs(global.def_id)
+                       .iter()
+                       .any(|attr| attr.check_name("thread_local")) {
+                    if self.mode != Mode::Fn {
+                        span_err!(self.tcx.sess, self.span, E0625,
+                                  "thread-local statics cannot be \
+                                   accessed at compile-time");
                     }
+                    return;
+                }
+
+                // Only allow statics (not consts) to refer to other statics.
+                if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    if self.mode == Mode::Static && context.is_mutating_use() {
+                        // this is not strictly necessary as miri will also bail out
+                        // For interior mutability we can't really catch this statically as that
+                        // goes through raw pointers and intermediate temporaries, so miri has
+                        // to catch this anyway
+                        self.tcx.sess.span_err(
+                            self.span,
+                            "cannot mutate statics in the initializer of another static",
+                        );
+                    }
+                    return;
+                }
+                unleash_miri!(self);
+
+                if self.mode != Mode::Fn {
+                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
+                                                   "{}s cannot refer to statics, use \
+                                                    a constant instead", self.mode);
+                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                        err.note(
+                            "Static and const variables can refer to other const variables. But a \
+                             const variable cannot refer to a static variable."
+                        );
+                        err.help(
+                            "To fix this, the value can be extracted as a const and then used."
+                        );
+                    }
+                    err.emit()
                 }
             }
             Place::Projection(ref proj) => {
