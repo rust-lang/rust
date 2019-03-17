@@ -43,21 +43,21 @@ SOURCE_FILE@[0; 89)
               R_PAREN@[57; 58)
           COMMA@[58; 59)
           WHITESPACE@[59; 68)
-          ATTR@[68; 80)
-            POUND@[68; 69)
-            TOKEN_TREE@[69; 80)
-              L_BRACK@[69; 70)
-              IDENT@[70; 73) "cfg"
-              TOKEN_TREE@[73; 79)
-                L_PAREN@[73; 74)
-                IDENT@[74; 78) "test"
-                R_PAREN@[78; 79)
-              R_BRACK@[79; 80)
+          MATCH_ARM@[68; 80)
+            ATTR@[68; 80)
+              POUND@[68; 69)
+              TOKEN_TREE@[69; 80)
+                L_BRACK@[69; 70)
+                IDENT@[70; 73) "cfg"
+                TOKEN_TREE@[73; 79)
+                  L_PAREN@[73; 74)
+                  IDENT@[74; 78) "test"
+                  R_PAREN@[78; 79)
+                R_BRACK@[79; 80)
+                err: `expected pattern`
+                err: `expected FAT_ARROW`
+                err: `expected expression`
           WHITESPACE@[80; 85)
-          err: `expected pattern`
-          err: `expected FAT_ARROW`
-          err: `expected expression`
-          MATCH_ARM@[85; 85)
           R_CURLY@[85; 86)
       WHITESPACE@[86; 87)
       R_CURLY@[87; 88)

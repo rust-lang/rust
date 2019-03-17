@@ -342,21 +342,6 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
             continue;
         }
 
-        // test match_arms_outer_attributes
-        // fn foo() {
-        //     match () {
-        //         #[cfg(feature = "some")]
-        //         _ => (),
-        //         #[cfg(feature = "other")]
-        //         _ => (),
-        //         #[cfg(feature = "many")]
-        //         #[cfg(feature = "attributes")]
-        //         #[cfg(feature = "before")]
-        //         _ => (),
-        //     }
-        // }
-        attributes::outer_attributes(p);
-
         // test match_arms_commas
         // fn foo() {
         //     match () {
@@ -387,6 +372,21 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 // }
 fn match_arm(p: &mut Parser) -> BlockLike {
     let m = p.start();
+    // test match_arms_outer_attributes
+    // fn foo() {
+    //     match () {
+    //         #[cfg(feature = "some")]
+    //         _ => (),
+    //         #[cfg(feature = "other")]
+    //         _ => (),
+    //         #[cfg(feature = "many")]
+    //         #[cfg(feature = "attributes")]
+    //         #[cfg(feature = "before")]
+    //         _ => (),
+    //     }
+    // }
+    attributes::outer_attributes(p);
+
     patterns::pattern_list_r(p, TokenSet::empty());
     if p.at(IF_KW) {
         match_guard(p);
