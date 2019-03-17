@@ -37,7 +37,7 @@ error: breaking changes in `efg`
 17 | pub fn efg(_: &str) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected bound lifetime parameterBrAnon(0), found concrete lifetime (breaking)
+   = warning: type error: expected bound lifetime parameter, found concrete lifetime (breaking)
 
 error: breaking changes in `fgh`
   --> $REPO_PATH/tests/cases/regions/new.rs:19:1
@@ -45,7 +45,7 @@ error: breaking changes in `fgh`
 19 | pub fn fgh(_: &'static str) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected bound lifetime parameterBrAnon(0), found concrete lifetime (breaking)
+   = warning: type error: expected bound lifetime parameter, found concrete lifetime (breaking)
 
 error: aborting due to 6 previous errors
 
