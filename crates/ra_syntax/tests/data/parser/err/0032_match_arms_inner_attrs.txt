@@ -33,11 +33,11 @@ SOURCE_FILE@[0; 293)
                 R_PAREN@[40; 41)
             COMMA@[41; 42)
             WHITESPACE@[42; 51)
-            ATTR@[51; 52)
-              POUND@[51; 52)
-              err: `expected `[``
-              err: `expected pattern`
-            MATCH_ARM@[52; 78)
+            MATCH_ARM@[51; 78)
+              ATTR@[51; 52)
+                POUND@[51; 52)
+                err: `expected `[``
+                err: `expected pattern`
               ERROR@[52; 53)
                 EXCL@[52; 53)
                 err: `expected FAT_ARROW`
@@ -103,11 +103,11 @@ SOURCE_FILE@[0; 293)
                 R_PAREN@[149; 150)
             COMMA@[150; 151)
             WHITESPACE@[151; 160)
-            ATTR@[160; 161)
-              POUND@[160; 161)
-              err: `expected `[``
-              err: `expected pattern`
-            MATCH_ARM@[161; 179)
+            MATCH_ARM@[160; 179)
+              ATTR@[160; 161)
+                POUND@[160; 161)
+                err: `expected `[``
+                err: `expected pattern`
               ERROR@[161; 162)
                 EXCL@[161; 162)
                 err: `expected FAT_ARROW`
@@ -138,22 +138,22 @@ SOURCE_FILE@[0; 293)
         MATCH_ARM_LIST@[200; 290)
           L_CURLY@[200; 201)
           WHITESPACE@[201; 210)
-          ATTR@[210; 222)
-            POUND@[210; 211)
-            TOKEN_TREE@[211; 222)
-              L_BRACK@[211; 212)
-              IDENT@[212; 215) "cfg"
-              TOKEN_TREE@[215; 221)
-                L_PAREN@[215; 216)
-                IDENT@[216; 220) "test"
-                R_PAREN@[220; 221)
-              R_BRACK@[221; 222)
-          WHITESPACE@[222; 231)
-          ATTR@[231; 232)
-            POUND@[231; 232)
-            err: `expected `[``
-            err: `expected pattern`
-          MATCH_ARM@[232; 250)
+          MATCH_ARM@[210; 250)
+            ATTR@[210; 222)
+              POUND@[210; 211)
+              TOKEN_TREE@[211; 222)
+                L_BRACK@[211; 212)
+                IDENT@[212; 215) "cfg"
+                TOKEN_TREE@[215; 221)
+                  L_PAREN@[215; 216)
+                  IDENT@[216; 220) "test"
+                  R_PAREN@[220; 221)
+                R_BRACK@[221; 222)
+            WHITESPACE@[222; 231)
+            ATTR@[231; 232)
+              POUND@[231; 232)
+              err: `expected `[``
+              err: `expected pattern`
             ERROR@[232; 233)
               EXCL@[232; 233)
               err: `expected FAT_ARROW`
