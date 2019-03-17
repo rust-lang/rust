@@ -40,6 +40,7 @@ error: the item `g` is imported redundantly
 LL | / fn g() {
 LL | |     use self::g;
    | |         ^^^^^^^
+LL | |
 LL | |     fn f() {
 LL | |         self::g();
 LL | |     }
@@ -53,7 +54,7 @@ LL |     use self::g;
    |         ^^^^^^^
 
 error: the item `foo` is imported redundantly
-  --> $DIR/lint-unused-imports.rs:77:9
+  --> $DIR/lint-unused-imports.rs:78:9
    |
 LL | use test2::{foo, bar};
    |             --- the item `foo` was already imported here
@@ -62,7 +63,7 @@ LL |     use test2::foo;
    |         ^^^^^^^^^^
 
 error: unused import: `test2::foo`
-  --> $DIR/lint-unused-imports.rs:77:9
+  --> $DIR/lint-unused-imports.rs:78:9
    |
 LL |     use test2::foo;
    |         ^^^^^^^^^^

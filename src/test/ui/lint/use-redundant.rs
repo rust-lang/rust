@@ -1,4 +1,5 @@
 // compile-pass
+#![warn(unused_imports)]
 
 use crate::foo::Bar; //~ WARNING first import
 

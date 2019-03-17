@@ -1,11 +1,15 @@
 warning: the item `Bar` is imported redundantly
-  --> $DIR/use-redundant.rs:14:9
+  --> $DIR/use-redundant.rs:15:9
    |
 LL | use crate::foo::Bar;
-   |     --------------- the item `Bar` was imported here
+   |     --------------- the item `Bar` was already imported here
 ...
 LL |     use crate::foo::Bar;
    |         ^^^^^^^^^^^^^^^
    |
-   = note: #[warn(redundant_import)] on by default
+note: lint level defined here
+  --> $DIR/use-redundant.rs:2:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
 
