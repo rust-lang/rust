@@ -619,6 +619,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
         } else if let Pat::Ref { .. } = &body[pat] {
+            tested_by!(match_ergonomics_ref);
+            // When you encounter a `&pat` pattern, reset to Move.
+            // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
             default_bm = BindingMode::Move;
         }
 
