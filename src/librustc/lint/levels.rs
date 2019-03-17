@@ -194,7 +194,7 @@ impl<'a> LintLevelsBuilder<'a> {
             struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
-            let level = match attr.ident_str().and_then(|name| Level::from_str(name)) {
+            let level = match Level::from_str(&attr.name_or_empty()) {
                 None => continue,
                 Some(lvl) => lvl,
             };

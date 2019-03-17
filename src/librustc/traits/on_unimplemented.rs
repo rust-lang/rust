@@ -177,9 +177,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    c.ident_str().map_or(false, |name| {
+                    c.ident().map_or(false, |ident| {
                         options.contains(&(
-                            name.to_string(),
+                            ident.to_string(),
                             c.value_str().map(|s| s.as_str().to_string())
                         ))
                     })

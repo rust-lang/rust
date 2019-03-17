@@ -222,9 +222,9 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     )+
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match mi.ident_str() {
+                            match mi.name_or_empty().get() {
                                 $(
-                                    Some(stringify!($name))
+                                    stringify!($name)
                                         => if !get(mi, &mut $name) { continue 'outer },
                                 )+
                                 _ => {
@@ -252,7 +252,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                 }
             }
 
-            match meta.ident_str().expect("not a stability level") {
+            match meta.name_or_empty().get() {
                 "rustc_deprecated" => {
                     if rustc_depr.is_some() {
                         span_err!(diagnostic, item_sp, E0540,
@@ -306,10 +306,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     let mut issue = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match mi.ident_str() {
-                                Some("feature") => if !get(mi, &mut feature) { continue 'outer },
-                                Some("reason") => if !get(mi, &mut reason) { continue 'outer },
-                                Some("issue") => if !get(mi, &mut issue) { continue 'outer },
+                            match mi.name_or_empty().get() {
+                                "feature" => if !get(mi, &mut feature) { continue 'outer },
+                                "reason" => if !get(mi, &mut reason) { continue 'outer },
+                                "issue" => if !get(mi, &mut issue) { continue 'outer },
                                 _ => {
                                     handle_errors(
                                         sess,
@@ -377,10 +377,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     for meta in metas {
                         match meta {
                             NestedMetaItem::MetaItem(mi) => {
-                                match mi.ident_str() {
-                                    Some("feature") =>
+                                match mi.name_or_empty().get() {
+                                    "feature" =>
                                         if !get(mi, &mut feature) { continue 'outer },
-                                    Some("since") =>
+                                    "since" =>
                                         if !get(mi, &mut since) { continue 'outer },
                                     _ => {
                                         handle_errors(
@@ -532,14 +532,14 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match cfg.ident_str() {
-                Some("any") => mis.iter().any(|mi| {
+            match cfg.name_or_empty().get() {
+                "any" => mis.iter().any(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
-                Some("all") => mis.iter().all(|mi| {
+                "all" => mis.iter().all(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
-                Some("not") => {
+                "not" => {
                     if mis.len() != 1 {
                         span_err!(sess.span_diagnostic, cfg.span, E0536, "expected 1 cfg-pattern");
                         return false;
@@ -635,9 +635,9 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 for meta in list {
                     match meta {
                         NestedMetaItem::MetaItem(mi) => {
-                            match mi.ident_str() {
-                                Some("since") => if !get(mi, &mut since) { continue 'outer },
-                                Some("note") => if !get(mi, &mut note) { continue 'outer },
+                            match mi.name_or_empty().get() {
+                                "since" => if !get(mi, &mut since) { continue 'outer },
+                                "note" => if !get(mi, &mut note) { continue 'outer },
                                 _ => {
                                     handle_errors(
                                         sess,
@@ -729,12 +729,12 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 
                 let mut recognised = false;
                 if item.is_word() {
-                    let hint = match item.ident_str() {
-                        Some("C") => Some(ReprC),
-                        Some("packed") => Some(ReprPacked(1)),
-                        Some("simd") => Some(ReprSimd),
-                        Some("transparent") => Some(ReprTransparent),
-                        name => name.and_then(|name| int_type_of_word(name)).map(ReprInt),
+                    let hint = match item.name_or_empty().get() {
+                        "C" => Some(ReprC),
+                        "packed" => Some(ReprPacked(1)),
+                        "simd" => Some(ReprSimd),
+                        "transparent" => Some(ReprTransparent),
+                        name => int_type_of_word(name).map(ReprInt),
                     };
 
                     if let Some(h) = hint {
