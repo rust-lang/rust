@@ -832,3 +832,31 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
 
     krate
 }
+
+// APIs used by clippy and resurrected for beta
+impl Attribute {
+    pub fn name(&self) -> Name {
+        self.path.segments.last().expect("empty path in attribute").ident.name
+    }
+}
+impl MetaItem {
+    pub fn name(&self) -> Name {
+        self.ident.segments.last().expect("empty path in attribute").ident.name
+    }
+    pub fn is_scoped(&self) -> Option<Ident> {
+        if self.ident.segments.len() > 1 {
+            Some(self.ident.segments[0].ident)
+        } else {
+            None
+        }
+    }
+}
+impl NestedMetaItem {
+    pub fn word(&self) -> Option<&MetaItem> {
+        self.meta_item().and_then(|meta_item| if meta_item.is_word() {
+            Some(meta_item)
+        } else {
+            None
+        })
+    }
+}
