@@ -1194,7 +1194,7 @@ impl Step for Compiletest {
             cmd.arg("--quiet");
         }
 
-        if builder.config.llvm_enabled {
+        if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
                 emscripten: false,
@@ -1226,12 +1226,6 @@ impl Step for Compiletest {
                     cmd.arg("--ar").arg(ar);
                 }
             }
-        }
-        if suite == "run-make-fulldeps" && !builder.config.llvm_enabled {
-            builder.info(
-                "Ignoring run-make test suite as they generally don't work without LLVM"
-            );
-            return;
         }
 
         if suite != "run-make-fulldeps" {

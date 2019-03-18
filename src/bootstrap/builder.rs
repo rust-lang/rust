@@ -996,10 +996,7 @@ impl<'a> Builder<'a> {
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
-        //
-        // If LLVM support is disabled we need to use the snapshot compiler to compile
-        // build scripts, as the new compiler doesn't support executables.
-        if mode == Mode::Std || !self.config.llvm_enabled {
+        if mode == Mode::Std {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());

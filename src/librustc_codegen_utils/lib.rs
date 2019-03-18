@@ -19,7 +19,6 @@
 
 #[macro_use]
 extern crate rustc;
-#[macro_use] extern crate rustc_data_structures;
 
 use rustc::ty::TyCtxt;
 use rustc::hir::def_id::LOCAL_CRATE;

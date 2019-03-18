@@ -700,7 +700,7 @@ impl<'a> Builder<'a> {
     }
 
     fn llvm_bin_path(&self) -> Option<PathBuf> {
-        if self.config.llvm_enabled {
+        if self.config.llvm_enabled() {
             let llvm_config = self.ensure(native::Llvm {
                 target: self.config.build,
                 emscripten: false,
