@@ -1097,7 +1097,7 @@ fn external_generic_args(
     substs: SubstsRef<'_>,
 ) -> GenericArgs {
     let mut skip_self = has_self;
-    let mut first_ty_sty = None;
+    let mut ty_sty = None;
     let args: Vec<_> = substs.iter().filter_map(|kind| match kind.unpack() {
         UnpackedKind::Lifetime(lt) => {
             lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
@@ -1107,7 +1107,7 @@ fn external_generic_args(
             None
         }
         UnpackedKind::Type(ty) => {
-            first_ty_sty = Some(&ty.sty);
+            ty_sty = Some(&ty.sty);
             Some(GenericArg::Type(ty.clean(cx)))
         }
         UnpackedKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
@@ -1116,8 +1116,8 @@ fn external_generic_args(
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
-            assert!(first_ty_sty.is_some());
-            let inputs = match first_ty_sty {
+            assert!(ty_sty.is_some());
+            let inputs = match ty_sty {
                 Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => return GenericArgs::AngleBracketed { args, bindings },
             };
