@@ -703,7 +703,7 @@ impl Sig for ast::Variant_ {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {
-            ast::VariantData::Struct(ref fields, id) => {
+            ast::VariantData::Struct(ref fields, id, r) => {
                 let name_def = SigElement {
                     id: id_from_node_id(id, scx),
                     start: offset,
@@ -712,12 +712,16 @@ impl Sig for ast::Variant_ {
                 text.push_str(" { ");
                 let mut defs = vec![name_def];
                 let mut refs = vec![];
-                for f in fields {
-                    let field_sig = f.make(offset + text.len(), Some(id), scx)?;
-                    text.push_str(&field_sig.text);
-                    text.push_str(", ");
-                    defs.extend(field_sig.defs.into_iter());
-                    refs.extend(field_sig.refs.into_iter());
+                if r {
+                    text.push_str("/* parse error */ ");
+                } else {
+                    for f in fields {
+                        let field_sig = f.make(offset + text.len(), Some(id), scx)?;
+                        text.push_str(&field_sig.text);
+                        text.push_str(", ");
+                        defs.extend(field_sig.defs.into_iter());
+                        refs.extend(field_sig.refs.into_iter());
+                    }
                 }
                 text.push('}');
                 Ok(Signature { text, defs, refs })

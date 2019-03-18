@@ -1811,6 +1811,7 @@ pub struct VariantDef {
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
     flags: VariantFlags,
+    pub recovered: bool,
 }
 
 impl<'a, 'gcx, 'tcx> VariantDef {
@@ -1829,16 +1830,17 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               did: DefId,
-               ident: Ident,
-               discr: VariantDiscr,
-               fields: Vec<FieldDef>,
-               adt_kind: AdtKind,
-               ctor_kind: CtorKind,
-               attribute_def_id: DefId)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        did: DefId,
+        ident: Ident,
+        discr: VariantDiscr,
+        fields: Vec<FieldDef>,
+        adt_kind: AdtKind,
+        ctor_kind: CtorKind,
+        attribute_def_id: DefId,
+        recovered: bool,
+    ) -> Self {
         debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, ident, discr,
                fields, adt_kind, ctor_kind, attribute_def_id);
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1852,7 +1854,8 @@ impl<'a, 'gcx, 'tcx> VariantDef {
             discr,
             fields,
             ctor_kind,
-            flags
+            flags,
+            recovered,
         }
     }
 
@@ -1868,7 +1871,8 @@ impl_stable_hash_for!(struct VariantDef {
     discr,
     fields,
     ctor_kind,
-    flags
+    flags,
+    recovered
 });
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
