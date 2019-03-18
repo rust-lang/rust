@@ -117,7 +117,7 @@ impl Hash for Constant {
 }
 
 impl Constant {
-    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: ty::Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
+    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
@@ -268,7 +268,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     #[allow(clippy::cast_possible_wrap)]
-    fn constant_not(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
+    fn constant_not(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
             Bool(b) => Some(Bool(!b)),
@@ -284,7 +284,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn constant_negate(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
+    fn constant_negate(&self, o: &Constant, ty: Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
             Int(value) => {

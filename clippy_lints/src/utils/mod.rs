@@ -1080,7 +1080,7 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: HirId)
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
-pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: ty::Ty<'_>) -> Option<&'static str> {
+pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Option<&'static str> {
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
     // so we can't use its `lookup_method` method.

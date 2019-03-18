@@ -2196,7 +2196,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
 
 fn ty_has_iter_method(
     cx: &LateContext<'_, '_>,
-    self_ref_ty: ty::Ty<'_>,
+    self_ref_ty: Ty<'_>,
 ) -> Option<(&'static Lint, &'static str, &'static str)> {
     if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
         let lint = match ty_name {
@@ -2217,7 +2217,7 @@ fn ty_has_iter_method(
     }
 }
 
-fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: ty::Ty<'_>, method_span: Span) {
+fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_>, method_span: Span) {
     if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
         return;
     }

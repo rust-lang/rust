@@ -3,7 +3,7 @@ use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use syntax_pos::Span;
 
@@ -132,7 +132,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 }
 
-fn match_type<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>, ty: ty::Ty<'_>, path: &[&str]) -> bool {
+fn match_type<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::Adt(adt, _) => match_def_path(tcx, adt.did, path),
         _ => false,

@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 
@@ -147,7 +147,7 @@ fn get_ufcs_type_name(
     })
 }
 
-fn match_borrow_depth(lhs: ty::Ty<'_>, rhs: ty::Ty<'_>) -> bool {
+fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     match (&lhs.sty, &rhs.sty) {
         (ty::Ref(_, t1, _), ty::Ref(_, t2, _)) => match_borrow_depth(&t1, &t2),
         (l, r) => match (l, r) {
@@ -157,7 +157,7 @@ fn match_borrow_depth(lhs: ty::Ty<'_>, rhs: ty::Ty<'_>) -> bool {
     }
 }
 
-fn match_types(lhs: ty::Ty<'_>, rhs: ty::Ty<'_>) -> bool {
+fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     match (&lhs.sty, &rhs.sty) {
         (ty::Bool, ty::Bool)
         | (ty::Char, ty::Char)
@@ -172,7 +172,7 @@ fn match_types(lhs: ty::Ty<'_>, rhs: ty::Ty<'_>) -> bool {
     }
 }
 
-fn get_type_name(cx: &LateContext<'_, '_>, ty: ty::Ty<'_>) -> String {
+fn get_type_name(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> String {
     match ty.sty {
         ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
         ty::Ref(_, r, _) => get_type_name(cx, &r),
