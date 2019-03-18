@@ -87,6 +87,52 @@ benches! {
     fn bench06_libcore(bytes: &mut [u8]) {
         bytes.make_ascii_uppercase()
     }
+
+    fn bench07_fake_simd_u32(bytes: &mut [u8]) {
+        let (before, aligned, after) = unsafe {
+            bytes.align_to_mut::<u32>()
+        };
+        for byte in before {
+            *byte = branchless_to_ascii_upper_case(*byte)
+        }
+        for word in aligned {
+            // FIXME: this is incorrect for some byte values:
+            // addition within a byte can carry/overflow into the next byte.
+            // Test case: b"\xFFz  "
+            *word &= !(
+                (
+                    word.wrapping_add(0x1f1f1f1f) &
+                    !word.wrapping_add(0x05050505) &
+                    0x80808080
+                ) >> 2
+            )
+        }
+        for byte in after {
+            *byte = branchless_to_ascii_upper_case(*byte)
+        }
+    }
+
+    fn bench08_fake_simd_u64(bytes: &mut [u8]) {
+        let (before, aligned, after) = unsafe {
+            bytes.align_to_mut::<u64>()
+        };
+        for byte in before {
+            *byte = branchless_to_ascii_upper_case(*byte)
+        }
+        for word in aligned {
+            // FIXME: like above, this is incorrect for some byte values.
+            *word &= !(
+                (
+                    word.wrapping_add(0x1f1f1f1f_1f1f1f1f) &
+                    !word.wrapping_add(0x05050505_05050505) &
+                    0x80808080_80808080
+                ) >> 2
+            )
+        }
+        for byte in after {
+            *byte = branchless_to_ascii_upper_case(*byte)
+        }
+    }
 }
 
 macro_rules! repeat {
