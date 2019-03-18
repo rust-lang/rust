@@ -59,7 +59,7 @@ benches! {
         }
     }
 
-    fn case02_lookup(bytes: &mut [u8]) {
+    fn case02_lookup_table(bytes: &mut [u8]) {
         for byte in bytes {
             *byte = ASCII_UPPERCASE_MAP[*byte as usize]
         }
@@ -141,6 +141,55 @@ benches! {
         }
     }
 
+    fn case09_mask_mult_bool_branchy_lookup_table(bytes: &mut [u8]) {
+        fn is_ascii_lowercase(b: u8) -> bool {
+            if b >= 0x80 { return false }
+            match ASCII_CHARACTER_CLASS[b as usize] {
+                L | Lx => true,
+                _ => false,
+            }
+        }
+        for byte in bytes {
+            *byte &= !(0x20 * (is_ascii_lowercase(*byte) as u8))
+        }
+    }
+
+    fn case10_mask_mult_bool_lookup_table(bytes: &mut [u8]) {
+        fn is_ascii_lowercase(b: u8) -> bool {
+            match ASCII_CHARACTER_CLASS[b as usize] {
+                L | Lx => true,
+                _ => false
+            }
+        }
+        for byte in bytes {
+            *byte &= !(0x20 * (is_ascii_lowercase(*byte) as u8))
+        }
+    }
+
+    fn case11_mask_mult_bool_match_range(bytes: &mut [u8]) {
+        fn is_ascii_lowercase(b: u8) -> bool {
+            match b {
+                b'a'...b'z' => true,
+                _ => false
+            }
+        }
+        for byte in bytes {
+            *byte &= !(0x20 * (is_ascii_lowercase(*byte) as u8))
+        }
+    }
+
+    fn case12_mask_shifted_bool_match_range(bytes: &mut [u8]) {
+        fn is_ascii_lowercase(b: u8) -> bool {
+            match b {
+                b'a'...b'z' => true,
+                _ => false
+            }
+        }
+        for byte in bytes {
+            *byte &= !((is_ascii_lowercase(*byte) as u8) << 5)
+        }
+    }
+
     @iter
 
     is_ascii,
@@ -219,3 +268,36 @@ const ASCII_UPPERCASE_MAP: [u8; 256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
+enum AsciiCharacterClass {
+    C,  // control
+    Cw, // control whitespace
+    W,  // whitespace
+    D,  // digit
+    L,  // lowercase
+    Lx, // lowercase hex digit
+    U,  // uppercase
+    Ux, // uppercase hex digit
+    P,  // punctuation
+    N,  // Non-ASCII
+}
+use self::AsciiCharacterClass::*;
+
+static ASCII_CHARACTER_CLASS: [AsciiCharacterClass; 256] = [
+//  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _a _b _c _d _e _f
+    C, C, C, C, C, C, C, C, C, Cw,Cw,C, Cw,Cw,C, C, // 0_
+    C, C, C, C, C, C, C, C, C, C, C, C, C, C, C, C, // 1_
+    W, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, // 2_
+    D, D, D, D, D, D, D, D, D, D, P, P, P, P, P, P, // 3_
+    P, Ux,Ux,Ux,Ux,Ux,Ux,U, U, U, U, U, U, U, U, U, // 4_
+    U, U, U, U, U, U, U, U, U, U, U, P, P, P, P, P, // 5_
+    P, Lx,Lx,Lx,Lx,Lx,Lx,L, L, L, L, L, L, L, L, L, // 6_
+    L, L, L, L, L, L, L, L, L, L, L, P, P, P, P, C, // 7_
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N, N, N, N, N, N, N, N, N,
+];
