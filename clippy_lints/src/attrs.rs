@@ -215,14 +215,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                 },
                 _ => {},
             }
-            if items.is_empty() || attr.name() != "deprecated" {
+                if items.is_empty() || !attr.check_name("deprecated") {
                 return;
             }
             for item in items {
                 if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
                     if let MetaItemKind::NameValue(lit) = &mi.node;
-                    if mi.name() == "since";
+                        if mi.check_name("since");
                     then {
                             check_semver(cx, item.span(), lit);
                     }
@@ -238,7 +238,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
         }
         match item.node {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.name() == "macro_use");
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name("macro_use"));
 
                 for attr in &item.attrs {
                     if let Some(lint_list) = &attr.meta_item_list() {
@@ -447,7 +447,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
         }
 
         if let Some(values) = attr.meta_item_list() {
-            if values.len() != 1 || attr.name() != "inline" {
+            if values.len() != 1 || !attr.check_name("inline") {
                 continue;
             }
             if is_word(&values[0], "always") {
@@ -481,7 +481,7 @@ fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     if let NestedMetaItem::MetaItem(mi) = &nmi {
-        mi.is_word() && mi.name() == expected
+        mi.is_word() && mi.check_name(expected)
     } else {
         false
     }
@@ -518,15 +518,15 @@ impl EarlyLintPass for CfgAttrPass {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if_chain! {
             // check cfg_attr
-            if attr.name() == "cfg_attr";
+            if attr.check_name("cfg_attr");
             if let Some(items) = attr.meta_item_list();
             if items.len() == 2;
             // check for `rustfmt`
             if let Some(feature_item) = items[0].meta_item();
-            if feature_item.name() == "rustfmt";
+            if feature_item.check_name("rustfmt");
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
-            if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
+            if skip_item.check_name("rustfmt_skip") || skip_item.check_name("skip");
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726
             if let AttrStyle::Outer = attr.style;

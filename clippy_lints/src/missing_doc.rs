@@ -91,7 +91,7 @@ impl MissingDoc {
 
         let has_doc = attrs
             .iter()
-            .any(|a| a.name() == "doc" && (a.is_value_str() || Self::has_include(a.meta())));
+            .any(|a| a.check_name("doc") && (a.is_value_str() || Self::has_include(a.meta())));
         if !has_doc {
             span_lint(
                 cx,
