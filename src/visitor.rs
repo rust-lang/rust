@@ -1,9 +1,7 @@
 use std::cell::RefCell;
-use std::rc::Rc;
 
-use syntax::parse::{token, ParseSess};
+use syntax::parse::ParseSess;
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
-use syntax::tokenstream::TokenTree;
 use syntax::{ast, visit};
 
 use crate::attr::*;
@@ -22,8 +20,8 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::utils::{
-    self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
-    rewrite_ident, stmt_expr, DEPR_SKIP_ANNOTATION,
+    self, contains_skip, count_newlines, get_skip_macro_names, inner_attributes, mk_sp,
+    ptr_vec_to_ref_vec, rewrite_ident, stmt_expr, DEPR_SKIP_ANNOTATION,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
 
@@ -68,7 +66,7 @@ pub struct FmtVisitor<'a> {
     pub skipped_range: Vec<(usize, usize)>,
     pub macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
-    pub skip_macro_names: Rc<RefCell<Vec<String>>>,
+    pub skip_macro_names: RefCell<Vec<String>>,
 }
 
 impl<'a> Drop for FmtVisitor<'a> {
@@ -299,25 +297,32 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // the AST lumps them all together.
         let filtered_attrs;
         let mut attrs = &item.attrs;
-        match item.node {
+        let temp_skip_macro_names = self.skip_macro_names.clone();
+        self.skip_macro_names
+            .borrow_mut()
+            .append(&mut get_skip_macro_names(&attrs));
+
+        let should_visit_node_again = match item.node {
             // For use items, skip rewriting attributes. Just check for a skip attribute.
             ast::ItemKind::Use(..) => {
                 if contains_skip(attrs) {
                     self.push_skipped_with_span(attrs.as_slice(), item.span(), item.span());
-                    return;
+                    false
+                } else {
+                    true
                 }
             }
             // Module is inline, in this case we treat it like any other item.
             _ if !is_mod_decl(item) => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
                     self.push_skipped_with_span(item.attrs.as_slice(), item.span(), item.span());
-                    return;
+                    false
+                } else {
+                    true
                 }
             }
             // Module is not inline, but should be skipped.
-            ast::ItemKind::Mod(..) if contains_skip(&item.attrs) => {
-                return;
-            }
+            ast::ItemKind::Mod(..) if contains_skip(&item.attrs) => false,
             // Module is not inline and should not be skipped. We want
             // to process only the attributes in the current file.
             ast::ItemKind::Mod(..) => {
@@ -326,123 +331,127 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 // the above case.
                 assert!(!self.visit_attrs(&filtered_attrs, ast::AttrStyle::Outer));
                 attrs = &filtered_attrs;
+                true
             }
             _ => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
                     self.push_skipped_with_span(item.attrs.as_slice(), item.span(), item.span());
-                    return;
+                    false
+                } else {
+                    true
                 }
             }
-        }
-        self.get_skip_macros(&attrs);
-
-        match item.node {
-            ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
-            ast::ItemKind::Impl(..) => {
-                let snippet = self.snippet(item.span);
-                let where_span_end = snippet
-                    .find_uncommented("{")
-                    .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
-                let block_indent = self.block_indent;
-                let rw =
-                    self.with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
-                self.push_rewrite(item.span, rw);
-            }
-            ast::ItemKind::Trait(..) => {
-                let block_indent = self.block_indent;
-                let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
-                self.push_rewrite(item.span, rw);
-            }
-            ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
-                let shape = Shape::indented(self.block_indent, self.config);
-                let rw = format_trait_alias(
-                    &self.get_context(),
-                    item.ident,
-                    &item.vis,
-                    generics,
-                    generic_bounds,
-                    shape,
-                );
-                self.push_rewrite(item.span, rw);
-            }
-            ast::ItemKind::ExternCrate(_) => {
-                let rw = rewrite_extern_crate(&self.get_context(), item);
-                self.push_rewrite(item.span, rw);
-            }
-            ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
-                self.visit_struct(&StructParts::from_item(item));
-            }
-            ast::ItemKind::Enum(ref def, ref generics) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
-                self.visit_enum(item.ident, &item.vis, def, generics, item.span);
-                self.last_pos = source!(self, item.span).hi();
-            }
-            ast::ItemKind::Mod(ref module) => {
-                let is_inline = !is_mod_decl(item);
-                self.format_missing_with_indent(source!(self, item.span).lo());
-                self.format_mod(module, &item.vis, item.span, item.ident, attrs, is_inline);
-            }
-            ast::ItemKind::Mac(ref mac) => {
-                self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
-            }
-            ast::ItemKind::ForeignMod(ref foreign_mod) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
-                self.format_foreign_mod(foreign_mod, item.span);
-            }
-            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
-                self.visit_static(&StaticParts::from_item(item));
-            }
-            ast::ItemKind::Fn(ref decl, ref fn_header, ref generics, ref body) => {
-                let inner_attrs = inner_attributes(&item.attrs);
-                self.visit_fn(
-                    visit::FnKind::ItemFn(item.ident, fn_header, &item.vis, body),
-                    generics,
-                    decl,
-                    item.span,
-                    ast::Defaultness::Final,
-                    Some(&inner_attrs),
-                )
-            }
-            ast::ItemKind::Ty(ref ty, ref generics) => {
-                let rewrite = rewrite_type_alias(
-                    &self.get_context(),
-                    self.block_indent,
-                    item.ident,
-                    ty,
-                    generics,
-                    &item.vis,
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
-            ast::ItemKind::Existential(ref generic_bounds, ref generics) => {
-                let rewrite = rewrite_existential_type(
-                    &self.get_context(),
-                    self.block_indent,
-                    item.ident,
-                    generic_bounds,
-                    generics,
-                    &item.vis,
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
-            ast::ItemKind::GlobalAsm(..) => {
-                let snippet = Some(self.snippet(item.span).to_owned());
-                self.push_rewrite(item.span, snippet);
-            }
-            ast::ItemKind::MacroDef(ref def) => {
-                let rewrite = rewrite_macro_def(
-                    &self.get_context(),
-                    self.shape(),
-                    self.block_indent,
-                    def,
-                    item.ident,
-                    &item.vis,
-                    item.span,
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
         };
-        self.skip_macro_names.borrow_mut().clear();
+
+        if should_visit_node_again {
+            match item.node {
+                ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
+                ast::ItemKind::Impl(..) => {
+                    let snippet = self.snippet(item.span);
+                    let where_span_end = snippet
+                        .find_uncommented("{")
+                        .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
+                    let block_indent = self.block_indent;
+                    let rw = self
+                        .with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
+                    self.push_rewrite(item.span, rw);
+                }
+                ast::ItemKind::Trait(..) => {
+                    let block_indent = self.block_indent;
+                    let rw = self.with_context(|ctx| format_trait(&ctx, item, block_indent));
+                    self.push_rewrite(item.span, rw);
+                }
+                ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
+                    let shape = Shape::indented(self.block_indent, self.config);
+                    let rw = format_trait_alias(
+                        &self.get_context(),
+                        item.ident,
+                        &item.vis,
+                        generics,
+                        generic_bounds,
+                        shape,
+                    );
+                    self.push_rewrite(item.span, rw);
+                }
+                ast::ItemKind::ExternCrate(_) => {
+                    let rw = rewrite_extern_crate(&self.get_context(), item);
+                    self.push_rewrite(item.span, rw);
+                }
+                ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
+                    self.visit_struct(&StructParts::from_item(item));
+                }
+                ast::ItemKind::Enum(ref def, ref generics) => {
+                    self.format_missing_with_indent(source!(self, item.span).lo());
+                    self.visit_enum(item.ident, &item.vis, def, generics, item.span);
+                    self.last_pos = source!(self, item.span).hi();
+                }
+                ast::ItemKind::Mod(ref module) => {
+                    let is_inline = !is_mod_decl(item);
+                    self.format_missing_with_indent(source!(self, item.span).lo());
+                    self.format_mod(module, &item.vis, item.span, item.ident, attrs, is_inline);
+                }
+                ast::ItemKind::Mac(ref mac) => {
+                    self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
+                }
+                ast::ItemKind::ForeignMod(ref foreign_mod) => {
+                    self.format_missing_with_indent(source!(self, item.span).lo());
+                    self.format_foreign_mod(foreign_mod, item.span);
+                }
+                ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
+                    self.visit_static(&StaticParts::from_item(item));
+                }
+                ast::ItemKind::Fn(ref decl, ref fn_header, ref generics, ref body) => {
+                    let inner_attrs = inner_attributes(&item.attrs);
+                    self.visit_fn(
+                        visit::FnKind::ItemFn(item.ident, fn_header, &item.vis, body),
+                        generics,
+                        decl,
+                        item.span,
+                        ast::Defaultness::Final,
+                        Some(&inner_attrs),
+                    )
+                }
+                ast::ItemKind::Ty(ref ty, ref generics) => {
+                    let rewrite = rewrite_type_alias(
+                        &self.get_context(),
+                        self.block_indent,
+                        item.ident,
+                        ty,
+                        generics,
+                        &item.vis,
+                    );
+                    self.push_rewrite(item.span, rewrite);
+                }
+                ast::ItemKind::Existential(ref generic_bounds, ref generics) => {
+                    let rewrite = rewrite_existential_type(
+                        &self.get_context(),
+                        self.block_indent,
+                        item.ident,
+                        generic_bounds,
+                        generics,
+                        &item.vis,
+                    );
+                    self.push_rewrite(item.span, rewrite);
+                }
+                ast::ItemKind::GlobalAsm(..) => {
+                    let snippet = Some(self.snippet(item.span).to_owned());
+                    self.push_rewrite(item.span, snippet);
+                }
+                ast::ItemKind::MacroDef(ref def) => {
+                    let rewrite = rewrite_macro_def(
+                        &self.get_context(),
+                        self.shape(),
+                        self.block_indent,
+                        def,
+                        item.ident,
+                        &item.vis,
+                        item.span,
+                    );
+                    self.push_rewrite(item.span, rewrite);
+                }
+            };
+        }
+        self.skip_macro_names = temp_skip_macro_names;
     }
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
@@ -597,6 +606,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ctx.snippet_provider,
             ctx.report.clone(),
         );
+        visitor
+            .skip_macro_names
+            .borrow_mut()
+            .append(&mut ctx.skip_macro_names.borrow().clone());
         visitor.set_parent_context(ctx);
         visitor
     }
@@ -621,7 +634,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             skipped_range: vec![],
             macro_rewrite_failure: false,
             report,
-            skip_macro_names: Rc::new(RefCell::new(vec![])),
+            skip_macro_names: RefCell::new(vec![]),
         }
     }
 
@@ -674,7 +687,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         false
     }
 
-    fn is_rustfmt_macro_error(&self, segments: &Vec<syntax::ast::PathSegment>) -> bool {
+    fn is_rustfmt_macro_error(&self, segments: &[ast::PathSegment]) -> bool {
         if segments[0].ident.to_string() != "rustfmt" {
             return false;
         }
@@ -835,24 +848,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             macro_rewrite_failure: RefCell::new(false),
             report: self.report.clone(),
             skip_macro_names: self.skip_macro_names.clone(),
-        }
-    }
-
-    pub fn get_skip_macros(&mut self, attrs: &[ast::Attribute]) {
-        for attr in attrs {
-            for token in attr.tokens.trees() {
-                if let TokenTree::Delimited(_, _, stream) = token {
-                    for inner_token in stream.trees() {
-                        if let TokenTree::Token(span, token) = inner_token {
-                            if let token::Token::Ident(_, _) = token {
-                                // FIXME ident.span.lo() and ident.span.hi() are 0
-                                let macro_name = self.get_context().snippet(span).to_owned();
-                                self.skip_macro_names.borrow_mut().push(macro_name);
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

@@ -190,21 +190,13 @@ pub fn format_expr(
             rewrite_chain(expr, context, shape)
         }
         ast::ExprKind::Mac(ref mac) => {
-            let should_skip = context
-                .skip_macro_names
-                .borrow()
-                .contains(&context.snippet(mac.node.path.span).to_owned());
-            if should_skip {
-                None
-            } else {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
-                    wrap_str(
-                        context.snippet(expr.span).to_owned(),
-                        context.config.max_width(),
-                        shape,
-                    )
-                })
-            }
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
+                wrap_str(
+                    context.snippet(expr.span).to_owned(),
+                    context.config.max_width(),
+                    shape,
+                )
+            })
         }
         ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
@@ -1928,7 +1920,6 @@ pub fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
         offset: shape.offset + last_line_width + 1,
         ..shape
     });
-    // dbg!(
     let rhs = choose_rhs(
         context,
         ex,

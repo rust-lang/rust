@@ -15,6 +15,7 @@ use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
 use crate::issues::BadIssueSeeker;
+use crate::utils::{count_newlines, get_skip_macro_names};
 use crate::visitor::{FmtVisitor, SnippetProvider};
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
@@ -153,6 +154,10 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &snippet_provider,
             self.report.clone(),
         );
+        visitor
+            .skip_macro_names
+            .borrow_mut()
+            .append(&mut get_skip_macro_names(&self.krate.attrs));
 
         // Format inner attributes if available.
         if !self.krate.attrs.is_empty() && is_root {
@@ -168,10 +173,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             visitor.format_separate_mod(module, &*source_file);
         };
 
-        debug_assert_eq!(
-            visitor.line_number,
-            crate::utils::count_newlines(&visitor.buffer)
-        );
+        debug_assert_eq!(visitor.line_number, count_newlines(&visitor.buffer));
 
         // For some reason, the source_map does not include terminating
         // newlines so we must add one on for each file. This is sad.

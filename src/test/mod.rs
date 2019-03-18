@@ -22,6 +22,7 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     // We want to make sure that the `skip_children` is correctly working,
     // so we do not want to test this file directly.
     "configs/skip_children/foo/mod.rs",
+    "issue-3434/no_entry.rs",
 ];
 
 fn is_file_skip(path: &Path) -> bool {
