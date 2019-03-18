@@ -33,7 +33,7 @@ interface CargoTaskDefinition extends vscode.TaskDefinition {
     env?: { [key: string]: string };
 }
 
-function createTask(spec: Runnable): vscode.Task {
+export function createTask(spec: Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     const definition: CargoTaskDefinition = {
         type: 'cargo',
@@ -123,3 +123,23 @@ export async function handleSingle(runnable: Runnable) {
 
     return vscode.tasks.executeTask(task);
 }
+
+export const autoCargoWatchTask: vscode.Task = {
+    name: 'cargo watch',
+    source: 'rust-analyzer',
+    definition: {
+        type: "dupa",
+    },
+    execution: new vscode.ShellExecution('cargo', ['watch'], { cwd: '.' }),
+
+    isBackground: true,
+    problemMatchers: ['$rustc-watch'],
+    presentationOptions: {
+        clear: true
+    },
+    // Not yet exposed in the vscode.d.ts
+    runOptions: {
+        runOn: 2 // RunOnOptions.folderOpen, https://github.com/Microsoft/vscode/blob/ea7c31d770e04b51d586b0d3944f3a7feb03afb9/src/vs/workbench/contrib/tasks/common/tasks.ts#L444-L456
+    } as unknown as vscode.RunOptions,
+
+};
