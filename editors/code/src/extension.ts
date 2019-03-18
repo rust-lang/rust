@@ -155,30 +155,21 @@ async function askToCargoWatch() {
             return;
         }
 
-        try {
-            // await vscode.tasks.executeTask(createTask({label: '', bin: 'cargo', args: ['install', 'cargo-watch'], env: {}}));
+        const label = 'install-cargo-watch';
+        const taskFinished = new Promise((resolve, reject) => {
+            let disposable = vscode.tasks.onDidEndTask(({ execution }) => {
+                if (execution.task.name === label) {
+                    disposable.dispose();
+                    resolve();
+                };
+            });
+        });
 
-            const channel = vscode.window.createOutputChannel('cargo-watch');
-            channel.show(false);
-            const sup = spawn('cargo', ['install', 'cargo-watch']);
-            sup.stderr.on('data', chunk => {
-                const output = new TextDecoder().decode(chunk);
-                channel.append(output);
-            });
-            await new Promise((resolve, reject) => {
-                sup.on('close', (code, signal) => {
-                    if (code === 0) {
-                        resolve(code);
-                    } else {
-                        reject(code);
-                    }
-                });
-            });
-            channel.dispose();
-        } catch (err) {
-            vscode.window.showErrorMessage(
-                `Couldn't install \`cargo-watch\`: ${err.message}`
-            );
+        vscode.tasks.executeTask(createTask({ label, bin: 'cargo', args: ['install', 'cargo-watch'], env: {} }));
+        await taskFinished;
+        const { stderr } = await util.promisify(exec)('cargo watch --version').catch(e => e);
+        if (stderr !== '') {
+            vscode.window.showErrorMessage(`Couldn't install \`cargo-\`watch: ${stderr}`);
             return;
         }
     }
