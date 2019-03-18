@@ -922,7 +922,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *place {
             Place::Base(PlaceBase::Local(_)) => {}
             Place::Base(PlaceBase::Static(ref global)) => {
-                assert!(global.promoted.is_none(), {});
+                assert!(global.promoted.is_none());
                 if self.tcx
                        .get_attrs(global.def_id)
                        .iter()
@@ -1516,7 +1516,7 @@ impl MirPass for QualifyAndPromoteConstants {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            promote_consts::promote_candidates(mir, tcx, temps, candidates);
+            promote_consts::promote_candidates(mir, tcx, temps, candidates, def_id);
         } else {
             if !mir.control_flow_destroyed.is_empty() {
                 let mut locals = mir.vars_iter();

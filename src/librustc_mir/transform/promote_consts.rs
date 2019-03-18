@@ -12,6 +12,7 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
@@ -151,7 +152,8 @@ struct Promoter<'a, 'tcx: 'a> {
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
-    keep_original: bool
+    keep_original: bool,
+    def_id: DefId
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
@@ -287,14 +289,19 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
+        use rustc::mir::Static;
         let mut operand = {
+            let def_id = self.def_id.clone();
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(self.source.promoted.len());
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] =
                     LocalDecl::new_return_place(ty, span);
-                Place::Base(PlaceBase::Promoted(box (promoted_id, ty)))
+                Place::Base(PlaceBase::Static(
+                        Box::new(Static { def_id: def_id, ty, promoted: Some(promoted_id) })
+                    )
+                )
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -367,7 +374,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
-                                    candidates: Vec<Candidate>) {
+                                    candidates: Vec<Candidate>,
+                                    def_id: DefId) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
@@ -412,7 +420,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             tcx,
             source: mir,
             temps: &mut temps,
-            keep_original: false
+            keep_original: false,
+            def_id
         };
         promoter.promote_candidate(candidate);
     }

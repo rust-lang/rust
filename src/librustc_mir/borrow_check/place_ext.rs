@@ -50,11 +50,8 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                 }
             }
             Place::Base(PlaceBase::Static(static_)) => {
-                if static_.promoted.is_none() {
-                    tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
-                } else {
-                    false
-                }
+                static_.promoted.is_none() &&
+                    (tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable))
             }
             Place::Projection(proj) => match proj.elem {
                 ProjectionElem::Field(..)

@@ -1983,20 +1983,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
             Place::Base(PlaceBase::Static(ref static_)) => {
-                if static_.promoted.is_some() {
+                if static_.promoted.is_some() ||
+                    (static_.promoted.is_none() &&
+                        self.infcx.tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
+                    ){
                     Ok(RootPlace {
                         place,
                         is_local_mutation_allowed,
                     })
                 } else {
-                    if self.infcx.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
-                        Err(place)
-                    } else {
-                        Ok(RootPlace {
-                            place,
-                            is_local_mutation_allowed,
-                        })
-                    }
+                    Err(place)
                 }
             }
             Place::Projection(ref proj) => {

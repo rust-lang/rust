@@ -584,7 +584,7 @@ where
         use rustc::mir::PlaceBase;
         use rustc::mir::Static;
         Ok(match *mir_place {
-            Base(PlaceBase::Static(box Static {promoted: Some(promoted), ty, ..})) => {
+            Base(PlaceBase::Static(box Static {promoted: Some(promoted), ty: _, ..})) => {
                 let instance = self.frame().instance;
                 self.const_eval_raw(GlobalId {
                     instance,

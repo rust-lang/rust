@@ -702,6 +702,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     None => self.super_place(place, _ctxt, _location)
                 }
             },
+            _ => self.super_place(place, _ctxt, _location)
         }
     }
 

@@ -403,7 +403,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                         Overlap::Disjoint
                     }
                 },
-                (p1_, p2_) => {
+                (_, _) => {
                     debug!("place_element_conflict: DISJOINT-STATIC-PROMOTED");
                     Overlap::Disjoint
                 }
