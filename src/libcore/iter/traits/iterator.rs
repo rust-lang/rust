@@ -2451,10 +2451,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        match self.partial_cmp(other) {
-            Some(Ordering::Less) => true,
-            _ => false,
-        }
+        self.partial_cmp(other) == Some(Ordering::Less)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
@@ -2479,10 +2476,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        match self.partial_cmp(other) {
-            Some(Ordering::Greater) => true,
-            _ => false,
-        }
+        self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
