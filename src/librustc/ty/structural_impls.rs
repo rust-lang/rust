@@ -1355,6 +1355,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
             // FIXME(const_generics): implement TypeFoldable for InferConst
             ConstValue::Infer(ic) => ConstValue::Infer(ic),
             ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
+            ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
             ConstValue::Scalar(a) => ConstValue::Scalar(a),
             ConstValue::Slice(a, b) => ConstValue::Slice(a, b),
             ConstValue::Unevaluated(did, substs)
@@ -1366,8 +1367,9 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
         match *self {
             ConstValue::ByRef(..) => false,
             // FIXME(const_generics): implement TypeFoldable for InferConst
-            ConstValue::Infer(_ic) => false,
+            ConstValue::Infer(_) => false,
             ConstValue::Param(p) => p.visit_with(visitor),
+            ConstValue::Placeholder(_) => false,
             ConstValue::Scalar(_) => false,
             ConstValue::Slice(..) => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),

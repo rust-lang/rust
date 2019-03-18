@@ -11,7 +11,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
-use rustc::ty::{self, Ty, TyCtxt, Const};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
@@ -579,7 +579,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                         // parameter from the existential type
                                         return self.tcx()
                                             .global_tcx()
-                                            .mk_const_param(param.index, param.name, ty);
+                                            .mk_const_param(param.index, param.name, ct.ty);
                                     }
                                 }
                             }
