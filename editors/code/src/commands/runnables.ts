@@ -153,6 +153,10 @@ export const autoCargoWatchTask: vscode.Task = {
  * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
  */
 export async function interactivelyStartCargoWatch() {
+    if (!Server.config.enableCargoWatchOnStartup) {
+        return;
+    }
+
     const execAsync = util.promisify(exec);
 
     const watch = await vscode.window.showInformationMessage(

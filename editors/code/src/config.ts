@@ -9,6 +9,7 @@ export class Config {
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
+    public enableCargoWatchOnStartup = true;
 
     private prevEnhancedTyping: null | boolean = null;
 
@@ -67,6 +68,13 @@ export class Config {
         if (config.has('raLspServerPath')) {
             this.raLspServerPath =
                 RA_LSP_DEBUG || (config.get('raLspServerPath') as string);
+        }
+
+        if (config.has('enableCargoWatchOnStartup')) {
+            this.enableCargoWatchOnStartup = config.get<boolean>(
+                'enableCargoWatchOnStartup',
+                true
+            );
         }
     }
 }
