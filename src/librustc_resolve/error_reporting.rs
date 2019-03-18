@@ -379,6 +379,14 @@ impl<'a> Resolver<'a> {
                                         Applicability::MaybeIncorrect
                                     );
                                 },
+                                ExprKind::Field(ref _expr, ident) => {
+                                    err.span_suggestion(
+                                        sm.start_point(parent.span).to(ident.span),
+                                        "use `::` to access an associated item",
+                                        format!("{}::{}", path_str, ident),
+                                        Applicability::MaybeIncorrect
+                                    );
+                                }
                                 _ => {
                                     err.span_label(
                                         span,
