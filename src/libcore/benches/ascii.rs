@@ -12,7 +12,14 @@ fn branchless_to_ascii_upper_case(byte: u8) -> u8 {
 
 
 macro_rules! benches {
-    ($( fn $name: ident($arg: ident: &mut [u8]) $body: block )+) => {
+    ($( fn $name: ident($arg: ident: &mut [u8]) $body: block )+ @iter $( $is_: ident, )+) => {
+        benches! {@
+            $( fn $name($arg: &mut [u8]) $body )+
+            $( fn $is_(bytes: &mut [u8]) { bytes.iter().all(u8::$is_) } )+
+        }
+    };
+
+    (@$( fn $name: ident($arg: ident: &mut [u8]) $body: block )+) => {
         benches!(mod short SHORT $($name $arg $body)+);
         benches!(mod medium MEDIUM $($name $arg $body)+);
         benches!(mod long LONG $($name $arg $body)+);
@@ -30,7 +37,7 @@ macro_rules! benches {
                         let mut vec = $input.as_bytes().to_vec();
                         {
                             let $arg = &mut vec[..];
-                            $body
+                            black_box($body);
                         }
                         vec
                     })
@@ -44,21 +51,21 @@ use test::black_box;
 use test::Bencher;
 
 benches! {
-    fn bench00_alloc_only(_bytes: &mut [u8]) {}
+    fn case00_alloc_only(_bytes: &mut [u8]) {}
 
-    fn bench01_black_box_read_each_byte(bytes: &mut [u8]) {
+    fn case01_black_box_read_each_byte(bytes: &mut [u8]) {
         for byte in bytes {
             black_box(*byte);
         }
     }
 
-    fn bench02_lookup(bytes: &mut [u8]) {
+    fn case02_lookup(bytes: &mut [u8]) {
         for byte in bytes {
             *byte = ASCII_UPPERCASE_MAP[*byte as usize]
         }
     }
 
-    fn bench03_branch_and_subtract(bytes: &mut [u8]) {
+    fn case03_branch_and_subtract(bytes: &mut [u8]) {
         for byte in bytes {
             *byte = if b'a' <= *byte && *byte <= b'z' {
                 *byte - b'a' + b'A'
@@ -68,7 +75,7 @@ benches! {
         }
     }
 
-    fn bench04_branch_and_mask(bytes: &mut [u8]) {
+    fn case04_branch_and_mask(bytes: &mut [u8]) {
         for byte in bytes {
             *byte = if b'a' <= *byte && *byte <= b'z' {
                 *byte & !0x20
@@ -78,23 +85,17 @@ benches! {
         }
     }
 
-    fn bench05_branchless(bytes: &mut [u8]) {
+    fn case05_branchless(bytes: &mut [u8]) {
         for byte in bytes {
             *byte = branchless_to_ascii_upper_case(*byte)
         }
     }
 
-    fn bench05_multiply_by_bool(bytes: &mut [u8]) {
-        for byte in bytes {
-            *byte &= !(0x20 * (b'a' <= *byte && *byte <= b'z') as u8)
-        }
-    }
-
-    fn bench06_libcore(bytes: &mut [u8]) {
+    fn case06_libcore(bytes: &mut [u8]) {
         bytes.make_ascii_uppercase()
     }
 
-    fn bench07_fake_simd_u32(bytes: &mut [u8]) {
+    fn case07_fake_simd_u32(bytes: &mut [u8]) {
         let (before, aligned, after) = unsafe {
             bytes.align_to_mut::<u32>()
         };
@@ -118,7 +119,7 @@ benches! {
         }
     }
 
-    fn bench08_fake_simd_u64(bytes: &mut [u8]) {
+    fn case08_fake_simd_u64(bytes: &mut [u8]) {
         let (before, aligned, after) = unsafe {
             bytes.align_to_mut::<u64>()
         };
@@ -139,6 +140,20 @@ benches! {
             *byte = branchless_to_ascii_upper_case(*byte)
         }
     }
+
+    @iter
+
+    is_ascii,
+    is_ascii_alphabetic,
+    is_ascii_uppercase,
+    is_ascii_lowercase,
+    is_ascii_alphanumeric,
+    is_ascii_digit,
+    is_ascii_hexdigit,
+    is_ascii_punctuation,
+    is_ascii_graphic,
+    is_ascii_whitespace,
+    is_ascii_control,
 }
 
 macro_rules! repeat {
