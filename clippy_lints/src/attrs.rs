@@ -14,7 +14,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use semver::Version;
-use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -219,7 +219,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             }
             for item in items {
                 if_chain! {
-                    if let NestedMetaItemKind::MetaItem(mi) = &item.node;
+                        if let NestedMetaItem::MetaItem(mi) = &item;
                     if let MetaItemKind::NameValue(lit) = &mi.node;
                     if mi.name() == "since";
                     then {
@@ -476,7 +476,7 @@ fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
 }
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
-    if let NestedMetaItemKind::MetaItem(mi) = &nmi.node {
+    if let NestedMetaItem::MetaItem(mi) = &nmi {
         mi.is_word() && mi.name() == expected
     } else {
         false
