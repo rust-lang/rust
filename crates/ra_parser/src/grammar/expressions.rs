@@ -67,8 +67,6 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             Err(m) => m,
         };
 
-        // test pub_expr
-        // fn foo() { pub 92; } //FIXME
         if has_attrs {
             m.abandon(p);
             p.error("expected a let statement or an item after attributes in block");
