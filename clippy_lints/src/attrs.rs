@@ -224,7 +224,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                     if let MetaItemKind::NameValue(lit) = &mi.node;
                     if mi.name() == "since";
                     then {
-                        check_semver(cx, item.span, lit);
+                            check_semver(cx, item.span(), lit);
                     }
                 }
             }
@@ -327,7 +327,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                 span_lint_and_then(
                     cx,
                     UNKNOWN_CLIPPY_LINTS,
-                    lint.span,
+                    lint.span(),
                     &format!("unknown clippy lint: clippy::{}", name),
                     |db| {
                         if name.as_str().chars().any(char::is_uppercase) {
@@ -341,7 +341,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
                                     db.span_suggestion(
-                                        lint.span,
+                                        lint.span(),
                                         "lowercase the lint name",
                                         name_lower,
                                         Applicability::MaybeIncorrect,
