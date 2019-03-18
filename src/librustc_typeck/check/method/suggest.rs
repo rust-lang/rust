@@ -60,20 +60,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_method_error<'b>(&self,
-                                   span: Span,
-                                   rcvr_ty: Ty<'tcx>,
-                                   item_name: ast::Ident,
-                                   source: SelfSource<'b>,
-                                   error: MethodError<'tcx>,
-                                   args: Option<&'gcx [hir::Expr]>) {
+    pub fn report_method_error<'b>(
+        &self,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_name: ast::Ident,
+        source: SelfSource<'b>,
+        error: MethodError<'tcx>,
+        args: Option<&'gcx [hir::Expr]>,
+    ) {
+        let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
         }
 
-        let report_candidates = |err: &mut DiagnosticBuilder<'_>,
-                                 mut sources: Vec<CandidateSource>| {
+        let report_candidates = |
+            span: Span,
+            err: &mut DiagnosticBuilder<'_>,
+            mut sources: Vec<CandidateSource>,
+        | {
             sources.sort();
             sources.dedup();
             // Dynamic limit to avoid hiding just one candidate, which is silly.
@@ -291,9 +297,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.emit();
                         return;
                     } else {
+                        span = item_name.span;
                         let mut err = struct_span_err!(
                             tcx.sess,
-                            item_name.span,
+                            span,
                             E0599,
                             "no {} named `{}` found for type `{}` in the current scope",
                             item_kind,
@@ -303,7 +310,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(suggestion) = suggestion {
                             // enum variant
                             err.span_suggestion(
-                                item_name.span,
+                                span,
                                 "did you mean",
                                 suggestion.to_string(),
                                 Applicability::MaybeIncorrect,
@@ -414,9 +421,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           self.ty_to_string(actual), item_name));
                     }
 
-                    report_candidates(&mut err, static_sources);
+                    report_candidates(span, &mut err, static_sources);
                 } else if static_sources.len() > 1 {
-                    report_candidates(&mut err, static_sources);
+                    report_candidates(span, &mut err, static_sources);
                 }
 
                 if !unsatisfied_predicates.is_empty() {
@@ -461,7 +468,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                "multiple applicable items in scope");
                 err.span_label(span, format!("multiple `{}` found", item_name));
 
-                report_candidates(&mut err, sources);
+                report_candidates(span, &mut err, sources);
                 err.emit();
             }
 

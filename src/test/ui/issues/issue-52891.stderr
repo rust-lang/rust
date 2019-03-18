@@ -4,10 +4,7 @@ error[E0252]: the name `a` is defined multiple times
 LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 LL | use issue_52891::a;
-   | ----^^^^^^^^^^^^^^-
-   | |   |
-   | |   `a` reimported here
-   | help: remove unnecessary import
+   |     ^^^^^^^^^^^^^^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
 
@@ -46,10 +43,7 @@ LL | use issue_52891::a;
    |     -------------- previous import of the module `a` here
 ...
 LL | use issue_52891::{f, g, a};
-   |                       --^
-   |                       | |
-   |                       | `a` reimported here
-   |                       help: remove unnecessary import
+   |                         ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
 
@@ -84,16 +78,11 @@ LL |     a,
 error[E0252]: the name `a` is defined multiple times
   --> $DIR/issue-52891.rs:26:5
    |
-LL |   use issue_52891::a;
-   |       -------------- previous import of the module `a` here
+LL | use issue_52891::a;
+   |     -------------- previous import of the module `a` here
 ...
-LL |       m,
-   |  ______-
-LL | |     a};
-   | |     ^
-   | |     |
-   | |_____`a` reimported here
-   |       help: remove unnecessary import
+LL |     a};
+   |     ^ `a` reimported here
    |
    = note: `a` must be defined only once in the type namespace of this module
 
@@ -129,10 +118,7 @@ error[E0252]: the name `n` is defined multiple times
   --> $DIR/issue-52891.rs:36:5
    |
 LL | use issue_52891::n;
-   | -------------------
-   | |   |
-   | |   previous import of the module `n` here
-   | help: remove unnecessary import
+   |     -------------- previous import of the module `n` here
 LL | #[macro_use]
 LL | use issue_52891::n;
    |     ^^^^^^^^^^^^^^ `n` reimported here

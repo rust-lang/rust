@@ -1,8 +1,8 @@
 warning: any use of this value will cause an error
-  --> $DIR/pub_const_err_bin.rs:4:1
+  --> $DIR/pub_const_err_bin.rs:4:20
    |
 LL | pub const Z: u32 = 0 - 1;
-   | ^^^^^^^^^^^^^^^^^^^-----^
+   | -------------------^^^^^-
    |                    |
    |                    attempt to subtract with overflow
    |

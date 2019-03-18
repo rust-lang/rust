@@ -366,7 +366,7 @@ impl Diagnostic {
                 }],
             }],
             msg: msg.to_owned(),
-            style: SuggestionStyle::HideCodeInline,
+            style: SuggestionStyle::HideCodeAlways,
             applicability,
         });
         self

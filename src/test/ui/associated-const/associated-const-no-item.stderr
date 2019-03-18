@@ -2,9 +2,7 @@ error[E0599]: no associated item named `ID` found for type `i32` in the current 
   --> $DIR/associated-const-no-item.rs:5:23
    |
 LL | const X: i32 = <i32>::ID;
-   |                -------^^
-   |                |
-   |                associated item not found in `i32`
+   |                       ^^ associated item not found in `i32`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `ID`, perhaps you need to implement it:

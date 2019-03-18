@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
-  --> $DIR/issue-50814-2.rs:12:5
+  --> $DIR/issue-50814-2.rs:12:24
    |
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
-   |     ^^^^^^^^^^^^^^^^^^^-----------------^
+   |     -------------------^^^^^^^^^^^^^^^^^-
    |                        |
    |                        index out of bounds: the len is 3 but the index is 42
    |

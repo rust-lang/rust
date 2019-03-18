@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
-  --> $DIR/issue-49296.rs:18:1
+  --> $DIR/issue-49296.rs:18:16
    |
 LL | const X: u64 = *wat(42);
-   | ^^^^^^^^^^^^^^^--------^
+   | ---------------^^^^^^^^-
    |                |
    |                dangling pointer was dereferenced
    |

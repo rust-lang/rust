@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
-  --> $DIR/const-len-underflow-separate-spans.rs:7:1
+  --> $DIR/const-len-underflow-separate-spans.rs:7:20
    |
 LL | const LEN: usize = ONE - TWO;
-   | ^^^^^^^^^^^^^^^^^^^---------^
+   | -------------------^^^^^^^^^-
    |                    |
    |                    attempt to subtract with overflow
    |
