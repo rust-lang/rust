@@ -9,7 +9,6 @@ use proc_macro::TokenStream;
 
 mod hash_stable;
 mod query;
-mod tt;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
