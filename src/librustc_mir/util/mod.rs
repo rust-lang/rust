@@ -15,7 +15,7 @@ pub mod collect_writes;
 
 pub use self::alignment::is_disaligned;
 pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty, PassWhere};
-pub use self::graphviz::{write_mir_graphviz};
+pub use self::graphviz::{graphviz_safe_def_name, write_mir_graphviz};
 pub use self::graphviz::write_node_label as write_graphviz_node_label;
 
 /// If possible, suggest replacing `ref` with `ref mut`.

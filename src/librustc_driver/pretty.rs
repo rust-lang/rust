@@ -633,10 +633,20 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let body = tcx.hir().body(body_id);
     let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
+    let hir_id = code.id();
+    // We have to disassemble the hir_id because name must be ASCII
+    // alphanumeric. This does not appear in the rendered graph, so it does not
+    // have to be user friendly.
+    let name = format!(
+        "hir_id_{}_{}_{}",
+        hir_id.owner.address_space().index(),
+        hir_id.owner.as_array_index(),
+        hir_id.local_id.index(),
+    );
     let lcfg = LabelledCFG {
         tcx,
         cfg: &cfg,
-        name: format!("node_{}", code.id()),
+        name,
         labelled_edges,
     };
 
