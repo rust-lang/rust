@@ -2957,7 +2957,7 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_ps() -> __m256 {
     // FIXME: this function should return MaybeUninit<__m256>
-    mem::MaybeUninit::<__m256>::uninitialized().into_initialized()
+    mem::MaybeUninit::<__m256>::uninit().assume_init()
 }
 
 /// Returns vector of type `__m256d` with undefined elements.
@@ -2969,7 +2969,7 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_pd() -> __m256d {
     // FIXME: this function should return MaybeUninit<__m256d>
-    mem::MaybeUninit::<__m256d>::uninitialized().into_initialized()
+    mem::MaybeUninit::<__m256d>::uninit().assume_init()
 }
 
 /// Returns vector of type __m256i with undefined elements.
@@ -2981,7 +2981,7 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
     // FIXME: this function should return MaybeUninit<__m256i>
-    mem::MaybeUninit::<__m256i>::uninitialized().into_initialized()
+    mem::MaybeUninit::<__m256i>::uninit().assume_init()
 }
 
 /// Sets packed __m256 returned vector with the supplied values.
