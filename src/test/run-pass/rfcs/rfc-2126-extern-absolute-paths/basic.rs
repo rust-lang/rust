@@ -4,9 +4,12 @@
 // compile-flags:--extern xcrate
 // edition:2018
 
+#![allow(unused_imports)]
+
 use xcrate::Z;
 
 fn f() {
+    use xcrate;
     use xcrate as ycrate;
     let s = xcrate::S;
     assert_eq!(format!("{:?}", s), "S");
