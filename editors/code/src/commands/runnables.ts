@@ -37,7 +37,7 @@ export function createTask(spec: Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     const definition: CargoTaskDefinition = {
         type: 'cargo',
-        label: 'cargo',
+        label: spec.label,
         command: spec.bin,
         args: spec.args,
         env: spec.env
