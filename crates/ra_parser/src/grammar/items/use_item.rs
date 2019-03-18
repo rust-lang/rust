@@ -1,10 +1,11 @@
 use super::*;
 
-pub(super) fn use_item(p: &mut Parser) {
+pub(super) fn use_item(p: &mut Parser, m: Marker) {
     assert!(p.at(USE_KW));
     p.bump();
     use_tree(p);
     p.expect(SEMI);
+    m.complete(p, USE_ITEM);
 }
 
 /// Parse a use 'tree', such as `some::path` in `use some::path;`

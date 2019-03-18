@@ -86,7 +86,7 @@ impl BlockLike {
     }
 }
 
-fn opt_visibility(p: &mut Parser) {
+fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
         PUB_KW => {
             let m = p.start();
@@ -116,13 +116,19 @@ fn opt_visibility(p: &mut Parser) {
         }
         // test crate_keyword_vis
         // crate fn main() { }
-        CRATE_KW => {
+        // struct S { crate field: u32 }
+        // struct T(crate u32);
+        //
+        // test crate_keyword_path
+        // fn foo() { crate::foo(); }
+        CRATE_KW if p.nth(1) != COLONCOLON => {
             let m = p.start();
             p.bump();
             m.complete(p, VISIBILITY);
         }
-        _ => (),
+        _ => return false,
     }
+    true
 }
 
 fn opt_alias(p: &mut Parser) {

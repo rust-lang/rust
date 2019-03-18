@@ -67,11 +67,14 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
 }
 
 pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Result<(), Marker> {
-    opt_visibility(p);
-    if let Some(kind) = items_without_modifiers(p) {
-        m.complete(p, kind);
-        return Ok(());
-    }
+    // test_err pub_expr
+    // fn foo() { pub 92; }
+    let has_visibility = opt_visibility(p);
+
+    let m = match items_without_modifiers(p, m) {
+        Ok(()) => return Ok(()),
+        Err(m) => m,
+    };
 
     let mut has_mods = false;
 
@@ -152,10 +155,14 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
             m.complete(p, IMPL_BLOCK);
         }
         _ => {
-            if !has_mods {
+            if !has_visibility && !has_mods {
                 return Err(m);
             } else {
-                p.error("expected fn, trait or impl");
+                if has_mods {
+                    p.error("expected fn, trait or impl");
+                } else {
+                    p.error("expected an item");
+                }
                 m.complete(p, ERROR);
             }
         }
@@ -163,23 +170,14 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
     Ok(())
 }
 
-fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
+fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     let la = p.nth(1);
-    let kind = match p.current() {
+    match p.current() {
         // test extern_crate
         // extern crate foo;
-        EXTERN_KW if la == CRATE_KW => {
-            extern_crate_item(p);
-            EXTERN_CRATE_ITEM
-        }
-        TYPE_KW => {
-            type_def(p);
-            TYPE_ALIAS_DEF
-        }
-        MOD_KW => {
-            mod_item(p);
-            MODULE
-        }
+        EXTERN_KW if la == CRATE_KW => extern_crate_item(p, m),
+        TYPE_KW => type_def(p, m),
+        MOD_KW => mod_item(p, m),
         STRUCT_KW => {
             // test struct_items
             // struct Foo;
@@ -190,14 +188,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, STRUCT_KW);
-            if p.at(SEMI) {
-                p.err_and_bump(
-                    "expected item, found `;`\n\
-                     consider removing this semicolon",
-                );
-            }
-            STRUCT_DEF
+            nominal::struct_def(p, m, STRUCT_KW);
         }
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
@@ -206,25 +197,12 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, UNION_KW);
-            STRUCT_DEF
+            nominal::struct_def(p, m, UNION_KW);
         }
-        ENUM_KW => {
-            nominal::enum_def(p);
-            ENUM_DEF
-        }
-        USE_KW => {
-            use_item::use_item(p);
-            USE_ITEM
-        }
-        CONST_KW if (la == IDENT || la == MUT_KW) => {
-            consts::const_def(p);
-            CONST_DEF
-        }
-        STATIC_KW => {
-            consts::static_def(p);
-            STATIC_DEF
-        }
+        ENUM_KW => nominal::enum_def(p, m),
+        USE_KW => use_item::use_item(p, m),
+        CONST_KW if (la == IDENT || la == MUT_KW) => consts::const_def(p, m),
+        STATIC_KW => consts::static_def(p, m),
         // test extern_block
         // extern {}
         EXTERN_KW
@@ -232,14 +210,20 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
         {
             abi(p);
             extern_item_list(p);
-            EXTERN_BLOCK
+            m.complete(p, EXTERN_BLOCK);
         }
-        _ => return None,
+        _ => return Err(m),
     };
-    Some(kind)
+    if p.at(SEMI) {
+        p.err_and_bump(
+            "expected item, found `;`\n\
+             consider removing this semicolon",
+        );
+    }
+    Ok(())
 }
 
-fn extern_crate_item(p: &mut Parser) {
+fn extern_crate_item(p: &mut Parser, m: Marker) {
     assert!(p.at(EXTERN_KW));
     p.bump();
     assert!(p.at(CRATE_KW));
@@ -247,6 +231,7 @@ fn extern_crate_item(p: &mut Parser) {
     name_ref(p);
     opt_alias(p);
     p.expect(SEMI);
+    m.complete(p, EXTERN_CRATE_ITEM);
 }
 
 pub(crate) fn extern_item_list(p: &mut Parser) {
@@ -295,7 +280,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
 
 // test type_item
 // type Foo = Bar;
-fn type_def(p: &mut Parser) {
+fn type_def(p: &mut Parser, m: Marker) {
     assert!(p.at(TYPE_KW));
     p.bump();
 
@@ -317,9 +302,10 @@ fn type_def(p: &mut Parser) {
         types::type_(p);
     }
     p.expect(SEMI);
+    m.complete(p, TYPE_ALIAS_DEF);
 }
 
-pub(crate) fn mod_item(p: &mut Parser) {
+pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
     assert!(p.at(MOD_KW));
     p.bump();
 
@@ -329,6 +315,7 @@ pub(crate) fn mod_item(p: &mut Parser) {
     } else if !p.eat(SEMI) {
         p.error("expected `;` or `{`");
     }
+    m.complete(p, MODULE);
 }
 
 pub(crate) fn mod_item_list(p: &mut Parser) {

@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
+pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
     assert!(p.at(STRUCT_KW) || p.at_contextual_kw("union"));
     p.bump_remap(kind);
 
@@ -12,19 +12,16 @@ pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
             match p.current() {
                 SEMI => {
                     p.bump();
-                    return;
                 }
                 L_CURLY => named_field_def_list(p),
                 _ => {
                     //TODO: special case `(` error message
                     p.error("expected `;` or `{`");
-                    return;
                 }
             }
         }
         SEMI if kind == STRUCT_KW => {
             p.bump();
-            return;
         }
         L_CURLY => named_field_def_list(p),
         L_PAREN if kind == STRUCT_KW => {
@@ -37,16 +34,15 @@ pub(super) fn struct_def(p: &mut Parser, kind: SyntaxKind) {
         }
         _ if kind == STRUCT_KW => {
             p.error("expected `;`, `{`, or `(`");
-            return;
         }
         _ => {
             p.error("expected `{`");
-            return;
         }
     }
+    m.complete(p, STRUCT_DEF);
 }
 
-pub(super) fn enum_def(p: &mut Parser) {
+pub(super) fn enum_def(p: &mut Parser, m: Marker) {
     assert!(p.at(ENUM_KW));
     p.bump();
     name_r(p, ITEM_RECOVERY_SET);
@@ -57,6 +53,7 @@ pub(super) fn enum_def(p: &mut Parser) {
     } else {
         p.error("expected `{`")
     }
+    m.complete(p, ENUM_DEF);
 }
 
 pub(crate) fn enum_variant_list(p: &mut Parser) {

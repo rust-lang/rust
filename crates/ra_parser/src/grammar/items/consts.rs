@@ -1,14 +1,14 @@
 use super::*;
 
-pub(super) fn static_def(p: &mut Parser) {
-    const_or_static(p, STATIC_KW)
+pub(super) fn static_def(p: &mut Parser, m: Marker) {
+    const_or_static(p, m, STATIC_KW, STATIC_DEF)
 }
 
-pub(super) fn const_def(p: &mut Parser) {
-    const_or_static(p, CONST_KW)
+pub(super) fn const_def(p: &mut Parser, m: Marker) {
+    const_or_static(p, m, CONST_KW, CONST_DEF)
 }
 
-fn const_or_static(p: &mut Parser, kw: SyntaxKind) {
+fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     assert!(p.at(kw));
     p.bump();
     p.eat(MUT_KW); // TODO: validator to forbid const mut
@@ -18,4 +18,5 @@ fn const_or_static(p: &mut Parser, kw: SyntaxKind) {
         expressions::expr(p);
     }
     p.expect(SEMI);
+    m.complete(p, def);
 }
