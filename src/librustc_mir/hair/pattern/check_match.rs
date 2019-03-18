@@ -14,7 +14,6 @@ use rustc::ty::{self, Ty, TyCtxt, TyKind};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::lint;
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
@@ -27,14 +26,11 @@ use std::slice;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-pub(crate) fn check_match<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-) -> Result<(), ErrorReported> {
+pub(crate) fn check_match<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         tcx.hir().body_owned_by(id)
     } else {
-        return Ok(());
+        return;
     };
 
     MatchVisitor {
@@ -44,7 +40,6 @@ pub(crate) fn check_match<'a, 'tcx>(
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
     }.visit_body(tcx.hir().body(body_id));
-    Ok(())
 }
 
 fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
