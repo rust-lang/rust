@@ -8,7 +8,6 @@ interface RunnablesParams {
 }
 
 interface Runnable {
-    range: lc.Range;
     label: string;
     bin: string;
     args: string[];
