@@ -315,10 +315,11 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
         if_chain! {
-            if let Some(word) = lint.word();
-            if let Some(tool_name) = word.is_scoped();
+            if let Some(meta_item) = lint.meta_item();
+            if meta_item.path.segments.len() > 1;
+            if let tool_name = meta_item.path.segments[0].ident;
             if tool_name.as_str() == "clippy";
-            let name = word.name();
+            let name = meta_item.path.segments.last().unwrap().ident.name;
             if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
                 &name.as_str(),
                 Some(tool_name.as_str()),
