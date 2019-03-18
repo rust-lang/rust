@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import * as child_process from 'child_process';
 import * as util from 'util';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
@@ -157,7 +157,7 @@ export async function interactivelyStartCargoWatch() {
         return;
     }
 
-    const execAsync = util.promisify(exec);
+    const execPromise = util.promisify(child_process.exec);
 
     const watch = await vscode.window.showInformationMessage(
         'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
@@ -168,7 +168,7 @@ export async function interactivelyStartCargoWatch() {
         return;
     }
 
-    const { stderr } = await execAsync('cargo watch --version').catch(e => e);
+    const { stderr } = await execPromise('cargo watch --version').catch(e => e);
     if (stderr.includes('no such subcommand: `watch`')) {
         const msg =
             'The `cargo-watch` subcommand is not installed. Install? (takes ~1-2 minutes)';
@@ -183,7 +183,7 @@ export async function interactivelyStartCargoWatch() {
 
         const label = 'install-cargo-watch';
         const taskFinished = new Promise((resolve, reject) => {
-            let disposable = vscode.tasks.onDidEndTask(({ execution }) => {
+            const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
                 if (execution.task.name === label) {
                     disposable.dispose();
                     resolve();
@@ -200,12 +200,10 @@ export async function interactivelyStartCargoWatch() {
             })
         );
         await taskFinished;
-        const { stderr } = await execAsync('cargo watch --version').catch(
-            e => e
-        );
-        if (stderr !== '') {
+        const output = await execPromise('cargo watch --version').catch(e => e);
+        if (output.stderr !== '') {
             vscode.window.showErrorMessage(
-                `Couldn't install \`cargo-\`watch: ${stderr}`
+                `Couldn't install \`cargo-\`watch: ${output.stderr}`
             );
             return;
         }
