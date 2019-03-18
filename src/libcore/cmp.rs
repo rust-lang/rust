@@ -72,7 +72,7 @@ use self::Ordering::*;
 /// }
 ///
 /// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.isbn == other.isbn
 ///     }
 /// }
@@ -233,7 +233,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 ///     format: BookFormat,
 /// }
 /// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.isbn == other.isbn
 ///     }
 /// }
@@ -493,19 +493,19 @@ impl<T: Ord> Ord for Reverse<T> {
 /// }
 ///
 /// impl Ord for Person {
-///     fn cmp(&self, other: &Person) -> Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.height.cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         Some(self.cmp(other))
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }
@@ -691,13 +691,13 @@ impl PartialOrd for Ordering {
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         self.height.partial_cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }
