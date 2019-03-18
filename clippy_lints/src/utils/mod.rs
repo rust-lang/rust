@@ -141,6 +141,12 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
+        if trait_ref.is_none() {
+            if let ty::Adt(def, substs) = self_ty.sty {
+                return self.print_def_path(def.did, substs);
+            }
+        }
+        
         // This shouldn't ever be needed, but just in case:
         Ok(vec![match trait_ref {
             Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
