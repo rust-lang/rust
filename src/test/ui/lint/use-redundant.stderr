@@ -25,12 +25,3 @@ LL | use crate::foo::Bar;
 LL |     use crate::foo::Bar;
    |         ^^^^^^^^^^^^^^^
 
-warning: the item `S` is imported redundantly
-  --> $DIR/use-redundant.rs:25:9
-   |
-LL | use m1::*;
-   |     ----- the item `S` is already imported here
-...
-LL |     use m1::S;
-   |         ^^^^^
-
