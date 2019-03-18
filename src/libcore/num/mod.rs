@@ -3794,39 +3794,8 @@ impl u8 {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> u8 {
-        // See benchmarks in src/libcore/benches/ascii_case.rs
-
-        // Lower-case ASCII 'a' is the first byte that has its highest bit set
-        // after wrap-adding 0x1F:
-        //
-        //     b'a' + 0x1F == 0x80 == 0b1000_0000
-        //     b'z' + 0x1F == 0x98 == 0b10011000
-        //
-        // Lower-case ASCII 'z' is the last byte that has its highest bit unset
-        // after wrap-adding 0x05:
-        //
-        //     b'a' + 0x05 == 0x66 == 0b0110_0110
-        //     b'z' + 0x05 == 0x7F == 0b0111_1111
-        //
-        // … except for 0xFB to 0xFF, but those are in the range of bytes
-        // that have the highest bit unset again after adding 0x1F.
-        //
-        // So `(byte + 0x1f) & !(byte + 5)` has its highest bit set
-        // iff `byte` is a lower-case ASCII letter.
-        //
-        // Lower-case ASCII letters all have the 0x20 bit set.
-        // (Two positions right of 0x80, the highest bit.)
-        // Unsetting that bit produces the same letter, in upper-case.
-        //
-        // Therefore:
-        *self &
-        !(
-            (
-                self.wrapping_add(0x1f) &
-                !self.wrapping_add(0x05) &
-                0x80
-            ) >> 2
-        )
+        // Unset the fith bit if this is a lowercase letter
+        *self & !((self.is_ascii_lowercase() as u8) << 5)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -3848,15 +3817,8 @@ impl u8 {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> u8 {
-        // See comments in to_ascii_uppercase above.
-        *self |
-        (
-            (
-                self.wrapping_add(0x3f) &
-                !self.wrapping_add(0x25) &
-                0x80
-            ) >> 2
-        )
+        // Set the fith bit if this is an uppercase letter
+        *self | ((self.is_ascii_uppercase() as u8) << 5)
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
