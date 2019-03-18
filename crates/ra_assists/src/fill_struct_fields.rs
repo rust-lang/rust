@@ -11,7 +11,6 @@ pub(crate) fn fill_struct_fields(mut ctx: AssistCtx<impl HirDatabase>) -> Option
     let struct_lit = ctx.node_at_offset::<ast::StructLit>()?;
 
     // If we already have existing struct fields, don't provide the assist.
-    // TODO: provide assist for tuple structs
     match struct_lit.named_field_list() {
         Some(named_field_list) if named_field_list.fields().count() > 0 => {
             return None;
