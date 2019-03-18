@@ -17,7 +17,10 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("fuzz-tests"))
         .get_matches();
     match matches.subcommand_name().expect("Subcommand must be specified") {
-        "install-code" => install_code_extension()?,
+        "install-code" => {
+            setup_environment()?;
+            install_code_extension()?;
+        }
         "gen-tests" => gen_tests(Overwrite)?,
         "gen-syntax" => generate(Overwrite)?,
         "format" => run_rustfmt(Overwrite)?,
@@ -25,6 +28,14 @@ fn main() -> Result<()> {
         "fuzz-tests" => run_fuzzer()?,
         _ => unreachable!(),
     }
+    Ok(())
+}
+
+fn setup_environment() -> Result<()> {
+    if cfg!(target_os = "macos") {
+        vscode_path_helpers::append_vscode_path()?;
+    }
+
     Ok(())
 }
 
