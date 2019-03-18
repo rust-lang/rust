@@ -1,4 +1,4 @@
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 import * as util from 'util';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
@@ -9,7 +9,6 @@ import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
-import { TextDecoder } from 'util';
 
 export function activate(context: vscode.ExtensionContext) {
     function disposeOnDeactivation(disposable: vscode.Disposable) {
