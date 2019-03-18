@@ -166,7 +166,7 @@ fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
         | (ty::Str, ty::Str) => true,
         (ty::Ref(_, t1, _), ty::Ref(_, t2, _))
         | (ty::Array(t1, _), ty::Array(t2, _))
-        | (ty::Slice(t1), ty::Slice(t2)) => match_types(&t1, &t2),
+        | (ty::Slice(t1), ty::Slice(t2)) => match_types(t1, t2),
         (ty::Adt(def1, _), ty::Adt(def2, _)) => def1 == def2,
         (_, _) => false,
     }
