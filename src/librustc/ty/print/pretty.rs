@@ -173,6 +173,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
         Region = Self,
         Type = Self,
         DynExistential = Self,
+        Const = Self,
     > +
     fmt::Write
 {
@@ -665,12 +666,10 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                match sz.val {
-                    ConstValue::Unevaluated(..) |
-                    ConstValue::Infer(..) => p!(write("_")),
-                    ConstValue::Param(ParamConst { name, .. }) =>
-                        p!(write("{}", name)),
-                    _ => p!(write("{}", sz.unwrap_usize(self.tcx()))),
+                if let Some(n) = sz.assert_usize(self.tcx()) {
+                    p!(write("{}", n));
+                } else {
+                    p!(print(sz));
                 }
                 p!(write("]"))
             }
@@ -808,6 +807,113 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
 
         Ok(self)
     }
+
+    fn pretty_print_const(
+        mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+
+        let u8 = self.tcx().types.u8;
+        if let ty::FnDef(did, substs) = ct.ty.sty {
+            p!(print_value_path(did, substs));
+            return Ok(self);
+        }
+        if let ConstValue::Unevaluated(did, substs) = ct.val {
+            match self.tcx().describe_def(did) {
+                | Some(Def::Static(_))
+                | Some(Def::Const(_))
+                | Some(Def::AssociatedConst(_)) => p!(print_value_path(did, substs)),
+                _ => if did.is_local() {
+                    let span = self.tcx().def_span(did);
+                    if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
+                        p!(write("{}", snip))
+                    } else {
+                        p!(write("_"))
+                    }
+                } else {
+                    p!(write("_"))
+                },
+            }
+            return Ok(self);
+        }
+        if let ConstValue::Infer(..) = ct.val {
+            p!(write("_: "), print(ct.ty));
+            return Ok(self);
+        }
+        if let ConstValue::Param(ParamConst { name, .. }) = ct.val {
+            p!(write("{}", name));
+            return Ok(self);
+        }
+        if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = ct.val {
+            match ct.ty.sty {
+                ty::Bool => {
+                    p!(write("{}", if bits == 0 { "false" } else { "true" }));
+                    return Ok(self);
+                },
+                ty::Float(ast::FloatTy::F32) => {
+                    p!(write("{}f32", Single::from_bits(bits)));
+                    return Ok(self);
+                },
+                ty::Float(ast::FloatTy::F64) => {
+                    p!(write("{}f64", Double::from_bits(bits)));
+                    return Ok(self);
+                },
+                ty::Uint(ui) => {
+                    p!(write("{}{}", bits, ui));
+                    return Ok(self);
+                },
+                ty::Int(i) =>{
+                    let ty = self.tcx().lift_to_global(&ct.ty).unwrap();
+                    let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
+                        .unwrap()
+                        .size;
+                    p!(write("{}{}", sign_extend(bits, size) as i128, i));
+                    return Ok(self);
+                },
+                ty::Char => {
+                    p!(write("{:?}", ::std::char::from_u32(bits as u32).unwrap()));
+                    return Ok(self);
+                }
+                _ => {},
+            }
+        }
+        if let ty::Ref(_, ref_ty, _) = ct.ty.sty {
+            let byte_str = match (ct.val, &ref_ty.sty) {
+                (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
+                    let n = n.unwrap_usize(self.tcx());
+                    Some(self.tcx()
+                        .alloc_map.lock()
+                        .unwrap_memory(ptr.alloc_id)
+                        .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
+                },
+                (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
+                    Some(&data.bytes[start..end])
+                },
+                (ConstValue::Slice { data, start, end }, ty::Str) => {
+                    let slice = &data.bytes[start..end];
+                    let s = ::std::str::from_utf8(slice)
+                        .expect("non utf8 str from miri");
+                    p!(write("{:?}", s));
+                    return Ok(self);
+                },
+                _ => None,
+            };
+            if let Some(byte_str) = byte_str {
+                p!(write("b\""));
+                for &c in byte_str {
+                    for e in std::ascii::escape_default(c) {
+                        self.write_char(e as char)?;
+                    }
+                }
+                p!(write("\""));
+                return Ok(self);
+            }
+        }
+        p!(write("{:?} : ", ct.val), print(ct.ty));
+
+        Ok(self)
+    }
 }
 
 // HACK(eddyb) boxed to avoid moving around a large struct by-value.
@@ -900,6 +1006,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     type Region = Self;
     type Type = Self;
     type DynExistential = Self;
+    type Const = Self;
 
     fn tcx(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
@@ -973,6 +1080,13 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
+    }
+
+    fn print_const(
+        self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        self.pretty_print_const(ct)
     }
 
     fn path_crate(
@@ -1448,6 +1562,7 @@ impl fmt::Display for ty::RegionKind {
 forward_display_to_print! {
     Ty<'tcx>,
     &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    &'tcx ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'gcx: 'tcx, 'tcx>` isn't possible yet.
@@ -1535,106 +1650,6 @@ define_print_and_forward_display! {
 
     ty::TraitRef<'tcx> {
         p!(print_def_path(self.def_id, self.substs));
-    }
-
-    &'tcx ty::Const<'tcx> {
-        let u8 = cx.tcx().types.u8;
-        if let ty::FnDef(did, substs) = self.ty.sty {
-            p!(print_value_path(did, substs));
-            return Ok(cx);
-        }
-        if let ConstValue::Unevaluated(did, substs) = self.val {
-            match cx.tcx().describe_def(did) {
-                | Some(Def::Static(_))
-                | Some(Def::Const(_))
-                | Some(Def::AssociatedConst(_)) => p!(print_value_path(did, substs)),
-                _ => if did.is_local() {
-                    let span = cx.tcx().def_span(did);
-                    if let Ok(snip) = cx.tcx().sess.source_map().span_to_snippet(span) {
-                        p!(write("{}", snip))
-                    } else {
-                        p!(write("_"))
-                    }
-                } else {
-                    p!(write("_"))
-                },
-            }
-            return Ok(cx);
-        }
-        if let ConstValue::Infer(..) = self.val {
-            p!(write("_: "), print(self.ty));
-            return Ok(cx);
-        }
-        if let ConstValue::Param(ParamConst { name, .. }) = self.val {
-            p!(write("{}", name));
-            return Ok(cx);
-        }
-        if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = self.val {
-            match self.ty.sty {
-                ty::Bool => {
-                    p!(write("{}", if bits == 0 { "false" } else { "true" }));
-                    return Ok(cx);
-                },
-                ty::Float(ast::FloatTy::F32) => {
-                    p!(write("{}f32", Single::from_bits(bits)));
-                    return Ok(cx);
-                },
-                ty::Float(ast::FloatTy::F64) => {
-                    p!(write("{}f64", Double::from_bits(bits)));
-                    return Ok(cx);
-                },
-                ty::Uint(ui) => {
-                    p!(write("{}{}", bits, ui));
-                    return Ok(cx);
-                },
-                ty::Int(i) =>{
-                    let ty = cx.tcx().lift_to_global(&self.ty).unwrap();
-                    let size = cx.tcx().layout_of(ty::ParamEnv::empty().and(ty))
-                        .unwrap()
-                        .size;
-                    p!(write("{}{}", sign_extend(bits, size) as i128, i));
-                    return Ok(cx);
-                },
-                ty::Char => {
-                    p!(write("{:?}", ::std::char::from_u32(bits as u32).unwrap()));
-                    return Ok(cx);
-                }
-                _ => {},
-            }
-        }
-        if let ty::Ref(_, ref_ty, _) = self.ty.sty {
-            let byte_str = match (self.val, &ref_ty.sty) {
-                (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                    let n = n.unwrap_usize(cx.tcx());
-                    Some(cx.tcx()
-                        .alloc_map.lock()
-                        .unwrap_memory(ptr.alloc_id)
-                        .get_bytes(&cx.tcx(), ptr, Size::from_bytes(n)).unwrap())
-                },
-                (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
-                    Some(&data.bytes[start..end])
-                },
-                (ConstValue::Slice { data, start, end }, ty::Str) => {
-                    let slice = &data.bytes[start..end];
-                    let s = ::std::str::from_utf8(slice)
-                        .expect("non utf8 str from miri");
-                    p!(write("{:?}", s));
-                    return Ok(cx);
-                },
-                _ => None,
-            };
-            if let Some(byte_str) = byte_str {
-                p!(write("b\""));
-                for &c in byte_str {
-                    for e in std::ascii::escape_default(c) {
-                        cx.write_char(e as char)?;
-                    }
-                }
-                p!(write("\""));
-                return Ok(cx);
-            }
-        }
-        p!(write("{:?} : ", self.val), print(self.ty));
     }
 
     ty::ParamTy {
