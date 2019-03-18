@@ -1,5 +1,4 @@
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 use syn::{
     Token, Ident, Type, Attribute, ReturnType, Expr, Block, Error,
     braced, parenthesized, parse_macro_input,
@@ -21,8 +20,8 @@ struct IdentOrWild(Ident);
 impl Parse for IdentOrWild {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         Ok(if input.peek(Token![_]) {
-            input.parse::<Token![_]>()?;
-            IdentOrWild(Ident::new("_", Span::call_site()))
+            let underscore = input.parse::<Token![_]>()?;
+            IdentOrWild(Ident::new("_", underscore.span()))
         } else {
             IdentOrWild(input.parse()?)
         })
@@ -31,7 +30,7 @@ impl Parse for IdentOrWild {
 
 /// A modifier for a query
 enum QueryModifier {
-    /// The description of the query
+    /// The description of the query.
     Desc(Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Cache the query to disk if the `Expr` returns true.
@@ -107,7 +106,7 @@ fn check_attributes(attrs: Vec<Attribute>) -> Result<()> {
 
 /// A compiler query. `query ... { ... }`
 struct Query {
-    attrs: List<QueryModifier>,
+    modifiers: List<QueryModifier>,
     name: Ident,
     key: IdentOrWild,
     arg: Type,
@@ -131,10 +130,10 @@ impl Parse for Query {
         // Parse the query modifiers
         let content;
         braced!(content in input);
-        let attrs = content.parse()?;
+        let modifiers = content.parse()?;
 
         Ok(Query {
-            attrs,
+            modifiers,
             name,
             key,
             arg,
@@ -174,24 +173,76 @@ impl Parse for Group {
     }
 }
 
+struct QueryModifiers {
+    /// The description of the query.
+    desc: Option<(Option<Ident>, Punctuated<Expr, Token![,]>)>,
+
+    /// Cache the query to disk if the `Expr` returns true.
+    cache: Option<(Option<Ident>, Expr)>,
+
+    /// Custom code to load the query from disk.
+    load_cached: Option<(Ident, Ident, Block)>,
+
+    /// A cycle error for this query aborting the compilation with a fatal error.
+    fatal_cycle: bool,
+}
+
+/// Process query modifiers into a struct, erroring on duplicates
+fn process_modifiers(query: &mut Query) -> QueryModifiers {
+    let mut load_cached = None;
+    let mut cache = None;
+    let mut desc = None;
+    let mut fatal_cycle = false;
+    for modifier in query.modifiers.0.drain(..) {
+        match modifier {
+            QueryModifier::LoadCached(tcx, id, block) => {
+                if load_cached.is_some() {
+                    panic!("duplicate modifier `load_cached` for query `{}`", query.name);
+                }
+                load_cached = Some((tcx, id, block));
+            }
+            QueryModifier::Cache(tcx, expr) => {
+                if cache.is_some() {
+                    panic!("duplicate modifier `cache` for query `{}`", query.name);
+                }
+                cache = Some((tcx, expr));
+            }
+            QueryModifier::Desc(tcx, list) => {
+                if desc.is_some() {
+                    panic!("duplicate modifier `desc` for query `{}`", query.name);
+                }
+                desc = Some((tcx, list));
+            }
+            QueryModifier::FatalCycle => {
+                if fatal_cycle {
+                    panic!("duplicate modifier `fatal_cycle` for query `{}`", query.name);
+                }
+                fatal_cycle = true;
+            }
+        }
+    }
+    QueryModifiers {
+        load_cached,
+        cache,
+        desc,
+        fatal_cycle,
+    }
+}
+
 /// Add the impl of QueryDescription for the query to `impls` if one is requested
-fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStream) {
+fn add_query_description_impl(
+    query: &Query,
+    modifiers: QueryModifiers,
+    impls: &mut proc_macro2::TokenStream
+) {
     let name = &query.name;
     let arg = &query.arg;
     let key = &query.key.0;
 
-    // Find custom code to load the query from disk
-    let load_cached = query.attrs.0.iter().find_map(|attr| match attr {
-        QueryModifier::LoadCached(tcx, id, block) => Some((tcx, id, block)),
-        _ => None,
-    });
-
     // Find out if we should cache the query on disk
-    let cache = query.attrs.0.iter().find_map(|attr| match attr {
-        QueryModifier::Cache(tcx, expr) => Some((tcx, expr)),
-        _ => None,
-    }).map(|(tcx, expr)| {
-        let try_load_from_disk = if let Some((tcx, id, block)) = load_cached {
+    let cache = modifiers.cache.as_ref().map(|(tcx, expr)| {
+        let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
+            // Use custom code to load the query from disk
             quote! {
                 #[inline]
                 fn try_load_from_disk(
@@ -202,6 +253,7 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
                 }
             }
         } else {
+            // Use the default code to load the query from disk
             quote! {
                 #[inline]
                 fn try_load_from_disk(
@@ -224,14 +276,11 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
         }
     });
 
-    if cache.is_none() && load_cached.is_some() {
+    if cache.is_none() && modifiers.load_cached.is_some() {
         panic!("load_cached modifier on query `{}` without a cache modifier", name);
     }
 
-    let desc = query.attrs.0.iter().find_map(|attr| match attr {
-        QueryModifier::Desc(tcx, desc) => Some((tcx, desc)),
-        _ => None,
-    }).map(|(tcx, desc)| {
+    let desc = modifiers.desc.as_ref().map(|(tcx, desc)| {
         let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
         quote! {
             fn describe(
@@ -266,7 +315,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     for group in groups.0 {
         let mut group_stream = quote! {};
-        for query in &group.queries.0 {
+        for mut query in group.queries.0 {
+            let modifiers = process_modifiers(&mut query);
             let name = &query.name;
             let arg = &query.arg;
             let result_full = &query.result;
@@ -275,18 +325,19 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 _ => quote! { #result_full },
             };
 
-            // Look for a fatal_cycle modifier to pass on
-            let fatal_cycle = query.attrs.0.iter().find_map(|attr| match attr {
-                QueryModifier::FatalCycle => Some(()),
-                _ => None,
-            }).map(|_| quote! { fatal_cycle }).unwrap_or(quote! {});
+            // Pass on the fatal_cycle modifier
+            let fatal_cycle = if modifiers.fatal_cycle {
+                quote! { fatal_cycle }
+            } else {
+                quote! {}
+            };
 
             // Add the query to the group
             group_stream.extend(quote! {
                 [#fatal_cycle] fn #name: #name(#arg) #result,
             });
 
-            add_query_description_impl(query, &mut query_description_stream);
+            add_query_description_impl(&query, modifiers, &mut query_description_stream);
 
             // Create a dep node for the query
             dep_node_def_stream.extend(quote! {
