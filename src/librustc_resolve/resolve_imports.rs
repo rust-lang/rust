@@ -1294,7 +1294,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 directive.span,
             ) {
                 Ok(other_binding) => {
-                    is_redundant[ns] = Some(binding.def() == other_binding.def());
+                    is_redundant[ns] = Some(
+                        binding.def() == other_binding.def()
+                        && !other_binding.is_ambiguity()
+                    );
                     redundant_span[ns] =
                         Some((other_binding.span, other_binding.is_import()));
                 }
