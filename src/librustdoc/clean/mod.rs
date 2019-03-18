@@ -17,7 +17,7 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::mir::interpret::{GlobalId, ConstValue};
-use rustc::hir::{self, GenericArg, HirVec};
+use rustc::hir::{self, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::DisambiguatedDefPathData;
@@ -2927,16 +2927,6 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),
             ty::Error => panic!("Error"),
-        }
-    }
-}
-
-impl<'tcx> Clean<Constant> for ty::LazyConst<'tcx> {
-    fn clean(&self, cx: &DocContext<'_>) -> Constant {
-        if let ty::LazyConst::Evaluated(ct) = self {
-            ct.clean(cx)
-        } else {
-            unimplemented!() // FIXME(const_generics)
         }
     }
 }
