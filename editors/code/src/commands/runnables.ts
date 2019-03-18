@@ -128,7 +128,7 @@ export const autoCargoWatchTask: vscode.Task = {
     name: 'cargo watch',
     source: 'rust-analyzer',
     definition: {
-        type: "dupa",
+        type: 'watch'
     },
     execution: new vscode.ShellExecution('cargo', ['watch'], { cwd: '.' }),
 
@@ -138,8 +138,8 @@ export const autoCargoWatchTask: vscode.Task = {
         clear: true
     },
     // Not yet exposed in the vscode.d.ts
-    runOptions: {
-        runOn: 2 // RunOnOptions.folderOpen, https://github.com/Microsoft/vscode/blob/ea7c31d770e04b51d586b0d3944f3a7feb03afb9/src/vs/workbench/contrib/tasks/common/tasks.ts#L444-L456
-    } as unknown as vscode.RunOptions,
-
+    // https://github.com/Microsoft/vscode/blob/ea7c31d770e04b51d586b0d3944f3a7feb03afb9/src/vs/workbench/contrib/tasks/common/tasks.ts#L444-L456
+    runOptions: ({
+        runOn: 2 // RunOnOptions.folderOpen
+    } as unknown) as vscode.RunOptions
 };
