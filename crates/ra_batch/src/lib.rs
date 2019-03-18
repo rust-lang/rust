@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::collections::HashSet;
 
 use rustc_hash::FxHashMap;
@@ -9,7 +9,7 @@ use ra_db::{
 };
 use ra_hir::{db, HirInterner};
 use ra_project_model::ProjectWorkspace;
-use ra_vfs::{Vfs, VfsChange};
+use ra_vfs::{Vfs, VfsChange, RootEntry, Filter, RelativePath};
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
@@ -41,6 +41,30 @@ fn vfs_file_to_id(f: ra_vfs::VfsFile) -> FileId {
 }
 fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0.into())
+}
+
+struct IncludeRustFiles;
+
+impl IncludeRustFiles {
+    fn to_entry(path: PathBuf) -> RootEntry {
+        RootEntry::new(path, Box::new(Self {}))
+    }
+}
+
+impl Filter for IncludeRustFiles {
+    fn include_dir(&self, dir_path: &RelativePath) -> bool {
+        const IGNORED_FOLDERS: &[&str] = &["node_modules", "target", ".git"];
+
+        let is_ignored = dir_path.components().any(|c| IGNORED_FOLDERS.contains(&c.as_str()));
+
+        let hidden = dir_path.components().any(|c| c.as_str().starts_with("."));
+
+        !is_ignored && !hidden
+    }
+
+    fn include_file(&self, file_path: &RelativePath) -> bool {
+        file_path.extension() == Some("rs")
+    }
 }
 
 impl BatchDatabase {
@@ -100,6 +124,7 @@ impl BatchDatabase {
         let mut roots = Vec::new();
         roots.push(root.clone());
         roots.extend(ws.to_roots());
+        let roots = roots.into_iter().map(IncludeRustFiles::to_entry).collect::<Vec<_>>();
         let (mut vfs, roots) = Vfs::new(roots);
         let mut load = |path: &Path| {
             let vfs_file = vfs.load(path);
