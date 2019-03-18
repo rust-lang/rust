@@ -8,7 +8,7 @@ use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
-use rustc::ty::{self, TypeFlags};
+use rustc::ty::{Ty, TypeFlags};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_typeck::hir_ty_to_ty;
@@ -108,7 +108,7 @@ impl Source {
     }
 }
 
-fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, source: Source) {
+fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: Source) {
     if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP) || is_copy(cx, ty) {
         // An `UnsafeCell` is `!Copy`, and an `UnsafeCell` is also the only type which
         // is `!Freeze`, thus if our type is `Copy` we can be sure it must be `Freeze`

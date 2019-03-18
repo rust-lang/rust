@@ -176,7 +176,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                     return;
                 }
                 for a in attrs {
-                    if a.meta_item_list().is_some() && a.name() == "proc_macro_derive" {
+                    if a.meta_item_list().is_some() && a.check_name("proc_macro_derive") {
                         return;
                     }
                 }

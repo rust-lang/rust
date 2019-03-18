@@ -58,7 +58,7 @@ impl MissingDoc {
             if let Some(meta) = meta;
             if let MetaItemKind::List(list) = meta.node;
             if let Some(meta) = list.get(0);
-            if let Some(name) = meta.name();
+            if let Some(name) = meta.ident_str();
             then {
                 name == "include"
             } else {
@@ -91,7 +91,7 @@ impl MissingDoc {
 
         let has_doc = attrs
             .iter()
-            .any(|a| a.name() == "doc" && (a.is_value_str() || Self::has_include(a.meta())));
+            .any(|a| a.check_name("doc") && (a.is_value_str() || Self::has_include(a.meta())));
         if !has_doc {
             span_lint(
                 cx,

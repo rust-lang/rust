@@ -24,8 +24,10 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
+use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::map::DisambiguatedDefPathData;
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
@@ -41,8 +43,7 @@ use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
-use syntax::symbol;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{keywords, LocalInternedString, Symbol};
 
 use crate::reexport::*;
 
@@ -97,19 +98,96 @@ pub fn in_macro(span: Span) -> bool {
 /// Used to store the absolute path to a type.
 ///
 /// See `match_def_path` for usage.
-#[derive(Debug)]
-pub struct AbsolutePathBuffer {
-    pub names: Vec<symbol::LocalInternedString>,
+pub struct AbsolutePathPrinter<'a, 'tcx> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
-    fn root_mode(&self) -> &ty::item_path::RootMode {
-        const ABSOLUTE: &ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
-        ABSOLUTE
+use rustc::ty::print::Printer;
+
+#[allow(clippy::diverging_sub_expression)]
+impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
+    type Error = !;
+
+    type Path = Vec<LocalInternedString>;
+    type Region = ();
+    type Type = ();
+    type DynExistential = ();
+
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx
     }
 
-    fn push(&mut self, text: &str) {
-        self.names.push(symbol::Symbol::intern(text).as_str());
+    fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+        Ok(())
+    }
+
+    fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+        Ok(())
+    }
+
+    fn print_dyn_existential(
+        self,
+        _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    ) -> Result<Self::DynExistential, Self::Error> {
+        Ok(())
+    }
+
+    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
+        Ok(vec![self.tcx.original_crate_name(cnum).as_str()])
+    }
+
+    fn path_qualified(
+        self,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<Self::Path, Self::Error> {
+        if trait_ref.is_none() {
+            if let ty::Adt(def, substs) = self_ty.sty {
+                return self.print_def_path(def.did, substs);
+            }
+        }
+
+        // This shouldn't ever be needed, but just in case:
+        Ok(vec![match trait_ref {
+            Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
+            None => Symbol::intern(&format!("<{}>", self_ty)).as_str(),
+        }])
+    }
+
+    fn path_append_impl(
+        self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _disambiguated_data: &DisambiguatedDefPathData,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<Self::Path, Self::Error> {
+        let mut path = print_prefix(self)?;
+
+        // This shouldn't ever be needed, but just in case:
+        path.push(match trait_ref {
+            Some(trait_ref) => Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str(),
+            None => Symbol::intern(&format!("<impl {}>", self_ty)).as_str(),
+        });
+
+        Ok(path)
+    }
+
+    fn path_append(
+        self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        disambiguated_data: &DisambiguatedDefPathData,
+    ) -> Result<Self::Path, Self::Error> {
+        let mut path = print_prefix(self)?;
+        path.push(disambiguated_data.data.as_interned_str().as_str());
+        Ok(path)
+    }
+
+    fn path_generic_args(
+        self,
+        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
+        _args: &[Kind<'tcx>],
+    ) -> Result<Self::Path, Self::Error> {
+        print_prefix(self)
     }
 }
 
@@ -121,12 +199,10 @@ impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
 /// ```
 ///
 /// See also the `paths` module.
-pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> bool {
-    let mut apb = AbsolutePathBuffer { names: vec![] };
+pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path: &[&str]) -> bool {
+    let names = get_def_path(tcx, def_id);
 
-    tcx.push_item_path(&mut apb, def_id, false);
-
-    apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
+    names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
 /// Gets the absolute path of `def_id` as a vector of `&str`.
@@ -138,12 +214,12 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
 ///     // The given `def_id` is that of an `Option` type
 /// };
 /// ```
-pub fn get_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Vec<&'static str> {
-    let mut apb = AbsolutePathBuffer { names: vec![] };
-    tcx.push_item_path(&mut apb, def_id, false);
-    apb.names
+pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<&'static str> {
+    AbsolutePathPrinter { tcx }
+        .print_def_path(def_id, &[])
+        .unwrap()
         .iter()
-        .map(syntax_pos::symbol::LocalInternedString::get)
+        .map(LocalInternedString::get)
         .collect()
 }
 
@@ -1010,7 +1086,7 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: HirId)
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
-pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: ty::Ty<'_>) -> Option<&'static str> {
+pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Option<&'static str> {
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
     // so we can't use its `lookup_method` method.

@@ -152,7 +152,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, 
                 spans.extend_from_slice(&current_spans);
                 doc.push_str(&current);
             }
-        } else if attr.name() == "doc" {
+        } else if attr.check_name("doc") {
             // ignore mix of sugared and non-sugared doc
             return;
         }

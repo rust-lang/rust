@@ -3,7 +3,7 @@ use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, sni
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
@@ -87,7 +87,7 @@ impl LintPass for Pass {
     }
 }
 
-fn is_unit_type(ty: ty::Ty<'_>) -> bool {
+fn is_unit_type(ty: Ty<'_>) -> bool {
     match ty.sty {
         ty::Tuple(slice) => slice.is_empty(),
         ty::Never => true,

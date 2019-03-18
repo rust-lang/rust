@@ -10,6 +10,7 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
+use rustc::ty::print::Printer;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -24,7 +25,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathBuffer,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathPrinter,
 };
 
 /// Handles all the linting of funky types
@@ -1135,15 +1136,14 @@ impl LintPass for CastPass {
 
 // Check if the given type is either `core::ffi::c_void` or
 // one of the platform specific `libc::<platform>::c_void` of libc.
-fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+fn is_c_void<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.sty {
-        let mut apb = AbsolutePathBuffer { names: vec![] };
-        tcx.push_item_path(&mut apb, adt.did, false);
+        let names = AbsolutePathPrinter { tcx }.print_def_path(adt.did, &[]).unwrap();
 
-        if apb.names.is_empty() {
+        if names.is_empty() {
             return false;
         }
-        if apb.names[0] == "libc" || apb.names[0] == "core" && *apb.names.last().unwrap() == "c_void" {
+        if names[0] == "libc" || names[0] == "core" && *names.last().unwrap() == "c_void" {
             return true;
         }
     }
