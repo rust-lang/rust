@@ -23,7 +23,7 @@ pub fn arm_functions(input: TokenStream) -> TokenStream {
 
 fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let root = dir.parent().unwrap();
+    let root = dir.parent().expect("root-dir not found");
 
     let mut files = Vec::new();
     for dir in dirs {
@@ -199,11 +199,11 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     if path.segments.len() != 1 {
         panic!("unsupported path that needs name resolution")
     }
-    match path.segments.first().unwrap().value().arguments {
+    match path.segments.first().expect("segment not found").value().arguments {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments"),
     }
-    path.segments.first().unwrap().value().ident.clone()
+    path.segments.first().expect("segment not found").value().ident.clone()
 }
 
 fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
@@ -224,9 +224,9 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
 
         let mut contents = String::new();
         File::open(&path)
-            .unwrap()
+            .expect(&format!("can't open file at path: {}", path.display()))
             .read_to_string(&mut contents)
-            .unwrap();
+            .expect("failed to read file to string");
 
         files.push((
             syn::parse_str::<syn::File>(&contents).expect("failed to parse"),

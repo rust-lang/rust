@@ -254,6 +254,12 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     }
 
     for cpuid in &intel.cpuid {
+        // The pause intrinsic is in the SSE2 module, but it is backwards
+        // compatible with CPUs without SSE2, and it therefore does not need the
+        // target-feature attribute.
+        if rust.name == "_mm_pause" {
+            continue;
+        }
         // this is needed by _xsave and probably some related intrinsics,
         // but let's just skip it for now.
         if *cpuid == "XSS" {
