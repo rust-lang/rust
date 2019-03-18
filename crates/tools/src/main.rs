@@ -5,6 +5,7 @@ use tools::{
     generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
     Overwrite, Result, run_fuzzer,
 };
+use std::{path::{PathBuf}, env};
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -18,7 +19,9 @@ fn main() -> Result<()> {
         .get_matches();
     match matches.subcommand_name().expect("Subcommand must be specified") {
         "install-code" => {
-            setup_environment()?;
+            if cfg!(target_os = "macos") {
+                fix_path_for_mac()?;
+            }
             install_code_extension()?;
         }
         "gen-tests" => gen_tests(Overwrite)?,
@@ -28,14 +31,6 @@ fn main() -> Result<()> {
         "fuzz-tests" => run_fuzzer()?,
         _ => unreachable!(),
     }
-    Ok(())
-}
-
-fn setup_environment() -> Result<()> {
-    if cfg!(target_os = "macos") {
-        vscode_path_helpers::append_vscode_path()?;
-    }
-
     Ok(())
 }
 
@@ -75,28 +70,8 @@ fn verify_installed_extensions() -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
-mod vscode_path_helpers {
-    use super::Result;
-    use std::{path::{PathBuf}, env};
-    use failure::bail;
-
-    pub(crate) fn append_vscode_path() -> Result<()> {
-        let vars = match env::var_os("PATH") {
-            Some(path) => path,
-            None => bail!("Could not get PATH variable from env."),
-        };
-
-        let vscode_path = get_vscode_path()?;
-        let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
-        paths.push(vscode_path);
-        let new_paths = env::join_paths(paths)?;
-        env::set_var("PATH", &new_paths);
-
-        Ok(())
-    }
-
-    fn get_vscode_path() -> Result<PathBuf> {
+fn fix_path_for_mac() -> Result<()> {
+    let mut vscode_path: Vec<PathBuf> = {
         const COMMON_APP_PATH: &str =
             r"/Applications/Visual Studio Code.app/Contents/Resources/app/bin";
         const ROOT_DIR: &str = "";
@@ -105,26 +80,25 @@ mod vscode_path_helpers {
             Err(e) => bail!("Failed getting HOME from environment with error: {}.", e),
         };
 
-        for dir in [ROOT_DIR, &home_dir].iter() {
-            let path = String::from(dir.clone()) + COMMON_APP_PATH;
-            let path = PathBuf::from(path);
-            if path.exists() {
-                return Ok(path);
-            }
-        }
+        [ROOT_DIR, &home_dir]
+            .iter()
+            .map(|dir| String::from(dir.clone()) + COMMON_APP_PATH)
+            .map(PathBuf::from)
+            .filter(|path| path.exists())
+            .collect()
+    };
 
-        bail!(
-            "Could not find Visual Studio Code application. Please make sure you \
-             have Visual Studio Code installed and try again or install extension \
-             manually."
-        )
-    }
-}
+    if !vscode_path.is_empty() {
+        let vars = match env::var_os("PATH") {
+            Some(path) => path,
+            None => bail!("Could not get PATH variable from env."),
+        };
 
-#[cfg(not(target_os = "macos"))]
-mod vscode_path_helpers {
-    use super::Result;
-    pub(crate) fn append_vscode_path() -> Result<()> {
-        Ok(())
+        let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
+        paths.append(&mut vscode_path);
+        let new_paths = env::join_paths(paths)?;
+        env::set_var("PATH", &new_paths);
     }
+
+    Ok(())
 }
