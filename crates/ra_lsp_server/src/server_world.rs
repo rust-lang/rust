@@ -8,8 +8,8 @@ use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
     SourceRootId
 };
-use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
-use relative_path::RelativePathBuf;
+use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot, RootEntry, Filter};
+use relative_path::{RelativePath, RelativePathBuf};
 use parking_lot::RwLock;
 use failure::format_err;
 
@@ -33,6 +33,30 @@ pub struct ServerWorld {
     pub vfs: Arc<RwLock<Vfs>>,
 }
 
+struct IncludeRustFiles;
+
+impl IncludeRustFiles {
+    fn to_entry(path: PathBuf) -> RootEntry {
+        RootEntry::new(path, Box::new(Self {}))
+    }
+}
+
+impl Filter for IncludeRustFiles {
+    fn include_dir(&self, dir_path: &RelativePath) -> bool {
+        const IGNORED_FOLDERS: &[&str] = &["node_modules", "target", ".git"];
+
+        let is_ignored = dir_path.components().any(|c| IGNORED_FOLDERS.contains(&c.as_str()));
+
+        let hidden = dir_path.components().any(|c| c.as_str().starts_with("."));
+
+        !is_ignored && !hidden
+    }
+
+    fn include_file(&self, file_path: &RelativePath) -> bool {
+        file_path.extension() == Some("rs")
+    }
+}
+
 impl ServerWorldState {
     pub fn new(root: PathBuf, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
         let mut change = AnalysisChange::new();
@@ -42,6 +66,8 @@ impl ServerWorldState {
         for ws in workspaces.iter() {
             roots.extend(ws.to_roots());
         }
+        let roots = roots.into_iter().map(IncludeRustFiles::to_entry).collect::<Vec<_>>();
+
         let (mut vfs, roots) = Vfs::new(roots);
         let roots_to_scan = roots.len();
         for r in roots {
