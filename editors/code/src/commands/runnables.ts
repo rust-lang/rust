@@ -1,5 +1,8 @@
+import * as child_process from 'child_process';
+import * as util from 'util';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+
 import { Server } from '../server';
 
 interface RunnablesParams {
@@ -8,7 +11,6 @@ interface RunnablesParams {
 }
 
 interface Runnable {
-    range: lc.Range;
     label: string;
     bin: string;
     args: string[];
@@ -38,7 +40,7 @@ function createTask(spec: Runnable): vscode.Task {
     const TASK_SOURCE = 'Rust';
     const definition: CargoTaskDefinition = {
         type: 'cargo',
-        label: 'cargo',
+        label: spec.label,
         command: spec.bin,
         args: spec.args,
         env: spec.env
@@ -123,4 +125,89 @@ export async function handleSingle(runnable: Runnable) {
     };
 
     return vscode.tasks.executeTask(task);
+}
+
+export const autoCargoWatchTask: vscode.Task = {
+    name: 'cargo watch',
+    source: 'rust-analyzer',
+    definition: {
+        type: 'watch'
+    },
+    execution: new vscode.ShellExecution('cargo', ['watch'], { cwd: '.' }),
+
+    isBackground: true,
+    problemMatchers: ['$rustc-watch'],
+    presentationOptions: {
+        clear: true
+    },
+    // Not yet exposed in the vscode.d.ts
+    // https://github.com/Microsoft/vscode/blob/ea7c31d770e04b51d586b0d3944f3a7feb03afb9/src/vs/workbench/contrib/tasks/common/tasks.ts#L444-L456
+    runOptions: ({
+        runOn: 2 // RunOnOptions.folderOpen
+    } as unknown) as vscode.RunOptions
+};
+
+/**
+ * Interactively asks the user whether we should run `cargo check` in order to
+ * provide inline diagnostics; the user is met with a series of dialog boxes
+ * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
+ */
+export async function interactivelyStartCargoWatch() {
+    if (!Server.config.enableCargoWatchOnStartup) {
+        return;
+    }
+
+    const execPromise = util.promisify(child_process.exec);
+
+    const watch = await vscode.window.showInformationMessage(
+        'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
+        'yes',
+        'no'
+    );
+    if (watch === 'no') {
+        return;
+    }
+
+    const { stderr } = await execPromise('cargo watch --version').catch(e => e);
+    if (stderr.includes('no such subcommand: `watch`')) {
+        const msg =
+            'The `cargo-watch` subcommand is not installed. Install? (takes ~1-2 minutes)';
+        const install = await vscode.window.showInformationMessage(
+            msg,
+            'yes',
+            'no'
+        );
+        if (install === 'no') {
+            return;
+        }
+
+        const label = 'install-cargo-watch';
+        const taskFinished = new Promise((resolve, reject) => {
+            const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
+                if (execution.task.name === label) {
+                    disposable.dispose();
+                    resolve();
+                }
+            });
+        });
+
+        vscode.tasks.executeTask(
+            createTask({
+                label,
+                bin: 'cargo',
+                args: ['install', 'cargo-watch'],
+                env: {}
+            })
+        );
+        await taskFinished;
+        const output = await execPromise('cargo watch --version').catch(e => e);
+        if (output.stderr !== '') {
+            vscode.window.showErrorMessage(
+                `Couldn't install \`cargo-\`watch: ${output.stderr}`
+            );
+            return;
+        }
+    }
+
+    vscode.tasks.executeTask(autoCargoWatchTask);
 }

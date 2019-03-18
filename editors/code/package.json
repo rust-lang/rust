@@ -168,6 +168,11 @@
                     "default": "ra_lsp_server",
                     "description": "Path to ra_lsp_server executable"
                 },
+                "rust-analyzer.enableCargoWatchOnStartup": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "When enabled, ask the user whether to run `cargo watch` on startup"
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
