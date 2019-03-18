@@ -5,6 +5,7 @@ use tools::{
     generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
     Overwrite, Result, run_fuzzer,
 };
+use std::{path::{PathBuf}, env};
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -17,7 +18,12 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("fuzz-tests"))
         .get_matches();
     match matches.subcommand_name().expect("Subcommand must be specified") {
-        "install-code" => install_code_extension()?,
+        "install-code" => {
+            if cfg!(target_os = "macos") {
+                fix_path_for_mac()?;
+            }
+            install_code_extension()?;
+        }
         "gen-tests" => gen_tests(Overwrite)?,
         "gen-syntax" => generate(Overwrite)?,
         "format" => run_rustfmt(Overwrite)?,
@@ -61,5 +67,38 @@ fn verify_installed_extensions() -> Result<()> {
              have at least NodeJS 10.x installed and try again."
         );
     }
+    Ok(())
+}
+
+fn fix_path_for_mac() -> Result<()> {
+    let mut vscode_path: Vec<PathBuf> = {
+        const COMMON_APP_PATH: &str =
+            r"/Applications/Visual Studio Code.app/Contents/Resources/app/bin";
+        const ROOT_DIR: &str = "";
+        let home_dir = match env::var("HOME") {
+            Ok(home) => home,
+            Err(e) => bail!("Failed getting HOME from environment with error: {}.", e),
+        };
+
+        [ROOT_DIR, &home_dir]
+            .iter()
+            .map(|dir| String::from(dir.clone()) + COMMON_APP_PATH)
+            .map(PathBuf::from)
+            .filter(|path| path.exists())
+            .collect()
+    };
+
+    if !vscode_path.is_empty() {
+        let vars = match env::var_os("PATH") {
+            Some(path) => path,
+            None => bail!("Could not get PATH variable from env."),
+        };
+
+        let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
+        paths.append(&mut vscode_path);
+        let new_paths = env::join_paths(paths)?;
+        env::set_var("PATH", &new_paths);
+    }
+
     Ok(())
 }
