@@ -210,26 +210,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident_str() {
                 match ident {
-                "allow" | "warn" | "deny" | "forbid" => {
-                    check_clippy_lint_names(cx, items);
-                },
-                _ => {},
-            }
+                    "allow" | "warn" | "deny" | "forbid" => {
+                        check_clippy_lint_names(cx, items);
+                    },
+                    _ => {},
+                }
                 if items.is_empty() || !attr.check_name("deprecated") {
-                return;
-            }
-            for item in items {
-                if_chain! {
+                    return;
+                }
+                for item in items {
+                    if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
-                    if let MetaItemKind::NameValue(lit) = &mi.node;
+                        if let MetaItemKind::NameValue(lit) = &mi.node;
                         if mi.check_name("since");
-                    then {
+                        then {
                             check_semver(cx, item.span(), lit);
+                        }
                     }
                 }
             }
         }
-    }
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
@@ -244,53 +244,53 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if let Some(ident) = attr.ident_str() {
                             match ident {
-                            "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports` and `deprecated` for `use` items
-                                // and `unused_imports` for `extern crate` items with `macro_use`
-                                for lint in lint_list {
-                                    match item.node {
-                                        ItemKind::Use(..) => {
-                                            if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                                return;
-                                            }
-                                        },
-                                        ItemKind::ExternCrate(..) => {
-                                            if is_word(lint, "unused_imports") && skip_unused_imports {
-                                                return;
-                                            }
-                                            if is_word(lint, "unused_extern_crates") {
-                                                return;
-                                            }
-                                        },
-                                        _ => {},
-                                    }
-                                }
-                                let line_span = last_line_of_span(cx, attr.span);
-
-                                if let Some(mut sugg) = snippet_opt(cx, line_span) {
-                                    if sugg.contains("#[") {
-                                        span_lint_and_then(
-                                            cx,
-                                            USELESS_ATTRIBUTE,
-                                            line_span,
-                                            "useless lint attribute",
-                                            |db| {
-                                                sugg = sugg.replacen("#[", "#![", 1);
-                                                db.span_suggestion(
-                                                    line_span,
-                                                    "if you just forgot a `!`, use",
-                                                    sugg,
-                                                    Applicability::MachineApplicable,
-                                                );
+                                "allow" | "warn" | "deny" | "forbid" => {
+                                    // whitelist `unused_imports` and `deprecated` for `use` items
+                                    // and `unused_imports` for `extern crate` items with `macro_use`
+                                    for lint in lint_list {
+                                        match item.node {
+                                            ItemKind::Use(..) => {
+                                                if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
+                                                    return;
+                                                }
                                             },
-                                        );
+                                            ItemKind::ExternCrate(..) => {
+                                                if is_word(lint, "unused_imports") && skip_unused_imports {
+                                                    return;
+                                                }
+                                                if is_word(lint, "unused_extern_crates") {
+                                                    return;
+                                                }
+                                            },
+                                            _ => {},
+                                        }
                                     }
-                                }
-                            },
-                            _ => {},
+                                    let line_span = last_line_of_span(cx, attr.span);
+
+                                    if let Some(mut sugg) = snippet_opt(cx, line_span) {
+                                        if sugg.contains("#[") {
+                                            span_lint_and_then(
+                                                cx,
+                                                USELESS_ATTRIBUTE,
+                                                line_span,
+                                                "useless lint attribute",
+                                                |db| {
+                                                    sugg = sugg.replacen("#[", "#![", 1);
+                                                    db.span_suggestion(
+                                                        line_span,
+                                                        "if you just forgot a `!`, use",
+                                                        sugg,
+                                                        Applicability::MachineApplicable,
+                                                    );
+                                                },
+                                            );
+                                        }
+                                    }
+                                },
+                                _ => {},
+                            }
                         }
                     }
-                }
                 }
             },
             _ => {},
@@ -527,7 +527,7 @@ impl EarlyLintPass for CfgAttrPass {
             if feature_item.check_name("rustfmt");
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
-            if skip_item.check_name("rustfmt_skip") || 
+            if skip_item.check_name("rustfmt_skip") ||
                 skip_item.path.segments.last().expect("empty path in attribute").ident.name == "skip";
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726

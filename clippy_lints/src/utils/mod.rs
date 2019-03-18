@@ -146,7 +146,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
                 return self.print_def_path(def.did, substs);
             }
         }
-        
+
         // This shouldn't ever be needed, but just in case:
         Ok(vec![match trait_ref {
             Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
