@@ -939,7 +939,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
         let flags = FlagComputation::for_const(c);
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
-        flags.intersects(self.flags) || c.super_visit_with(self)
+        flags.intersects(self.flags)
     }
 }
 
