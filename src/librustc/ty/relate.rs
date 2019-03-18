@@ -635,7 +635,7 @@ where
                 Ok(tcx.mk_const(ty::Const {
                     val: ConstValue::Unevaluated(a_def_id, &substs),
                     ty: a.ty,
-                })
+                }))
             }
 
             _ => {
