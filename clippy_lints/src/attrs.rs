@@ -527,7 +527,8 @@ impl EarlyLintPass for CfgAttrPass {
             if feature_item.check_name("rustfmt");
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
-            if skip_item.check_name("rustfmt_skip") || skip_item.check_name("skip");
+            if skip_item.check_name("rustfmt_skip") || 
+                skip_item.path.segments.last().expect("empty path in attribute").ident.name == "skip";
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726
             if let AttrStyle::Outer = attr.style;
