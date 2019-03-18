@@ -391,6 +391,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     type Region = Self;
     type Type = Self;
     type DynExistential = Self;
+    type Const = Self;
 
     fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
@@ -434,6 +435,13 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             self = p.print(self)?;
         }
         Ok(self)
+    }
+
+    fn print_const(
+        self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        self.pretty_print_const(ct)
     }
 
     fn path_crate(
