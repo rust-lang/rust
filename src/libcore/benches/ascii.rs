@@ -84,6 +84,12 @@ benches! {
         }
     }
 
+    fn bench05_multiply_by_bool(bytes: &mut [u8]) {
+        for byte in bytes {
+            *byte &= !(0x20 * (b'a' <= *byte && *byte <= b'z') as u8)
+        }
+    }
+
     fn bench06_libcore(bytes: &mut [u8]) {
         bytes.make_ascii_uppercase()
     }
