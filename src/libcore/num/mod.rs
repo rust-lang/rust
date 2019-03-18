@@ -3958,9 +3958,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
-        if *self >= 0x80 { return false; }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            L | Lx | U | Ux => true,
+        match *self {
+            b'A'...b'Z' | b'a'...b'z' => true,
             _ => false
         }
     }
@@ -3994,9 +3993,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            U | Ux => true,
+        match *self {
+            b'A'...b'Z' => true,
             _ => false
         }
     }
@@ -4030,9 +4028,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            L | Lx => true,
+        match *self {
+            b'a'...b'z' => true,
             _ => false
         }
     }
@@ -4069,9 +4066,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            D | L | Lx | U | Ux => true,
+        match *self {
+            b'0'...b'9' | b'A'...b'Z' | b'a'...b'z' => true,
             _ => false
         }
     }
@@ -4105,9 +4101,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            D => true,
+        match *self {
+            b'0'...b'9' => true,
             _ => false
         }
     }
@@ -4144,9 +4139,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            D | Lx | Ux => true,
+        match *self {
+            b'0'...b'9' | b'A'...b'F' | b'a'...b'f' => true,
             _ => false
         }
     }
@@ -4184,9 +4178,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
-        if *self >= 0x80 { return false }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            P => true,
+        match *self {
+            b'!'...b'/' | b':'...b'@' | b'['...b'`' | b'{'...b'~' => true,
             _ => false
         }
     }
@@ -4220,9 +4213,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
-        if *self >= 0x80 { return false; }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            Ux | U | Lx | L | D | P => true,
+        match *self {
+            b'!'...b'~' => true,
             _ => false
         }
     }
@@ -4273,9 +4265,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
-        if *self >= 0x80 { return false; }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            Cw | W => true,
+        match *self {
+            b'\t' | b'\n' | b'\x0C' | b'\r' | b' ' => true,
             _ => false
         }
     }
@@ -4311,9 +4302,8 @@ impl u8 {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
-        if *self >= 0x80 { return false; }
-        match ASCII_CHARACTER_CLASS[*self as usize] {
-            C | Cw => true,
+        match *self {
+            b'\0'...b'\x1F' | b'\x7F' => true,
             _ => false
         }
     }
@@ -4979,28 +4969,3 @@ impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 
 // Float -> Float
 impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-
-enum AsciiCharacterClass {
-    C,  // control
-    Cw, // control whitespace
-    W,  // whitespace
-    D,  // digit
-    L,  // lowercase
-    Lx, // lowercase hex digit
-    U,  // uppercase
-    Ux, // uppercase hex digit
-    P,  // punctuation
-}
-use self::AsciiCharacterClass::*;
-
-static ASCII_CHARACTER_CLASS: [AsciiCharacterClass; 128] = [
-//  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _a _b _c _d _e _f
-    C, C, C, C, C, C, C, C, C, Cw,Cw,C, Cw,Cw,C, C, // 0_
-    C, C, C, C, C, C, C, C, C, C, C, C, C, C, C, C, // 1_
-    W, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, // 2_
-    D, D, D, D, D, D, D, D, D, D, P, P, P, P, P, P, // 3_
-    P, Ux,Ux,Ux,Ux,Ux,Ux,U, U, U, U, U, U, U, U, U, // 4_
-    U, U, U, U, U, U, U, U, U, U, U, P, P, P, P, P, // 5_
-    P, Lx,Lx,Lx,Lx,Lx,Lx,L, L, L, L, L, L, L, L, L, // 6_
-    L, L, L, L, L, L, L, L, L, L, L, P, P, P, P, C, // 7_
-];
