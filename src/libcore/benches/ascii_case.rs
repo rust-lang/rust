@@ -1,24 +1,4 @@
-// Lower-case ASCII 'a' is the first byte that has its highest bit set after wrap-adding 0x1F:
-//
-//     b'a' + 0x1F == 0x80 == 0b1000_0000
-//     b'z' + 0x1F == 0x98 == 0b10011000
-//
-// Lower-case ASCII 'z' is the last byte that has its highest bit unset after wrap-adding 0x05:
-//
-//     b'a' + 0x05 == 0x66 == 0b0110_0110
-//     b'z' + 0x05 == 0x7F == 0b0111_1111
-//
-// … except for 0xFB to 0xFF, but those are in the range of bytes that have the highest bit
-// unset again after adding 0x1F.
-//
-// So `(byte + 0x1f) & !(byte + 5)` has its highest bit set
-// iff `byte` is a lower-case ASCII letter.
-//
-// Lower-case ASCII letters all have the 0x20 bit set.
-// (Two positions right of 0x80, the highest bit.)
-// Unsetting that bit produces the same letter, in upper-case.
-//
-// Therefore:
+// See comments in `u8::to_ascii_uppercase` in `src/libcore/num/mod.rs`.
 fn branchless_to_ascii_upper_case(byte: u8) -> u8 {
     byte &
     !(
