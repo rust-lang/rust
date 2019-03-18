@@ -261,7 +261,9 @@ impl fmt::Display for clean::Lifetime {
 
 impl fmt::Display for clean::Constant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.expr, self.type_)
+        fmt::Display::fmt(&self.expr, f)?;
+        f.write_str(": ")?;
+        fmt::Display::fmt(&self.type_, f)
     }
 }
 
