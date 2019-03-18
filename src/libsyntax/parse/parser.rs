@@ -6732,7 +6732,15 @@ impl<'a> Parser<'a> {
         };
 
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let ty_first = self.parse_ty()?;
+        let err_path = |span| ast::Path::from_ident(Ident::new(keywords::Invalid.name(), span));
+        let ty_first = if self.token.is_keyword(keywords::For) &&
+                          self.look_ahead(1, |t| t != &token::Lt) {
+            let span = self.prev_span.between(self.span);
+            self.struct_span_err(span, "missing trait in a trait impl").emit();
+            P(Ty { node: TyKind::Path(None, err_path(span)), span, id: ast::DUMMY_NODE_ID })
+        } else {
+            self.parse_ty()?
+        };
 
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(keywords::For);
@@ -6741,7 +6749,7 @@ impl<'a> Parser<'a> {
         let ty_second = if self.token == token::DotDot {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
-            Some(P(Ty { node: TyKind::Err, span: self.prev_span, id: ast::DUMMY_NODE_ID }))
+            Some(DummyResult::raw_ty(self.prev_span, true))
         } else if has_for || self.token.can_begin_type() {
             Some(self.parse_ty()?)
         } else {
@@ -6771,7 +6779,7 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, path) => path,
                     _ => {
                         self.span_err(ty_first.span, "expected a trait, found type");
-                        ast::Path::from_ident(Ident::new(keywords::Invalid.name(), ty_first.span))
+                        err_path(ty_first.span)
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
