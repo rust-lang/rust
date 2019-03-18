@@ -145,9 +145,11 @@ const LONG: &'static str = repeat!(r#"
     La Guida di Bragia, a Ballad Opera for the Marionette Theatre (around 1850)
     Alice's Adventures in Wonderland (1865)
     Phantasmagoria and Other Poems (1869)
-    Through the Looking-Glass, and What Alice Found There (includes "Jabberwocky" and "The Walrus and the Carpenter") (1871)
+    Through the Looking-Glass, and What Alice Found There
+        (includes "Jabberwocky" and "The Walrus and the Carpenter") (1871)
     The Hunting of the Snark (1876)
-    Rhyme? And Reason? (1883) – shares some contents with the 1869 collection, including the long poem "Phantasmagoria"
+    Rhyme? And Reason? (1883) – shares some contents with the 1869 collection,
+        including the long poem "Phantasmagoria"
     A Tangled Tale (1885)
     Sylvie and Bruno (1889)
     Sylvie and Bruno Concluded (1893)
