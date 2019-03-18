@@ -139,7 +139,8 @@ error[E0277]: `&str` is not an iterator
   = note: required by `std::iter::IntoIterator::into_iter`
 ```
 
-If you need to filter on multiple attributes, you can use `all` in the following way:
+If you need to filter on multiple attributes, you can use `all`, `any` or
+`not` in the following way:
 
 ```rust,compile_fail
 #[rustc_on_unimplemented(
