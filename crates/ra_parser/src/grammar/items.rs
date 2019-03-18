@@ -35,11 +35,11 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
 ];
 
 pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemFlavor) {
-    let mut m = p.start();
+    let m = p.start();
     attributes::outer_attributes(p);
-    m = match maybe_item(p, m, flavor) {
-        Some(m) => m,
-        None => return,
+    let m = match maybe_item(p, m, flavor) {
+        Ok(()) => return,
+        Err(m) => m,
     };
     if paths::is_path_start(p) {
         match macro_call(p) {
@@ -66,11 +66,11 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
     }
 }
 
-pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Option<Marker> {
+pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Result<(), Marker> {
     opt_visibility(p);
     if let Some(kind) = items_without_modifiers(p) {
         m.complete(p, kind);
-        return None;
+        return Ok(());
     }
 
     let mut has_mods = false;
@@ -124,7 +124,6 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Optio
         FN_KW => {
             fn_def(p, flavor);
             m.complete(p, FN_DEF);
-            None
         }
 
         // test unsafe_trait
@@ -138,7 +137,6 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Optio
         TRAIT_KW => {
             traits::trait_def(p);
             m.complete(p, TRAIT_DEF);
-            None
         }
 
         // test unsafe_impl
@@ -152,18 +150,17 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Optio
         IMPL_KW => {
             traits::impl_block(p);
             m.complete(p, IMPL_BLOCK);
-            None
         }
         _ => {
-            if has_mods {
+            if !has_mods {
+                return Err(m);
+            } else {
                 p.error("expected fn, trait or impl");
                 m.complete(p, ERROR);
-                None
-            } else {
-                Some(m)
             }
         }
     }
+    Ok(())
 }
 
 fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {

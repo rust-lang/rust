@@ -54,7 +54,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
 
         // test block_items
         // fn a() { fn b() {} }
-        let mut m = p.start();
+        let m = p.start();
         let has_attrs = p.at(POUND);
         attributes::outer_attributes(p);
         if p.at(LET_KW) {
@@ -62,9 +62,9 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
-            Some(m) => m,
-            None => continue,
+        let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
+            Ok(()) => continue,
+            Err(m) => m,
         };
 
         // test pub_expr
