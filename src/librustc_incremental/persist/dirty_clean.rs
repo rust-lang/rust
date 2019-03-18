@@ -36,16 +36,16 @@ const CFG: &str = "cfg";
 
 /// For typedef, constants, and statics
 const BASE_CONST: &[&str] = &[
-    label_strs::TypeOfItem,
+    label_strs::type_of,
 ];
 
 /// DepNodes for functions + methods
 const BASE_FN: &[&str] = &[
     // Callers will depend on the signature of these items, so we better test
     label_strs::FnSignature,
-    label_strs::GenericsOfItem,
-    label_strs::PredicatesOfItem,
-    label_strs::TypeOfItem,
+    label_strs::generics_of,
+    label_strs::predicates_of,
+    label_strs::type_of,
 
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
@@ -62,7 +62,7 @@ const BASE_HIR: &[&str] = &[
 /// `impl` implementation of struct/trait
 const BASE_IMPL: &[&str] = &[
     label_strs::AssociatedItemDefIds,
-    label_strs::GenericsOfItem,
+    label_strs::generics_of,
     label_strs::ImplTraitRef,
 ];
 
@@ -78,17 +78,17 @@ const BASE_MIR: &[&str] = &[
 /// Note that changing the type of a field does not change the type of the struct or enum, but
 /// adding/removing fields or changing a fields name or visibility does.
 const BASE_STRUCT: &[&str] = &[
-    label_strs::GenericsOfItem,
-    label_strs::PredicatesOfItem,
-    label_strs::TypeOfItem,
+    label_strs::generics_of,
+    label_strs::predicates_of,
+    label_strs::type_of,
 ];
 
 /// Trait definition `DepNode`s.
 const BASE_TRAIT_DEF: &[&str] = &[
     label_strs::AssociatedItemDefIds,
-    label_strs::GenericsOfItem,
+    label_strs::generics_of,
     label_strs::ObjectSafety,
-    label_strs::PredicatesOfItem,
+    label_strs::predicates_of,
     label_strs::SpecializationGraph,
     label_strs::TraitDefOfItem,
     label_strs::TraitImpls,
@@ -179,7 +179,7 @@ const LABELS_TRAIT: &[&[&str]] = &[
 // Fields are kind of separate from their containers, as they can change independently from
 // them. We should at least check
 //
-//     TypeOfItem for these.
+//     type_of for these.
 
 type Labels = FxHashSet<String>;
 

@@ -1,8 +1,8 @@
-error: no path from `WillChange` to `TypeOfItem`
+error: no path from `WillChange` to `type_of`
   --> $DIR/dep-graph-struct-signature.rs:27:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `WillChange` to `AssociatedItems`
   --> $DIR/dep-graph-struct-signature.rs:28:5
@@ -43,38 +43,38 @@ LL |     #[rustc_then_this_would_need(TypeckTables)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:45:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:52:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:60:9
    |
-LL |         #[rustc_then_this_would_need(TypeOfItem)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(type_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:62:9
    |
-LL |         #[rustc_then_this_would_need(TypeOfItem)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(type_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `TypeOfItem`
+error: no path from `WillChange` to `type_of`
   --> $DIR/dep-graph-struct-signature.rs:67:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `TypeOfItem`
+error: no path from `WillChange` to `type_of`
   --> $DIR/dep-graph-struct-signature.rs:74:5
    |
-LL |     #[rustc_then_this_would_need(TypeOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(type_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `WillChange` to `FnSignature`
   --> $DIR/dep-graph-struct-signature.rs:80:5

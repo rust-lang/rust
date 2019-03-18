@@ -1131,10 +1131,12 @@ macro_rules! define_provider_struct {
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
-pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
-                                           dep_node: &DepNode)
-                                           -> bool {
+pub fn force_from_dep_node<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    dep_node: &DepNode
+) -> bool {
     use crate::hir::def_id::LOCAL_CRATE;
+    use crate::dep_graph::RecoverKey;
 
     // We must avoid ever having to call force_from_dep_node() for a
     // DepNode::CodegenUnit:
@@ -1171,17 +1173,26 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         () => { (def_id!()).krate }
     };
 
-    macro_rules! force {
-        ($query:ident, $key:expr) => {
+    macro_rules! force_ex {
+        ($tcx:expr, $query:ident, $key:expr) => {
             {
-                tcx.force_query::<crate::ty::query::queries::$query<'_>>($key, DUMMY_SP, *dep_node);
+                $tcx.force_query::<crate::ty::query::queries::$query<'_>>(
+                    $key,
+                    DUMMY_SP,
+                    *dep_node
+                );
             }
         }
     };
 
+    macro_rules! force {
+        ($query:ident, $key:expr) => { force_ex!(tcx, $query, $key) }
+    };
+
     // FIXME(#45015): We should try move this boilerplate code into a macro
     //                somehow.
-    match dep_node.kind {
+
+    rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already
         DepKind::AllLocalTraitImpls |
@@ -1274,9 +1285,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
         DepKind::AssociatedItems => { force!(associated_item, def_id!()); }
-        DepKind::TypeOfItem => { force!(type_of, def_id!()); }
-        DepKind::GenericsOfItem => { force!(generics_of, def_id!()); }
-        DepKind::PredicatesOfItem => { force!(predicates_of, def_id!()); }
         DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
         DepKind::ExplicitPredicatesOfItem => { force!(explicit_predicates_of, def_id!()); }
         DepKind::InferredOutlivesOf => { force!(inferred_outlives_of, def_id!()); }
@@ -1332,7 +1340,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
         DepKind::RenderedConst => { force!(rendered_const, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
-        DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
         DepKind::IsCompilerBuiltins => { force!(is_compiler_builtins, krate!()); }
         DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
         DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
@@ -1349,7 +1356,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CheckTraitItemWellFormed => { force!(check_trait_item_well_formed, def_id!()); }
         DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
-        DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::EntryFn => { force!(entry_fn, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
         DepKind::ProcMacroDeclsStatic => { force!(proc_macro_decls_static, krate!()); }
@@ -1432,7 +1438,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::BackendOptimizationLevel => {
             force!(backend_optimization_level, krate!());
         }
-    }
+    );
 
     true
 }
@@ -1493,9 +1499,9 @@ impl_load_from_cache!(
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     CheckMatch => check_match,
-    TypeOfItem => type_of,
-    GenericsOfItem => generics_of,
-    PredicatesOfItem => predicates_of,
+    type_of => type_of,
+    generics_of => generics_of,
+    predicates_of => predicates_of,
     UsedTraitImports => used_trait_imports,
     CodegenFnAttrs => codegen_fn_attrs,
     SpecializationGraph => specialization_graph_of,

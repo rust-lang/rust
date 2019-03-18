@@ -97,7 +97,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="TypeOfItem,PredicatesOfItem")]
+    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }
@@ -334,7 +334,7 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem",
+        except="Hir,HirBody,generics_of,predicates_of,type_of",
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_method<T>(&self) { }
@@ -354,7 +354,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem,TypeckTables"
+        except="Hir,HirBody,generics_of,predicates_of,type_of,TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -381,8 +381,8 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `TypeckTables`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,\
-                                        TypeOfItem")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,generics_of,predicates_of,\
+                                        type_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
 }
@@ -408,7 +408,7 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `TypeckTables`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,PredicatesOfItem")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,predicates_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_trait_bound_to_type_param_of_method<T: Clone>(&self) { }
 }
@@ -442,12 +442,12 @@ impl Bar<u32> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,GenericsOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody,generics_of")]
 #[rustc_clean(cfg="cfail3")]
 impl<T> Bar<T> {
     #[rustc_clean(
         cfg="cfail2",
-        except="GenericsOfItem,FnSignature,TypeckTables,TypeOfItem,MirOptimized,MirBuilt"
+        except="generics_of,FnSignature,TypeckTables,type_of,MirOptimized,MirBuilt"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_impl(&self) { }

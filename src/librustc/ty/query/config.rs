@@ -34,7 +34,7 @@ pub trait QueryConfig<'tcx> {
     type Value: Clone;
 }
 
-pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
+pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
@@ -53,7 +53,7 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>, error: CycleError<'tcx>) -> Self::Value;
 }
 
-pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
+pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
@@ -587,12 +587,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::dylib_dependency_formats<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::is_panic_runtime<'tcx> {
-    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "checking if the crate is_panic_runtime".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::is_compiler_builtins<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "checking if the crate is_compiler_builtins".into()
@@ -668,12 +662,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_sanitizer_runtime<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::reachable_non_generics<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the exported symbols of a crate".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::native_libraries<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "looking up the native libraries of a linked crate".into()
     }
 }
 
@@ -949,21 +937,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
-    #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, def_id: Self::Key) -> bool {
-        def_id.is_local()
-    }
-
-    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: SerializedDepNodeIndex)
-                              -> Option<Self::Value> {
-        let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
-                                                .try_load_query_result(tcx, id);
-        generics.map(|x| tcx.alloc_generics(x))
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
         "generating chalk-style clauses".into()
@@ -1027,7 +1000,6 @@ impl_disk_cacheable_query!(borrowck, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_const_qualif, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(def_symbol_name, |_, _| true);
-impl_disk_cacheable_query!(type_of, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(predicates_of, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(used_trait_imports, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(codegen_fn_attrs, |_, _| true);

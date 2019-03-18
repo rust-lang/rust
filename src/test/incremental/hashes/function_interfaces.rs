@@ -117,7 +117,7 @@ pub fn type_parameter() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, generics_of, type_of, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_parameter<T>() {}
 
@@ -128,7 +128,7 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, GenericsOfItem")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, generics_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_parameter<'a>() {}
 
@@ -139,7 +139,7 @@ pub fn lifetime_parameter<'a>() {}
 pub fn trait_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn trait_bound<T: Eq>() {}
 
@@ -150,7 +150,7 @@ pub fn trait_bound<T: Eq>() {}
 pub fn builtin_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn builtin_bound<T: Send>() {}
 
@@ -162,7 +162,7 @@ pub fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, generics_of, type_of, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_bound<'a, T: 'a>() {}
 
@@ -173,7 +173,7 @@ pub fn lifetime_bound<'a, T: 'a>() {}
 pub fn second_trait_bound<T: Eq>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_trait_bound<T: Eq + Clone>() {}
 
@@ -184,7 +184,7 @@ pub fn second_trait_bound<T: Eq + Clone>() {}
 pub fn second_builtin_bound<T: Send>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_builtin_bound<T: Send + Sized>() {}
 
@@ -196,7 +196,7 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, generics_of, type_of, predicates_of")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 
@@ -326,7 +326,7 @@ pub mod change_trait_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
@@ -340,7 +340,7 @@ pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, predicates_of")]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_trait_bound_where<T>(p: T)
     where

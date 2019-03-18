@@ -423,7 +423,7 @@ impl DefId {
     }
 }
 
-define_dep_nodes!( <'tcx>
+rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
@@ -492,9 +492,6 @@ define_dep_nodes!( <'tcx>
     // table in the tcx (or elsewhere) maps to one of these
     // nodes.
     [] AssociatedItems(DefId),
-    [] TypeOfItem(DefId),
-    [] GenericsOfItem(DefId),
-    [] PredicatesOfItem(DefId),
     [] ExplicitPredicatesOfItem(DefId),
     [] PredicatesDefinedOnItem(DefId),
     [] InferredOutlivesOf(DefId),
@@ -570,7 +567,6 @@ define_dep_nodes!( <'tcx>
     [] FnArgNames(DefId),
     [] RenderedConst(DefId),
     [] DylibDepFormats(CrateNum),
-    [] IsPanicRuntime(CrateNum),
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
     [] HasPanicHandler(CrateNum),
@@ -588,7 +584,6 @@ define_dep_nodes!( <'tcx>
     [] CheckTraitItemWellFormed(DefId),
     [] CheckImplItemWellFormed(DefId),
     [] ReachableNonGenerics(CrateNum),
-    [] NativeLibraries(CrateNum),
     [] EntryFn(CrateNum),
     [] PluginRegistrarFn(CrateNum),
     [] ProcMacroDeclsStatic(CrateNum),
@@ -679,7 +674,23 @@ define_dep_nodes!( <'tcx>
 
     [] UpstreamMonomorphizations(CrateNum),
     [] UpstreamMonomorphizationsFor(DefId),
-);
+]);
+
+pub trait RecoverKey<'tcx>: Sized {
+    fn recover(tcx: TyCtxt<'_, 'tcx, 'tcx>, dep_node: &DepNode) -> Option<Self>;
+}
+
+impl RecoverKey<'tcx> for CrateNum {
+    fn recover(tcx: TyCtxt<'_, 'tcx, 'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|id| id.krate)
+    }
+}
+
+impl RecoverKey<'tcx> for DefId {
+    fn recover(tcx: TyCtxt<'_, 'tcx, 'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx)
+    }
+}
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
     const CAN_RECONSTRUCT_QUERY_KEY: bool;

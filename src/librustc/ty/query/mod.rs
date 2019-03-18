@@ -80,13 +80,14 @@ mod values;
 use self::values::Value;
 
 mod config;
+pub(crate) use self::config::QueryDescription;
 pub use self::config::QueryConfig;
-use self::config::{QueryAccessors, QueryDescription};
+use self::config::QueryAccessors;
 
 mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
 
-// Each of these quries corresponds to a function pointer field in the
+// Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
 // which memoizes and does dep-graph tracking, wrapping around the actual
@@ -97,34 +98,11 @@ pub use self::on_disk_cache::OnDiskCache;
 // (error) value if the query resulted in a query cycle.
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
-define_queries! { <'tcx>
+
+rustc_query_append! { [define_queries!][ <'tcx>
     Other {
         /// Run analysis passes on the crate
         [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
-
-        /// Records the type of every item.
-        [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
-
-        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
-        /// associated generics.
-        [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
-
-        /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
-        /// predicates (where-clauses) that must be proven true in order
-        /// to reference it. This is almost always the "predicates query"
-        /// that you want.
-        ///
-        /// `predicates_of` builds on `predicates_defined_on` -- in fact,
-        /// it is almost always the same as that query, except for the
-        /// case of traits. For traits, `predicates_of` contains
-        /// an additional `Self: Trait<...>` predicate that users don't
-        /// actually write. This reflects the fact that to invoke the
-        /// trait (e.g., via `Default::default`) you must supply types
-        /// that actually implement the trait. (However, this extra
-        /// predicate gets in the way of some checks, which are intended
-        /// to operate over only the actual where-clauses written by the
-        /// user.)
-        [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
         /// predicates (where-clauses) directly defined on it. This is
@@ -446,7 +424,6 @@ define_queries! { <'tcx>
     },
 
     Codegen {
-        [fatal_cycle] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
         [fatal_cycle] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
         [fatal_cycle] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
         [fatal_cycle] fn has_panic_handler: HasPanicHandler(CrateNum) -> bool,
@@ -504,8 +481,6 @@ define_queries! { <'tcx>
     },
 
     Other {
-        [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
-
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
         /// Identifies the entry-point (e.g., the `main` function) for a given
@@ -752,7 +727,7 @@ define_queries! { <'tcx>
         [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
             -> Lrc<FxHashMap<DefId, String>>,
     },
-}
+]}
 
 //////////////////////////////////////////////////////////////////////
 // These functions are little shims used to find the dep-node for a
