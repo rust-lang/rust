@@ -47,7 +47,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
                     fn visit_item(&mut self, i: &'hir hir::Item) {
                         if let hir::ItemKind::Fn(.., body_id) = i.node {
-                            if i.attrs.iter().any(|attr| attr.name() == "test") {
+                            if i.attrs.iter().any(|attr| attr.ident_str() == Some("test")) {
                                 let config = MiriConfig { validate: true, args: vec![] };
                                 let did = self.0.hir().body_owner_def_id(body_id);
                                 println!("running test: {}", self.0.def_path_debug_str(did));
