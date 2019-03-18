@@ -72,6 +72,11 @@ impl UdpSocket {
         Ok(None)
     }
 
+    pub fn peer_addr(&self) -> Result<SocketAddr> {
+        let path = self.0.path()?;
+        Ok(path_to_peer_addr(path.to_str().unwrap_or("")))
+    }
+
     pub fn socket_addr(&self) -> Result<SocketAddr> {
         let path = self.0.path()?;
         Ok(path_to_local_addr(path.to_str().unwrap_or("")))
