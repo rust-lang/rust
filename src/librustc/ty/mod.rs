@@ -96,6 +96,7 @@ mod constness;
 pub mod error;
 mod erase_regions;
 pub mod fast_reject;
+pub mod flags;
 pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
@@ -112,7 +113,6 @@ pub mod wf;
 pub mod util;
 
 mod context;
-mod flags;
 mod instance;
 mod structural_impls;
 mod sty;

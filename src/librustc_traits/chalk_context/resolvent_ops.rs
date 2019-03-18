@@ -279,13 +279,13 @@ impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        b: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
-        if let ty::LazyConst::Evaluated(ty::Const {
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        if let ty::Const {
             val: ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)),
             ..
-        }) = a {
+        } = a {
             if *debruijn == self.binder_index {
                 self.unify_free_answer_var(*bound_ct, b.into())?;
                 return Ok(b);
@@ -294,14 +294,14 @@ impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 
         match (a, b) {
             (
-                ty::LazyConst::Evaluated(ty::Const {
+                ty::Const {
                     val: ConstValue::Infer(InferConst::Canonical(a_debruijn, a_bound)),
                     ..
-                }),
-                ty::LazyConst::Evaluated(ty::Const {
+                },
+                ty::Const {
                     val: ConstValue::Infer(InferConst::Canonical(b_debruijn, b_bound)),
                     ..
-                }),
+                },
             ) => {
                 assert_eq!(a_debruijn, b_debruijn);
                 assert_eq!(a_bound, b_bound);

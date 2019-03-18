@@ -45,7 +45,7 @@ pub enum TypeError<'tcx> {
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
 
-    ConstMismatch(ExpectedFound<&'tcx ty::LazyConst<'tcx>>),
+    ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]

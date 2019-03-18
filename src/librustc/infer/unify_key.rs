@@ -90,14 +90,14 @@ pub enum ConstVariableOrigin {
 
 #[derive(Copy, Clone, Debug)]
 pub enum ConstVariableValue<'tcx> {
-    Known { value: &'tcx ty::LazyConst<'tcx> },
+    Known { value: &'tcx ty::Const<'tcx> },
     Unknown { universe: ty::UniverseIndex },
 }
 
 impl<'tcx> ConstVariableValue<'tcx> {
     /// If this value is known, returns the const it is known to be.
     /// Otherwise, `None`.
-    pub fn known(&self) -> Option<&'tcx ty::LazyConst<'tcx>> {
+    pub fn known(&self) -> Option<&'tcx ty::Const<'tcx>> {
         match *self {
             ConstVariableValue::Unknown { .. } => None,
             ConstVariableValue::Known { value } => Some(value),
@@ -126,7 +126,7 @@ impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
 }
 
 impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
-    type Error = (&'tcx ty::LazyConst<'tcx>, &'tcx ty::LazyConst<'tcx>);
+    type Error = (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>);
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
         let val = match (value1.val, value2.val) {
@@ -134,7 +134,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 ConstVariableValue::Known { value: value1 },
                 ConstVariableValue::Known { value: value2 }
             ) => {
-                match <&'tcx ty::LazyConst<'tcx>>::unify_values(&value1, &value2) {
+                match <&'tcx ty::Const<'tcx>>::unify_values(&value1, &value2) {
                     Ok(value) => Ok(ConstVariableValue::Known { value }),
                     Err(err) => Err(err),
                 }
@@ -168,16 +168,13 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
     }
 }
 
-impl<'tcx> EqUnifyValue for &'tcx ty::LazyConst<'tcx> {}
+impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
 pub fn replace_if_possible(
     mut table: RefMut<'_, UnificationTable<InPlace<ty::ConstVid<'tcx>>>>,
-    c: &'tcx ty::LazyConst<'tcx>
-) -> &'tcx ty::LazyConst<'tcx> {
-    if let ty::LazyConst::Evaluated(ty::Const {
-        val: ConstValue::Infer(InferConst::Var(vid)),
-        ..
-    }) = c {
+    c: &'tcx ty::Const<'tcx>
+) -> &'tcx ty::Const<'tcx> {
+    if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = c {
         match table.probe_value(*vid).val.known() {
             Some(c) => c,
             None => c,

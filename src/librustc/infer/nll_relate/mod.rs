@@ -610,13 +610,10 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        b: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Infer(InferConst::Canonical(_, _)),
-            ..
-        }) = a {
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
             // FIXME(const_generics): I'm unsure how this branch should actually be handled,
             // so this is probably not correct.
             self.infcx.super_combine_consts(self, a, b)
@@ -983,15 +980,12 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        _: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        a: &'tcx ty::Const<'tcx>,
+        _: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         debug!("TypeGeneralizer::consts(a={:?})", a);
 
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Infer(InferConst::Canonical(_, _)),
-            ..
-        }) = a {
+        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
             bug!(
                 "unexpected inference variable encountered in NLL generalization: {:?}",
                 a

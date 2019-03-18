@@ -419,12 +419,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     universe: universe_mapped,
                     name,
                 };
-                self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
+                self.tcx.mk_const(
                     ty::Const {
                         val: ConstValue::Placeholder(placeholder_mapped),
                         ty: self.tcx.types.err, // FIXME(const_generics)
                     }
-                )).into()
+                ).into()
             }
         }
     }
@@ -482,18 +482,12 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
                     ).into(),
                     UnpackedKind::Const(ct) => {
-                        let ty = match ct {
-                            ty::LazyConst::Unevaluated(def_id, _) => {
-                                tcx.type_of(*def_id)
-                            }
-                            ty::LazyConst::Evaluated(ty::Const { ty, .. }) => ty,
-                        };
-                        tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const {
-                            ty: ty,
+                        tcx.mk_const(ty::Const {
+                            ty: ct.ty,
                             val: ConstValue::Infer(
                                 InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from_u32(i))
                             ),
-                        })).into()
+                        }).into()
                     }
                 })
                 .collect()

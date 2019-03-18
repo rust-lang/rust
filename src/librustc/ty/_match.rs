@@ -81,26 +81,24 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        b: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);
         }
 
-        if let (&ty::LazyConst::Evaluated(a_eval), &ty::LazyConst::Evaluated(b_eval)) = (a, b) {
-            match (a_eval.val, b_eval.val) {
-                (_, ConstValue::Infer(InferConst::Fresh(_))) => {
-                    return Ok(a);
-                }
-
-                (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
-                    return Err(TypeError::ConstMismatch(relate::expected_found(self, &a, &b)));
-                }
-
-                _ => {}
+        match (a.val, b.val) {
+            (_, ConstValue::Infer(InferConst::Fresh(_))) => {
+                return Ok(a);
             }
+
+            (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
+                return Err(TypeError::ConstMismatch(relate::expected_found(self, &a, &b)));
+            }
+
+            _ => {}
         }
 
         relate::super_relate_consts(self, a, b)

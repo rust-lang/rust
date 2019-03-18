@@ -1004,7 +1004,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         origin: ConstVariableOrigin
-    ) -> &'tcx ty::LazyConst<'tcx> {
+    ) -> &'tcx ty::Const<'tcx> {
         self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
     }
 
@@ -1013,7 +1013,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         origin: ConstVariableOrigin,
         universe: ty::UniverseIndex,
-    ) -> &'tcx ty::LazyConst<'tcx> {
+    ) -> &'tcx ty::Const<'tcx> {
         let vid = self.const_unification_table
             .borrow_mut()
             .new_key(ConstVarValue {
@@ -1367,7 +1367,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn probe_const_var(
         &self,
         vid: ty::ConstVid<'tcx>
-    ) -> Result<&'tcx ty::LazyConst<'tcx>, ty::UniverseIndex> {
+    ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
         use self::unify_key::ConstVariableValue;
 
         match self.const_unification_table.borrow_mut().probe_value(vid).val {
@@ -1378,12 +1378,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_const_var(
         &self,
-        ct: &'tcx ty::LazyConst<'tcx>
-    ) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Infer(InferConst::Var(v)),
-            ..
-        }) = ct {
+        ct: &'tcx ty::Const<'tcx>
+    ) -> &'tcx ty::Const<'tcx> {
+        if let ty::Const { val: ConstValue::Infer(InferConst::Var(v)), .. } = ct {
             self.const_unification_table
                 .borrow_mut()
                 .probe_value(*v)
@@ -1398,13 +1395,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn shallow_resolve_const(
         &self,
-        ct: &'tcx ty::LazyConst<'tcx>
-    ) -> &'tcx ty::LazyConst<'tcx> {
+        ct: &'tcx ty::Const<'tcx>
+    ) -> &'tcx ty::Const<'tcx> {
         match ct {
-            ty::LazyConst::Evaluated(ty::Const {
-                val: ConstValue::Infer(InferConst::Var(vid)),
-                ..
-            }) => {
+            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
                 self.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)

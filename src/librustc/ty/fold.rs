@@ -201,7 +201,7 @@ pub trait TypeVisitor<'tcx> : Sized {
 pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
-          H: FnMut(&'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+          H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub ty_op: F,
@@ -212,7 +212,7 @@ pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G, H>
 impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
-          H: FnMut(&'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+          H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
@@ -226,7 +226,7 @@ impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx
         (self.lt_op)(r)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         let ct = ct.super_fold_with(self);
         (self.ct_op)(ct)
     }
@@ -435,7 +435,7 @@ struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
-    fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx> + 'a),
+    fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx> + 'a),
 }
 
 impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
@@ -447,7 +447,7 @@ impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
     ) -> Self
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
     {
         BoundVarReplacer {
             tcx,
@@ -515,11 +515,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Evaluated(ty::Const {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if let ty::Const {
             val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
             ty,
-        }) = *ct {
+        } = *ct {
             if debruijn == self.current_index {
                 let fld_c = &mut self.fld_c;
                 let ct = fld_c(bound_const, ty);
@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
               T: TypeFoldable<'tcx>,
     {
         use rustc_data_structures::fx::FxHashMap;
@@ -629,7 +629,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx>,
+              H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
               T: TypeFoldable<'tcx>
     {
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
@@ -794,11 +794,11 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Evaluated(ty::Const {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if let ty::Const {
             val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
             ty,
-        }) = *ct {
+        } = *ct {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
@@ -908,11 +908,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         r.bound_at_or_above_binder(self.outer_index)
     }
 
-    fn visit_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> bool {
-        if let ty::LazyConst::Evaluated(ty::Const {
+    fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
+        if let ty::Const {
             val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
             ..
-        }) = *ct {
+        } = *ct {
             debruijn >= self.outer_index
         } else {
             false

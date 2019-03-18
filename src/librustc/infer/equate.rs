@@ -104,9 +104,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        b: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
         if a == b { return Ok(a); }
 
@@ -114,29 +114,28 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = replace_if_possible(infcx.const_unification_table.borrow_mut(), a);
         let b = replace_if_possible(infcx.const_unification_table.borrow_mut(), b);
         let a_is_expected = self.a_is_expected();
-        if let (&ty::LazyConst::Evaluated(a_eval), &ty::LazyConst::Evaluated(b_eval)) = (a, b) {
-            match (a_eval.val, b_eval.val) {
-                (ConstValue::Infer(InferConst::Var(a_vid)),
-                 ConstValue::Infer(InferConst::Var(b_vid))) => {
-                    infcx.const_unification_table
-                        .borrow_mut()
-                        .unify_var_var(a_vid, b_vid)
-                        .map_err(|e| const_unification_error(a_is_expected, e))?;
-                    return Ok(a);
-                }
 
-                (ConstValue::Infer(InferConst::Var(a_id)), _) => {
-                    self.fields.infcx.unify_const_variable(a_is_expected, a_id, b)?;
-                    return Ok(a);
-                }
-
-                (_, ConstValue::Infer(InferConst::Var(b_id))) => {
-                    self.fields.infcx.unify_const_variable(!a_is_expected, b_id, a)?;
-                    return Ok(a);
-                }
-
-                _ => {}
+        match (a.val, b.val) {
+            (ConstValue::Infer(InferConst::Var(a_vid)),
+                ConstValue::Infer(InferConst::Var(b_vid))) => {
+                infcx.const_unification_table
+                    .borrow_mut()
+                    .unify_var_var(a_vid, b_vid)
+                    .map_err(|e| const_unification_error(a_is_expected, e))?;
+                return Ok(a);
             }
+
+            (ConstValue::Infer(InferConst::Var(a_id)), _) => {
+                self.fields.infcx.unify_const_variable(a_is_expected, a_id, b)?;
+                return Ok(a);
+            }
+
+            (_, ConstValue::Infer(InferConst::Var(b_id))) => {
+                self.fields.infcx.unify_const_variable(!a_is_expected, b_id, a)?;
+                return Ok(a);
+            }
+
+            _ => {}
         }
 
         self.fields.infcx.super_combine_consts(self, a, b)?;

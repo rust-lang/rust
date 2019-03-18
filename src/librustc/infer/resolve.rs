@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if !ct.needs_infer() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
@@ -210,25 +210,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
         }
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if !c.needs_infer() && !ty::keep_local(&c) {
             c // micro-optimize -- if there is nothing in this const that this fold affects...
               // ^ we need to have the `keep_local` check to un-default
               // defaulted tuples.
         } else {
             let c = self.infcx.shallow_resolve_const(c);
-            match c {
-                ty::LazyConst::Evaluated(ty::Const { val, .. }) => {
-                    match val {
-                        ConstValue::Infer(InferConst::Var(vid)) => {
-                            self.err = Some(FixupError::UnresolvedConst(*vid));
-                            return self.tcx().types.ct_err;
-                        }
-                        ConstValue::Infer(InferConst::Fresh(_)) => {
-                            bug!("Unexpected const in full const resolver: {:?}", c);
-                        }
-                        _ => {}
-                    }
+            match c.val {
+                ConstValue::Infer(InferConst::Var(vid)) => {
+                    self.err = Some(FixupError::UnresolvedConst(vid));
+                    return self.tcx().types.ct_err;
+                }
+                ConstValue::Infer(InferConst::Fresh(_)) => {
+                    bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 _ => {}
             }

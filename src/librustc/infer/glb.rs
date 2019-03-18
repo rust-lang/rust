@@ -62,9 +62,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
     fn consts(
         &mut self,
-        a: &'tcx ty::LazyConst<'tcx>,
-        b: &'tcx ty::LazyConst<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::LazyConst<'tcx>> {
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);

@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         let fld_c = |bound_var: ty::BoundVar, ty| {
-            self.tcx.mk_lazy_const(ty::LazyConst::Evaluated(
+            self.tcx.mk_const(
                 ty::Const {
                     val: ConstValue::Placeholder(ty::PlaceholderConst {
                         universe: next_universe,
@@ -109,7 +109,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }),
                     ty,
                 }
-            ))
+            )
         };
 
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);

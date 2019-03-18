@@ -11,7 +11,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
-use rustc::ty::{self, Ty, TyCtxt, Const, LazyConst};
+use rustc::ty::{self, Ty, TyCtxt, Const};
 use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
@@ -567,36 +567,34 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     },
                     ct_op: |ct| {
                         trace!("checking const {:?}", ct);
-                        // find a const parameter
-                        if let LazyConst::Evaluated(Const { ty, val }) = ct {
-                            if let ConstValue::Param(..) = val {
-                                // look it up in the substitution list
-                                assert_eq!(opaque_defn.substs.len(), generics.params.len());
-                                for (subst, param) in opaque_defn.substs.iter()
-                                                                        .zip(&generics.params) {
-                                    if let UnpackedKind::Const(subst) = subst.unpack() {
-                                        if subst == ct {
-                                            // found it in the substitution list, replace with the
-                                            // parameter from the existential type
-                                            return self.tcx()
-                                                .global_tcx()
-                                                .mk_const_param(param.index, param.name, ty);
-                                        }
+                        // Find a const parameter
+                        if let ConstValue::Param(..) = ct.val {
+                            // look it up in the substitution list
+                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
+                            for (subst, param) in opaque_defn.substs.iter()
+                                                                    .zip(&generics.params) {
+                                if let UnpackedKind::Const(subst) = subst.unpack() {
+                                    if subst == ct {
+                                        // found it in the substitution list, replace with the
+                                        // parameter from the existential type
+                                        return self.tcx()
+                                            .global_tcx()
+                                            .mk_const_param(param.index, param.name, ty);
                                     }
                                 }
-                                self.tcx()
-                                    .sess
-                                    .struct_span_err(
-                                        span,
-                                        &format!(
-                                            "const parameter `{}` is part of concrete type but not \
-                                             used in parameter list for existential type",
-                                            ct,
-                                        ),
-                                    )
-                                    .emit();
-                                return self.tcx().types.ct_err;
                             }
+                            self.tcx()
+                                .sess
+                                .struct_span_err(
+                                    span,
+                                    &format!(
+                                        "const parameter `{}` is part of concrete type but not \
+                                            used in parameter list for existential type",
+                                        ct,
+                                    ),
+                                )
+                                .emit();
+                            return self.tcx().types.ct_err;
                         }
                         ct
                     }

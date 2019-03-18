@@ -481,10 +481,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     }
                 }
                 UnpackedKind::Const(result_value) => {
-                    if let ty::LazyConst::Evaluated(ty::Const {
+                    if let ty::Const {
                         val: ConstValue::Infer(InferConst::Canonical(debrujin, b)),
                         ..
-                    }) = result_value {
+                    } = result_value {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

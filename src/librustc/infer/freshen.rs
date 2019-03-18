@@ -46,7 +46,7 @@ pub struct TypeFreshener<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ty_freshen_count: u32,
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
-    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::LazyConst<'tcx>>,
+    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::Const<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
@@ -88,11 +88,11 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
 
     fn freshen_const<F>(
         &mut self,
-        opt_ct: Option<&'tcx ty::LazyConst<'tcx>>,
+        opt_ct: Option<&'tcx ty::Const<'tcx>>,
         key: ty::InferConst<'tcx>,
         freshener: F,
         ty: Ty<'tcx>,
-    ) -> &'tcx ty::LazyConst<'tcx>
+    ) -> &'tcx ty::Const<'tcx>
     where
         F: FnOnce(u32) -> ty::InferConst<'tcx>,
     {
@@ -226,44 +226,43 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Evaluated(ty::Const{ val, ty }) = ct {
-            match val {
-                ConstValue::Infer(ty::InferConst::Var(v)) => {
-                    let opt_ct = self.infcx.const_unification_table
-                        .borrow_mut()
-                        .probe_value(*v)
-                        .val
-                        .known();
-                    return self.freshen_const(
-                        opt_ct,
-                        ty::InferConst::Var(*v),
-                        ty::InferConst::Fresh,
-                        ty,
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        match ct.val {
+            ConstValue::Infer(ty::InferConst::Var(v)) => {
+                let opt_ct = self.infcx.const_unification_table
+                    .borrow_mut()
+                    .probe_value(v)
+                    .val
+                    .known();
+                return self.freshen_const(
+                    opt_ct,
+                    ty::InferConst::Var(v),
+                    ty::InferConst::Fresh,
+                    ct.ty,
+                );
+            }
+            ConstValue::Infer(ty::InferConst::Fresh(i)) => {
+                if i >= self.const_freshen_count {
+                    bug!(
+                        "Encountered a freshend const with id {} \
+                            but our counter is only at {}",
+                        i,
+                        self.const_freshen_count,
                     );
                 }
-                ConstValue::Infer(ty::InferConst::Fresh(i)) => {
-                    if *i >= self.const_freshen_count {
-                        bug!(
-                            "Encountered a freshend const with id {} \
-                                but our counter is only at {}",
-                            i,
-                            self.const_freshen_count,
-                        );
-                    }
-                    return ct;
-                }
-
-                ConstValue::Infer(ty::InferConst::Canonical(..)) |
-                ConstValue::Placeholder(_) => {
-                    bug!("unexpected const {:?}", ct)
-                }
-
-                ConstValue::Param(_) |
-                ConstValue::Scalar(_) |
-                ConstValue::Slice(..) |
-                ConstValue::ByRef(..) => {}
+                return ct;
             }
+
+            ConstValue::Infer(ty::InferConst::Canonical(..)) |
+            ConstValue::Placeholder(_) => {
+                bug!("unexpected const {:?}", ct)
+            }
+
+            ConstValue::Param(_) |
+            ConstValue::Scalar(_) |
+            ConstValue::Slice(..) |
+            ConstValue::ByRef(..) |
+            ConstValue::Unevaluated(..) => {}
         }
 
         ct.super_fold_with(self)

@@ -232,7 +232,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_static: Region<'tcx>,
     pub re_erased: Region<'tcx>,
 
-    pub ct_err: &'tcx LazyConst<'tcx>,
+    pub ct_err: &'tcx Const<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V: 'a> {
@@ -2683,11 +2683,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         ic: InferConst<'tcx>,
         ty: Ty<'tcx>,
-    ) -> &'tcx LazyConst<'tcx> {
-        self.mk_lazy_const(LazyConst::Evaluated(ty::Const {
+    ) -> &'tcx ty::Const<'tcx> {
+        self.mk_const(ty::Const {
             val: ConstValue::Infer(ic),
             ty,
-        }))
+        })
     }
 
     #[inline]

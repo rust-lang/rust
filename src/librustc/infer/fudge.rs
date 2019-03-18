@@ -176,11 +176,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
         r
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Evaluated(ty::Const {
-            val: ConstValue::Infer(ty::InferConst::Var(vid)),
-            ty,
-        }) = *ct {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if let ty::Const { val: ConstValue::Infer(ty::InferConst::Var(vid)), ty } = *ct {
             if self.const_variables.contains(&vid) {
                 // This variable was created during the
                 // fudging. Recreate it with a fresh variable
