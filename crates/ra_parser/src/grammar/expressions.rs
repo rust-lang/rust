@@ -62,47 +62,41 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        match items::maybe_item(p, items::ItemFlavor::Mod) {
-            items::MaybeItem::Item(kind) => {
-                m.complete(p, kind);
-            }
-            items::MaybeItem::Modifiers => {
+        let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
+            Ok(()) => continue,
+            Err(m) => m,
+        };
+
+        // test pub_expr
+        // fn foo() { pub 92; } //FIXME
+        if has_attrs {
+            m.abandon(p);
+            p.error("expected a let statement or an item after attributes in block");
+        } else {
+            let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
+            if p.at(R_CURLY) {
                 m.abandon(p);
-                p.error("expected an item");
-            }
-            // test pub_expr
-            // fn foo() { pub 92; } //FIXME
-            items::MaybeItem::None => {
-                if has_attrs {
-                    m.abandon(p);
-                    p.error("expected a let statement or an item after attributes in block");
+            } else {
+                // test no_semi_after_block
+                // fn foo() {
+                //     if true {}
+                //     loop {}
+                //     match () {}
+                //     while true {}
+                //     for _ in () {}
+                //     {}
+                //     {}
+                //     macro_rules! test {
+                //          () => {}
+                //     }
+                //     test!{}
+                // }
+                if is_blocklike {
+                    p.eat(SEMI);
                 } else {
-                    let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
-                    if p.at(R_CURLY) {
-                        m.abandon(p);
-                    } else {
-                        // test no_semi_after_block
-                        // fn foo() {
-                        //     if true {}
-                        //     loop {}
-                        //     match () {}
-                        //     while true {}
-                        //     for _ in () {}
-                        //     {}
-                        //     {}
-                        //     macro_rules! test {
-                        //          () => {}
-                        //     }
-                        //     test!{}
-                        // }
-                        if is_blocklike {
-                            p.eat(SEMI);
-                        } else {
-                            p.expect(SEMI);
-                        }
-                        m.complete(p, EXPR_STMT);
-                    }
+                    p.expect(SEMI);
                 }
+                m.complete(p, EXPR_STMT);
             }
         }
     }
