@@ -53,7 +53,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::SyncDroplessArena;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal, AtomicOnce, OneThread};
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal, AtomicOnce, Once, OneThread};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -1009,14 +1009,19 @@ pub struct GlobalCtxt<'tcx> {
 
     pub io: InputsAndOutputs,
 
-    pub ast_crate: Steal<ast::Crate>,
+    /// This stores a `Lrc<CStore>`, but that type depends on
+    /// rustc_metadata, so it cannot be used here.
+    pub cstore_rc: OneThread<Steal<Box<dyn Any>>>,
 
-    /// This stores a `Lrc<Option<Lock<BoxedResolver>>>)>`, but that type depends on
-    /// librustc_resolve, so it cannot be used here.
-    pub boxed_resolver: Steal<OneThread<Box<dyn Any>>>,
+    pub sess_rc: Lrc<Session>,
+
+    /// The AST after registering plugins.
+    pub ast_crate: Steal<(ast::Crate, ty::PluginInfo)>,
 
     lowered_hir: AtomicOnce<&'tcx hir::LoweredHir>,
     hir_map: AtomicOnce<&'tcx hir_map::Map<'tcx>>,
+
+    metadata_dep_nodes: Once<()>,
 
     pub queries: query::Queries<'tcx>,
 
@@ -1075,8 +1080,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.lowered_hir.get_or_init(|| {
             // FIXME: The ignore here is only sound because all queries
             // used to compute LoweredHir are eval_always
-            self.dep_graph.with_ignore(|| self.lower_ast_to_hir(()).unwrap())
+            self.dep_graph.with_ignore(|| {
+                let map = self.lower_ast_to_hir(()).unwrap();
+                self.lowered_hir.init(map);
+                self.allocate_metadata_dep_nodes();
+                map
+            })
         })
+    }
+
+    pub fn is_hir_lowered(self) -> bool {
+        self.lowered_hir.is_initalized()
     }
 
     #[inline(always)]
@@ -1163,14 +1177,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
-        s: &'tcx Session,
+        s: &'tcx Lrc<Session>,
         cstore: &'tcx CrateStoreDyn,
+        cstore_rc: Box<dyn Any>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
         dep_graph: DepGraph,
         ast_crate: ast::Crate,
-        boxed_resolver: Box<dyn Any>,
+        plugin_info: ty::PluginInfo,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
         tx: mpsc::Sender<Box<dyn Any + Send>>,
@@ -1194,19 +1209,21 @@ impl<'tcx> TyCtxt<'tcx> {
         providers[LOCAL_CRATE] = local_providers;
 
         GlobalCtxt {
-            sess: s,
-            cstore,
+            sess: &**s,
             arena: WorkerLocal::new(|_| Arena::default()),
+            cstore,
+            cstore_rc: OneThread::new(Steal::new(cstore_rc)),
+            sess_rc: s.clone(),
             interners,
             dep_graph,
             common,
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
-            ast_crate: Steal::new(ast_crate),
-            boxed_resolver: Steal::new(OneThread::new(boxed_resolver)),
+            ast_crate: Steal::new((ast_crate, plugin_info)),
             lowered_hir: AtomicOnce::new(),
             hir_map: AtomicOnce::new(),
+            metadata_dep_nodes: Once::new(),
             queries: query::Queries::new(
                 providers,
                 extern_providers,
@@ -1381,18 +1398,24 @@ impl<'tcx> TyCtxt<'tcx> {
     // With full-fledged red/green, the method will probably become unnecessary
     // as this will be done on-demand.
     pub fn allocate_metadata_dep_nodes(self) {
-        // We cannot use the query versions of crates() and crate_hash(), since
-        // those would need the DepNodes that we are allocating here.
-        for cnum in self.cstore.crates_untracked() {
-            let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
-            let crate_hash = self.cstore.crate_hash_untracked(cnum);
-            self.dep_graph.with_task(dep_node,
-                                     self,
-                                     crate_hash,
-                                     |_, x| x, // No transformation needed
-                                     Some(dep_graph::hash_result),
-            );
+        if !self.dep_graph.is_fully_enabled() {
+            return
         }
+
+        self.metadata_dep_nodes.init_locking(|| {
+            // We cannot use the query versions of crates() and crate_hash(), since
+            // those would need the DepNodes that we are allocating here.
+            for cnum in self.cstore.crates_untracked() {
+                let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
+                let crate_hash = self.cstore.crate_hash_untracked(cnum);
+                self.dep_graph.with_task(dep_node,
+                                        self,
+                                        crate_hash,
+                                        |_, x| x, // No transformation needed
+                                        Some(dep_graph::hash_result),
+                );
+            }
+        });
     }
 
     pub fn serialize_query_result_cache<E>(self,

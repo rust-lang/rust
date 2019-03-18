@@ -1,5 +1,5 @@
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
+use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt};
 
 use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::{Lrc, Lock};
@@ -87,8 +87,7 @@ pub(crate) struct Queries {
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
-    register_plugins: Query<(ast::Crate, PluginInfo)>,
-    expansion: Query<(ast::Crate, Lrc<Option<Lock<BoxedResolver>>>)>,
+    register_plugins: Query<(ast::Crate, ty::PluginInfo)>,
     dep_graph: Query<DepGraph>,
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
@@ -119,7 +118,7 @@ impl Compiler {
         })
     }
 
-    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, PluginInfo)>> {
+    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, ty::PluginInfo)>> {
         self.queries.register_plugins.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
@@ -147,22 +146,6 @@ impl Compiler {
                 ),
             };
             Ok(result)
-        })
-    }
-
-    pub fn expansion(
-        &self
-    ) -> Result<&Query<(ast::Crate, Lrc<Option<Lock<BoxedResolver>>>)>> {
-        self.queries.expansion.compute(|| {
-            let crate_name = self.crate_name()?.peek().clone();
-            let (krate, plugin_info) = self.register_plugins()?.take();
-            passes::configure_and_expand(
-                self.sess.clone(),
-                self.cstore().clone(),
-                krate,
-                &crate_name,
-                plugin_info,
-            ).map(|(krate, resolver)| (krate, Lrc::new(Some(Lock::new(resolver)))))
         })
     }
 
@@ -194,14 +177,13 @@ impl Compiler {
     pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
         self.queries.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let expansion_result = self.expansion()?;
-            let (krate, resolver) = expansion_result.take();
+            let (krate, plugin_info) = self.register_plugins()?.take();
             let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
                 self.dep_graph()?.peek().clone(),
                 krate,
-                Box::new(resolver),
+                plugin_info,
                 self.io.clone(),
                 tx,
                 &crate_name))
@@ -262,7 +244,7 @@ impl Compiler {
         self.global_ctxt()?.peek_mut().enter(|tcx| {
             tcx.lower_ast_to_hir(())?;
             // Drop AST after lowering HIR to free memory
-            mem::drop(tcx.ast_crate.steal());
+            mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
             Ok(())
         })?;
 

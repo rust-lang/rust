@@ -22,7 +22,6 @@ pub mod assert_module_sources;
 mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
-pub use persist::dep_graph_tcx_init;
 pub use persist::{DepGraphFuture, load_dep_graph};
 pub use persist::load_query_result_cache;
 pub use persist::LoadResult;

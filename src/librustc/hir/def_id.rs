@@ -151,7 +151,10 @@ impl fmt::Debug for DefId {
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                write!(f, " ~ {}", tcx.def_path_debug_str(*self))?;
+                // Only print the path after HIR lowering is done
+                if tcx.is_hir_lowered() {
+                    write!(f, " ~ {}", tcx.def_path_debug_str(*self))?;
+                }
             }
             Ok(())
         })?;

@@ -600,6 +600,16 @@ impl<T: Copy> AtomicOnce<T> {
             value.unwrap()
         }
     }
+
+    #[inline]
+    pub fn init(&self, value: T) {
+        self.0.store(Some(value));
+    }
+
+    #[inline]
+    pub fn is_initalized(&self) -> bool {
+        self.0.load().is_some()
+    }
 }
 
 #[derive(Debug)]

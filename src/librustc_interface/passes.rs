@@ -118,26 +118,21 @@ declare_box_region_type!(
     (&mut Resolver<'_>) -> (Result<ast::Crate>, ExpansionResult)
 );
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing,
-/// loading compiler plugins (including those from `addl_plugins`),
-/// syntax expansion, secondary `cfg` expansion, synthesis of a test
-/// harness if one is to be provided, injection of a dependency on the
-/// standard library and prelude, and name resolution.
-///
-/// Returns `None` if we're aborting after handling -W help.
-pub fn configure_and_expand(
-    sess: Lrc<Session>,
-    cstore: Lrc<CStore>,
-    krate: ast::Crate,
-    crate_name: &str,
-    plugin_info: PluginInfo,
-) -> Result<(ast::Crate, BoxedResolver)> {
+fn expand_macros(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<Lrc<ty::ExpansionResult>> {
+    let (krate, plugin_info) = tcx.ast_crate.steal();
+    let sess = tcx.sess_rc.clone();
+    let cstore_rc: Box<dyn Any> = tcx.cstore_rc.steal();
+    let cstore = cstore_rc.downcast::<Lrc<CStore>>().unwrap();
+
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let crate_name = crate_name.to_string();
+    let crate_name = tcx.crate_name.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
         let mut crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
@@ -164,7 +159,11 @@ pub fn configure_and_expand(
         box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver));
         ExpansionResult::from_owned_resolver(resolver)
     });
-    result.map(|k| (k, resolver))
+
+    result.map(|k| Lrc::new(ty::ExpansionResult {
+        ast_crate: Steal::new(k),
+        boxed_resolver: Steal::new(OneThread::new(Box::new(Lrc::new(Some(Lock::new(resolver)))))),
+    }))
 }
 
 pub struct ExpansionResult {
@@ -224,18 +223,13 @@ impl BoxedResolver {
     }
 }
 
-pub struct PluginInfo {
-    syntax_exts: Vec<NamedSyntaxExtension>,
-    attributes: Vec<(Symbol, AttributeType)>,
-}
-
 pub fn register_plugins<'a>(
     compiler: &Compiler,
     sess: &'a Session,
     cstore: &'a CStore,
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, PluginInfo)> {
+) -> Result<(ast::Crate, ty::PluginInfo)> {
     krate = time(sess, "attributes injection", || {
         syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
     });
@@ -339,7 +333,7 @@ pub fn register_plugins<'a>(
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
     *sess.plugin_attributes.borrow_mut() = attributes.clone();
 
-    Ok((krate, PluginInfo {
+    Ok((krate, ty::PluginInfo {
         syntax_exts,
         attributes,
     }))
@@ -352,7 +346,7 @@ fn configure_and_expand_inner<'a>(
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
     crate_loader: &'a mut CrateLoader<'a>,
-    plugin_info: PluginInfo,
+    plugin_info: ty::PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     let attributes = plugin_info.attributes;
     time(sess, "pre ast expansion lint checks", || {
@@ -555,8 +549,8 @@ fn lower_ast_to_hir(
     tcx.prepare_outputs(())?;
 
     let sess = tcx.sess;
-
-    let boxed_resolver: Box<dyn Any> = OneThread::into_inner(tcx.boxed_resolver.steal());
+    let expansion_result = tcx.expand_macros(())?;
+    let boxed_resolver = OneThread::into_inner(expansion_result.boxed_resolver.steal());
     let mut boxed_resolver: Box<Lrc<Option<Lock<BoxedResolver>>>> =
         boxed_resolver.downcast().unwrap();
 
@@ -567,7 +561,7 @@ fn lower_ast_to_hir(
                 sess,
                 tcx.cstore,
                 &tcx.dep_graph,
-                &tcx.ast_crate.borrow(),
+                &expansion_result.ast_crate.borrow(),
                 resolver,
             );
 
@@ -582,7 +576,7 @@ fn lower_ast_to_hir(
     time(sess, "early lint checks", || {
         lint::check_ast_crate(
             sess,
-            &tcx.ast_crate.borrow(),
+            &expansion_result.ast_crate.borrow(),
             false,rustc_lint::BuiltinCombinedEarlyLintPass::new()
         )
     });
@@ -792,7 +786,7 @@ fn prepare_outputs(
         &tcx.io.input,
         &tcx.io.output_dir,
         &tcx.io.output_file,
-        &tcx.ast_crate.borrow().attrs,
+        &tcx.expand_macros(())?.ast_crate.borrow().attrs,
         tcx.sess
     );
 
@@ -848,6 +842,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.hir_map = hir_map;
     providers.lower_ast_to_hir = lower_ast_to_hir;
     providers.prepare_outputs = prepare_outputs;
+    providers.expand_macros = expand_macros;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
@@ -895,7 +890,7 @@ pub fn create_global_ctxt(
     compiler: &Compiler,
     dep_graph: DepGraph,
     ast_krate: ast::Crate,
-    boxed_resolver: Box<Lrc<Option<Lock<BoxedResolver>>>>,
+    plugin_info: ty::PluginInfo,
     io: InputsAndOutputs,
     tx: mpsc::Sender<Box<dyn Any + Send>>,
     crate_name: &str,
@@ -906,8 +901,8 @@ pub fn create_global_ctxt(
     let crate_name = crate_name.to_string();
 
     let ((), result) = BoxedGlobalCtxt::new(static move || {
-        let sess = &*sess;
-        let cstore = &*cstore;
+        let sess = &sess;
+        let cstore = &cstore;
 
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
@@ -924,15 +919,18 @@ pub fn create_global_ctxt(
         default_provide_extern(&mut extern_providers);
         codegen_backend.provide_extern(&mut extern_providers);
 
+        let cstore_rc: Lrc<CStore> = cstore.clone();
+
         let gcx = TyCtxt::create_global_ctxt(
             sess,
-            cstore,
+            &**cstore,
+            Box::new(cstore_rc),
             local_providers,
             extern_providers,
             &arenas,
             dep_graph,
             ast_krate,
-            boxed_resolver,
+            plugin_info,
             query_result_on_disk_cache,
             &crate_name,
             tx,
@@ -941,12 +939,6 @@ pub fn create_global_ctxt(
 
         global_ctxt = Some(gcx);
         let gcx = global_ctxt.as_ref().unwrap();
-
-        ty::tls::enter_global(gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
-            // tcx available.
-            time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
-        });
 
         yield BoxedGlobalCtxt::initial_yield(());
         box_region_allow_access!(for('tcx), (&'tcx GlobalCtxt<'tcx>), (gcx));

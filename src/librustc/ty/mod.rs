@@ -38,13 +38,16 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
+use std::any::Any;
+use rustc_data_structures::sync::{self, Lrc, OneThread, ParallelIterator, par_iter};
 use std::slice;
 use std::{mem, ptr};
 use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
+use syntax::ext::base::NamedSyntaxExtension;
+use syntax::feature_gate::AttributeType;
 use syntax::symbol::{kw, sym, Symbol, LocalInternedString, InternedString};
 use syntax_pos::Span;
 
@@ -118,6 +121,19 @@ mod structural_impls;
 mod sty;
 
 // Data types
+
+pub struct PluginInfo {
+    pub syntax_exts: Vec<NamedSyntaxExtension>,
+    pub attributes: Vec<(Symbol, AttributeType)>,
+}
+
+pub struct ExpansionResult {
+    pub ast_crate: steal::Steal<ast::Crate>,
+
+    /// This stores a `Lrc<Option<Lock<BoxedResolver>>>)>`, but that type depends on
+    /// librustc_resolve, so it cannot be used here.
+    pub boxed_resolver: steal::Steal<OneThread<Box<dyn Any>>>,
+}
 
 #[derive(Clone)]
 pub struct Resolutions {

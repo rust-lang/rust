@@ -3,7 +3,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc::session::Session;
-use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
 use rustc::util::common::time_ext;
 use rustc_serialize::Decodable as RustcDecodable;
@@ -14,14 +13,6 @@ use super::data::*;
 use super::fs::*;
 use super::file_format;
 use super::work_product;
-
-pub fn dep_graph_tcx_init(tcx: TyCtxt<'_>) {
-    if !tcx.dep_graph.is_fully_enabled() {
-        return
-    }
-
-    tcx.allocate_metadata_dep_nodes();
-}
 
 type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
 

@@ -268,10 +268,11 @@ pub fn run_compiler(
             if ppm.needs_ast_map(&opt_uii) {
                 pretty::visit_crate(sess, &mut compiler.parse()?.peek_mut(), ppm);
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+                    let expansion_result = tcx.expand_macros(())?;
                     pretty::print_after_hir_lowering(
                         tcx,
                         compiler.input(),
-                        &tcx.ast_crate.borrow(),
+                        &expansion_result.ast_crate.borrow(),
                         ppm,
                         opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
@@ -334,13 +335,14 @@ pub fn run_compiler(
 
         if sess.opts.debugging_opts.save_analysis {
             compiler.global_ctxt()?.peek_mut().enter(|tcx| {
+                let expansion_result = tcx.expand_macros(())?;
                 let result = tcx.analysis(LOCAL_CRATE);
                 let crate_name = &tcx.crate_name.as_str();
 
                 time(sess, "save analysis", || {
                     save::process_crate(
                         tcx,
-                        &tcx.ast_crate.borrow(),
+                        &expansion_result.ast_crate.borrow(),
                         crate_name,
                         &compiler.input(),
                         None,
@@ -355,7 +357,7 @@ pub fn run_compiler(
         } else {
             compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                 // Drop AST after lowering HIR to free memory
-                mem::drop(tcx.ast_crate.steal());
+                mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
             });
         }
 
@@ -368,7 +370,7 @@ pub fn run_compiler(
         if sess.opts.debugging_opts.save_analysis {
             compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                 // Drop AST after lowering HIR to free memory
-                mem::drop(tcx.ast_crate.steal());
+                mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
             });
         }
 

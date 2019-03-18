@@ -9,7 +9,7 @@ use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_interface::interface;
+use rustc_interface::interface::{self, BoxedResolver};
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -27,6 +27,7 @@ use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::Arc;
+use std::any::Any;
 
 use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
@@ -338,20 +339,22 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
-        let sess = compiler.session();
+        abort_on_err(compiler.global_ctxt(), compiler.session()).take().enter(|tcx| {
+            let sess = compiler.session();
 
-        // We need to hold on to the complete resolver, so we cause everything to be
-        // cloned for the analysis passes to use. Suboptimal, but necessary in the
-        // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
+            // We need to hold on to the complete resolver, so we cause everything to be
+            // cloned for the analysis passes to use. Suboptimal, but necessary in the
+            // current architecture.
+            let resolver = {
+                let expanded = abort_on_err(tcx.expand_macros(()), sess);
+                let resolver: &Box<dyn Any> = &**expanded.boxed_resolver.borrow();
+                resolver.downcast_ref::<Lrc<Option<Lock<BoxedResolver>>>>().unwrap().clone()
+            };
 
-        if sess.has_errors() {
-            sess.fatal("Compilation failed, aborting rustdoc");
-        }
+            if sess.has_errors() {
+                sess.fatal("Compilation failed, aborting rustdoc");
+            }
 
-        let mut global_ctxt = abort_on_err(compiler.global_ctxt(), sess).take();
-
-        global_ctxt.enter(|tcx| {
             tcx.analysis(LOCAL_CRATE).ok();
 
             // Abort if there were any errors so far
