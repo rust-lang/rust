@@ -2268,7 +2268,9 @@ fn predicates_from_bound<'tcx>(
 }
 
 /// Returns the minimum required target-feature name to use a SIMD type on C FFI:
-fn simd_ffi_min_target_feature(target: &str, simd_width: usize, simd_elem_width: usize) -> Option<&'static str> {
+fn simd_ffi_min_target_feature(
+    target: &str, simd_width: usize, simd_elem_width: usize
+) -> Option<&'static str> {
     // FIXME: this needs to be architecture dependent and
     // should probably belong somewhere else:
     // * on mips: 16 => msa,
@@ -2315,7 +2317,9 @@ fn simd_ffi_min_target_feature(target: &str, simd_width: usize, simd_elem_width:
 }
 
 /// Returns true if the target-feature allows using the SIMD type on C FFI:
-fn simd_ffi_feature_check(target: &str, simd_width: usize, simd_elem_width: usize, feature: &'static str) -> bool {
+fn simd_ffi_feature_check(
+    target: &str, simd_width: usize, simd_elem_width: usize, feature: &'static str
+) -> bool {
     match target {
         t if t.contains("x86") => {
             // FIXME: see simd_ffi_min_target_feature
