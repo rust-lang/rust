@@ -38,6 +38,13 @@ pub(crate) fn block(p: &mut Parser) {
     m.complete(p, BLOCK);
 }
 
+fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
+    match kind {
+        BIN_EXPR | RANGE_EXPR | IF_EXPR => false,
+        _ => true,
+    }
+}
+
 pub(crate) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
     attributes::inner_attributes(p);
@@ -62,6 +69,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         //     #[C] #[D] {}
         //     #[D] return ();
         // }
+        let has_attrs = p.at(POUND);
         attributes::outer_attributes(p);
         if p.at(LET_KW) {
             let_stmt(p, m);
@@ -74,18 +82,17 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         };
 
         let (cm, blocklike) = expr_stmt(p);
-        let cm = match cm {
-            None => {
-                if p.at(R_CURLY) {
-                    m.abandon(p);
-                } else {
-                    p.expect(SEMI);
-                    m.complete(p, EXPR_STMT);
-                }
-                continue;
+
+        if let Some(cm) = &cm {
+            if has_attrs && !is_expr_stmt_attr_allowed(cm.kind()) {
+                // test_err attr_on_expr_not_allowed
+                // fn foo() {
+                //    #[A] 1 + 2;
+                //    #[B] if true {};
+                // }
+                p.error(format!("attributes are not allowed on {:?}", cm.kind()));
             }
-            Some(cm) => cm,
-        };
+        }
 
         if p.at(R_CURLY) {
             // test attr_on_last_expr_in_block
@@ -93,7 +100,11 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             //     { #[A] bar!()? }
             //     #[B] &()
             // }
-            m.contract_child(p, cm);
+            if let Some(cm) = cm {
+                m.contract_child(p, cm);
+            } else {
+                m.abandon(p);
+            }
         } else {
             // test no_semi_after_block
             // fn foo() {
