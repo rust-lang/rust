@@ -2268,7 +2268,7 @@ fn predicates_from_bound<'tcx>(
 }
 
 /// Returns the minimum required target-feature name to use a SIMD type on C FFI:
-fn simd_ffi_min_target_feature(simd_width: usize) -> Option<&'static str> {
+fn simd_ffi_min_target_feature(target: &str, simd_width: usize, simd_elem_width: usize) -> Option<&'static str> {
     // FIXME: this needs to be architecture dependent and
     // should probably belong somewhere else:
     // * on arm: 8 => neon
@@ -2278,21 +2278,46 @@ fn simd_ffi_min_target_feature(simd_width: usize) -> Option<&'static str> {
     //     if vec elem is 64-bit wide => vsx
     //     otherwise => altivec
     // * wasm: 16 => simd128
-    match simd_width {
-        16 => Some("sse"),
-        32 => Some("avx"),
-        64 => Some("avx512f"),
+    match target {
+        t if t.contains("x86") => {
+            match simd_width {
+                16 => Some("sse"),
+                32 => Some("avx"),
+                64 => Some("avx512f"),
+                _ => None,
+            }
+        },
+        t if t.contains("arm") => {
+            match simd_width {
+                8 | 16 if simd_elem_width < 8 => Some("neon"),
+                _ => None,
+            }
+        },
         _ => None,
     }
 }
 
 /// Returns true if the target-feature allows using the SIMD type on C FFI:
-fn simd_ffi_feature_check(simd_width: usize, feature: &'static str) -> bool {
-    // FIXME: see simd_ffi_min_target_feature
-    match simd_width {
-        16 => feature.contains("sse") || feature.contains("ssse") || feature.contains("avx"),
-        32 => feature.contains("avx"),
-        64 => feature.contains("avx512"),
+fn simd_ffi_feature_check(target: &str, simd_width: usize, simd_elem_width: usize, feature: &'static str) -> bool {
+    match target {
+        t if t.contains("x86") => {
+            // FIXME: see simd_ffi_min_target_feature
+            match simd_width {
+                16 => feature.contains("sse")
+                    || feature.contains("ssse")
+                    || feature.contains("avx"),
+                32 => feature.contains("avx"),
+                64 => feature.contains("avx512"),
+                _ => false,
+            }
+
+        },
+        t if t.contains("arm") => {
+            match simd_width {
+                8 | 16 if simd_elem_width < 8 => feature.contains("neon"),
+                _ => false,
+            }
+        },
         _ => false,
     }
 }
@@ -2333,10 +2358,11 @@ fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
         param_env: ty::ParamEnv::empty(),
         value: ty,
     }).unwrap().details.size.bytes() as usize;
-
-    if !features.iter().any(|f| simd_ffi_feature_check(simd_len, f.as_str().get())) {
+    let simd_elem_width = simd_len / ty.simd_size(tcx);
+    let target: &str = &tcx.sess.target.target.arch;
+    if !features.iter().any(|f| simd_ffi_feature_check(target, simd_len, simd_elem_width, f.as_str().get())) {
         let type_str = tcx.hir().hir_to_pretty_string(ast_ty.hir_id);
-        let error_msg = if let Some(min_feature) = simd_ffi_min_target_feature(simd_len) {
+        let error_msg = if let Some(min_feature) = simd_ffi_min_target_feature(target, simd_len, simd_elem_width) {
             format!(
                 "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",
                 type_str, min_feature,

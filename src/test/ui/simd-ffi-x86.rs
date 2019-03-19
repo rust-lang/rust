@@ -1,5 +1,21 @@
-#![feature(repr_simd, simd_ffi, avx512_target_feature)]
+// ignore-tidy-linelength
+// ignore-s390x
+// ignore-emscripten
+// ignore-powerpc
+// ignore-powerpc64
+// ignore-powerpc64le
+// ignore-sparc
+// ignore-sparc64
+// ignore-mips
+// ignore-mips64
+// ignore-arm
+// ignore-aarch64
+
+#![feature(repr_simd)]
+#![feature(simd_ffi)]
+#![feature(avx512_target_feature)]
 #![allow(non_camel_case_types)]
+#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
 #[repr(simd)]
 struct v1024(i128, i128, i128, i128, i128, i128, i128, i128);
