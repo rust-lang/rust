@@ -82,16 +82,15 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         };
 
         let (cm, blocklike) = expr_stmt(p);
+        let kind = cm.as_ref().map(|cm| cm.kind()).unwrap_or(ERROR);
 
-        if let Some(cm) = &cm {
-            if has_attrs && !is_expr_stmt_attr_allowed(cm.kind()) {
-                // test_err attr_on_expr_not_allowed
-                // fn foo() {
-                //    #[A] 1 + 2;
-                //    #[B] if true {};
-                // }
-                p.error(format!("attributes are not allowed on {:?}", cm.kind()));
-            }
+        if has_attrs && !is_expr_stmt_attr_allowed(kind) {
+            // test_err attr_on_expr_not_allowed
+            // fn foo() {
+            //    #[A] 1 + 2;
+            //    #[B] if true {};
+            // }
+            p.error(format!("attributes are not allowed on {:?}", kind));
         }
 
         if p.at(R_CURLY) {
@@ -101,7 +100,8 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             //     #[B] &()
             // }
             if let Some(cm) = cm {
-                m.contract_child(p, cm);
+                cm.undo_completion(p).abandon(p);
+                m.complete(p, kind);
             } else {
                 m.abandon(p);
             }
