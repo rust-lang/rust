@@ -285,6 +285,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &deaggregator::Deaggregator,
         &copy_prop::CopyPropagation,
+        &simplify_branches::SimplifyBranches::new("after-copy-prop"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("final"),
         &simplify::SimplifyLocals,
