@@ -26,7 +26,7 @@
 //!     }
 //!
 //! This pass computes the meaning of the state field and the MIR locals which are live
-//! across a suspension point. There are however two hardcoded generator states:
+//! across a suspension point. There are however three hardcoded generator states:
 //!     0 - Generator have not been resumed yet
 //!     1 - Generator has returned / is completed
 //!     2 - Generator has been poisoned
@@ -143,6 +143,13 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 fn self_arg() -> Local {
     Local::new(1)
 }
+
+/// Generator have not been resumed yet
+const UNRESUMED: u32 = 0;
+/// Generator has returned / is completed
+const RETURNED: u32 = 1;
+/// Generator has been poisoned
+const POISONED: u32 = 2;
 
 struct SuspensionPoint {
     state: u32,
@@ -278,7 +285,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
 
                 state
             } else { // Return
-                 1 // state for returned
+                RETURNED // state for returned
             };
             data.statements.push(self.set_state(state, source_info));
             data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
@@ -590,8 +597,15 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_env = tcx.param_env(def_id);
     let gen = self_arg();
 
-    for block in mir.basic_blocks().indices() {
-        let (target, unwind, source_info) = match mir.basic_blocks()[block].terminator() {
+    let mut elaborator = DropShimElaborator {
+        mir: mir,
+        patch: MirPatch::new(mir),
+        tcx,
+        param_env
+    };
+
+    for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+        let (target, unwind, source_info) = match block_data.terminator() {
             &Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
@@ -602,31 +616,22 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             } if local == gen => (target, unwind, source_info),
             _ => continue,
         };
-        let unwind = if let Some(unwind) = unwind {
-            Unwind::To(unwind)
-        } else {
+        let unwind = if block_data.is_cleanup {
             Unwind::InCleanup
+        } else {
+            Unwind::To(unwind.unwrap_or_else(|| elaborator.patch.resume_block()))
         };
-        let patch = {
-            let mut elaborator = DropShimElaborator {
-                mir: &mir,
-                patch: MirPatch::new(mir),
-                tcx,
-                param_env
-            };
-            elaborate_drop(
-                &mut elaborator,
-                source_info,
-                &Place::Base(PlaceBase::Local(gen)),
-                (),
-                target,
-                unwind,
-                block
-            );
-            elaborator.patch
-        };
-        patch.apply(mir);
+        elaborate_drop(
+            &mut elaborator,
+            source_info,
+            &Place::Base(PlaceBase::Local(gen)),
+            (),
+            target,
+            unwind,
+            block,
+        );
     }
+    elaborator.patch.apply(mir);
 }
 
 fn create_generator_drop_shim<'a, 'tcx>(
@@ -643,10 +648,10 @@ fn create_generator_drop_shim<'a, 'tcx>(
 
     let mut cases = create_cases(&mut mir, transform, |point| point.drop);
 
-    cases.insert(0, (0, drop_clean));
+    cases.insert(0, (UNRESUMED, drop_clean));
 
-    // The returned state (1) and the poisoned state (2) falls through to
-    // the default case which is just to return
+    // The returned state and the poisoned state fall through to the default
+    // case which is just to return
 
     insert_switch(tcx, &mut mir, cases, &transform, TerminatorKind::Return);
 
@@ -762,7 +767,7 @@ fn create_generator_resume_function<'a, 'tcx>(
     for block in mir.basic_blocks_mut() {
         let source_info = block.terminator().source_info;
         if let &TerminatorKind::Resume = &block.terminator().kind {
-            block.statements.push(transform.set_state(1, source_info));
+            block.statements.push(transform.set_state(POISONED, source_info));
         }
     }
 
@@ -773,12 +778,12 @@ fn create_generator_resume_function<'a, 'tcx>(
         GeneratorResumedAfterReturn,
     };
 
-    // Jump to the entry point on the 0 state
-    cases.insert(0, (0, BasicBlock::new(0)));
-    // Panic when resumed on the returned (1) state
-    cases.insert(1, (1, insert_panic_block(tcx, mir, GeneratorResumedAfterReturn)));
-    // Panic when resumed on the poisoned (2) state
-    cases.insert(2, (2, insert_panic_block(tcx, mir, GeneratorResumedAfterPanic)));
+    // Jump to the entry point on the unresumed
+    cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
+    // Panic when resumed on the returned state
+    cases.insert(1, (RETURNED, insert_panic_block(tcx, mir, GeneratorResumedAfterReturn)));
+    // Panic when resumed on the poisoned state
+    cases.insert(2, (POISONED, insert_panic_block(tcx, mir, GeneratorResumedAfterPanic)));
 
     insert_switch(tcx, mir, cases, &transform, TerminatorKind::Unreachable);
 
@@ -942,7 +947,7 @@ impl MirPass for StateTransform {
         mir.generator_layout = Some(layout);
 
         // Insert `drop(generator_struct)` which is used to drop upvars for generators in
-        // the unresumed (0) state.
+        // the unresumed state.
         // This is expanded to a drop ladder in `elaborate_generator_drops`.
         let drop_clean = insert_clean_drop(mir);
 
