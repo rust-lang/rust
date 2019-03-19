@@ -389,10 +389,16 @@ impl Iterator for ToLowercase {
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
+
+#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+impl ExactSizeIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
@@ -411,10 +417,16 @@ impl Iterator for ToUppercase {
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToUppercase {}
+
+#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
+impl ExactSizeIterator for ToUppercase {}
 
 #[derive(Debug, Clone)]
 enum CaseMappingIter {
@@ -456,6 +468,16 @@ impl Iterator for CaseMappingIter {
             }
             CaseMappingIter::Zero => None,
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = match self {
+            CaseMappingIter::Three(..) => 3,
+            CaseMappingIter::Two(..) => 2,
+            CaseMappingIter::One(_) => 1,
+            CaseMappingIter::Zero => 0,
+        };
+        (size, Some(size))
     }
 }
 

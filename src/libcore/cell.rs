@@ -1186,7 +1186,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_map_split)]
     /// use std::cell::{Ref, RefCell};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
@@ -1195,7 +1194,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*begin, [1, 2]);
     /// assert_eq!(*end, [3, 4]);
     /// ```
-    #[unstable(feature = "refcell_map_split", issue = "51476")]
+    #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>)
         where F: FnOnce(&T) -> (&U, &V)
@@ -1268,7 +1267,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_map_split)]
     /// use std::cell::{RefCell, RefMut};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
@@ -1279,7 +1277,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// begin.copy_from_slice(&[4, 3]);
     /// end.copy_from_slice(&[2, 1]);
     /// ```
-    #[unstable(feature = "refcell_map_split", issue = "51476")]
+    #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(
         orig: RefMut<'b, T>, f: F
