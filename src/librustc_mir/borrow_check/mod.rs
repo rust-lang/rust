@@ -1985,7 +1985,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Base(PlaceBase::Static(ref static_)) => {
                 if static_.promoted.is_some() ||
                     (static_.promoted.is_none() &&
-                        self.infcx.tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
+                        self.infcx.tcx.is_static(static_.def_id)
+                            == Some(hir::Mutability::MutMutable)
                     ){
                     Ok(RootPlace {
                         place,
