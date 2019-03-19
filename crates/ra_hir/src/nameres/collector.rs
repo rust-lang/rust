@@ -124,7 +124,7 @@ where
     }
 
     fn resolve_import(
-        &mut self,
+        &self,
         module_id: CrateModuleId,
         import: &raw::ImportData,
     ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
