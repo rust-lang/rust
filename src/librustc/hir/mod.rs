@@ -2173,7 +2173,7 @@ impl StructField {
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, HirId, bool),
+    Struct(HirVec<StructField>, HirId, /* recovered */ bool),
     Tuple(HirVec<StructField>, HirId),
     Unit(HirId),
 }

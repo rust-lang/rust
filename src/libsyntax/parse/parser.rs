@@ -6902,7 +6902,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_record_struct_body(&mut self) -> PResult<'a, (Vec<StructField>, bool)> {
+    fn parse_record_struct_body(
+        &mut self,
+    ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {

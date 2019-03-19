@@ -620,7 +620,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<Spanned<FieldPat>>, bool),
+    Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
