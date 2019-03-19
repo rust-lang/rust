@@ -119,13 +119,13 @@ matrix:
     - env: IMAGE=arm-android
       if: branch = auto
     - env: IMAGE=armhf-gnu
-      if: branch = auto
+      #if: branch = auto
     - env: IMAGE=dist-various-1 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-various-2 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
-      if: branch = auto
+      #if: branch = auto
     - env: IMAGE=dist-android DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-arm-linux DEPLOY=1
@@ -153,7 +153,7 @@ matrix:
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
-      if: branch = auto
+      #if: branch = auto
     - env: IMAGE=dist-s390x-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
