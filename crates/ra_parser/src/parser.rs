@@ -228,6 +228,29 @@ impl Marker {
             }
         }
     }
+
+    /// Contract a node `cm` and complete as `cm`'s `kind`.
+    /// `cm` must be a child of `m` to work correctly.
+    /// ```
+    /// m--A        m--A
+    /// +--cm--B -> +--B
+    /// +--C        C
+    ///
+    /// [m: TOMBSTONE, A, cm: Start(k), B, Finish, C]
+    /// [m: Start(k), A, cm: TOMBSTONE, B, Finish, C]
+    /// ```
+    pub(crate) fn contract_child(mut self, p: &mut Parser, cm: CompletedMarker) -> CompletedMarker {
+        self.bomb.defuse();
+        match p.events[self.pos as usize] {
+            Event::Start { kind: ref mut slot, .. } => *slot = cm.kind(),
+            _ => unreachable!(),
+        };
+        match p.events[cm.0 as usize] {
+            Event::Start { kind: ref mut slot, .. } => *slot = TOMBSTONE,
+            _ => unreachable!(),
+        };
+        CompletedMarker::new(self.pos, cm.kind())
+    }
 }
 
 pub(crate) struct CompletedMarker(u32, SyntaxKind);

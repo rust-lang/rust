@@ -8,10 +8,10 @@ const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    expr_bp(p, r, 1)
+    expr_bp(p, r, 1).1
 }
 
-pub(super) fn expr_stmt(p: &mut Parser) -> BlockLike {
+pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
     let r = Restrictions { forbid_structs: false, prefer_stmt: true };
     expr_bp(p, r, 1)
 }
@@ -55,7 +55,13 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         // test block_items
         // fn a() { fn b() {} }
         let m = p.start();
-        let has_attrs = p.at(POUND);
+        // test attr_on_expr_stmt
+        // fn foo() {
+        //     #[A] foo();
+        //     #[B] bar!{}
+        //     #[C] #[D] {}
+        //     #[D] return ();
+        // }
         attributes::outer_attributes(p);
         if p.at(LET_KW) {
             let_stmt(p, m);
@@ -67,35 +73,48 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             Err(m) => m,
         };
 
-        if has_attrs {
-            m.abandon(p);
-            p.error("expected a let statement or an item after attributes in block");
-        } else {
-            let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
-            if p.at(R_CURLY) {
-                m.abandon(p);
-            } else {
-                // test no_semi_after_block
-                // fn foo() {
-                //     if true {}
-                //     loop {}
-                //     match () {}
-                //     while true {}
-                //     for _ in () {}
-                //     {}
-                //     {}
-                //     macro_rules! test {
-                //          () => {}
-                //     }
-                //     test!{}
-                // }
-                if is_blocklike {
-                    p.eat(SEMI);
+        let (cm, blocklike) = expr_stmt(p);
+        let cm = match cm {
+            None => {
+                if p.at(R_CURLY) {
+                    m.abandon(p);
                 } else {
                     p.expect(SEMI);
+                    m.complete(p, EXPR_STMT);
                 }
-                m.complete(p, EXPR_STMT);
+                continue;
             }
+            Some(cm) => cm,
+        };
+
+        if p.at(R_CURLY) {
+            // test attr_on_last_expr_in_block
+            // fn foo() {
+            //     { #[A] bar!()? }
+            //     #[B] &()
+            // }
+            m.contract_child(p, cm);
+        } else {
+            // test no_semi_after_block
+            // fn foo() {
+            //     if true {}
+            //     loop {}
+            //     match () {}
+            //     while true {}
+            //     for _ in () {}
+            //     {}
+            //     {}
+            //     macro_rules! test {
+            //          () => {}
+            //     }
+            //     test!{}
+            // }
+            if blocklike.is_block() {
+                p.eat(SEMI);
+            } else {
+                p.expect(SEMI);
+            }
+            m.complete(p, EXPR_STMT);
         }
     }
 
@@ -176,7 +195,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
+fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
     let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
             // test stmt_bin_expr_ambiguity
@@ -185,11 +204,11 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
             //     {1} &2;
             // }
             if r.prefer_stmt && blocklike.is_block() {
-                return BlockLike::Block;
+                return (Some(lhs), BlockLike::Block);
             }
             lhs
         }
-        None => return BlockLike::NotBlock,
+        None => return (None, BlockLike::NotBlock),
     };
 
     loop {
@@ -208,7 +227,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
         expr_bp(p, r, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
-    BlockLike::NotBlock
+    (Some(lhs), BlockLike::NotBlock)
 }
 
 const LHS_FIRST: TokenSet =

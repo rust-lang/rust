@@ -105,7 +105,9 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
                     // append `A`'s forward_parent `B`
                     fp = match mem::replace(&mut events[idx], Event::tombstone()) {
                         Event::Start { kind, forward_parent } => {
-                            forward_parents.push(kind);
+                            if kind != TOMBSTONE {
+                                forward_parents.push(kind);
+                            }
                             forward_parent
                         }
                         _ => unreachable!(),

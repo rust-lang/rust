@@ -392,9 +392,9 @@ fn match_arm(p: &mut Parser) -> BlockLike {
         match_guard(p);
     }
     p.expect(FAT_ARROW);
-    let ret = expr_stmt(p);
+    let blocklike = expr_stmt(p).1;
     m.complete(p, MATCH_ARM);
-    ret
+    blocklike
 }
 
 // test match_guard
