@@ -22,7 +22,7 @@ use crate::clean::WherePredicate as WP;
 use crate::clean;
 use crate::core::DocContext;
 
-pub fn where_clauses(cx: &DocContext<'_, '_, '_>, clauses: Vec<WP>) -> Vec<WP> {
+pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
@@ -141,7 +141,7 @@ fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
     bounds
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext<'_, '_, '_>, child: DefId,
+fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId,
                                trait_: DefId) -> bool {
     if child == trait_ {
         return true

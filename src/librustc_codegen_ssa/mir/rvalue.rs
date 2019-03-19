@@ -257,7 +257,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
+                    mir::CastKind::MutToConstPointer
+                    | mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
                                 let data_cast = bx.pointercast(data_ptr,
@@ -274,7 +275,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unexpected non-Pair operand")
                         }
                     }
-                    mir::CastKind::Misc => {
+                    mir::CastKind::MutToConstPointer
+                    | mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {

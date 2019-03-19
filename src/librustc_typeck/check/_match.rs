@@ -227,7 +227,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype_pat(pat.span, expected, rhs_ty, match_discrim_span);
                 common_type
             }
-            PatKind::Binding(ba, _, var_id, _, ref sub) => {
+            PatKind::Binding(ba, var_id, _, ref sub) => {
                 let bm = if ba == hir::BindingAnnotation::Unannotated {
                     def_bm
                 } else {

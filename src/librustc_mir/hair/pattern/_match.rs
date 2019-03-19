@@ -440,13 +440,7 @@ impl<'tcx> Constructor<'tcx> {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            &ConstantValue(c) => {
-                crate::const_eval::const_variant_index(
-                    cx.tcx,
-                    cx.param_env,
-                    c,
-                ).unwrap()
-            },
+            &ConstantValue(c) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }
     }
@@ -538,7 +532,6 @@ impl<'tcx> Witness<'tcx> {
         }));
         self.apply_constructor(cx, ctor, ty)
     }
-
 
     /// Constructs a partial witness for a pattern given a list of
     /// patterns expanded by the specialization step.

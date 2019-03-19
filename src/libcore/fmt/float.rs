@@ -15,6 +15,7 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
         // FIXME(#53491): Technically, this is calling `get_mut` on an uninitialized
         // `MaybeUninit` (here and elsewhere in this file).  Revisit this once
         // we decided whether that is valid or not.
+        // Using `freeze` is *not enough*; `flt2dec::Part` is an enum!
         let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
                                                     *num, sign, precision,
                                                     false, buf.get_mut(), parts.get_mut());
@@ -33,6 +34,7 @@ fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter, num: &T,
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
         let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
+        // FIXME(#53491)
         let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
                                                  sign, precision, false, buf.get_mut(),
                                                  parts.get_mut());
@@ -71,6 +73,7 @@ fn float_to_exponential_common_exact<T>(fmt: &mut Formatter, num: &T,
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
+        // FIXME(#53491)
         let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
                                                   *num, sign, precision,
                                                   upper, buf.get_mut(), parts.get_mut());
@@ -90,6 +93,7 @@ fn float_to_exponential_common_shortest<T>(fmt: &mut Formatter,
         // enough for f32 and f64
         let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
         let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
+        // FIXME(#53491)
         let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest,
                                                      *num, sign, (0, 0), upper,
                                                      buf.get_mut(), parts.get_mut());

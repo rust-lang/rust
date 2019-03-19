@@ -1,8 +1,16 @@
 error[E0004]: non-exhaustive patterns: `C(QA)` not covered
   --> $DIR/issue-40221.rs:11:11
    |
-LL |     match proto { //~ ERROR non-exhaustive patterns
-   |           ^^^^^ pattern `C(QA)` not covered
+LL | / enum P {
+LL | |     C(PC),
+   | |     - not covered
+LL | | }
+   | |_- `P` defined here
+...
+LL |       match proto { //~ ERROR non-exhaustive patterns
+   |             ^^^^^ pattern `C(QA)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

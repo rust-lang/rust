@@ -51,8 +51,8 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
-    if let Some(impl_node_id) = tcx.hir().as_local_node_id(impl_src) {
-        match tcx.hir().find(impl_node_id) {
+    if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src) {
+        match tcx.hir().find_by_hir_id(impl_hir_id) {
             Some(Node::Item(item)) =>
                 item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
@@ -141,12 +141,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
-        let node_id = match self.tcx.hir().as_local_node_id(def_id) {
-            Some(node_id) => node_id,
+        let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
+            Some(hir_id) => hir_id,
             None => { return false; }
         };
 
-        match self.tcx.hir().find(node_id) {
+        match self.tcx.hir().find_by_hir_id(hir_id) {
             Some(Node::Item(item)) => {
                 match item.node {
                     hir::ItemKind::Fn(..) =>
@@ -173,7 +173,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         } else {
                             let impl_did = self.tcx
                                                .hir()
-                                               .get_parent_did(node_id);
+                                               .get_parent_did_by_hir_id(hir_id);
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.

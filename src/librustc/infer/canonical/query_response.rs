@@ -315,6 +315,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     obligations.extend(ok.into_obligations());
                 }
 
+                (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
+                    unimplemented!() // FIXME(const_generics)
+                }
+
                 _ => {
                     bug!(
                         "kind mismatch, cannot unify {:?} and {:?}",
@@ -473,6 +477,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }
+                UnpackedKind::Const(..) => {
+                    unimplemented!() // FIXME(const_generics)
+                }
             }
         }
 
@@ -568,6 +575,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                                 ty::OutlivesPredicate(t1, r2)
                             )
                         ),
+                        UnpackedKind::Const(..) => {
+                            // Consts cannot outlive one another, so we don't expect to
+                            // ecounter this branch.
+                            span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
+                        }
                     }
                 )
             })
@@ -601,6 +613,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     (UnpackedKind::Lifetime(v1), UnpackedKind::Lifetime(v2)) => {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                    }
+                    (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
+                        unimplemented!() // FIXME(const_generics)
                     }
                     _ => {
                         bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);

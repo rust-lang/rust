@@ -443,6 +443,9 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     UnpackedKind::Lifetime(..) => tcx.mk_region(
                         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i))
                     ).into(),
+                    UnpackedKind::Const(..) => {
+                        unimplemented!() // FIXME(const_generics)
+                    }
                 })
                 .collect()
         }

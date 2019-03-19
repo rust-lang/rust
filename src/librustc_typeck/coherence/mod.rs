@@ -141,9 +141,7 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     for &impl_id in impls {
         check_impl_overlap(tcx, impl_id);
     }
-    use rustc::util::common::time;
-    time(tcx.sess, "builtin::check_trait checking", ||
-          builtin::check_trait(tcx, def_id));
+    builtin::check_trait(tcx, def_id);
 }
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

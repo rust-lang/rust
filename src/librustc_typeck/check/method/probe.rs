@@ -1528,7 +1528,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             // `impl_self_ty()` for an explanation.
                             self.tcx.types.re_erased.into()
                         }
-                        GenericParamDefKind::Type {..} => self.var_for_def(self.span, param),
+                        GenericParamDefKind::Type { .. }
+                        | GenericParamDefKind::Const => {
+                            self.var_for_def(self.span, param)
+                        }
                     }
                 }
             });
@@ -1545,9 +1548,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         InternalSubsts::for_item(self.tcx, def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
-                GenericParamDefKind::Type {..} => {
+                GenericParamDefKind::Type { .. } => {
                     self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
                         self.tcx.def_span(def_id))).into()
+                }
+                GenericParamDefKind::Const { .. } => {
+                    unimplemented!() // FIXME(const_generics)
                 }
             }
         })

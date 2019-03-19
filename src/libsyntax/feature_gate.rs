@@ -1176,7 +1176,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
            "dropck_eyepatch",
            "may_dangle has unstable semantics and may be removed in the future",
            cfg_fn!(dropck_eyepatch))),
-    ("unwind", Whitelisted, template!(List: "allowed"), Gated(Stability::Unstable,
+    ("unwind", Whitelisted, template!(List: "allowed|aborts"), Gated(Stability::Unstable,
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),

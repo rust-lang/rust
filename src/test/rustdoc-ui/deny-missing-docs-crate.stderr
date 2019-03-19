@@ -18,5 +18,5 @@ error: missing documentation for a struct
 LL | pub struct Foo; //~ ERROR
    | ^^^^^^^^^^^^^^^
 
-error: Compilation failed, aborting rustdoc
+error: aborting due to 2 previous errors
 

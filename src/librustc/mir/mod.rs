@@ -2237,6 +2237,9 @@ pub enum CastKind {
     /// Converts safe fn() to unsafe fn()
     UnsafeFnPointer,
 
+    /// Coerces *mut T to *const T, preserving T.
+    MutToConstPointer,
+
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
     /// codegen must figure out the details once full monomorphization
     /// is known. For example, this could be used to cast from a
@@ -2408,15 +2411,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                format!("[closure@{:?}]", node_id)
+                                format!("[closure@{:?}]", hir_id)
                             } else {
-                                format!("[closure@{:?}]", tcx.hir().span(node_id))
+                                format!("[closure@{:?}]", tcx.hir().span_by_hir_id(hir_id))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            tcx.with_freevars(node_id, |freevars| {
+                            tcx.with_freevars(hir_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
                                     let var_name = tcx.hir().name(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2430,11 +2433,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-                            let name = format!("[generator@{:?}]", tcx.hir().span(node_id));
+                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+                            let name = format!("[generator@{:?}]",
+                                               tcx.hir().span_by_hir_id(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            tcx.with_freevars(node_id, |freevars| {
+                            tcx.with_freevars(hir_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
                                     let var_name = tcx.hir().name(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);

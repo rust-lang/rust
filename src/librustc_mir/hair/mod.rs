@@ -12,7 +12,6 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserType};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
-use syntax::ast;
 use syntax_pos::Span;
 use self::cx::Cx;
 
@@ -190,6 +189,9 @@ pub enum ExprKind<'tcx> {
     UnsafeFnPointer {
         source: ExprRef<'tcx>,
     },
+    MutToConstPointer {
+        source: ExprRef<'tcx>,
+    },
     Unsize {
         source: ExprRef<'tcx>,
     },
@@ -227,7 +229,7 @@ pub enum ExprKind<'tcx> {
         index: ExprRef<'tcx>,
     },
     VarRef {
-        id: ast::NodeId,
+        id: hir::HirId,
     },
     /// first argument, used for self in a closure
     SelfRef,

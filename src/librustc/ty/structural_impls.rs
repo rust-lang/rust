@@ -5,12 +5,13 @@
 
 use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
-use crate::ty::{self, Lift, Ty, TyCtxt};
+use crate::ty::{self, Lift, Ty, TyCtxt, ConstVid, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use smallvec::SmallVec;
 use crate::mir::interpret;
 
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -49,6 +50,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::BoundRegion,
     crate::ty::ClosureKind,
     crate::ty::IntVarValue,
+    crate::ty::ParamConst,
     crate::ty::ParamTy,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
@@ -503,12 +505,30 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
     type Lifted = ConstValue<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
+            ConstValue::Param(param) => Some(ConstValue::Param(param)),
+            ConstValue::Infer(infer) => {
+                Some(ConstValue::Infer(match infer {
+                    InferConst::Var(vid) => InferConst::Var(vid.lift_to_tcx(tcx)?),
+                    InferConst::Fresh(i) => InferConst::Fresh(i),
+                    InferConst::Canonical(debrujin, var) => InferConst::Canonical(debrujin, var),
+                }))
+            }
             ConstValue::Scalar(x) => Some(ConstValue::Scalar(x)),
             ConstValue::Slice(x, y) => Some(ConstValue::Slice(x, y)),
             ConstValue::ByRef(ptr, alloc) => Some(ConstValue::ByRef(
                 ptr, alloc.lift_to_tcx(tcx)?,
             )),
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ConstVid<'a> {
+    type Lifted = ConstVid<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, _: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        Some(ConstVid {
+            index: self.index,
+            phantom: PhantomData,
+        })
     }
 }
 

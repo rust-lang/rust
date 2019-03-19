@@ -2468,6 +2468,25 @@ impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
     }
 }
 
+impl<'a, T> Drain<'a, T> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_drain_as_slice)]
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain(..);
+    /// assert_eq!(drain.as_slice(), &['a', 'b', 'c']);
+    /// let _ = drain.next().unwrap();
+    /// assert_eq!(drain.as_slice(), &['b', 'c']);
+    /// ```
+    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "58957")]
+    pub fn as_slice(&self) -> &[T] {
+        self.iter.as_slice()
+    }
+}
+
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<T: Sync> Sync for Drain<'_, T> {}
 #[stable(feature = "drain", since = "1.6.0")]

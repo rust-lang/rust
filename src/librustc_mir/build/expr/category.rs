@@ -62,6 +62,7 @@ impl Category {
             | ExprKind::ReifyFnPointer { .. }
             | ExprKind::ClosureFnPointer { .. }
             | ExprKind::UnsafeFnPointer { .. }
+            | ExprKind::MutToConstPointer { .. }
             | ExprKind::Unsize { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }

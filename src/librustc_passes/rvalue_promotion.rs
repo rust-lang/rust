@@ -14,7 +14,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use rustc::ty::cast::CastKind;
+use rustc::ty::cast::CastTy;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
@@ -39,22 +39,15 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &body_id in &tcx.hir().krate().body_ids {
-        let def_id = tcx.hir().body_owner_def_id(body_id);
-        tcx.const_is_rvalue_promotable_to_static(def_id);
-    }
-}
-
 fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   def_id: DefId)
                                                   -> bool
 {
     assert!(def_id.is_local());
 
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(hir_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
@@ -79,9 +72,9 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     // `def_id` should be a `Body` owner
-    let node_id = tcx.hir().as_local_node_id(def_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(hir_id);
     let _ = visitor.check_nested_body(body_id);
 
     Lrc::new(visitor.result)
@@ -318,15 +311,12 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
             debug!("Checking const cast(id={})", from.hir_id);
-            match v.tables.cast_kinds().get(from.hir_id) {
-                None => {
-                    v.tcx.sess.delay_span_bug(e.span, "no kind for cast");
-                    NotPromotable
-                },
-                Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
-                    NotPromotable
-                }
-                _ => expr_promotability
+            let cast_in = CastTy::from_ty(v.tables.expr_ty(from));
+            let cast_out = CastTy::from_ty(v.tables.expr_ty(e));
+            match (cast_in, cast_out) {
+                (Some(CastTy::FnPtr), Some(CastTy::Int(_))) |
+                (Some(CastTy::Ptr(_)), Some(CastTy::Int(_))) => NotPromotable,
+                (_, _) => expr_promotability
             }
         }
         hir::ExprKind::Path(ref qpath) => {
@@ -455,10 +445,9 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Closure(_capture_clause, ref _box_fn_decl,
                                body_id, _span, _option_generator_movability) => {
             let nested_body_promotable = v.check_nested_body(body_id);
-            let node_id = v.tcx.hir().hir_to_node_id(e.hir_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            if v.tcx.with_freevars(node_id, |fv| !fv.is_empty()) {
+            if v.tcx.with_freevars(e.hir_id, |fv| !fv.is_empty()) {
                 NotPromotable
             } else {
                 nested_body_promotable

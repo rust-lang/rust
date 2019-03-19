@@ -1286,7 +1286,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// # Examples
     ///
     /// Here is an example which increments every integer in a vector.
-    /// `We use the checked variant of `add` that returns `None` when the
+    /// We use the checked variant of `add` that returns `None` when the
     /// calculation would result in an overflow.
     ///
     /// ```

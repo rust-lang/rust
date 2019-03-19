@@ -37,10 +37,10 @@ impl MirPass for ConstProp {
         }
 
         use rustc::hir::map::blocks::FnLikeNode;
-        let node_id = tcx.hir().as_local_node_id(source.def_id())
-                             .expect("Non-local call to local provider is_const_fn");
+        let hir_id = tcx.hir().as_local_hir_id(source.def_id())
+                              .expect("Non-local call to local provider is_const_fn");
 
-        let is_fn_like = FnLikeNode::from_node(tcx.hir().get(node_id)).is_some();
+        let is_fn_like = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)).is_some();
         let is_assoc_const = match tcx.describe_def(source.def_id()) {
             Some(Def::AssociatedConst(_)) => true,
             _ => false,

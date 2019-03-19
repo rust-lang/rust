@@ -137,6 +137,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("smallvec"),
     Crate("stable_deref_trait"),
     Crate("syn"),
+    Crate("synstructure"),
     Crate("tempfile"),
     Crate("termcolor"),
     Crate("terminon"),

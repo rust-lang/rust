@@ -1,31 +1,31 @@
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:14:35
+  --> $DIR/token-error-correct-3.rs:15:35
    |
-LL |             callback(path.as_ref(); //~ ERROR expected one of
+LL |             callback(path.as_ref();
    |                     -             ^
    |                     |             |
    |                     |             help: `)` may belong here
    |                     unclosed delimiter
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:20:9
+  --> $DIR/token-error-correct-3.rs:19:9
    |
-LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
-...
+LL |             //~^ ERROR mismatched types
 LL |         } else {
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
   --> $DIR/token-error-correct-3.rs:13:13
    |
-LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
+LL |         if !is_directory(path.as_ref()) {
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/token-error-correct-3.rs:15:13
+  --> $DIR/token-error-correct-3.rs:17:13
    |
-LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |             |
    |             expected (), found enum `std::result::Result`

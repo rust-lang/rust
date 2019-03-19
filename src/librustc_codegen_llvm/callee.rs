@@ -113,7 +113,7 @@ pub fn get_fn(
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            let is_generic = instance.substs.types().next().is_some();
+            let is_generic = instance.substs.non_erasable_generics().next().is_some();
 
             if is_generic {
                 // This is a monomorphization. Its expected visibility depends

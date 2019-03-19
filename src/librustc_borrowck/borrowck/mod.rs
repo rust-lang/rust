@@ -83,9 +83,9 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
-    let owner_id = tcx.hir().as_local_node_id(owner_def_id).unwrap();
+    let owner_id = tcx.hir().as_local_hir_id(owner_def_id).unwrap();
 
-    match tcx.hir().get(owner_id) {
+    match tcx.hir().get_by_hir_id(owner_id) {
         Node::StructCtor(_) |
         Node::Variant(_) => {
             // We get invoked with anything that has MIR, but some of
@@ -681,8 +681,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                              Origin::Ast);
                 let need_note = match lp.ty.sty {
                     ty::Closure(id, _) => {
-                        let node_id = self.tcx.hir().as_local_node_id(id).unwrap();
-                        let hir_id = self.tcx.hir().node_to_hir_id(node_id);
+                        let hir_id = self.tcx.hir().as_local_hir_id(id).unwrap();
                         if let Some((span, name)) = self.tables.closure_kind_origins().get(hir_id) {
                             err.span_note(*span, &format!(
                                 "closure cannot be invoked more than once because \
@@ -1253,12 +1252,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
             }
             Some(ImmutabilityBlame::AdtFieldDeref(_, field)) => {
-                let node_id = match self.tcx.hir().as_local_node_id(field.did) {
-                    Some(node_id) => node_id,
+                let hir_id = match self.tcx.hir().as_local_hir_id(field.did) {
+                    Some(hir_id) => hir_id,
                     None => return
                 };
 
-                if let Node::Field(ref field) = self.tcx.hir().get(node_id) {
+                if let Node::Field(ref field) = self.tcx.hir().get_by_hir_id(hir_id) {
                     if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
                         db.span_label(field.ty.span, msg);
                     }

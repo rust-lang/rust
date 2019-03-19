@@ -383,6 +383,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::ReifyFnPointer { .. }
             | ExprKind::ClosureFnPointer { .. }
             | ExprKind::UnsafeFnPointer { .. }
+            | ExprKind::MutToConstPointer { .. }
             | ExprKind::Unsize { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }

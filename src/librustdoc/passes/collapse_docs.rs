@@ -29,7 +29,7 @@ impl DocFragment {
     }
 }
 
-pub fn collapse_docs(krate: clean::Crate, _: &DocContext<'_, '_, '_>) -> clean::Crate {
+pub fn collapse_docs(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     Collapser.fold_crate(krate)
 }
 

@@ -490,7 +490,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-
+            proc_macro_stability: if is_proc_macro {
+                tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).map(|stab| stab.clone())
+            } else {
+                None
+            },
             compiler_builtins: attr::contains_name(&attrs, "compiler_builtins"),
             needs_allocator: attr::contains_name(&attrs, "needs_allocator"),
             needs_panic_runtime: attr::contains_name(&attrs, "needs_panic_runtime"),
@@ -779,8 +783,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let ast_item = tcx.hir().expect_trait_item(node_id);
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let ast_item = tcx.hir().expect_trait_item(hir_id);
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
@@ -889,8 +893,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
-        let ast_item = self.tcx.hir().expect_impl_item(node_id);
+        let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+        let ast_item = self.tcx.hir().expect_impl_item(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {
@@ -978,7 +982,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             let body = self.tcx.hir().body(body_id);
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
-                    PatKind::Binding(_, _, _, ident, _) => ident.name,
+                    PatKind::Binding(_, _, ident, _) => ident.name,
                     _ => keywords::Invalid.name(),
                 }
             }))
@@ -1360,8 +1364,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
 
         let tables = self.tcx.typeck_tables_of(def_id);
-        let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
-        let hir_id = self.tcx.hir().node_to_hir_id(node_id);
+        let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
         let kind = match tables.node_type(hir_id).sty {
             ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
@@ -1403,7 +1406,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_info_for_anon_const(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_anon_const({:?})", def_id);
         let tcx = self.tcx;
-        let id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let body_id = tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
         let mir = tcx.mir_const_qualif(def_id).0;

@@ -12,6 +12,7 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
+use crate::mir::interpret::ConstValue;
 use crate::util::common::ErrorReported;
 use crate::middle::lang_items;
 
@@ -495,8 +496,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
-                    UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
-                        // not a type or region param - this should be reported
+                    UnpackedKind::Const(&ty::LazyConst::Evaluated(ty::Const {
+                        val: ConstValue::Param(ref pc),
+                        ..
+                    })) => {
+                        !impl_generics.const_param(pc, self).pure_wrt_drop
+                    }
+                    UnpackedKind::Lifetime(_) |
+                    UnpackedKind::Type(_) |
+                    UnpackedKind::Const(_) => {
+                        // Not a type, const or region param: this should be reported
                         // as an error.
                         false
                     }
@@ -587,14 +596,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Some(ty::Binder::bind(env_ty))
     }
 
-    /// Given the `DefId` of some item that has no type parameters, make
+    /// Given the `DefId` of some item that has no type or const parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.types.re_erased.into(),
-                GenericParamDefKind::Type {..} => {
+                GenericParamDefKind::Type { .. } => {
                     bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+                }
+                GenericParamDefKind::Const { .. } => {
+                    bug!("empty_substs_for_def_id: {:?} has const parameters", item_def_id)
                 }
             }
         })

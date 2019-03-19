@@ -16,15 +16,15 @@ pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     description: "validates syntax inside Rust code blocks",
 };
 
-pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_, '_, '_>) -> clean::Crate {
+pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_>) -> clean::Crate {
     SyntaxChecker { cx }.fold_crate(krate)
 }
 
-struct SyntaxChecker<'a, 'tcx: 'a, 'rcx: 'a> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+struct SyntaxChecker<'a, 'tcx: 'a> {
+    cx: &'a DocContext<'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx> SyntaxChecker<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
     fn check_rust_syntax(&self, item: &clean::Item, dox: &str, code_block: RustCodeBlock) {
         let sess = ParseSess::new(FilePathMapping::empty());
         let source_file = sess.source_map().new_source_file(
@@ -98,7 +98,7 @@ impl<'a, 'tcx, 'rcx> SyntaxChecker<'a, 'tcx, 'rcx> {
     }
 }
 
-impl<'a, 'tcx, 'rcx> DocFolder for SyntaxChecker<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
             for code_block in markdown::rust_code_blocks(&dox) {

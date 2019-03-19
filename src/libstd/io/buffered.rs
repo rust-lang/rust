@@ -101,7 +101,9 @@ impl<R: Read> BufReader<R> {
             }
         }
     }
+}
 
+impl<R> BufReader<R> {
     /// Gets a reference to the underlying reader.
     ///
     /// It is inadvisable to directly read from the underlying reader.

@@ -378,6 +378,7 @@ impl_stable_hash_for!(enum mir::CastKind {
     ReifyFnPointer,
     ClosureFnPointer,
     UnsafeFnPointer,
+    MutToConstPointer,
     Unsize
 });
 

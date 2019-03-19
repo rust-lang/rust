@@ -11,15 +11,15 @@ use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
-/// Stdout used by print! and println! macros
 thread_local! {
+    /// Stdout used by print! and println! macros
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
 
-/// Stderr used by eprint! and eprintln! macros, and panics
 thread_local! {
+    /// Stderr used by eprint! and eprintln! macros, and panics
     static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }

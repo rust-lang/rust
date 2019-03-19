@@ -1,44 +1,94 @@
 error[E0004]: non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:9:11
    |
-LL |     match (Foo { first: true, second: None }) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+LL | / struct Foo {
+LL | |     first: bool,
+LL | |     second: Option<[usize; 4]>
+LL | | }
+   | |_- `Foo` defined here
+...
+LL |       match (Foo { first: true, second: None }) {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Red` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:25:11
    |
-LL |     match Color::Red {
-   |           ^^^^^^^^^^ pattern `Red` not covered
+LL | / enum Color {
+LL | |     Red,
+   | |     --- not covered
+LL | |     Green,
+LL | |     CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
+LL | | }
+   | |_- `Color` defined here
+...
+LL |       match Color::Red {
+   |             ^^^^^^^^^^ pattern `Red` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `East`, `South` and `West` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:37:11
    |
-LL |     match Direction::North {
-   |           ^^^^^^^^^^^^^^^^ patterns `East`, `South` and `West` not covered
+LL | / enum Direction {
+LL | |     North, East, South, West
+   | |            ----  -----  ---- not covered
+   | |            |     |
+   | |            |     not covered
+   | |            not covered
+LL | | }
+   | |_- `Direction` defined here
+...
+LL |       match Direction::North {
+   |             ^^^^^^^^^^^^^^^^ patterns `East`, `South` and `West` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Second`, `Third`, `Fourth` and 8 more not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:48:11
    |
-LL |     match ExcessiveEnum::First {
-   |           ^^^^^^^^^^^^^^^^^^^^ patterns `Second`, `Third`, `Fourth` and 8 more not covered
+LL | / enum ExcessiveEnum {
+LL | |     First, Second, Third, Fourth, Fifth, Sixth, Seventh, Eighth, Ninth, Tenth, Eleventh, Twelfth
+LL | | }
+   | |_- `ExcessiveEnum` defined here
+...
+LL |       match ExcessiveEnum::First {
+   |             ^^^^^^^^^^^^^^^^^^^^ patterns `Second`, `Third`, `Fourth` and 8 more not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:56:11
    |
-LL |     match Color::Red {
-   |           ^^^^^^^^^^ pattern `CustomRGBA { a: true, .. }` not covered
+LL | / enum Color {
+LL | |     Red,
+LL | |     Green,
+LL | |     CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
+   | |     ---------- not covered
+LL | | }
+   | |_- `Color` defined here
+...
+LL |       match Color::Red {
+   |             ^^^^^^^^^^ pattern `CustomRGBA { a: true, .. }` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `[Second(true), Second(false)]` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:72:11
    |
 LL |     match *x {
    |           ^^ pattern `[Second(true), Second(false)]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `((), false)` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:85:11
    |
 LL |     match ((), false) {
    |           ^^^^^^^^^^^ pattern `((), false)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 7 previous errors
 

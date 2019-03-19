@@ -49,36 +49,36 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: Result<ty::Const<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
-            .and_then(|c| {
+            .map(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
                     ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
-                let values: Result<Vec<_>, ErrorHandled> = (0..fields).map(|field| {
+                let values: Vec<_> = (0..fields).map(|field| {
                     let field = const_field(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),
                         None,
                         mir::Field::new(field as usize),
                         c,
-                    )?;
+                    );
                     if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
-                        Ok(bx.scalar_to_backend(
+                        bx.scalar_to_backend(
                             prim, scalar,
                             bx.immediate_backend_type(layout),
-                        ))
+                        )
                     } else {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = bx.const_struct(&values?, false);
-                Ok((llval, c.ty))
+                let llval = bx.const_struct(&values, false);
+                (llval, c.ty)
             })
             .unwrap_or_else(|_| {
                 bx.tcx().sess.span_err(

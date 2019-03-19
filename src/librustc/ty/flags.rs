@@ -1,5 +1,6 @@
-use crate::ty::subst::SubstsRef;
-use crate::ty::{self, Ty, TypeFlags, TypeFoldable};
+use crate::ty::subst::{SubstsRef, UnpackedKind};
+use crate::ty::{self, Ty, TypeFlags, TypeFoldable, InferConst};
+use crate::mir::interpret::ConstValue;
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -232,6 +233,21 @@ impl FlagComputation {
         }
     }
 
+    fn add_const(&mut self, c: &ty::LazyConst<'_>) {
+        match c {
+            ty::LazyConst::Unevaluated(_, substs) => self.add_substs(substs),
+            // Only done to add the binder for the type. The type flags are
+            // included in `Const::type_flags`.
+            ty::LazyConst::Evaluated(ty::Const { ty, val }) => {
+                self.add_ty(ty);
+                if let ConstValue::Infer(InferConst::Canonical(debruijn, _)) = val {
+                    self.add_binder(*debruijn)
+                }
+            }
+        }
+        self.add_flags(c.type_flags());
+    }
+
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
         self.add_ty(projection.ty);
@@ -242,12 +258,12 @@ impl FlagComputation {
     }
 
     fn add_substs(&mut self, substs: SubstsRef<'_>) {
-        for ty in substs.types() {
-            self.add_ty(ty);
-        }
-
-        for r in substs.regions() {
-            self.add_region(r);
+        for kind in substs {
+            match kind.unpack() {
+                UnpackedKind::Type(ty) => self.add_ty(ty),
+                UnpackedKind::Lifetime(lt) => self.add_region(lt),
+                UnpackedKind::Const(ct) => self.add_const(ct),
+            }
         }
     }
 }

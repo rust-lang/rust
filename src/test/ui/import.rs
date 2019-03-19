@@ -1,6 +1,8 @@
 use zed::bar;
 use zed::baz; //~ ERROR unresolved import `zed::baz` [E0432]
-              //~^ no `baz` in `zed`. Did you mean to use `bar`?
+              //~| no `baz` in `zed`
+              //~| HELP a similar name exists in the module
+              //~| SUGGESTION bar
 
 
 mod zed {

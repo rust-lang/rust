@@ -141,14 +141,8 @@ pub mod util {
     pub mod bug;
 }
 
-// A private module so that macro-expanded idents like
-// `::rustc::lint::Lint` will also work in `rustc` itself.
-//
-// `libstd` uses the same trick.
-#[doc(hidden)]
-mod rustc {
-    pub use crate::lint;
-}
+// Allows macros to refer to this crate as `::rustc`
+extern crate self as rustc;
 
 // FIXME(#27438): right now the unit tests of librustc don't refer to any actual
 //                functions generated in librustc_data_structures (all

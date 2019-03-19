@@ -389,7 +389,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for param in generics.params.iter() {
             let value = match param.kind {
-                GenericParamDefKind::Type {..} => {
+                GenericParamDefKind::Type { .. } |
+                GenericParamDefKind::Const => {
                     trait_ref.substs[param.index as usize].to_string()
                 },
                 GenericParamDefKind::Lifetime => continue,
@@ -598,11 +599,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_selection_error(&self,
-                                  obligation: &PredicateObligation<'tcx>,
-                                  error: &SelectionError<'tcx>,
-                                  fallback_has_occurred: bool)
-    {
+    pub fn report_selection_error(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        error: &SelectionError<'tcx>,
+        fallback_has_occurred: bool,
+    ) {
         let span = obligation.cause.span;
 
         let mut err = match *error {
@@ -672,6 +674,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
+                        self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -760,7 +763,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
                         let closure_span = self.tcx.sess.source_map()
                             .def_span(self.tcx.hir().span_if_local(closure_def_id).unwrap());
-                        let node_id = self.tcx.hir().as_local_node_id(closure_def_id).unwrap();
+                        let hir_id = self.tcx.hir().as_local_hir_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
                             "expected a closure that implements the `{}` trait, \
@@ -779,8 +782,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // a particular trait.
                         if let Some(tables) = self.in_progress_tables {
                             let tables = tables.borrow();
-                            let closure_hir_id = self.tcx.hir().node_to_hir_id(node_id);
-                            match (found_kind, tables.closure_kind_origins().get(closure_hir_id)) {
+                            match (found_kind, tables.closure_kind_origins().get(hir_id)) {
                                 (ty::ClosureKind::FnOnce, Some((span, name))) => {
                                     err.span_label(*span, format!(
                                         "closure is `FnOnce` because it moves the \
@@ -900,9 +902,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
     /// suggestion to borrow the initializer in order to use have a slice instead.
-    fn suggest_borrow_on_unsized_slice(&self,
-                                       code: &ObligationCauseCode<'tcx>,
-                                       err: &mut DiagnosticBuilder<'tcx>) {
+    fn suggest_borrow_on_unsized_slice(
+        &self,
+        code: &ObligationCauseCode<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+    ) {
         if let &ObligationCauseCode::VariableType(node_id) = code {
             let parent_node = self.tcx.hir().get_parent_node(node_id);
             if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
@@ -924,10 +928,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
     /// suggest removing these references until we reach a type that implements the trait.
-    fn suggest_remove_reference(&self,
-                                obligation: &PredicateObligation<'tcx>,
-                                err: &mut DiagnosticBuilder<'tcx>,
-                                trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
+    fn suggest_remove_reference(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    ) {
         let trait_ref = trait_ref.skip_binder();
         let span = obligation.cause.span;
 
@@ -964,6 +970,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
                 } else {
                     break;
+                }
+            }
+        }
+    }
+
+    fn suggest_semicolon_removal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    ) {
+        let hir = self.tcx.hir();
+        let parent_node = hir.get_parent_node(
+            hir.hir_to_node_id(obligation.cause.body_id),
+        );
+        let node = hir.find(parent_node);
+        if let Some(hir::Node::Item(hir::Item {
+            node: hir::ItemKind::Fn(decl, _, _, body_id),
+            ..
+        })) = node {
+            let body = hir.body(*body_id);
+            if let hir::ExprKind::Block(blk, _) = &body.value.node {
+                if decl.output.span().overlaps(span) && blk.expr.is_none() &&
+                    "()" == &trait_ref.self_ty().to_string()
+                {
+                    // FIXME(estebank): When encountering a method with a trait
+                    // bound not satisfied in the return type with a body that has
+                    // no return, suggest removal of semicolon on last statement.
+                    // Once that is added, close #54771.
+                    if let Some(ref stmt) = blk.stmts.last() {
+                        let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                        err.span_label(sp, "consider removing this semicolon");
+                    }
                 }
             }
         }

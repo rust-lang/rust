@@ -648,7 +648,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {
         match self.is_proc_macro(id) {
-            true => None,
+            true => self.root.proc_macro_stability.clone(),
             false => self.entry(id).stability.map(|stab| stab.decode(self)),
         }
     }

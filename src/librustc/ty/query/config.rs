@@ -313,7 +313,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, (_, def_id): (DefId, DefId)) -> Cow<'static, str> {
-        let id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         format!("computing the bounds for type parameter `{}`",
                 tcx.hir().ty_param_name(id)).into()
     }
@@ -366,6 +366,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::mir_shims<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
     fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "privacy access levels".into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_private_in_public<'tcx> {
+    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "checking for private elements in public interfaces".into()
     }
 }
 

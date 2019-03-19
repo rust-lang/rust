@@ -3,6 +3,7 @@
 #![feature(nll)]
 #![feature(arbitrary_self_types)]
 #![feature(generator_trait)]
+#![feature(generators)]
 #![cfg_attr(unix, feature(libc))]
 
 #![allow(unused_imports)]
@@ -37,7 +38,11 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate syntax_ext;
 
-pub mod passes;
-pub mod profile;
+pub mod interface;
+mod passes;
+mod queries;
 pub mod util;
-pub mod proc_macro_decls;
+mod proc_macro_decls;
+mod profile;
+
+pub use interface::{run_compiler, Config};

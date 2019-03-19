@@ -7,12 +7,13 @@ extern crate rustc_codegen_utils;
 use std::any::Any;
 use std::sync::mpsc;
 use syntax::symbol::Symbol;
-use rustc::session::{Session, CompileIncomplete};
+use rustc::session::Session;
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
+use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::{CodegenBackend, MetadataOnlyCodegenBackend};
 
 struct TheBackend(Box<CodegenBackend>);
@@ -46,7 +47,7 @@ impl CodegenBackend for TheBackend {
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
-    ) -> Result<(), CompileIncomplete> {
+    ) -> Result<(), ErrorReported> {
         use std::io::Write;
         use rustc::session::config::CrateType;
         use rustc_codegen_utils::link::out_filename;

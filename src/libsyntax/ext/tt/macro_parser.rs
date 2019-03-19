@@ -761,7 +761,7 @@ pub fn parse(
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(
                 parser.span,
-                parser.token,
+                parser.token.clone(),
                 "no rules expected this token in macro call",
             );
         }

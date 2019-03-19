@@ -344,12 +344,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_attrs(tcx.hir().local_def_id(module));
-    }
-}
-
 fn is_c_like_enum(item: &hir::Item) -> bool {
     if let hir::ItemKind::Enum(ref def, _) = item.node {
         for variant in &def.variants {

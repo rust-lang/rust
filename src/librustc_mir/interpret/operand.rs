@@ -589,11 +589,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         val: ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        let val = self.monomorphize(val)?;
         let layout = from_known_layout(layout, || {
-            let ty = self.monomorphize(val.ty)?;
-            self.layout_of(ty)
+            self.layout_of(val.ty)
         })?;
         let op = match val.val {
+            ConstValue::Param(_) | ConstValue::Infer(_) => bug!(),
             ConstValue::ByRef(ptr, alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.

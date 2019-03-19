@@ -4,6 +4,12 @@ error[E0275]: overflow evaluating the requirement `<GetNext<T> as Next>::Next`
 LL | impl<T: Next> Next for GetNext<T> {
    |               ^^^^
 
-error: aborting due to previous error
+error[E0275]: overflow evaluating the requirement `<GetNext<T> as Next>::Next`
+  --> $DIR/issue-23122-1.rs:9:5
+   |
+LL |     type Next = <GetNext<T> as Next>::Next;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

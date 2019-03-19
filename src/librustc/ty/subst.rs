@@ -2,8 +2,9 @@
 
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
-use crate::ty::{self, Lift, List, Ty, TyCtxt};
+use crate::ty::{self, Lift, List, Ty, TyCtxt, InferConst, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use crate::mir::interpret::ConstValue;
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
@@ -17,24 +18,26 @@ use std::mem;
 use std::num::NonZeroUsize;
 
 /// An entity in the Rust type system, which can be one of
-/// several kinds (only types and lifetimes for now).
+/// several kinds (types, lifetimes, and consts).
 /// To reduce memory usage, a `Kind` is a interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
-/// indicate the type (`Ty` or `Region`) it points to.
+/// indicate the type (`Ty`, `Region`, or `Const`) it points to.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Kind<'tcx> {
     ptr: NonZeroUsize,
-    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>
+    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, &'tcx ty::LazyConst<'tcx>)>
 }
 
 const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
+const CONST_TAG: usize = 0b10;
 
 #[derive(Debug, RustcEncodable, RustcDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
+    Const(&'tcx ty::LazyConst<'tcx>),
 }
 
 impl<'tcx> UnpackedKind<'tcx> {
@@ -49,6 +52,11 @@ impl<'tcx> UnpackedKind<'tcx> {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(ty) & TAG_MASK, 0);
                 (TYPE_TAG, ty as *const _ as usize)
+            }
+            UnpackedKind::Const(ct) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(ct) & TAG_MASK, 0);
+                (CONST_TAG, ct as *const _ as usize)
             }
         };
 
@@ -85,6 +93,12 @@ impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
     }
 }
 
+impl<'tcx> From<&'tcx ty::LazyConst<'tcx>> for Kind<'tcx> {
+    fn from(c: &'tcx ty::LazyConst<'tcx>) -> Kind<'tcx> {
+        UnpackedKind::Const(c).pack()
+    }
+}
+
 impl<'tcx> Kind<'tcx> {
     #[inline]
     pub fn unpack(self) -> UnpackedKind<'tcx> {
@@ -93,6 +107,7 @@ impl<'tcx> Kind<'tcx> {
             match ptr & TAG_MASK {
                 REGION_TAG => UnpackedKind::Lifetime(&*((ptr & !TAG_MASK) as *const _)),
                 TYPE_TAG => UnpackedKind::Type(&*((ptr & !TAG_MASK) as *const _)),
+                CONST_TAG => UnpackedKind::Const(&*((ptr & !TAG_MASK) as *const _)),
                 _ => intrinsics::unreachable()
             }
         }
@@ -104,6 +119,7 @@ impl<'tcx> fmt::Debug for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{:?}", lt),
             UnpackedKind::Type(ty) => write!(f, "{:?}", ty),
+            UnpackedKind::Const(ct) => write!(f, "{:?}", ct),
         }
     }
 }
@@ -113,6 +129,7 @@ impl<'tcx> fmt::Display for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
             UnpackedKind::Type(ty) => write!(f, "{}", ty),
+            UnpackedKind::Const(ct) => write!(f, "{}", ct),
         }
     }
 }
@@ -122,8 +139,9 @@ impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
 
     fn lift_to_tcx<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match self.unpack() {
-            UnpackedKind::Lifetime(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
-            UnpackedKind::Type(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
+            UnpackedKind::Lifetime(lt) => lt.lift_to_tcx(tcx).map(|lt| lt.into()),
+            UnpackedKind::Type(ty) => ty.lift_to_tcx(tcx).map(|ty| ty.into()),
+            UnpackedKind::Const(ct) => ct.lift_to_tcx(tcx).map(|ct| ct.into()),
         }
     }
 }
@@ -133,6 +151,7 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => lt.fold_with(folder).into(),
             UnpackedKind::Type(ty) => ty.fold_with(folder).into(),
+            UnpackedKind::Const(ct) => ct.fold_with(folder).into(),
         }
     }
 
@@ -140,6 +159,7 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => lt.visit_with(visitor),
             UnpackedKind::Type(ty) => ty.visit_with(visitor),
+            UnpackedKind::Const(ct) => ct.visit_with(visitor),
         }
     }
 }
@@ -194,6 +214,15 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
                         ty::INNERMOST,
                         ty::BoundRegion::BrNamed(param.def_id, param.name)
                     )).into()
+                }
+
+                ty::GenericParamDefKind::Const => {
+                    tcx.mk_lazy_const(ty::LazyConst::Evaluated(ty::Const {
+                        val: ConstValue::Infer(
+                            InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from(param.index))
+                        ),
+                        ty: tcx.type_of(def_id),
+                    })).into()
                 }
             }
         })
@@ -284,6 +313,29 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    pub fn consts(&'a self) -> impl DoubleEndedIterator<Item = &'tcx ty::LazyConst<'tcx>> + 'a {
+        self.iter().filter_map(|k| {
+            if let UnpackedKind::Const(ct) = k.unpack() {
+                Some(ct)
+            } else {
+                None
+            }
+        })
+    }
+
+    #[inline]
+    pub fn non_erasable_generics(
+        &'a self
+    ) -> impl DoubleEndedIterator<Item = UnpackedKind<'tcx>> + 'a {
+        self.iter().filter_map(|k| {
+            match k.unpack() {
+                UnpackedKind::Lifetime(_) => None,
+                generic => Some(generic),
+            }
+        })
+    }
+
+    #[inline]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
         if let UnpackedKind::Type(ty) = self[i].unpack() {
             ty
@@ -298,6 +350,15 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
             lt
         } else {
             bug!("expected region for param #{} in {:?}", i, self);
+        }
+    }
+
+    #[inline]
+    pub fn const_at(&self, i: usize) -> &'tcx ty::LazyConst<'tcx> {
+        if let UnpackedKind::Const(ct) = self[i].unpack() {
+            ct
+        } else {
+            bug!("expected const for param #{} in {:?}", i, self);
         }
     }
 
@@ -469,6 +530,21 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
 
         return t1;
     }
+
+    fn fold_const(&mut self, c: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        if !c.needs_subst() {
+            return c;
+        }
+
+        if let ty::LazyConst::Evaluated(ty::Const {
+            val: ConstValue::Param(p),
+            ..
+        }) = c {
+            self.const_for_param(*p, c)
+        } else {
+            c.super_fold_with(self)
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
@@ -492,6 +568,34 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         };
 
         self.shift_vars_through_binders(ty)
+    }
+
+    fn const_for_param(
+        &self,
+        p: ParamConst,
+        source_cn: &'tcx ty::LazyConst<'tcx>
+    ) -> &'tcx ty::LazyConst<'tcx> {
+        // Look up the const in the substitutions. It really should be in there.
+        let opt_cn = self.substs.get(p.index as usize).map(|k| k.unpack());
+        let cn = match opt_cn {
+            Some(UnpackedKind::Const(cn)) => cn,
+            _ => {
+                let span = self.span.unwrap_or(DUMMY_SP);
+                span_bug!(
+                    span,
+                    "Const parameter `{:?}` ({:?}/{}) out of range \
+                     when substituting (root type={:?}) substs={:?}",
+                    p,
+                    source_cn,
+                    p.index,
+                    self.root_ty,
+                    self.substs,
+                );
+            }
+        };
+
+        // FIXME(const_generics): shift const through binders
+        cn
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs

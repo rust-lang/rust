@@ -1765,7 +1765,7 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.node {
             PatKind::Wild => self.s.word("_")?,
-            PatKind::Binding(binding_mode, _, _, ident, ref sub) => {
+            PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref")?;

@@ -9,25 +9,25 @@ pub const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
     description: "check private items doc tests",
 };
 
-struct PrivateItemDocTestLinter<'a, 'tcx: 'a, 'rcx: 'a> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+struct PrivateItemDocTestLinter<'a, 'tcx> {
+    cx: &'a DocContext<'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx> PrivateItemDocTestLinter<'a, 'tcx, 'rcx> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> PrivateItemDocTestLinter<'a, 'tcx> {
+    fn new(cx: &'a DocContext<'tcx>) -> Self {
         PrivateItemDocTestLinter {
             cx,
         }
     }
 }
 
-pub fn check_private_items_doc_tests(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
+pub fn check_private_items_doc_tests(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut coll = PrivateItemDocTestLinter::new(cx);
 
     coll.fold_crate(krate)
 }
 
-impl<'a, 'tcx, 'rcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);

@@ -593,8 +593,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
         let hir_id_root = if def_id.is_local() {
-            let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-            let hir_id = tcx.hir().definitions().node_to_hir_id(node_id);
+            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
             DefId::local(hir_id.owner)
         } else {
             def_id
@@ -619,8 +618,8 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
-        let item_id = tcx.hir().as_local_node_id(def_id);
-        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by(id));
+        let item_id = tcx.hir().as_local_hir_id(def_id);
+        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by_by_hir_id(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir().body(body_id);
             tcx.mk_region(ty::ReScope(region::Scope {
@@ -695,24 +694,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-        tcx.hir().krate().visit_all_item_likes(&mut visit);
-    })
-}
-
-pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
-    tcx.sess.track_errors(|| {
-        for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-        }
+        tcx.hir().krate().par_visit_all_item_likes(&mut visit);
     })
 }
 
 fn check_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
-}
-
-pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
-    tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
@@ -1005,7 +992,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Binding(_, _, _, ident, _) = p.node {
+        if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
             let node_id = self.fcx.tcx.hir().hir_to_node_id(p.hir_id);
@@ -1920,9 +1907,9 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                  -> Lrc<ty::GenericPredicates<'tcx>>
     {
         let tcx = self.tcx;
-        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-        let item_id = tcx.hir().ty_param_owner(node_id);
-        let item_def_id = tcx.hir().local_def_id(item_id);
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let item_id = tcx.hir().ty_param_owner(hir_id);
+        let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
         Lrc::new(ty::GenericPredicates {
@@ -2435,6 +2422,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         ty
+    }
+
+    pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        AstConv::ast_const_to_const(self, ast_c, ty)
     }
 
     // If the type given by the user has free regions, save it for later, since
@@ -4259,7 +4250,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
-                    let target_id = tcx.hir().node_to_hir_id(target_id);
                     let (e_ty, cause);
                     if let Some(ref e) = *expr_opt {
                         // If this is a break with a value, we need to type-check
@@ -5501,6 +5491,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.to_ty(ty).into()
                     }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        self.to_const(&ct.value, self.tcx.type_of(param.def_id)).into()
+                    }
                     _ => unreachable!(),
                 }
             },
@@ -5527,6 +5520,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // Using inference instead of `Error` gives better error messages.
                             self.var_for_def(span, param)
                         }
+                    }
+                    GenericParamDefKind::Const => {
+                        // FIXME(const_generics:defaults)
+                        // No const parameters were provided, we have to infer them.
+                        self.var_for_def(span, param)
                     }
                 }
             },
@@ -5685,11 +5683,19 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        generics: &ty::Generics,
                                        ty: Ty<'tcx>) {
     let own_counts = generics.own_counts();
-    debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
+    debug!(
+        "check_bounds_are_used(n_tys={}, n_cts={}, ty={:?})",
+        own_counts.types,
+        own_counts.consts,
+        ty
+    );
+
+    // FIXME(const_generics): we probably want to check the bounds for const parameters too.
 
     if own_counts.types == 0 {
         return;
     }
+
     // Make a vector of booleans initially false, set to true when used.
     let mut types_used = vec![false; own_counts.types];
 

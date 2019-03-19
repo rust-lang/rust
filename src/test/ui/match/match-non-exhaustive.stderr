@@ -3,12 +3,16 @@ error[E0004]: non-exhaustive patterns: `-2147483648i32..=0i32` and `2i32..=21474
    |
 LL |     match 0 { 1 => () } //~ ERROR non-exhaustive patterns
    |           ^ patterns `-2147483648i32..=0i32` and `2i32..=2147483647i32` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/match-non-exhaustive.rs:3:11
    |
 LL |     match 0 { 0 if false => () } //~ ERROR non-exhaustive patterns
    |           ^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 2 previous errors
 

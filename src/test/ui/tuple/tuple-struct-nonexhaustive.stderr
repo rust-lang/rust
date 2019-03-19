@@ -1,8 +1,13 @@
 error[E0004]: non-exhaustive patterns: `Foo(_, _)` not covered
   --> $DIR/tuple-struct-nonexhaustive.rs:5:11
    |
+LL | struct Foo(isize, isize);
+   | ------------------------- `Foo` defined here
+...
 LL |     match x {   //~ ERROR non-exhaustive
    |           ^ pattern `Foo(_, _)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

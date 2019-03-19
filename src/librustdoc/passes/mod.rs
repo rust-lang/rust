@@ -45,13 +45,16 @@ pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 mod check_code_block_syntax;
 pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 
+mod calculate_doc_coverage;
+pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
+
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
 #[derive(Copy, Clone)]
 pub struct Pass {
     pub name: &'static str,
-    pub pass: fn(clean::Crate, &DocContext<'_, '_, '_>) -> clean::Crate,
+    pub pass: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
     pub description: &'static str,
 }
 
@@ -67,6 +70,7 @@ pub const PASSES: &'static [Pass] = &[
     COLLECT_INTRA_DOC_LINKS,
     CHECK_CODE_BLOCK_SYNTAX,
     COLLECT_TRAIT_IMPLS,
+    CALCULATE_DOC_COVERAGE,
 ];
 
 /// The list of passes run by default.
@@ -94,12 +98,29 @@ pub const DEFAULT_PRIVATE_PASSES: &[&str] = &[
     "propagate-doc-cfg",
 ];
 
+/// The list of default passes run when `--doc-coverage` is passed to rustdoc.
+pub const DEFAULT_COVERAGE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
+    "strip-hidden",
+    "strip-private",
+    "calculate-doc-coverage",
+];
+
+/// The list of default passes run when `--doc-coverage --document-private-items` is passed to
+/// rustdoc.
+pub const PRIVATE_COVERAGE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
+    "calculate-doc-coverage",
+];
+
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` or `--document-private-items`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DefaultPassOption {
     Default,
     Private,
+    Coverage,
+    PrivateCoverage,
     None,
 }
 
@@ -108,6 +129,8 @@ pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
+        DefaultPassOption::Coverage => DEFAULT_COVERAGE_PASSES,
+        DefaultPassOption::PrivateCoverage => PRIVATE_COVERAGE_PASSES,
         DefaultPassOption::None => &[],
     }
 }
@@ -285,13 +308,13 @@ impl DocFolder for ImportStripper {
     }
 }
 
-pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+pub fn look_for_tests<'tcx>(
+    cx: &DocContext<'tcx>,
     dox: &str,
     item: &Item,
     check_missing_code: bool,
 ) {
-    if cx.as_local_node_id(item.def_id).is_none() {
+    if cx.as_local_hir_id(item.def_id).is_none() {
         // If non-local, no need to check anything.
         return;
     }
@@ -347,7 +370,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
 /// attributes are not all sugared doc comments. It's difficult to calculate the correct span in
 /// that case due to escaping and other source features.
 crate fn source_span_for_markdown_range(
-    cx: &DocContext<'_, '_, '_>,
+    cx: &DocContext<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     attrs: &clean::Attributes,

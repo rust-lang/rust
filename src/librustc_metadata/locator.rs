@@ -244,11 +244,13 @@ use rustc_data_structures::owning_ref::OwningRef;
 
 use log::{debug, info, warn};
 
+#[derive(Clone)]
 pub struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
+#[derive(Clone)]
 pub struct Context<'a> {
     pub sess: &'a Session,
     pub span: Span,
@@ -258,7 +260,7 @@ pub struct Context<'a> {
     pub extra_filename: Option<&'a str>,
     // points to either self.sess.target.target or self.sess.host, must match triple
     pub target: &'a Target,
-    pub triple: &'a TargetTriple,
+    pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
     pub root: &'a Option<CratePaths>,
     pub rejected_via_hash: Vec<CrateMismatch>,
@@ -302,6 +304,14 @@ impl CratePaths {
 }
 
 impl<'a> Context<'a> {
+    pub fn reset(&mut self) {
+        self.rejected_via_hash.clear();
+        self.rejected_via_triple.clear();
+        self.rejected_via_kind.clear();
+        self.rejected_via_version.clear();
+        self.rejected_via_filename.clear();
+    }
+
     pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
         let mut seen_paths = FxHashSet::default();
         match self.extra_filename {
@@ -399,7 +409,7 @@ impl<'a> Context<'a> {
                                            add);
 
             if (self.ident == "std" || self.ident == "core")
-                && self.triple != &TargetTriple::from_triple(config::host_triple()) {
+                && self.triple != TargetTriple::from_triple(config::host_triple()) {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }
             err.span_label(self.span, "can't find crate");
@@ -718,7 +728,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        if &root.triple != self.triple {
+        if root.triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}",
                   self.triple,
                   root.triple);

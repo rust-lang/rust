@@ -556,6 +556,14 @@ impl error::Error for Error {
             Repr::Custom(ref c) => c.error.cause(),
         }
     }
+
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Simple(..) => None,
+            Repr::Custom(ref c) => c.error.source(),
+        }
+    }
 }
 
 fn _assert_error_is_sync_send() {

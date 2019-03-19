@@ -132,25 +132,24 @@ pub enum ScopeData {
     Remainder(FirstStatementIndex)
 }
 
-/// Represents a subscope of `block` for a binding that is introduced
-/// by `block.stmts[first_statement_index]`. Such subscopes represent
-/// a suffix of the block. Note that each subscope does not include
-/// the initializer expression, if any, for the statement indexed by
-/// `first_statement_index`.
-///
-/// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
-///
-/// * The subscope with `first_statement_index == 0` is scope of both
-///   `a` and `b`; it does not include EXPR_1, but does include
-///   everything after that first `let`. (If you want a scope that
-///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
-///   but instead another `Scope` that encompasses the whole block,
-///   e.g., `Scope::Node`.
-///
-/// * The subscope with `first_statement_index == 1` is scope of `c`,
-///   and thus does not include EXPR_2, but covers the `...`.
-
 newtype_index! {
+    /// Represents a subscope of `block` for a binding that is introduced
+    /// by `block.stmts[first_statement_index]`. Such subscopes represent
+    /// a suffix of the block. Note that each subscope does not include
+    /// the initializer expression, if any, for the statement indexed by
+    /// `first_statement_index`.
+    ///
+    /// For example, given `{ let (a, b) = EXPR_1; let c = EXPR_2; ... }`:
+    ///
+    /// * The subscope with `first_statement_index == 0` is scope of both
+    ///   `a` and `b`; it does not include EXPR_1, but does include
+    ///   everything after that first `let`. (If you want a scope that
+    ///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
+    ///   but instead another `Scope` that encompasses the whole block,
+    ///   e.g., `Scope::Node`.
+    ///
+    /// * The subscope with `first_statement_index == 1` is scope of `c`,
+    ///   and thus does not include EXPR_2, but covers the `...`.
     pub struct FirstStatementIndex { .. }
 }
 
@@ -223,7 +222,7 @@ pub struct ScopeTree {
     /// The parent of the root body owner, if the latter is an
     /// an associated const or method, as impls/traits can also
     /// have lifetime parameters free in this body.
-    root_parent: Option<ast::NodeId>,
+    root_parent: Option<hir::HirId>,
 
     /// `parent_map` maps from a scope ID to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
@@ -650,8 +649,8 @@ impl<'tcx> ScopeTree {
                                       -> Scope {
         let param_owner = tcx.parent_def_id(br.def_id).unwrap();
 
-        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
-        let scope = tcx.hir().maybe_body_owned_by(param_owner_id).map(|body_id| {
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
+        let scope = tcx.hir().maybe_body_owned_by_by_hir_id(param_owner_id).map(|body_id| {
             tcx.hir().body(body_id).value.hir_id.local_id
         }).unwrap_or_else(|| {
             // The lifetime was defined on node that doesn't own a body,
@@ -661,7 +660,7 @@ impl<'tcx> ScopeTree {
                        "free_scope: {:?} not recognized by the \
                         region scope tree for {:?} / {:?}",
                        param_owner,
-                       self.root_parent.map(|id| tcx.hir().local_def_id(id)),
+                       self.root_parent.map(|id| tcx.hir().local_def_id_from_hir_id(id)),
                        self.root_body.map(|hir_id| DefId::local(hir_id.owner)));
 
             // The trait/impl lifetime is in scope for the method's body.
@@ -686,7 +685,7 @@ impl<'tcx> ScopeTree {
         // on the same function that they ended up being freed in.
         assert_eq!(param_owner, fr.scope);
 
-        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
         let body_id = tcx.hir().body_owned_by(param_owner_id);
         Scope { id: tcx.hir().body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }
@@ -1328,8 +1327,8 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         return tcx.region_scope_tree(closure_base_def_id);
     }
 
-    let id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
+    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by_by_hir_id(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -1348,10 +1347,10 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         // If the item is an associated const or a method,
         // record its impl/trait parent, as it can also have
         // lifetime parameters free in this body.
-        match tcx.hir().get(id) {
+        match tcx.hir().get_by_hir_id(id) {
             Node::ImplItem(_) |
             Node::TraitItem(_) => {
-                visitor.scope_tree.root_parent = Some(tcx.hir().get_parent(id));
+                visitor.scope_tree.root_parent = Some(tcx.hir().get_parent_item(id));
             }
             _ => {}
         }

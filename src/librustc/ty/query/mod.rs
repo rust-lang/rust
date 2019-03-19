@@ -350,8 +350,9 @@ define_queries! { <'tcx>
         [] fn check_match: CheckMatch(DefId)
             -> Result<(), ErrorReported>,
 
-        /// Performs the privacy check and computes "access levels".
+        /// Performs part of the privacy check and computes "access levels".
         [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Lrc<AccessLevels>,
+        [] fn check_private_in_public: CheckPrivateInPublic(CrateNum) -> (),
     },
 
     Other {

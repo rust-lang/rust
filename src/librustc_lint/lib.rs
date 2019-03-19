@@ -66,6 +66,7 @@ macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             KeywordIdents: KeywordIdents,
+            UnusedDocComment: UnusedDocComment,
         ]);
     )
 }
@@ -77,7 +78,6 @@ macro_rules! early_lint_passes {
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
             AnonymousParameters: AnonymousParameters,
-            UnusedDocComment: UnusedDocComment,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns,
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),

@@ -46,7 +46,7 @@ use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{Symbol, keywords};
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, MultiSpan, BytePos, FileName};
 use log::{debug, trace};
@@ -256,8 +256,15 @@ pub struct Parser<'a> {
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
+    last_unexpected_token_span: Option<Span>,
 }
 
+impl<'a> Drop for Parser<'a> {
+    fn drop(&mut self) {
+        let diag = self.diagnostic();
+        emit_unclosed_delims(&mut self.unclosed_delims, diag);
+    }
+}
 
 #[derive(Clone)]
 struct TokenCursor {
@@ -582,6 +589,7 @@ impl<'a> Parser<'a> {
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
+            last_unexpected_token_span: None,
         };
 
         let tok = parser.next_tok();
@@ -775,6 +783,8 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
             Ok(false)
+        } else if self.last_unexpected_token_span == Some(self.span) {
+            FatalError.raise();
         } else {
             let mut expected = edible.iter()
                 .map(|x| TokenType::Token(x.clone()))
@@ -802,6 +812,7 @@ impl<'a> Parser<'a> {
                  (self.sess.source_map().next_point(self.prev_span),
                   format!("expected {} here", expect)))
             };
+            self.last_unexpected_token_span = Some(self.span);
             let mut err = self.fatal(&msg_exp);
             if self.token.is_ident_named("and") {
                 err.span_suggestion_short(
@@ -1497,9 +1508,13 @@ impl<'a> Parser<'a> {
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_trait_item_(at_end, attrs)
+            let item = this.parse_trait_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
             item.tokens = Some(tokens);
@@ -1803,7 +1818,7 @@ impl<'a> Parser<'a> {
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_generic_bounds(None)?);
+            bounds.append(&mut self.parse_generic_bounds(Some(self.prev_span))?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -5523,6 +5538,7 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
         let mut last_plus_span = None;
+        let mut was_negative = false;
         loop {
             // This needs to be synchronized with `Token::can_begin_bound`.
             let is_bound_start = self.check_path() || self.check_lifetime() ||
@@ -5567,9 +5583,10 @@ impl<'a> Parser<'a> {
                     }
                     let poly_span = lo.to(self.prev_span);
                     if is_negative {
-                        negative_bounds.push(
-                            last_plus_span.or(colon_span).unwrap()
-                                .to(poly_span));
+                        was_negative = true;
+                        if let Some(sp) = last_plus_span.or(colon_span) {
+                            negative_bounds.push(sp.to(poly_span));
+                        }
                     } else {
                         let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
                         let modifier = if question.is_some() {
@@ -5591,26 +5608,28 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if !negative_bounds.is_empty() {
+        if !negative_bounds.is_empty() || was_negative {
             let plural = negative_bounds.len() > 1;
             let mut err = self.struct_span_err(negative_bounds,
                                                "negative trait bounds are not supported");
-            let bound_list = colon_span.unwrap().to(self.prev_span);
-            let mut new_bound_list = String::new();
-            if !bounds.is_empty() {
-                let mut snippets = bounds.iter().map(|bound| bound.span())
-                    .map(|span| self.sess.source_map().span_to_snippet(span));
-                while let Some(Ok(snippet)) = snippets.next() {
-                    new_bound_list.push_str(" + ");
-                    new_bound_list.push_str(&snippet);
+            if let Some(bound_list) = colon_span {
+                let bound_list = bound_list.to(self.prev_span);
+                let mut new_bound_list = String::new();
+                if !bounds.is_empty() {
+                    let mut snippets = bounds.iter().map(|bound| bound.span())
+                        .map(|span| self.sess.source_map().span_to_snippet(span));
+                    while let Some(Ok(snippet)) = snippets.next() {
+                        new_bound_list.push_str(" + ");
+                        new_bound_list.push_str(&snippet);
+                    }
+                    new_bound_list = new_bound_list.replacen(" +", ":", 1);
                 }
-                new_bound_list = new_bound_list.replacen(" +", ":", 1);
+                err.span_suggestion_short(bound_list,
+                                        &format!("remove the trait bound{}",
+                                                if plural { "s" } else { "" }),
+                                        new_bound_list,
+                                        Applicability::MachineApplicable);
             }
-            err.span_suggestion_short(bound_list,
-                                      &format!("remove the trait bound{}",
-                                              if plural { "s" } else { "" }),
-                                      new_bound_list,
-                                      Applicability::MachineApplicable);
             err.emit();
         }
 
@@ -5646,7 +5665,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(None)?
+            self.parse_generic_bounds(Some(self.prev_span))?
         } else {
             Vec::new()
         };
@@ -6091,7 +6110,7 @@ impl<'a> Parser<'a> {
                 // or with mandatory equality sign and the second type.
                 let ty = self.parse_ty()?;
                 if self.eat(&token::Colon) {
-                    let bounds = self.parse_generic_bounds(None)?;
+                    let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
                     where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                         ast::WhereBoundPredicate {
                             span: lo.to(self.prev_span),
@@ -6333,7 +6352,10 @@ impl<'a> Parser<'a> {
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
             } else {
-                return self.unexpected();
+                match self.expect_one_of(&[], &[]) {
+                    Err(err) => return Err(err),
+                    Ok(recovered) => (vec![self_arg], recovered),
+                }
             }
         } else {
             self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?
@@ -6459,9 +6481,13 @@ impl<'a> Parser<'a> {
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
+        let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            this.parse_impl_item_(at_end, attrs)
+            let item = this.parse_impl_item_(at_end, attrs);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // See `parse_item` for why this clause is here.
         if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
@@ -7643,7 +7669,7 @@ impl<'a> Parser<'a> {
         tps.where_clause = self.parse_where_clause()?;
         let alias = if existential {
             self.expect(&token::Colon)?;
-            let bounds = self.parse_generic_bounds(None)?;
+            let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
             AliasKind::Existential(bounds)
         } else {
             self.expect(&token::Eq)?;
@@ -7781,9 +7807,13 @@ impl<'a> Parser<'a> {
         macros_allowed: bool,
         attributes_allowed: bool,
     ) -> PResult<'a, Option<P<Item>>> {
+        let mut unclosed_delims = vec![];
         let (ret, tokens) = self.collect_tokens(|this| {
-            this.parse_item_implementation(attrs, macros_allowed, attributes_allowed)
+            let item = this.parse_item_implementation(attrs, macros_allowed, attributes_allowed);
+            unclosed_delims.append(&mut this.unclosed_delims);
+            item
         })?;
+        self.unclosed_delims.append(&mut unclosed_delims);
 
         // Once we've parsed an item and recorded the tokens we got while
         // parsing we may want to store `tokens` into the item we're about to
@@ -8539,8 +8569,6 @@ impl<'a> Parser<'a> {
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
         });
-        emit_unclosed_delims(&self.unclosed_delims, self.diagnostic());
-        self.unclosed_delims.clear();
         krate
     }
 
@@ -8571,8 +8599,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors::Handler) {
-    for unmatched in unclosed_delims {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {
+    for unmatched in unclosed_delims.iter() {
         let mut err = handler.struct_span_err(unmatched.found_span, &format!(
             "incorrect close delimiter: `{}`",
             pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
@@ -8586,4 +8614,5 @@ pub fn emit_unclosed_delims(unclosed_delims: &[UnmatchedBrace], handler: &errors
         }
         err.emit();
     }
+    unclosed_delims.clear();
 }

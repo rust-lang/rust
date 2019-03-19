@@ -34,7 +34,6 @@
 use syntax::ast::{Ident, Name, Attribute};
 use syntax_pos::Span;
 use crate::hir::*;
-use crate::hir::def::Def;
 use crate::hir::map::Map;
 use super::itemlikevisit::DeepVisitor;
 
@@ -226,9 +225,6 @@ pub trait Visitor<'v> : Sized {
     ///////////////////////////////////////////////////////////////////////////
 
     fn visit_id(&mut self, _hir_id: HirId) {
-        // Nothing to do.
-    }
-    fn visit_def_mention(&mut self, _def: Def) {
         // Nothing to do.
     }
     fn visit_name(&mut self, _span: Span, _name: Name) {
@@ -494,13 +490,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
-        ItemKind::Existential(ExistTy {ref generics, ref bounds, impl_trait_fn}) => {
+        ItemKind::Existential(ExistTy { ref generics, ref bounds, impl_trait_fn: _ }) => {
             visitor.visit_id(item.hir_id);
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
-            if let Some(impl_trait_fn) = impl_trait_fn {
-                visitor.visit_def_mention(Def::Fn(impl_trait_fn))
-            }
         }
         ItemKind::Enum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
@@ -640,7 +633,6 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath, id: Hir
 }
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
-    visitor.visit_def_mention(path.def);
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
@@ -697,8 +689,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatKind::Binding(_, canonical_id, _hir_id, ident, ref optional_subpattern) => {
-            visitor.visit_def_mention(Def::Local(canonical_id));
+        PatKind::Binding(_, _hir_id, ident, ref optional_subpattern) => {
             visitor.visit_ident(ident);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
@@ -1064,18 +1055,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprKind::Break(ref destination, ref opt_expr) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
-                if let Ok(node_id) = destination.target_id {
-                    visitor.visit_def_mention(Def::Label(node_id))
-                }
             }
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprKind::Continue(ref destination) => {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
-                if let Ok(node_id) = destination.target_id {
-                    visitor.visit_def_mention(Def::Label(node_id))
-                }
             }
         }
         ExprKind::Ret(ref optional_expression) => {

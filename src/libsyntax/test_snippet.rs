@@ -58,7 +58,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
                                         Some(source_map.clone()),
                                         false,
                                         false);
-        let handler = Handler::with_emitter(true, false, Box::new(emitter));
+        let handler = Handler::with_emitter(true, None, Box::new(emitter));
         handler.span_err(msp, "foo");
 
         assert!(expected_output.chars().next() == Some('\n'),

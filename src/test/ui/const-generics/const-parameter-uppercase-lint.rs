@@ -4,5 +4,7 @@
 #![deny(non_upper_case_globals)]
 
 fn noop<const x: u32>() {
-    //~^ ERROR const generics in any position are currently unsupported
+    //~^ ERROR const parameter `x` should have an upper case name
 }
+
+fn main() {}

@@ -19,6 +19,7 @@ memmap = "0.6"
 log = "0.4.5"
 libc = "0.2.44"
 jobserver = "0.1.11"
+parking_lot = "0.7"
 
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
