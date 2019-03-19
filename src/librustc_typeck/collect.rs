@@ -2390,6 +2390,13 @@ fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
         return;
     }
 
+    // If rustdoc, then we don't type check SIMD on FFI because rustdoc requires
+    // being able to compile a target, with features of other targets enabled
+    // (e.g. `x86+neon`, yikes).
+    if tcx.sess.opts.actually_rustdoc {
+        return;
+    }
+
     let attrs = tcx.codegen_fn_attrs(def_id);
 
     // Skip LLVM intrinsics:
