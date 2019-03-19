@@ -1233,7 +1233,7 @@ pub struct Arm {
     pub pats: HirVec<P<Pat>>,
     /// Optional guard clause.
     pub guard: Option<Guard>,
-    /// The action to take if this arm matches.
+    /// The expression the arm evaluates to if this arm matches.
     pub body: P<Expr>,
 }
 
