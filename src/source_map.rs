@@ -71,6 +71,7 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
 
 impl LineRangeUtils for SourceMap {
     fn lookup_line_range(&self, span: Span) -> LineRange {
+        let snippet = self.span_to_snippet(span).unwrap_or(String::new());
         let lo = self.lookup_line(span.lo()).unwrap();
         let hi = self.lookup_line(span.hi()).unwrap();
 
@@ -80,11 +81,14 @@ impl LineRangeUtils for SourceMap {
             lo, hi
         );
 
+        // in case the span starts with a newline, the line range is off by 1 without the
+        // adjustment below
+        let offset = 1 + if snippet.starts_with('\n') { 1 } else { 0 };
         // Line numbers start at 1
         LineRange {
             file: lo.sf.clone(),
-            lo: lo.line + 1,
-            hi: hi.line + 1,
+            lo: lo.line + offset,
+            hi: hi.line + offset,
         }
     }
 }

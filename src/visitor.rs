@@ -6,6 +6,7 @@ use syntax::{ast, visit};
 
 use crate::attr::*;
 use crate::comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
+use crate::config::file_lines::FileName;
 use crate::config::{BraceStyle, Config, Version};
 use crate::expr::{format_expr, ExprType};
 use crate::items::{
@@ -170,7 +171,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         if skip_rewrite {
             self.push_rewrite(b.span, None);
-            self.close_block(false);
+            self.close_block(false, b.span);
             self.last_pos = source!(self, b.span).hi();
             return;
         }
@@ -187,21 +188,25 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         let mut remove_len = BytePos(0);
         if let Some(stmt) = b.stmts.last() {
-            let snippet = self.snippet(mk_sp(
+            let span_after_last_stmt = mk_sp(
                 stmt.span.hi(),
                 source!(self, b.span).hi() - brace_compensation,
-            ));
-            let len = CommentCodeSlices::new(snippet)
-                .last()
-                .and_then(|(kind, _, s)| {
-                    if kind == CodeCharKind::Normal && s.trim().is_empty() {
-                        Some(s.len())
-                    } else {
-                        None
-                    }
-                });
-            if let Some(len) = len {
-                remove_len = BytePos::from_usize(len);
+            );
+            // if the span is outside of a file_lines range, then do not try to remove anything
+            if !out_of_file_lines_range!(self, span_after_last_stmt) {
+                let snippet = self.snippet(span_after_last_stmt);
+                let len = CommentCodeSlices::new(snippet)
+                    .last()
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
+                            Some(s.len())
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(len) = len {
+                    remove_len = BytePos::from_usize(len);
+                }
             }
         }
 
@@ -220,7 +225,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if unindent_comment {
             self.block_indent = self.block_indent.block_indent(self.config);
         }
-        self.close_block(unindent_comment);
+        self.close_block(unindent_comment, b.span);
         self.last_pos = source!(self, b.span).hi();
     }
 
@@ -228,16 +233,23 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // item in the block and the closing brace to the block's level.
     // The closing brace itself, however, should be indented at a shallower
     // level.
-    fn close_block(&mut self, unindent_comment: bool) {
-        let total_len = self.buffer.len();
-        let chars_too_many = if unindent_comment {
-            0
-        } else if self.config.hard_tabs() {
-            1
-        } else {
-            self.config.tab_spaces()
-        };
-        self.buffer.truncate(total_len - chars_too_many);
+    fn close_block(&mut self, unindent_comment: bool, span: Span) {
+        let file_name: FileName = self.source_map.span_to_filename(span).into();
+        let skip_this_line = !self
+            .config
+            .file_lines()
+            .contains_line(&file_name, self.line_number);
+        if !skip_this_line {
+            let total_len = self.buffer.len();
+            let chars_too_many = if unindent_comment {
+                0
+            } else if self.config.hard_tabs() {
+                1
+            } else {
+                self.config.tab_spaces()
+            };
+            self.buffer.truncate(total_len - chars_too_many);
+        }
         self.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
@@ -759,7 +771,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_attrs(attrs, ast::AttrStyle::Inner);
                 self.walk_mod_items(m);
                 self.format_missing_with_indent(source!(self, m.inner).hi() - BytePos(1));
-                self.close_block(false);
+                self.close_block(false, m.inner);
             }
             self.last_pos = source!(self, m.inner).hi();
         } else {
