@@ -212,8 +212,9 @@ impl Marker {
             }
             _ => unreachable!(),
         }
+        let finish_pos = p.events.len() as u32;
         p.push_event(Event::Finish);
-        CompletedMarker::new(self.pos, kind)
+        CompletedMarker::new(self.pos, finish_pos, kind)
     }
 
     /// Abandons the syntax tree node. All its children
@@ -230,11 +231,15 @@ impl Marker {
     }
 }
 
-pub(crate) struct CompletedMarker(u32, SyntaxKind);
+pub(crate) struct CompletedMarker {
+    start_pos: u32,
+    finish_pos: u32,
+    kind: SyntaxKind,
+}
 
 impl CompletedMarker {
-    fn new(pos: u32, kind: SyntaxKind) -> Self {
-        CompletedMarker(pos, kind)
+    fn new(start_pos: u32, finish_pos: u32, kind: SyntaxKind) -> Self {
+        CompletedMarker { start_pos, finish_pos, kind }
     }
 
     /// This method allows to create a new node which starts
@@ -251,17 +256,32 @@ impl CompletedMarker {
     /// distance to `NEWSTART` into forward_parent(=2 in this case);
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
         let new_pos = p.start();
-        let idx = self.0 as usize;
+        let idx = self.start_pos as usize;
         match p.events[idx] {
             Event::Start { ref mut forward_parent, .. } => {
-                *forward_parent = Some(new_pos.pos - self.0);
+                *forward_parent = Some(new_pos.pos - self.start_pos);
             }
             _ => unreachable!(),
         }
         new_pos
     }
 
+    /// Undo this completion and turns into a `Marker`
+    pub(crate) fn undo_completion(self, p: &mut Parser) -> Marker {
+        let start_idx = self.start_pos as usize;
+        let finish_idx = self.finish_pos as usize;
+        match p.events[start_idx] {
+            Event::Start { ref mut kind, forward_parent: None } => *kind = TOMBSTONE,
+            _ => unreachable!(),
+        }
+        match p.events[finish_idx] {
+            ref mut slot @ Event::Finish => *slot = Event::tombstone(),
+            _ => unreachable!(),
+        }
+        Marker::new(self.start_pos)
+    }
+
     pub(crate) fn kind(&self) -> SyntaxKind {
-        self.1
+        self.kind
     }
 }
