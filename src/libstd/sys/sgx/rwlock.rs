@@ -252,9 +252,9 @@ mod tests {
         ];
 
         let mut init = MaybeUninit::<RWLock>::zeroed();
-        init.set(RWLock::new());
+        init.write(RWLock::new());
         assert_eq!(
-            mem::transmute::<_, [u8; 128]>(init.into_inner()).as_slice(),
+            mem::transmute::<_, [u8; 128]>(init.assume_init()).as_slice(),
             RWLOCK_INIT
         );
     }
