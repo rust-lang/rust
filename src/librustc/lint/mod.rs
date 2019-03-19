@@ -723,12 +723,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
 pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
     let attrs = tcx.hir().attrs_by_hir_id(id);
-    for attr in attrs {
-        if attr.ident_str().and_then(Level::from_str).is_some() {
-            return true;
-        }
-    }
-    false
+    attrs.iter().any(|attr| Level::from_str(&attr.name_or_empty()).is_some())
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)

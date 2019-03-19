@@ -22,7 +22,7 @@ use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::Symbol;
+use crate::symbol::{keywords, LocalInternedString, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
@@ -89,8 +89,8 @@ impl NestedMetaItem {
     pub fn ident(&self) -> Option<Ident> {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
-    pub fn ident_str(&self) -> Option<&str> {
-        self.ident().map(|name| name.as_str().get())
+    pub fn name_or_empty(&self) -> LocalInternedString {
+        self.ident().unwrap_or(keywords::Invalid.ident()).name.as_str()
     }
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
@@ -167,8 +167,8 @@ impl Attribute {
             None
         }
     }
-    pub fn ident_str(&self) -> Option<&str> {
-        self.ident().map(|name| name.as_str().get())
+    pub fn name_or_empty(&self) -> LocalInternedString {
+        self.ident().unwrap_or(keywords::Invalid.ident()).name.as_str()
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
@@ -205,8 +205,8 @@ impl MetaItem {
             None
         }
     }
-    pub fn ident_str(&self) -> Option<&str> {
-        self.ident().map(|name| name.as_str().get())
+    pub fn name_or_empty(&self) -> LocalInternedString {
+        self.ident().unwrap_or(keywords::Invalid.ident()).name.as_str()
     }
 
     // #[attribute(name = "value")]
