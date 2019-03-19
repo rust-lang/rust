@@ -179,6 +179,10 @@ impl Symbol {
         with_interner(|interner| interner.gensymed(self))
     }
 
+    pub fn is_gensymed(self) -> bool {
+        with_interner(|interner| interner.is_gensymed(self))
+    }
+
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {

@@ -1295,9 +1295,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 None => continue,
             };
 
-            // Filter away "empty import canaries" and ambiguous imports.
+            // Filter away ambiguous and gensymed imports. Gensymed imports
+            // (e.g. implicitly injected `std`) cannot be properly encoded in metadata,
+            // so they can cause name conflict errors downstream.
             let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
-                                 binding.vis != ty::Visibility::Invisible;
+                                 !(ident.name.is_gensymed() && ident.name != "_");
             if is_good_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
