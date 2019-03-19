@@ -305,10 +305,16 @@ macro_rules! eprintln {
 /// let _ = dbg!(a); // <-- `a` is moved again; error!
 /// ```
 ///
+/// You can also use `dbg!()` without a value to just print the
+/// file and line whenever it's reached.
+///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
 #[macro_export]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
+    () => {
+        eprintln!("[{}:{}]", file!(), line!());
+    };
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
