@@ -228,6 +228,10 @@ impl Shape {
         }
     }
 
+    pub fn saturating_sub_width(&self, width: usize) -> Shape {
+        self.sub_width(width).unwrap_or(Shape { width: 0, ..*self })
+    }
+
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
             width: self.width.checked_sub(width)?,

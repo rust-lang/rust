@@ -536,7 +536,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, mac.span);
 
         // 1 = ;
-        let shape = self.shape().sub_width(1).unwrap();
+        let shape = self.shape().saturating_sub_width(1);
         let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos));
         self.push_rewrite(mac.span, rewrite);
     }
