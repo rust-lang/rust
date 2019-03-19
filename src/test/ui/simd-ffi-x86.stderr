@@ -1,53 +1,53 @@
 error: use of SIMD type `v1024` in FFI not supported by any target features
-  --> $DIR/simd-ffi.rs:12:15
+  --> $DIR/simd-ffi-x86.rs:24:15
    |
 LL |     fn foo(x: v1024);
    |               ^^^^^
 
 error: use of SIMD type `v1024` in FFI not supported by any target features
-  --> $DIR/simd-ffi.rs:13:23
+  --> $DIR/simd-ffi-x86.rs:25:23
    |
 LL |     fn bar(x: i32, y: v1024);
    |                       ^^^^^
 
 error: use of SIMD type `v1024` in FFI not supported by any target features
-  --> $DIR/simd-ffi.rs:14:23
+  --> $DIR/simd-ffi-x86.rs:26:23
    |
 LL |     fn baz(x: i32) -> v1024;
    |                       ^^^^^
 
 error: use of SIMD type `v128` in FFI requires `#[target_feature(enable = "sse")]`
-  --> $DIR/simd-ffi.rs:16:20
+  --> $DIR/simd-ffi-x86.rs:28:20
    |
 LL |     fn qux_fail(x: v128);
    |                    ^^^^
 
 error: use of SIMD type `v256` in FFI requires `#[target_feature(enable = "avx")]`
-  --> $DIR/simd-ffi.rs:30:21
+  --> $DIR/simd-ffi-x86.rs:42:21
    |
 LL |     fn quux_fail(x: v256);
    |                     ^^^^
 
 error: use of SIMD type `v256` in FFI requires `#[target_feature(enable = "avx")]`
-  --> $DIR/simd-ffi.rs:32:22
+  --> $DIR/simd-ffi-x86.rs:44:22
    |
 LL |     fn quux_fail2(x: v256);
    |                      ^^^^
 
 error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
-  --> $DIR/simd-ffi.rs:40:22
+  --> $DIR/simd-ffi-x86.rs:52:22
    |
 LL |     fn quuux_fail(x: v512);
    |                      ^^^^
 
 error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
-  --> $DIR/simd-ffi.rs:42:23
+  --> $DIR/simd-ffi-x86.rs:54:23
    |
 LL |     fn quuux_fail2(x: v512);
    |                       ^^^^
 
 error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
-  --> $DIR/simd-ffi.rs:44:23
+  --> $DIR/simd-ffi-x86.rs:56:23
    |
 LL |     fn quuux_fail3(x: v512);
    |                       ^^^^
