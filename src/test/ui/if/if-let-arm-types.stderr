@@ -1,14 +1,16 @@
-error[E0308]: `if let` arms have incompatible types
-  --> $DIR/if-let-arm-types.rs:6:9
+error[E0308]: if and else have incompatible types
+  --> $DIR/if-let-arm-types.rs:7:9
    |
 LL | /     if let Some(b) = None {
 LL | |
 LL | |         ()
+   | |         -- expected because of this
+LL | |
 LL | |     } else {
 LL | |         1
    | |         ^ expected (), found integer
 LL | |     };
-   | |_____- `if let` arms have incompatible types
+   | |_____- if and else have incompatible types
    |
    = note: expected type `()`
               found type `{integer}`
