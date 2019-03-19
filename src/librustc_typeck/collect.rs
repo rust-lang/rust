@@ -598,6 +598,10 @@ fn convert_variant<'a, 'tcx>(
             }
         })
         .collect();
+    let recovered = match def {
+        hir::VariantData::Struct(_, _, r) => *r,
+        _ => false,
+    };
     ty::VariantDef::new(tcx,
         did,
         ident,
@@ -605,7 +609,8 @@ fn convert_variant<'a, 'tcx>(
         fields,
         adt_kind,
         CtorKind::from_hir(def),
-        attribute_def_id
+        attribute_def_id,
+        recovered,
     )
 }
 
