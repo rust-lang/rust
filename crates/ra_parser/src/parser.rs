@@ -231,7 +231,7 @@ impl Marker {
 
     /// Contract a node `cm` and complete as `cm`'s `kind`.
     /// `cm` must be a child of `m` to work correctly.
-    /// ```
+    /// ```text
     /// m--A        m--A
     /// +--cm--B -> +--B
     /// +--C        C
