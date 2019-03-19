@@ -2271,16 +2271,12 @@ fn predicates_from_bound<'tcx>(
 fn simd_ffi_min_target_feature(target: &str, simd_width: usize, simd_elem_width: usize) -> Option<&'static str> {
     // FIXME: this needs to be architecture dependent and
     // should probably belong somewhere else:
-    // * on arm: 8 => neon
-    // * on aarch64: 8 | 16 => neon,
     // * on mips: 16 => msa,
-    // * on ppc: 16
-    //     if vec elem is 64-bit wide => vsx
-    //     otherwise => altivec
     // * wasm: 16 => simd128
     match target {
         t if t.contains("x86") => {
             match simd_width {
+                8 => Some("mmx"),
                 16 => Some("sse"),
                 32 => Some("avx"),
                 64 => Some("avx512f"),
@@ -2289,7 +2285,28 @@ fn simd_ffi_min_target_feature(target: &str, simd_width: usize, simd_elem_width:
         },
         t if t.contains("arm") => {
             match simd_width {
+                // 32-bit arm does not support vectors with 64-bit wide elements
                 8 | 16 if simd_elem_width < 8 => Some("neon"),
+                _ => None,
+            }
+        },
+        t if t.contains("aarch64") => {
+            match simd_width {
+                8 | 16 => Some("neon"),
+                _ => None,
+            }
+        },
+        t if t.contains("powerpc") => {
+            match simd_width {
+                // 64-bit wide elements are only available in VSX:
+                16 if simd_elem_width == 8 => Some("vsx"),
+                16 if simd_elem_width < 8 => Some("altivec"),
+                _ => None,
+            }
+        },
+        t if t.contains("mips") => {
+            match simd_width {
+                16 => Some("msa"),
                 _ => None,
             }
         },
@@ -2303,6 +2320,10 @@ fn simd_ffi_feature_check(target: &str, simd_width: usize, simd_elem_width: usiz
         t if t.contains("x86") => {
             // FIXME: see simd_ffi_min_target_feature
             match simd_width {
+                8 => feature.contains("mmx")
+                    || feature.contains("sse")
+                    || feature.contains("ssse")
+                    || feature.contains("avx"),
                 16 => feature.contains("sse")
                     || feature.contains("ssse")
                     || feature.contains("avx"),
@@ -2314,7 +2335,28 @@ fn simd_ffi_feature_check(target: &str, simd_width: usize, simd_elem_width: usiz
         },
         t if t.contains("arm") => {
             match simd_width {
+                // 32-bit arm does not support vectors with 64-bit wide elements
                 8 | 16 if simd_elem_width < 8 => feature.contains("neon"),
+                _ => false,
+            }
+        },
+        t if t.contains("aarch64") => {
+            match simd_width {
+                8 | 16 => feature.contains("neon"),
+                _ => false,
+            }
+        },
+        t if t.contains("powerpc") => {
+            match simd_width {
+                // 64-bit wide elements are only available in VSX:
+                16 if simd_elem_width == 8 => feature.contains("vsx"),
+                16 if simd_elem_width < 8 => feature.contains("altivec"),
+                _ => false,
+            }
+        },
+        t if t.contains("mips") => {
+            match simd_width {
+                16 => feature.contains("msa"),
                 _ => false,
             }
         },
@@ -2360,9 +2402,13 @@ fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
     }).unwrap().details.size.bytes() as usize;
     let simd_elem_width = simd_len / ty.simd_size(tcx);
     let target: &str = &tcx.sess.target.target.arch;
-    if !features.iter().any(|f| simd_ffi_feature_check(target, simd_len, simd_elem_width, f.as_str().get())) {
+    if !features.iter().any(|f| simd_ffi_feature_check(
+        target, simd_len, simd_elem_width, f.as_str().get())
+    ) {
         let type_str = tcx.hir().hir_to_pretty_string(ast_ty.hir_id);
-        let error_msg = if let Some(min_feature) = simd_ffi_min_target_feature(target, simd_len, simd_elem_width) {
+        let error_msg = if let Some(min_feature) = simd_ffi_min_target_feature(
+            target, simd_len, simd_elem_width
+        ) {
             format!(
                 "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",
                 type_str, min_feature,

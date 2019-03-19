@@ -8,14 +8,14 @@
 // ignore-sparc64
 // ignore-mips
 // ignore-mips64
-// ignore-aarch64
+// ignore-arm
 // ignore-x86
 // ignore-x86_64
 
 #![feature(repr_simd)]
 #![feature(simd_ffi)]
 #![allow(non_camel_case_types)]
-#![cfg(target_arch = "arm")]
+#![cfg(target_arch = "aarch64")]
 
 #[repr(simd)]
 struct v1024(i128, i128, i128, i128, i128, i128, i128, i128);
@@ -29,17 +29,17 @@ extern {
     #[target_feature(enable = "neon")]
     fn qux(x: v64);
 
-    fn quux_fail(x: v64i); //~ ERROR use of SIMD type `v64i` in FFI not supported by any target features
+    fn quux_fail(x: v64i); //~ ERROR use of SIMD type `v64i` in FFI requires `#[target_feature(enable = "neon")]`
     #[target_feature(enable = "neon")]
-    fn quux_fail2(x: v64i); //~ ERROR use of SIMD type `v64i` in FFI not supported by any target features
+    fn quux(x: v64i);
 
     fn quuux_fail(x: v128); //~ ERROR use of SIMD type `v128` in FFI requires `#[target_feature(enable = "neon")]`
     #[target_feature(enable = "neon")]
     fn quuux(x: v128);
 
-    fn quuuux_fail(x: v128i); //~ ERROR use of SIMD type `v128i` in FFI not supported by any target features
+    fn quuuux_fail(x: v128i); //~ ERROR use of SIMD type `v128i` in FFI requires `#[target_feature(enable = "neon")]`
     #[target_feature(enable = "neon")]
-    fn quuuux_fail2(x: v128i); //~ ERROR use of SIMD type `v128i` in FFI not supported by any target features
+    fn quuuux(x: v128); //~ ERROR use of SIMD type `v128i` in FFI not supported by any target features
 }
 
 fn main() {}
