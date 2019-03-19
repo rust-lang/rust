@@ -45,6 +45,7 @@ pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
+pub struct DefaultSpace(pub bool);
 
 /// Wrapper struct for properly emitting a function or method declaration.
 pub struct Function<'a> {
@@ -1054,6 +1055,16 @@ impl fmt::Display for AbiSpace {
         match self.0 {
             Abi::Rust => Ok(()),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
+        }
+    }
+}
+
+impl fmt::Display for DefaultSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 {
+            write!(f, "default ")
+        } else {
+            Ok(())
         }
     }
 }

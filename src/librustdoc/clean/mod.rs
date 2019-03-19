@@ -508,6 +508,18 @@ impl Item {
             .as_ref()
             .or_else(|| self.stability.as_ref().and_then(|s| s.deprecation.as_ref()))
     }
+    pub fn is_default(&self) -> bool {
+        match self.inner {
+            ItemEnum::MethodItem(ref meth) => {
+                if let Some(defaultness) = meth.defaultness {
+                    defaultness.has_value() && !defaultness.is_final()
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1700,9 +1712,11 @@ pub struct Method {
     pub generics: Generics,
     pub decl: FnDecl,
     pub header: hir::FnHeader,
+    pub defaultness: Option<hir::Defaultness>,
 }
 
-impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
+impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
+                            Option<hir::Defaultness>) {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) = enter_impl_trait(cx, || {
             (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx))
@@ -1711,6 +1725,7 @@ impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) 
             decl,
             generics,
             header: self.0.header,
+            defaultness: self.3,
         }
     }
 }
@@ -2016,7 +2031,7 @@ impl Clean<Item> for hir::TraitItem {
                                     default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
-                MethodItem((sig, &self.generics, body).clean(cx))
+                MethodItem((sig, &self.generics, body, None).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
@@ -2054,7 +2069,7 @@ impl Clean<Item> for hir::ImplItem {
                                     Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, body) => {
-                MethodItem((sig, &self.generics, body).clean(cx))
+                MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
             }
             hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
@@ -2137,7 +2152,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             abi: sig.abi(),
                             constness,
                             asyncness: hir::IsAsync::NotAsync,
-                        }
+                        },
+                        defaultness: Some(self.defaultness),
                     })
                 } else {
                     TyMethodItem(TyMethod {

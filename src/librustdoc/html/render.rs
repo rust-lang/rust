@@ -61,7 +61,7 @@ use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
 use crate::html::format::{AsyncSpace, ConstnessSpace};
-use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace};
+use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::item_type::ItemType;
@@ -3429,11 +3429,12 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             }
         };
         let mut header_len = format!(
-            "{}{}{}{}{:#}fn {}{:#}",
+            "{}{}{}{}{}{:#}fn {}{:#}",
             VisSpace(&meth.visibility),
             ConstnessSpace(header.constness),
             UnsafetySpace(header.unsafety),
             AsyncSpace(header.asyncness),
+            DefaultSpace(meth.is_default()),
             AbiSpace(header.abi),
             name,
             *g
@@ -3445,12 +3446,13 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             (0, true)
         };
         render_attributes(w, meth)?;
-        write!(w, "{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                VisSpace(&meth.visibility),
                ConstnessSpace(header.constness),
                UnsafetySpace(header.unsafety),
                AsyncSpace(header.asyncness),
+               DefaultSpace(meth.is_default()),
                AbiSpace(header.abi),
                href = href,
                name = name,
