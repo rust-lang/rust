@@ -163,6 +163,7 @@ use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
@@ -1036,7 +1037,7 @@ pub fn park_timeout(dur: Duration) {
 /// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct ThreadId(u64);
+pub struct ThreadId(NonZeroU64);
 
 impl ThreadId {
     // Generate a new unique thread ID.
@@ -1044,7 +1045,7 @@ impl ThreadId {
         // We never call `GUARD.init()`, so it is UB to attempt to
         // acquire this mutex reentrantly!
         static GUARD: mutex::Mutex = mutex::Mutex::new();
-        static mut COUNTER: u64 = 0;
+        static mut COUNTER: u64 = 1;
 
         unsafe {
             let _guard = GUARD.lock();
@@ -1058,7 +1059,7 @@ impl ThreadId {
             let id = COUNTER;
             COUNTER += 1;
 
-            ThreadId(id)
+            ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
 }
