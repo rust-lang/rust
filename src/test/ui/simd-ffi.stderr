@@ -16,5 +16,41 @@ error: use of SIMD type `v1024` in FFI not supported by any target features
 LL |     fn baz(x: i32) -> v1024;
    |                       ^^^^^
 
-error: aborting due to 3 previous errors
+error: use of SIMD type `v128` in FFI requires `#[target_feature(enable = "sse")]`
+  --> $DIR/simd-ffi.rs:12:20
+   |
+LL |     fn qux_fail(x: v128);
+   |                    ^^^^
+
+error: use of SIMD type `v256` in FFI requires `#[target_feature(enable = "avx")]`
+  --> $DIR/simd-ffi.rs:26:21
+   |
+LL |     fn quux_fail(x: v256);
+   |                     ^^^^
+
+error: use of SIMD type `v256` in FFI requires `#[target_feature(enable = "avx")]`
+  --> $DIR/simd-ffi.rs:28:22
+   |
+LL |     fn quux_fail2(x: v256);
+   |                      ^^^^
+
+error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+  --> $DIR/simd-ffi.rs:36:22
+   |
+LL |     fn quuux_fail(x: v512);
+   |                      ^^^^
+
+error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+  --> $DIR/simd-ffi.rs:38:23
+   |
+LL |     fn quuux_fail2(x: v512);
+   |                       ^^^^
+
+error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+  --> $DIR/simd-ffi.rs:40:23
+   |
+LL |     fn quuux_fail3(x: v512);
+   |                       ^^^^
+
+error: aborting due to 9 previous errors
 

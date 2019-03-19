@@ -47,7 +47,7 @@ use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
-use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
+use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, /*Unsafety*/};
 
 use std::iter;
 
@@ -1599,7 +1599,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    match tcx.hir().get_by_hir_id(hir_id) {
+    let sig = match tcx.hir().get_by_hir_id(hir_id) {
         TraitItem(hir::TraitItem {
             node: TraitItemKind::Method(sig, _),
             ..
@@ -1669,7 +1669,18 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
+    };
+
+    let attrs = tcx.codegen_fn_attrs(def_id);
+    if !attrs.target_features.is_empty() {
+        if sig.unsafety() == Unsafety::Normal {
+            let msg = "#[target_feature(..)] can only be applied to \
+                       `unsafe` function";
+            let span = tcx.def_span(def_id);
+            tcx.sess.span_err(span, msg);
+        }
     }
+    sig
 }
 
 fn impl_trait_ref<'a, 'tcx>(
@@ -2270,7 +2281,7 @@ fn simd_ffi_min_target_feature(simd_width: usize) -> Option<&'static str> {
     match simd_width {
         16 => Some("sse"),
         32 => Some("avx"),
-        64 => Some("avx512"),
+        64 => Some("avx512f"),
         _ => None,
     }
 }
@@ -2288,7 +2299,6 @@ fn simd_ffi_feature_check(simd_width: usize, feature: &'static str) -> bool {
 
 fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, ast_ty: &hir::Ty, ty: Ty<'b>,
-    attrs: &mut Option<CodegenFnAttrs>
 ) {
     if !ty.is_simd() {
         return;
@@ -2309,18 +2319,16 @@ fn simd_ffi_check<'a, 'tcx, 'b: 'tcx>(
         return;
     }
 
-    if attrs.is_none() {
-        *attrs = Some(codegen_fn_attrs(tcx, def_id));
-    }
+    let attrs = tcx.codegen_fn_attrs(def_id);
 
     // Skip LLVM intrinsics:
-    if let Some(link_name) = attrs.as_ref().unwrap().link_name {
+    if let Some(link_name) = attrs.link_name {
         if link_name.as_str().get().starts_with("llvm.") {
             return;
         }
     }
 
-    let features = &attrs.as_ref().unwrap().target_features;
+    let features = &attrs.target_features;
     let simd_len = tcx.layout_of(ty::ParamEnvAnd{
         param_env: ty::ParamEnv::empty(),
         value: ty,
@@ -2363,14 +2371,11 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     if abi != abi::Abi::RustIntrinsic
         && abi != abi::Abi::PlatformIntrinsic
     {
-        // Compute function attrs at most once per FFI decl.
-        let mut attrs = None;
-
         for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
-            simd_ffi_check(tcx, def_id, &input, ty, &mut attrs)
+            simd_ffi_check(tcx, def_id, &input, ty)
         }
         if let hir::Return(ref ty) = decl.output {
-            simd_ffi_check(tcx, def_id, &ty, *fty.output().skip_binder(), &mut attrs)
+            simd_ffi_check(tcx, def_id, &ty, *fty.output().skip_binder())
         }
     }
 
@@ -2564,11 +2569,6 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if attr.check_name("target_feature") {
-            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
-                let msg = "#[target_feature(..)] can only be applied to \
-                           `unsafe` function";
-                tcx.sess.span_err(attr.span, msg);
-            }
             from_target_feature(
                 tcx,
                 id,
