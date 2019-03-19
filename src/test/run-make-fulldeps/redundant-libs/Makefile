@@ -1,5 +1,9 @@
 -include ../tools.mk
 
+ifdef IS_WINDOWS
+all:
+else
+
 # rustc will remove one of the two redundant references to foo below.  Depending
 # on which one gets removed, we'll get a linker error on SOME platforms (like
 # Linux).  On these platforms, when a library is referenced, the linker will
@@ -10,7 +14,6 @@
 # So in this example, we need to ensure that rustc keeps the _later_ reference
 # to foo, and not the former one.
 RUSTC_FLAGS = \
-    -C prefer-dynamic \
     -l static=bar \
     -l foo \
     -l static=baz \
@@ -20,3 +23,5 @@ RUSTC_FLAGS = \
 all: $(call DYLIB,foo) $(call STATICLIB,bar) $(call STATICLIB,baz)
 	$(RUSTC) $(RUSTC_FLAGS) main.rs
 	$(call RUN,main)
+
+endif
