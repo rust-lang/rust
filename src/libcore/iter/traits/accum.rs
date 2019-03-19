@@ -291,7 +291,7 @@ where
     }
 }
 
-#[stable(feature = "iter_arith_traits_option", since = "1.34.0")]
+#[stable(feature = "iter_arith_traits_option", since = "1.35.0")]
 impl<T, U> Sum<Option<U>> for Option<T>
 where
     T: Sum<U>,
@@ -321,7 +321,7 @@ where
     }
 }
 
-#[stable(feature = "iter_arith_traits_option", since = "1.34.0")]
+#[stable(feature = "iter_arith_traits_option", since = "1.35.0")]
 impl<T, U> Product<Option<U>> for Option<T>
 where
     T: Product<U>,
