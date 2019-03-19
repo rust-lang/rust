@@ -212,6 +212,18 @@ benches! {
         }
     }
 
+    fn case13_subtract_shifted_bool_match_range(bytes: &mut [u8]) {
+        fn is_ascii_lowercase(b: u8) -> bool {
+            match b {
+                b'a'...b'z' => true,
+                _ => false
+            }
+        }
+        for byte in bytes {
+            *byte -= (is_ascii_lowercase(*byte) as u8) << 5
+        }
+    }
+
     @iter
 
     is_ascii,
