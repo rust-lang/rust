@@ -101,7 +101,7 @@
 //!     type Item = usize;
 //!
 //!     // next() is the only required method
-//!     fn next(&mut self) -> Option<usize> {
+//!     fn next(&mut self) -> Option<Self::Item> {
 //!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!

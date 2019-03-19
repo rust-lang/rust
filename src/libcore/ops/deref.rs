@@ -49,7 +49,7 @@
 /// impl<T> Deref for DerefExample<T> {
 ///     type Target = T;
 ///
-///     fn deref(&self) -> &T {
+///     fn deref(&self) -> &Self::Target {
 ///         &self.value
 ///     }
 /// }
@@ -139,13 +139,13 @@ impl<T: ?Sized> Deref for &mut T {
 /// impl<T> Deref for DerefMutExample<T> {
 ///     type Target = T;
 ///
-///     fn deref(&self) -> &T {
+///     fn deref(&self) -> &Self::Target {
 ///         &self.value
 ///     }
 /// }
 ///
 /// impl<T> DerefMut for DerefMutExample<T> {
-///     fn deref_mut(&mut self) -> &mut T {
+///     fn deref_mut(&mut self) -> &mut Self::Target {
 ///         &mut self.value
 ///     }
 /// }
