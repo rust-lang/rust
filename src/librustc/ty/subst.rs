@@ -180,9 +180,9 @@ impl<'tcx> Decodable for Kind<'tcx> {
 /// A substitution mapping generic parameters to new values.
 pub type InternalSubsts<'tcx> = List<Kind<'tcx>>;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub struct SubstsRef<'tcx> {
-    inner: &'tcx InternalSubsts<'tcx>,
+    pub inner: &'tcx InternalSubsts<'tcx>,
 }
 
 impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {

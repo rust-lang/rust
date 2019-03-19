@@ -822,7 +822,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, substs) = self_ty.sty {
-                        return self.print_def_path(def.did, substs);
+                        return self.print_def_path(def.did, &substs);
                     }
                 }
 

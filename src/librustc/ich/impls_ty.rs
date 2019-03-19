@@ -62,6 +62,20 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'gcx> {
     }
 }
 
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::subst::SubstsRef<'gcx> {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        let ty::subst::SubstsRef {
+            inner
+        } = self;
+
+        inner.hash_stable(hcx, hasher);
+    }
+}
+
 impl<'a> HashStable<StableHashingContext<'a>>
 for ty::RegionKind {
     fn hash_stable<W: StableHasherResult>(&self,
