@@ -397,7 +397,7 @@ impl Iterator for ToLowercase {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
 
-#[stable(feature = "exact_size_case_mapping_iter", since = "1.34.0")]
+#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
 impl ExactSizeIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
@@ -425,7 +425,7 @@ impl Iterator for ToUppercase {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToUppercase {}
 
-#[stable(feature = "exact_size_case_mapping_iter", since = "1.34.0")]
+#[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
 impl ExactSizeIterator for ToUppercase {}
 
 #[derive(Debug, Clone)]
