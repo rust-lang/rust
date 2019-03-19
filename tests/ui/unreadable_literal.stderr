@@ -30,5 +30,29 @@ error: long literal lacking separators
 LL |     let bad_sci = 1.123456e1;
    |                   ^^^^^^^^^^ help: consider: `1.123_456e1`
 
-error: aborting due to 5 previous errors
+error: long literal lacking separators
+  --> $DIR/unreadable_literal.rs:21:17
+   |
+LL |     let fail9 = 0xabcdef;
+   |                 ^^^^^^^^ help: consider: `0x00ab_cdef`
+
+error: long literal lacking separators
+  --> $DIR/unreadable_literal.rs:22:23
+   |
+LL |     let fail10: u32 = 0xBAFEBAFE;
+   |                       ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
+
+error: long literal lacking separators
+  --> $DIR/unreadable_literal.rs:23:18
+   |
+LL |     let fail11 = 0xabcdeff;
+   |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
+
+error: long literal lacking separators
+  --> $DIR/unreadable_literal.rs:24:24
+   |
+LL |     let fail12: i128 = 0xabcabcabcabcabcabc;
+   |                        ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
+
+error: aborting due to 9 previous errors
 
