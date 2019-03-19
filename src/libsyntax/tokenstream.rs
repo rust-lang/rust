@@ -178,9 +178,11 @@ impl TokenStream {
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts, &next) {
-                        ((TokenTree::Token(_, token::Token::Comma), NonJoint), _) |
-                        (_, (TokenTree::Token(_, token::Token::Comma), NonJoint)) => continue,
-                        ((TokenTree::Token(sp, _), NonJoint), _) => *sp,
+                        (_, (TokenTree::Token(_, token::Token::Comma), _)) => continue,
+                        ((TokenTree::Token(sp, token_left), NonJoint),
+                         (TokenTree::Token(_, token_right), _))
+                        if (token_left.is_ident() || token_left.is_lit()) &&
+                            (token_right.is_ident() || token_right.is_lit()) => *sp,
                         ((TokenTree::Delimited(sp, ..), NonJoint), _) => sp.entire(),
                         _ => continue,
                     };
