@@ -1,7 +1,7 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::hir::{HirId, Path, QPath, Ty, TyKind};
+use crate::hir::{def::Def, HirId, Path, QPath, Ty, TyKind};
 use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
@@ -92,10 +92,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
                     segments: segments_iter.cloned().collect(),
                 };
 
-                if let Some(def) = last.def {
-                    if def
-                        .def_id()
-                        .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"])
+                match last.def {
+                    Some(Def::Err) => (),
+                    Some(def)
+                        if def
+                            .def_id()
+                            .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"]) =>
                     {
                         cx.struct_span_lint(
                             USAGE_OF_TY_TYKIND,
@@ -110,6 +112,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
                         )
                         .emit();
                     }
+                    _ => (),
                 }
             }
         }
