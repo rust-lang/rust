@@ -1423,7 +1423,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// ```
 /// use std::cell::UnsafeCell;
-/// use std::marker::Sync;
 ///
 /// # #[allow(dead_code)]
 /// struct NotThreadSafe<T> {

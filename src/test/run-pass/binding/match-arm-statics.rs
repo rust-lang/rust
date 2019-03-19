@@ -45,8 +45,6 @@ pub mod glfw {
 }
 
 fn issue_6533() {
-    use glfw;
-
     fn action_to_str(state: glfw::InputState) -> &'static str {
         use glfw::{RELEASE, PRESS, REPEAT};
         match state {

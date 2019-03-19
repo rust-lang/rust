@@ -9,6 +9,5 @@ macro_rules! reexport {
 reexport!();
 
 fn main() {
-    use Bar;
     fn f(_: Bar) {}
 }

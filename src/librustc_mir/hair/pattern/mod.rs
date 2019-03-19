@@ -427,7 +427,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                 let mut kind = match (lo, hi) {
                     (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
-                        use std::cmp::Ordering;
                         let cmp = compare_const_vals(
                             self.tcx,
                             lo,

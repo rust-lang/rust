@@ -420,9 +420,6 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     def_id: DefId,
     return_ty: Option<Ty<'tcx>>,
 ) {
-    use ty::subst::Subst;
-    use rustc::ty::TypeFoldable;
-
     let predicates = fcx.tcx.predicates_of(def_id);
 
     let generics = tcx.generics_of(def_id);
@@ -1010,8 +1007,6 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     span: Span,
     id: hir::HirId)
 {
-    use rustc::ty::TypeFoldable;
-
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);
