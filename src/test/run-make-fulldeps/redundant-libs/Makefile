@@ -10,6 +10,7 @@
 # So in this example, we need to ensure that rustc keeps the _later_ reference
 # to foo, and not the former one.
 RUSTC_FLAGS = \
+    -C prefer-dynamic \
     -l static=bar \
     -l foo \
     -l static=baz \
