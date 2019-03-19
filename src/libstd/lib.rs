@@ -301,6 +301,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
 #![feature(thread_local)]
+#![feature(todo_macro)]
 #![feature(toowned_clone_into)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
@@ -323,7 +324,7 @@ use prelude::v1::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, r#try};
+pub use core::{unreachable, unimplemented, write, writeln, r#try, todo};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
