@@ -569,18 +569,6 @@ pub struct RefCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-/// An enumeration of values returned from the `state` method on a `RefCell<T>`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "borrow_state", issue = "27733")]
-pub enum BorrowState {
-    /// The cell is currently being read, there is at least one active `borrow`.
-    Reading,
-    /// The cell is currently being written to, there is an active `borrow_mut`.
-    Writing,
-    /// There are no outstanding borrows on this cell.
-    Unused,
-}
-
 /// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowError {
@@ -765,43 +753,6 @@ impl<T> RefCell<T> {
 }
 
 impl<T: ?Sized> RefCell<T> {
-    /// Queries the current state of this `RefCell`.
-    ///
-    /// A return value of `BorrowState::Writing` signals that this `RefCell`
-    /// is currently mutably borrowed, while `BorrowState::Reading` signals
-    /// that it is immutably borrowed.
-    ///
-    /// This is mostly useful in rare use cases with `RefCell::as_ptr` to
-    /// access the data without changing its borrow state, use with care.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(borrow_state)]
-    ///
-    /// use std::cell::{BorrowState, RefCell};
-    ///
-    /// let c = RefCell::new(5);
-    ///
-    /// match c.borrow_state() {
-    ///     BorrowState::Writing => println!("currently borrowed mutably"),
-    ///     BorrowState::Reading => println!("currently borrowed immutably"),
-    ///     BorrowState::Unused => println!("not borrowed"),
-    /// }
-    /// ```
-    #[unstable(feature = "borrow_state", issue = "27733")]
-    #[inline]
-    pub fn borrow_state(&self) -> BorrowState {
-        let borrow = self.borrow.get();
-        if is_writing(borrow) {
-            BorrowState::Writing
-        } else if is_reading(borrow) {
-            BorrowState::Reading
-        } else {
-            BorrowState::Unused
-        }
-    }
-
     /// Immutably borrows the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -1005,6 +956,44 @@ impl<T: ?Sized> RefCell<T> {
     pub fn get_mut(&mut self) -> &mut T {
         unsafe {
             &mut *self.value.get()
+        }
+    }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is
+    /// currently mutably borrowed.
+    ///
+    /// # Safety
+    ///
+    /// Unlike `RefCell::borrow`, this method is unsafe because it does not
+    /// return a `Ref`, thus leaving the borrow flag untouched. Mutably
+    /// borrowing the `RefCell` while the reference returned by this method
+    /// is alive is undefined behaviour.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(borrow_state)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// {
+    ///     let m = c.borrow_mut();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_err());
+    /// }
+    ///
+    /// {
+    ///     let m = c.borrow();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_ok());
+    /// }
+    /// ```
+    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[inline]
+    pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
+        if !is_writing(self.borrow.get()) {
+            Ok(&*self.value.get())
+        } else {
+            Err(BorrowError { _private: () })
         }
     }
 }
