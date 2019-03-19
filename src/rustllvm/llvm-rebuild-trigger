@@ -1,4 +1,0 @@
-# If this file is modified, then llvm will be (optionally) cleaned and then rebuilt.
-# The actual contents of this file do not matter, but to trigger a change on the
-# build bots then the contents should be changed so git updates the mtime.
-2019-03-18

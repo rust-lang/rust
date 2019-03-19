@@ -67,30 +67,47 @@ impl Step for Llvm {
             }
         }
 
-        let rebuild_trigger = builder.src.join("src/rustllvm/llvm-rebuild-trigger");
-        let rebuild_trigger_contents = t!(fs::read_to_string(&rebuild_trigger));
-
-        let (out_dir, llvm_config_ret_dir) = if emscripten {
+        let (submodule, root, out_dir, llvm_config_ret_dir) = if emscripten {
             let dir = builder.emscripten_llvm_out(target);
             let config_dir = dir.join("bin");
-            (dir, config_dir)
+            ("src/llvm-emscripten", "src/llvm-emscripten", dir, config_dir)
         } else {
             let mut dir = builder.llvm_out(builder.config.build);
             if !builder.config.build.contains("msvc") || builder.config.ninja {
                 dir.push("build");
             }
-            (builder.llvm_out(target), dir.join("bin"))
+            ("src/llvm-project", "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
         };
-        let done_stamp = out_dir.join("llvm-finished-building");
+
+        let git_output = t!(Command::new("git")
+            .args(&["rev-parse", "--verify", &format!("@:./{}", submodule)])
+            .current_dir(&builder.src)
+            .output());
+
+        let llvm_commit = if git_output.status.success() {
+            Some(git_output.stdout)
+        } else {
+            println!(
+                "git could not determine the LLVM submodule commit hash ({}). \
+                Assuming that an LLVM build is necessary.",
+                String::from_utf8_lossy(&git_output.stderr),
+            );
+            None
+        };
+
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
-        if done_stamp.exists() {
-            let done_contents = t!(fs::read_to_string(&done_stamp));
+        let done_stamp = out_dir.join("llvm-finished-building");
 
-            // If LLVM was already built previously and contents of the rebuild-trigger file
-            // didn't change from the previous build, then no action is required.
-            if done_contents == rebuild_trigger_contents {
-                return build_llvm_config
+        if let Some(llvm_commit) = &llvm_commit {
+            if done_stamp.exists() {
+                let done_contents = t!(fs::read(&done_stamp));
+
+                // If LLVM was already built previously and the submodule's commit didn't change
+                // from the previous build, then no action is required.
+                if done_contents == llvm_commit.as_slice() {
+                    return build_llvm_config
+                }
             }
         }
 
@@ -101,7 +118,6 @@ impl Step for Llvm {
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
-        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm-project/llvm" };
         let mut cfg = cmake::Config::new(builder.src.join(root));
 
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
@@ -279,7 +295,9 @@ impl Step for Llvm {
 
         cfg.build();
 
-        t!(fs::write(&done_stamp, &rebuild_trigger_contents));
+        if let Some(llvm_commit) = llvm_commit {
+            t!(fs::write(&done_stamp, &llvm_commit));
+        }
 
         build_llvm_config
     }
