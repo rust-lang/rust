@@ -1,7 +1,7 @@
 error: cannot use a built-in attribute through an import
   --> $DIR/cross-crate.rs:7:3
    |
-LL | #[built_in_attr]
+LL | #[built_in_attr] //~ ERROR cannot use a built-in attribute through an import
    |   ^^^^^^^^^^^^^
    |
 note: the built-in attribute imported here
@@ -13,7 +13,7 @@ LL | use cross_crate::*;
 error: cannot use a tool module through an import
   --> $DIR/cross-crate.rs:8:3
    |
-LL | #[tool_mod::skip]
+LL | #[tool_mod::skip] //~ ERROR cannot use a tool module through an import
    |   ^^^^^^^^
    |
 note: the tool module imported here
