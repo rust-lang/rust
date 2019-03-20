@@ -59,7 +59,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct LocationIntener<LOC, ID>
+pub struct LocationInterner<LOC, ID>
 where
     ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
@@ -67,7 +67,7 @@ where
     map: Mutex<Loc2IdMap<LOC, ID>>,
 }
 
-impl<LOC, ID> panic::RefUnwindSafe for LocationIntener<LOC, ID>
+impl<LOC, ID> panic::RefUnwindSafe for LocationInterner<LOC, ID>
 where
     ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
@@ -76,17 +76,17 @@ where
 {
 }
 
-impl<LOC, ID> Default for LocationIntener<LOC, ID>
+impl<LOC, ID> Default for LocationInterner<LOC, ID>
 where
     ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
-        LocationIntener { map: Default::default() }
+        LocationInterner { map: Default::default() }
     }
 }
 
-impl<LOC, ID> LocationIntener<LOC, ID>
+impl<LOC, ID> LocationInterner<LOC, ID>
 where
     ID: ArenaId + Clone,
     LOC: Clone + Eq + Hash,

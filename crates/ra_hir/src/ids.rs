@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_db::{LocationIntener, FileId};
+use ra_db::{LocationInterner, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, SyntaxNodePtr, ast};
 use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
@@ -15,14 +15,14 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct HirInterner {
-    macros: LocationIntener<MacroCallLoc, MacroCallId>,
-    fns: LocationIntener<ItemLoc<ast::FnDef>, FunctionId>,
-    structs: LocationIntener<ItemLoc<ast::StructDef>, StructId>,
-    enums: LocationIntener<ItemLoc<ast::EnumDef>, EnumId>,
-    consts: LocationIntener<ItemLoc<ast::ConstDef>, ConstId>,
-    statics: LocationIntener<ItemLoc<ast::StaticDef>, StaticId>,
-    traits: LocationIntener<ItemLoc<ast::TraitDef>, TraitId>,
-    types: LocationIntener<ItemLoc<ast::TypeAliasDef>, TypeId>,
+    macros: LocationInterner<MacroCallLoc, MacroCallId>,
+    fns: LocationInterner<ItemLoc<ast::FnDef>, FunctionId>,
+    structs: LocationInterner<ItemLoc<ast::StructDef>, StructId>,
+    enums: LocationInterner<ItemLoc<ast::EnumDef>, EnumId>,
+    consts: LocationInterner<ItemLoc<ast::ConstDef>, ConstId>,
+    statics: LocationInterner<ItemLoc<ast::StaticDef>, StaticId>,
+    traits: LocationInterner<ItemLoc<ast::TraitDef>, TraitId>,
+    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeId>,
 }
 
 impl HirInterner {
@@ -204,7 +204,7 @@ impl<'a, DB: PersistentHirDatabase> LocationCtx<&'a DB> {
 }
 
 pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<N>, Self>;
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl PersistentHirDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
         let item_id = items.id_of(ctx.file_id, ast.syntax());
@@ -238,7 +238,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
 pub struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
 impl AstItemDef<ast::FnDef> for FunctionId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::FnDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::FnDef>, Self> {
         &interner.fns
     }
 }
@@ -247,7 +247,7 @@ impl AstItemDef<ast::FnDef> for FunctionId {
 pub struct StructId(RawId);
 impl_arena_id!(StructId);
 impl AstItemDef<ast::StructDef> for StructId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StructDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StructDef>, Self> {
         &interner.structs
     }
 }
@@ -256,7 +256,7 @@ impl AstItemDef<ast::StructDef> for StructId {
 pub struct EnumId(RawId);
 impl_arena_id!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::EnumDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::EnumDef>, Self> {
         &interner.enums
     }
 }
@@ -265,7 +265,7 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 pub struct ConstId(RawId);
 impl_arena_id!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::ConstDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::ConstDef>, Self> {
         &interner.consts
     }
 }
@@ -274,7 +274,7 @@ impl AstItemDef<ast::ConstDef> for ConstId {
 pub struct StaticId(RawId);
 impl_arena_id!(StaticId);
 impl AstItemDef<ast::StaticDef> for StaticId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::StaticDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StaticDef>, Self> {
         &interner.statics
     }
 }
@@ -283,7 +283,7 @@ impl AstItemDef<ast::StaticDef> for StaticId {
 pub struct TraitId(RawId);
 impl_arena_id!(TraitId);
 impl AstItemDef<ast::TraitDef> for TraitId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TraitDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TraitDef>, Self> {
         &interner.traits
     }
 }
@@ -292,7 +292,7 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 pub struct TypeId(RawId);
 impl_arena_id!(TypeId);
 impl AstItemDef<ast::TypeAliasDef> for TypeId {
-    fn interner(interner: &HirInterner) -> &LocationIntener<ItemLoc<ast::TypeAliasDef>, Self> {
+    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TypeAliasDef>, Self> {
         &interner.types
     }
 }
