@@ -650,19 +650,26 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_terminator_kind(block, kind, location);
     }
 
-    fn visit_static(&mut self,
-                    static_: &mir::Static<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mir::Place<'tcx>,
                     context: mir::visit::PlaceContext<'tcx>,
                     location: Location) {
-        debug!("visiting static {:?} @ {:?}", static_.def_id, location);
+        match place {
+            mir::Place::Base(
+                mir::PlaceBase::Static(box mir::Static{def_id, promoted:None, ..})
+            ) => {
+                debug!("visiting static {:?} @ {:?}", def_id, location);
 
-        let tcx = self.tcx;
-        let instance = Instance::mono(tcx, static_.def_id);
-        if should_monomorphize_locally(tcx, &instance) {
-            self.output.push(MonoItem::Static(static_.def_id));
+                let tcx = self.tcx;
+                let instance = Instance::mono(tcx, *def_id);
+                if should_monomorphize_locally(tcx, &instance) {
+                    self.output.push(MonoItem::Static(*def_id));
+                }
+            }
+            _ => {}
         }
 
-        self.super_static(static_, context, location);
+        self.super_place(place, context, location);
     }
 }
 
