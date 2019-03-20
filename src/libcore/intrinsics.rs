@@ -1337,15 +1337,13 @@ fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
     use crate::cmp::Ordering;
     let src_usize = src as usize;
     let dst_usize = dst as usize;
-    let size = mem::size_of::<T>() * count;
-    match src_usize.cmp(&dst_usize) {
-        // src < dst < src + offset
-        Ordering::Less => src_usize + size > dst_usize,
-        // dst < src < dst + offset
-        Ordering::Greater => dst_usize + size > src_usize,
-        // src == dst
-        Ordering::Equal => size != 0,
-    }
+    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let diff = if src_usize > dst_usize {
+        src_usize - dst_usize
+    } else {
+        dst_usize - src_usize
+    };
+    diff > size;
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
