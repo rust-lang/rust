@@ -47,7 +47,7 @@ well as the various *strands*, which are basically suspended
 computations that may be used to find more answers. Tables are
 interdependent: solving one query may require solving others.
 
-[`Forest`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html
+[`Forest`]: https://rust-lang.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html
 
 ### Walkthrough
 
@@ -150,7 +150,7 @@ is the subgoal after the turnstile (`:-`) that we are currently trying
 to prove in this strand. Initally, when a strand is first created,
 there is no selected subgoal.
 
-[`ExClause`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/struct.ExClause.html
+[`ExClause`]: https://rust-lang.github.io/chalk/doc/chalk_engine/struct.ExClause.html
 
 **Activating a strand.** Now that we have created the table T0 and
 initialized it with strands, we have to actually try and produce an answer.
@@ -187,7 +187,7 @@ Here, we write `selected(L, An)` to indicate that (a) the literal `L`
 is the selected subgoal and (b) which answer `An` we are looking for. We
 start out looking for `A0`.
 
-[`ensure_root_answer`]:  https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html#method.ensure_root_answer
+[`ensure_root_answer`]:  https://rust-lang.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html#method.ensure_root_answer
 
 **Processing the selected subgoal.** Next, we have to try and find an
 answer to this selected goal. To do that, we will u-canonicalize it
@@ -297,6 +297,6 @@ more answers later on.
 - [Negative Reasoning in Chalk][negative-reasoning-blog] explains the need
   for negative reasoning, but not how the SLG solver does it
 
-[readme]: https://github.com/rust-lang-nursery/chalk/blob/239e4ae4e69b2785b5f99e0f2b41fc16b0b4e65e/chalk-engine/src/README.md
+[readme]: https://github.com/rust-lang/chalk/blob/239e4ae4e69b2785b5f99e0f2b41fc16b0b4e65e/chalk-engine/src/README.md
 [slg-blog]: http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/
 [negative-reasoning-blog]: http://aturon.github.io/blog/2017/04/24/negative-chalk/
