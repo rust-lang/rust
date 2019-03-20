@@ -1486,37 +1486,34 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             segment.with_generic_args(|generic_args| {
                 let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
                 for arg in &generic_args.args {
-                    let (mut span_err, span, kind) = match arg {
-                        // FIXME(varkor): unify E0109, E0110 and E0111.
+                    let (span, kind) = match arg {
                         hir::GenericArg::Lifetime(lt) => {
                             if err_for_lt { continue }
                             err_for_lt = true;
                             has_err = true;
-                            (struct_span_err!(self.tcx().sess, lt.span, E0110,
-                                              "lifetime arguments are not allowed on this entity"),
-                             lt.span,
-                             "lifetime")
+                            (lt.span, "lifetime")
                         }
                         hir::GenericArg::Type(ty) => {
                             if err_for_ty { continue }
                             err_for_ty = true;
                             has_err = true;
-                            (struct_span_err!(self.tcx().sess, ty.span, E0109,
-                                              "type arguments are not allowed on this entity"),
-                             ty.span,
-                             "type")
+                            (ty.span, "type")
                         }
                         hir::GenericArg::Const(ct) => {
                             if err_for_ct { continue }
                             err_for_ct = true;
-                            (struct_span_err!(self.tcx().sess, ct.span, E0111,
-                                              "const parameters are not allowed on this type"),
-                             ct.span,
-                             "const")
+                            (ct.span, "const")
                         }
                     };
-                    span_err.span_label(span, format!("{} argument not allowed", kind))
-                            .emit();
+                    let mut err = struct_span_err!(
+                        self.tcx().sess,
+                        span,
+                        E0109,
+                        "{} arguments are not allowed for this type",
+                        kind,
+                    );
+                    err.span_label(span, format!("{} argument not allowed", kind));
+                    err.emit();
                     if err_for_lt && err_for_ty && err_for_ct {
                         break;
                     }
