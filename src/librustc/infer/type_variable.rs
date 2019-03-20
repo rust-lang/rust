@@ -295,19 +295,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// Returns a map from the type variables created during the
     /// snapshot to the origin of the type variable.
     pub fn vars_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
-        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
-
-        actions_since_snapshot
-            .iter()
-            .filter_map(|action| match action {
-                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
-                _ => None,
-            })
-            .map(|vid| {
-                let origin = self.values.get(vid.index as usize).origin.clone();
-                (vid, origin)
-            })
-            .collect()
+        self.values.values_since_snapshot(&s.snapshot).map(|idx| {
+            let origin = self.values.get(idx).origin.clone();
+            (ty::TyVid { index: idx as u32 }, origin)
+        }).collect()
     }
 
     /// Finds the set of type variables that existed *before* `s`
