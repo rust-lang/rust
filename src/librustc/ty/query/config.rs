@@ -916,33 +916,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
-        "generating chalk-style clauses".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for_env<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: traits::Environment<'tcx>) -> Cow<'static, str> {
-        "generating chalk-style clauses for environment".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::environment<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
-        "return a chalk-style environment".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::wasm_import_module_map<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "wasm import module map".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::dllimport_foreign_items<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "wasm import module map".into()
+        "dllimport_foreign_items".into()
     }
 }
 

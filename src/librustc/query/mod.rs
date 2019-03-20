@@ -2,8 +2,9 @@ use crate::ty::query::QueryDescription;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
 use crate::ty;
-use crate::hir::def_id::CrateNum;
+use crate::hir::def_id::{DefId, CrateNum};
 use crate::dep_graph::SerializedDepNodeIndex;
+use crate::traits;
 use std::borrow::Cow;
 
 // Each of these queries corresponds to a function pointer field in the
@@ -104,6 +105,28 @@ rustc_queries! {
                                                             .try_load_query_result(tcx, id);
                 mir.map(|x| tcx.alloc_mir(x))
             }
+        }
+    }
+
+    TypeChecking {
+        query program_clauses_for(_: DefId) -> Clauses<'tcx> {
+            desc { "generating chalk-style clauses" }
+        }
+
+        query program_clauses_for_env(_: traits::Environment<'tcx>) -> Clauses<'tcx> {
+            no_force
+            desc { "generating chalk-style clauses for environment" }
+        }
+
+        // Get the chalk-style environment of the given item.
+        query environment(_: DefId) -> traits::Environment<'tcx> {
+            desc { "return a chalk-style environment" }
+        }
+    }
+
+    Linking {
+        query wasm_import_module_map(_: CrateNum) -> Lrc<FxHashMap<DefId, String>> {
+            desc { "wasm import module map" }
         }
     }
 }

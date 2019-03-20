@@ -1240,11 +1240,7 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::TypeOpNormalizeFnSig |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::MethodAutoderefSteps |
-        DepKind::InstanceDefSizeEstimate |
-        DepKind::ProgramClausesForEnv |
-
-        // This one should never occur in this context
-        DepKind::Null => {
+        DepKind::InstanceDefSizeEstimate => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
@@ -1311,7 +1307,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CheckMatch => { force!(check_match, def_id!()); }
 
         DepKind::ParamEnv => { force!(param_env, def_id!()); }
-        DepKind::Environment => { force!(environment, def_id!()); }
         DepKind::DescribeDef => { force!(describe_def, def_id!()); }
         DepKind::DefSpan => { force!(def_span, def_id!()); }
         DepKind::LookupStability => { force!(lookup_stability, def_id!()); }
@@ -1419,8 +1414,6 @@ pub fn force_from_dep_node<'tcx>(
 
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
 
-        DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
-        DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
         DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
 
         DepKind::UpstreamMonomorphizations => {

@@ -683,22 +683,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
 
         [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
     },
-
-    TypeChecking {
-        [] fn program_clauses_for: ProgramClausesFor(DefId) -> Clauses<'tcx>,
-
-        [] fn program_clauses_for_env: ProgramClausesForEnv(
-            traits::Environment<'tcx>
-        ) -> Clauses<'tcx>,
-
-        // Get the chalk-style environment of the given item.
-        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
-    },
-
-    Linking {
-        [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
-            -> Lrc<FxHashMap<DefId, String>>,
-    },
 ]}
 
 //////////////////////////////////////////////////////////////////////

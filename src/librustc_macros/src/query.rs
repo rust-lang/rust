@@ -45,6 +45,9 @@ enum QueryModifier {
 
     /// Don't hash the result, instead just mark a query red if it runs
     NoHash,
+
+    /// Don't force the query
+    NoForce,
 }
 
 impl Parse for QueryModifier {
@@ -94,6 +97,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::FatalCycle)
         } else if modifier == "no_hash" {
             Ok(QueryModifier::NoHash)
+        } else if modifier == "no_force" {
+            Ok(QueryModifier::NoForce)
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -194,6 +199,9 @@ struct QueryModifiers {
 
     /// Don't hash the result, instead just mark a query red if it runs
     no_hash: bool,
+
+    /// Don't force the query
+    no_force: bool,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -203,6 +211,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut desc = None;
     let mut fatal_cycle = false;
     let mut no_hash = false;
+    let mut no_force = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -235,6 +244,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 no_hash = true;
             }
+            QueryModifier::NoForce => {
+                if no_force {
+                    panic!("duplicate modifier `no_force` for query `{}`", query.name);
+                }
+                no_force = true;
+            }
         }
     }
     QueryModifiers {
@@ -243,6 +258,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         desc,
         fatal_cycle,
         no_hash,
+        no_force,
     }
 }
 
@@ -329,6 +345,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut dep_node_force_stream = quote! {};
+    let mut no_force_queries = Vec::new();
 
     for group in groups.0 {
         let mut group_stream = quote! {};
@@ -364,29 +381,46 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 [#attribute_stream] fn #name: #name(#arg) #result,
             });
 
-            add_query_description_impl(&query, modifiers, &mut query_description_stream);
-
             // Create a dep node for the query
             dep_node_def_stream.extend(quote! {
                 [] #name(#arg),
             });
 
-            // Add a match arm to force the query given the dep node
-            dep_node_force_stream.extend(quote! {
-                DepKind::#name => {
-                    if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
-                        force_ex!($tcx, #name, key);
-                    } else {
-                        return false;
+            if modifiers.no_force {
+                no_force_queries.push(name.clone());
+            } else {
+                // Add a match arm to force the query given the dep node
+                dep_node_force_stream.extend(quote! {
+                    DepKind::#name => {
+                        if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
+                            force_ex!($tcx, #name, key);
+                        } else {
+                            return false;
+                        }
                     }
-                }
-            });
+                });
+            }
+            
+            add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
         let name = &group.name;
         query_stream.extend(quote! {
             #name { #group_stream },
         });
     }
+
+    // Add an arm for the no force queries to panic when trying to force them
+    for query in no_force_queries {
+        dep_node_force_stream.extend(quote! {
+            DepKind::#query |
+        });
+    }
+    dep_node_force_stream.extend(quote! {
+        DepKind::Null => {
+            bug!("Cannot force dep node: {:?}", $dep_node)
+        }
+    });
+
     TokenStream::from(quote! {
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {

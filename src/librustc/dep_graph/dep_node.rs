@@ -538,7 +538,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [anon] TraitSelect,
 
     [] ParamEnv(DefId),
-    [] Environment(DefId),
     [] DescribeDef(DefId),
 
     // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -661,9 +660,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [input] Features,
 
-    [] ProgramClausesFor(DefId),
-    [] ProgramClausesForEnv(traits::Environment<'tcx>),
-    [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
 
     [] UpstreamMonomorphizations(CrateNum),
