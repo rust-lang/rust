@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use hir::{AdtDef, Ty, db::HirDatabase, source_binder::function_from_child_node, StructField};
+use hir::{AdtDef, Ty, db::HirDatabase, source_binder::function_from_child_node};
 
 use ra_syntax::ast::{self, AstNode};
 
@@ -26,7 +26,7 @@ pub(crate) fn fill_struct_fields(mut ctx: AssistCtx<impl HirDatabase>) -> Option
 struct FillStructFields<'a, 'b: 'a, DB> {
     ctx: &'a mut AssistCtx<'b, DB>,
     named_field_list: &'a ast::NamedFieldList,
-    struct_fields: Vec<StructField>,
+    struct_fields: Vec<(String, String)>,
     struct_lit: &'a ast::StructLit,
 }
 
@@ -64,35 +64,29 @@ where
             Ty::Adt { def_id: AdtDef::Struct(s), .. } => s,
             _ => return None,
         };
-        self.struct_fields = struct_def.fields(self.ctx.db);
+        self.struct_fields = struct_def
+            .fields(self.ctx.db)
+            .into_iter()
+            .map(|f| (f.name(self.ctx.db).to_string(), "()".into()))
+            .collect();
         Some(())
     }
 
     fn remove_already_included_fields(&mut self) -> Option<()> {
         for ast_field in self.named_field_list.fields() {
+            let expr = ast_field.expr()?.syntax().text().to_string();
             let name_from_ast = ast_field.name_ref()?.text().to_string();
-            if let Some(idx) = self
-                .struct_fields
-                .iter()
-                .map(|f| f.name(self.ctx.db).to_string())
-                .position(|n| n == name_from_ast)
-            {
-                self.struct_fields.remove(idx);
+            if let Some(idx) = self.struct_fields.iter().position(|(n, _)| n == &name_from_ast) {
+                self.struct_fields[idx] = (name_from_ast, expr);
             }
         }
         Some(())
     }
 
-    fn struct_fields_string(&self) -> Option<String> {
+    fn struct_fields_string(&mut self) -> Option<String> {
         let mut buf = String::from("{\n");
-        for field in self.named_field_list.fields() {
-            let expr = field.expr()?.syntax().text().to_string();
-            let field_name = field.name_ref()?.syntax().text().to_string();
-            write!(&mut buf, "    {}: {},\n", field_name, expr).unwrap();
-        }
-        for field in &self.struct_fields {
-            let field_name = field.name(self.ctx.db).to_string();
-            write!(&mut buf, "    {}: (),\n", field_name).unwrap();
+        for (name, expr) in &self.struct_fields {
+            write!(&mut buf, "    {}: {},\n", name, expr).unwrap();
         }
         buf.push_str("}");
         Some(buf)
@@ -233,11 +227,11 @@ mod tests {
 
             fn main() {
                 let s = <|>S {
-                    c: (1, 2),
-                    e: "foo",
                     a: (),
                     b: (),
+                    c: (1, 2),
                     d: (),
+                    e: "foo",
                 }
             }
             "#,
