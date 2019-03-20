@@ -63,4 +63,47 @@ rustc_queries! {
             desc { "checking if the crate is_panic_runtime" }
         }
     }
+
+    Codegen {
+        /// Set of all the `DefId`s in this crate that have MIR associated with
+        /// them. This includes all the body owners, but also things like struct
+        /// constructors.
+        query mir_keys(_: CrateNum) -> Lrc<DefIdSet> {
+            desc { "getting a list of all mir_keys" }
+        }
+
+        /// Maps DefId's that have an associated Mir to the result
+        /// of the MIR qualify_consts pass. The actual meaning of
+        /// the value isn't known except to the pass itself.
+        query mir_const_qualif(key: DefId) -> (u8, Lrc<BitSet<mir::Local>>) {
+            cache { key.is_local() }
+        }
+
+        /// Fetch the MIR for a given `DefId` right after it's built - this includes
+        /// unreachable code.
+        query mir_built(_: DefId) -> &'tcx Steal<mir::Mir<'tcx>> {}
+
+        /// Fetch the MIR for a given `DefId` up till the point where it is
+        /// ready for const evaluation.
+        ///
+        /// See the README for the `mir` module for details.
+        query mir_const(_: DefId) -> &'tcx Steal<mir::Mir<'tcx>> {
+            no_hash
+        }
+
+        query mir_validated(_: DefId) -> &'tcx Steal<mir::Mir<'tcx>> {
+            no_hash
+        }
+
+        /// MIR after our optimization passes have run. This is MIR that is ready
+        /// for codegen. This is also the only query that can fetch non-local MIR, at present.
+        query optimized_mir(key: DefId) -> &'tcx mir::Mir<'tcx> {
+            cache { key.is_local() }
+            load_cached(tcx, id) {
+                let mir: Option<crate::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
+                                                            .try_load_query_result(tcx, id);
+                mir.map(|x| tcx.alloc_mir(x))
+            }
+        }
+    }
 }

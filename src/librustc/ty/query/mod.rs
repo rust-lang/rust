@@ -205,34 +205,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
         [] fn inherent_impls: InherentImpls(DefId) -> Lrc<Vec<DefId>>,
     },
 
-    Codegen {
-        /// Set of all the `DefId`s in this crate that have MIR associated with
-        /// them. This includes all the body owners, but also things like struct
-        /// constructors.
-        [] fn mir_keys: mir_keys(CrateNum) -> Lrc<DefIdSet>,
-
-        /// Maps DefId's that have an associated Mir to the result
-        /// of the MIR qualify_consts pass. The actual meaning of
-        /// the value isn't known except to the pass itself.
-        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
-
-        /// Fetch the MIR for a given `DefId` right after it's built - this includes
-        /// unreachable code.
-        [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
-
-        /// Fetch the MIR for a given `DefId` up till the point where it is
-        /// ready for const evaluation.
-        ///
-        /// See the README for the `mir` module for details.
-        [no_hash] fn mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
-
-        [no_hash] fn mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
-
-        /// MIR after our optimization passes have run. This is MIR that is ready
-        /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
-    },
-
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
         [] fn unsafety_check_result: UnsafetyCheckResult(DefId) -> mir::UnsafetyCheckResult,
@@ -794,10 +766,6 @@ fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
 fn const_eval_raw_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
                              -> DepConstructor<'tcx> {
     DepConstructor::ConstEvalRaw { param_env }
-}
-
-fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
-    DepConstructor::MirKeys
 }
 
 fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

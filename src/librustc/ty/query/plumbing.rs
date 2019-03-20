@@ -1262,11 +1262,6 @@ pub fn force_from_dep_node<'tcx>(
         },
         DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
         DepKind::CheckPrivateInPublic => { force!(check_private_in_public, LOCAL_CRATE); }
-        DepKind::MirBuilt => { force!(mir_built, def_id!()); }
-        DepKind::MirConstQualif => { force!(mir_const_qualif, def_id!()); }
-        DepKind::MirConst => { force!(mir_const, def_id!()); }
-        DepKind::MirValidated => { force!(mir_validated, def_id!()); }
-        DepKind::MirOptimized => { force!(optimized_mir, def_id!()); }
 
         DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
         DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
@@ -1282,7 +1277,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CheckModImplWf => { force!(check_mod_impl_wf, def_id!()); }
         DepKind::CollectModItemTypes => { force!(collect_mod_item_types, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
-        DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
         DepKind::AssociatedItems => { force!(associated_item, def_id!()); }
         DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
@@ -1491,11 +1485,11 @@ macro_rules! impl_load_from_cache {
 
 impl_load_from_cache!(
     TypeckTables => typeck_tables_of,
-    MirOptimized => optimized_mir,
+    optimized_mir => optimized_mir,
     UnsafetyCheckResult => unsafety_check_result,
     BorrowCheck => borrowck,
     MirBorrowCheck => mir_borrowck,
-    MirConstQualif => mir_const_qualif,
+    mir_const_qualif => mir_const_qualif,
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     CheckMatch => check_match,

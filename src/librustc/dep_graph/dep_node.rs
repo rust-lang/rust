@@ -461,11 +461,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    [] MirConstQualif(DefId),
-    [] MirBuilt(DefId),
-    [] MirConst(DefId),
-    [] MirValidated(DefId),
-    [] MirOptimized(DefId),
     [] MirShim { instance_def: InstanceDef<'tcx> },
 
     [] BorrowCheckKrate,
@@ -485,7 +480,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] CollectModItemTypes(DefId),
 
     [] Reachability,
-    [] MirKeys,
     [eval_always] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared

@@ -431,12 +431,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval_raw<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::mir_keys<'tcx> {
-    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "getting a list of all mir_keys".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::symbol_name<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, instance: ty::Instance<'tcx>) -> Cow<'static, str> {
         format!("computing the symbol for `{}`", instance).into()
@@ -898,21 +892,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
-    #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, def_id: Self::Key) -> bool {
-        def_id.is_local()
-    }
-
-    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: SerializedDepNodeIndex)
-                              -> Option<Self::Value> {
-        let mir: Option<crate::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
-                                               .try_load_query_result(tcx, id);
-        mir.map(|x| tcx.alloc_mir(x))
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, SubstsRef<'tcx>)) -> Cow<'static, str> {
         format!("testing substituted normalized predicates:`{}`", tcx.def_path_str(key.0)).into()
@@ -997,7 +976,6 @@ impl_disk_cacheable_query!(mir_borrowck, |tcx, def_id| {
 
 impl_disk_cacheable_query!(unsafety_check_result, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(borrowck, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(mir_const_qualif, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(def_symbol_name, |_, _| true);
 impl_disk_cacheable_query!(predicates_of, |_, def_id| def_id.is_local());
