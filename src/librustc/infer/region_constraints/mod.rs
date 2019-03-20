@@ -841,12 +841,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn vars_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
-        self.undo_log[mark.length..]
-            .iter()
-            .filter_map(|&elt| match elt {
-                AddVar(vid) => Some(vid),
-                _ => None,
-            }).collect()
+        self.unification_table.vars_since_snapshot(&mark.region_snapshot).collect()
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`].
