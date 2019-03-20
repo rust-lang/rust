@@ -322,7 +322,10 @@ where
         let vid = pair.vid();
         let value_ty = pair.value_ty();
 
-        // FIXME -- this logic assumes invariance, but that is wrong
+        // FIXME -- this logic assumes invariance, but that is wrong.
+        // This only presently applies to chalk integration, as NLL
+        // doesn't permit type variables to appear on both sides (and
+        // doesn't use lazy norm).
         match value_ty.sty {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
