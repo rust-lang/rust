@@ -41,3 +41,84 @@ We use Travis for CI. Most of the things, including formatting, are checked by
 `cargo test` so, if `cargo test` passes locally, that's a good sign that CI will
 be green as well. We use bors-ng to enforce the [not rocket
 science](https://graydon2.dreamwidth.org/1597.html) rule.
+
+You can run `cargo format-hook` to install git-hook to run rustfmt on commit.
+
+# Code organization
+
+All Rust code lives in the `crates` top-level directory, and is organized as a
+single Cargo workspace. The `editors` top-level directory contains code for
+integrating with editors. Currently, it contains plugins for VS Code (in
+typescript) and Emacs (in elisp). The `docs` top-level directory contains both
+developer and user documentation.
+
+We have some automation infra in Rust in the `crates/tool` package. It contains
+stuff like formatting checking, code generation and powers `cargo install-code`.
+The latter syntax is achieved with the help of cargo aliases (see `.cargo`
+directory).
+
+# Launching rust-analyzer
+
+Debugging language server can be tricky: LSP is rather chatty, so driving it
+from the command line is not really feasible, driving it via VS Code requires
+interacting with two processes.
+
+For this reason, the best way to see how rust-analyzer works is to find a
+relevant test and execute it (VS Code includes an action for running a single
+test).
+
+However, launching a VS Code instance with locally build language server is
+possible. There's even a VS Code task for this, so just <kbd>F5</kbd> should
+work (thanks, [@andrew-w-ross](https://github.com/andrew-w-ross)!).
+
+I often just install development version with `cargo jinstall-lsp` and
+restart the host VS Code.
+
+See [./debugging.md](./debugging.md) for how to attach to rust-analyzer with
+debugger, and don't forget that rust-analyzer has useful `pd` snippet and `dbg`
+postfix completion for printf debugging :-)
+
+# Working With VS Code Extension
+
+To work on the VS Code extension, launch code inside `editors/code` and use `F5`
+to launch/debug. To automatically apply formatter and linter suggestions, use
+`npm run fix`.
+
+# Logging
+
+Logging is done by both rust-analyzer and VS Code, so it might be tricky to
+figure out where logs go.
+
+Inside rust-analyzer, we use the standard `log` crate for logging, and
+`flexi_logger` for logging frotend. By default, log goes to stderr (the same as
+with `env_logger`), but the stderr itself is processed by VS Code. To mirror
+logs to a `./log` directory, set `RA_INTERNAL_MODE=1` environmental variable.
+
+To see stderr in the running VS Code instance, go to the "Output" tab of the
+panel and select `rust-analyzer`. This shows `eprintln!` as well. Note that
+`stdout` is used for the actual protocol, so `println!` will break things.
+
+To log all communication between the server and the client, there are two choices:
+
+* you can log on the server side, by running something like
+  ```
+  env RUST_LOG=gen_lsp_server=trace code .
+  ```
+
+* you can log on the client side, by enabling `"rust-analyzer.trace.server":
+  "verbose"` workspace setting. These logs are shown in a separate tab in the
+  output and could be used with LSP inspector. Kudos to
+  [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
+
+
+There's also two VS Code commands which might be of interest:
+
+* `Rust Analyzer: Status` shows some memory-usage statistics. To take full
+  advantage of it, you need to compile rust-analyzer with jemalloc support:
+  ```
+  $ cargo install --path crates/ra_lsp_server --force --features jemalloc
+  ```
+
+  There's an alias for this: `cargo jinstall-lsp`.
+
+* `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.

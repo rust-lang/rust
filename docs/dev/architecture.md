@@ -7,8 +7,10 @@ in the right place!
 See also the [guide](./guide.md), which walks through a particular snapshot of
 rust-analyzer code base.
 
-For syntax-trees specifically, there's a [video walk
-through](https://youtu.be/DGAuLWdCCAI) as well.
+Yet another resource is this playlist with videos about various parts of the
+analyzer:
+
+https://www.youtube.com/playlist?list=PL85XCvVPmGQho7MZkdW-wtPtuJcFpzycE
 
 ## The Big Picture
 
@@ -61,7 +63,7 @@ processes. These are outlined below:
 
 ## Code Walk-Through
 
-### `crates/ra_syntax`
+### `crates/ra_syntax`, `crates/ra_parser`
 
 Rust syntax tree structure and parser. See
 [RFC](https://github.com/rust-lang/rfcs/pull/2256) for some design notes.
@@ -145,12 +147,14 @@ throughout its modules.
 
 An LSP implementation which wraps `ra_ide_api` into a langauge server protocol.
 
-### `crates/ra_vfs`
+### `ra_vfs`
 
 Although `hir` and `ra_ide_api` don't do any IO, we need to be able to read
 files from disk at the end of the day. This is what `ra_vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
-different from data on disk.
+different from data on disk. This is more or less the single really
+platform-dependent component, so it lives in a separate repository and has an
+extensive cross-platform CI testing.
 
 ### `crates/gen_lsp_server`
 
@@ -164,37 +168,7 @@ Run with `RUST_LOG=sync_lsp_server=debug` to see all the messages.
 
 A CLI interface to rust-analyzer.
 
-### `crate/tools`
 
-Custom Cargo tasks used to develop rust-analyzer:
-
-- `cargo gen-syntax` -- generate `ast` and `syntax_kinds`
-- `cargo gen-tests` -- collect inline tests from grammar
-- `cargo install-code` -- build and install VS Code extension and server
-
-### `editors/code`
-
-VS Code plugin
+## Testing Infrastructure
 
 
-## Common workflows
-
-To try out VS Code extensions, run `cargo install-code`.  This installs both the
-`ra_lsp_server` binary and the VS Code extension. To install only the binary, use
-`cargo install-lsp` (shorthand for `cargo install --path crates/ra_lsp_server --force`)
-
-To see logs from the language server, set `RUST_LOG=info` env variable. To see
-all communication between the server and the client, use
-`RUST_LOG=gen_lsp_server=debug` (this will print quite a bit of stuff).
-
-There's `rust-analyzer: status` command which prints common high-level debug
-info. In particular, it prints info about memory usage of various data
-structures, and, if compiled with jemalloc support (`cargo jinstall-lsp` or 
-`cargo install --path crates/ra_lsp_server --force --features jemalloc`), includes
- statistic about the heap.
-
-To run tests, just `cargo test`.
-
-To work on the VS Code extension, launch code inside `editors/code` and use `F5` to
-launch/debug. To automatically apply formatter and linter suggestions, use `npm
-run fix`.
