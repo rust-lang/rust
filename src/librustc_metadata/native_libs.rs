@@ -199,34 +199,31 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
         }
 
         // Update kind and, optionally, the name of all native libraries
-        // (there may be more than one) with the specified name.
+        // (there may be more than one) with the specified name.  If any
+        // library is mentioned more than once, keep the latest mention
+        // of it, so that any possible dependent libraries appear before
+        // it.  (This ensures that the linker is able to see symbols from
+        // all possible dependent libraries before linking in the library
+        // in question.)
         for &(ref name, ref new_name, kind) in &self.tcx.sess.opts.libs {
-            let mut found = false;
-            for lib in self.libs.iter_mut() {
-                let lib_name = match lib.name {
-                    Some(n) => n,
-                    None => continue,
-                };
-                if lib_name == name as &str {
-                    let mut changed = false;
-                    if let Some(k) = kind {
-                        lib.kind = k;
-                        changed = true;
+            // If we've already added any native libraries with the same
+            // name, they will be pulled out into `existing`, so that we
+            // can move them to the end of the list below.
+            let mut existing = self.libs.drain_filter(|lib| {
+                if let Some(lib_name) = lib.name {
+                    if lib_name == name as &str {
+                        if let Some(k) = kind {
+                            lib.kind = k;
+                        }
+                        if let &Some(ref new_name) = new_name {
+                            lib.name = Some(Symbol::intern(new_name));
+                        }
+                        return true;
                     }
-                    if let &Some(ref new_name) = new_name {
-                        lib.name = Some(Symbol::intern(new_name));
-                        changed = true;
-                    }
-                    if !changed {
-                        let msg = format!("redundant linker flag specified for \
-                                           library `{}`", name);
-                        self.tcx.sess.warn(&msg);
-                    }
-
-                    found = true;
                 }
-            }
-            if !found {
+                false
+            }).collect::<Vec<_>>();
+            if existing.is_empty() {
                 // Add if not found
                 let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
                 let lib = NativeLibrary {
@@ -237,6 +234,10 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                     wasm_import_module: None,
                 };
                 self.register_native_lib(None, lib);
+            } else {
+                // Move all existing libraries with the same name to the
+                // end of the command line.
+                self.libs.append(&mut existing);
             }
         }
     }

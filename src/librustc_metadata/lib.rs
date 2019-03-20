@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
+#![feature(drain_filter)]
 #![feature(libc)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
