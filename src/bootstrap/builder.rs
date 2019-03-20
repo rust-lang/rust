@@ -670,20 +670,19 @@ impl<'a> Builder<'a> {
             .map(|entry| entry.path())
     }
 
-    pub fn rustdoc(&self, host: Interned<String>) -> PathBuf {
-        self.ensure(tool::Rustdoc { host })
+    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
+        self.ensure(tool::Rustdoc { compiler })
     }
 
-    pub fn rustdoc_cmd(&self, host: Interned<String>) -> Command {
+    pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
         let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
-        let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
             // equivalently to rustc.
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(host))
+            .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
 
@@ -691,7 +690,7 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        if let Some(linker) = self.linker(host) {
+        if let Some(linker) = self.linker(compiler.host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
@@ -753,7 +752,7 @@ impl<'a> Builder<'a> {
                 // This is the intended out directory for compiler documentation.
                 my_out = self.compiler_doc_out(target);
             }
-            let rustdoc = self.rustdoc(compiler.host);
+            let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
         } else if cmd != "test" {
             match mode {
@@ -910,7 +909,7 @@ impl<'a> Builder<'a> {
             .env(
                 "RUSTDOC_REAL",
                 if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
-                    self.rustdoc(compiler.host)
+                    self.rustdoc(compiler)
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },

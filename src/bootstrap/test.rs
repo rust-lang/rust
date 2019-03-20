@@ -177,7 +177,7 @@ impl Step for Cargotest {
             cmd.arg(&builder.initial_cargo)
                 .arg(&out_dir)
                 .env("RUSTC", builder.rustc(compiler))
-                .env("RUSTDOC", builder.rustdoc(compiler.host)),
+                .env("RUSTDOC", builder.rustdoc(compiler)),
         );
     }
 }
@@ -414,7 +414,6 @@ impl Step for Miri {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
-    stage: u32,
     host: Interned<String>,
 }
 
@@ -427,16 +426,14 @@ impl Step for CompiletestTest {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(CompiletestTest {
-            stage: run.builder.top_stage,
             host: run.target,
         });
     }
 
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(0, host);
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
@@ -563,7 +560,7 @@ impl Step for RustdocTheme {
                 builder.sysroot_libdir(self.compiler, self.compiler.host),
             )
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler.host))
+            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTDOC_CRATE_VERSION", builder.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(linker) = builder.linker(self.compiler.host) {
@@ -1042,7 +1039,7 @@ impl Step for Compiletest {
             || mode == "js-doc-test"
         {
             cmd.arg("--rustdoc-path")
-                .arg(builder.rustdoc(compiler.host));
+                .arg(builder.rustdoc(compiler));
         }
 
         cmd.arg("--src-base")
@@ -1464,7 +1461,10 @@ impl Step for ErrorIndex {
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let mut tool = builder.tool_cmd(Tool::ErrorIndex);
+        let mut tool = tool::ErrorIndex::command(
+            builder,
+            builder.compiler(compiler.stage, builder.config.build),
+        );
         tool.arg("markdown")
             .arg(&output)
             .env("CFG_BUILD", &builder.config.build)
@@ -1489,7 +1489,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     }
 
     builder.info(&format!("doc tests for: {}", markdown.display()));
-    let mut cmd = builder.rustdoc_cmd(compiler.host);
+    let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
