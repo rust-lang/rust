@@ -22,7 +22,18 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       hash_key=/tmp/.docker-hash-key.txt
       rm -f "${hash_key}"
       echo $image >> $hash_key
-      find $docker_dir -type f | sort | xargs cat >> $hash_key
+
+      cat "$docker_dir/$image/Dockerfile" >> $hash_key
+      # Look for all source files involves in the COPY command
+      copied_files=/tmp/.docker-copied-files.txt
+      rm -f "$copied_files"
+      for i in $(sed -n -e 's/^COPY \(.*\) .*$/\1/p' "$docker_dir/$image/Dockerfile"); do
+        # List the file names
+        find "$docker_dir/$i" -type f >> $copied_files
+      done
+      # Sort the file names and cat the content into the hash key
+      sort $copied_files | xargs cat >> $hash_key
+
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
