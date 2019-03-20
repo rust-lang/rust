@@ -29,6 +29,7 @@ use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use std::fmt::Debug;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum NormalizationStrategy {
@@ -294,14 +295,34 @@ where
         }
     }
 
-    /// Relate a type inference variable with a value type.
-    fn relate_ty_var(
+    /// Relate a type inference variable with a value type. This works
+    /// by creating a "generalization" G of the value where all the
+    /// lifetimes are replaced with fresh inference values. This
+    /// genearlization G becomes the value of the inference variable,
+    /// and is then related in turn to the value. So e.g. if you had
+    /// `vid = ?0` and `value = &'a u32`, we might first instantiate
+    /// `?0` to a type like `&'0 u32` where `'0` is a fresh variable,
+    /// and then relate `&'0 u32` with `&'a u32` (resulting in
+    /// relations between `'0` and `'a`).
+    ///
+    /// The variable `pair` can be either a `(vid, ty)` or `(ty, vid)`
+    /// -- in other words, it is always a (unresolved) inference
+    /// variable `vid` and a type `ty` that are being related, but the
+    /// vid may appear either as the "a" type or the "b" type,
+    /// depending on where it appears in the tuple. The trait
+    /// `VidValuePair` lets us work with the vid/type while preserving
+    /// the "sidedness" when necessary -- the sidedness is relevant in
+    /// particular for the variance and set of in-scope things.
+    fn relate_ty_var<PAIR: VidValuePair<'tcx>>(
         &mut self,
-        vid: ty::TyVid,
-        value_ty: Ty<'tcx>,
+        pair: PAIR,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("relate_ty_var(vid={:?}, value_ty={:?})", vid, value_ty);
+        debug!("relate_ty_var({:?})", pair);
 
+        let vid = pair.vid();
+        let value_ty = pair.value_ty();
+
+        // FIXME -- this logic assumes invariance, but that is wrong
         match value_ty.sty {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
@@ -338,13 +359,13 @@ where
         // been fully instantiated and hence the set of scopes we have
         // doesn't matter -- just to be sure, put an empty vector
         // in there.
-        let old_a_scopes = ::std::mem::replace(&mut self.a_scopes, vec![]);
+        let old_a_scopes = ::std::mem::replace(pair.vid_scopes(self), vec![]);
 
         // Relate the generalized kind to the original one.
-        let result = self.relate(&generalized_ty, &value_ty);
+        let result = pair.relate_generalized_ty(self, generalized_ty);
 
         // Restore the old scopes now.
-        self.a_scopes = old_a_scopes;
+        *pair.vid_scopes(self) = old_a_scopes;
 
         debug!("relate_ty_var: complete, result = {:?}", result);
         result
@@ -367,6 +388,104 @@ where
         };
 
         generalizer.relate(&value, &value)
+    }
+}
+
+/// When we instantiate a inference variable with a value in
+/// `relate_ty_var`, we always have the pair of a `TyVid` and a `Ty`,
+/// but the ordering may vary (depending on whether the inference
+/// variable was found on the `a` or `b` sides). Therefore, this trait
+/// allows us to factor out common code, while preserving the order
+/// when needed.
+trait VidValuePair<'tcx>: Debug {
+    /// Extract the inference variable (which could be either the
+    /// first or second part of the tuple).
+    fn vid(&self) -> ty::TyVid;
+
+    /// Extract the value it is being related to (which will be the
+    /// opposite part of the tuple from the vid).
+    fn value_ty(&self) -> Ty<'tcx>;
+
+    /// Extract the scopes that apply to whichever side of the tuple
+    /// the vid was found on.  See the comment where this is called
+    /// for more details on why we want them.
+    fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
+
+    /// Given a generalized type G that should replace the vid, relate
+    /// G to the value, putting G on whichever side the vid would have
+    /// appeared.
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>;
+}
+
+impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
+    fn vid(&self) -> ty::TyVid {
+        self.0
+    }
+
+    fn value_ty(&self) -> Ty<'tcx> {
+        self.1
+    }
+
+    fn vid_scopes<D>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        &mut relate.a_scopes
+    }
+
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        relate.relate(&generalized_ty, &self.value_ty())
+    }
+}
+
+// In this case, the "vid" is the "b" type.
+impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
+    fn vid(&self) -> ty::TyVid {
+        self.1
+    }
+
+    fn value_ty(&self) -> Ty<'tcx> {
+        self.0
+    }
+
+    fn vid_scopes<D>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        &mut relate.b_scopes
+    }
+
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        relate.relate(&self.value_ty(), &generalized_ty)
     }
 }
 
@@ -427,17 +546,11 @@ where
                     // Forbid inference variables in the RHS.
                     bug!("unexpected inference var {:?}", b)
                 } else {
-                    // We swap the order of `a` and `b` in the call to
-                    // `relate_ty_var` below, so swap the corresponding scopes
-                    // as well.
-                    std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
-                    let res = self.relate_ty_var(vid, a);
-                    std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
-                    res
+                    self.relate_ty_var((a, vid))
                 }
             }
 
-            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var(vid, b),
+            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Projection(projection_ty), _)
                 if D::normalization() == NormalizationStrategy::Lazy =>
@@ -448,12 +561,7 @@ where
             (_, &ty::Projection(projection_ty))
                 if D::normalization() == NormalizationStrategy::Lazy =>
             {
-                // Swap the respective scopes of `a` and `b` (see comment
-                // above).
-                std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
-                let res = self.relate_projection_ty(projection_ty, a);
-                std::mem::swap(&mut self.a_scopes, &mut self.b_scopes);
-                Ok(res)
+                Ok(self.relate_projection_ty(projection_ty, a))
             }
 
             _ => {
