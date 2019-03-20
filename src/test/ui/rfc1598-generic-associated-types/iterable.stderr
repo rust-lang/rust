@@ -4,37 +4,37 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:11:47
    |
 LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
    |                                               ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:40:53
    |
 LL | fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
    |                                                     ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:45:60
    |
 LL | fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
    |                                                            ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:14:41
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
    |                                         ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:23:41
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |                                         ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/iterable.rs:34:41
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
@@ -42,4 +42,4 @@ LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0110`.
+For more information about this error, try `rustc --explain E0109`.

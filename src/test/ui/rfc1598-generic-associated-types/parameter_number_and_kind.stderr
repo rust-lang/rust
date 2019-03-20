@@ -4,31 +4,31 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:17:27
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                           ^^^^^^^ lifetime argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:17:36
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                                    ^ type argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:20:26
    |
 LL |     type FErr1 = Self::E<'static, 'static>; // Error
    |                          ^^^^^^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:22:29
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
    |                             ^^^^^^^ lifetime argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:22:38
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
@@ -36,5 +36,4 @@ LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0109, E0110.
-For more information about an error, try `rustc --explain E0109`.
+For more information about this error, try `rustc --explain E0109`.

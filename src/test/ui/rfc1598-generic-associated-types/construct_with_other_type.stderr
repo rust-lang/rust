@@ -4,19 +4,19 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/construct_with_other_type.rs:17:46
    |
 LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
    |                                              ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/construct_with_other_type.rs:17:63
    |
 LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
    |                                                               ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/construct_with_other_type.rs:25:40
    |
 LL |     type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static>;
@@ -24,4 +24,4 @@ LL |     type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static>;
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0110`.
+For more information about this error, try `rustc --explain E0109`.
