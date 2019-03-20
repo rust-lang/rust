@@ -2,13 +2,13 @@ error: unknown byte escape: f
   --> $DIR/byte-literals.rs:6:21
    |
 LL | static FOO: u8 = b'/f';
-   |                     ^
+   |                     ^ unknown byte escape
 
 error: unknown byte escape: f
   --> $DIR/byte-literals.rs:9:8
    |
 LL |     b'/f';
-   |        ^
+   |        ^ unknown byte escape
 
 error: invalid character in numeric character escape: Z
   --> $DIR/byte-literals.rs:10:10

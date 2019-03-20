@@ -4229,19 +4229,24 @@ impl<'a> Parser<'a> {
     fn parse_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
         let mut fields = Vec::new();
         let mut ddpos = None;
+        let mut prev_dd_sp = None;
         let mut trailing_comma = false;
         loop {
             if self.eat(&token::DotDot) {
                 if ddpos.is_none() {
                     ddpos = Some(fields.len());
+                    prev_dd_sp = Some(self.prev_span);
                 } else {
                     // Emit a friendly error, ignore `..` and continue parsing
-                    self.struct_span_err(
+                    let mut err = self.struct_span_err(
                         self.prev_span,
                         "`..` can only be used once per tuple or tuple struct pattern",
-                    )
-                        .span_label(self.prev_span, "can only be used once per pattern")
-                        .emit();
+                    );
+                    err.span_label(self.prev_span, "can only be used once per pattern");
+                    if let Some(sp) = prev_dd_sp {
+                        err.span_label(sp, "previously present here");
+                    }
+                    err.emit();
                 }
             } else if !self.check(&token::CloseDelim(token::Paren)) {
                 fields.push(self.parse_pat(None)?);

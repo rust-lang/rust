@@ -2,7 +2,9 @@ error: `..` can only be used once per tuple or tuple struct pattern
   --> $DIR/pat-tuple-3.rs:3:19
    |
 LL |         (.., pat, ..) => {}
-   |                   ^^ can only be used once per pattern
+   |          --       ^^ can only be used once per pattern
+   |          |
+   |          previously present here
 
 error: aborting due to previous error
 
