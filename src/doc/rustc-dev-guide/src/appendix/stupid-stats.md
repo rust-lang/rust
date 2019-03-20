@@ -4,7 +4,9 @@
 > a copy of the code on the GitHub repository.
 >
 > Due to the compiler's constantly evolving nature, the `rustc_driver`
-> mechanisms described in this chapter have been replaced by a new
+> mechanisms described in this chapter have changed. In particular, the
+> `CompilerCalls` and `CompileController` types have been replaced by
+> [`Callbacks`][cb].  Also, there is a new query-based interface in the
 > [`rustc_interface`] crate. See [The Rustc Driver and Interface] for more
 > information.
 
@@ -409,6 +411,7 @@ analysis, rather than doing its own analysis). Other parts of the compiler
 internally (I already changed save-analysis to use `CompilerController`). I've
 been experimenting with a prototype rustfmt which also uses these APIs.
 
+[cb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
 [The Rustc Driver and Interface]: ../rustc-driver.html

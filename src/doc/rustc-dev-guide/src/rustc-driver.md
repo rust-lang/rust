@@ -21,6 +21,13 @@ specifically the [`rustc_driver::run_compiler` function][rd_rc] (not to be confu
 `interface::run_compiler`). The `rustc_driver::run_compiler` function takes a bunch of
 command-line args and some other configurations and drives the compilation to completion.
 
+`rustc_driver::run_compiler` also takes a [`Callbacks`][cb]. In the past, when
+the `rustc_driver::run_compiler` was the primary way to use the compiler as a
+library, these callbacks were used to have some custom code run after different
+phases of the compilation. If you read [Appendix A], you may notice the use of the
+types `CompilerCalls` and `CompileController`, which no longer exist. `Callbacks`
+replaces this functionality.
+
 > **Warning:** By its very nature, the internal compiler APIs are always going
 > to be unstable. That said, we do try not to break things unnecessarily.
 
@@ -38,6 +45,7 @@ duplication while also preventing a lot of the ergonomic issues due to many
 pervasive lifetimes. The `rustc::ty::tls` module is used to access these
 thread-locals, although you should rarely need to touch it.
 
+[cb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [rd_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.run_compiler.html
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
