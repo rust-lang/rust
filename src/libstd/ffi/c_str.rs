@@ -371,7 +371,7 @@ impl CString {
     /// let string = CString::from_reader(test.as_bytes()).unwrap();
     /// ```
     ///
-    #[stable(feature = "cstring_from_reader", since = "1.33.0")]
+    #[stable(feature = "cstring_from_reader", issue = "59229")]
     pub fn from_reader(mut reader: impl io::Read) -> Result<CString, io::Error>
     {
         let mut buffer = Vec::new();
