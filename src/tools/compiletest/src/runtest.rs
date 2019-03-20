@@ -4,7 +4,7 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
-use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest};
+use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
 use filetime::FileTime;
@@ -275,6 +275,7 @@ impl<'test> TestCx<'test> {
             RunMake => self.run_rmake_test(),
             RunPass | Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
+            Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
         }
     }
@@ -1606,6 +1607,7 @@ impl<'test> TestCx<'test> {
                 || self.config.target.contains("emscripten")
                 || (self.config.target.contains("musl") && !aux_props.force_host)
                 || self.config.target.contains("wasm32")
+                || self.config.target.contains("nvptx")
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1805,7 +1807,7 @@ impl<'test> TestCx<'test> {
                 rustc.arg(dir_opt);
             }
             RunFail | RunPassValgrind | Pretty | DebugInfoBoth | DebugInfoGdb | DebugInfoLldb
-            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest => {
+            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
@@ -2100,12 +2102,37 @@ impl<'test> TestCx<'test> {
         self.compose_and_run_compiler(rustc, None)
     }
 
-    fn check_ir_with_filecheck(&self) -> ProcRes {
-        let irfile = self.output_base_name().with_extension("ll");
+    fn compile_test_and_save_assembly(&self) -> (ProcRes, PathBuf) {
+        // This works with both `--emit asm` (as default output name for the assembly)
+        // and `ptx-linker` because the latter can write output at requested location.
+        let output_path = self.output_base_name().with_extension("s");
+
+        let output_file = TargetLocation::ThisFile(output_path.clone());
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+
+        rustc.arg("-L").arg(self.aux_output_dir_name());
+
+        match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
+            Some("emit-asm") => {
+                rustc.arg("--emit=asm");
+            }
+
+            Some("ptx-linker") => {
+                // No extra flags needed.
+            }
+
+            Some(_) => self.fatal("unknown 'assembly-output' header"),
+            None => self.fatal("missing 'assembly-output' header"),
+        }
+
+        (self.compose_and_run_compiler(rustc, None), output_path)
+    }
+
+    fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck
             .arg("--input-file")
-            .arg(irfile)
+            .arg(output)
             .arg(&self.testpaths.file);
         // It would be more appropriate to make most of the arguments configurable through
         // a comment-attribute similar to `compile-flags`. For example, --check-prefixes is a very
@@ -2124,12 +2151,29 @@ impl<'test> TestCx<'test> {
             self.fatal("missing --llvm-filecheck");
         }
 
-        let mut proc_res = self.compile_test_and_save_ir();
+        let proc_res = self.compile_test_and_save_ir();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        proc_res = self.check_ir_with_filecheck();
+        let output_path = self.output_base_name().with_extension("ll");
+        let proc_res = self.verify_with_filecheck(&output_path);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+        }
+    }
+
+    fn run_assembly_test(&self) {
+        if self.config.llvm_filecheck.is_none() {
+            self.fatal("missing --llvm-filecheck");
+        }
+
+        let (proc_res, output_path) = self.compile_test_and_save_assembly();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        let proc_res = self.verify_with_filecheck(&output_path);
         if !proc_res.status.success() {
             self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
         }

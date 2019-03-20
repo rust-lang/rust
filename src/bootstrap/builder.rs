@@ -374,6 +374,7 @@ impl<'a> Builder<'a> {
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
+                test::Assembly,
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,

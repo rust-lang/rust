@@ -1,13 +1,15 @@
-#![no_std]
-#![deny(warnings)]
-#![feature(abi_ptx)]
+// assembly-output: ptx-linker
+// compile-flags: --crate-type cdylib
+// only-nvptx64
 
-// Verify the default CUDA arch.
-// CHECK: .target sm_30
-// CHECK: .address_size 64
+#![feature(abi_ptx)]
+#![no_std]
+
+// aux-build: breakpoint-panic-handler.rs
+extern crate breakpoint_panic_handler;
 
 // Verify function name doesn't contain unacceaptable characters.
-// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:_ZN[a-zA-Z0-9$_]+square[a-zA-Z0-9$_]+]]
+// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:[a-zA-Z0-9$_]+square[a-zA-Z0-9$_]+]](
 
 // CHECK-LABEL: .visible .entry top_kernel(
 #[no_mangle]
@@ -33,9 +35,3 @@ pub mod deep {
         }
     }
 }
-
-// Verify that external function bodies are available.
-// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN]]
-// CHECK: {
-// CHECK:   mul.lo.s32 %{{r[0-9]+}}, %{{r[0-9]+}}, %{{r[0-9]+}}
-// CHECK: }

@@ -26,6 +26,7 @@ pub enum Mode {
     Ui,
     JsDocTest,
     MirOpt,
+    Assembly,
 }
 
 impl Mode {
@@ -62,6 +63,7 @@ impl FromStr for Mode {
             "ui" => Ok(Ui),
             "js-doc-test" => Ok(JsDocTest),
             "mir-opt" => Ok(MirOpt),
+            "assembly" => Ok(Assembly),
             _ => Err(()),
         }
     }
@@ -86,6 +88,7 @@ impl fmt::Display for Mode {
             Ui => "ui",
             JsDocTest => "js-doc-test",
             MirOpt => "mir-opt",
+            Assembly => "assembly",
         };
         fmt::Display::fmt(s, f)
     }

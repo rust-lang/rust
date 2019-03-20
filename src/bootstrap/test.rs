@@ -936,6 +936,12 @@ host_test!(RunMakeFullDeps {
     suite: "run-make-fulldeps"
 });
 
+default_test!(Assembly {
+    path: "src/test/assembly",
+    mode: "assembly",
+    suite: "assembly"
+});
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
     compiler: Compiler,
