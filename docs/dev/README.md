@@ -35,3 +35,9 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
 * [E-fun](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-fun)
   is for cool, but probably hard stuff.
 
+# CI
+
+We use Travis for CI. Most of the things, including formatting, are checked by
+`cargo test` so, if `cargo test` passes locally, that's a good sign that CI will
+be green as well. We use bors-ng to enforce the [not rocket
+science](https://graydon2.dreamwidth.org/1597.html) rule.
