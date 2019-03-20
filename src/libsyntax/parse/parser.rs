@@ -3704,8 +3704,8 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.note("type ascription is a nightly only feature that lets \
-                            you annotate expressions with a type: `<expr>: <type>`");
+                err.note("type ascription is a nightly-only feature that lets \
+                          you annotate an expression with a type: `<expr>: <type>`");
                 err.span_note(
                     lhs_span,
                     "this expression is annotated with type ascription...",
