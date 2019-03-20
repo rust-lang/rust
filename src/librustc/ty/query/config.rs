@@ -305,12 +305,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>) -> Cow<'static, str> {
-        format!("erasing regions from `{:?}`", ty).into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, (_, def_id): (DefId, DefId)) -> Cow<'static, str> {
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();

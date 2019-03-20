@@ -555,11 +555,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
     },
 
     TypeChecking {
-        // Erases regions from `ty` to yield a new type.
-        // Normally you would just use `tcx.erase_regions(&value)`,
-        // however, which uses this query as a kind of cache.
-        [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
-
         /// Do not call this query directly: invoke `normalize` instead.
         [] fn normalize_projection_ty: NormalizeProjectionTy(
             CanonicalProjectionGoal<'tcx>
@@ -696,10 +691,6 @@ fn features_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn codegen_fn_attrs<'tcx>(id: DefId) -> DepConstructor<'tcx> {
     DepConstructor::CodegenFnAttrs { 0: id }
-}
-
-fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::EraseRegionsTy { ty }
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

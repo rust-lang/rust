@@ -614,14 +614,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
 
-    // These queries are not expected to have inputs -- as a result, they
-    // are not good candidates for "replay" because they are essentially
-    // pure functions of their input (and hence the expectation is that
-    // no caller would be green **apart** from just these
-    // queries). Making them anonymous avoids hashing the result, which
-    // may save a bit of time.
-    [anon] EraseRegionsTy { ty: Ty<'tcx> },
-
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),
     [input] MaybeUnusedExternCrates,

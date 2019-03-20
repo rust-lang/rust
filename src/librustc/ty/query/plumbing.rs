@@ -1223,7 +1223,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CompileCodegenUnit |
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
-        DepKind::EraseRegionsTy |
         DepKind::NormalizeProjectionTy |
         DepKind::NormalizeTyAfterErasingRegions |
         DepKind::ImpliedOutlivesBounds |

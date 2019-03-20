@@ -48,6 +48,9 @@ enum QueryModifier {
 
     /// Don't force the query
     NoForce,
+
+    /// Generate a dep node based on the dependencies of the query
+    Anon,
 }
 
 impl Parse for QueryModifier {
@@ -99,6 +102,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::NoHash)
         } else if modifier == "no_force" {
             Ok(QueryModifier::NoForce)
+        } else if modifier == "anon" {
+            Ok(QueryModifier::Anon)
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -202,6 +207,9 @@ struct QueryModifiers {
 
     /// Don't force the query
     no_force: bool,
+
+    /// Generate a dep node based on the dependencies of the query
+    anon: bool,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -212,6 +220,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut fatal_cycle = false;
     let mut no_hash = false;
     let mut no_force = false;
+    let mut anon = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -250,6 +259,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 no_force = true;
             }
+            QueryModifier::Anon => {
+                if anon {
+                    panic!("duplicate modifier `anon` for query `{}`", query.name);
+                }
+                anon = true;
+            }
         }
     }
     QueryModifiers {
@@ -259,6 +274,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         fatal_cycle,
         no_hash,
         no_force,
+        anon,
     }
 }
 
@@ -381,9 +397,20 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 [#attribute_stream] fn #name: #name(#arg) #result,
             });
 
+            let mut attributes = Vec::new();
+
+            // Pass on the anon modifier
+            if modifiers.anon {
+                attributes.push(quote! { anon });
+            };
+
+            let mut attribute_stream = quote! {};
+            for e in attributes.into_iter().intersperse(quote! {,}) {
+                attribute_stream.extend(e);
+            }
             // Create a dep node for the query
             dep_node_def_stream.extend(quote! {
-                [] #name(#arg),
+                [#attribute_stream] #name(#arg),
             });
 
             if modifiers.no_force {

@@ -1,7 +1,6 @@
 use crate::ty::query::QueryDescription;
 use crate::ty::query::queries;
-use crate::ty::TyCtxt;
-use crate::ty;
+use crate::ty::{self, Ty, TyCtxt};
 use crate::hir::def_id::{DefId, CrateNum};
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::traits;
@@ -109,6 +108,21 @@ rustc_queries! {
     }
 
     TypeChecking {
+        // Erases regions from `ty` to yield a new type.
+        // Normally you would just use `tcx.erase_regions(&value)`,
+        // however, which uses this query as a kind of cache.
+        query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
+            // This query is not expected to have input -- as a result, it
+            // is not a good candidates for "replay" because it is essentially a
+            // pure function of its input (and hence the expectation is that
+            // no caller would be green **apart** from just these
+            // queries). Making it anonymous avoids hashing the result, which
+            // may save a bit of time.
+            anon
+            no_force
+            desc { "erasing regions from `{:?}`", ty }
+        }
+
         query program_clauses_for(_: DefId) -> Clauses<'tcx> {
             desc { "generating chalk-style clauses" }
         }
