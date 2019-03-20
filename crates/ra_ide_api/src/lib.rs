@@ -211,6 +211,23 @@ pub struct Analysis {
 // API, the API should in theory be usable as a library, or via a different
 // protocol.
 impl Analysis {
+    // Creates an analysis instance for a single file, without any extenal
+    // dependencies, stdlib support or ability to apply changes. See
+    // `AnalysisHost` for creating a fully-featured analysis.
+    pub fn from_single_file(text: String) -> (Analysis, FileId) {
+        let mut host = AnalysisHost::default();
+        let source_root = SourceRootId(0);
+        let mut change = AnalysisChange::new();
+        change.add_root(source_root, true);
+        let mut crate_graph = CrateGraph::default();
+        let file_id = FileId(0);
+        crate_graph.add_crate_root(file_id, Edition::Edition2018);
+        change.add_file(source_root, file_id, "main.rs".into(), Arc::new(text));
+        change.set_crate_graph(crate_graph);
+        host.apply_change(change);
+        (host.analysis(), file_id)
+    }
+
     /// Debug info about the current state of the analysis
     pub fn status(&self) -> String {
         status::status(&*self.db)
