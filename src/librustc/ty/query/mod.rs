@@ -415,7 +415,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
 
     Other {
         [] fn module_exports: ModuleExports(DefId) -> Option<Lrc<Vec<Export>>>,
-        [] fn lint_levels: lint_levels_node(CrateNum) -> Lrc<lint::LintLevelMap>,
     },
 
     TypeChecking {
@@ -765,10 +764,6 @@ fn needs_drop_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepC
 
 fn layout_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
     DepConstructor::Layout { param_env }
-}
-
-fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
-    DepConstructor::LintLevels
 }
 
 fn specializes_node<'tcx>((a, b): (DefId, DefId)) -> DepConstructor<'tcx> {

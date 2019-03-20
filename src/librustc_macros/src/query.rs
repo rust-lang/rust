@@ -51,6 +51,9 @@ enum QueryModifier {
 
     /// Generate a dep node based on the dependencies of the query
     Anon,
+
+    // Always evaluate the query, ignoring its depdendencies
+    EvalAlways,
 }
 
 impl Parse for QueryModifier {
@@ -104,6 +107,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::NoForce)
         } else if modifier == "anon" {
             Ok(QueryModifier::Anon)
+        } else if modifier == "eval_always" {
+            Ok(QueryModifier::EvalAlways)
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -210,6 +215,9 @@ struct QueryModifiers {
 
     /// Generate a dep node based on the dependencies of the query
     anon: bool,
+    
+    // Always evaluate the query, ignoring its depdendencies
+    eval_always: bool,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -221,6 +229,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut no_hash = false;
     let mut no_force = false;
     let mut anon = false;
+    let mut eval_always = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -265,6 +274,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 anon = true;
             }
+            QueryModifier::EvalAlways => {
+                if eval_always {
+                    panic!("duplicate modifier `eval_always` for query `{}`", query.name);
+                }
+                eval_always = true;
+            }
         }
     }
     QueryModifiers {
@@ -275,6 +290,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         no_hash,
         no_force,
         anon,
+        eval_always,
     }
 }
 
@@ -402,6 +418,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Pass on the anon modifier
             if modifiers.anon {
                 attributes.push(quote! { anon });
+            };
+            // Pass on the eval_always modifier
+            if modifiers.eval_always {
+                attributes.push(quote! { eval_always });
             };
 
             let mut attribute_stream = quote! {};

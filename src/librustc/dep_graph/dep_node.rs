@@ -564,7 +564,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] HasGlobalAllocator(CrateNum),
     [] HasPanicHandler(CrateNum),
     [input] ExternCrate(DefId),
-    [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
     [input] ModuleExports(DefId),

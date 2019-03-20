@@ -605,12 +605,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::lint_levels<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "computing the lint levels for items in this crate".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::specializes<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: (DefId, DefId)) -> Cow<'static, str> {
         "computing whether impls specialize one another".into()

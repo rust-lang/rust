@@ -55,6 +55,11 @@ rustc_queries! {
         query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLibrary>> {
             desc { "looking up the native libraries of a linked crate" }
         }
+
+        query lint_levels(_: CrateNum) -> Lrc<lint::LintLevelMap> {
+            eval_always
+            desc { "computing the lint levels for items in this crate" }
+        }
     }
 
     Codegen {

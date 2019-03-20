@@ -1332,7 +1332,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
         DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
         DepKind::ExternCrate => { force!(extern_crate, def_id!()); }
-        DepKind::LintLevels => { force!(lint_levels, LOCAL_CRATE); }
         DepKind::InScopeTraits => { force!(in_scope_traits_map, def_id!().index); }
         DepKind::ModuleExports => { force!(module_exports, def_id!()); }
         DepKind::IsSanitizerRuntime => { force!(is_sanitizer_runtime, krate!()); }
