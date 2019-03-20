@@ -622,13 +622,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // and we can then extract the value by evaluating the promoted.
                         mir::Operand::Copy(
                             Place::Base(PlaceBase::Static(
-                                            box mir::Static {promoted: Some(promoted), ty, ..}
-                                        ))
+                                box mir::Static {promoted: Some(promoted), ty, ..}
+                            ))
                         ) |
                         mir::Operand::Move(
                             Place::Base(PlaceBase::Static(
-                                            box mir::Static {promoted: Some(promoted), ty, ..}
-                                        ))
+                                box mir::Static {promoted: Some(promoted), ty, ..}
+                            ))
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
                             let cid = mir::interpret::GlobalId {

@@ -153,7 +153,7 @@ struct Promoter<'a, 'tcx: 'a> {
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
     keep_original: bool,
-    def_id: DefId
+    def_id: DefId,
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
@@ -291,17 +291,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn promote_candidate(mut self, candidate: Candidate) {
         use rustc::mir::Static;
         let mut operand = {
-            let def_id = self.def_id.clone();
+            let def_id = self.def_id;
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(self.source.promoted.len());
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] =
-                    LocalDecl::new_return_place(ty, span);
-                Place::Base(PlaceBase::Static(
-                        Box::new(Static { def_id: def_id, ty, promoted: Some(promoted_id) })
-                    )
-                )
+                promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
+                Place::Base(
+                    PlaceBase::Static(Box::new(Static { def_id, ty, promoted: Some(promoted_id) })))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -421,7 +418,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             source: mir,
             temps: &mut temps,
             keep_original: false,
-            def_id
+            def_id,
         };
         promoter.promote_candidate(candidate);
     }

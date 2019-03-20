@@ -283,7 +283,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 // an `Index` projection would throw us off-track.
                 _ => None,
             },
-            Place::Base(PlaceBase::Static(box Static {promoted: Some(promoted), ty: _, ..})) => {
+            Place::Base(PlaceBase::Static(box Static {promoted: Some(promoted), ..})) => {
                 let generics = self.tcx.generics_of(self.source.def_id());
                 if generics.requires_monomorphization(self.tcx) {
                     // FIXME: can't handle code with generics
