@@ -205,7 +205,7 @@ needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
   | coverage | displays how much of the input file was processed | Yes |
   | checkstyle | emits in a checkstyle format | Yes |
 
-* For things you do not want rustfmt to mangle for some macro,
+* To prevent rustfmt from formatting a macro,
   use `#[rustfmt::skip::macros(target_macro_name)]`
 
   Example:

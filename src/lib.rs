@@ -94,7 +94,7 @@ pub enum ErrorKind {
     /// Used deprecated skip attribute.
     #[fail(display = "`rustfmt_skip` is deprecated; use `rustfmt::skip`")]
     DeprecatedAttr,
-    /// Used a rustfmt:: attribute other than skip.
+    /// Used a rustfmt:: attribute other than skip or skip::macros.
     #[fail(display = "invalid attribute")]
     BadAttr,
     /// An io error during reading or writing.

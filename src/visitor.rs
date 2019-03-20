@@ -659,7 +659,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
-            } else if self.is_rustfmt_macro_error(&attr.path.segments) {
+            } else if self.is_unknown_rustfmt_attr(&attr.path.segments) {
                 let file_name = self.source_map.span_to_filename(attr.span).into();
                 self.report.append(
                     file_name,
@@ -687,7 +687,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         false
     }
 
-    fn is_rustfmt_macro_error(&self, segments: &[ast::PathSegment]) -> bool {
+    fn is_unknown_rustfmt_attr(&self, segments: &[ast::PathSegment]) -> bool {
         if segments[0].ident.to_string() != "rustfmt" {
             return false;
         }
