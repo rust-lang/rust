@@ -97,6 +97,6 @@ impl CodegenBackend for TheBackend {
 
 /// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
-    Box::new(TheBackend)
+pub fn __rustc_codegen_backend() -> Arc<dyn CodegenBackend + Send + Sync> {
+    Arc::new(TheBackend)
 }

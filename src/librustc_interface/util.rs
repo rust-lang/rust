@@ -89,7 +89,7 @@ pub fn create_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
+) -> (Lrc<Session>, Arc<dyn CodegenBackend + Send + Sync>, Lrc<SourceMap>) {
     let descriptions = diagnostics_registry();
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
@@ -117,7 +117,7 @@ pub fn create_session(
     add_configuration(&mut cfg, &sess, &*codegen_backend);
     sess.parse_sess.config = cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend), source_map)
+    (Lrc::new(sess), codegen_backend, source_map)
 }
 
 // Temporarily have stack size set to 32MB to deal with various crates with long method
@@ -246,7 +246,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
-fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
+fn load_backend_from_dylib(path: &Path) -> fn() -> Arc<dyn CodegenBackend + Send + Sync> {
     let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
@@ -267,10 +267,10 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     }
 }
 
-pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
+pub fn get_codegen_backend(sess: &Session) -> Arc<dyn CodegenBackend + Send + Sync> {
     static INIT: Once = Once::new();
 
-    static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
+    static mut LOAD: fn() -> Arc<dyn CodegenBackend + Send + Sync> = || unreachable!();
 
     INIT.call_once(|| {
         let codegen_name = sess.opts.debugging_opts.codegen_backend.as_ref()
@@ -291,7 +291,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
     backend
 }
 
-pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
+pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Arc<dyn CodegenBackend + Send + Sync> {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_codegen_backend`,

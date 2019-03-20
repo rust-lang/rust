@@ -1,7 +1,7 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt};
 
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, OneThread};
 use rustc::session::config::{Input, OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc::util::common::{time, ErrorReported};
@@ -83,67 +83,40 @@ impl<T> Default for Query<T> {
 
 #[derive(Default)]
 pub(crate) struct Queries {
-    codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
-                            Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
-    ongoing_codegen: Query<(Box<dyn Any>, Arc<OutputFilenames>, DepGraph)>,
+    ongoing_codegen: Query<Lrc<ty::OngoingCodegen>>,
     link: Query<()>,
 }
 
 impl Compiler {
-    pub fn codegen_channel(&self) -> Result<&Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
-                                                    Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>> {
-        self.queries.codegen_channel.compute(|| {
-            let (tx, rx) = mpsc::channel();
-            Ok((Steal::new(tx), Steal::new(rx)))
-        })
-    }
-
     pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
         self.queries.global_ctxt.compute(|| {
-            let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
                 self.io.clone(),
-                tx
             ))
         })
     }
 
     pub fn ongoing_codegen(
         &self
-    ) -> Result<&Query<(Box<dyn Any>, Arc<OutputFilenames>, DepGraph)>> {
+    ) -> Result<&Query<Lrc<ty::OngoingCodegen>>> {
         self.queries.ongoing_codegen.compute(|| {
-            let rx = self.codegen_channel()?.peek().1.steal();
             self.global_ctxt()?.peek_mut().enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
-
-                // Don't do code generation if there were any errors
-                self.session().compile_status()?;
-
-                let outputs = tcx.prepare_outputs(())?;
-
-                Ok((passes::start_codegen(
-                    &***self.codegen_backend(),
-                    tcx,
-                    rx,
-                    &outputs,
-                ), outputs, tcx.dep_graph().clone()))
+                tcx.ongoing_codegen(LOCAL_CRATE)
             })
         })
     }
 
     pub fn link(&self) -> Result<&Query<()>> {
         self.queries.link.compute(|| {
-            let sess = self.session();
-
-            let (ongoing_codegen, outputs, dep_graph) = self.ongoing_codegen()?.take();
+            let ongoing_codegen = self.ongoing_codegen()?.take();
 
             self.codegen_backend().join_codegen_and_link(
-                ongoing_codegen,
-                sess,
-                &dep_graph,
-                &outputs,
+                OneThread::into_inner(ongoing_codegen.codegen_object.steal()),
+                self.session(),
+                &ongoing_codegen.dep_graph,
+                &ongoing_codegen.outputs,
             ).map_err(|_| ErrorReported)?;
 
             Ok(())

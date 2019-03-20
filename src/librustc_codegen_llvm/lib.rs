@@ -212,8 +212,8 @@ unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
 unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
-    pub fn new() -> Box<dyn CodegenBackend> {
-        box LlvmCodegenBackend(())
+    pub fn new() -> Arc<dyn CodegenBackend + Send + Sync> {
+        Arc::new(LlvmCodegenBackend(()))
     }
 }
 
@@ -349,7 +349,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
 /// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
+pub fn __rustc_codegen_backend() -> Arc<dyn CodegenBackend + Send + Sync> {
     LlvmCodegenBackend::new()
 }
 

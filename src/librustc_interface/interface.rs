@@ -28,7 +28,7 @@ pub type Result<T> = result::Result<T, ErrorReported>;
 /// Created by passing `Config` to `run_compiler`.
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    codegen_backend: Arc<dyn CodegenBackend + Send + Sync>,
     source_map: Lrc<SourceMap>,
     pub(crate) io: InputsAndOutputs,
     pub(crate) queries: Queries,
@@ -40,7 +40,7 @@ impl Compiler {
     pub fn session(&self) -> &Lrc<Session> {
         &self.sess
     }
-    pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
+    pub fn codegen_backend(&self) -> &Arc<dyn CodegenBackend + Send + Sync> {
         &self.codegen_backend
     }
     pub fn cstore(&self) -> &Lrc<CStore> {

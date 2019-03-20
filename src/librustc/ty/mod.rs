@@ -21,12 +21,15 @@ use crate::mir::Body;
 use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::mir::GeneratorLayout;
 use crate::session::CrateDisambiguator;
+use crate::session::config::OutputFilenames;
+use crate::dep_graph::DepGraph;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
+use crate::ty::steal::Steal;
 use crate::util::captures::Captures;
 use crate::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
@@ -39,6 +42,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::any::Any;
+use std::sync::Arc;
 use rustc_data_structures::sync::{self, Lrc, OneThread, ParallelIterator, par_iter};
 use std::slice;
 use std::{mem, ptr};
@@ -121,6 +125,12 @@ mod structural_impls;
 mod sty;
 
 // Data types
+
+pub struct OngoingCodegen {
+    pub outputs: Arc<OutputFilenames>,
+    pub dep_graph: DepGraph,
+    pub codegen_object: Steal<OneThread<Box<dyn Any>>>,
+}
 
 pub struct PluginInfo {
     pub syntax_exts: Vec<NamedSyntaxExtension>,

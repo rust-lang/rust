@@ -53,7 +53,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::SyncDroplessArena;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal, AtomicOnce, Once};
+use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal, AtomicOnce, Once, OneThread};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -1016,6 +1016,9 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess_rc: Lrc<Session>,
 
+    // This stores a `Arc<dyn CodegenBackend + Send + Sync>`.
+    pub codegen_backend: Box<dyn Any + Send + Sync>,
+
     lowered_hir: AtomicOnce<&'tcx hir::LoweredHir>,
     hir_map: AtomicOnce<&'tcx hir_map::Map<'tcx>>,
 
@@ -1056,6 +1059,7 @@ pub struct GlobalCtxt<'tcx> {
     /// when satisfying the query for a particular codegen unit. Internally in
     /// the query it'll send data along this channel to get processed later.
     pub tx_to_llvm_workers: Lock<mpsc::Sender<Box<dyn Any + Send>>>,
+    pub rx_to_llvm_workers: Steal<OneThread<mpsc::Receiver<Box<dyn Any + Send>>>>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -1188,7 +1192,7 @@ impl<'tcx> TyCtxt<'tcx> {
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
         crate_name: Option<String>,
-        tx: mpsc::Sender<Box<dyn Any + Send>>,
+        codegen_backend: Box<dyn Any + Send + Sync>,
         io: InputsAndOutputs,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
@@ -1207,6 +1211,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
+        let (tx, rx) = mpsc::channel();
 
         GlobalCtxt {
             sess: &**s,
@@ -1214,6 +1219,7 @@ impl<'tcx> TyCtxt<'tcx> {
             cstore,
             cstore_rc,
             sess_rc: s.clone(),
+            codegen_backend,
             interners,
             dep_graph: AtomicOnce::new(),
             common,
@@ -1237,6 +1243,7 @@ impl<'tcx> TyCtxt<'tcx> {
             allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
+            rx_to_llvm_workers: Steal::new(OneThread::new(rx)),
             io,
         }
     }
