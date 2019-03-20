@@ -1290,45 +1290,34 @@ fn main() {
 "##,
 
 E0109: r##"
-You tried to give a type parameter to a type which doesn't need it. Erroneous
-code example:
+You tried to provide a generic argument to a type which doesn't need it.
+Erroneous code example:
 
 ```compile_fail,E0109
-type X = u32<i32>; // error: type arguments are not allowed on this entity
+type X = u32<i32>; // error: type arguments are not allowed for this type
+type Y = bool<'static>; // error: lifetime parameters are not allowed on
+                        //        this type
 ```
 
-Please check that you used the correct type and recheck its definition. Perhaps
-it doesn't need the type parameter.
+Check that you used the correct argument and that the definition is correct.
 
 Example:
 
 ```
-type X = u32; // this compiles
+type X = u32; // ok!
+type Y = bool; // ok!
 ```
 
-Note that type parameters for enum-variant constructors go after the variant,
-not after the enum (`Option::None::<u32>`, not `Option::<u32>::None`).
+Note that generic arguments for enum variant constructors go after the variant,
+not after the enum. For example, you would write `Option::None::<u32>`,
+rather than `Option::<u32>::None`.
 "##,
 
 E0110: r##"
-You tried to give a lifetime parameter to a type which doesn't need it.
-Erroneous code example:
+#### Note: this error code is no longer emitted by the compiler.
 
-```compile_fail,E0110
-type X = u32<'static>; // error: lifetime parameters are not allowed on
-                       //        this type
-```
-
-Please check that the correct type was used and recheck its definition; perhaps
-it doesn't need the lifetime parameter. Example:
-
-```
-type X = u32; // ok!
-```
-"##,
-
-E0111: r##"
-You tried to give a const parameter to a type which doesn't need it.
+You tried to provide a lifetime to a type which doesn't need it.
+See `E0109` for more details.
 "##,
 
 E0116: r##"
