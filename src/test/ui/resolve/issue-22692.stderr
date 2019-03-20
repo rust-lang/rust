@@ -4,7 +4,7 @@ error[E0423]: expected value, found struct `String`
 LL |     let _ = String.new();
    |             ^^^^^^----
    |             |
-   |             help: use `::` to access an associated function: `String::new`
+   |             help: use the path separator to refer to an item: `String::new`
 
 error: aborting due to previous error
 

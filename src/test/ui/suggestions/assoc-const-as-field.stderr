@@ -4,7 +4,7 @@ error[E0423]: expected value, found struct `Mod::Foo`
 LL |     foo(Mod::Foo.Bar);
    |         ^^^^^^^^----
    |         |
-   |         help: use `::` to access an associated item: `Mod::Foo::Bar`
+   |         help: use the path separator to refer to an item: `Mod::Foo::Bar`
 
 error: aborting due to previous error
 
