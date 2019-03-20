@@ -22,7 +22,7 @@ useful IDE experience and some people use it as a daily driver.
 To build rust-analyzer, you need:
 
 * latest stable rust for language server itself
-* latest stable npm and VS Code for VS Code extension (`code` should be a path)
+* latest stable npm and VS Code for VS Code extension (`code` should be in path)
 
 For setup for other editors, see [./docs/user](./docs/user).
 
