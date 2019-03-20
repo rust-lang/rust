@@ -171,4 +171,29 @@ A CLI interface to rust-analyzer.
 
 ## Testing Infrastructure
 
+Rust Analyzer has three interesting [systems
+boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html)
+to concentrate tests on.
 
+The outermost boundary is the `ra_lsp_server` crate, which defines an LSP
+interface in terms of stdio. We do integration testing of this component, by
+feeding it with a stream of LSP requests and checking responses. These tests are
+known as "heavy", because they interact with Cargo and read real files from
+disk. For this reason, we try to avoid writing too many tests on this boundary:
+in a statically typed language, it's hard to make an error in the protocol
+itself if messages are themselves typed.
+
+The middle, and most important, boundary is `ra_ide_api`. Unlike
+`ra_lsp_server`, which exposes API, `ide_api` uses Rust API and is intended to
+use by various tools. Typical test creates an `AnalysisHost`, calls some
+`Analysis` functions and compares the results against expectation.
+
+The innermost and most elaborate boundary is `hir`. It has a much richer
+vocabulary of types than `ide_api`, but the basic testing setup is the same: we
+create a database, run some queries, assert result.
+
+For comparisons, we use [insta](https://github.com/mitsuhiko/insta/) library for
+snapshot testing.
+
+To test various analysis corner cases and avoid forgetting about old tests, we
+use so-called marks. See the `marks` module in the `test_utils` crate for more.
