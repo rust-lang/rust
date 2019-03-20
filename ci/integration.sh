@@ -76,10 +76,16 @@ function check_fmt_base {
     fi
 }
 
+function show_head {
+    local head=$(git rev-parse HEAD)
+    echo "Head commit of ${INTEGRATION}: $head"
+}
+
 case ${INTEGRATION} in
     cargo)
         git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
+        show_head
         export CFG_DISABLE_CROSS_TESTS=1
         check_fmt_with_all_tests
         cd -
@@ -87,12 +93,14 @@ case ${INTEGRATION} in
     crater)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
+        show_head
         check_fmt_with_lib_tests
         cd -
         ;;
     *)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
+        show_head
         check_fmt_with_all_tests
         cd -
         ;;
