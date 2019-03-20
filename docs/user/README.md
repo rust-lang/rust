@@ -14,7 +14,7 @@ to execute
 $ rustup component add rust-src
 ```
 
-See [./features.md] document for a list of features that are available.
+See [./features.md](./features.md) document for a list of features that are available.
 
 ## VS Code
 
@@ -46,7 +46,7 @@ bugs!
 It's better to remove existing Rust plugins to avoid interference.
 
 Beyond basic LSP features, there are some extension commands which you can
-invoke via <kbd>Ctrl+Shift+P</kbd> or bind to a shortcut. See [./features.md]
+invoke via <kbd>Ctrl+Shift+P</kbd> or bind to a shortcut. See [./features.md](./features.md)
 for details.
 
 ### Settings
