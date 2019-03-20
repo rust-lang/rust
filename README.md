@@ -24,7 +24,7 @@ To build rust-analyzer, you need:
 * latest stable rust for language server itself
 * latest stable npm and VS Code for VS Code extension (`code` should be a path)
 
-For setup for other languages, see [./docs/users](./docs/users).
+For setup for other languages, see [./docs/user](./docs/user).
 
 ```
 # clone the repo
@@ -42,7 +42,7 @@ If you want to **contribute** to rust-analyzer or just curious about how things 
 under the hood, check the [./docs/dev](./docs/dev) folder.
 
 If you want to **use** rust-analyzer's language server with your editor of
-choice, check [./docs/users](./docs/users) folder. It also contains some tips & tricks to help
+choice, check [./docs/user](./docs/user) folder. It also contains some tips & tricks to help
 you be more productive when using rust-analyzer.
 
 ## Getting in touch
