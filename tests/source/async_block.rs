@@ -16,4 +16,20 @@ fn baz() {
     let y = async {
         Ok(())
     }; // comment
+
+    spawn(
+        a,
+        async move {
+            action();
+            Ok(())
+        },
+    );
+
+    spawn(
+        a,
+        async move || {
+            action();
+            Ok(())
+        },
+    );
 }

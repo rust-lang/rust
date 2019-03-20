@@ -1357,7 +1357,7 @@ pub fn can_be_overflowed_expr(
         }
 
         // Handle always block-like expressions
-        ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
+        ast::ExprKind::Async(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {
