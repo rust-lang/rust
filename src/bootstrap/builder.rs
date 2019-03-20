@@ -632,7 +632,11 @@ impl<'a> Builder<'a> {
         if compiler.is_snapshot(self) {
             self.rustc_snapshot_libdir()
         } else {
-            self.sysroot(compiler).join(libdir(&compiler.host))
+            match self.config.libdir_relative() {
+                Some(relative_libdir) if compiler.stage >= 1
+                    => self.sysroot(compiler).join(relative_libdir),
+                _ => self.sysroot(compiler).join(libdir(&compiler.host))
+            }
         }
     }
 
