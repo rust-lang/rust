@@ -892,6 +892,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
     /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
     /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
+    /// assert!((std::f64::NAN).clamp(-2.0f32, 1.0f32).is_nan()); 
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]

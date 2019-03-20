@@ -970,6 +970,7 @@ impl f32 {
     /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
     /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
     /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
+    /// assert!((std::f32::NAN).clamp(-2.0f32, 1.0f32).is_nan()); 
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
