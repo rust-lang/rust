@@ -64,12 +64,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // going to be popped, so we will have to
                     // eliminate any references to them.
 
-                    let type_variables =
-                        self.type_variables.borrow_mut().types_created_since_snapshot(
-                            &snapshot.type_snapshot);
-                    let region_vars =
-                        self.borrow_region_constraints().vars_created_since_snapshot(
-                            &snapshot.region_constraints_snapshot);
+                    let type_variables = self.type_variables.borrow_mut().vars_since_snapshot(
+                        &snapshot.type_snapshot,
+                    );
+                    let region_vars = self.borrow_region_constraints().vars_since_snapshot(
+                        &snapshot.region_constraints_snapshot,
+                    );
 
                     Ok((type_variables, region_vars, value))
                 }

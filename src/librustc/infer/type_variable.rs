@@ -292,11 +292,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.commit(sub_snapshot);
     }
 
-    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
-    /// ty-variables created during the snapshot, and the values
-    /// `{V2}` are the root variables that they were unified with,
-    /// along with their origin.
-    pub fn types_created_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
+    /// Returns a map from the type variables created during the
+    /// snapshot to the origin of the type variable.
+    pub fn vars_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
 
         actions_since_snapshot

@@ -840,7 +840,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
+    pub fn vars_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
         self.undo_log[mark.length..]
             .iter()
             .filter_map(|&elt| match elt {
