@@ -16,7 +16,7 @@ pub use crate::{
     input::{
         FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency, Edition,
     },
-    loc2id::LocationIntener,
+    loc2id::LocationInterner,
 };
 
 pub trait CheckCanceled: panic::RefUnwindSafe {
