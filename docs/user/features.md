@@ -153,7 +153,7 @@ impl std::fmt::Debug<|> for Foo {
 }
 
 // after:
-use std::fmt::Debug
+use std::fmt::Debug;
 
 impl Debug<|> for Foo {
 }
