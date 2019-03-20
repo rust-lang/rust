@@ -355,6 +355,41 @@ impl CString {
         CString { inner: v.into_boxed_slice() }
     }
 
+    /// Creates a C-compatible string by reading from an object that implements ```Read```.
+    /// It reads all characters including the null character.
+    ///
+    /// Because bytes are checked on null characters during the reading process,
+    /// no extra checks are required to ensure that no null characters precede the
+    /// terminating null character.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let test = "Example\0";
+    /// let string = CString::from_reader(test.as_bytes()).unwrap();
+    /// ```
+    ///
+    #[stable(feature = "cstring_from_reader", since = "1.33.0")]
+    pub fn from_reader(mut reader: impl io::Read) -> Result<CString, io::Error>
+    {
+        let mut buffer = Vec::new();
+        let mut character: u8 = 0;
+
+        loop {
+            // Read a new character from reader and insert it into the buffer.
+            let slice = slice::from_mut(&mut character);
+            reader.read_exact(slice)?;
+            buffer.push(character);
+
+            // Construct a CString if a null character has been found.
+            if character == 0 {
+                return Ok(CString { inner: buffer.into_boxed_slice() });
+            }
+        }
+    }
+
     /// Retakes ownership of a `CString` that was transferred to C via [`into_raw`].
     ///
     /// Additionally, the length of the string will be recalculated from the pointer.
@@ -1318,6 +1353,20 @@ mod tests {
             assert_eq!(CStr::from_ptr(ptr).to_bytes(), b"123");
             assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"123\0");
         }
+    }
+
+    #[test]
+    fn read_to_cstring1() {
+        let test = "Example\0";
+        let string = CString::from_reader(test.as_bytes()).unwrap();
+        assert_eq!(string.as_bytes(), b"Example");
+    }
+
+    #[test]
+    fn read_to_cstring2() {
+        let test = "Example";
+        let result = CString::from_reader(test.as_bytes());
+        assert_eq!(result.is_err(), true);
     }
 
     #[test]
