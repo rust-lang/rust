@@ -13,43 +13,43 @@ Work on the Rust Analyzer is sponsored by
 
 [![Ferrous Systems](https://ferrous-systems.com/images/ferrous-logo-text.svg)](https://ferrous-systems.com/)
 
-## Quick Start
+## Language Server Quick Start
 
-Rust analyzer builds on Rust >= 1.31.0 and uses the 2018 edition.
+Rust Analyzer is a work-in-progress, so you'll have to build it from source, and
+you might encounter critical bugs. That said, it is complete enough to provide a
+useful IDE experience and some people use it as a daily driver.
+
+To build rust-analyzer, you need:
+
+* latest stable rust for language server itself
+* latest stable npm and VS Code for VS Code extension (`code` should be a path)
+
+For setup for other languages, see [./docs/users].
 
 ```
-# run tests
-$ cargo test
+# clone the repo
+$ git clone https://github.com/rust-analyzer/rust-analyzer && cd rust-analyzer
 
-# show syntax tree of a Rust file
-$ cargo run --package ra_cli parse < crates/ra_syntax/src/lib.rs
+# install both the language server and VS Code extension
+$ cargo install-code
 
-# show symbols of a Rust file
-$ cargo run --package ra_cli symbols < crates/ra_syntax/src/lib.rs
-
-# install the language server
+# alternatively, install only the server. Binary name is `ra_lsp_server`.
 $ cargo install-lsp
-or
-$ cargo install --path crates/ra_lsp_server
 ```
+## Documentation
 
-See [these instructions](./editors/README.md) for VS Code setup and the list of
-features (some of which are VS Code specific).
+If you want to **contribute** to rust-analyzer or just curious about how things work
+under the hood, check the [./docs/dev] folder.
 
-## Debugging
-
-See [these instructions](./DEBUGGING.md) on how to debug the vscode extension and the lsp server.
+If you want to **use** rust-analyzer's language server with your editor of
+choice, check [./docs/users] folder. It also contains some tips & tricks to help
+you be more productive when using rust-analyzer.
 
 ## Getting in touch
 
 We are on the rust-lang Zulip!
 
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) and [ARCHITECTURE.md](./ARCHITECTURE.md)
-
 
 ## License
 
