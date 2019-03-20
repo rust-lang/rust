@@ -1343,7 +1343,7 @@ fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
     } else {
         dst_usize - src_usize
     };
-    diff > size;
+    size > diff
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
