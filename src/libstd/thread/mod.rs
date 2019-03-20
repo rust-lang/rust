@@ -1485,9 +1485,10 @@ fn _assert_sync_and_send() {
 mod tests {
     use super::Builder;
     use crate::any::Any;
+    use crate::mem;
     use crate::sync::mpsc::{channel, Sender};
     use crate::result;
-    use crate::thread;
+    use crate::thread::{self, ThreadId};
     use crate::time::Duration;
     use crate::u32;
 
@@ -1715,6 +1716,11 @@ mod tests {
     #[test]
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
+    }
+
+    #[test]
+    fn test_size_of_option_thread_id() {
+        assert_eq!(mem::size_of::<Option<ThreadId>>(), mem::size_of::<ThreadId>());
     }
 
     #[test]
