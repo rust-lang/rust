@@ -723,8 +723,7 @@ impl ExprCollector {
 
                 let lit = match child.flavor() {
                     LiteralFlavor::IntNumber { suffix } => {
-                        let known_name =
-                            suffix.map(Name::new).and_then(|name| UncertainIntTy::from_name(&name));
+                        let known_name = suffix.and_then(|it| UncertainIntTy::from_suffix(&it));
 
                         Literal::Int(
                             Default::default(),
@@ -732,9 +731,7 @@ impl ExprCollector {
                         )
                     }
                     LiteralFlavor::FloatNumber { suffix } => {
-                        let known_name = suffix
-                            .map(Name::new)
-                            .and_then(|name| UncertainFloatTy::from_name(&name));
+                        let known_name = suffix.and_then(|it| UncertainFloatTy::from_suffix(&it));
 
                         Literal::Float(
                             Default::default(),

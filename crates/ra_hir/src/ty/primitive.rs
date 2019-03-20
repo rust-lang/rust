@@ -10,10 +10,20 @@ pub enum UncertainIntTy {
 }
 
 impl UncertainIntTy {
-    pub fn from_name(name: &Name) -> Option<UncertainIntTy> {
-        if let Some(ty) = IntTy::from_name(name) {
+    pub(crate) fn from_type_name(name: &Name) -> Option<UncertainIntTy> {
+        if let Some(ty) = IntTy::from_type_name(name) {
             Some(UncertainIntTy::Signed(ty))
-        } else if let Some(ty) = UintTy::from_name(name) {
+        } else if let Some(ty) = UintTy::from_type_name(name) {
+            Some(UncertainIntTy::Unsigned(ty))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn from_suffix(suffix: &str) -> Option<UncertainIntTy> {
+        if let Some(ty) = IntTy::from_suffix(suffix) {
+            Some(UncertainIntTy::Signed(ty))
+        } else if let Some(ty) = UintTy::from_suffix(suffix) {
             Some(UncertainIntTy::Unsigned(ty))
         } else {
             None
@@ -38,12 +48,12 @@ pub enum UncertainFloatTy {
 }
 
 impl UncertainFloatTy {
-    pub fn from_name(name: &Name) -> Option<UncertainFloatTy> {
-        if let Some(ty) = FloatTy::from_name(name) {
-            Some(UncertainFloatTy::Known(ty))
-        } else {
-            None
-        }
+    pub(crate) fn from_type_name(name: &Name) -> Option<UncertainFloatTy> {
+        FloatTy::from_type_name(name).map(UncertainFloatTy::Known)
+    }
+
+    pub(crate) fn from_suffix(suffix: &str) -> Option<UncertainFloatTy> {
+        FloatTy::from_suffix(suffix).map(UncertainFloatTy::Known)
     }
 }
 
@@ -87,7 +97,7 @@ impl fmt::Display for IntTy {
 }
 
 impl IntTy {
-    pub fn from_name(name: &Name) -> Option<IntTy> {
+    fn from_type_name(name: &Name) -> Option<IntTy> {
         match name.as_known_name()? {
             KnownName::Isize => Some(IntTy::Isize),
             KnownName::I8 => Some(IntTy::I8),
@@ -95,6 +105,18 @@ impl IntTy {
             KnownName::I32 => Some(IntTy::I32),
             KnownName::I64 => Some(IntTy::I64),
             KnownName::I128 => Some(IntTy::I128),
+            _ => None,
+        }
+    }
+
+    fn from_suffix(suffix: &str) -> Option<IntTy> {
+        match suffix {
+            "isize" => Some(IntTy::Isize),
+            "i8" => Some(IntTy::I8),
+            "i16" => Some(IntTy::I16),
+            "i32" => Some(IntTy::I32),
+            "i64" => Some(IntTy::I64),
+            "i128" => Some(IntTy::I128),
             _ => None,
         }
     }
@@ -125,7 +147,7 @@ impl fmt::Display for UintTy {
 }
 
 impl UintTy {
-    pub fn from_name(name: &Name) -> Option<UintTy> {
+    fn from_type_name(name: &Name) -> Option<UintTy> {
         match name.as_known_name()? {
             KnownName::Usize => Some(UintTy::Usize),
             KnownName::U8 => Some(UintTy::U8),
@@ -133,6 +155,18 @@ impl UintTy {
             KnownName::U32 => Some(UintTy::U32),
             KnownName::U64 => Some(UintTy::U64),
             KnownName::U128 => Some(UintTy::U128),
+            _ => None,
+        }
+    }
+
+    fn from_suffix(suffix: &str) -> Option<UintTy> {
+        match suffix {
+            "usize" => Some(UintTy::Usize),
+            "u8" => Some(UintTy::U8),
+            "u16" => Some(UintTy::U16),
+            "u32" => Some(UintTy::U32),
+            "u64" => Some(UintTy::U64),
+            "u128" => Some(UintTy::U128),
             _ => None,
         }
     }
@@ -170,10 +204,18 @@ impl FloatTy {
         }
     }
 
-    pub fn from_name(name: &Name) -> Option<FloatTy> {
+    fn from_type_name(name: &Name) -> Option<FloatTy> {
         match name.as_known_name()? {
             KnownName::F32 => Some(FloatTy::F32),
             KnownName::F64 => Some(FloatTy::F64),
+            _ => None,
+        }
+    }
+
+    fn from_suffix(suffix: &str) -> Option<FloatTy> {
+        match suffix {
+            "f32" => Some(FloatTy::F32),
+            "f64" => Some(FloatTy::F64),
             _ => None,
         }
     }

@@ -23,7 +23,10 @@ impl fmt::Debug for Name {
 }
 
 impl Name {
-    pub(crate) fn new(text: SmolStr) -> Name {
+    /// Note: this is private to make creating name from random string hard.
+    /// Hopefully, this should allow us to integrate hygiene cleaner in the
+    /// future, and to switch to interned representation of names.
+    fn new(text: SmolStr) -> Name {
         Name { text }
     }
 
