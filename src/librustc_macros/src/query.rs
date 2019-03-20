@@ -215,7 +215,7 @@ struct QueryModifiers {
 
     /// Generate a dep node based on the dependencies of the query
     anon: bool,
-    
+
     // Always evaluate the query, ignoring its depdendencies
     eval_always: bool,
 }
@@ -403,7 +403,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             };
 
             let mut attribute_stream = quote! {};
-            
+
             for e in attributes.into_iter().intersperse(quote! {,}) {
                 attribute_stream.extend(e);
             }
@@ -447,7 +447,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                     }
                 });
             }
-            
+
             add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
         let name = &group.name;
