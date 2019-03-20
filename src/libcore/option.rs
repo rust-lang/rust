@@ -1338,44 +1338,13 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]
     fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
+        let mut found_none = false;
+        let v: V = FromIterator::from_iter(iter.into_iter().scan((), |_, elem| {
+            if elem.is_none() { found_none = true; }
+            elem
+        }));
 
-        struct Adapter<Iter> {
-            iter: Iter,
-            found_none: bool,
-        }
-
-        impl<T, Iter: Iterator<Item=Option<T>>> Iterator for Adapter<Iter> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Some(value)) => Some(value),
-                    Some(None) => {
-                        self.found_none = true;
-                        None
-                    }
-                    None => None,
-                }
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                if self.found_none {
-                    (0, Some(0))
-                } else {
-                    let (_, upper) = self.iter.size_hint();
-                    (0, upper)
-                }
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), found_none: false };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        if adapter.found_none {
+        if found_none {
             None
         } else {
             Some(v)

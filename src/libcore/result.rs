@@ -1232,41 +1232,17 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
     fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
-
-        struct Adapter<Iter, E> {
-            iter: Iter,
-            err: Option<E>,
-        }
-
-        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Ok(value)) => Some(value),
-                    Some(Err(err)) => {
-                        self.err = Some(err);
-                        None
-                    }
-                    None => None,
-                }
+        let mut found_err = None;
+        let v: V = FromIterator::from_iter(iter.into_iter().scan((), |_, elem| {
+            match elem {
+                Err(err) => { found_err = Some(err); None }
+                Ok(v) => Some(v)
             }
+        }));
 
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                let (_min, max) = self.iter.size_hint();
-                (0, max)
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), err: None };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        match adapter.err {
+        match found_err {
             Some(err) => Err(err),
-            None => Ok(v),
+            None => Ok(v)
         }
     }
 }
