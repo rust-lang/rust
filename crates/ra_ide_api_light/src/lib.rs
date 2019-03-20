@@ -3,7 +3,6 @@
 //! This usually means functions which take syntax tree as an input and produce
 //! an edit or some auxiliary info.
 
-mod extend_selection;
 mod folding_ranges;
 mod line_index;
 mod line_index_utils;
@@ -14,15 +13,16 @@ mod join_lines;
 mod typing;
 mod diagnostics;
 
-#[derive(Debug)]
-pub struct LocalEdit {
-    pub label: String,
-    pub edit: ra_text_edit::TextEdit,
-    pub cursor_position: Option<TextUnit>,
-}
+use rustc_hash::FxHashSet;
+use ra_text_edit::TextEditBuilder;
+use ra_syntax::{
+    SourceFile, SyntaxNode, TextRange, TextUnit, Direction,
+    algo::find_leaf_at_offset,
+    SyntaxKind::{self, *},
+    ast::{self, AstNode},
+};
 
-pub use self::{
-    extend_selection::extend_selection,
+pub use crate::{
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
@@ -30,16 +30,14 @@ pub use self::{
     diagnostics::diagnostics,
     join_lines::join_lines,
     typing::{on_enter, on_dot_typed, on_eq_typed},
+};
 
-};
-use ra_text_edit::TextEditBuilder;
-use ra_syntax::{
-    SourceFile, SyntaxNode, TextRange, TextUnit, Direction,
-    SyntaxKind::{self, *},
-    ast::{self, AstNode},
-    algo::find_leaf_at_offset,
-};
-use rustc_hash::FxHashSet;
+#[derive(Debug)]
+pub struct LocalEdit {
+    pub label: String,
+    pub edit: ra_text_edit::TextEdit,
+    pub cursor_position: Option<TextUnit>,
+}
 
 #[derive(Debug)]
 pub struct HighlightedRange {

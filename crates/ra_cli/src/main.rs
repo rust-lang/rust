@@ -4,7 +4,8 @@ use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
-use ra_ide_api_light::{extend_selection, file_structure};
+use ra_ide_api::{Analysis, FileRange};
+use ra_ide_api_light::file_structure;
 use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
 use tools::collect_tests;
 use flexi_logger::Logger;
@@ -59,8 +60,8 @@ fn main() -> Result<()> {
         ("extend-selection", Some(matches)) => {
             let start: u32 = matches.value_of("start").unwrap().parse()?;
             let end: u32 = matches.value_of("end").unwrap().parse()?;
-            let file = file()?;
-            let sels = selections(&file, start, end);
+            let text = read_stdin()?;
+            let sels = selections(text, start, end);
             println!("{}", sels)
         }
         ("analysis-stats", Some(matches)) => {
@@ -98,12 +99,17 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
     Ok((test.text, tree))
 }
 
-fn selections(file: &SourceFile, start: u32, end: u32) -> String {
+fn selections(text: String, start: u32, end: u32) -> String {
+    let (analysis, file_id) = Analysis::from_single_file(text);
     let mut ranges = Vec::new();
-    let mut cur = Some(TextRange::from_to((start - 1).into(), (end - 1).into()));
-    while let Some(r) = cur {
-        ranges.push(r);
-        cur = extend_selection(file.syntax(), r);
+    let mut range = TextRange::from_to((start - 1).into(), (end - 1).into());
+    loop {
+        ranges.push(range);
+        let next = analysis.extend_selection(FileRange { file_id, range }).unwrap();
+        if range == next {
+            break;
+        }
+        range = next;
     }
     let ranges = ranges
         .iter()
