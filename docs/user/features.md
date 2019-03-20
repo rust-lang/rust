@@ -321,3 +321,39 @@ use algo:<|>:visitor::{Visitor, visit};
 //after:
 use algo::{<|>visitor::{Visitor, visit}};
 ```
+
+### Magic Completions
+
+In addition to usual reference completion, rust-analyzer provides some ✨magic✨
+completions as well:
+
+Keywords like `if`, `else` `while`, `loop` are completed with braces, and cursor
+is placed at the appropriate position. Even though `if` is easy to type, you
+still want to complete it, to get ` { }` for free! `return` is inserted with a
+space or `;` depending on the return type of the function.
+
+When completing a function call, `()` are automatically inserted. If function
+takes arguments, cursor is positioned inside the parenthesis.
+
+There are postifx completions, which can be triggerd by typing something like
+`foo().if`. The word after `.` determines postifx completion, possible variants are:
+
+- `expr.if` -> `if expr {}`
+- `expr.match` -> `match expr {}`
+- `expr.while` -> `while expr {}`
+- `expr.ref` -> `&expr`
+- `expr.refm` -> `&mut expr`
+- `expr.not` -> `!expr`
+- `expr.dbg` -> `dbg!(expr)`
+
+There also snippet completions:
+
+#### Inside Expressions
+
+- `pd` -> `println!("{:?}")`
+- `ppd` -> `println!("{:#?}")`
+
+#### Inside Modules
+
+- `tfn` -> `#[test] fn f(){}`
+
