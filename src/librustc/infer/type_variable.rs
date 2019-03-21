@@ -51,11 +51,8 @@ pub enum TypeVariableOrigin {
     SubstitutionPlaceholder(Span),
     AutoDeref(Span),
     AdjustmentType(Span),
-    DivergingStmt(Span),
-    DivergingBlockExpr(Span),
     DivergingFn(Span),
     LatticeVariable(Span),
-    Generalized(ty::TyVid),
 }
 
 struct TypeVariableData {
