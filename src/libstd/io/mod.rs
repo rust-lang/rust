@@ -1345,6 +1345,85 @@ pub trait Seek {
     /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+
+    /// Returns the length of this stream (in bytes).
+    ///
+    /// This method is implemented using up to three seek operations. If this
+    /// method returns successfully, the seek position is unchanged (i.e. the
+    /// position before calling this method is the same as afterwards).
+    /// However, if this method returns an error, the seek position is
+    /// unspecified.
+    ///
+    /// If you need to obtain the length of *many* streams and you don't care
+    /// about the seek position afterwards, you can reduce the number of seek
+    /// operations by simply calling `seek(SeekFrom::End(0))` and using its
+    /// return value (it is also the stream length).
+    ///
+    /// Note that length of a stream can change over time (for example, when
+    /// data is appended to a file). So calling this method multiple times does
+    /// not necessarily return the same length each time.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_convenience)]
+    /// use std::{
+    ///     io::{self, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///
+    ///     let len = f.stream_len()?;
+    ///     println!("The file is currently {} bytes long", len);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_convenience", issue = "0")]
+    fn stream_len(&mut self) -> Result<u64> {
+        let old_pos = self.stream_position()?;
+        let len = self.seek(SeekFrom::End(0))?;
+
+        // Avoid seeking a third time when we were already at the end of the
+        // stream. The branch is usually way cheaper than a seek operation.
+        if old_pos != len {
+            self.seek(SeekFrom::Start(old_pos))?;
+        }
+
+        Ok(len)
+    }
+
+    /// Returns the current seek position from the start of the stream.
+    ///
+    /// This is equivalent to `self.seek(SeekFrom::Current(0))`.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_convenience)]
+    /// use std::{
+    ///     io::{self, BufRead, BufReader, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = BufReader::new(File::open("foo.txt")?);
+    ///
+    ///     let before = f.stream_position()?;
+    ///     f.read_line(&mut String::new())?;
+    ///     let after = f.stream_position()?;
+    ///
+    ///     println!("The first line was {} bytes long", after - before);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_convenience", issue = "0")]
+    fn stream_position(&mut self) -> Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
@@ -2173,8 +2252,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 mod tests {
     use crate::io::prelude::*;
     use crate::io;
-    use super::Cursor;
-    use super::repeat;
+    use super::{Cursor, SeekFrom, repeat};
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -2395,5 +2473,51 @@ mod tests {
             let mut vec = Vec::with_capacity(1024);
             super::read_to_end(&mut lr, &mut vec)
         });
+    }
+
+    #[test]
+    fn seek_len() -> io::Result<()> {
+        let mut c = Cursor::new(vec![0; 15]);
+        assert_eq!(c.stream_len()?, 15);
+
+        c.seek(SeekFrom::End(0))?;
+        let old_pos = c.stream_position()?;
+        assert_eq!(c.stream_len()?, 15);
+        assert_eq!(c.stream_position()?, old_pos);
+
+        c.seek(SeekFrom::Start(7))?;
+        c.seek(SeekFrom::Current(2))?;
+        let old_pos = c.stream_position()?;
+        assert_eq!(c.stream_len()?, 15);
+        assert_eq!(c.stream_position()?, old_pos);
+
+        Ok(())
+    }
+
+    #[test]
+    fn seek_position() -> io::Result<()> {
+        // All `asserts` are duplicated here to make sure the method does not
+        // change anything about the seek state.
+        let mut c = Cursor::new(vec![0; 15]);
+        assert_eq!(c.stream_position()?, 0);
+        assert_eq!(c.stream_position()?, 0);
+
+        c.seek(SeekFrom::End(0))?;
+        assert_eq!(c.stream_position()?, 15);
+        assert_eq!(c.stream_position()?, 15);
+
+
+        c.seek(SeekFrom::Start(7))?;
+        c.seek(SeekFrom::Current(2))?;
+        assert_eq!(c.stream_position()?, 9);
+        assert_eq!(c.stream_position()?, 9);
+
+        c.seek(SeekFrom::End(-3))?;
+        c.seek(SeekFrom::Current(1))?;
+        c.seek(SeekFrom::Current(-5))?;
+        assert_eq!(c.stream_position()?, 8);
+        assert_eq!(c.stream_position()?, 8);
+
+        Ok(())
     }
 }
