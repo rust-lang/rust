@@ -195,11 +195,28 @@ impl<'a> CrateLoader<'a> {
         ident: Symbol,
         span: Span,
         lib: Library,
-        dep_kind: DepKind
+        dep_kind: DepKind,
+        name: Symbol
     ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         let crate_root = lib.metadata.get_root();
-        info!("register crate `extern crate {} as {}`", crate_root.name, ident);
         self.verify_no_symbol_conflicts(span, &crate_root);
+
+        let mut private_dep = false;
+        if let Some(s) = self.sess.opts.extern_private.get(&name.as_str()) {
+            for path in s {
+                let p = Some(path.as_str());
+                if p == lib.dylib.as_ref().and_then(|r| r.0.to_str()) ||
+                    p == lib.rlib.as_ref().and_then(|r| r.0.to_str()) {
+
+                    private_dep = true;
+                }
+            }
+        }
+
+
+        info!("register crate `extern crate {} as {}` (private_dep = {})",
+            crate_root.name, ident, private_dep);
+
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
@@ -272,7 +289,8 @@ impl<'a> CrateLoader<'a> {
                 dylib,
                 rlib,
                 rmeta,
-            }
+            },
+            private_dep
         };
 
         let cmeta = Lrc::new(cmeta);
@@ -390,7 +408,7 @@ impl<'a> CrateLoader<'a> {
                 Ok((cnum, data))
             }
             (LoadResult::Loaded(library), host_library) => {
-                Ok(self.register_crate(host_library, root, ident, span, library, dep_kind))
+                Ok(self.register_crate(host_library, root, ident, span, library, dep_kind, name))
             }
             _ => panic!()
         }

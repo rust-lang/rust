@@ -285,6 +285,7 @@ impl OutputTypes {
 #[derive(Clone, Hash)]
 pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
 
+
 impl Externs {
     pub fn new(data: BTreeMap<String, BTreeSet<Option<String>>>) -> Externs {
         Externs(data)
@@ -298,6 +299,21 @@ impl Externs {
         self.0.iter()
     }
 }
+
+// Similar to 'Externs', but used for the '--extern-private' option
+#[derive(Clone, Hash)]
+pub struct ExternPrivates(BTreeMap<String, BTreeSet<String>>);
+
+impl ExternPrivates {
+    pub fn get(&self, key: &str) -> Option<&BTreeSet<String>> {
+        self.0.get(key)
+    }
+
+    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<String>> {
+        self.0.iter()
+    }
+}
+
 
 macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
@@ -428,9 +444,9 @@ top_level_options!(
 
         edition: Edition [TRACKED],
 
-        // The list of crates to consider private when
+        // The crates to consider private when
         // checking leaked private dependency types in public interfaces
-        extern_private: Vec<String> [TRACKED],
+        extern_private: ExternPrivates [UNTRACKED],
     }
 );
 
@@ -633,7 +649,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_private: Vec::new()
+            extern_private: ExternPrivates(BTreeMap::new())
         }
     }
 }
@@ -2315,10 +2331,25 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let extern_private = matches.opt_strs("extern-private");
+    let mut extern_private: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+
+    for arg in matches.opt_strs("extern-private").into_iter() {
+        let mut parts = arg.splitn(2, '=');
+        let name = parts.next().unwrap_or_else(||
+            early_error(error_format, "--extern-private value must not be empty"));
+        let location = parts.next().map(|s| s.to_string()).unwrap_or_else(||
+            early_error(error_format, "--extern-private value must include a location"));
+
+
+        extern_private
+            .entry(name.to_owned())
+            .or_default()
+            .insert(location);
+
+    }
 
     let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-    for arg in matches.opt_strs("extern").into_iter().chain(matches.opt_strs("extern-private")) {
+    for arg in matches.opt_strs("extern").into_iter() {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
@@ -2386,7 +2417,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
-            extern_private
+            extern_private: ExternPrivates(extern_private)
         },
         cfg,
     )

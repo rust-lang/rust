@@ -74,6 +74,17 @@ pub fn dylib_env_var() -> &'static str {
     }
 }
 
+/// The platform-specific library file extension
+pub fn lib_extension() -> &'static str {
+    if cfg!(windows) {
+        ".dll"
+    } else if cfg!(target_os = "macos") {
+        ".dylib"
+    } else {
+        ".so"
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
     Context(String),
@@ -1583,6 +1594,13 @@ impl<'test> TestCx<'test> {
         if !self.props.aux_builds.is_empty() {
             let _ = fs::remove_dir_all(&aux_dir);
             create_dir_all(&aux_dir).unwrap();
+        }
+
+        for priv_dep in &self.props.extern_private {
+            let lib_name = format!("lib{}{}", priv_dep, lib_extension());
+            rustc
+                .arg("--extern-private")
+                .arg(format!("{}={}", priv_dep, aux_dir.join(lib_name).to_str().unwrap()));
         }
 
         for rel_ab in &self.props.aux_builds {
