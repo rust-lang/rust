@@ -817,7 +817,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             Some(func.generic_params(self.db)),
                         )
                     }
-                    None => (Ty::Unknown, receiver_ty, None),
+                    None => (receiver_ty, Ty::Unknown, None),
                 };
                 let substs = self.substs_for_method_call(def_generics, generic_args);
                 let method_ty = method_ty.apply_substs(substs);

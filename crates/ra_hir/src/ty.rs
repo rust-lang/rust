@@ -148,6 +148,10 @@ impl Substs {
         self.0.iter()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.0.iter().cloned().collect();
@@ -286,7 +290,8 @@ impl Ty {
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(self, substs: Substs) -> Ty {
         match self {
-            Ty::Apply(ApplicationTy { ctor, .. }) => {
+            Ty::Apply(ApplicationTy { ctor, parameters: previous_substs }) => {
+                assert_eq!(previous_substs.len(), substs.len());
                 Ty::Apply(ApplicationTy { ctor, parameters: substs })
             }
             _ => self,
