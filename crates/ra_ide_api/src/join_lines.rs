@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use ra_db::FileRange;
 use ra_syntax::{
     SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
@@ -9,26 +10,19 @@ use ra_syntax::{
 use ra_fmt::{
     compute_ws, extract_trivial_expression
 };
-use ra_text_edit::TextEditBuilder;
-use ra_ide_api_light::LocalEdit;
+use ra_text_edit::{TextEdit, TextEditBuilder};
 
-pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
-    let range = if range.is_empty() {
+pub fn join_lines(file: &SourceFile, frange: FileRange) -> TextEdit {
+    let range = if frange.range.is_empty() {
         let syntax = file.syntax();
-        let text = syntax.text().slice(range.start()..);
+        let text = syntax.text().slice(frange.range.start()..);
         let pos = match text.find('\n') {
-            None => {
-                return LocalEdit {
-                    label: "join lines".to_string(),
-                    edit: TextEditBuilder::default().finish(),
-                    cursor_position: None,
-                };
-            }
+            None => return TextEditBuilder::default().finish(),
             Some(pos) => pos,
         };
-        TextRange::offset_len(range.start() + pos, TextUnit::of_char('\n'))
+        TextRange::offset_len(frange.range.start() + pos, TextUnit::of_char('\n'))
     } else {
-        range
+        frange.range
     };
 
     let node = find_covering_node(file.syntax(), range);
@@ -51,7 +45,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
         }
     }
 
-    LocalEdit { label: "join lines".to_string(), edit: edit.finish(), cursor_position: None }
+    edit.finish()
 }
 
 fn remove_newline(
