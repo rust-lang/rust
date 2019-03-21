@@ -55,7 +55,7 @@ use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
@@ -176,7 +176,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(
-                    TypeVariableOrigin::AdjustmentType(self.cause.span));
+                    TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::AdjustmentType,
+                        span: self.cause.span,
+                    },
+                );
                 self.unify_and(&b, &diverging_ty, simple(Adjust::NeverToAny))
             } else {
                 success(simple(Adjust::NeverToAny)(b), b, vec![])
@@ -511,7 +515,10 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // the `CoerceUnsized` target type and the expected type.
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
-        let origin = TypeVariableOrigin::MiscVariable(self.cause.span);
+        let origin = TypeVariableOrigin {
+            kind: TypeVariableOriginKind::MiscVariable,
+            span: self.cause.span,
+        };
         let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let unsize = Adjustment {

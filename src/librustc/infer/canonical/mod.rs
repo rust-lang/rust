@@ -21,7 +21,8 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
-use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, ConstVariableOrigin};
+use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::ConstVariableOrigin;
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_macros::HashStable;
@@ -365,7 +366,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General(ui) => {
                         self.next_ty_var_in_universe(
-                            TypeVariableOrigin::MiscVariable(span),
+                            TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            },
                             universe_map(ui)
                         )
                     }

@@ -4,7 +4,7 @@ use syntax_pos::Span;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::hir::Node;
-use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
+use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
@@ -864,7 +864,10 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             return opaque_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);
-        let ty_var = infcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        let ty_var = infcx.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::TypeInference,
+            span,
+        });
 
         let predicates_of = tcx.predicates_of(def_id);
         debug!(

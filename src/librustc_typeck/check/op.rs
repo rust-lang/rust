@@ -5,7 +5,7 @@ use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::TyKind::{Ref, Adt, FnDef, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use errors::{self,Applicability};
 use syntax_pos::Span;
 use syntax::ast::Ident;
@@ -163,7 +163,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
-                let fresh_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span));
+                let fresh_var = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: lhs_expr.span,
+                });
                 self.demand_coerce(lhs_expr, lhs_ty, fresh_var,  AllowTwoPhase::No)
             }
             IsAssign::Yes => {
@@ -182,7 +185,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
+        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::MiscVariable,
+            span: rhs_expr.span,
+        });
 
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 

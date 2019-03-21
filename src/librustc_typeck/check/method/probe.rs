@@ -20,7 +20,7 @@ use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefSteps
 use rustc::traits::query::method_autoderef::{MethodAutoderefBadTy};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::unify_key::ConstVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
@@ -1573,8 +1573,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             match param.kind {
                 GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
                 GenericParamDefKind::Type { .. } => {
-                    self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
-                        self.tcx.def_span(def_id))).into()
+                    self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::SubstitutionPlaceholder,
+                        span: self.tcx.def_span(def_id),
+                    }).into()
                 }
                 GenericParamDefKind::Const { .. } => {
                     let span = self.tcx.def_span(def_id);

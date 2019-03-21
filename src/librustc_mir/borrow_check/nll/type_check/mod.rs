@@ -26,7 +26,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::mir::interpret::{InterpError::BoundsCheck, ConstValue};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
@@ -2209,7 +2209,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.sty {
                     let ty_right = right.ty(mir, tcx);
                     let common_ty = self.infcx.next_ty_var(
-                        TypeVariableOrigin::MiscVariable(mir.source_info(location).span),
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: mir.source_info(location).span,
+                        }
                     );
                     self.sub_types(
                         common_ty,
