@@ -1,9 +1,9 @@
 #![no_main]
-#[macro_use] extern crate libfuzzer_sys;
-extern crate ra_syntax;
+use libfuzzer_sys::fuzz_target;
+use ra_syntax::fuzz::check_parser;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        ra_syntax::check_fuzz_invariants(text)
+        check_parser(text)
     }
 });
