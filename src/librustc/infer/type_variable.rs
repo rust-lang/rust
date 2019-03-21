@@ -8,7 +8,6 @@ use std::ops::Range;
 use std::u32;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
-use ut::UnifyKey;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate>,
@@ -291,11 +290,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.commit(sub_snapshot);
     }
 
-    /// Returns a map from the type variables created during the
-    /// snapshot to the origin of the type variable.
+    /// Returns a range of the type variables created during the snapshot.
     pub fn vars_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> Range<TyVid> {
-        let range = self.values.values_since_snapshot(&s.snapshot);
-        TyVid::from_index(range.start as u32)..TyVid::from_index(range.end as u32)
+        let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
+        range.start.vid..range.end.vid
     }
 
     /// Finds the set of type variables that existed *before* `s`

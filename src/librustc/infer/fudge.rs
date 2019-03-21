@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let value = self.resolve_type_vars_if_possible(&value);
 
                     // At this point, `value` could in principle refer
-                    // to types/regions that have been created during
+                    // to inference variables that have been created during
                     // the snapshot. Once we exit `probe()`, those are
                     // going to be popped, so we will have to
                     // eliminate any references to them.
@@ -106,10 +106,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             fudger.int_vars.is_empty() &&
             fudger.float_vars.is_empty() &&
             fudger.region_vars.is_empty() {
-            return Ok(value);
+            Ok(value)
+        } else {
+            Ok(value.fold_with(&mut fudger))
         }
-
-        Ok(value.fold_with(&mut fudger))
     }
 }
 
@@ -137,7 +137,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
                     self.infcx.next_ty_var(origin)
                 } else {
                     // This variable was created before the
-                    // "fudging".  Since we refresh all type
+                    // "fudging". Since we refresh all type
                     // variables to their binding anyhow, we know
                     // that it is unbound, so we can just return
                     // it.
