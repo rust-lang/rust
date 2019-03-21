@@ -4,12 +4,14 @@ import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
+export type CargoWatchOptions = 'ask' | 'enabled' | 'disabled';
+
 export class Config {
     public highlightingOn = true;
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
-    public enableCargoWatchOnStartup = true;
+    public enableCargoWatchOnStartup: CargoWatchOptions = 'ask';
 
     private prevEnhancedTyping: null | boolean = null;
 
@@ -71,9 +73,9 @@ export class Config {
         }
 
         if (config.has('enableCargoWatchOnStartup')) {
-            this.enableCargoWatchOnStartup = config.get<boolean>(
+            this.enableCargoWatchOnStartup = config.get<CargoWatchOptions>(
                 'enableCargoWatchOnStartup',
-                true
+                'ask'
             );
         }
     }

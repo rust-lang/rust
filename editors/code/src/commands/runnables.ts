@@ -153,22 +153,25 @@ export const autoCargoWatchTask: vscode.Task = {
  * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
  */
 export async function interactivelyStartCargoWatch() {
-    if (!Server.config.enableCargoWatchOnStartup) {
+    if (Server.config.enableCargoWatchOnStartup === 'disabled') {
         return;
+    }
+
+    if (Server.config.enableCargoWatchOnStartup === 'ask') {
+        const watch = await vscode.window.showInformationMessage(
+            'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
+            'yes',
+            'no'
+        );
+        if (watch === 'no') {
+            return;
+        }
     }
 
     const execPromise = util.promisify(child_process.exec);
 
-    const watch = await vscode.window.showInformationMessage(
-        'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
-        'yes',
-        'no'
-    );
-    if (watch === 'no') {
-        return;
-    }
-
     const { stderr } = await execPromise('cargo watch --version').catch(e => e);
+
     if (stderr.includes('no such subcommand: `watch`')) {
         const msg =
             'The `cargo-watch` subcommand is not installed. Install? (takes ~1-2 minutes)';
