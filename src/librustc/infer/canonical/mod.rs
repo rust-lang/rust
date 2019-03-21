@@ -360,9 +360,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         )
                     }
 
-                    CanonicalTyVarKind::Int => self.tcx.mk_int_var(self.next_int_var_id()),
+                    CanonicalTyVarKind::Int => self.next_int_var(),
 
-                    CanonicalTyVarKind::Float => self.tcx.mk_float_var(self.next_float_var_id()),
+                    CanonicalTyVarKind::Float => self.next_float_var(),
                 };
                 ty.into()
             }

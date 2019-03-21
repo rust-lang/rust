@@ -999,12 +999,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_ty_var(self.next_ty_var_id(true, origin))
     }
 
-    pub fn next_int_var_id(&self) -> IntVid {
+    fn next_int_var_id(&self) -> IntVid {
         self.int_unification_table.borrow_mut().new_key(None)
     }
 
-    pub fn next_float_var_id(&self) -> FloatVid {
+    pub fn next_int_var(&self) -> Ty<'tcx> {
+        self.tcx.mk_int_var(self.next_int_var_id())
+    }
+
+    fn next_float_var_id(&self) -> FloatVid {
         self.float_unification_table.borrow_mut().new_key(None)
+    }
+
+    pub fn next_float_var(&self) -> Ty<'tcx> {
+        self.tcx.mk_float_var(self.next_float_var_id())
     }
 
     /// Creates a fresh region variable with the next available index.

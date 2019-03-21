@@ -149,14 +149,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
             }
             ty::Infer(ty::InferTy::IntVar(vid)) => {
                 if self.int_vars.contains(&vid) {
-                    self.infcx.tcx.mk_int_var(self.infcx.next_int_var_id())
+                    self.infcx.next_int_var()
                 } else {
                     ty
                 }
             }
             ty::Infer(ty::InferTy::FloatVar(vid)) => {
                 if self.float_vars.contains(&vid) {
-                    self.infcx.tcx.mk_float_var(self.infcx.next_float_var_id())
+                    self.infcx.next_float_var()
                 } else {
                     ty
                 }

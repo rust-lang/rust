@@ -3097,8 +3097,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => None
                     }
                 });
-                opt_ty.unwrap_or_else(
-                    || tcx.mk_int_var(self.next_int_var_id()))
+                opt_ty.unwrap_or_else(|| self.next_int_var())
             }
             ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
             ast::LitKind::FloatUnsuffixed(_) => {
@@ -3108,8 +3107,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => None
                     }
                 });
-                opt_ty.unwrap_or_else(
-                    || tcx.mk_float_var(self.next_float_var_id()))
+                opt_ty.unwrap_or_else(|| self.next_float_var())
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::Err(_) => tcx.types.err,
