@@ -291,7 +291,7 @@ pub trait Into<T>: Sized {
 /// When constructing a function that is capable of failing, the return type
 /// will generally be of the form `Result<T, E>`.
 /// The `From` trait simplifies error handling by allowing a function to return a single error type
-/// that encapsulate multiple error types. See the "Examples" section for more details.
+/// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more details.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
 ///
@@ -355,7 +355,7 @@ pub trait Into<T>: Sized {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into<U>`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
-/// [book]: ../../book/first-edition/error-handling.html
+/// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.
