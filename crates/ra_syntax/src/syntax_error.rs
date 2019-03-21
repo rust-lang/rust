@@ -48,10 +48,10 @@ impl SyntaxError {
         }
     }
 
-    pub fn add_offset(mut self, plus_offset: TextUnit) -> SyntaxError {
+    pub fn add_offset(mut self, plus_offset: TextUnit, minus_offset: TextUnit) -> SyntaxError {
         self.location = match self.location {
-            Location::Range(range) => Location::Range(range + plus_offset),
-            Location::Offset(offset) => Location::Offset(offset + plus_offset),
+            Location::Range(range) => Location::Range(range + plus_offset - minus_offset),
+            Location::Offset(offset) => Location::Offset(offset + plus_offset - minus_offset),
         };
 
         self
