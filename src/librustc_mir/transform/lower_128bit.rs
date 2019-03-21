@@ -138,7 +138,7 @@ fn check_lang_item_type<'a, 'tcx, D>(
     let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
     let expected = [lhs_ty, rhs_ty, place_ty];
     assert_eq!(sig.inputs_and_output[..], expected,
-        "lang item {}", tcx.def_symbol_name(did));
+        "lang item `{}`", tcx.def_path_str(did));
     did
 }
 

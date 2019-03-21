@@ -315,7 +315,6 @@ rustc_query_append! { [define_queries!][ <'tcx>
 
         [] fn mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 
-        [] fn def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
         [] fn symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
         [] fn describe_def: DescribeDef(DefId) -> Option<Def>,
@@ -727,7 +726,7 @@ fn mir_shim_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>) -> DepConstructo
 }
 
 fn symbol_name_dep_node<'tcx>(instance: ty::Instance<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::InstanceSymbolName { instance }
+    DepConstructor::SymbolName { instance }
 }
 
 fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
