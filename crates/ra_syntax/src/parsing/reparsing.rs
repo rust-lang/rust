@@ -33,10 +33,10 @@ pub(crate) fn incremental_reparse(
 }
 
 fn reparse_leaf<'node>(
-    node: &'node SyntaxNode,
+    root: &'node SyntaxNode,
     edit: &AtomTextEdit,
 ) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
-    let node = algo::find_covering_node(node, edit.delete);
+    let node = algo::find_covering_node(root, edit.delete);
     match node.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             let text = get_text_after_edit(node, &edit);
@@ -48,6 +48,13 @@ fn reparse_leaf<'node>(
 
             if token.kind == IDENT && is_contextual_kw(&text) {
                 return None;
+            }
+
+            if let Some(next_char) = root.text().char_at(node.range().end()) {
+                let tokens_with_next_char = tokenize(&format!("{}{}", text, next_char));
+                if tokens_with_next_char.len() == 1 {
+                    return None;
+                }
             }
 
             let green = GreenNode::new_leaf(node.kind(), text.into());
