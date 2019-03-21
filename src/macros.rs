@@ -431,12 +431,10 @@ pub fn rewrite_macro_inner(
             // For macro invocations with braces, always put a space between
             // the `macro_name!` and `{ /* macro_body */ }` but skip modifying
             // anything in between the braces (for now).
-            let snippet = context.snippet(mac.span);
-            // to remove unnecessary space after macro name
-            let macro_raw = snippet.trim_start_matches(&macro_name).trim_start();
-            match trim_left_preserve_layout(macro_raw, shape.indent, &context.config) {
+            let snippet = context.snippet(mac.span).trim_start_matches(|c| c != '{');
+            match trim_left_preserve_layout(snippet, shape.indent, &context.config) {
                 Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
-                None => Some(format!("{} {}", macro_name, macro_raw)),
+                None => Some(format!("{} {}", macro_name, snippet)),
             }
         }
         _ => unreachable!(),
