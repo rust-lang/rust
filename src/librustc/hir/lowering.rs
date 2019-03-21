@@ -200,7 +200,7 @@ enum ImplTraitContext<'a> {
     Disallowed(ImplTraitPosition),
 }
 
-/// Position in which `impl Trait` is disallowed. Used for error reporting.
+/// Position in which `impl Trait` is disallowed.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ImplTraitPosition {
     /// Disallowed in `let` / `const` / `static` bindings.

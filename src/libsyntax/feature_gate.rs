@@ -15,7 +15,10 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use crate::ast::{self, NodeId, GenericParam, GenericParamKind, PatKind, RangeEnd};
+use crate::ast::{
+    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
+    PatKind, RangeEnd,
+};
 use crate::attr;
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::source_map::Spanned;
@@ -553,6 +556,9 @@ declare_features! (
 
     // Allows using C-variadics.
     (active, c_variadic, "1.34.0", Some(44930), None),
+
+    // Allows the user of associated type bounds.
+    (active, associated_type_bounds, "1.34.0", Some(52662), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
@@ -1917,7 +1923,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             self.builtin_attributes.get(&ident.name).map(|a| *a)
         });
 
-        // check for gated attributes
+        // Check for gated attributes.
         self.context.check_attribute(attr, attr_info, false);
 
         if attr.check_name(sym::doc) {
@@ -2115,7 +2121,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
             if let ast::TyKind::Never = output_ty.node {
-                // Do nothing
+                // Do nothing.
             } else {
                 self.visit_ty(output_ty)
             }
@@ -2171,7 +2177,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             _ => {}
         }
-        visit::walk_expr(self, e);
+        visit::walk_expr(self, e)
     }
 
     fn visit_arm(&mut self, arm: &'a ast::Arm) {
@@ -2220,15 +2226,27 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
-        visit::walk_fn(self, fn_kind, fn_decl, span);
+        visit::walk_fn(self, fn_kind, fn_decl, span)
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParamKind::Const { .. } = param.kind {
-            gate_feature_post!(&self, const_generics, param.ident.span,
-                "const generics are unstable");
+        match param.kind {
+            GenericParamKind::Const { .. } =>
+                gate_feature_post!(&self, const_generics, param.ident.span,
+                    "const generics are unstable"),
+            _ => {}
         }
-        visit::walk_generic_param(self, param);
+        visit::walk_generic_param(self, param)
+    }
+
+    fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
+        match constraint.kind {
+            AssocTyConstraintKind::Bound { .. } =>
+                gate_feature_post!(&self, associated_type_bounds, constraint.span,
+                    "associated type bounds are unstable"),
+            _ => {}
+        }
+        visit::walk_assoc_ty_constraint(self, constraint)
     }
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
@@ -2266,7 +2284,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             _ => {}
         }
-        visit::walk_trait_item(self, ti);
+        visit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'a ast::ImplItem) {
@@ -2298,7 +2316,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             _ => {}
         }
-        visit::walk_impl_item(self, ii);
+        visit::walk_impl_item(self, ii)
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {
@@ -2306,7 +2324,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(&self, crate_visibility_modifier, vis.span,
                                "`crate` visibility modifier is experimental");
         }
-        visit::walk_vis(self, vis);
+        visit::walk_vis(self, vis)
     }
 }
 
