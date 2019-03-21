@@ -237,7 +237,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match (&*ty1, &*ty2) {
             (Ty::Unknown, ..) => true,
             (.., Ty::Unknown) => true,
-            (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.name == a_ty2.name => {
+            (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
                 self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
             }
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
@@ -278,11 +278,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match ty {
             Ty::Unknown => self.new_type_var(),
             Ty::Apply(ApplicationTy {
-                name: TypeCtor::Int(primitive::UncertainIntTy::Unknown),
+                ctor: TypeCtor::Int(primitive::UncertainIntTy::Unknown),
                 ..
             }) => self.new_integer_var(),
             Ty::Apply(ApplicationTy {
-                name: TypeCtor::Float(primitive::UncertainFloatTy::Unknown),
+                ctor: TypeCtor::Float(primitive::UncertainFloatTy::Unknown),
                 ..
             }) => self.new_float_var(),
             _ => ty,
@@ -776,7 +776,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::Apply(a_ty) => match a_ty.name {
+                    Ty::Apply(a_ty) => match a_ty.ctor {
                         TypeCtor::FnPtr => {
                             let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
                             (sig.params().to_vec(), sig.ret().clone())
@@ -823,7 +823,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let method_ty = method_ty.apply_substs(substs);
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
-                    Ty::Apply(a_ty) => match a_ty.name {
+                    Ty::Apply(a_ty) => match a_ty.ctor {
                         TypeCtor::FnPtr => {
                             let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
                             if !sig.params().is_empty() {
@@ -932,7 +932,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = receiver_ty
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
-                        Ty::Apply(a_ty) => match a_ty.name {
+                        Ty::Apply(a_ty) => match a_ty.ctor {
                             TypeCtor::Tuple => {
                                 let i = name.to_string().parse::<usize>().ok();
                                 i.and_then(|i| a_ty.parameters.0.get(i).cloned())
@@ -988,7 +988,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     UnaryOp::Neg => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.name {
+                            Ty::Apply(a_ty) => match a_ty.ctor {
                                 TypeCtor::Int(primitive::UncertainIntTy::Unknown)
                                 | TypeCtor::Int(primitive::UncertainIntTy::Signed(..))
                                 | TypeCtor::Float(..) => inner_ty,
@@ -1003,7 +1003,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     UnaryOp::Not => {
                         match &inner_ty {
-                            Ty::Apply(a_ty) => match a_ty.name {
+                            Ty::Apply(a_ty) => match a_ty.ctor {
                                 TypeCtor::Bool | TypeCtor::Int(_) => inner_ty,
                                 _ => Ty::Unknown,
                             },
@@ -1043,7 +1043,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Array { exprs } => {
                 let elem_ty = match &expected.ty {
-                    Ty::Apply(a_ty) => match a_ty.name {
+                    Ty::Apply(a_ty) => match a_ty.ctor {
                         TypeCtor::Slice | TypeCtor::Array => {
                             Ty::clone(&a_ty.parameters.as_single())
                         }

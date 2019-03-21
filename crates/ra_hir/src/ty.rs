@@ -93,7 +93,7 @@ pub enum TypeCtor {
 /// several other things.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ApplicationTy {
-    pub name: TypeCtor,
+    pub ctor: TypeCtor,
     pub parameters: Substs,
 }
 
@@ -201,14 +201,14 @@ impl FnSig {
 }
 
 impl Ty {
-    pub fn simple(name: TypeCtor) -> Ty {
-        Ty::Apply(ApplicationTy { name, parameters: Substs::empty() })
+    pub fn simple(ctor: TypeCtor) -> Ty {
+        Ty::Apply(ApplicationTy { ctor, parameters: Substs::empty() })
     }
-    pub fn apply_one(name: TypeCtor, param: Ty) -> Ty {
-        Ty::Apply(ApplicationTy { name, parameters: Substs::single(param) })
+    pub fn apply_one(ctor: TypeCtor, param: Ty) -> Ty {
+        Ty::Apply(ApplicationTy { ctor, parameters: Substs::single(param) })
     }
-    pub fn apply(name: TypeCtor, parameters: Substs) -> Ty {
-        Ty::Apply(ApplicationTy { name, parameters })
+    pub fn apply(ctor: TypeCtor, parameters: Substs) -> Ty {
+        Ty::Apply(ApplicationTy { ctor, parameters })
     }
     pub fn unit() -> Self {
         Ty::apply(TypeCtor::Tuple, Substs::empty())
@@ -246,7 +246,7 @@ impl Ty {
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeCtor::Ref(mutability), parameters }) => {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(mutability), parameters }) => {
                 Some((parameters.as_single(), *mutability))
             }
             _ => None,
@@ -255,7 +255,7 @@ impl Ty {
 
     pub fn as_adt(&self) -> Option<(AdtDef, &Substs)> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeCtor::Adt(adt_def), parameters }) => {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {
                 Some((*adt_def, parameters))
             }
             _ => None,
@@ -264,14 +264,14 @@ impl Ty {
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeCtor::Tuple, parameters }) => Some(parameters),
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple, parameters }) => Some(parameters),
             _ => None,
         }
     }
 
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
-            Ty::Apply(a_ty) => match a_ty.name {
+            Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 _ => None,
@@ -286,8 +286,8 @@ impl Ty {
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(self, substs: Substs) -> Ty {
         match self {
-            Ty::Apply(ApplicationTy { name, .. }) => {
-                Ty::Apply(ApplicationTy { name, parameters: substs })
+            Ty::Apply(ApplicationTy { ctor, .. }) => {
+                Ty::Apply(ApplicationTy { ctor, parameters: substs })
             }
             _ => self,
         }
@@ -327,7 +327,7 @@ impl HirDisplay for &Ty {
 
 impl HirDisplay for ApplicationTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        match self.name {
+        match self.ctor {
             TypeCtor::Bool => write!(f, "bool")?,
             TypeCtor::Char => write!(f, "char")?,
             TypeCtor::Int(t) => write!(f, "{}", t)?,

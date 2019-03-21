@@ -27,7 +27,7 @@ impl TyFingerprint {
     /// `impl &S`. Hence, this will return `None` for reference types and such.
     fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
         match ty {
-            Ty::Apply(a_ty) => Some(TyFingerprint::Apply(a_ty.name)),
+            Ty::Apply(a_ty) => Some(TyFingerprint::Apply(a_ty.ctor)),
             _ => None,
         }
     }
@@ -111,7 +111,7 @@ impl CrateImplBlocks {
 
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
-        Ty::Apply(a_ty) => match a_ty.name {
+        Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => def_id.krate(db),
             _ => None,
         },

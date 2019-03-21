@@ -32,7 +32,7 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match rhs_ty {
-            Ty::Apply(ApplicationTy { name, .. }) => match name {
+            Ty::Apply(ApplicationTy { ctor, .. }) => match ctor {
                 TypeCtor::Int(..) | TypeCtor::Float(..) => rhs_ty,
                 _ => Ty::Unknown,
             },
@@ -47,7 +47,7 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::simple(TypeCtor::Bool),
         BinaryOp::Assignment | BinaryOp::EqualityTest => match lhs_ty {
-            Ty::Apply(ApplicationTy { name, .. }) => match name {
+            Ty::Apply(ApplicationTy { ctor, .. }) => match ctor {
                 TypeCtor::Int(..)
                 | TypeCtor::Float(..)
                 | TypeCtor::Str
@@ -82,7 +82,7 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseAnd
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match lhs_ty {
-            Ty::Apply(ApplicationTy { name, .. }) => match name {
+            Ty::Apply(ApplicationTy { ctor, .. }) => match ctor {
                 TypeCtor::Int(..) | TypeCtor::Float(..) => lhs_ty,
                 _ => Ty::Unknown,
             },
