@@ -930,13 +930,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             .into_iter()
             .map(|r| (self.ast_region_to_region(r, None), r.span))
         );
-
-        bounds.trait_bounds.sort_by_key(|(t, _)| t.def_id());
     }
 
-    /// Translates the AST's notion of ty param bounds (which are an enum consisting of a newtyped `Ty`
-    /// or a region) to ty's notion of ty param bounds, which can either be user-defined traits or the
-    /// built-in trait `Send`.
+    /// Translates the AST's notion of ty param bounds (which are an enum consisting of a newtyped
+    /// `Ty` or a region) to ty's notion of ty param bounds, which can either be user-defined traits
+    /// or the built-in trait `Send`.
     pub fn compute_bounds(&self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound],
@@ -944,7 +942,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         span: Span,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
+
         self.add_bounds(param_ty, ast_bounds, &mut bounds);
+        bounds.trait_bounds.sort_by_key(|(t, _)| t.def_id());
+
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
             if !self.is_unsized(ast_bounds, span) {
                 Some(span)
@@ -954,6 +955,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         } else {
             None
         };
+
         bounds
     }
 
@@ -993,7 +995,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
             //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
             if let ConvertedBindingKind::Equality(ty) = binding.kind {
-                let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
+                let late_bound_in_trait_ref =
+                    tcx.collect_constrained_late_bound_regions(&trait_ref);
                 let late_bound_in_ty =
                     tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(ty));
                 debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
@@ -1074,8 +1077,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 }), binding.span));
             }
             ConvertedBindingKind::Constraint(ref ast_bounds) => {
+                // Calling `skip_binder` is okay, because the predicates are re-bound later by
+                // `instantiate_poly_trait_ref`.
+                let param_ty = tcx.mk_projection(assoc_ty.def_id, candidate.skip_binder().substs);
                 self.add_bounds(
-                    trait_ref.self_ty(),
+                    param_ty,
                     ast_bounds,
                     bounds,
                 );
@@ -2050,6 +2056,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
         };
 
+        debug!("ast_ty_to_ty: result_ty={:?}", result_ty);
+
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty
     }
@@ -2135,7 +2143,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 }
             }
         });
-        debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
+        debug!("impl_trait_ty_to_ty: substs={:?}", substs);
 
         let ty = tcx.mk_opaque(def_id, substs);
         debug!("impl_trait_ty_to_ty: {}", ty);

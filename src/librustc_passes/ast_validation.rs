@@ -63,6 +63,10 @@ struct AstValidator<'a> {
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
+    /// Used to ban associated type bounds (i.e., `Type<AssocType: Bounds>`) in
+    /// certain positions.
+    is_assoc_ty_bound_banned: bool,
+
     /// rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
     /// until PRs #57730 and #57981 landed: it would jump directly to
     /// walk_ty rather than visit_ty (or skip recurring entirely for
@@ -87,6 +91,12 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
+    fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_assoc_ty_bound_banned, true);
+        f(self);
+        self.is_assoc_ty_bound_banned = old;
+    }
+
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
         f(self);
@@ -94,12 +104,21 @@ impl<'a> AstValidator<'a> {
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
-        if let AssocTyConstraintKind::Equality { ref ty } = constraint.kind {
-            // rust-lang/rust#57979: bug in old `visit_generic_args` called
-            // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
-            // if it happened to occur at `ty`.
-            if let TyKind::ImplTrait(..) = ty.node {
-                self.warning_period_57979_didnt_record_next_impl_trait = true;
+        match constraint.kind {
+            AssocTyConstraintKind::Equality { ref ty } => {
+                // rust-lang/rust#57979: bug in old `visit_generic_args` called
+                // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
+                // if it happened to occur at `ty`.
+                if let TyKind::ImplTrait(..) = ty.node {
+                    self.warning_period_57979_didnt_record_next_impl_trait = true;
+                }
+            }
+            AssocTyConstraintKind::Bound { .. } => {
+                if self.is_assoc_ty_bound_banned {
+                    self.err_handler().span_err(constraint.span,
+                        "associated type bounds are not allowed within structs, enums, or unions"
+                    );
+                }
             }
         }
         self.visit_assoc_ty_constraint(constraint);
@@ -726,7 +745,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
-                    walk_list!(this, visit_assoc_ty_constraint_from_generic_args, &data.constraints);
+                    walk_list!(this, visit_assoc_ty_constraint_from_generic_args,
+                        &data.constraints);
                 });
             }
             GenericArgs::Parenthesized(ref data) => {
@@ -819,6 +839,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_poly_trait_ref(self, t, m);
     }
 
+    fn visit_variant_data(&mut self, s: &'a VariantData, _: Ident,
+                          _: &'a Generics, _: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
+    }
+
+    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef,
+                      generics: &'a Generics, item_id: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(
+            |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
+    }
+
     fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
         // when a new macro kind is added but the author forgets to set it up for expansion
         // because that's the only part that won't cause a compiler error
@@ -842,6 +873,7 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
         has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
+        is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
     };

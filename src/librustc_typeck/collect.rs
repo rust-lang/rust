@@ -703,7 +703,8 @@ fn super_predicates_of<'a, 'tcx>(
 
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
-    let superbounds1 = AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
+    let superbounds1 = AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No,
+        item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1988,15 +1989,16 @@ fn explicit_predicates_of<'a, 'tcx>(
                         tcx.def_span(def_id),
                     );
 
+                    let bounds_predicates = bounds.predicates(tcx, opaque_ty);
                     if impl_trait_fn.is_some() {
                         // opaque types
                         return tcx.arena.alloc(ty::GenericPredicates {
                             parent: None,
-                            predicates: bounds.predicates(tcx, opaque_ty),
+                            predicates: bounds_predicates,
                         });
                     } else {
                         // named existential types
-                        predicates.extend(bounds.predicates(tcx, opaque_ty));
+                        predicates.extend(bounds_predicates);
                         generics
                     }
                 }

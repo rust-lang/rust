@@ -106,6 +106,7 @@ pub struct LoweringContext<'a> {
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
+    is_in_dyn_type: bool,
 
     /// What to do when we encounter either an "anonymous lifetime
     /// reference". The term "anonymous" is meant to encompass both
@@ -195,12 +196,6 @@ enum ImplTraitContext<'a> {
     /// (e.g., for consts and statics).
     Existential(Option<DefId> /* fn def-ID */),
 
-    /// Treat `impl Trait` as a bound on the associated type applied to the trait.
-    /// Example: `trait Foo { type Bar: Iterator<Item = impl Debug>; }` is conceptually
-    /// equivalent to `trait Foo where <Self::Bar as Iterator>::Item: Debug
-    /// { type Bar: Iterator; }`.
-    AssociatedTy,
-
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
 }
@@ -208,7 +203,10 @@ enum ImplTraitContext<'a> {
 /// Position in which `impl Trait` is disallowed. Used for error reporting.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ImplTraitPosition {
+    /// Disallowed in `let` / `const` / `static` bindings.
     Binding,
+
+    /// All other posiitons.
     Other,
 }
 
@@ -223,7 +221,6 @@ impl<'a> ImplTraitContext<'a> {
         match self {
             Universal(params) => Universal(params),
             Existential(fn_def_id) => Existential(*fn_def_id),
-            AssociatedTy => AssociatedTy,
             Disallowed(pos) => Disallowed(*pos),
         }
     }
@@ -256,6 +253,8 @@ pub fn lower_crate(
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
+        is_in_trait_impl: false,
+        is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
         current_module: CRATE_NODE_ID,
@@ -265,7 +264,6 @@ pub fn lower_crate(
         is_generator: false,
         is_async_body: false,
         current_item: None,
-        is_in_trait_impl: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
@@ -1230,6 +1228,20 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
+    fn with_dyn_type_scope<T, F>(&mut self, in_scope: bool, f: F) -> T
+    where
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
+    {
+        let was_in_dyn_type = self.is_in_dyn_type;
+        self.is_in_dyn_type = in_scope;
+
+        let result = f(self);
+
+        self.is_in_dyn_type = was_in_dyn_type;
+
+        result
+    }
+
     fn with_new_scopes<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut LoweringContext<'_>) -> T,
@@ -1353,24 +1365,58 @@ impl<'a> LoweringContext<'a> {
                                  c: &AssocTyConstraint,
                                  itctx: ImplTraitContext<'_>)
                                  -> hir::TypeBinding {
+        debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", c, itctx);
+
         let ty = match c.kind {
             AssocTyConstraintKind::Equality { ref ty } => self.lower_ty(ty, itctx),
             AssocTyConstraintKind::Bound { ref bounds } => {
-                // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`.
-                let impl_ty_node_id = self.sess.next_node_id();
-                let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
-                self.resolver.definitions().create_def_with_parent(
-                    parent_def_index,
-                    impl_ty_node_id,
-                    DefPathData::Misc,
-                    DefIndexAddressSpace::High,
-                    Mark::root(),
-                    DUMMY_SP);
-                self.lower_ty(&Ty {
-                    id: self.sess.next_node_id(),
-                    node: TyKind::ImplTrait(impl_ty_node_id, bounds.clone()),
-                    span: DUMMY_SP,
-                }, itctx)
+                let (existential_desugaring, itctx) = match itctx {
+                    ImplTraitContext::Existential(_) => (true, itctx),
+                    ImplTraitContext::Universal(_) if self.is_in_dyn_type => (true, itctx),
+                    // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
+                    ImplTraitContext::Disallowed(_) if self.is_in_dyn_type =>
+                        (true, ImplTraitContext::Existential(None)),
+                    _ => (false, itctx),
+                };
+
+                if existential_desugaring {
+                    // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`.
+
+                    let impl_ty_node_id = self.sess.next_node_id();
+                    let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
+                    self.resolver.definitions().create_def_with_parent(
+                        parent_def_index,
+                        impl_ty_node_id,
+                        DefPathData::Misc,
+                        DefIndexAddressSpace::High,
+                        Mark::root(),
+                        DUMMY_SP
+                    );
+
+                    self.with_dyn_type_scope(false, |this| {
+                        this.lower_ty(
+                            &Ty {
+                                id: this.sess.next_node_id(),
+                                node: TyKind::ImplTrait(impl_ty_node_id, bounds.clone()),
+                                span: DUMMY_SP,
+                            },
+                            itctx,
+                        )
+                    })
+                } else {
+                    // Desugar `AssocTy: Bounds` into `AssocTy = ∃ T (T: Bounds)`, where the
+                    // "false existential" later desugars into a trait predicate.
+
+                    let bounds = self.lower_param_bounds(bounds, itctx);
+
+                    let id = self.sess.next_node_id();
+                    let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
+                    P(hir::Ty {
+                        hir_id,
+                        node: hir::TyKind::AssocTyExistential(bounds),
+                        span: DUMMY_SP,
+                    })
+                }
             }
         };
 
@@ -1477,23 +1523,26 @@ impl<'a> LoweringContext<'a> {
             }
             TyKind::TraitObject(ref bounds, kind) => {
                 let mut lifetime_bound = None;
-                let bounds = bounds
-                    .iter()
-                    .filter_map(|bound| match *bound {
-                        GenericBound::Trait(ref ty, TraitBoundModifier::None) => {
-                            Some(self.lower_poly_trait_ref(ty, itctx.reborrow()))
-                        }
-                        GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
-                        GenericBound::Outlives(ref lifetime) => {
-                            if lifetime_bound.is_none() {
-                                lifetime_bound = Some(self.lower_lifetime(lifetime));
+                let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
+                    let bounds = bounds
+                        .iter()
+                        .filter_map(|bound| match *bound {
+                            GenericBound::Trait(ref ty, TraitBoundModifier::None) => {
+                                Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
                             }
-                            None
-                        }
-                    })
-                    .collect();
-                let lifetime_bound =
-                    lifetime_bound.unwrap_or_else(|| self.elided_dyn_bound(t.span));
+                            GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                            GenericBound::Outlives(ref lifetime) => {
+                                if lifetime_bound.is_none() {
+                                    lifetime_bound = Some(this.lower_lifetime(lifetime));
+                                }
+                                None
+                            }
+                        })
+                        .collect();
+                    let lifetime_bound =
+                        lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
+                    (bounds, lifetime_bound)
+                });
                 if kind != TraitObjectSyntax::Dyn {
                     self.maybe_lint_bare_trait(t.span, t.id, false);
                 }
@@ -1543,16 +1592,6 @@ impl<'a> LoweringContext<'a> {
                                 segments: hir_vec![hir::PathSegment::from_ident(ident)],
                             }),
                         ))
-                    }
-                    ImplTraitContext::AssociatedTy => {
-                        let hir_bounds = self.lower_param_bounds(
-                            bounds,
-                            ImplTraitContext::AssociatedTy,
-                        );
-
-                        hir::TyKind::AssocTyExistential(
-                            hir_bounds,
-                        )
                     }
                     ImplTraitContext::Disallowed(pos) => {
                         let allowed_in = if self.sess.features_untracked()
@@ -2407,7 +2446,8 @@ impl<'a> LoweringContext<'a> {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
                     Some((def_id, _)) if impl_trait_return_allow => {
                         hir::Return(self.lower_ty(ty,
-                            ImplTraitContext::Existential(Some(def_id))))
+                            ImplTraitContext::Existential(Some(def_id))
+                        ))
                     }
                     _ => {
                         hir::Return(self.lower_ty(ty, ImplTraitContext::disallowed()))
@@ -2770,7 +2810,7 @@ impl<'a> LoweringContext<'a> {
 
                 let kind = hir::GenericParamKind::Type {
                     default: default.as_ref().map(|x| {
-                        self.lower_ty(x, ImplTraitContext::disallowed())
+                        self.lower_ty(x, ImplTraitContext::Existential(None))
                     }),
                     synthetic: param.attrs.iter()
                                           .filter(|attr| attr.check_name(sym::rustc_synthetic))
@@ -3275,39 +3315,43 @@ impl<'a> LoweringContext<'a> {
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
             ItemKind::Ty(ref t, ref generics) => hir::ItemKind::Ty(
-                self.lower_ty(t, ImplTraitContext::AssociatedTy),
-                self.lower_generics(generics, ImplTraitContext::AssociatedTy),
+                self.lower_ty(t, ImplTraitContext::disallowed()),
+                self.lower_generics(generics, ImplTraitContext::disallowed()),
             ),
             ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(
                 hir::ExistTy {
-                    generics: self.lower_generics(generics, ImplTraitContext::AssociatedTy),
-                    bounds: self.lower_param_bounds(b, ImplTraitContext::AssociatedTy),
+                    generics: self.lower_generics(generics,
+                        ImplTraitContext::Existential(None)),
+                    bounds: self.lower_param_bounds(b,
+                        ImplTraitContext::Existential(None)),
                     impl_trait_fn: None,
                     origin: hir::ExistTyOrigin::ExistentialType,
                 },
             ),
-            ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
-                hir::EnumDef {
-                    variants: enum_definition
-                        .variants
-                        .iter()
-                        .map(|x| self.lower_variant(x))
-                        .collect(),
-                },
-                self.lower_generics(generics, ImplTraitContext::AssociatedTy),
-            ),
+            ItemKind::Enum(ref enum_definition, ref generics) => {
+                hir::ItemKind::Enum(
+                    hir::EnumDef {
+                        variants: enum_definition
+                            .variants
+                            .iter()
+                            .map(|x| self.lower_variant(x))
+                            .collect(),
+                    },
+                    self.lower_generics(generics, ImplTraitContext::disallowed()),
+                )
+            },
             ItemKind::Struct(ref struct_def, ref generics) => {
                 let struct_def = self.lower_variant_data(struct_def);
                 hir::ItemKind::Struct(
                     struct_def,
-                    self.lower_generics(generics, ImplTraitContext::AssociatedTy),
+                    self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
             ItemKind::Union(ref vdata, ref generics) => {
                 let vdata = self.lower_variant_data(vdata);
                 hir::ItemKind::Union(
                     vdata,
-                    self.lower_generics(generics, ImplTraitContext::AssociatedTy),
+                    self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
             ItemKind::Impl(
@@ -3675,9 +3719,9 @@ impl<'a> LoweringContext<'a> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             TraitItemKind::Type(ref bounds, ref default) => {
-                let generics = self.lower_generics(&i.generics, ImplTraitContext::AssociatedTy);
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let node = hir::TraitItemKind::Type(
-                    self.lower_param_bounds(bounds, ImplTraitContext::AssociatedTy),
+                    self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
                     default
                         .as_ref()
                         .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
