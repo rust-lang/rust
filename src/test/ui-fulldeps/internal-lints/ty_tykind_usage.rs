@@ -1,4 +1,4 @@
-// compile-flags: -Z internal-lints
+// compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
 

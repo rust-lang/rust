@@ -1,4 +1,4 @@
-// compile-flags: -Z internal-lints
+// compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
 
@@ -6,8 +6,6 @@ extern crate rustc_data_structures;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::collections::{HashMap, HashSet};
-//~^ WARNING Prefer FxHashMap over HashMap, it has better performance
-//~^^ WARNING Prefer FxHashSet over HashSet, it has better performance
 
 #[deny(default_hash_types)]
 fn main() {
