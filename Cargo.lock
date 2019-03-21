@@ -690,7 +690,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytecount 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
