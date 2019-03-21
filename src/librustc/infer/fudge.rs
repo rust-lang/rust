@@ -1,4 +1,4 @@
-use crate::ty::{self, Ty, TyCtxt, TyVid, RegionVid};
+use crate::ty::{self, Ty, TyCtxt, TyVid, IntVid, FloatVid, RegionVid};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 
 use super::InferCtxt;
@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("fudge_inference_if_ok(origin={:?})", origin);
 
-        let (type_variables, region_vars, value) = self.probe(|snapshot| {
+        let (type_vars, int_vars, float_vars, region_vars, value) = self.probe(|snapshot| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_type_vars_if_possible(&value);
@@ -67,14 +67,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // going to be popped, so we will have to
                     // eliminate any references to them.
 
-                    let type_variables = self.type_variables.borrow_mut().vars_since_snapshot(
+                    let type_vars = self.type_variables.borrow_mut().vars_since_snapshot(
                         &snapshot.type_snapshot,
+                    );
+                    let int_vars = self.int_unification_table.borrow_mut().vars_since_snapshot(
+                        &snapshot.int_snapshot,
+                    );
+                    let float_vars = self.float_unification_table.borrow_mut().vars_since_snapshot(
+                        &snapshot.float_snapshot,
                     );
                     let region_vars = self.borrow_region_constraints().vars_since_snapshot(
                         &snapshot.region_constraints_snapshot,
                     );
 
-                    Ok((type_variables, region_vars, value))
+                    Ok((type_vars, int_vars, float_vars, region_vars, value))
                 }
                 Err(e) => Err(e),
             }
@@ -87,13 +93,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Micro-optimization: if no variables have been created, then
         // `value` can't refer to any of them. =) So we can just return it.
-        if type_variables.is_empty() && region_vars.is_empty() {
+        if type_vars.is_empty() &&
+            int_vars.is_empty() &&
+            float_vars.is_empty() &&
+            region_vars.is_empty() {
             return Ok(value);
         }
 
         let mut fudger = InferenceFudger {
             infcx: self,
-            type_variables: &type_variables,
+            type_vars: &type_vars,
+            int_vars: &int_vars,
+            float_vars: &float_vars,
             region_vars: &region_vars,
             origin,
         };
@@ -104,7 +115,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_variables: &'a Range<TyVid>,
+    type_vars: &'a Range<TyVid>,
+    int_vars: &'a Range<IntVid>,
+    float_vars: &'a Range<FloatVid>,
     region_vars: &'a Range<RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
@@ -117,7 +130,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
-                if self.type_variables.contains(&vid) {
+                if self.type_vars.contains(&vid) {
                     // This variable was created during the fudging.
                     // Recreate it with a fresh variable here.
                     let origin = self.infcx.type_variables.borrow().var_origin(vid).clone();
@@ -131,6 +144,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
                     debug_assert!(self.infcx.type_variables.borrow_mut()
                                   .probe(vid)
                                   .is_unknown());
+                    ty
+                }
+            }
+            ty::Infer(ty::InferTy::IntVar(vid)) => {
+                if self.int_vars.contains(&vid) {
+                    self.infcx.tcx.mk_int_var(self.infcx.next_int_var_id())
+                } else {
+                    ty
+                }
+            }
+            ty::Infer(ty::InferTy::FloatVar(vid)) => {
+                if self.float_vars.contains(&vid) {
+                    self.infcx.tcx.mk_float_var(self.infcx.next_float_var_id())
+                } else {
                     ty
                 }
             }

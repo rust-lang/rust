@@ -6,7 +6,6 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::u32;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 use ut::UnifyKey;
