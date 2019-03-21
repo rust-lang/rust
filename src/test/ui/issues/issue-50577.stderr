@@ -2,10 +2,15 @@ error[E0317]: if may be missing an else clause
   --> $DIR/issue-50577.rs:3:16
    |
 LL |         Drop = assert_eq!(1, 1)
-   |                ^^^^^^^^^^^^^^^^ expected (), found isize
+   |                ^^^^^^^^^^^^^^^^
+   |                |
+   |                expected (), found isize
+   |                found here
    |
    = note: expected type `()`
               found type `isize`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error

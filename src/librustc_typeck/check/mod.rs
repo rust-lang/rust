@@ -3463,8 +3463,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
         } else {
+            // If this `if` expr is the parent's function return expr, the cause of the type
+            // coercion is the return type, point at it. (#25228)
+            let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, sp);
+
             let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
-            coerce.coerce_forced_unit(self, &else_cause, &mut |_| (), true);
+            coerce.coerce_forced_unit(self, &else_cause, &mut |err| {
+                if let Some((sp, msg)) = &ret_reason {
+                    err.span_label(*sp, msg.as_str());
+                } else if let ExprKind::Block(block, _) = &then_expr.node {
+                    if let Some(expr) = &block.expr {
+                        err.span_label(expr.span, "found here".to_string());
+                    }
+                }
+                err.note("`if` expressions without `else` evaluate to `()`");
+                err.help("consider adding an `else` block that evaluates to the expected type");
+            }, ret_reason.is_none());
 
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
@@ -3476,6 +3490,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             result_ty
         }
+    }
+
+    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
+        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(
+            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+        ));
+        if let Node::Block(block) = node {
+            // check that the body's parent is an fn
+            let parent = self.tcx.hir().get_by_hir_id(
+                self.tcx.hir().get_parent_node_by_hir_id(
+                    self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
+                ),
+            );
+            if let (Some(expr), Node::Item(hir::Item {
+                node: hir::ItemKind::Fn(..), ..
+            })) = (&block.expr, parent) {
+                // check that the `if` expr without `else` is the fn body's expr
+                if expr.span == sp {
+                    return self.get_fn_decl(hir_id).map(|(fn_decl, _)| (
+                        fn_decl.output.span(),
+                        format!("expected `{}` because of this return type", fn_decl.output),
+                    ));
+                }
+            }
+        }
+        if let Node::Local(hir::Local {
+            ty: Some(_), pat, ..
+        }) = node {
+            return Some((pat.span, "expected because of this assignment".to_string()));
+        }
+        None
     }
 
     // Check field access expressions

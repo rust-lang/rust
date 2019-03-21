@@ -2,10 +2,15 @@ error[E0317]: if may be missing an else clause
   --> $DIR/if-without-else-result.rs:2:13
    |
 LL |     let a = if true { true };
-   |             ^^^^^^^^^^^^^^^^ expected (), found bool
+   |             ^^^^^^^^^^----^^
+   |             |         |
+   |             |         found here
+   |             expected (), found bool
    |
    = note: expected type `()`
               found type `bool`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
 
 error: aborting due to previous error
 
