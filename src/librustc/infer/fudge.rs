@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("fudge_inference_if_ok(origin={:?})", origin);
 
-        let (type_vars, int_vars, float_vars, region_vars, value) = self.probe(|snapshot| {
+        let (mut fudger, value) = self.probe(|snapshot| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_type_vars_if_possible(&value);
@@ -80,7 +80,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         &snapshot.region_constraints_snapshot,
                     );
 
-                    Ok((type_vars, int_vars, float_vars, region_vars, value))
+                    let fudger = InferenceFudger {
+                        infcx: self,
+                        type_vars,
+                        int_vars,
+                        float_vars,
+                        region_vars,
+                        origin,
+                    };
+
+                    Ok((fudger, value))
                 }
                 Err(e) => Err(e),
             }
@@ -93,21 +102,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Micro-optimization: if no variables have been created, then
         // `value` can't refer to any of them. =) So we can just return it.
-        if type_vars.is_empty() &&
-            int_vars.is_empty() &&
-            float_vars.is_empty() &&
-            region_vars.is_empty() {
+        if fudger.type_vars.is_empty() &&
+            fudger.int_vars.is_empty() &&
+            fudger.float_vars.is_empty() &&
+            fudger.region_vars.is_empty() {
             return Ok(value);
         }
-
-        let mut fudger = InferenceFudger {
-            infcx: self,
-            type_vars: &type_vars,
-            int_vars: &int_vars,
-            float_vars: &float_vars,
-            region_vars: &region_vars,
-            origin,
-        };
 
         Ok(value.fold_with(&mut fudger))
     }
@@ -115,10 +115,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_vars: &'a Range<TyVid>,
-    int_vars: &'a Range<IntVid>,
-    float_vars: &'a Range<FloatVid>,
-    region_vars: &'a Range<RegionVid>,
+    type_vars: Range<TyVid>,
+    int_vars: Range<IntVid>,
+    float_vars: Range<FloatVid>,
+    region_vars: Range<RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
 
