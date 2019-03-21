@@ -11,7 +11,6 @@ mod structure;
 mod test_utils;
 mod join_lines;
 mod typing;
-mod diagnostics;
 
 use rustc_hash::FxHashSet;
 use ra_text_edit::TextEditBuilder;
@@ -27,7 +26,6 @@ pub use crate::{
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     structure::{file_structure, StructureNode},
-    diagnostics::diagnostics,
     join_lines::join_lines,
     typing::{on_enter, on_dot_typed, on_eq_typed},
 };
