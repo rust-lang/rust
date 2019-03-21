@@ -645,10 +645,14 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                                                    "could not evaluate static initializer");
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
-            if tcx.sess.err_count() == 0 {
-                tcx.sess.delay_span_bug(err.span,
+            let errs = tcx.sess.track_errors(|| {
+                tcx.sess.err_count();
+            });
+            match errs {
+                Ok(_) => tcx.sess.delay_span_bug(err.span,
                                         &format!("static eval failure did not emit an error: {:#?}",
-                                                 reported_err));
+                                        reported_err)),
+                Err(_) => (),
             }
             reported_err
         } else if def_id.is_local() {
