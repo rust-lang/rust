@@ -109,7 +109,9 @@ pub fn create_session(
     let codegen_backend = get_codegen_backend(&sess);
 
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    if sess.unstable_options() {
+        rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    }
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
     add_configuration(&mut cfg, &sess, &*codegen_backend);
