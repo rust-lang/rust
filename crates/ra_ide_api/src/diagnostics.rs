@@ -12,58 +12,23 @@ use ra_text_edit::{TextEdit, TextEditBuilder};
 use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit, db::RootDatabase};
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
-    let syntax = db.parse(file_id);
+    let source_file = db.parse(file_id);
+    let mut res = Vec::new();
 
-    let mut res = syntax_diagnostics(file_id, &syntax);
+    syntax_errors(&mut res, &source_file);
+
+    for node in source_file.syntax().descendants() {
+        check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
+        check_struct_shorthand_initialization(&mut res, file_id, node);
+    }
+
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
-        for (name_node, problem) in m.problems(db) {
-            let source_root = db.file_source_root(file_id);
-            let diag = match problem {
-                Problem::UnresolvedModule { candidate } => {
-                    let create_file =
-                        FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
-                    let fix = SourceChange {
-                        label: "create module".to_string(),
-                        source_file_edits: Vec::new(),
-                        file_system_edits: vec![create_file],
-                        cursor_position: None,
-                    };
-                    Diagnostic {
-                        range: name_node.range(),
-                        message: "unresolved module".to_string(),
-                        severity: Severity::Error,
-                        fix: Some(fix),
-                    }
-                }
-                Problem::NotDirOwner { move_to, candidate } => {
-                    let move_file = FileSystemEdit::MoveFile {
-                        src: file_id,
-                        dst_source_root: source_root,
-                        dst_path: move_to.clone(),
-                    };
-                    let create_file =
-                        FileSystemEdit::CreateFile { source_root, path: move_to.join(candidate) };
-                    let fix = SourceChange {
-                        label: "move file and create module".to_string(),
-                        source_file_edits: Vec::new(),
-                        file_system_edits: vec![move_file, create_file],
-                        cursor_position: None,
-                    };
-                    Diagnostic {
-                        range: name_node.range(),
-                        message: "can't declare module at this location".to_string(),
-                        severity: Severity::Error,
-                        fix: Some(fix),
-                    }
-                }
-            };
-            res.push(diag)
-        }
+        check_module(&mut res, db, file_id, m);
     };
     res
 }
 
-fn syntax_diagnostics(file_id: FileId, file: &SourceFile) -> Vec<Diagnostic> {
+fn syntax_errors(acc: &mut Vec<Diagnostic>, source_file: &SourceFile) {
     fn location_to_range(location: Location) -> TextRange {
         match location {
             Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
@@ -71,28 +36,17 @@ fn syntax_diagnostics(file_id: FileId, file: &SourceFile) -> Vec<Diagnostic> {
         }
     }
 
-    let mut errors: Vec<Diagnostic> = file
-        .errors()
-        .into_iter()
-        .map(|err| Diagnostic {
-            range: location_to_range(err.location()),
-            message: format!("Syntax Error: {}", err),
-            severity: Severity::Error,
-            fix: None,
-        })
-        .collect();
-
-    for node in file.syntax().descendants() {
-        check_unnecessary_braces_in_use_statement(file_id, &mut errors, node);
-        check_struct_shorthand_initialization(file_id, &mut errors, node);
-    }
-
-    errors
+    acc.extend(source_file.errors().into_iter().map(|err| Diagnostic {
+        range: location_to_range(err.location()),
+        message: format!("Syntax Error: {}", err),
+        severity: Severity::Error,
+        fix: None,
+    }));
 }
 
 fn check_unnecessary_braces_in_use_statement(
-    file_id: FileId,
     acc: &mut Vec<Diagnostic>,
+    file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node)?;
@@ -140,8 +94,8 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
 }
 
 fn check_struct_shorthand_initialization(
-    file_id: FileId,
     acc: &mut Vec<Diagnostic>,
+    file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
     let struct_lit = ast::StructLit::cast(node)?;
@@ -173,19 +127,70 @@ fn check_struct_shorthand_initialization(
     Some(())
 }
 
+fn check_module(
+    acc: &mut Vec<Diagnostic>,
+    db: &RootDatabase,
+    file_id: FileId,
+    module: hir::Module,
+) {
+    let source_root = db.file_source_root(file_id);
+    for (name_node, problem) in module.problems(db) {
+        let diag = match problem {
+            Problem::UnresolvedModule { candidate } => {
+                let create_file =
+                    FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
+                let fix = SourceChange {
+                    label: "create module".to_string(),
+                    source_file_edits: Vec::new(),
+                    file_system_edits: vec![create_file],
+                    cursor_position: None,
+                };
+                Diagnostic {
+                    range: name_node.range(),
+                    message: "unresolved module".to_string(),
+                    severity: Severity::Error,
+                    fix: Some(fix),
+                }
+            }
+            Problem::NotDirOwner { move_to, candidate } => {
+                let move_file = FileSystemEdit::MoveFile {
+                    src: file_id,
+                    dst_source_root: source_root,
+                    dst_path: move_to.clone(),
+                };
+                let create_file =
+                    FileSystemEdit::CreateFile { source_root, path: move_to.join(candidate) };
+                let fix = SourceChange {
+                    label: "move file and create module".to_string(),
+                    source_file_edits: Vec::new(),
+                    file_system_edits: vec![move_file, create_file],
+                    cursor_position: None,
+                };
+                Diagnostic {
+                    range: name_node.range(),
+                    message: "can't declare module at this location".to_string(),
+                    severity: Severity::Error,
+                    fix: Some(fix),
+                }
+            }
+        };
+        acc.push(diag)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use test_utils::assert_eq_text;
 
     use super::*;
 
-    type DiagnosticChecker = fn(FileId, &mut Vec<Diagnostic>, &SyntaxNode) -> Option<()>;
+    type DiagnosticChecker = fn(&mut Vec<Diagnostic>, FileId, &SyntaxNode) -> Option<()>;
 
     fn check_not_applicable(code: &str, func: DiagnosticChecker) {
         let file = SourceFile::parse(code);
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
-            func(FileId(0), &mut diagnostics, node);
+            func(&mut diagnostics, FileId(0), node);
         }
         assert!(diagnostics.is_empty());
     }
@@ -194,7 +199,7 @@ mod tests {
         let file = SourceFile::parse(before);
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
-            func(FileId(0), &mut diagnostics, node);
+            func(&mut diagnostics, FileId(0), node);
         }
         let diagnostic =
             diagnostics.pop().unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
