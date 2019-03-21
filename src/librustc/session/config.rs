@@ -426,6 +426,9 @@ top_level_options!(
         // try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
 
+        // Replaces bodies with loops
+        everybody_loops: bool [TRACKED],
+
         // Specifications of codegen units / ThinLTO which are forced as a
         // result of parsing command line options. These are not necessarily
         // what rustc was invoked with, but massaged a bit to agree with
@@ -630,6 +633,7 @@ impl Default for Options {
             unstable_features: UnstableFeatures::Disallow,
             debug_assertions: true,
             actually_rustdoc: false,
+            everybody_loops: false,
             cli_forced_codegen_units: None,
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
@@ -2449,6 +2453,7 @@ pub fn build_session_options_and_crate_config(
             unstable_features: UnstableFeatures::from_environment(),
             debug_assertions,
             actually_rustdoc: false,
+            everybody_loops: false,
             cli_forced_codegen_units: codegen_units,
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,

@@ -77,15 +77,13 @@ pub fn run(options: Options) -> i32 {
     let display_warnings = options.display_warnings;
 
     let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
-        let mut global_ctxt = compiler.global_ctxt()?.take();
-
-        global_ctxt.enter(|tcx| {
+        compiler.enter(|tcx| {
             let lower_to_hir = tcx.lower_ast_to_hir(())?;
 
             let mut opts = scrape_test_config(lower_to_hir.forest.krate());
             opts.display_warnings |= options.display_warnings;
             let mut collector = Collector::new(
-                compiler.crate_name()?.peek().to_string(),
+                tcx.crate_name(LOCAL_CRATE).to_string(),
                 options.cfgs,
                 options.libs,
                 options.codegen_options,

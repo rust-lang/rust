@@ -30,7 +30,7 @@ pub trait CodegenBackend {
     fn print_version(&self) {}
     fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync + Send>;
     fn provide(&self, _providers: &mut Providers<'_>);
     fn provide_extern(&self, _providers: &mut Providers<'_>);
     fn codegen_crate<'tcx>(

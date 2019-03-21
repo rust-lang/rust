@@ -7,17 +7,15 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
 use rustc::hir::print as pprust_hir;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::session::Session;
-use rustc::session::config::Input;
+use rustc::session::{Session, early_error};
+use rustc::session::config::{self, Input};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_interface::util::ReplaceBodyWithLoop;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
-use syntax::mut_visit::MutVisitor;
 use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax_pos::FileName;
@@ -96,7 +94,7 @@ impl PpMode {
     }
 }
 
-pub fn parse_pretty(sess: &Session,
+pub fn parse_pretty(opts: &mut config::Options,
                     name: &str,
                     extended: bool)
                     -> (PpMode, Option<UserIdentifiedItem>) {
@@ -106,7 +104,10 @@ pub fn parse_pretty(sess: &Session,
     let first = match (first, extended) {
         ("normal", _) => PpmSource(PpmNormal),
         ("identified", _) => PpmSource(PpmIdentified),
-        ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
+        ("everybody_loops", true) => {
+            opts.everybody_loops = true;
+            PpmSource(PpmEveryBodyLoops)
+        },
         ("expanded", _) => PpmSource(PpmExpanded),
         ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
         ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
@@ -120,16 +121,26 @@ pub fn parse_pretty(sess: &Session,
         ("flowgraph,unlabelled", true) => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
         _ => {
             if extended {
-                sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
-                                     `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
-                                     `identified`, `expanded,identified`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
-                                     `mir` or `mir-cfg`; got {}",
-                                    name));
+                early_error(
+                    opts.error_format,
+                    &format!(
+                        "argument to `unpretty` must be one of `normal`, \
+                        `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
+                        `identified`, `expanded,identified`, `everybody_loops`, \
+                        `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
+                        `mir` or `mir-cfg`; got {}",
+                        name,
+                    )
+                );
             } else {
-                sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
-                                     `identified`, or `expanded,identified`; got {}",
-                                    name));
+                early_error(
+                    opts.error_format,
+                    &format!(
+                        "argument to `pretty` must be one of `normal`, `expanded`, \
+                        `identified`, or `expanded,identified`; got {}",
+                        name,
+                    )
+                );
             }
         }
     };
@@ -678,12 +689,6 @@ fn print_flowgraph<'tcx, W: Write>(
             io::Error::new(io::ErrorKind::Other,
                            format!("graphviz::render failed: {}", ioerr))
         })
-    }
-}
-
-pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
-    if let PpmSource(PpmEveryBodyLoops) = ppm {
-        ReplaceBodyWithLoop::new(sess).visit_crate(krate);
     }
 }
 

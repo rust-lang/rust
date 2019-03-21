@@ -40,7 +40,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<MetadataLoader + Sync + Send> {
         Box::new(NoLlvmMetadataLoader)
     }
 

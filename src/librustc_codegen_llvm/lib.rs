@@ -265,7 +265,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync + Send> {
         box metadata::LlvmMetadataLoader
     }
 

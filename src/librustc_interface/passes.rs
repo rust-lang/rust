@@ -68,16 +68,23 @@ use std::sync::Arc;
 use std::mem;
 use std::ops::Generator;
 
-pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
+fn parse(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<Lrc<Steal<ast::Crate>>> {
+    let sess = tcx.sess;
     sess.diagnostic()
         .set_continue_after_error(sess.opts.debugging_opts.continue_parse_after_error);
     sess.profiler(|p| p.start_activity("parsing"));
-    let krate = time(sess, "parsing", || match *input {
+    let krate = time(sess, "parsing", || match tcx.io.input {
         Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
         Input::Str {
             ref input,
             ref name,
         } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
+    }).map_err(|mut parse_error| {
+        parse_error.emit();
+        ErrorReported
     })?;
     sess.profiler(|p| p.end_activity("parsing"));
 
@@ -103,7 +110,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
         hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
     }
 
-    Ok(krate)
+    Ok(Lrc::new(Steal::new(krate)))
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
@@ -122,17 +129,17 @@ fn expand_macros(
     tcx: TyCtxt<'_>,
     _: (),
 ) -> Result<Lrc<ty::ExpansionResult>> {
-    let (krate, plugin_info) = tcx.ast_crate.steal();
+    let (krate, plugin_info) = tcx.register_plugins(())?.steal();
     let sess = tcx.sess_rc.clone();
-    let cstore_rc: Box<dyn Any> = tcx.cstore_rc.steal();
-    let cstore = cstore_rc.downcast::<Lrc<CStore>>().unwrap();
+    let cstore_rc: &dyn Any = tcx.cstore_rc;
+    let cstore = (*cstore_rc).downcast_ref::<Lrc<CStore>>().unwrap().clone();
 
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let crate_name = tcx.crate_name.to_string();
+    let crate_name = tcx.early_crate_name(())?.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
         let mut crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
@@ -223,13 +230,16 @@ impl BoxedResolver {
     }
 }
 
-pub fn register_plugins<'a>(
-    compiler: &Compiler,
-    sess: &'a Session,
-    cstore: &'a CStore,
-    mut krate: ast::Crate,
-    crate_name: &str,
-) -> Result<(ast::Crate, ty::PluginInfo)> {
+fn register_plugins(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<Lrc<Steal<(ast::Crate, ty::PluginInfo)>>> {
+    let crate_name = tcx.early_crate_name(())?.as_str();
+    let mut krate = tcx.parse(())?.steal();
+    let cstore_rc: &dyn Any = tcx.cstore_rc;
+    let cstore = (*cstore_rc).downcast_ref::<Lrc<CStore>>().unwrap();
+    let sess = tcx.sess;
+
     krate = time(sess, "attributes injection", || {
         syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
     });
@@ -262,9 +272,6 @@ pub fn register_plugins<'a>(
         });
     }
 
-    // If necessary, compute the dependency graph (in the background).
-    compiler.dep_graph_future().ok();
-
     time(sess, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
     });
@@ -279,7 +286,7 @@ pub fn register_plugins<'a>(
             sess,
             &cstore,
             &krate,
-            crate_name,
+            &crate_name,
             Some(sess.opts.debugging_opts.extra_plugins.clone()),
         )
     });
@@ -333,10 +340,10 @@ pub fn register_plugins<'a>(
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
     *sess.plugin_attributes.borrow_mut() = attributes.clone();
 
-    Ok((krate, ty::PluginInfo {
+    Ok(Lrc::new(Steal::new((krate, ty::PluginInfo {
         syntax_exts,
         attributes,
-    }))
+    }))))
 }
 
 fn configure_and_expand_inner<'a>(
@@ -458,7 +465,7 @@ fn configure_and_expand_inner<'a>(
 
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
-    if sess.opts.actually_rustdoc {
+    if sess.opts.actually_rustdoc || sess.opts.everybody_loops {
         util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
@@ -781,6 +788,7 @@ fn prepare_outputs(
     tcx: TyCtxt<'_>,
     _: (),
 ) -> Result<Arc<OutputFilenames>> {
+    let crate_name = tcx.early_crate_name(())?.as_str();
     // FIXME: rustdoc passes &[] instead of &tcx.ast_krate.borrow().attrs here
     let outputs = util::build_output_filenames(
         &tcx.io.input,
@@ -794,7 +802,7 @@ fn prepare_outputs(
         tcx.sess,
         &outputs,
         tcx.io.output_file.is_some(),
-        &tcx.crate_name.as_str(),
+        &crate_name,
     );
 
     // Ensure the source file isn't accidentally overwritten during compilation.
@@ -837,12 +845,32 @@ fn prepare_outputs(
     Ok(Arc::new(outputs))
 }
 
+fn early_crate_name(
+    tcx: TyCtxt<'_>,
+    _: (),
+) -> Result<Symbol> {
+    let krate = tcx.parse(())?;
+    let krate = krate.borrow();
+    let result = match tcx.crate_name_override {
+        Some(ref crate_name) => crate_name.clone(),
+        None => rustc_codegen_utils::link::find_crate_name(
+            Some(tcx.sess),
+            &krate.attrs,
+            &tcx.io.input,
+        ),
+    };
+    Ok(Symbol::intern(&result))
+}
+
 pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     providers.hir_map = hir_map;
     providers.lower_ast_to_hir = lower_ast_to_hir;
     providers.prepare_outputs = prepare_outputs;
     providers.expand_macros = expand_macros;
+    providers.register_plugins = register_plugins;
+    providers.parse = parse;
+    providers.early_crate_name = early_crate_name;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
@@ -889,16 +917,13 @@ impl BoxedGlobalCtxt {
 pub fn create_global_ctxt(
     compiler: &Compiler,
     dep_graph: DepGraph,
-    ast_krate: ast::Crate,
-    plugin_info: ty::PluginInfo,
     io: InputsAndOutputs,
     tx: mpsc::Sender<Box<dyn Any + Send>>,
-    crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
     let cstore = compiler.cstore.clone();
     let codegen_backend = compiler.codegen_backend().clone();
-    let crate_name = crate_name.to_string();
+    let crate_name = compiler.crate_name.clone();
 
     let ((), result) = BoxedGlobalCtxt::new(static move || {
         let sess = &sess;
@@ -919,20 +944,16 @@ pub fn create_global_ctxt(
         default_provide_extern(&mut extern_providers);
         codegen_backend.provide_extern(&mut extern_providers);
 
-        let cstore_rc: Lrc<CStore> = cstore.clone();
-
         let gcx = TyCtxt::create_global_ctxt(
             sess,
             &**cstore,
-            Box::new(cstore_rc),
+            cstore,
             local_providers,
             extern_providers,
             &arenas,
             dep_graph,
-            ast_krate,
-            plugin_info,
             query_result_on_disk_cache,
-            &crate_name,
+            crate_name,
             tx,
             io,
         );
@@ -969,6 +990,10 @@ fn hir_map<'tcx>(
 /// miscellaneous analysis passes on the crate.
 fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
+
+    // Cause HIR to be generated and mapped.
+    // Ensures fields like tcx.sess.crate_types are initialized.
+    tcx.hir();
 
     let sess = tcx.sess;
     let mut entry_point = None;

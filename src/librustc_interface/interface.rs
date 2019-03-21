@@ -7,6 +7,7 @@ use rustc::lint;
 use rustc::session::config::{self, Input, InputsAndOutputs};
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
+use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
@@ -56,6 +57,12 @@ impl Compiler {
     }
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.io.output_file
+    }
+    pub fn enter<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(TyCtxt<'_>) -> R
+    {
+        self.global_ctxt().unwrap().peek_mut().enter(f)
     }
 }
 

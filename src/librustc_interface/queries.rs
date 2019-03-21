@@ -85,9 +85,6 @@ impl<T> Default for Query<T> {
 #[derive(Default)]
 pub(crate) struct Queries {
     dep_graph_future: Query<Option<DepGraphFuture>>,
-    parse: Query<ast::Crate>,
-    crate_name: Query<String>,
-    register_plugins: Query<(ast::Crate, ty::PluginInfo)>,
     dep_graph: Query<DepGraph>,
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
@@ -104,48 +101,6 @@ impl Compiler {
             } else {
                 None
             })
-        })
-    }
-
-    pub fn parse(&self) -> Result<&Query<ast::Crate>> {
-        self.queries.parse.compute(|| {
-            passes::parse(self.session(), self.input()).map_err(
-                |mut parse_error| {
-                    parse_error.emit();
-                    ErrorReported
-                },
-            )
-        })
-    }
-
-    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, ty::PluginInfo)>> {
-        self.queries.register_plugins.compute(|| {
-            let crate_name = self.crate_name()?.peek().clone();
-            let krate = self.parse()?.take();
-
-            passes::register_plugins(
-                self,
-                self.session(),
-                self.cstore(),
-                krate,
-                &crate_name,
-            )
-        })
-    }
-
-    pub fn crate_name(&self) -> Result<&Query<String>> {
-        self.queries.crate_name.compute(|| {
-            let parse_result = self.parse()?;
-            let krate = parse_result.peek();
-            let result = match self.crate_name {
-                Some(ref crate_name) => crate_name.clone(),
-                None => rustc_codegen_utils::link::find_crate_name(
-                    Some(self.session()),
-                    &krate.attrs,
-                    self.input(),
-                ),
-            };
-            Ok(result)
         })
     }
 
@@ -176,17 +131,13 @@ impl Compiler {
 
     pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
         self.queries.global_ctxt.compute(|| {
-            let crate_name = self.crate_name()?.peek().clone();
-            let (krate, plugin_info) = self.register_plugins()?.take();
             let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
                 self.dep_graph()?.peek().clone(),
-                krate,
-                plugin_info,
                 self.io.clone(),
-                tx,
-                &crate_name))
+                tx
+            ))
         })
     }
 
