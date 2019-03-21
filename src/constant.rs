@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc::mir::interpret::{
     read_target_uint, AllocId, AllocKind, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
-use rustc::ty::{Const, LazyConst};
+use rustc::ty::Const;
 use rustc_mir::interpret::{
     EvalContext, ImmTy, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
     StackPopCleanup,
@@ -76,18 +76,18 @@ pub fn trans_constant<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = fx.monomorphize(&constant.literal);
-    let const_ = force_eval_const(fx, const_);
+    let const_ = force_eval_const(fx, &constant.literal);
     trans_const_value(fx, const_)
 }
 
 pub fn force_eval_const<'a, 'tcx: 'a>(
-    fx: &FunctionCx<'a, 'tcx, impl Backend>,
-    const_: &'tcx LazyConst<'tcx>,
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    const_: &'tcx Const,
 ) -> Const<'tcx> {
-    match *const_ {
-        LazyConst::Unevaluated(def_id, ref substs) => {
+    match const_.val {
+        ConstValue::Unevaluated(def_id, ref substs) => {
             let param_env = ParamEnv::reveal_all();
+            let substs = fx.monomorphize(substs);
             let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
             let cid = GlobalId {
                 instance,
@@ -95,7 +95,7 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
             };
             fx.tcx.const_eval(param_env.and(cid)).unwrap()
         }
-        LazyConst::Evaluated(const_) => const_,
+        _ => *fx.monomorphize(&const_),
     }
 }
 
@@ -152,7 +152,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
                 span: DUMMY_SP,
                 ty: const_.ty,
                 user_ty: None,
-                literal: fx.tcx.mk_lazy_const(LazyConst::Evaluated(const_)),
+                literal: fx.tcx.mk_const(const_),
             })),
             None,
         )?;
