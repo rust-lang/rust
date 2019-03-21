@@ -1356,20 +1356,6 @@ mod tests {
     }
 
     #[test]
-    fn read_to_cstring1() {
-        let test = "Example\0";
-        let string = CString::from_reader(test.as_bytes()).unwrap();
-        assert_eq!(string.as_bytes(), b"Example");
-    }
-
-    #[test]
-    fn read_to_cstring2() {
-        let test = "Example";
-        let result = CString::from_reader(test.as_bytes());
-        assert_eq!(result.is_err(), true);
-    }
-
-    #[test]
     fn simple() {
         let s = CString::new("1234").unwrap();
         assert_eq!(s.as_bytes(), b"1234");
