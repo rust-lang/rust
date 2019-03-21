@@ -101,7 +101,7 @@ pub const fn identity<T>(x: T) -> T { x }
 /// Used to do a cheap reference-to-reference conversion.
 /// This trait is similar to [`AsMut`] which is used for converting between mutable references.
 /// If you need to do a costly conversion it is better to implement [`From`] with type
-/// ```&T``` or write a custom function.
+/// `&T` or write a custom function.
 ///
 ///
 /// `AsRef` is very similar to, but serves a slightly different purpose than [`Borrow`]:
@@ -126,8 +126,8 @@ pub const fn identity<T>(x: T) -> T { x }
 /// # Examples
 ///
 /// By using trait bounds we can accept arguments of different types as long as they can be
-/// converted a the specified type ```T```.
-/// For example: By creating a generic function that takes an ```AsRef<str>``` we express that we
+/// converted a the specified type `T`.
+/// For example: By creating a generic function that takes an `AsRef<str>` we express that we
 /// want to accept all references that can be converted to &str as an argument.
 /// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
 ///
@@ -155,7 +155,7 @@ pub trait AsRef<T: ?Sized> {
 /// Used to do a cheap mutable-to-mutable reference conversion.
 /// This trait is similar to [`AsRef`] but used for converting between mutable
 /// references. If you need to do a costly conversion it is better to
-/// implement [`From`] with type ```&mut T``` or write a custom function.
+/// implement [`From`] with type `&mut T` or write a custom function.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
@@ -171,11 +171,11 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Examples
 ///
-/// Using ```AsMut``` as trait bound for a generic function we can accept all mutable references
-/// that can be converted to type ```&mut T```. Because [`Box<T>`] implements ```AsMut<T>``` we can
-/// write a function ```add_one```that takes all arguments that can be converted to ```&mut u64```.
-/// Because [`Box<T>`] implements ```AsMut<T>``` ```add_one``` accepts arguments of type
-/// ```&mut Box<u64>``` as well:
+/// Using `AsMut` as trait bound for a generic function we can accept all mutable references
+/// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
+/// write a function `add_one`that takes all arguments that can be converted to `&mut u64`.
+/// Because [`Box<T>`] implements `AsMut<T>` `add_one` accepts arguments of type
+/// `&mut Box<u64>` as well:
 /// ```
 /// fn add_one<T: AsMut<u64>>(num: &mut T) {
 ///     *num.as_mut() += 1;
@@ -236,20 +236,20 @@ pub trait AsMut<T: ?Sized> {
 /// }
 /// ```
 ///
-/// It is important to understand that ```Into``` does not provide a [`From`] implementation
-/// (as [`From`] does with ```Into```). Therefore, you should always try to implement [`From`]
+/// It is important to understand that `Into` does not provide a [`From`] implementation
+/// (as [`From`] does with `Into`). Therefore, you should always try to implement [`From`]
 /// and then fall back to `Into` if [`From`] can't be implemented.
-/// Prefer using ```Into``` over ```From``` when specifying trait bounds on a generic function
-/// to ensure that types that only implement ```Into``` can be used as well.
+/// Prefer using `Into` over [`From`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement `Into` can be used as well.
 ///
 /// # Examples
 ///
 /// [`String`] implements `Into<Vec<u8>>`:
 ///
 /// In order to express that we want a generic function to take all arguments that can be
-/// converted to a specified type ```T```, we can use a trait bound of ```Into<T>```.
-/// For example: The function ```is_hello``` takes all arguments that can be converted into a
-/// ```Vec<u8>```.
+/// converted to a specified type `T`, we can use a trait bound of `Into<T>`.
+/// For example: The function `is_hello` takes all arguments that can be converted into a
+/// `Vec<u8>`.
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -312,13 +312,13 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 ///
-/// While performing error handling it is often useful to implement ```From```
+/// While performing error handling it is often useful to implement `From`
 /// for your own error type. By converting underlying error types to our own custom error type
 /// that encapsulates the underlying error type, we can return a single error type
 /// without losing information on the underlying cause. The '?' operator automatically converts
-/// the underlying error type to our custom error type by calling ```Into<CliError>::into```
-/// which is automatically provided when implementing ```From```.
-/// The compiler then infers which implementation of ```Into``` should be used.
+/// the underlying error type to our custom error type by calling `Into<CliError>::into`
+/// which is automatically provided when implementing `From`.
+/// The compiler then infers which implementation of `Into` should be used.
 ///
 /// ```
 /// use std::fs;
