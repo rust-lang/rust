@@ -471,3 +471,7 @@ pub fn fold_abi<V: Fold + ?Sized>(_visitor: &mut V, _i: Abi) -> Abi {
         name: (_i.name).map(|it| _visitor.fold_lit_str(it)),
     }
 }
+
+// #3463
+x ! {()}
+x ! y {()}
