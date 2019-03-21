@@ -7,10 +7,9 @@
 //! - Implement the [`AsMut`] trait for cheap mutable-to-mutable conversions
 //! - Implement the [`From`] trait for consuming value-to-value conversions
 //! - Implement the [`Into`] trait for consuming value-to-value conversions to types
-//! outside the current crate
+//!   outside the current crate
 //! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`],
-//! but should be implemented when
-//! the conversion can fail.
+//!   but should be implemented when the conversion can fail.
 //!
 //! The traits in this module are often used as trait bounds for generic functions such that to
 //! arguments of multiple types are supported. See the documentation of each trait for examples.
@@ -242,7 +241,6 @@ pub trait AsMut<T: ?Sized> {
 /// and then fall back to `Into` if [`From`] can't be implemented.
 /// Prefer using ```Into``` over ```From``` when specifying trait bounds on a generic function
 /// to ensure that types that only implement ```Into``` can be used as well.
-///
 ///
 /// # Examples
 ///
