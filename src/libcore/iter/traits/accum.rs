@@ -302,16 +302,13 @@ where
     ///
     /// # Examples
     ///
-    /// This sums up every integer in a vector, rejecting the sum if a negative
-    /// element is encountered:
+    /// This sums up the position of the character 'a' in a vector of strings,
+    /// if a word did not have the character 'a' the operation returns `None`:
     ///
     /// ```
-    /// let v = vec![1, 2];
-    /// let res: Option<i32> = v.iter().map(|&x: &i32|
-    ///     if x < 0 { None }
-    ///     else { Some(x) }
-    /// ).sum();
-    /// assert_eq!(res, Some(3));
+    /// let words = vec!["have", "a", "great", "day"];
+    /// let total: Option<usize> = words.iter().map(|w| w.find('a')).sum();
+    /// assert_eq!(total, Some(5));
     /// ```
     fn sum<I>(iter: I) -> Option<T>
     where
