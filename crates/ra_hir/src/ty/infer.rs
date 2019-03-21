@@ -38,7 +38,7 @@ use crate::{
     resolve::{Resolver, Resolution},
     nameres::Namespace
 };
-use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeName};
+use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
@@ -278,11 +278,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         match ty {
             Ty::Unknown => self.new_type_var(),
             Ty::Apply(ApplicationTy {
-                name: TypeName::Int(primitive::UncertainIntTy::Unknown),
+                name: TypeCtor::Int(primitive::UncertainIntTy::Unknown),
                 ..
             }) => self.new_integer_var(),
             Ty::Apply(ApplicationTy {
-                name: TypeName::Float(primitive::UncertainFloatTy::Unknown),
+                name: TypeCtor::Float(primitive::UncertainFloatTy::Unknown),
                 ..
             }) => self.new_float_var(),
             _ => ty,
@@ -629,7 +629,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .collect::<Vec<_>>()
                     .into();
 
-                Ty::apply(TypeName::Tuple, Substs(inner_tys))
+                Ty::apply(TypeCtor::Tuple, Substs(inner_tys))
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.as_reference() {
@@ -642,7 +642,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => &Ty::Unknown,
                 };
                 let subty = self.infer_pat(*pat, expectation, default_bm);
-                Ty::apply_one(TypeName::Ref(*mutability), subty.into())
+                Ty::apply_one(TypeCtor::Ref(*mutability), subty.into())
             }
             Pat::TupleStruct { path: ref p, args: ref subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
@@ -670,7 +670,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        Ty::apply_one(TypeName::Ref(mutability), inner_ty.clone().into())
+                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone().into())
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
@@ -725,7 +725,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Missing => Ty::Unknown,
             Expr::If { condition, then_branch, else_branch } => {
                 // if let is desugared to match, so this is always simple if
-                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeName::Bool)));
+                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 let then_ty = self.infer_expr(*then_branch, expected);
                 match else_branch {
                     Some(else_branch) => {
@@ -742,11 +742,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Loop { body } => {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 // TODO handle break with value
-                Ty::simple(TypeName::Never)
+                Ty::simple(TypeCtor::Never)
             }
             Expr::While { condition, body } => {
                 // while let is desugared to a match loop, so this is always simple while
-                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeName::Bool)));
+                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 Ty::unit()
             }
@@ -777,11 +777,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let (param_tys, ret_ty) = match &callee_ty {
                     Ty::Apply(a_ty) => match a_ty.name {
-                        TypeName::FnPtr => {
+                        TypeCtor::FnPtr => {
                             let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
                             (sig.params().to_vec(), sig.ret().clone())
                         }
-                        TypeName::FnDef(def) => {
+                        TypeCtor::FnDef(def) => {
                             let sig = self.db.callable_item_signature(def);
                             let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
                             let param_tys = sig
@@ -824,7 +824,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
                     Ty::Apply(a_ty) => match a_ty.name {
-                        TypeName::FnPtr => {
+                        TypeCtor::FnPtr => {
                             let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
                             if !sig.params().is_empty() {
                                 (
@@ -836,7 +836,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                                 (Ty::Unknown, Vec::new(), sig.ret().clone())
                             }
                         }
-                        TypeName::FnDef(def) => {
+                        TypeCtor::FnDef(def) => {
                             let sig = self.db.callable_item_signature(def);
                             let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
 
@@ -858,7 +858,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // Apply autoref so the below unification works correctly
                 let actual_receiver_ty = match expected_receiver_ty.as_reference() {
                     Some((_, mutability)) => {
-                        Ty::apply_one(TypeName::Ref(mutability), derefed_receiver_ty)
+                        Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty)
                     }
                     _ => derefed_receiver_ty,
                 };
@@ -885,7 +885,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
                             guard_expr,
-                            &Expectation::has_type(Ty::simple(TypeName::Bool)),
+                            &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
                     self.infer_expr(arm.expr, &expected);
@@ -898,19 +898,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
                 self.infer_path_expr(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
-            Expr::Continue => Ty::simple(TypeName::Never),
+            Expr::Continue => Ty::simple(TypeCtor::Never),
             Expr::Break { expr } => {
                 if let Some(expr) = expr {
                     // TODO handle break with value
                     self.infer_expr(*expr, &Expectation::none());
                 }
-                Ty::simple(TypeName::Never)
+                Ty::simple(TypeCtor::Never)
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()));
                 }
-                Ty::simple(TypeName::Never)
+                Ty::simple(TypeCtor::Never)
             }
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
@@ -933,11 +933,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
                         Ty::Apply(a_ty) => match a_ty.name {
-                            TypeName::Tuple => {
+                            TypeCtor::Tuple => {
                                 let i = name.to_string().parse::<usize>().ok();
                                 i.and_then(|i| a_ty.parameters.0.get(i).cloned())
                             }
-                            TypeName::Adt(AdtDef::Struct(s)) => {
+                            TypeCtor::Adt(AdtDef::Struct(s)) => {
                                 s.field(self.db, name).map(|field| {
                                     self.write_field_resolution(tgt_expr, field);
                                     field.ty(self.db).subst(&a_ty.parameters)
@@ -973,7 +973,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     };
                 // TODO reference coercions etc.
                 let inner_ty = self.infer_expr(*expr, &expectation);
-                Ty::apply_one(TypeName::Ref(*mutability), inner_ty)
+                Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
@@ -989,9 +989,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     UnaryOp::Neg => {
                         match &inner_ty {
                             Ty::Apply(a_ty) => match a_ty.name {
-                                TypeName::Int(primitive::UncertainIntTy::Unknown)
-                                | TypeName::Int(primitive::UncertainIntTy::Signed(..))
-                                | TypeName::Float(..) => inner_ty,
+                                TypeCtor::Int(primitive::UncertainIntTy::Unknown)
+                                | TypeCtor::Int(primitive::UncertainIntTy::Signed(..))
+                                | TypeCtor::Float(..) => inner_ty,
                                 _ => Ty::Unknown,
                             },
                             Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => {
@@ -1004,7 +1004,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     UnaryOp::Not => {
                         match &inner_ty {
                             Ty::Apply(a_ty) => match a_ty.name {
-                                TypeName::Bool | TypeName::Int(_) => inner_ty,
+                                TypeCtor::Bool | TypeCtor::Int(_) => inner_ty,
                                 _ => Ty::Unknown,
                             },
                             Ty::Infer(InferTy::IntVar(..)) => inner_ty,
@@ -1018,7 +1018,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Some(op) => {
                     let lhs_expectation = match op {
                         BinaryOp::BooleanAnd | BinaryOp::BooleanOr => {
-                            Expectation::has_type(Ty::simple(TypeName::Bool))
+                            Expectation::has_type(Ty::simple(TypeCtor::Bool))
                         }
                         _ => Expectation::none(),
                     };
@@ -1039,12 +1039,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
                 }
 
-                Ty::apply(TypeName::Tuple, Substs(ty_vec.into()))
+                Ty::apply(TypeCtor::Tuple, Substs(ty_vec.into()))
             }
             Expr::Array { exprs } => {
                 let elem_ty = match &expected.ty {
                     Ty::Apply(a_ty) => match a_ty.name {
-                        TypeName::Slice | TypeName::Array => {
+                        TypeCtor::Slice | TypeCtor::Array => {
                             Ty::clone(&a_ty.parameters.as_single())
                         }
                         _ => self.new_type_var(),
@@ -1056,23 +1056,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
                 }
 
-                Ty::apply_one(TypeName::Array, elem_ty)
+                Ty::apply_one(TypeCtor::Array, elem_ty)
             }
             Expr::Literal(lit) => match lit {
-                Literal::Bool(..) => Ty::simple(TypeName::Bool),
+                Literal::Bool(..) => Ty::simple(TypeCtor::Bool),
                 Literal::String(..) => {
-                    Ty::apply_one(TypeName::Ref(Mutability::Shared), Ty::simple(TypeName::Str))
+                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), Ty::simple(TypeCtor::Str))
                 }
                 Literal::ByteString(..) => {
-                    let byte_type = Ty::simple(TypeName::Int(primitive::UncertainIntTy::Unsigned(
+                    let byte_type = Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Unsigned(
                         primitive::UintTy::U8,
                     )));
-                    let slice_type = Ty::apply_one(TypeName::Slice, byte_type);
-                    Ty::apply_one(TypeName::Ref(Mutability::Shared), slice_type)
+                    let slice_type = Ty::apply_one(TypeCtor::Slice, byte_type);
+                    Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
                 }
-                Literal::Char(..) => Ty::simple(TypeName::Char),
-                Literal::Int(_v, ty) => Ty::simple(TypeName::Int(*ty)),
-                Literal::Float(_v, ty) => Ty::simple(TypeName::Float(*ty)),
+                Literal::Char(..) => Ty::simple(TypeCtor::Char),
+                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int(*ty)),
+                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float(*ty)),
             },
         };
         // use a new type variable if we got Ty::Unknown here
@@ -1208,9 +1208,9 @@ impl InferTy {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
             InferTy::IntVar(..) => {
-                Ty::simple(TypeName::Int(primitive::UncertainIntTy::Signed(primitive::IntTy::I32)))
+                Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Signed(primitive::IntTy::I32)))
             }
-            InferTy::FloatVar(..) => Ty::simple(TypeName::Float(
+            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(
                 primitive::UncertainFloatTy::Known(primitive::FloatTy::F64),
             )),
         }

@@ -1,4 +1,4 @@
-use hir::{Ty, AdtDef, TypeName};
+use hir::{Ty, AdtDef, TypeCtor};
 
 use crate::completion::{CompletionContext, Completions};
 
@@ -25,13 +25,13 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
             Ty::Apply(a_ty) => match a_ty.name {
-                TypeName::Adt(AdtDef::Struct(s)) => {
+                TypeCtor::Adt(AdtDef::Struct(s)) => {
                     for field in s.fields(ctx.db) {
                         acc.add_field(ctx, field, &a_ty.parameters);
                     }
                 }
                 // TODO unions
-                TypeName::Tuple => {
+                TypeCtor::Tuple => {
                     for (i, ty) in a_ty.parameters.iter().enumerate() {
                         acc.add_pos_field(ctx, i, ty);
                     }

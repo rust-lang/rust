@@ -21,7 +21,7 @@ pub(crate) use infer::{infer, InferenceResult, InferTy};
 use display::{HirDisplay, HirFormatter};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum TypeName {
+pub enum TypeCtor {
     /// The primitive boolean type. Written as `bool`.
     Bool,
 
@@ -87,7 +87,7 @@ pub enum TypeName {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ApplicationTy {
-    pub name: TypeName,
+    pub name: TypeCtor,
     pub parameters: Substs,
 }
 
@@ -191,17 +191,17 @@ impl FnSig {
 }
 
 impl Ty {
-    pub fn simple(name: TypeName) -> Ty {
+    pub fn simple(name: TypeCtor) -> Ty {
         Ty::Apply(ApplicationTy { name, parameters: Substs::empty() })
     }
-    pub fn apply_one(name: TypeName, param: Ty) -> Ty {
+    pub fn apply_one(name: TypeCtor, param: Ty) -> Ty {
         Ty::Apply(ApplicationTy { name, parameters: Substs::single(param) })
     }
-    pub fn apply(name: TypeName, parameters: Substs) -> Ty {
+    pub fn apply(name: TypeCtor, parameters: Substs) -> Ty {
         Ty::Apply(ApplicationTy { name, parameters })
     }
     pub fn unit() -> Self {
-        Ty::apply(TypeName::Tuple, Substs::empty())
+        Ty::apply(TypeCtor::Tuple, Substs::empty())
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -236,7 +236,7 @@ impl Ty {
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeName::Ref(mutability), parameters }) => {
+            Ty::Apply(ApplicationTy { name: TypeCtor::Ref(mutability), parameters }) => {
                 Some((parameters.as_single(), *mutability))
             }
             _ => None,
@@ -245,7 +245,7 @@ impl Ty {
 
     pub fn as_adt(&self) -> Option<(AdtDef, &Substs)> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeName::Adt(adt_def), parameters }) => {
+            Ty::Apply(ApplicationTy { name: TypeCtor::Adt(adt_def), parameters }) => {
                 Some((*adt_def, parameters))
             }
             _ => None,
@@ -254,7 +254,7 @@ impl Ty {
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { name: TypeName::Tuple, parameters }) => Some(parameters),
+            Ty::Apply(ApplicationTy { name: TypeCtor::Tuple, parameters }) => Some(parameters),
             _ => None,
         }
     }
@@ -262,8 +262,8 @@ impl Ty {
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.name {
-                TypeName::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
-                TypeName::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
+                TypeCtor::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
+                TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 _ => None,
             },
             _ => None,
@@ -318,25 +318,25 @@ impl HirDisplay for &Ty {
 impl HirDisplay for ApplicationTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self.name {
-            TypeName::Bool => write!(f, "bool")?,
-            TypeName::Char => write!(f, "char")?,
-            TypeName::Int(t) => write!(f, "{}", t)?,
-            TypeName::Float(t) => write!(f, "{}", t)?,
-            TypeName::Str => write!(f, "str")?,
-            TypeName::Slice | TypeName::Array => {
+            TypeCtor::Bool => write!(f, "bool")?,
+            TypeCtor::Char => write!(f, "char")?,
+            TypeCtor::Int(t) => write!(f, "{}", t)?,
+            TypeCtor::Float(t) => write!(f, "{}", t)?,
+            TypeCtor::Str => write!(f, "str")?,
+            TypeCtor::Slice | TypeCtor::Array => {
                 let t = self.parameters.as_single();
                 write!(f, "[{}]", t.display(f.db))?;
             }
-            TypeName::RawPtr(m) => {
+            TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();
                 write!(f, "*{}{}", m.as_keyword_for_ptr(), t.display(f.db))?;
             }
-            TypeName::Ref(m) => {
+            TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
                 write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
             }
-            TypeName::Never => write!(f, "!")?,
-            TypeName::Tuple => {
+            TypeCtor::Never => write!(f, "!")?,
+            TypeCtor::Tuple => {
                 let ts = &self.parameters;
                 if ts.0.len() == 1 {
                     write!(f, "({},)", ts.0[0].display(f.db))?;
@@ -346,13 +346,13 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ")")?;
                 }
             }
-            TypeName::FnPtr => {
+            TypeCtor::FnPtr => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
                 write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
-            TypeName::FnDef(def) => {
+            TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def);
                 let name = match def {
                     CallableDef::Function(ff) => ff.name(f.db),
@@ -372,7 +372,7 @@ impl HirDisplay for ApplicationTy {
                 f.write_joined(sig.params(), ", ")?;
                 write!(f, ") -> {}", sig.ret().display(f.db))?;
             }
-            TypeName::Adt(def_id) => {
+            TypeCtor::Adt(def_id) => {
                 let name = match def_id {
                     AdtDef::Struct(s) => s.name(f.db),
                     AdtDef::Enum(e) => e.name(f.db),

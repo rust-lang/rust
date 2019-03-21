@@ -1,5 +1,5 @@
 use crate::{ ty::ApplicationTy, expr::BinaryOp};
-use super::{Ty, TypeName, InferTy};
+use super::{Ty, TypeCtor, InferTy};
 
 pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
     match op {
@@ -10,7 +10,7 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::LesserEqualTest
         | BinaryOp::GreaterEqualTest
         | BinaryOp::LesserTest
-        | BinaryOp::GreaterTest => Ty::simple(TypeName::Bool),
+        | BinaryOp::GreaterTest => Ty::simple(TypeCtor::Bool),
         BinaryOp::Assignment
         | BinaryOp::AddAssign
         | BinaryOp::SubAssign
@@ -33,7 +33,7 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match rhs_ty {
             Ty::Apply(ApplicationTy { name, .. }) => match name {
-                TypeName::Int(..) | TypeName::Float(..) => rhs_ty,
+                TypeCtor::Int(..) | TypeCtor::Float(..) => rhs_ty,
                 _ => Ty::Unknown,
             },
             Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => rhs_ty,
@@ -45,14 +45,14 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
 
 pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
     match op {
-        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::simple(TypeName::Bool),
+        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => Ty::simple(TypeCtor::Bool),
         BinaryOp::Assignment | BinaryOp::EqualityTest => match lhs_ty {
             Ty::Apply(ApplicationTy { name, .. }) => match name {
-                TypeName::Int(..)
-                | TypeName::Float(..)
-                | TypeName::Str
-                | TypeName::Char
-                | TypeName::Bool => lhs_ty,
+                TypeCtor::Int(..)
+                | TypeCtor::Float(..)
+                | TypeCtor::Str
+                | TypeCtor::Char
+                | TypeCtor::Bool => lhs_ty,
                 _ => Ty::Unknown,
             },
             Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => lhs_ty,
@@ -83,7 +83,7 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
         | BinaryOp::BitwiseOr
         | BinaryOp::BitwiseXor => match lhs_ty {
             Ty::Apply(ApplicationTy { name, .. }) => match name {
-                TypeName::Int(..) | TypeName::Float(..) => lhs_ty,
+                TypeCtor::Int(..) | TypeCtor::Float(..) => lhs_ty,
                 _ => Ty::Unknown,
             },
             Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => lhs_ty,

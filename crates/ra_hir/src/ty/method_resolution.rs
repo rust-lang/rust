@@ -10,7 +10,7 @@ use crate::{
     HirDatabase, Module, Crate, Name, Function, Trait,
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
-    ty::{Ty, TypeName},
+    ty::{Ty, TypeCtor},
     nameres::CrateModuleId,
 
 };
@@ -18,7 +18,7 @@ use crate::{
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TyFingerprint {
-    Apply(TypeName),
+    Apply(TypeCtor),
 }
 
 impl TyFingerprint {
@@ -112,7 +112,7 @@ impl CrateImplBlocks {
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.name {
-            TypeName::Adt(def_id) => def_id.krate(db),
+            TypeCtor::Adt(def_id) => def_id.krate(db),
             _ => None,
         },
         _ => None,
