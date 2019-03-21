@@ -91,3 +91,22 @@ pub fn spin_loop() {
         }
     }
 }
+
+/// A function that is opaque to the optimizer, to allow benchmarks to
+/// pretend to use outputs to assist in avoiding dead-code
+/// elimination.
+///
+/// This function is a no-op, and does not even read from `dummy`.
+#[cfg_attr(any(target_arch = "asmjs", target_arch = "wasm32"), inline(never))]
+#[unstable(feature = "test", issue = "27812")]
+pub fn black_box<T>(dummy: T) -> T {
+    #[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))] {
+        // we need to "use" the argument in some way LLVM can't
+        // introspect.
+        unsafe { asm!("" : : "r"(&dummy)) }
+        dummy
+    }
+    #[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))] {
+        dummy
+    }
+}
