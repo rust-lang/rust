@@ -6,8 +6,10 @@
 //! - Implement the [`AsRef`] trait for cheap reference-to-reference conversions
 //! - Implement the [`AsMut`] trait for cheap mutable-to-mutable conversions
 //! - Implement the [`From`] trait for consuming value-to-value conversions
-//! - Implement the [`Into`] trait for consuming value-to-value conversions to types outside the current crate
-//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`], but should be implemented when
+//! - Implement the [`Into`] trait for consuming value-to-value conversions to types
+//! outside the current crate
+//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`],
+//! but should be implemented when
 //! the conversion can fail.
 //!
 //! The traits in this module are often used as trait bounds for generic functions such that to
@@ -196,9 +198,10 @@ pub trait AsMut<T: ?Sized> {
 /// A value-to-value conversion that consumes the input value. The
 /// opposite of [`From`].
 ///
-/// One should only implement [`Into`] if a conversion to a type outside the current crate is required.
-/// Otherwise one should always prefer implementing [`From`] over [`Into`] because implementing [`From`] automatically
-/// provides one with a implementation of [`Into`] thanks to the blanket implementation in the standard library.
+/// One should only implement [`Into`] if a conversion to a type outside the current crate is
+/// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
+/// implementing [`From`] automatically provides one with a implementation of [`Into`]
+/// thanks to the blanket implementation in the standard library.
 /// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryInto`].
@@ -209,7 +212,8 @@ pub trait AsMut<T: ?Sized> {
 /// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// # Implementing `Into` for conversions to external types
-/// If the destination type is not part of the current crate then you can't implement [`From`] directly.
+/// If the destination type is not part of the current crate
+/// then you can't implement [`From`] directly.
 /// For example, take this code:
 ///
 /// ```compile_fail
@@ -233,8 +237,9 @@ pub trait AsMut<T: ?Sized> {
 /// }
 /// ```
 ///
-/// It is important to understand that ```Into``` does not provide a [`From`] implementation (as [`From`] does with ```Into```).
-/// Therefore, you should always try to implement [`From`] and then fall back to `Into` if [`From`] can't be implemented.
+/// It is important to understand that ```Into``` does not provide a [`From`] implementation
+/// (as [`From`] does with ```Into```). Therefore, you should always try to implement [`From`]
+/// and then fall back to `Into` if [`From`] can't be implemented.
 /// Prefer using ```Into``` over ```From``` when specifying trait bounds on a generic function
 /// to ensure that types that only implement ```Into``` can be used as well.
 ///
@@ -274,8 +279,9 @@ pub trait Into<T>: Sized {
 /// Used to do value-to-value conversions while consuming the input value. It is the reciprocal of
 /// [`Into`].
 ///
-/// One should always prefer implementing [`From`] over [`Into`] because implementing [`From`] automatically
-/// provides one with a implementation of [`Into`] thanks to the blanket implementation in the standard library.
+/// One should always prefer implementing [`From`] over [`Into`]
+/// because implementing [`From`] automatically provides one with a implementation of [`Into`]
+/// thanks to the blanket implementation in the standard library.
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
 /// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
 /// See [`Into`] for more details.
@@ -308,11 +314,12 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 ///
-/// While performing error handling it is often useful to implement ```From``` for your own error type.
-/// By converting underlying error types to our own custom error type that encapsulates the underlying
-/// error type, we can return a single error type without losing information on the underlying cause.
-/// The '?' operator automatically converts the underlying error type to our custom error type by
-/// calling ```Into<CliError>::into``` which is automatically provided when implementing ```From```.
+/// While performing error handling it is often useful to implement ```From```
+/// for your own error type. By converting underlying error types to our own custom error type
+/// that encapsulates the underlying error type, we can return a single error type
+/// without losing information on the underlying cause. The '?' operator automatically converts
+/// the underlying error type to our custom error type by calling ```Into<CliError>::into```
+/// which is automatically provided when implementing ```From```.
 /// The compiler then infers which implementation of ```Into``` should be used.
 ///
 /// ```
