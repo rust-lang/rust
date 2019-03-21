@@ -15,6 +15,8 @@ use ra_db::{CrateGraph, FileId, Edition};
 
 use serde_json::from_reader;
 
+use relative_path::RelativePath;
+
 pub use crate::{
     cargo_workspace::{CargoWorkspace, Package, Target, TargetKind},
     json_project::JsonProject,
@@ -30,6 +32,52 @@ pub enum ProjectWorkspace {
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: JsonProject },
+}
+
+/// `ProjectRoot` describes a workspace root folder.
+/// Which may be an external dependency, or a member of
+/// the current workspace.
+pub struct ProjectRoot {
+    /// Path to the root folder
+    path: PathBuf,
+    /// Is a member of the current workspace
+    is_member: bool,
+}
+
+impl ProjectRoot {
+    pub fn new(path: PathBuf, is_member: bool) -> ProjectRoot {
+        ProjectRoot { path, is_member }
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn is_member(&self) -> bool {
+        self.is_member
+    }
+
+    pub fn include_dir(&self, dir_path: &RelativePath) -> bool {
+        const COMMON_IGNORED_DIRS: &[&str] = &["node_modules", "target", ".git"];
+        const EXTERNAL_IGNORED_DIRS: &[&str] = &["examples", "tests", "benches"];
+
+        let is_ignored = if self.is_member {
+            dir_path.components().any(|c| COMMON_IGNORED_DIRS.contains(&c.as_str()))
+        } else {
+            dir_path.components().any(|c| {
+                let path = c.as_str();
+                COMMON_IGNORED_DIRS.contains(&path) || EXTERNAL_IGNORED_DIRS.contains(&path)
+            })
+        };
+
+        let hidden = dir_path.components().any(|c| c.as_str().starts_with("."));
+
+        !is_ignored && !hidden
+    }
+
+    pub fn include_file(&self, file_path: &RelativePath) -> bool {
+        file_path.extension() == Some("rs")
+    }
 }
 
 impl ProjectWorkspace {
@@ -50,12 +98,15 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn to_roots(&self) -> Vec<PathBuf> {
+    /// Returns the roots for the current ProjectWorkspace
+    /// The return type contains the path and whether or not
+    /// the root is a member of the current workspace
+    pub fn to_roots(&self) -> Vec<ProjectRoot> {
         match self {
             ProjectWorkspace::Json { project } => {
                 let mut roots = Vec::with_capacity(project.roots.len());
                 for root in &project.roots {
-                    roots.push(root.path.clone());
+                    roots.push(ProjectRoot::new(root.path.clone(), true));
                 }
                 roots
             }
@@ -63,10 +114,12 @@ impl ProjectWorkspace {
                 let mut roots =
                     Vec::with_capacity(cargo.packages().count() + sysroot.crates().count());
                 for pkg in cargo.packages() {
-                    roots.push(pkg.root(&cargo).to_path_buf());
+                    let root = pkg.root(&cargo).to_path_buf();
+                    let member = pkg.is_member(&cargo);
+                    roots.push(ProjectRoot::new(root, member));
                 }
                 for krate in sysroot.crates() {
-                    roots.push(krate.root_dir(&sysroot).to_path_buf())
+                    roots.push(ProjectRoot::new(krate.root_dir(&sysroot).to_path_buf(), false))
                 }
                 roots
             }
