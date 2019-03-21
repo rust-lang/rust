@@ -169,9 +169,19 @@
                     "description": "Path to ra_lsp_server executable"
                 },
                 "rust-analyzer.enableCargoWatchOnStartup": {
-                    "type": "boolean",
-                    "default": "true",
-                    "description": "When enabled, ask the user whether to run `cargo watch` on startup"
+                    "type": "string",
+                    "default": "ask",
+                    "enum": [
+                        "ask",
+                        "enabled",
+                        "disabled"
+                    ],
+                    "enumDescriptions": [
+                        "Asks each time whether to run `cargo watch`",
+                        "`cargo watch` is always started",
+                        "Don't start `cargo watch`"
+                    ],
+                    "description": "Whether to run `cargo watch` on startup"
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",
