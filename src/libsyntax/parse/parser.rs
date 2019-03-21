@@ -6489,6 +6489,11 @@ impl<'a> Parser<'a> {
                         at_end: &mut bool,
                         mut attrs: Vec<Attribute>) -> PResult<'a, ImplItem> {
         let lo = self.span;
+        let mut is_async = false;
+        if self.eat_keyword(keywords::Async) && self.span.rust_2018() {
+            self.span_err(self.span, "hoge");
+            is_async = true;
+        }
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
         let (name, node, generics) = if let Some(type_) = self.eat_type() {
@@ -6510,7 +6515,17 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr), ast::Generics::default())
         } else {
-            let (name, inner_attrs, generics, node) = self.parse_impl_method(&vis, at_end)?;
+            let (name, inner_attrs, generics, mut node) = self.parse_impl_method(&vis, at_end)?;
+            if is_async {
+                let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
+                let decl = self.parse_fn_decl_with_self(|p| p.parse_arg())?;
+                let header = ast::FnHeader { abi, unsafety, constness, asyncness };
+                let (_, body) = self.parse_inner_attrs_and_block()?;
+                node = ast::ImplItemKind::Method(
+                    ast::MethodSig { header, decl },
+                    body
+                );
+            }
             attrs.extend(inner_attrs);
             (name, node, generics)
         };

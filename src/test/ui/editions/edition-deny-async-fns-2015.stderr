@@ -34,12 +34,6 @@ error[E0670]: `async fn` is not permitted in the 2015 edition
 LL |         async fn foo() {}
    |         ^^^^^
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
-  --> $DIR/edition-deny-async-fns-2015.rs:16:5
-   |
-LL |     async fn foo() {}
-   |     ^^^^^
-
 error[E0706]: trait fns cannot be declared `async`
   --> $DIR/edition-deny-async-fns-2015.rs:20:5
    |
@@ -52,7 +46,7 @@ error[E0670]: `async fn` is not permitted in the 2015 edition
 LL |     async fn foo() {}
    |     ^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 Some errors occurred: E0670, E0706.
 For more information about an error, try `rustc --explain E0670`.

@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found `pub`
+  --> $DIR/swapped-pub-async.rs:2:7
+   |
+LL | async pub fn foo() -> impl Future<..> {}
+   |       ^^^ expected one of `!` or `::` here
+
+error: aborting due to previous error
+
