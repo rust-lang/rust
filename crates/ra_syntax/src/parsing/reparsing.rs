@@ -39,6 +39,13 @@ fn reparse_leaf<'node>(
     let node = algo::find_covering_node(root, edit.delete);
     match node.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
+            if node.kind() == WHITESPACE || node.kind() == COMMENT {
+                // removing a new line may extends previous token
+                if node.text().to_string()[edit.delete - node.range().start()].contains('\n') {
+                    return None;
+                }
+            }
+
             let text = get_text_after_edit(node, &edit);
             let tokens = tokenize(&text);
             let token = match tokens[..] {
