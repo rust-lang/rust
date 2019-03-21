@@ -46,7 +46,19 @@ impl CheckReparse {
         assert_eq!(&new_file.syntax().text().to_string(), &self.edited_text);
         let full_reparse = SourceFile::parse(&self.edited_text);
         for (a, b) in new_file.syntax().descendants().zip(full_reparse.syntax().descendants()) {
-            assert_eq!(a.kind(), b.kind(), "different syntax tree produced by a full reparse");
+            if (a.kind(), a.range()) != (b.kind(), b.range()) {
+                eprint!("original:\n{}", file.syntax().debug_dump());
+                eprint!("reparsed:\n{}", new_file.syntax().debug_dump());
+                eprint!("full reparse:\n{}", full_reparse.syntax().debug_dump());
+                assert_eq!(
+                    format!("{:?}", a),
+                    format!("{:?}", b),
+                    "different syntax tree produced by the full reparse"
+                );
+            }
         }
+        // FIXME
+        // assert_eq!(new_file.errors(), full_reparse.errors());
+        assert_eq!(new_file.errors().is_empty(), full_reparse.errors().is_empty());
     }
 }
