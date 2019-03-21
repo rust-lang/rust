@@ -365,6 +365,7 @@ impl CString {
     /// # Examples
     ///
     /// ```
+    /// #![feature(cstring_from_reader)]
     /// use std::ffi::CString;
     ///
     /// let test = "Example\0";
