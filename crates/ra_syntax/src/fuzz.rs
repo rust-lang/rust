@@ -22,12 +22,16 @@ pub struct CheckReparse {
 
 impl CheckReparse {
     pub fn from_data(data: &[u8]) -> Option<Self> {
+        const PREFIX: &'static str = "fn main(){\n\t";
+        const SUFFIX: &'static str = "\n}";
+
         let data = str::from_utf8(data).ok()?;
         let mut lines = data.lines();
-        let delete_start = usize::from_str(lines.next()?).ok()?;
+        let delete_start = usize::from_str(lines.next()?).ok()? + PREFIX.len();
         let delete_len = usize::from_str(lines.next()?).ok()?;
         let insert = lines.next()?.to_string();
         let text = lines.collect::<Vec<_>>().join("\n");
+        let text = format!("{}{}{}", PREFIX, text, SUFFIX);
         text.get(delete_start..delete_start.checked_add(delete_len)?)?; // make sure delete is a valid range
         let delete = TextRange::offset_len(
             TextUnit::from_usize(delete_start),
