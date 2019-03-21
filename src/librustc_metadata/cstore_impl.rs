@@ -399,6 +399,7 @@ impl cstore::CStore {
         r
     }
 
+
     pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
         self.get_crate_data(cnum).root.edition
     }
@@ -492,6 +493,10 @@ impl CrateStore for cstore::CStore {
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
+    }
+
+    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
+        self.get_crate_data(cnum).private_dep
     }
 
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
