@@ -22,9 +22,9 @@ extern crate libtest;
 // export to users.
 pub use libtest::{
     assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
-    Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
-    StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName, TestOpts,
-    TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk, stats::Summary
+    Bencher, TestFn::DynTestFn, TestName::DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
+    TestFn::StaticBenchFn, TestFn::StaticTestFn, TestName::StaticTestName, TestDesc, TestDescAndFn, TestName, TestOpts,
+    TestResult, TestResult::TrFailed, TestResult::TrFailedMsg, TestResult::TrIgnored, TestResult::TrOk, stats::Summary
 };
 
 pub use std::hint::black_box;
