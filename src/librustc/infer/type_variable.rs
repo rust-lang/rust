@@ -60,8 +60,6 @@ pub enum TypeVariableOrigin {
     Generalized(ty::TyVid),
 }
 
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
-
 struct TypeVariableData {
     origin: TypeVariableOrigin,
     diverging: bool,
