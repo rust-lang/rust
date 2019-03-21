@@ -1,7 +1,7 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::hir::{def::Def, HirId, Path, QPath, Ty, TyKind};
+use crate::hir::{HirId, Path, PathSegment, QPath, Ty, TyKind};
 use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
@@ -82,38 +82,19 @@ impl LintPass for TyKindUsage {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
     fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path, _: HirId) {
-        let segments_iter = path.segments.iter().rev().skip(1).rev();
+        let segments = path.segments.iter().rev().skip(1).rev();
 
-        if let Some(last) = segments_iter.clone().last() {
-            if last.ident.as_str() == "TyKind" {
-                let path = Path {
-                    span: path.span.with_hi(last.ident.span.hi()),
-                    def: path.def,
-                    segments: segments_iter.cloned().collect(),
-                };
-
-                match last.def {
-                    Some(Def::Err) => (),
-                    Some(def)
-                        if def
-                            .def_id()
-                            .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"]) =>
-                    {
-                        cx.struct_span_lint(
-                            USAGE_OF_TY_TYKIND,
-                            path.span,
-                            "usage of `ty::TyKind::<kind>`",
-                        )
-                        .span_suggestion(
-                            path.span,
-                            "try using ty::<kind> directly",
-                            "ty".to_string(),
-                            Applicability::MaybeIncorrect, // ty maybe needs an import
-                        )
-                        .emit();
-                    }
-                    _ => (),
-                }
+        if let Some(last) = segments.last() {
+            let span = path.span.with_hi(last.ident.span.hi());
+            if lint_ty_kind_usage(cx, last) {
+                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, "usage of `ty::TyKind::<kind>`")
+                    .span_suggestion(
+                        span,
+                        "try using ty::<kind> directly",
+                        "ty".to_string(),
+                        Applicability::MaybeIncorrect, // ty maybe needs an import
+                    )
+                    .emit();
             }
         }
     }
@@ -122,24 +103,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
         if let TyKind::Path(qpath) = &ty.node {
             if let QPath::Resolved(_, path) = qpath {
                 if let Some(last) = path.segments.iter().last() {
-                    if last.ident.as_str() == "TyKind" {
-                        if let Some(def) = last.def {
-                            if def
-                                .def_id()
-                                .match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"])
-                            {
-                                cx.struct_span_lint(
-                                    USAGE_OF_TY_TYKIND,
-                                    path.span,
-                                    "usage of `ty::TyKind`",
-                                )
-                                .help("try using `ty::Ty` instead")
-                                .emit();
-                            }
-                        }
+                    if lint_ty_kind_usage(cx, last) {
+                        cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, "usage of `ty::TyKind`")
+                            .help("try using `ty::Ty` instead")
+                            .emit();
                     }
                 }
             }
         }
     }
+}
+
+fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
+    if segment.ident.as_str() == "TyKind" {
+        if let Some(def) = segment.def {
+            if let Some(did) = def.opt_def_id() {
+                return did.match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"]);
+            }
+        }
+    }
+
+    false
 }
