@@ -63,6 +63,5 @@ impl CheckReparse {
         }
         // FIXME
         // assert_eq!(new_file.errors(), full_reparse.errors());
-        assert_eq!(new_file.errors().is_empty(), full_reparse.errors().is_empty());
     }
 }
