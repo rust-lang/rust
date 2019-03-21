@@ -2,9 +2,10 @@ use std::path::PathBuf;
 use ra_project_model::ProjectRoot;
 use ra_vfs::{RootEntry, Filter, RelativePath};
 
+/// `IncludeRustFiles` is used to convert
+/// from `ProjectRoot` to `RootEntry` for VFS
 pub struct IncludeRustFiles {
-    /// Is a member of the current workspace
-    is_member: bool,
+    root: ProjectRoot,
 }
 
 impl IncludeRustFiles {
@@ -16,44 +17,38 @@ impl IncludeRustFiles {
     }
 
     pub fn from_root(root: ProjectRoot) -> RootEntry {
-        let is_member = root.is_member();
-        IncludeRustFiles::into_entry(root.into_path(), is_member)
+        IncludeRustFiles::from(root).into()
     }
 
     #[allow(unused)]
     pub fn external(path: PathBuf) -> RootEntry {
-        IncludeRustFiles::into_entry(path, false)
+        IncludeRustFiles::from_root(ProjectRoot::new(path, false))
     }
 
     pub fn member(path: PathBuf) -> RootEntry {
-        IncludeRustFiles::into_entry(path, true)
-    }
-
-    fn into_entry(path: PathBuf, is_member: bool) -> RootEntry {
-        RootEntry::new(path, Box::new(Self { is_member }))
+        IncludeRustFiles::from_root(ProjectRoot::new(path, true))
     }
 }
 
 impl Filter for IncludeRustFiles {
     fn include_dir(&self, dir_path: &RelativePath) -> bool {
-        const COMMON_IGNORED_DIRS: &[&str] = &["node_modules", "target", ".git"];
-        const EXTERNAL_IGNORED_DIRS: &[&str] = &["examples", "tests", "benches"];
-
-        let is_ignored = if self.is_member {
-            dir_path.components().any(|c| COMMON_IGNORED_DIRS.contains(&c.as_str()))
-        } else {
-            dir_path.components().any(|c| {
-                let path = c.as_str();
-                COMMON_IGNORED_DIRS.contains(&path) || EXTERNAL_IGNORED_DIRS.contains(&path)
-            })
-        };
-
-        let hidden = dir_path.components().any(|c| c.as_str().starts_with("."));
-
-        !is_ignored && !hidden
+        self.root.include_dir(dir_path)
     }
 
     fn include_file(&self, file_path: &RelativePath) -> bool {
-        file_path.extension() == Some("rs")
+        self.root.include_file(file_path)
+    }
+}
+
+impl std::convert::From<ProjectRoot> for IncludeRustFiles {
+    fn from(v: ProjectRoot) -> IncludeRustFiles {
+        IncludeRustFiles { root: v }
+    }
+}
+
+impl std::convert::From<IncludeRustFiles> for RootEntry {
+    fn from(v: IncludeRustFiles) -> RootEntry {
+        let path = v.root.path().clone();
+        RootEntry::new(path, Box::new(v))
     }
 }
