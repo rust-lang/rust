@@ -29,7 +29,7 @@ fn main() {
 //     _0 = const 2i32;
 //     return;
 // }
-// bb1: {
+// bb1 (cleanup): {
 //     resume;
 // }
 // END rustc.{{impl}}-ASSOCIATED_CONSTANT.mir_map.0.mir
@@ -39,7 +39,7 @@ fn main() {
 //     _0 = const 5isize;
 //     return;
 // }
-// bb1: {
+// bb1 (cleanup): {
 //     resume;
 // }
 // END rustc.E-V-{{constant}}.mir_map.0.mir
@@ -51,16 +51,16 @@ fn main() {
 // bb1: {
 //     return;
 // }
-// bb2: {
+// bb2 (cleanup): {
 //     resume;
 // }
 // bb3: {
 //     goto -> bb1;
 // }
-// bb4: {
+// bb4 (cleanup): {
 //     goto -> bb2;
 // }
-// bb5: {
+// bb5 (cleanup): {
 //     drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> bb4;
 // }
 // bb6: {

@@ -48,7 +48,7 @@ fn main() {
 //        drop(_6) -> [return: bb6, unwind: bb4];
 //    }
 //    ...
-//    bb5: {
+//    bb5 (cleanup): {
 //        drop(_6) -> bb4;
 //    }
 // END rustc.main.SimplifyCfg-initial.after.mir

@@ -47,7 +47,7 @@ fn main() {
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [0isize: bb4, 1isize: bb2, otherwise: bb7];
 //  }
-//  bb1: {
+//  bb1 (cleanup): {
 //      resume;
 //  }
 //  bb2: {
@@ -116,7 +116,7 @@ fn main() {
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [0isize: bb3, 1isize: bb2, otherwise: bb7];
 //  }
-//  bb1: {
+//  bb1 (cleanup): {
 //      resume;
 //  }
 //  bb2: {
@@ -185,7 +185,7 @@ fn main() {
 //      _3 = discriminant(_2);
 //      switchInt(move _3) -> [1isize: bb2, otherwise: bb3];
 //  }
-//  bb1: {
+//  bb1 (cleanup): {
 //      resume;
 //  }
 //  bb2: {
