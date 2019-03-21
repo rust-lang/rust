@@ -11,6 +11,7 @@ cargo-fuzz = true
 
 [dependencies]
 ra_syntax = { path = ".." }
+ra_text_edit = { path = "../../ra_text_edit" }
 libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
 
 # Prevent this from interfering with workspaces
@@ -20,3 +21,7 @@ members = ["."]
 [[bin]]
 name = "parser"
 path = "fuzz_targets/parser.rs"
+
+[[bin]]
+name = "reparse"
+path = "fuzz_targets/reparse.rs"

@@ -51,6 +51,15 @@ fn parser_fuzz_tests() {
     }
 }
 
+#[test]
+fn reparse_fuzz_tests() {
+    for (_, text) in collect_tests(&test_data_dir(), &["reparse/fuzz-failures"]) {
+        let check = fuzz::CheckReparse::from_data(text.as_bytes()).unwrap();
+        println!("{:?}", check);
+        check.run();
+    }
+}
+
 /// Test that Rust-analyzer can parse and validate the rust-analyser
 /// TODO: Use this as a benchmark
 #[test]
