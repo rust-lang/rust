@@ -258,8 +258,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 self.in_trait_impl = true;
             }
             hir::ItemKind::Struct(ref sd, _) => {
-                if !sd.is_struct() {
-                    self.annotate(sd.hir_id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
+                if let Some(ctor_hir_id) = sd.ctor_hir_id() {
+                    self.annotate(ctor_hir_id, &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
             }
             _ => {}
@@ -289,8 +289,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.annotate(var.node.data.hir_id(), &var.node.attrs, var.span, AnnotationKind::Required,
-            |v| { intravisit::walk_variant(v, var, g, item_id) })
+        self.annotate(var.node.id, &var.node.attrs, var.span, AnnotationKind::Required,
+            |v| {
+                if let Some(ctor_hir_id) = var.node.data.ctor_hir_id() {
+                    v.annotate(ctor_hir_id, &var.node.attrs, var.span, AnnotationKind::Required,
+                               |_| {});
+                }
+
+                intravisit::walk_variant(v, var, g, item_id)
+            })
     }
 
     fn visit_struct_field(&mut self, s: &'tcx StructField) {
@@ -364,7 +371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.check_missing_stability(var.node.data.hir_id(), var.span, "variant");
+        self.check_missing_stability(var.node.id, var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 

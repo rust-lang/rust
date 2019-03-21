@@ -733,8 +733,16 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         subpatterns: Vec<FieldPattern<'tcx>>,
     ) -> PatternKind<'tcx> {
+        let def = match def {
+            Def::Ctor(hir::CtorOf::Variant, variant_ctor_id, ..) => {
+                let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
+                Def::Variant(variant_id)
+            },
+            def => def,
+        };
+
         let mut kind = match def {
-            Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
+            Def::Variant(variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
@@ -749,7 +757,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     PatternKind::Variant {
                         adt_def,
                         substs,
-                        variant_index: adt_def.variant_index_with_id(variant_id),
+                        variant_index: adt_def.variant_index_with_variant_id(variant_id),
                         subpatterns,
                     }
                 } else {
@@ -757,7 +765,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
+            Def::Struct(..) | Def::Ctor(hir::CtorOf::Struct, ..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
             }

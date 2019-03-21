@@ -3266,6 +3266,7 @@ mod tests {
             let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
                 ident,
                 attrs: Vec::new(),
+                id: ast::DUMMY_NODE_ID,
                 // making this up as I go.... ?
                 data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
                 disr_expr: None,

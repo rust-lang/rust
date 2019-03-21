@@ -158,9 +158,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         self.with_parent(def, |this| {
             match i.node {
                 ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
-                    // If this is a tuple-like struct, register the constructor.
-                    if !struct_def.is_struct() {
-                        this.create_def(struct_def.id(),
+                    // If this is a unit or tuple-like struct, register the constructor.
+                    if let Some(ctor_hir_id) = struct_def.ctor_id() {
+                        this.create_def(ctor_hir_id,
                                         DefPathData::StructCtor,
                                         REGULAR_SPACE,
                                         i.span);
@@ -193,11 +193,19 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
-        let def = self.create_def(v.node.data.id(),
+        let def = self.create_def(v.node.id,
                                   DefPathData::EnumVariant(v.node.ident.as_interned_str()),
                                   REGULAR_SPACE,
                                   v.span);
-        self.with_parent(def, |this| visit::walk_variant(this, v, g, item_id));
+        self.with_parent(def, |this| {
+            if let Some(ctor_hir_id) = v.node.data.ctor_id() {
+                this.create_def(ctor_hir_id,
+                                DefPathData::VariantCtor,
+                                REGULAR_SPACE,
+                                v.span);
+            }
+            visit::walk_variant(this, v, g, item_id)
+        });
     }
 
     fn visit_variant_data(&mut self, data: &'a VariantData, _: Ident,

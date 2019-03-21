@@ -1062,6 +1062,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         respan(span,
                ast::Variant_ {
                    ident,
+                   id: ast::DUMMY_NODE_ID,
                    attrs: Vec::new(),
                    data: vdata,
                    disr_expr: None,

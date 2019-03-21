@@ -917,7 +917,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        self.with_lint_attrs(v.node.data.hir_id(), &v.node.attrs, |cx| {
+        self.with_lint_attrs(v.node.id, &v.node.attrs, |cx| {
             run_lints!(cx, check_variant, v, g);
             hir_visit::walk_variant(cx, v, g, item_id);
             run_lints!(cx, check_variant_post, v, g);
@@ -1073,7 +1073,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
                         item_id: ast::NodeId,
                         _: Span) {
         run_early_pass!(self, check_struct_def, s, ident, g, item_id);
-        self.check_id(s.id());
+        if let Some(ctor_hir_id) = s.ctor_id() {
+            self.check_id(ctor_hir_id);
+        }
         ast_visit::walk_struct_def(self, s);
         run_early_pass!(self, check_struct_def_post, s, ident, g, item_id);
     }

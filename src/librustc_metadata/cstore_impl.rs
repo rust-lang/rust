@@ -407,6 +407,14 @@ impl cstore::CStore {
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
+    pub fn ctor_kind_untracked(&self, def: DefId) -> def::CtorKind {
+        self.get_crate_data(def.krate).get_ctor_kind(def.index)
+    }
+
+    pub fn item_attrs_untracked(&self, def: DefId, sess: &Session) -> Lrc<[ast::Attribute]> {
+        self.get_crate_data(def.krate).get_item_attrs(def.index, sess)
+    }
+
     pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate)

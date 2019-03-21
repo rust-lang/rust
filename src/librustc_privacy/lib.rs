@@ -225,7 +225,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             let vis = match tcx.hir().get_by_hir_id(hir_id) {
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
-                Node::TraitItem(..) | Node::Variant(..) => {
+                Node::TraitItem(..) | Node::Variant(..) | Node::Ctor(hir::CtorOf::Variant, ..) => {
                     return def_id_visibility(tcx, tcx.hir().get_parent_did_by_hir_id(hir_id));
                 }
                 Node::ImplItem(impl_item) => {
@@ -239,7 +239,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                         node => bug!("unexpected node kind: {:?}", node),
                     }
                 }
-                Node::StructCtor(vdata) => {
+                Node::Ctor(hir::CtorOf::Struct, vdata) => {
                     let struct_hir_id = tcx.hir().get_parent_item(hir_id);
                     let item = match tcx.hir().get_by_hir_id(struct_hir_id) {
                         Node::Item(item) => item,
@@ -504,7 +504,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         match item.node {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    let variant_level = self.update(variant.node.data.hir_id(), item_level);
+                    let variant_level = self.update(variant.node.id, item_level);
+                    if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
+                        self.update(ctor_hir_id, item_level);
+                    }
                     for field in variant.node.data.fields() {
                         self.update(field.hir_id, variant_level);
                     }
@@ -523,8 +526,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
-                if !def.is_struct() {
-                    self.update(def.hir_id(), item_level);
+                if let Some(ctor_hir_id) = def.ctor_hir_id() {
+                    self.update(ctor_hir_id, item_level);
                 }
                 for field in def.fields() {
                     if field.vis.node.is_pub() {
@@ -624,7 +627,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates();
                 }
                 for variant in &def.variants {
-                    let variant_level = self.get(variant.node.data.hir_id());
+                    let variant_level = self.get(variant.node.id);
                     if variant_level.is_some() {
                         for field in variant.node.data.fields() {
                             self.reach(field.hir_id, variant_level).ty();
@@ -1468,7 +1471,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        if self.access_levels.is_reachable(v.node.data.hir_id()) {
+        if self.access_levels.is_reachable(v.node.id) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;

@@ -880,7 +880,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     };
 
     let variant_no = if adt_def.is_enum() {
-        adt_def.variant_index_with_id(def_id)
+        adt_def.variant_index_with_ctor_id(def_id)
     } else {
         VariantIdx::new(0)
     };

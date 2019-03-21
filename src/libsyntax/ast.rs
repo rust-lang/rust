@@ -1956,8 +1956,13 @@ pub struct EnumDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Variant_ {
+    /// Name of the variant.
     pub ident: Ident,
+    /// Attributes of the variant.
     pub attrs: Vec<Attribute>,
+    /// Id of the variant (not the constructor, see `VariantData::ctor_id()`).
+    pub id: NodeId,
+    /// Fields and constructor id of the variant.
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
@@ -2117,23 +2122,13 @@ pub struct StructField {
     pub attrs: Vec<Attribute>,
 }
 
-/// Fields and Ids of enum variants and structs
-///
-/// For enum variants: `NodeId` represents both an Id of the variant itself (relevant for all
-/// variant kinds) and an Id of the variant's constructor (not relevant for `Struct`-variants).
-/// One shared Id can be successfully used for these two purposes.
-/// Id of the whole enum lives in `Item`.
-///
-/// For structs: `NodeId` represents an Id of the structure's constructor, so it is not actually
-/// used for `Struct`-structs (but still presents). Structures don't have an analogue of "Id of
-/// the variant itself" from enum variants.
-/// Id of the whole struct lives in `Item`.
+/// Fields and constructor ids of enum variants and structs.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<StructField>, NodeId, bool),
+    Struct(Vec<StructField>, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
@@ -2145,17 +2140,23 @@ pub enum VariantData {
 }
 
 impl VariantData {
+    /// Return the fields of this variant.
     pub fn fields(&self) -> &[StructField] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
             _ => &[],
         }
     }
-    pub fn id(&self) -> NodeId {
+
+    /// Return the `NodeId` of this variant's constructor, if it has one.
+    pub fn ctor_id(&self) -> Option<NodeId> {
         match *self {
-            VariantData::Struct(_, id, _) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
+            VariantData::Struct(..) => None,
+            VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),
         }
     }
+
+    /// Does this `VariantData` represent a `Struct`-struct/variant?
     pub fn is_struct(&self) -> bool {
         if let VariantData::Struct(..) = *self {
             true
@@ -2163,6 +2164,8 @@ impl VariantData {
             false
         }
     }
+
+    /// Does this `VariantData` represent a tuple struct/variant?
     pub fn is_tuple(&self) -> bool {
         if let VariantData::Tuple(..) = *self {
             true
@@ -2170,6 +2173,8 @@ impl VariantData {
             false
         }
     }
+
+    /// Does this `VariantData` represent a unit struct/variant?
     pub fn is_unit(&self) -> bool {
         if let VariantData::Unit(..) = *self {
             true

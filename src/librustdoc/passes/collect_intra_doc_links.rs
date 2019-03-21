@@ -344,9 +344,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 .and_then(|(def, fragment)| {
                                     // Constructors are picked up in the type namespace.
                                     match def {
-                                        Def::StructCtor(..)
-                                        | Def::VariantCtor(..)
-                                        | Def::SelfCtor(..) => None,
+                                        Def::Ctor(..) | Def::SelfCtor(..) => None,
                                         _ => Some((def, fragment))
                                     }
                                 }),

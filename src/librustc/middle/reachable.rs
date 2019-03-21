@@ -311,7 +311,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // Nothing to recurse on for these
             Node::ForeignItem(_) |
             Node::Variant(_) |
-            Node::StructCtor(_) |
+            Node::Ctor(..) |
             Node::Field(_) |
             Node::Ty(_) |
             Node::MacroDef(_) => {}

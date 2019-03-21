@@ -1863,7 +1863,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for ((_, discr), v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
-            let variant_did = def.variants[VariantIdx::new(i)].did;
+            let variant_did = def.variants[VariantIdx::new(i)].variant_did();
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.node.disr_expr {
@@ -3693,7 +3693,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
             if skip.iter().any(|x| *x == field.ident.as_str()) ||
-               (variant.did.krate != LOCAL_CRATE && field.vis != Visibility::Public) {
+               (!variant.is_local() && field.vis != Visibility::Public)
+            {
                 None
             } else {
                 Some(&field.ident.name)
@@ -3705,7 +3706,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {
         variant.fields.iter().filter(|field| {
-            let def_scope = self.tcx.adjust_ident(field.ident, variant.did, self.body_id).1;
+            let did = variant.variant_did_or_parent_struct_did();
+            let def_scope = self.tcx.adjust_ident(field.ident, did, self.body_id).1;
             field.vis.is_accessible_from(def_scope, self.tcx)
         })
         .map(|field| field.ident.name)
@@ -3823,7 +3825,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type-check each field.
         for field in ast_fields {
-            let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
+            let ident = tcx.adjust_ident(
+                field.ident, variant.variant_did_or_parent_struct_did(), self.body_id).0;
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
                 self.write_field_index(field.hir_id, i);
@@ -4237,7 +4240,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.set_tainted_by_errors();
                         tcx.types.err
                     }
-                    Def::VariantCtor(_, CtorKind::Fictive) => {
+                    Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fictive) => {
                         report_unexpected_variant_def(tcx, &def, expr.span, qpath);
                         tcx.types.err
                     }
@@ -5343,8 +5346,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match adt_def {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
-                    let def = Def::StructCtor(variant.did, variant.ctor_kind);
-                    (def, variant.did, tcx.type_of(variant.did))
+                    let ctor_did = variant.ctor_did().unwrap();
+                    let def = Def::Ctor(hir::CtorOf::Struct, ctor_did, variant.ctor_kind);
+                    (def, ctor_did, tcx.type_of(ctor_did))
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(span,
@@ -5416,7 +5420,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match def {
-            Def::VariantCtor(_, _) => {
+            Def::Ctor(hir::CtorOf::Variant, _, _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {

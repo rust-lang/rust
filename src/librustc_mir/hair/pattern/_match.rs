@@ -435,7 +435,7 @@ impl<'tcx> Constructor<'tcx> {
         adt: &'tcx ty::AdtDef,
     ) -> VariantIdx {
         match self {
-            &Variant(vid) => adt.variant_index_with_id(vid),
+            &Variant(id) => adt.variant_index_with_ctor_or_variant_id(id),
             &Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
@@ -659,7 +659,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::Adt(def, substs) if def.is_enum() => {
             def.variants.iter()
                 .filter(|v| !cx.is_variant_uninhabited(v, substs))
-                .map(|v| Variant(v.did))
+                .map(|v| v.ctor_did().map_or_else(|| Variant(v.variant_did()), |did| Variant(did)))
                 .collect()
         }
         ty::Char => {
@@ -1307,7 +1307,9 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
         PatternKind::Binding { .. } | PatternKind::Wild => None,
         PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } => {
-            Some(vec![Variant(adt_def.variants[variant_index].did)])
+            let variant = &adt_def.variants[variant_index];
+            Some(variant.ctor_did()
+                .map_or_else(|| vec![Variant(variant.variant_did())], |did| vec![Variant(did)]))
         }
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
@@ -1742,11 +1744,11 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
 
         PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
-            if *constructor == Variant(variant.did) {
-                Some(patterns_for_variant(subpatterns, wild_patterns))
-            } else {
-                None
-            }
+            variant.ctor_did()
+                .map(|did| Variant(did))
+                .or_else(|| Some(Variant(variant.variant_did())))
+                .filter(|variant_constructor| variant_constructor == constructor)
+                .map(|_| patterns_for_variant(subpatterns, wild_patterns))
         }
 
         PatternKind::Leaf { ref subpatterns } => {

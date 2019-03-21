@@ -366,8 +366,10 @@ pub enum DefPathData {
     EnumVariant(InternedString),
     /// A struct field
     Field(InternedString),
-    /// Implicit ctor for a tuple-like struct
+    /// Implicit ctor for a unit or tuple-like struct
     StructCtor,
+    /// Implicit ctor for a unit or tuple-like enum variant
+    VariantCtor,
     /// A constant expression (see {ast,hir}::AnonConst).
     AnonConst,
     /// An `impl Trait` type node
@@ -653,6 +655,7 @@ impl DefPathData {
             Misc |
             ClosureExpr |
             StructCtor |
+            VariantCtor |
             AnonConst |
             ImplTrait => None
         }
@@ -683,7 +686,8 @@ impl DefPathData {
             Impl => "{{impl}}",
             Misc => "{{misc}}",
             ClosureExpr => "{{closure}}",
-            StructCtor => "{{constructor}}",
+            StructCtor => "{{struct constructor}}",
+            VariantCtor => "{{variant constructor}}",
             AnonConst => "{{constant}}",
             ImplTrait => "{{opaque}}",
         };

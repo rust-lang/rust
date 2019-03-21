@@ -366,12 +366,15 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::Variant(variant) => {
-                let def_id = self.local_def_id_from_hir_id(variant.node.data.hir_id());
+                let def_id = self.local_def_id_from_hir_id(variant.node.id);
                 Some(Def::Variant(def_id))
             }
-            Node::StructCtor(variant) => {
-                let def_id = self.local_def_id_from_hir_id(variant.hir_id());
-                Some(Def::StructCtor(def_id, def::CtorKind::from_hir(variant)))
+            Node::Ctor(ctor_of, variant_data) => {
+                variant_data.ctor_hir_id()
+                    .map(|hir_id| self.local_def_id_from_hir_id(hir_id))
+                    .map(|def_id| Def::Ctor(
+                        ctor_of, def_id, def::CtorKind::from_hir(variant_data),
+                    ))
             }
             Node::AnonConst(_) |
             Node::Field(_) |
@@ -516,8 +519,7 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(_) => {
                 BodyOwnerKind::Const
             }
-            Node::Variant(&Spanned { node: VariantKind { data: VariantData::Tuple(..), .. }, .. }) |
-            Node::StructCtor(..) |
+            Node::Ctor(..) |
             Node::Item(&Item { node: ItemKind::Fn(..), .. }) |
             Node::TraitItem(&TraitItem { node: TraitItemKind::Method(..), .. }) |
             Node::ImplItem(&ImplItem { node: ImplItemKind::Method(..), .. }) => {
@@ -948,8 +950,8 @@ impl<'hir> Map<'hir> {
                     _ => bug!("struct ID bound to non-struct {}", self.hir_to_string(id))
                 }
             }
-            Some(Node::StructCtor(data)) => data,
             Some(Node::Variant(variant)) => &variant.node.data,
+            Some(Node::Ctor(_, data)) => data,
             _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
         }
     }
@@ -993,7 +995,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { node: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::StructCtor(_) => self.name(self.get_parent(id)),
+            Node::Ctor(..) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
     }
@@ -1019,9 +1021,9 @@ impl<'hir> Map<'hir> {
             Some(Node::Expr(ref e)) => Some(&*e.attrs),
             Some(Node::Stmt(ref s)) => Some(s.node.attrs()),
             Some(Node::GenericParam(param)) => Some(&param.attrs[..]),
-            // unit/tuple structs take the attributes straight from
-            // the struct definition.
-            Some(Node::StructCtor(_)) => return self.attrs(self.get_parent(id)),
+            // Unit/tuple structs/variants take the attributes straight from
+            // the struct/variant definition.
+            Some(Node::Ctor(..)) => return self.attrs(self.get_parent(id)),
             _ => None
         };
         attrs.unwrap_or(&[])
@@ -1068,7 +1070,10 @@ impl<'hir> Map<'hir> {
             Some(Node::Binding(pat)) => pat.span,
             Some(Node::Pat(pat)) => pat.span,
             Some(Node::Block(block)) => block.span,
-            Some(Node::StructCtor(_)) => self.expect_item(self.get_parent(id)).span,
+            Some(Node::Ctor(CtorOf::Struct, _)) =>
+                self.expect_item(self.get_parent(id)).span,
+            Some(Node::Ctor(CtorOf::Variant, _)) =>
+                self.expect_variant(self.node_to_hir_id(self.get_parent_node(id))).span,
             Some(Node::Lifetime(lifetime)) => lifetime.span,
             Some(Node::GenericParam(param)) => param.span,
             Some(Node::Visibility(&Spanned {
@@ -1324,7 +1329,7 @@ impl<'a> print::State<'a> {
             // these cases do not carry enough information in the
             // hir_map to reconstruct their full structure for pretty
             // printing.
-            Node::StructCtor(_)   => bug!("cannot print isolated StructCtor"),
+            Node::Ctor(..)        => bug!("cannot print isolated Ctor"),
             Node::Local(a)        => self.print_local_decl(&a),
             Node::MacroDef(_)     => bug!("cannot print MacroDef"),
             Node::Crate           => bug!("cannot print Crate"),
@@ -1443,8 +1448,8 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         Some(Node::Local(_)) => {
             format!("local {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(Node::StructCtor(_)) => {
-            format!("struct_ctor {}{}", path_str(), id_str)
+        Some(Node::Ctor(..)) => {
+            format!("ctor {}{}", path_str(), id_str)
         }
         Some(Node::Lifetime(_)) => {
             format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)

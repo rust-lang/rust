@@ -79,7 +79,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
             _ => unsupported()
         },
 
-        Node::Variant(_) | Node::StructCtor(_) => {}
+        Node::Variant(_) | Node::Ctor(..) => {}
 
         _ => unsupported()
     }

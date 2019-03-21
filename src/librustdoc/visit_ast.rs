@@ -141,9 +141,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             name,
             variants: def.variants.iter().map(|v| Variant {
                 name: v.node.ident.name,
+                id: v.node.id,
                 attrs: v.node.attrs.clone(),
-                stab: self.stability(v.node.data.hir_id()),
-                depr: self.deprecation(v.node.data.hir_id()),
+                stab: self.stability(v.node.id),
+                depr: self.deprecation(v.node.id),
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
@@ -420,8 +421,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // Struct and variant constructors and proc macro stubs always show up alongside
                 // their definitions, we've already processed them so just discard these.
                 match path.def {
-                    Def::StructCtor(..) | Def::VariantCtor(..) | Def::SelfCtor(..) |
-                    Def::Macro(_, MacroKind::ProcMacroStub) => return,
+                    Def::Ctor(..) | Def::SelfCtor(..) | Def::Macro(_, MacroKind::ProcMacroStub) =>
+                        return,
                     _ => {}
                 }
 
