@@ -3231,7 +3231,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ret) => ret,
             None => return Vec::new()
         };
-        let expect_args = self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
+        let expect_args = self.fudge_inference_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
             // Attempt to apply a subtyping relationship between the formal
             // return type (likely containing type variables if the function
             // is polymorphic) and the expected return type.

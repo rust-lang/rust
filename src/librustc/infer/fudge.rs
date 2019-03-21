@@ -18,7 +18,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// from `&[u32; 3]` to `&[u32]` and make the users life more
     /// pleasant.
     ///
-    /// The way we do this is using `fudge_regions_if_ok`. What the
+    /// The way we do this is using `fudge_inference_if_ok`. What the
     /// routine actually does is to start a snapshot and execute the
     /// closure `f`. In our example above, what this closure will do
     /// is to unify the expectation (`Option<&[u32]>`) with the actual
@@ -27,7 +27,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// with `&?a [u32]`, where `?a` is a fresh lifetime variable. The
     /// input type (`?T`) is then returned by `f()`.
     ///
-    /// At this point, `fudge_regions_if_ok` will normalize all type
+    /// At this point, `fudge_inference_if_ok` will normalize all type
     /// variables, converting `?T` to `&?a [u32]` and end the
     /// snapshot. The problem is that we can't just return this type
     /// out, because it references the region variable `?a`, and that
@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the actual types (`?T`, `Option<?T>`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    pub fn fudge_regions_if_ok<T, E, F>(
+    pub fn fudge_inference_if_ok<T, E, F>(
         &self,
         origin: &RegionVariableOrigin,
         f: F,
@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
-        debug!("fudge_regions_if_ok(origin={:?})", origin);
+        debug!("fudge_inference_if_ok(origin={:?})", origin);
 
         let (type_variables, region_vars, value) = self.probe(|snapshot| {
             match f() {
@@ -91,7 +91,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return Ok(value);
         }
 
-        let mut fudger = RegionFudger {
+        let mut fudger = InferenceFudger {
             infcx: self,
             type_variables: &type_variables,
             region_vars: &region_vars,
@@ -102,14 +102,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     type_variables: &'a Range<TyVid>,
     region_vars: &'a Range<RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.infcx.tcx
     }
