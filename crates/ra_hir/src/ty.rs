@@ -20,6 +20,9 @@ pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field, ca
 pub(crate) use infer::{infer, InferenceResult, InferTy};
 use display::{HirDisplay, HirFormatter};
 
+/// A type constructor or type name: this might be something like the primitive
+/// type `bool`, a struct like `Vec`, or things like function pointers or
+/// tuples.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TypeCtor {
     /// The primitive boolean type. Written as `bool`.
@@ -85,13 +88,19 @@ pub enum TypeCtor {
     Tuple,
 }
 
+/// A nominal type with (maybe 0) type parameters. This might be a primitive
+/// type like `bool`, a struct, tuple, function pointer, reference or
+/// several other things.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ApplicationTy {
     pub name: TypeCtor,
     pub parameters: Substs,
 }
 
-/// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
+/// A type.
+///
+/// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
+/// the same thing (but in a different way).
 ///
 /// This should be cheap to clone.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -156,7 +165,8 @@ impl Substs {
     }
 }
 
-/// A function signature.
+/// A function signature as seen by type inference: Several parameter types and
+/// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FnSig {
     params_and_return: Arc<[Ty]>,
