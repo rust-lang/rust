@@ -111,7 +111,7 @@ fn is_balanced(tokens: &[Token]) -> bool {
         return false;
     }
     let mut balance = 0usize;
-    for t in tokens.iter() {
+    for t in &tokens[1..tokens.len() - 1] {
         match t.kind {
             L_CURLY => balance += 1,
             R_CURLY => {
