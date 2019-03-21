@@ -146,7 +146,7 @@ version is when you are stabilizing a feature.
 4. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
    expression `tcx.features().$feature_name` (or
-   `sess.features_untracked().borrow().$feature_name` if the
+   `sess.features_untracked().$feature_name` if the
    tcx is unavailable)
 
     If the feature gate is not set, you should either maintain
