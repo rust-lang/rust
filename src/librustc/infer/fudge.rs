@@ -1,9 +1,10 @@
-use crate::infer::type_variable::TypeVariableMap;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, TyVid, RegionVid};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 
 use super::InferCtxt;
 use super::RegionVariableOrigin;
+
+use std::ops::Range;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// This rather funky routine is used while processing expected
@@ -42,12 +43,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// regions in question are not particularly important. We will
     /// use the expected types to guide coercions, but we will still
     /// type-check the resulting types from those coercions against
-    /// the actual types (`?T`, `Option<?T`) -- and remember that
+    /// the actual types (`?T`, `Option<?T>`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    pub fn fudge_regions_if_ok<T, E, F>(&self,
-                                        origin: &RegionVariableOrigin,
-                                        f: F) -> Result<T, E> where
+    pub fn fudge_regions_if_ok<T, E, F>(
+        &self,
+        origin: &RegionVariableOrigin,
+        f: F,
+    ) -> Result<T, E> where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
@@ -101,8 +104,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_variables: &'a TypeVariableMap,
-    region_vars: &'a Vec<ty::RegionVid>,
+    type_variables: &'a Range<TyVid>,
+    region_vars: &'a Range<RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
 
@@ -114,25 +117,21 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
-                match self.type_variables.get(&vid) {
-                    None => {
-                        // This variable was created before the
-                        // "fudging".  Since we refresh all type
-                        // variables to their binding anyhow, we know
-                        // that it is unbound, so we can just return
-                        // it.
-                        debug_assert!(self.infcx.type_variables.borrow_mut()
-                                      .probe(vid)
-                                      .is_unknown());
-                        ty
-                    }
-
-                    Some(&origin) => {
-                        // This variable was created during the
-                        // fudging. Recreate it with a fresh variable
-                        // here.
-                        self.infcx.next_ty_var(origin)
-                    }
+                if self.type_variables.contains(&vid) {
+                    // This variable was created during the fudging.
+                    // Recreate it with a fresh variable here.
+                    let origin = self.infcx.type_variables.borrow().var_origin(vid).clone();
+                    self.infcx.next_ty_var(origin)
+                } else {
+                    // This variable was created before the
+                    // "fudging".  Since we refresh all type
+                    // variables to their binding anyhow, we know
+                    // that it is unbound, so we can just return
+                    // it.
+                    debug_assert!(self.infcx.type_variables.borrow_mut()
+                                  .probe(vid)
+                                  .is_unknown());
+                    ty
                 }
             }
             _ => ty.super_fold_with(self),
@@ -141,12 +140,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(v) if self.region_vars.contains(&v) => {
+            ty::ReVar(vid) if self.region_vars.contains(&vid) => {
                 self.infcx.next_region_var(self.origin.clone())
             }
-            _ => {
-                r
-            }
+            _ => r,
         }
     }
 }

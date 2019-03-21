@@ -1,13 +1,15 @@
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyVid};
 
 use std::cmp;
 use std::marker::PhantomData;
+use std::ops::Range;
 use std::u32;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
+use ut::UnifyKey;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate>,
@@ -294,11 +296,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     /// Returns a map from the type variables created during the
     /// snapshot to the origin of the type variable.
-    pub fn vars_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
-        self.values.values_since_snapshot(&s.snapshot).map(|idx| {
-            let origin = self.values.get(idx).origin.clone();
-            (ty::TyVid { index: idx as u32 }, origin)
-        }).collect()
+    pub fn vars_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> Range<TyVid> {
+        let range = self.values.values_since_snapshot(&s.snapshot);
+        TyVid::from_index(range.start as u32)..TyVid::from_index(range.end as u32)
     }
 
     /// Finds the set of type variables that existed *before* `s`
