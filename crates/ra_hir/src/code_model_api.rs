@@ -17,6 +17,7 @@ use crate::{
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplBlock,
     resolve::Resolver,
+    diagnostics::FunctionDiagnostic,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -518,6 +519,10 @@ impl Function {
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
+    }
+
+    pub fn diagnostics(&self, db: &impl HirDatabase) -> Vec<FunctionDiagnostic> {
+        self.infer(db).diagnostics()
     }
 }
 

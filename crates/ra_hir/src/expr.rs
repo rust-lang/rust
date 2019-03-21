@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
-    SyntaxNodePtr, AstNode,
+    SyntaxNodePtr, AstPtr, AstNode,
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor, TypeAscriptionOwner}
 };
 
@@ -54,6 +54,7 @@ pub struct BodySourceMap {
     expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
     pat_map: FxHashMap<SyntaxNodePtr, PatId>,
     pat_map_back: ArenaMap<PatId, SyntaxNodePtr>,
+    field_map: FxHashMap<(ExprId, usize), AstPtr<ast::NamedField>>,
 }
 
 impl Body {
@@ -137,6 +138,10 @@ impl BodySourceMap {
 
     pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
+    }
+
+    pub fn field_syntax(&self, expr: ExprId, field: usize) -> Option<AstPtr<ast::NamedField>> {
+        self.field_map.get(&(expr, field)).cloned()
     }
 }
 
@@ -629,8 +634,10 @@ impl ExprCollector {
             }
             ast::ExprKind::StructLit(e) => {
                 let path = e.path().and_then(Path::from_ast);
+                let mut field_ptrs = Vec::new();
                 let fields = if let Some(nfl) = e.named_field_list() {
                     nfl.fields()
+                        .inspect(|field| field_ptrs.push(AstPtr::new(*field)))
                         .map(|field| StructLitField {
                             name: field
                                 .name_ref()
@@ -657,7 +664,11 @@ impl ExprCollector {
                     Vec::new()
                 };
                 let spread = e.spread().map(|s| self.collect_expr(s));
-                self.alloc_expr(Expr::StructLit { path, fields, spread }, syntax_ptr)
+                let res = self.alloc_expr(Expr::StructLit { path, fields, spread }, syntax_ptr);
+                for (i, ptr) in field_ptrs.into_iter().enumerate() {
+                    self.source_map.field_map.insert((res, i), ptr);
+                }
+                res
             }
             ast::ExprKind::FieldExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());

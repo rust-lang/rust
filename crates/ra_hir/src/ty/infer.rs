@@ -36,7 +36,8 @@ use crate::{
     path::{GenericArgs, GenericArg},
     adt::VariantDef,
     resolve::{Resolver, Resolution},
-    nameres::Namespace
+    nameres::Namespace,
+    diagnostics::FunctionDiagnostic,
 };
 use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
 
@@ -96,6 +97,7 @@ pub struct InferenceResult {
     field_resolutions: FxHashMap<ExprId, StructField>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
+    diagnostics: Vec<FunctionDiagnostic>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
 }
@@ -112,6 +114,9 @@ impl InferenceResult {
     }
     pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
         self.assoc_resolutions.get(&id.into()).map(|it| *it)
+    }
+    pub(crate) fn diagnostics(&self) -> Vec<FunctionDiagnostic> {
+        self.diagnostics.clone()
     }
 }
 
@@ -143,6 +148,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
+    diagnostics: Vec<FunctionDiagnostic>,
     /// The return type of the function being inferred.
     return_ty: Ty,
 }
@@ -155,6 +161,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             assoc_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
+            diagnostics: Vec::default(),
             var_unification_table: InPlaceUnificationTable::new(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
@@ -181,6 +188,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             assoc_resolutions: self.assoc_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
+            diagnostics: self.diagnostics,
         }
     }
 
@@ -915,9 +923,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                for field in fields {
+                for (field_idx, field) in fields.into_iter().enumerate() {
                     let field_ty = def_id
-                        .and_then(|it| it.field(self.db, &field.name))
+                        .and_then(|it| match it.field(self.db, &field.name) {
+                            Some(field) => Some(field),
+                            None => {
+                                self.diagnostics.push(FunctionDiagnostic::NoSuchField {
+                                    expr: tgt_expr,
+                                    field: field_idx,
+                                });
+                                None
+                            }
+                        })
                         .map_or(Ty::Unknown, |field| field.ty(self.db))
                         .subst(&substs);
                     self.infer_expr(field.expr, &Expectation::has_type(field_ty));

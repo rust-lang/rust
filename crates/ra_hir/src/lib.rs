@@ -35,6 +35,7 @@ mod expr;
 mod generics;
 mod docs;
 mod resolve;
+pub mod diagnostics;
 
 mod code_model_api;
 mod code_model_impl;
