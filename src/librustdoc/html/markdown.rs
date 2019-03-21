@@ -33,8 +33,7 @@ use crate::html::toc::TocBuilder;
 use crate::html::highlight;
 use crate::test;
 
-use pulldown_cmark::{html, Event, Tag, Parser};
-use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
+use pulldown_cmark::{html, Event, Options, Parser, Tag};
 
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -297,12 +296,12 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
 
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
-        if let Some(Event::Start(Tag::Link(dest, text))) = event {
+        if let Some(Event::Start(Tag::Link(kind, dest, text))) = event {
             if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest)
             {
-                Some(Event::Start(Tag::Link(replace.to_owned().into(), text)))
+                Some(Event::Start(Tag::Link(kind, replace.to_owned().into(), text)))
             } else {
-                Some(Event::Start(Tag::Link(dest, text)))
+                Some(Event::Start(Tag::Link(kind, dest, text)))
             }
         } else {
             event
@@ -393,7 +392,7 @@ fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
         | Tag::Emphasis
         | Tag::Strong
         | Tag::Code
-        | Tag::Link(_, _)
+        | Tag::Link(_, _, _)
         | Tag::BlockQuote => true,
         _ => false,
     }
@@ -688,8 +687,8 @@ impl<'a> fmt::Display for Markdown<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+        opts.insert(Options::ENABLE_TABLES);
+        opts.insert(Options::ENABLE_FOOTNOTES);
 
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
@@ -719,8 +718,8 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
         let mut ids = ids.borrow_mut();
 
         let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+        opts.insert(Options::ENABLE_TABLES);
+        opts.insert(Options::ENABLE_FOOTNOTES);
 
         let p = Parser::new_ext(md, opts);
 
@@ -749,8 +748,8 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+        opts.insert(Options::ENABLE_TABLES);
+        opts.insert(Options::ENABLE_FOOTNOTES);
 
         let p = Parser::new_ext(md, opts);
 
@@ -869,8 +868,8 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     }
 
     let mut opts = Options::empty();
-    opts.insert(OPTION_ENABLE_TABLES);
-    opts.insert(OPTION_ENABLE_FOOTNOTES);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_FOOTNOTES);
 
     let mut links = vec![];
     let shortcut_links = RefCell::new(vec![]);
@@ -903,12 +902,11 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
 
         for ev in iter {
-            if let Event::Start(Tag::Link(dest, _)) = ev {
+            if let Event::Start(Tag::Link(_, dest, _)) = ev {
                 debug!("found link: {}", dest);
-                links.push(match dest {
-                    Cow::Borrowed(s) => (s.to_owned(), locate(s)),
-                    Cow::Owned(s) => (s, None),
-                });
+                let dest = dest.into_string();
+                let loc = locate(&dest);
+                links.push((dest, loc));
             }
         }
     }
@@ -940,8 +938,8 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
     }
 
     let mut opts = Options::empty();
-    opts.insert(OPTION_ENABLE_TABLES);
-    opts.insert(OPTION_ENABLE_FOOTNOTES);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_FOOTNOTES);
     let mut p = Parser::new_ext(md, opts);
 
     let mut code_block_start = 0;
@@ -1013,7 +1011,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                         end: code_end,
                     },
                     syntax: if !syntax.is_empty() {
-                        Some(syntax.into_owned())
+                        Some(syntax.into_string())
                     } else {
                         None
                     },
