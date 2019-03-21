@@ -1,37 +1,45 @@
 mod full {
+    use log::{log_enabled, Level};
     use std::{
         env,
         fs::File,
-        path::{Path, PathBuf},
+        io::{BufRead, Write},
+        path::Path,
         process::{Command, Stdio},
     };
 
     fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
-        let prog = format!(
-            r#"
-    # wait for the actual output
-    /^version bump/ {{
-        doprint = 1;
-    }}
+        // Add target dir to PATH so cargo-semver will call the right rust-semverver
+        if let Some(path) = env::var_os("PATH") {
+            let mut paths = env::split_paths(&path).collect::<Vec<_>>();
+            let current_dir = env::current_dir().expect("could not determine current dir");
+            paths.insert(0, current_dir.join("target/debug"));
+            let new_path = env::join_paths(paths).unwrap();
+            env::set_var("PATH", &new_path);
+        } else {
+            eprintln!("no path!");
+        }
 
-    {{
-        # check the environ for filtering
-        if (ENVIRON["RUST_LOG"] == "debug")
-            doprint = 1;
+        let mut cmd = Command::new("./target/debug/cargo-semver");
+        cmd.args(&[
+            "-S", &format!("{}:{}", crate_name, old_version),
+            "-C", &format!("{}:{}", crate_name, new_version),
+            "-q"
+        ])
+        .env("RUST_BACKTRACE", "full")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-        # skip compilation info
-        if (!doprint)
-            next;
+        if let Ok(target) = std::env::var("TEST_TARGET") {
+            cmd.args(&["--target", &target]);
+        }
 
-        # sanitize paths
-        gsub(/-->.*{crate_name}/, "--> {crate_name}", $0);
-        print;
-    }}{crate_name}{crate_name}"#,
-            crate_name = crate_name
+        let output = cmd.output().expect("could not run cargo semver");
+
+        assert_eq!(output.status.success(), expected_result,
+            "cargo-semver returned unexpected exit status {}", output.status
         );
-
-        let out_file = Path::new("tests/full_cases")
-            .join(format!("{}-{}-{}", crate_name, old_version, new_version));
 
         // Choose solution depending on the platform
         let file_ext = if cfg!(target_os = "macos") {
@@ -45,82 +53,40 @@ mod full {
             return;
         };
 
-        let out_file: PathBuf = format!("{}.{}", out_file.display(), file_ext).into();
-        assert!(
-            out_file.exists(),
-            "file `{}` does not exist",
-            out_file.display()
-        );
+        let filename = Path::new("tests/full_cases").join(format!(
+            "{}-{}-{}.{}",
+            crate_name, old_version, new_version, file_ext
+        ));
 
-        if let Some(path) = env::var_os("PATH") {
-            let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-            let current_dir = env::current_dir().expect("could not determine current dir");
-            paths.insert(0, current_dir.join("target/debug"));
-            let new_path = env::join_paths(paths).unwrap();
-            env::set_var("PATH", &new_path);
-        } else {
-            eprintln!("no path!");
+        assert!(filename.exists(), "file `{}` does not exist", filename.display());
+
+        let mut file = File::create(&filename).expect("could not create output file");
+
+        for line in output.stdout.lines()
+            .chain(output.stderr.lines())
+            .map(|r| r.expect("could not read line from cargo-semver output"))
+            .skip_while(|line|
+                // skip everything before the first important bit of info
+                !line.starts_with("version bump") &&
+                // ...unless debugging is enabled
+                !log_enabled!(Level::Debug))
+        {
+            // sanitize paths for reproducibility
+            let output = match line.find("-->") {
+                Some(idx) => {
+                    let (start, end) = line.split_at(idx);
+                    match end.find(crate_name) {
+                        Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
+                        None => line,
+                    }
+                }
+                None => line,
+            };
+            writeln!(file, "{}", output).expect("error writing to output file");
         }
 
-        let stdout = File::create(&out_file).expect("could not create `stdout` file");
-        let out_file = out_file.to_str().unwrap();
-
-        let mut awk_child = Command::new("awk")
-            .arg(&prog)
-            .stdin(Stdio::piped())
-            .stdout(stdout)
-            .spawn()
-            .expect("could not run awk");
-
-        let (err_pipe, out_pipe) = if let Some(ref stdin) = awk_child.stdin {
-            #[cfg(unix)]
-            {
-                use std::os::unix::io::{AsRawFd, FromRawFd};
-                let fd = stdin.as_raw_fd();
-                unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
-            }
-            #[cfg(windows)]
-            {
-                use std::os::windows::io::{AsRawHandle, FromRawHandle};
-                let fd = stdin.as_raw_handle();
-                unsafe { (Stdio::from_raw_handle(fd), Stdio::from_raw_handle(fd)) }
-            }
-        } else {
-            panic!("could not pipe to awk");
-        };
-
-        let old_version = format!("{}:{}", crate_name, old_version);
-        let new_version = format!("{}:{}", crate_name, new_version);
-
-        let cargo_semver_result = {
-            let mut cmd = Command::new("./target/debug/cargo-semver");
-            cmd.args(&["-S", &old_version, "-C", &new_version])
-                .env("RUST_BACKTRACE", "full")
-                .stdin(Stdio::null())
-                .stdout(out_pipe)
-                .stderr(err_pipe);
-
-            if let Ok(target) = std::env::var("TEST_TARGET") {
-                cmd.args(&["--target", &target]);
-            }
-
-            cmd.status().expect("could not run cargo semver").success()
-        };
-
-        assert_eq!(
-            cargo_semver_result, expected_result,
-            "cargo semver returned an unexpected exit status"
-        );
-
-        let awk_result = awk_child
-            .wait()
-            .expect("could not wait for awk child")
-            .success();
-
-        assert!(awk_result, "awk");
-
         let git_result = Command::new("git")
-            .args(&["diff", "--ignore-space-at-eol", "--exit-code", out_file])
+            .args(&["diff", "--ignore-space-at-eol", "--exit-code", filename.to_str().unwrap()])
             .env("PAGER", "")
             .status()
             .expect("could not run git diff")
