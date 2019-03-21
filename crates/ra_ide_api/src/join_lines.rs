@@ -9,9 +9,8 @@ use ra_syntax::{
 use ra_fmt::{
     compute_ws, extract_trivial_expression
 };
-use crate::{
-    LocalEdit, TextEditBuilder,
-};
+use ra_text_edit::TextEditBuilder;
+use ra_ide_api_light::LocalEdit;
 
 pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {

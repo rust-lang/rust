@@ -36,9 +36,12 @@ mod syntax_tree;
 mod line_index;
 mod folding_ranges;
 mod line_index_utils;
+mod join_lines;
 
 #[cfg(test)]
 mod marks;
+#[cfg(test)]
+mod test_utils;
 
 use std::sync::Arc;
 
@@ -276,10 +279,7 @@ impl Analysis {
     /// stuff like trailing commas.
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
         let file = self.db.parse(frange.file_id);
-        SourceChange::from_local_edit(
-            frange.file_id,
-            ra_ide_api_light::join_lines(&file, frange.range),
-        )
+        SourceChange::from_local_edit(frange.file_id, join_lines::join_lines(&file, frange.range))
     }
 
     /// Returns an edit which should be applied when opening a new line, fixing
