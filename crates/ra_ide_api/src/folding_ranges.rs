@@ -20,7 +20,7 @@ pub struct Fold {
     pub kind: FoldKind,
 }
 
-pub fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
+pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
