@@ -6,8 +6,10 @@ LL | struct Obj<F> where F: FnMut() -> u32 {
 ...
 LL |     o.closure();
    |       ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (o.closure)();
+   |     ^         ^
 
 error: aborting due to previous error
 

@@ -6,8 +6,10 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 ...
 LL |     o_closure.closure();
    |               ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(o_closure.closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (o_closure.closure)();
+   |     ^                 ^
 
 error[E0599]: no method named `not_closure` found for type `Obj<[closure@$DIR/issue-2392.rs:39:36: 39:41]>` in the current scope
   --> $DIR/issue-2392.rs:42:15
@@ -16,9 +18,9 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `not_closure` not found for this
 ...
 LL |     o_closure.not_closure();
-   |               ^^^^^^^^^^^ field, not a method
-   |
-   = help: did you mean to write `o_closure.not_closure` instead of `o_closure.not_closure(...)`?
+   |               ^^^^^^^^^^^-- help: remove the arguments
+   |               |
+   |               field, not a method
 
 error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:46:12
@@ -28,8 +30,10 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 ...
 LL |     o_func.closure();
    |            ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(o_func.closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (o_func.closure)();
+   |     ^              ^
 
 error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:49:14
@@ -39,8 +43,10 @@ LL | struct BoxedObj {
 ...
 LL |     boxed_fn.boxed_closure();
    |              ^^^^^^^^^^^^^ field, not a method
+help: to call the function stored in `boxed_closure`, surround the field access with parentheses
    |
-   = help: use `(boxed_fn.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
+LL |     (boxed_fn.boxed_closure)();
+   |     ^                      ^
 
 error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:52:19
@@ -50,8 +56,10 @@ LL | struct BoxedObj {
 ...
 LL |     boxed_closure.boxed_closure();
    |                   ^^^^^^^^^^^^^ field, not a method
+help: to call the function stored in `boxed_closure`, surround the field access with parentheses
    |
-   = help: use `(boxed_closure.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
+LL |     (boxed_closure.boxed_closure)();
+   |     ^                           ^
 
 error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:57:12
@@ -61,8 +69,10 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 ...
 LL |     w.wrap.closure();
    |            ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(w.wrap.closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (w.wrap.closure)();
+   |     ^              ^
 
 error[E0599]: no method named `not_closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:59:12
@@ -71,9 +81,9 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `not_closure` not found for this
 ...
 LL |     w.wrap.not_closure();
-   |            ^^^^^^^^^^^ field, not a method
-   |
-   = help: did you mean to write `w.wrap.not_closure` instead of `w.wrap.not_closure(...)`?
+   |            ^^^^^^^^^^^-- help: remove the arguments
+   |            |
+   |            field, not a method
 
 error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<(dyn std::boxed::FnBox<(), Output = u32> + 'static)>>` in the current scope
   --> $DIR/issue-2392.rs:62:24
@@ -83,8 +93,10 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 ...
 LL |     check_expression().closure();
    |                        ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(check_expression().closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (check_expression().closure)();
+   |     ^                          ^
 
 error[E0599]: no method named `f1` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:68:31
@@ -94,8 +106,10 @@ LL | struct FuncContainer {
 ...
 LL |             (*self.container).f1(1);
    |                               ^^ field, not a method
+help: to call the function stored in `f1`, surround the field access with parentheses
    |
-   = help: use `((*self.container).f1)(...)` if you meant to call the function stored in the `f1` field
+LL |             ((*self.container).f1)(1);
+   |             ^                    ^
 
 error[E0599]: no method named `f2` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:69:31
@@ -105,8 +119,10 @@ LL | struct FuncContainer {
 ...
 LL |             (*self.container).f2(1);
    |                               ^^ field, not a method
+help: to call the function stored in `f2`, surround the field access with parentheses
    |
-   = help: use `((*self.container).f2)(...)` if you meant to call the function stored in the `f2` field
+LL |             ((*self.container).f2)(1);
+   |             ^                    ^
 
 error[E0599]: no method named `f3` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:70:31
@@ -116,8 +132,10 @@ LL | struct FuncContainer {
 ...
 LL |             (*self.container).f3(1);
    |                               ^^ field, not a method
+help: to call the function stored in `f3`, surround the field access with parentheses
    |
-   = help: use `((*self.container).f3)(...)` if you meant to call the function stored in the `f3` field
+LL |             ((*self.container).f3)(1);
+   |             ^                    ^
 
 error: aborting due to 11 previous errors
 

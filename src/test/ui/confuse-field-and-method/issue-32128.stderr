@@ -6,8 +6,10 @@ LL | struct Example {
 ...
 LL |     demo.example(1);
    |          ^^^^^^^ field, not a method
+help: to call the function stored in `example`, surround the field access with parentheses
    |
-   = help: use `(demo.example)(...)` if you meant to call the function stored in the `example` field
+LL |     (demo.example)(1);
+   |     ^            ^
 
 error: aborting due to previous error
 
