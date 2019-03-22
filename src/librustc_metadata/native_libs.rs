@@ -74,9 +74,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                         "dylib" => cstore::NativeUnknown,
                         "framework" => cstore::NativeFramework,
                         k => {
-                            struct_span_err!(self.tcx.sess, m.span, E0458,
+                            struct_span_err!(self.tcx.sess, item.span(), E0458,
                                       "unknown kind: `{}`", k)
-                                .span_label(item.span(), "unknown kind").emit();
+                                .span_label(item.span(), "unknown kind")
+                                .span_label(m.span, "").emit();
                             cstore::NativeUnknown
                         }
                     };

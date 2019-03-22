@@ -4,10 +4,7 @@ error[E0252]: the name `foo` is defined multiple times
 LL |     use a::foo;
    |         ------ previous import of the value `foo` here
 LL |     use a::foo;
-   |     ----^^^^^^-
-   |     |   |
-   |     |   `foo` reimported here
-   |     help: remove unnecessary import
+   |         ^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 

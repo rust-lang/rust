@@ -1,8 +1,8 @@
 warning: any use of this value will cause an error
-  --> $DIR/issue-43197.rs:8:5
+  --> $DIR/issue-43197.rs:8:20
    |
 LL |     const X: u32 = 0-1;
-   |     ^^^^^^^^^^^^^^^---^
+   |     ---------------^^^-
    |                    |
    |                    attempt to subtract with overflow
    |
@@ -13,10 +13,10 @@ LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/issue-43197.rs:10:5
+  --> $DIR/issue-43197.rs:10:24
    |
 LL |     const Y: u32 = foo(0-1);
-   |     ^^^^^^^^^^^^^^^^^^^---^^
+   |     -------------------^^^--
    |                        |
    |                        attempt to subtract with overflow
 

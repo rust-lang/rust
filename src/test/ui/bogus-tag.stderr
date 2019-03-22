@@ -5,7 +5,7 @@ LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
    | ---------- variant `Hsl` not found here
 ...
 LL |         Color::Hsl(h, s, l) => { println!("hsl"); }
-   |         -------^^^--------- variant not found in `Color`
+   |                ^^^ variant not found in `Color`
 
 error: aborting due to previous error
 

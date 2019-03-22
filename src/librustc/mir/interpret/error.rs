@@ -100,6 +100,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
         lint_root: hir::HirId,
+        span: Option<Span>,
     ) -> ErrorHandled {
         let lint = self.struct_generic(
             tcx,
@@ -108,6 +109,18 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         );
         match lint {
             Ok(mut lint) => {
+                if let Some(span) = span {
+                    let primary_spans = lint.span.primary_spans().to_vec();
+                    // point at the actual error as the primary span
+                    lint.replace_span_with(span);
+                    // point to the `const` statement as a secondary span
+                    // they don't have any label
+                    for sp in primary_spans {
+                        if sp != span {
+                            lint.span_label(sp, "");
+                        }
+                    }
+                }
                 lint.emit();
                 ErrorHandled::Reported
             },

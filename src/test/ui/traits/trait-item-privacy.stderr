@@ -39,9 +39,7 @@ LL | struct S;
    | --------- function or associated item `a` not found for this
 ...
 LL |     S::a(&S);
-   |     ---^
-   |     |
-   |     function or associated item not found in `S`
+   |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `a`, perhaps you need to implement it:
@@ -54,9 +52,7 @@ LL | struct S;
    | --------- function or associated item `b` not found for this
 ...
 LL |     S::b(&S);
-   |     ---^
-   |     |
-   |     function or associated item not found in `S`
+   |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:
@@ -77,9 +73,7 @@ LL | struct S;
    | --------- associated item `A` not found for this
 ...
 LL |     S::A;
-   |     ---^
-   |     |
-   |     associated item not found in `S`
+   |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `A`, perhaps you need to implement it:
@@ -92,9 +86,7 @@ LL | struct S;
    | --------- associated item `B` not found for this
 ...
 LL |     S::B;
-   |     ---^
-   |     |
-   |     associated item not found in `S`
+   |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:
