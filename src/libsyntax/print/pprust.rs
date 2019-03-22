@@ -1263,13 +1263,13 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            ast::ItemKind::Fn(ref decl, header, ref typarams, ref body) => {
+            ast::ItemKind::Fn(ref decl, header, ref param_names, ref body) => {
                 self.head("")?;
                 self.print_fn(
                     decl,
                     header,
                     Some(item.ident),
-                    typarams,
+                    param_names,
                     &item.vis
                 )?;
                 self.s.word(" ")?;
