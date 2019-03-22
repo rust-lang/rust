@@ -2368,7 +2368,7 @@ impl<'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => {
                 // FIXME: Find the right type and use it instead of `val.ty` here
-                if let Some(b) = val.assert_bits(tcx.global_tcx(), param_env.and(val.ty)) {
+                if let Some(b) = val.assert_bits(tcx.global_tcx(), val.ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Some(Discr {
                         val: b,

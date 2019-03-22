@@ -109,7 +109,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatternKind::Constant { value } => {
-                let switch_ty = ty::ParamEnv::empty().and(switch_ty);
                 indices.entry(value)
                        .or_insert_with(|| {
                            options.push(value.unwrap_bits(self.hir.tcx(), switch_ty));
@@ -653,11 +652,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     use std::cmp::Ordering::*;
                     use rustc::hir::RangeEnd::*;
 
-                    let param_env = ty::ParamEnv::empty().and(test.ty);
                     let tcx = self.hir.tcx();
 
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, param_env)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, param_env)?;
+                    let lo = compare_const_vals(tcx, test.lo, pat.hi, test.ty)?;
+                    let hi = compare_const_vals(tcx, test.hi, pat.lo, test.ty)?;
 
                     match (test.end, pat.end, lo, hi) {
                         // pat < test
@@ -772,11 +770,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
-        let param_env = ty::ParamEnv::empty().and(range.ty);
         let tcx = self.hir.tcx();
 
-        let a = compare_const_vals(tcx, range.lo, value, param_env)?;
-        let b = compare_const_vals(tcx, value, range.hi, param_env)?;
+        let a = compare_const_vals(tcx, range.lo, value, range.ty)?;
+        let b = compare_const_vals(tcx, value, range.hi, range.ty)?;
 
         match (b, range.end) {
             (Less, _) |

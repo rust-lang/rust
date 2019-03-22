@@ -15,7 +15,7 @@ use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFolda
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
-use crate::mir::interpret::{Scalar, Pointer};
+use crate::mir::interpret::Scalar;
 
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -2291,29 +2291,16 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        if self.ty != ty.value {
-            return None;
-        }
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
-    }
-
-    #[inline]
-    pub fn to_ptr(&self) -> Option<Pointer> {
-        self.val.try_to_ptr()
-    }
-
-    #[inline]
-    pub fn assert_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        assert_eq!(self.ty, ty.value);
-        let size = tcx.layout_of(ty).ok()?.size;
+    pub fn assert_bits(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<u128> {
+        assert_eq!(self.ty, ty);
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ParamEnv::empty().and(ty)).ok()?.size;
         self.val.try_to_bits(size)
     }
 
     #[inline]
     pub fn assert_bool(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
+        self.assert_bits(tcx, tcx.types.bool).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2322,19 +2309,18 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
+        self.assert_bits(tcx, tcx.types.usize).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
+    pub fn unwrap_bits(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
         self.assert_bits(tcx, ty).unwrap_or_else(||
-            bug!("expected bits of {}, got {:#?}", ty.value, self))
+            bug!("expected bits of {}, got {:#?}", ty, self))
     }
 
     #[inline]
     pub fn unwrap_usize(&self, tcx: TyCtxt<'tcx>) -> u64 {
-        self.assert_usize(tcx).unwrap_or_else(||
-            bug!("expected constant usize, got {:#?}", self))
+        self.unwrap_bits(tcx, tcx.types.usize) as u64
     }
 }
 
