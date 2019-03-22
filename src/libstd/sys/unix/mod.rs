@@ -47,7 +47,6 @@ mod l4re;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
-pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -58,6 +57,8 @@ pub mod thread;
 pub mod thread_local;
 pub mod time;
 pub mod stdio;
+
+pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {

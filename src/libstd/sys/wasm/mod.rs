@@ -32,7 +32,6 @@ pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
-pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -40,6 +39,8 @@ pub mod stack_overflow;
 pub mod thread;
 pub mod time;
 pub mod stdio;
+
+pub use crate::sys_common::os_str_bytes as os_str;
 
 cfg_if! {
     if #[cfg(target_feature = "atomics")] {
