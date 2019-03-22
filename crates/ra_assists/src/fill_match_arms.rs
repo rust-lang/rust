@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use hir::{
-    AdtDef, Ty, FieldSource, source_binder,
+    AdtDef, FieldSource, source_binder,
     db::HirDatabase,
 };
 use ra_syntax::ast::{self, AstNode};
@@ -26,14 +26,10 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     let source_map = function.body_source_map(ctx.db);
     let node_expr = source_map.node_expr(expr)?;
     let match_expr_ty = infer_result[node_expr].clone();
-    let enum_def = match match_expr_ty {
-        Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,
-        Ty::Ref(adt, _) => match *adt {
-            Ty::Adt { def_id: AdtDef::Enum(e), .. } => e,
-            _ => return None,
-        },
-        _ => return None,
-    };
+    let enum_def = match_expr_ty.autoderef(ctx.db).find_map(|ty| match ty.as_adt() {
+        Some((AdtDef::Enum(e), _)) => Some(e),
+        _ => None,
+    })?;
     let enum_name = enum_def.name(ctx.db)?;
     let db = ctx.db;
 

@@ -1,4 +1,4 @@
-use hir::{Ty, AdtDef};
+use hir::{Ty, AdtDef, TypeCtor};
 
 use crate::completion::{CompletionContext, Completions};
 
@@ -24,23 +24,20 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     for receiver in receiver.autoderef(ctx.db) {
         match receiver {
-            Ty::Adt { def_id, ref substs, .. } => {
-                match def_id {
-                    AdtDef::Struct(s) => {
-                        for field in s.fields(ctx.db) {
-                            acc.add_field(ctx, field, substs);
-                        }
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::Adt(AdtDef::Struct(s)) => {
+                    for field in s.fields(ctx.db) {
+                        acc.add_field(ctx, field, &a_ty.parameters);
                     }
-
-                    // TODO unions
-                    AdtDef::Enum(_) => (),
                 }
-            }
-            Ty::Tuple(fields) => {
-                for (i, ty) in fields.iter().enumerate() {
-                    acc.add_pos_field(ctx, i, ty);
+                // TODO unions
+                TypeCtor::Tuple => {
+                    for (i, ty) in a_ty.parameters.iter().enumerate() {
+                        acc.add_pos_field(ctx, i, ty);
+                    }
                 }
-            }
+                _ => {}
+            },
             _ => {}
         };
     }

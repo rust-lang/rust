@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use hir::{AdtDef, Ty, db::HirDatabase, source_binder::function_from_child_node};
+use hir::{AdtDef, db::HirDatabase, source_binder::function_from_child_node};
 
 use ra_syntax::ast::{self, AstNode};
 
@@ -60,8 +60,8 @@ where
         let source_map = function.body_source_map(self.ctx.db);
         let node_expr = source_map.node_expr(self.struct_lit.into())?;
         let struct_lit_ty = infer_result[node_expr].clone();
-        let struct_def = match struct_lit_ty {
-            Ty::Adt { def_id: AdtDef::Struct(s), .. } => s,
+        let struct_def = match struct_lit_ty.as_adt() {
+            Some((AdtDef::Struct(s), _)) => s,
             _ => return None,
         };
         self.struct_fields = struct_def

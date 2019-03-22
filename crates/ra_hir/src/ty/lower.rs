@@ -6,8 +6,6 @@
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
 
-use std::sync::Arc;
-
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path,
     ModuleDef, TypeAlias,
@@ -21,40 +19,40 @@ use crate::{
     generics::GenericParams,
     adt::VariantDef,
 };
-use super::{Ty, primitive, FnSig, Substs};
+use super::{Ty, primitive, FnSig, Substs, TypeCtor};
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
         match type_ref {
-            TypeRef::Never => Ty::Never,
+            TypeRef::Never => Ty::simple(TypeCtor::Never),
             TypeRef::Tuple(inner) => {
                 let inner_tys =
                     inner.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
-                Ty::Tuple(inner_tys.into())
+                Ty::apply(TypeCtor::Tuple, Substs(inner_tys.into()))
             }
             TypeRef::Path(path) => Ty::from_hir_path(db, resolver, path),
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = Ty::from_hir(db, resolver, inner);
-                Ty::RawPtr(Arc::new(inner_ty), *mutability)
+                Ty::apply_one(TypeCtor::RawPtr(*mutability), inner_ty)
             }
             TypeRef::Array(inner) => {
                 let inner_ty = Ty::from_hir(db, resolver, inner);
-                Ty::Array(Arc::new(inner_ty))
+                Ty::apply_one(TypeCtor::Array, inner_ty)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = Ty::from_hir(db, resolver, inner);
-                Ty::Slice(Arc::new(inner_ty))
+                Ty::apply_one(TypeCtor::Slice, inner_ty)
             }
             TypeRef::Reference(inner, mutability) => {
                 let inner_ty = Ty::from_hir(db, resolver, inner);
-                Ty::Ref(Arc::new(inner_ty), *mutability)
+                Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
                 let inner_tys =
                     params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
-                let sig = FnSig { params_and_return: inner_tys.into() };
-                Ty::FnPtr(sig)
+                let sig = Substs(inner_tys.into());
+                Ty::apply(TypeCtor::FnPtr, sig)
             }
             TypeRef::Error => Ty::Unknown,
         }
@@ -64,14 +62,14 @@ impl Ty {
         if let Some(name) = path.as_ident() {
             // TODO handle primitive type names in resolver as well?
             if let Some(int_ty) = primitive::UncertainIntTy::from_type_name(name) {
-                return Ty::Int(int_ty);
+                return Ty::simple(TypeCtor::Int(int_ty));
             } else if let Some(float_ty) = primitive::UncertainFloatTy::from_type_name(name) {
-                return Ty::Float(float_ty);
+                return Ty::simple(TypeCtor::Float(float_ty));
             } else if let Some(known) = name.as_known_name() {
                 match known {
-                    KnownName::Bool => return Ty::Bool,
-                    KnownName::Char => return Ty::Char,
-                    KnownName::Str => return Ty::Str,
+                    KnownName::Bool => return Ty::simple(TypeCtor::Bool),
+                    KnownName::Char => return Ty::simple(TypeCtor::Char),
+                    KnownName::Str => return Ty::simple(TypeCtor::Str),
                     _ => {}
                 }
             }
@@ -247,7 +245,7 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let generics = def.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), substs }
+    Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
 /// Build the declared type of a const.
@@ -289,7 +287,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     }
     let generics = def.generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), substs }
+    Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> FnSig {
@@ -317,7 +315,7 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     }
     let generics = def.parent_enum(db).generic_params(db);
     let substs = make_substs(&generics);
-    Ty::FnDef { def: def.into(), substs }
+    Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
 fn make_substs(generics: &GenericParams) -> Substs {
@@ -333,12 +331,12 @@ fn make_substs(generics: &GenericParams) -> Substs {
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
     let generics = s.generic_params(db);
-    Ty::Adt { def_id: s.into(), substs: make_substs(&generics) }
+    Ty::apply(TypeCtor::Adt(s.into()), make_substs(&generics))
 }
 
 fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     let generics = s.generic_params(db);
-    Ty::Adt { def_id: s.into(), substs: make_substs(&generics) }
+    Ty::apply(TypeCtor::Adt(s.into()), make_substs(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {

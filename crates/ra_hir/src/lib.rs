@@ -53,7 +53,7 @@ pub use self::{
     name::Name,
     ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
     nameres::{PerNs, Namespace},
-    ty::{Ty, Substs, display::HirDisplay},
+    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
