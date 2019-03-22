@@ -1,10 +1,20 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found `Bad`
-  --> $DIR/recover-enum.rs:6:9
+error: missing comma
+  --> $DIR/recover-enum.rs:5:13
    |
 LL |         Very
-   |             - expected one of `(`, `,`, `=`, `{`, or `}` here
-LL |         Bad
-   |         ^^^ unexpected token
+   |             ^ help: missing comma
 
-error: aborting due to previous error
+error: missing comma
+  --> $DIR/recover-enum.rs:7:19
+   |
+LL |         Bad(usize)
+   |                   ^ help: missing comma
+
+error: missing comma
+  --> $DIR/recover-enum.rs:9:27
+   |
+LL |         Stuff { a: usize }
+   |                           ^ help: missing comma
+
+error: aborting due to 3 previous errors
 

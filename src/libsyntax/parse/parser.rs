@@ -1524,7 +1524,7 @@ impl<'a> Parser<'a> {
                          at_end: &mut bool,
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.span;
-
+        self.eat_bad_pub();
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
@@ -7688,6 +7688,7 @@ impl<'a> Parser<'a> {
 
             let struct_def;
             let mut disr_expr = None;
+            self.eat_bad_pub();
             let ident = self.parse_ident()?;
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
@@ -7719,11 +7720,25 @@ impl<'a> Parser<'a> {
             };
             variants.push(respan(vlo.to(self.prev_span), vr));
 
-            if !self.eat(&token::Comma) { break; }
+            if !self.eat(&token::Comma) {
+                if self.token.is_ident() && !self.token.is_reserved_ident() {
+                    let sp = self.sess.source_map().next_point(self.prev_span);
+                    let mut err = self.struct_span_err(sp, "missing comma");
+                    err.span_suggestion_short(
+                        sp,
+                        "missing comma",
+                        ",".to_owned(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                } else {
+                    break;
+                }
+            }
         }
         self.expect(&token::CloseDelim(token::Brace))?;
         if !any_disr.is_empty() && !all_nullary {
-            let mut err =self.struct_span_err(
+            let mut err = self.struct_span_err(
                 any_disr.clone(),
                 "discriminator values can only be used with a field-less enum",
             );
@@ -8607,6 +8622,21 @@ impl<'a> Parser<'a> {
             ';'.to_string(),
             Applicability::MaybeIncorrect,
         ).emit();
+    }
+
+    /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
+    fn eat_bad_pub(&mut self) {
+        if self.token.is_keyword(keywords::Pub) {
+            match self.parse_visibility(false) {
+                Ok(vis) => {
+                    let mut err = self.diagnostic()
+                        .struct_span_err(vis.span, "unnecessary visibility qualifier");
+                    err.span_label(vis.span, "`pub` not permitted here");
+                    err.emit();
+                }
+                Err(mut err) => err.emit(),
+            }
+        }
     }
 }
 

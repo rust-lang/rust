@@ -1,13 +1,14 @@
 // compile-flags: -Z continue-parse-after-error
 
-enum bird {
-    pub duck,
-    //~^ ERROR: expected identifier, found keyword `pub`
-    //~| ERROR: expected
-    goose
+enum Bird {
+    pub Duck,
+    //~^ ERROR unnecessary visibility qualifier
+    Goose,
+    pub(crate) Dove
+    //~^ ERROR unnecessary visibility qualifier
 }
 
 
 fn main() {
-    let y = bird::goose;
+    let y = Bird::Goose;
 }
