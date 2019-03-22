@@ -212,7 +212,7 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
-        self.0.sub_instant(&earlier.0)
+        self.0.checked_sub_instant(&earlier.0).expect("supplied instant is later than self")
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -233,11 +233,7 @@ impl Instant {
     /// ```
     #[unstable(feature = "checked_duration_since", issue = "58402")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
-        if self >= &earlier {
-            Some(self.0.sub_instant(&earlier.0))
-        } else {
-            None
-        }
+        self.0.checked_sub_instant(&earlier.0)
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
