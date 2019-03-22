@@ -1869,6 +1869,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, "non_exhaustive") {
             debug!("found non-exhaustive field list for {:?}", parent_did);
             flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+        } else if let Some(variant_did) = variant_did {
+            if tcx.has_attr(variant_did, "non_exhaustive") {
+                debug!("found non-exhaustive field list for {:?}", variant_did);
+                flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+            }
         }
 
         VariantDef {
@@ -2935,8 +2940,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Returns `ty::VariantDef` if `def` refers to a struct,
-    // or variant or their constructors, panics otherwise.
+    /// Returns `ty::VariantDef` if `def` refers to a struct,
+    /// or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
             Def::Variant(did) => {

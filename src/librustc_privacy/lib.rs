@@ -244,7 +244,26 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                     match tcx.hir().get_by_hir_id(parent_hir_id) {
                         Node::Variant(..) => {
                             let parent_did = tcx.hir().local_def_id_from_hir_id(parent_hir_id);
-                            return def_id_visibility(tcx, parent_did);
+                            let (mut ctor_vis, mut span, mut descr) = def_id_visibility(
+                                tcx, parent_did,
+                            );
+
+                            let adt_def = tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
+                            let ctor_did = tcx.hir().local_def_id_from_hir_id(
+                                vdata.ctor_hir_id().unwrap());
+                            let variant = adt_def.variant_with_ctor_id(ctor_did);
+
+                            if variant.is_field_list_non_exhaustive() &&
+                                ctor_vis == ty::Visibility::Public
+                            {
+                                ctor_vis = ty::Visibility::Restricted(
+                                    DefId::local(CRATE_DEF_INDEX));
+                                let attrs = tcx.get_attrs(variant.def_id);
+                                span = attr::find_by_name(&attrs, "non_exhaustive").unwrap().span;
+                                descr = "crate-visible";
+                            }
+
+                            return (ctor_vis, span, descr);
                         }
                         Node::Item(..) => {
                             let item = match tcx.hir().get_by_hir_id(parent_hir_id) {

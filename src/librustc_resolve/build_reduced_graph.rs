@@ -588,6 +588,14 @@ impl<'a> Resolver<'a> {
         let def = Def::Variant(def_id);
         self.define(parent, ident, TypeNS, (def, vis, variant.span, expansion));
 
+        // If the variant is marked as non_exhaustive then lower the visibility to within the
+        // crate.
+        let mut ctor_vis = vis;
+        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
+        if has_non_exhaustive && vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+        }
+
         // Define a constructor name in the value namespace.
         // Braced variants, unlike structs, generate unusable names in
         // value namespace, they are reserved for possible future use.
@@ -597,7 +605,7 @@ impl<'a> Resolver<'a> {
         let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
-        self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
+        self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, variant.span, expansion));
     }
 
     /// Constructs the reduced graph for one foreign item.
