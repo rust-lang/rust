@@ -16,7 +16,7 @@ pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
 }
 
 pub unsafe extern "C" fn no_escape2(_: usize, ap: ...) {
-    let _ = ap.copy(|ap| { ap }); //~ ERROR: lifetime may not live long enough
+    let _ = ap.with_copy(|ap| { ap }); //~ ERROR: lifetime may not live long enough
 }
 
 pub unsafe extern "C" fn no_escape3(_: usize, ap0: &mut VaList, mut ap1: ...) {
