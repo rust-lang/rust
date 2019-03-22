@@ -34,6 +34,7 @@ mod assists;
 mod diagnostics;
 mod syntax_tree;
 mod line_index;
+mod folding_ranges;
 mod line_index_utils;
 
 #[cfg(test)]
@@ -64,9 +65,10 @@ pub use crate::{
     hover::{HoverResult},
     line_index::{LineIndex, LineCol},
     line_index_utils::translate_offset_with_edit,
+    folding_ranges::{Fold, FoldKind},
 };
 pub use ra_ide_api_light::{
-    Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
+    HighlightedRange, Severity, StructureNode, LocalEdit,
 };
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
@@ -314,7 +316,7 @@ impl Analysis {
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let file = self.db.parse(file_id);
-        ra_ide_api_light::folding_ranges(&file)
+        folding_ranges::folding_ranges(&file)
     }
 
     /// Fuzzy searches for a symbol.

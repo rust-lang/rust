@@ -3,7 +3,6 @@
 //! This usually means functions which take syntax tree as an input and produce
 //! an edit or some auxiliary info.
 
-mod folding_ranges;
 mod structure;
 #[cfg(test)]
 mod test_utils;
@@ -20,7 +19,6 @@ use ra_syntax::{
 };
 
 pub use crate::{
-    folding_ranges::{folding_ranges, Fold, FoldKind},
     structure::{file_structure, StructureNode},
     join_lines::join_lines,
     typing::{on_enter, on_dot_typed, on_eq_typed},
