@@ -228,7 +228,7 @@ impl LiteralExpander<'tcx> {
                 ConstValue::Slice {
                     data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
                     start: p.offset.bytes().try_into().unwrap(),
-                    end: n.unwrap_usize(self.tcx).try_into().unwrap(),
+                    end: n.eval_usize(self.tcx).try_into().unwrap(),
                 }
             },
             // fat pointers stay the same
@@ -646,8 +646,8 @@ fn all_constructors<'a, 'tcx>(
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
             }).collect()
         }
-        ty::Array(ref sub_ty, len) if len.assert_usize(cx.tcx).is_some() => {
-            let len = len.unwrap_usize(cx.tcx);
+        ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx).is_some() => {
+            let len = len.eval_usize(cx.tcx);
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
@@ -789,7 +789,7 @@ where
                 match (value.val, &value.ty.sty) {
                     (_, ty::Array(_, n)) => max_fixed_len = cmp::max(
                         max_fixed_len,
-                        n.unwrap_usize(cx.tcx),
+                        n.eval_usize(cx.tcx),
                     ),
                     (ConstValue::Slice{ start, end, .. }, ty::Slice(_)) => max_fixed_len = cmp::max(
                         max_fixed_len,
@@ -856,7 +856,7 @@ impl<'tcx> IntRange<'tcx> {
             }
             ConstantValue(val) if is_integral(val.ty) => {
                 let ty = val.ty;
-                if let Some(val) = val.assert_bits(tcx, ty) {
+                if let Some(val) = val.try_eval_bits(tcx, ty) {
                     let bias = IntRange::signed_bias(tcx, ty);
                     let val = val ^ bias;
                     Some(IntRange { range: val..=val, ty })
@@ -873,8 +873,8 @@ impl<'tcx> IntRange<'tcx> {
             match pat.kind {
                 box PatternKind::Constant { value } => break ConstantValue(value),
                 box PatternKind::Range(PatternRange { lo, hi, ty, end }) => break ConstantRange(
-                    lo.unwrap_bits(tcx, ty),
-                    hi.unwrap_bits(tcx, ty),
+                    lo.eval_bits(tcx, ty),
+                    hi.eval_bits(tcx, ty),
                     ty,
                     end,
                 ),
@@ -1327,14 +1327,14 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
             Some(vec![ConstantRange(
-                lo.unwrap_bits(cx.tcx, ty),
-                hi.unwrap_bits(cx.tcx, ty),
+                lo.eval_bits(cx.tcx, ty),
+                hi.eval_bits(cx.tcx, ty),
                 ty,
                 end,
             )]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::Array(_, length) => Some(vec![
-                Slice(length.unwrap_usize(cx.tcx))
+                Slice(length.eval_usize(cx.tcx))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
@@ -1402,7 +1402,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
                         match ty.sty {
                             // If the field type returned is an array of an unknown
                             // size return an TyErr.
-                            ty::Array(_, len) if len.assert_usize(cx.tcx).is_none() =>
+                            ty::Array(_, len) if len.try_eval_usize(cx.tcx).is_none() =>
                                 cx.tcx.types.err,
                             _ => ty,
                         }
@@ -1436,7 +1436,7 @@ fn slice_pat_covered_by_const<'tcx>(
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
         (ConstValue::ByRef { offset, alloc, .. }, ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
-            let n = n.assert_usize(tcx).unwrap();
+            let n = n.eval_usize(tcx);
             let ptr = Pointer::new(AllocId(0), offset);
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
@@ -1464,7 +1464,7 @@ fn slice_pat_covered_by_const<'tcx>(
     {
         match pat.kind {
             box PatternKind::Constant { value } => {
-                let b = value.unwrap_bits(tcx, pat.ty);
+                let b = value.eval_bits(tcx, pat.ty);
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
                     return Ok(false);
@@ -1760,7 +1760,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                                 ConstValue::ByRef { offset, alloc, .. } => (
                                     alloc,
                                     offset,
-                                    n.unwrap_usize(cx.tcx),
+                                    n.eval_usize(cx.tcx),
                                     t,
                                 ),
                                 _ => span_bug!(

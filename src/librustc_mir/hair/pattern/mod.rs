@@ -728,7 +728,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::Array(_, len) => {
                 // fixed-length array
-                let len = len.unwrap_usize(self.tcx);
+                let len = len.eval_usize(self.tcx);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Array(_, n) => {
                 PatternKind::Array {
-                    prefix: (0..n.unwrap_usize(self.tcx))
+                    prefix: (0..n.eval_usize(self.tcx))
                         .map(|i| adt_subpattern(i as usize, None))
                         .collect(),
                     slice: None,
@@ -1206,7 +1206,7 @@ fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
                     // (But still tell caller to continue search.)
                     return false;
                 }
-                ty::Array(_, n) if n.assert_usize(self.tcx) == Some(0) => {
+                ty::Array(_, n) if n.try_eval_usize(self.tcx) == Some(0) => {
                     // rust-lang/rust#62336: ignore type of contents
                     // for empty array.
                     return false;
@@ -1470,7 +1470,7 @@ pub fn compare_const_vals<'tcx>(
         return fallback();
     }
 
-    if let (Some(a), Some(b)) = (a.assert_bits(tcx, ty), b.assert_bits(tcx, ty)) {
+    if let (Some(a), Some(b)) = (a.try_eval_bits(tcx, ty), b.try_eval_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;
         return match ty.sty {
             ty::Float(ast::FloatTy::F32) => {

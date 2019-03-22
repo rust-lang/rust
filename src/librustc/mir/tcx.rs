@@ -90,7 +90,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to } => {
                 PlaceTy::from_ty(match self.ty.sty {
                     ty::Array(inner, size) => {
-                        let size = size.unwrap_usize(tcx);
+                        let size = size.eval_usize(tcx);
                         let len = size - (from as u64) - (to as u64);
                         tcx.mk_array(inner, len)
                     }

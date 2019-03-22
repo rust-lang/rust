@@ -26,7 +26,7 @@ impl MirPass for SimplifyBranches {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Constant(ref c), switch_ty, ref values, ref targets, ..
                 } => {
-                    let constant = c.literal.assert_bits(tcx, switch_ty);
+                    let constant = c.literal.try_eval_bits(tcx, switch_ty);
                     if let Some(constant) = constant {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };
@@ -43,7 +43,7 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert {
                     target, cond: Operand::Constant(ref c), expected, ..
-                } if (c.literal.assert_bool(tcx) == Some(true)) == expected =>
+                } if (c.literal.try_eval_bool(tcx) == Some(true)) == expected =>
                     TerminatorKind::Goto { target },
                 TerminatorKind::FalseEdges { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }

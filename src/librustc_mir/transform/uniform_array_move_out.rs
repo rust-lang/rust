@@ -68,7 +68,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     let place_ty =
                         Place::ty_from(&src_place.base, &proj.base, self.body, self.tcx).ty;
                     if let ty::Array(item_ty, const_size) = place_ty.sty {
-                        if let Some(size) = const_size.assert_usize(self.tcx) {
+                        if let Some(size) = const_size.try_eval_usize(self.tcx) {
                             assert!(size <= u32::max_value() as u64,
                                     "uniform array move out doesn't supported
                                      for array bigger then u32");
@@ -219,7 +219,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                             let src_ty =
                                 Place::ty_from(src_place.base, src_place.projection, body, tcx).ty;
                             if let ty::Array(_, ref size_o) = src_ty.sty {
-                                size_o.assert_usize(tcx)
+                                size_o.try_eval_usize(tcx)
                             } else {
                                 None
                             }

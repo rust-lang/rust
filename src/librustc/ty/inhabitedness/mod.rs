@@ -190,7 +190,7 @@ impl<'tcx> TyS<'tcx> {
                 }))
             }
 
-            Array(ty, len) => match len.assert_usize(tcx) {
+            Array(ty, len) => match len.try_eval_usize(tcx) {
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
                 Some(n) if n != 0 => ty.uninhabited_from(tcx),

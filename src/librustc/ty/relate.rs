@@ -466,7 +466,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
-                    match (sz_a.assert_usize(tcx), sz_b.assert_usize(tcx)) {
+                    match (sz_a.try_eval_usize(tcx), sz_b.try_eval_usize(tcx)) {
                         (Some(sz_a_val), Some(sz_b_val)) => {
                             Err(TypeError::FixedArraySize(
                                 expected_found(relation, &sz_a_val, &sz_b_val)

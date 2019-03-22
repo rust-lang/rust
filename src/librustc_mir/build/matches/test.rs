@@ -111,7 +111,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatternKind::Constant { value } => {
                 indices.entry(value)
                        .or_insert_with(|| {
-                           options.push(value.unwrap_bits(self.hir.tcx(), switch_ty));
+                           options.push(value.eval_bits(self.hir.tcx(), switch_ty));
                            options.len() - 1
                        });
                 true
