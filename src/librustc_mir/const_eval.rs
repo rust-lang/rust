@@ -650,9 +650,9 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                                     "could not evaluate static initializer");
             });
             match tracked_err {
-                Ok(_) => tcx.sess.delay_span_bug(err.span,
+                Ok(reported_err) => tcx.sess.delay_span_bug(err.span,
                                         &format!("static eval failure did not emit an error: {:#?}",
-                                        tracked_err)),
+                                        reported_err)),
                 Err(_) => (),
             }
             reported_err
