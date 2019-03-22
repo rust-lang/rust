@@ -1156,12 +1156,14 @@ fn prepare_union_metadata(
 // Enums
 //=-----------------------------------------------------------------------------
 
-// DWARF variant support is only available starting in LLVM 7.
+// DWARF variant support is only available starting in LLVM 8.
 // Although the earlier enum debug info output did not work properly
 // in all situations, it is better for the time being to continue to
 // sometimes emit the old style rather than emit something completely
-// useless when rust is compiled against LLVM 6 or older.  This
-// function decides which representation will be emitted.
+// useless when rust is compiled against LLVM 6 or older. LLVM 7
+// contains an early version of the DWARF variant support, and will
+// crash when handling the new debug info format. This function
+// decides which representation will be emitted.
 fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.

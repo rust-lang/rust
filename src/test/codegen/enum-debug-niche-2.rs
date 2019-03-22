@@ -4,7 +4,7 @@
 
 // ignore-tidy-linelength
 // ignore-windows
-// min-system-llvm-version 7.0
+// min-system-llvm-version 8.0
 
 // compile-flags: -g -C no-prepopulate-passes
 
