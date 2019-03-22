@@ -4,9 +4,6 @@
 //! an edit or some auxiliary info.
 
 mod structure;
-#[cfg(test)]
-mod test_utils;
-mod join_lines;
 mod typing;
 
 use rustc_hash::FxHashSet;
@@ -20,7 +17,6 @@ use ra_syntax::{
 
 pub use crate::{
     structure::{file_structure, StructureNode},
-    join_lines::join_lines,
     typing::{on_enter, on_dot_typed, on_eq_typed},
 };
 
@@ -118,7 +114,7 @@ mod tests {
     use ra_syntax::AstNode;
     use insta::assert_debug_snapshot_matches;
 
-    use crate::test_utils::{add_cursor, assert_eq_text, extract_offset};
+    use test_utils::{add_cursor, assert_eq_text, extract_offset};
 
     use super::*;
 

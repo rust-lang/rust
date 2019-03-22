@@ -9,22 +9,14 @@ use ra_syntax::{
 use ra_fmt::{
     compute_ws, extract_trivial_expression
 };
-use crate::{
-    LocalEdit, TextEditBuilder,
-};
+use ra_text_edit::{TextEdit, TextEditBuilder};
 
-pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
+pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
         let pos = match text.find('\n') {
-            None => {
-                return LocalEdit {
-                    label: "join lines".to_string(),
-                    edit: TextEditBuilder::default().finish(),
-                    cursor_position: None,
-                };
-            }
+            None => return TextEditBuilder::default().finish(),
             Some(pos) => pos,
         };
         TextRange::offset_len(range.start() + pos, TextUnit::of_char('\n'))
@@ -52,7 +44,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> LocalEdit {
         }
     }
 
-    LocalEdit { label: "join lines".to_string(), edit: edit.finish(), cursor_position: None }
+    edit.finish()
 }
 
 fn remove_newline(
@@ -514,7 +506,7 @@ fn foo() {
         let (sel, before) = extract_range(before);
         let file = SourceFile::parse(&before);
         let result = join_lines(&file, sel);
-        let actual = result.edit.apply(&before);
+        let actual = result.apply(&before);
         assert_eq_text!(after, &actual);
     }
 

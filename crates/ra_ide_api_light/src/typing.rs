@@ -118,7 +118,7 @@ pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{add_cursor, assert_eq_text, extract_offset};
+    use test_utils::{add_cursor, assert_eq_text, extract_offset};
 
     use super::*;
 
