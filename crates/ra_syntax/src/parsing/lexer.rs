@@ -195,6 +195,7 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
             ptr.bump();
             true
         }
+        ('_', None) => return UNDERSCORE,
         ('_', Some(c)) if !is_ident_continue(c) => return UNDERSCORE,
         _ => false,
     };

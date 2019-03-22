@@ -29,6 +29,8 @@ mod ptr;
 
 pub mod algo;
 pub mod ast;
+#[doc(hidden)]
+pub mod fuzz;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use ra_parser::SyntaxKind;
@@ -81,13 +83,6 @@ impl SourceFile {
         errors.extend(validation::validate(self));
         errors
     }
-}
-
-pub fn check_fuzz_invariants(text: &str) {
-    let file = SourceFile::parse(text);
-    let root = file.syntax();
-    validation::validate_block_structure(root);
-    let _ = file.errors();
 }
 
 /// This test does not assert anything and instead just shows off the crate's

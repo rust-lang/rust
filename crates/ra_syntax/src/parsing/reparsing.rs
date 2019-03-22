@@ -33,12 +33,19 @@ pub(crate) fn incremental_reparse(
 }
 
 fn reparse_leaf<'node>(
-    node: &'node SyntaxNode,
+    root: &'node SyntaxNode,
     edit: &AtomTextEdit,
 ) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
-    let node = algo::find_covering_node(node, edit.delete);
+    let node = algo::find_covering_node(root, edit.delete);
     match node.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
+            if node.kind() == WHITESPACE || node.kind() == COMMENT {
+                // removing a new line may extends previous token
+                if node.text().to_string()[edit.delete - node.range().start()].contains('\n') {
+                    return None;
+                }
+            }
+
             let text = get_text_after_edit(node, &edit);
             let tokens = tokenize(&text);
             let token = match tokens[..] {
@@ -48,6 +55,13 @@ fn reparse_leaf<'node>(
 
             if token.kind == IDENT && is_contextual_kw(&text) {
                 return None;
+            }
+
+            if let Some(next_char) = root.text().char_at(node.range().end()) {
+                let tokens_with_next_char = tokenize(&format!("{}{}", text, next_char));
+                if tokens_with_next_char.len() == 1 {
+                    return None;
+                }
             }
 
             let green = GreenNode::new_leaf(node.kind(), text.into());
@@ -104,7 +118,7 @@ fn is_balanced(tokens: &[Token]) -> bool {
         return false;
     }
     let mut balance = 0usize;
-    for t in tokens.iter() {
+    for t in &tokens[1..tokens.len() - 1] {
         match t.kind {
             L_CURLY => balance += 1,
             R_CURLY => {
@@ -130,11 +144,11 @@ fn merge_errors(
         if e.offset() <= old_node.range().start() {
             res.push(e)
         } else if e.offset() >= old_node.range().end() {
-            res.push(e.add_offset(TextUnit::of_str(&edit.insert) - edit.delete.len()));
+            res.push(e.add_offset(TextUnit::of_str(&edit.insert), edit.delete.len()));
         }
     }
     for e in new_errors {
-        res.push(e.add_offset(old_node.range().start()));
+        res.push(e.add_offset(old_node.range().start(), 0.into()));
     }
     res
 }

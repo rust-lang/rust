@@ -8,7 +8,7 @@ use std::{
 };
 
 use test_utils::{project_dir, dir_tests, read_text, collect_tests};
-use ra_syntax::{SourceFile, AstNode, check_fuzz_invariants};
+use ra_syntax::{SourceFile, AstNode, fuzz};
 
 #[test]
 fn lexer_tests() {
@@ -47,7 +47,16 @@ fn parser_tests() {
 #[test]
 fn parser_fuzz_tests() {
     for (_, text) in collect_tests(&test_data_dir(), &["parser/fuzz-failures"]) {
-        check_fuzz_invariants(&text)
+        fuzz::check_parser(&text)
+    }
+}
+
+#[test]
+fn reparse_fuzz_tests() {
+    for (_, text) in collect_tests(&test_data_dir(), &["reparse/fuzz-failures"]) {
+        let check = fuzz::CheckReparse::from_data(text.as_bytes()).unwrap();
+        println!("{:?}", check);
+        check.run();
     }
 }
 
