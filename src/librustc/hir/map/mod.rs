@@ -557,24 +557,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
+    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [HirId] {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.trait_impls.get(&trait_did).map_or(&[], |xs| &xs[..])
-    }
-
-    pub fn trait_auto_impl(&self, trait_did: DefId) -> Option<NodeId> {
-        self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
-
-        // N.B., intentionally bypass `self.forest.krate()` so that we
-        // do not trigger a read of the whole krate here
-        self.forest.krate.trait_auto_impl.get(&trait_did).cloned()
-    }
-
-    pub fn trait_is_auto(&self, trait_did: DefId) -> bool {
-        self.trait_auto_impl(trait_did).is_some()
     }
 
     /// Gets the attributes on the crate. This is preferable to
