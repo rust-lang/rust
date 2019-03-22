@@ -664,20 +664,23 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn instant_duration_panic() {
+    fn instant_duration_since_panic() {
         let a = Instant::now();
         (a - Duration::new(1, 0)).duration_since(a);
     }
 
     #[test]
-    fn checked_instant_duration_nopanic() {
-        let a = Instant::now();
-        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
-        assert_eq!(ret, None);
+    fn instant_checked_duration_since_nopanic() {
+        let now = Instant::now();
+        let earlier = now - Duration::new(1, 0);
+        let later = now + Duration::new(1, 0);
+        assert_eq!(earlier.checked_duration_since(now), None);
+        assert_eq!(later.checked_duration_since(now), Some(Duration::new(1, 0)));
+        assert_eq!(now.checked_duration_since(now), Some(Duration::new(0, 0)));
     }
 
     #[test]
-    fn saturating_instant_duration_nopanic() {
+    fn instant_saturating_duration_since_nopanic() {
         let a = Instant::now();
         let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
         assert_eq!(ret, Duration::new(0,0));
