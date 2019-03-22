@@ -6,9 +6,6 @@
 //! database, and the `ra_hir` crate, where majority of the analysis happens.
 //! However, IDE specific bits of the analysis (most notably completion) happen
 //! in this crate.
-//!
-//! The sibling `ra_ide_api_light` handles those bits of IDE functionality
-//! which are restricted to a single file and need only syntax.
 
 // For proving that RootDatabase is RefUnwindSafe.
 #![recursion_limit = "128"]
@@ -33,10 +30,11 @@ mod impls;
 mod assists;
 mod diagnostics;
 mod syntax_tree;
-mod line_index;
 mod folding_ranges;
+mod line_index;
 mod line_index_utils;
 mod join_lines;
+mod structure;
 mod typing;
 mod matching_brace;
 
@@ -72,9 +70,10 @@ pub use crate::{
     line_index_utils::translate_offset_with_edit,
     folding_ranges::{Fold, FoldKind},
     syntax_highlighting::HighlightedRange,
+    structure::{StructureNode, file_structure},
     diagnostics::Severity,
 };
-pub use ra_ide_api_light::StructureNode;
+
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
     Edition
@@ -388,7 +387,7 @@ impl Analysis {
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.db.parse(file_id);
-        ra_ide_api_light::file_structure(&file)
+        structure::file_structure(&file)
     }
 
     /// Returns the set of folding ranges.

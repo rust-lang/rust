@@ -20,7 +20,6 @@ jemallocator = { version = "0.1.9", optional = true }
 jemalloc-ctl = { version = "0.2.0", optional = true }
 
 ra_syntax = { path = "../ra_syntax" }
-ra_ide_api_light = { path = "../ra_ide_api_light" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
 ra_fmt = { path = "../ra_fmt" }
