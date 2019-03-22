@@ -7,13 +7,13 @@ LL |         Self::TSVariant(());
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:11:27
    |
 LL |         Self::TSVariant::<()>(());
    |                           ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:13:16
    |
 LL |         Self::<()>::TSVariant(());
@@ -28,13 +28,13 @@ LL |         Self::<()>::TSVariant(());
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:16:16
    |
 LL |         Self::<()>::TSVariant::<()>(());
    |                ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:16:33
    |
 LL |         Self::<()>::TSVariant::<()>(());
@@ -49,7 +49,7 @@ LL |         Self::SVariant { v: () };
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:24:26
    |
 LL |         Self::SVariant::<()> { v: () };
@@ -64,7 +64,7 @@ LL |         Self::SVariant::<()> { v: () };
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:27:16
    |
 LL |         Self::<()>::SVariant { v: () };
@@ -79,13 +79,13 @@ LL |         Self::<()>::SVariant { v: () };
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:30:16
    |
 LL |         Self::<()>::SVariant::<()> { v: () };
    |                ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:30:32
    |
 LL |         Self::<()>::SVariant::<()> { v: () };
@@ -100,25 +100,25 @@ LL |         Self::<()>::SVariant::<()> { v: () };
    = note: expected type `T`
               found type `()`
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:40:29
    |
 LL |     Enum::<()>::TSVariant::<()>(());
    |                             ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:43:24
    |
 LL |     Alias::TSVariant::<()>(());
    |                        ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:45:30
    |
 LL |     Alias::<()>::TSVariant::<()>(());
    |                              ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:48:29
    |
 LL |     AliasFixed::TSVariant::<()>(());
@@ -136,31 +136,31 @@ error[E0107]: wrong number of type arguments: expected 0, found 1
 LL |     AliasFixed::<()>::TSVariant::<()>(());
    |                  ^^ unexpected type argument
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:52:35
    |
 LL |     AliasFixed::<()>::TSVariant::<()>(());
    |                                   ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:58:28
    |
 LL |     Enum::<()>::SVariant::<()> { v: () };
    |                            ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:61:23
    |
 LL |     Alias::SVariant::<()> { v: () };
    |                       ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:63:29
    |
 LL |     Alias::<()>::SVariant::<()> { v: () };
    |                             ^^ type argument not allowed
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:66:28
    |
 LL |     AliasFixed::SVariant::<()> { v: () };
@@ -178,7 +178,7 @@ error[E0107]: wrong number of type arguments: expected 0, found 1
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
    |                  ^^ unexpected type argument
 
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:70:34
    |
 LL |     AliasFixed::<()>::SVariant::<()> { v: () };
