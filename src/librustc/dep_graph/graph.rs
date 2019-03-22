@@ -20,6 +20,32 @@ use super::safe::DepGraphSafe;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::prev::PreviousDepGraph;
 
+pub type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
+
+pub enum LoadResult<T> {
+    Ok { data: T },
+    DataOutOfDate,
+    Error { message: String },
+}
+
+/// Either a result that has already be computed or a
+/// handle that will let us wait until it is computed
+/// by a background thread.
+pub enum MaybeAsync<T> {
+    Sync(T),
+    Async(std::thread::JoinHandle<T>)
+}
+impl<T> MaybeAsync<T> {
+    pub fn open(self) -> std::thread::Result<T> {
+        match self {
+            MaybeAsync::Sync(result) => Ok(result),
+            MaybeAsync::Async(handle) => handle.join()
+        }
+    }
+}
+
+pub type DepGraphFuture = MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap)>>;
+
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Lrc<DepGraphData>>,
@@ -30,7 +56,7 @@ newtype_index! {
 }
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
+    pub(crate) const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -94,17 +120,29 @@ impl DepGraph {
                prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
 
+        let mut data = DepGraphData {
+            previous_work_products: prev_work_products,
+            dep_node_debug: Default::default(),
+            current: Lock::new(CurrentDepGraph::new(prev_graph_node_count)),
+            emitted_diagnostics: Default::default(),
+            emitted_diagnostics_cond_var: Condvar::new(),
+            previous: prev_graph,
+            colors: DepNodeColorMap::new(prev_graph_node_count),
+            loaded_from_cache: Default::default(),
+        };
+
+        let non_incr_dep_node = DepNode::new_no_params(DepKind::NonIncremental);
+
+        // Allocate the NonIncremental node
+        data.current.get_mut().alloc_node(non_incr_dep_node, smallvec![], Fingerprint::ZERO);
+
+        data.previous.node_to_index_opt(&non_incr_dep_node).map(|prev_index| {
+            // Color previous NonIncremental node as red
+            data.colors.insert(prev_index, DepNodeColor::Red);
+        });
+
         DepGraph {
-            data: Some(Lrc::new(DepGraphData {
-                previous_work_products: prev_work_products,
-                dep_node_debug: Default::default(),
-                current: Lock::new(CurrentDepGraph::new(prev_graph_node_count)),
-                emitted_diagnostics: Default::default(),
-                emitted_diagnostics_cond_var: Condvar::new(),
-                previous: prev_graph,
-                colors: DepNodeColorMap::new(prev_graph_node_count),
-                loaded_from_cache: Default::default(),
-            })),
+            data: Some(Lrc::new(data)),
         }
     }
 
@@ -135,18 +173,21 @@ impl DepGraph {
         DepGraphQuery::new(&nodes[..], &edges[..])
     }
 
-    pub fn assert_ignored(&self)
-    {
-        if let Some(..) = self.data {
-            ty::tls::with_context_opt(|icx| {
-                let icx = if let Some(icx) = icx { icx } else { return };
-                assert!(icx.task_deps.is_none(), "expected no task dependency tracking");
-            })
-        }
+    pub fn assert_ignored() {
+        ty::tls::with_context_opt(|icx| {
+            let icx = if let Some(icx) = icx { icx } else { return };
+            assert!(icx.task_deps.is_none(), "expected no task dependency tracking");
+        })
     }
 
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
         where OP: FnOnce() -> R
+    {
+        Self::ignore_deps(op)
+    }
+
+    pub fn ignore_deps<OP,R>(op: OP) -> R
+       where OP: FnOnce() -> R
     {
         ty::tls::with_context(|icx| {
             let icx = ty::tls::ImplicitCtxt {
@@ -392,6 +433,16 @@ impl DepGraph {
                 current.alloc_node(key, smallvec![], fingerprint)
             },
             hash_result)
+    }
+
+    #[inline]
+    pub fn read_non_incr(tcx: TyCtxt<'_>) {
+        // Avoid loading the `dep_graph` here if we don't need to track dependencies.
+        // We want to load the `dep_graph` in the background.
+        if ty::tls::with_context(|icx| icx.task_deps.is_none()) {
+            return;
+        }
+        tcx.dep_graph().read(DepNode::new_no_params(DepKind::NonIncremental));
     }
 
     #[inline]

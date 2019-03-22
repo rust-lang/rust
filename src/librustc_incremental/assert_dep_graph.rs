@@ -52,7 +52,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
-    tcx.dep_graph.with_ignore(|| {
+    tcx.dep_graph().with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
         }
@@ -195,7 +195,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         }
         return;
     }
-    let query = tcx.dep_graph.query();
+    let query = tcx.dep_graph().query();
     for &(_, source_def_id, ref source_dep_node) in if_this_changed {
         let dependents = query.transitive_predecessors(source_dep_node);
         for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
@@ -216,7 +216,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
 
 fn dump_graph(tcx: TyCtxt<'_>) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
-    let query = tcx.dep_graph.query();
+    let query = tcx.dep_graph().query();
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {

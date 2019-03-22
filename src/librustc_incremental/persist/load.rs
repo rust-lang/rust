@@ -1,7 +1,10 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc::dep_graph::{
+    LoadResult, PreviousDepGraph, SerializedDepGraph, DepGraphFuture,
+    WorkProductMap, MaybeAsync,
+};
 use rustc::session::Session;
 use rustc::ty::query::OnDiskCache;
 use rustc::util::common::time_ext;
@@ -14,34 +17,26 @@ use super::fs::*;
 use super::file_format;
 use super::work_product;
 
-type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
-
-pub enum LoadResult<T> {
-    Ok { data: T },
-    DataOutOfDate,
-    Error { message: String },
-}
-
-impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
-    pub fn open(self, sess: &Session) -> (PreviousDepGraph, WorkProductMap) {
-        match self {
-            LoadResult::Error { message } => {
-                sess.warn(&message);
-                Default::default()
-            },
-            LoadResult::DataOutOfDate => {
-                if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.err(&format!("Failed to delete invalidated or incompatible \
-                                      incremental compilation session directory contents `{}`: {}.",
-                                      dep_graph_path(sess).display(), err));
-                }
-                Default::default()
+pub fn open_load_result(
+    result: LoadResult<(PreviousDepGraph, WorkProductMap)>,
+    sess: &Session
+) -> (PreviousDepGraph, WorkProductMap) {
+    match result {
+        LoadResult::Error { message } => {
+            sess.warn(&message);
+            Default::default()
+        },
+        LoadResult::DataOutOfDate => {
+            if let Err(err) = delete_all_session_dir_contents(sess) {
+                sess.err(&format!("Failed to delete invalidated or incompatible \
+                                    incremental compilation session directory contents `{}`: {}.",
+                                    dep_graph_path(sess).display(), err));
             }
-            LoadResult::Ok { data } => data
+            Default::default()
         }
+        LoadResult::Ok { data } => data
     }
 }
-
 
 fn load_data(report_incremental_info: bool, path: &Path) -> LoadResult<(Vec<u8>, usize)> {
     match file_format::read_file(report_incremental_info, path) {
@@ -67,24 +62,6 @@ fn delete_dirty_work_product(sess: &Session,
     debug!("delete_dirty_work_product({:?})", swp);
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
-
-/// Either a result that has already be computed or a
-/// handle that will let us wait until it is computed
-/// by a background thread.
-pub enum MaybeAsync<T> {
-    Sync(T),
-    Async(std::thread::JoinHandle<T>)
-}
-impl<T> MaybeAsync<T> {
-    pub fn open(self) -> std::thread::Result<T> {
-        match self {
-            MaybeAsync::Sync(result) => Ok(result),
-            MaybeAsync::Async(handle) => handle.join()
-        }
-    }
-}
-
-pub type DepGraphFuture = MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap)>>;
 
 /// Launch a thread and load the dependency graph in the background.
 pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {

@@ -36,7 +36,7 @@ const CFG: Symbol = sym::cfg;
 const KIND: Symbol = sym::kind;
 
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
-    tcx.dep_graph.with_ignore(|| {
+    tcx.dep_graph().with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
         }

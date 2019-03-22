@@ -1130,7 +1130,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    tcx.dep_graph.with_ignore(|| {
+    tcx.dep_graph().with_ignore(|| {
         info!("Dumping crate {}", cratename);
 
         // Privacy checking requires and is done after type checking; use a

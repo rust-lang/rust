@@ -17,7 +17,7 @@ use super::work_product;
 
 pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
-    tcx.dep_graph.with_ignore(|| {
+    tcx.dep_graph().with_ignore(|| {
         let sess = tcx.sess;
         if sess.opts.incremental.is_none() {
             return;
@@ -58,7 +58,7 @@ pub fn save_work_product_index(sess: &Session,
     }
 
     debug!("save_work_product_index()");
-    dep_graph.assert_ignored();
+    DepGraph::assert_ignored();
     let path = work_products_path(sess);
     save_in(sess, path, |e| encode_work_product_index(&new_work_products, e));
 
@@ -135,7 +135,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
 
     // Encode the graph data.
     let serialized_graph = time(tcx.sess, "getting serialized graph", || {
-        tcx.dep_graph.serialize()
+        tcx.dep_graph().serialize()
     });
 
     if tcx.sess.opts.debugging_opts.incremental_info {
@@ -186,7 +186,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         println!("[incremental] Total Node Count: {}", total_node_count);
         println!("[incremental] Total Edge Count: {}", total_edge_count);
         if let Some((total_edge_reads,
-                     total_duplicate_edge_reads)) = tcx.dep_graph.edge_deduplication_data() {
+                     total_duplicate_edge_reads)) = tcx.dep_graph().edge_deduplication_data() {
             println!("[incremental] Total Edge Reads: {}", total_edge_reads);
             println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
         }

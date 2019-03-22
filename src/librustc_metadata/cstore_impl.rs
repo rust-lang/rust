@@ -60,7 +60,7 @@ macro_rules! provide {
                     .to_dep_node(rustc::dep_graph::DepKind::CrateMetadata);
                 // The DepNodeIndex of the DepNode::CrateMetadata should be
                 // cached somewhere, so that we can use read_index().
-                $tcx.dep_graph.read(dep_node);
+                $tcx.dep_graph().read(dep_node);
 
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()

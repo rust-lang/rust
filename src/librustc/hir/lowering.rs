@@ -232,14 +232,13 @@ impl<'a> ImplTraitContext<'a> {
 pub fn lower_crate(
     sess: &Session,
     cstore: &dyn CrateStore,
-    dep_graph: &DepGraph,
     krate: &Crate,
     resolver: &mut dyn Resolver,
 ) -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
-    dep_graph.assert_ignored();
+    DepGraph::assert_ignored();
 
     LoweringContext {
         crate_root: std_inject::injected_crate_name().map(Symbol::intern),

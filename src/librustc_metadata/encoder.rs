@@ -1010,7 +1010,7 @@ impl EncodeContext<'tcx> {
 
     fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
                                     -> LazySeq<ast::Name> {
-        self.tcx.dep_graph.with_ignore(|| {
+        self.tcx.dep_graph().with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
@@ -1872,7 +1872,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
-    let (root, mut result) = tcx.dep_graph.with_ignore(move || {
+    let (root, mut result) = tcx.dep_graph().with_ignore(move || {
         let mut ecx = EncodeContext {
             opaque: encoder,
             tcx,

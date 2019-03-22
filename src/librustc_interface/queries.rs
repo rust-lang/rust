@@ -1,7 +1,6 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt};
 
-use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc::session::config::{Input, OutputFilenames, OutputType};
 use rustc::session::Session;
@@ -84,43 +83,14 @@ impl<T> Default for Query<T> {
 
 #[derive(Default)]
 pub(crate) struct Queries {
-    dep_graph_future: Query<Option<DepGraphFuture>>,
-    dep_graph: Query<DepGraph>,
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
-    ongoing_codegen: Query<(Box<dyn Any>, Arc<OutputFilenames>)>,
+    ongoing_codegen: Query<(Box<dyn Any>, Arc<OutputFilenames>, DepGraph)>,
     link: Query<()>,
 }
 
 impl Compiler {
-    pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
-        self.queries.dep_graph_future.compute(|| {
-            Ok(if self.session().opts.build_dep_graph() {
-                Some(rustc_incremental::load_dep_graph(self.session()))
-            } else {
-                None
-            })
-        })
-    }
-
-    pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
-        self.queries.dep_graph.compute(|| {
-            Ok(match self.dep_graph_future()?.take() {
-                None => DepGraph::new_disabled(),
-                Some(future) => {
-                    let (prev_graph, prev_work_products) =
-                        time(self.session(), "blocked while dep-graph loading finishes", || {
-                            future.open().unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                                message: format!("could not decode incremental cache: {:?}", e),
-                            }).open(self.session())
-                        });
-                    DepGraph::new(prev_graph, prev_work_products)
-                }
-            })
-        })
-    }
-
     pub fn codegen_channel(&self) -> Result<&Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                                                     Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>> {
         self.queries.codegen_channel.compute(|| {
@@ -134,14 +104,15 @@ impl Compiler {
             let tx = self.codegen_channel()?.peek().0.steal();
             Ok(passes::create_global_ctxt(
                 self,
-                self.dep_graph()?.peek().clone(),
                 self.io.clone(),
                 tx
             ))
         })
     }
 
-    pub fn ongoing_codegen(&self) -> Result<&Query<(Box<dyn Any>, Arc<OutputFilenames>)>> {
+    pub fn ongoing_codegen(
+        &self
+    ) -> Result<&Query<(Box<dyn Any>, Arc<OutputFilenames>, DepGraph)>> {
         self.queries.ongoing_codegen.compute(|| {
             let rx = self.codegen_channel()?.peek().1.steal();
             self.global_ctxt()?.peek_mut().enter(|tcx| {
@@ -157,7 +128,7 @@ impl Compiler {
                     tcx,
                     rx,
                     &outputs,
-                ), outputs))
+                ), outputs, tcx.dep_graph().clone()))
             })
         })
     }
@@ -166,12 +137,12 @@ impl Compiler {
         self.queries.link.compute(|| {
             let sess = self.session();
 
-            let (ongoing_codegen, outputs) = self.ongoing_codegen()?.take();
+            let (ongoing_codegen, outputs, dep_graph) = self.ongoing_codegen()?.take();
 
             self.codegen_backend().join_codegen_and_link(
                 ongoing_codegen,
                 sess,
-                &*self.dep_graph()?.peek(),
+                &dep_graph,
                 &outputs,
             ).map_err(|_| ErrorReported)?;
 

@@ -516,7 +516,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // the codegen_unit query from just the DepNode, so an unknown color would
     // lead to having to re-execute compile_codegen_unit, possibly
     // unnecessarily.
-    if tcx.dep_graph.is_fully_enabled() {
+    if tcx.dep_graph().is_fully_enabled() {
         for cgu in &codegen_units {
             tcx.codegen_unit(cgu.name().clone());
         }
@@ -851,12 +851,14 @@ pub fn provide_both(providers: &mut Providers<'_>) {
 }
 
 fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
-    if !tcx.dep_graph.is_fully_enabled() {
+    let dep_graph = tcx.dep_graph();
+
+    if !dep_graph.is_fully_enabled() {
         return CguReuse::No
     }
 
     let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+    if dep_graph.previous_work_product(work_product_id).is_none() {
         // We don't have anything cached for this CGU. This can happen
         // if the CGU did not exist in the previous session.
         return CguReuse::No
@@ -869,11 +871,11 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(!tcx.dep_graph.dep_node_exists(&dep_node),
+    assert!(!dep_graph.dep_node_exists(&dep_node),
         "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
         cgu.name());
 
-    if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
+    if dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state
         if tcx.sess.lto() != Lto::No {
             CguReuse::PreLto

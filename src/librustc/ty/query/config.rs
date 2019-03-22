@@ -1,8 +1,7 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
-use crate::hir::def_id::{CrateNum, DefId};
+use crate::hir::def_id::DefId;
 use crate::ty::TyCtxt;
-use crate::ty::query::queries;
 use crate::ty::query::{Query, QueryName};
 use crate::ty::query::QueryCache;
 use crate::ty::query::plumbing::CycleError;
@@ -43,6 +42,9 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
 
+    /// Does this query support incremental compilation
+    const INCREMENTAL: bool;
+
     fn hash_result() -> Option<fn(&mut StableHashingContext<'_>, &Self::Value) -> Fingerprint>;
 
     fn handle_cycle_error(tcx: TyCtxt<'tcx>, error: CycleError<'tcx>) -> Self::Value;
@@ -72,8 +74,3 @@ impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
-    fn describe(_tcx: TyCtxt<'_>, _: CrateNum) -> Cow<'static, str> {
-        "running analysis passes on this crate".into()
-    }
-}

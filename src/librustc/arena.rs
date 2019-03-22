@@ -31,6 +31,7 @@ macro_rules! arena_types {
                 rustc::hir::def_id::DefId,
                 rustc::ty::subst::SubstsRef<$tcx>
             )>,
+            [few] dep_graph: rustc::dep_graph::DepGraph,
             [few] lowered_hir: rustc::hir::LoweredHir,
             [few] hir_map: rustc::hir::map::Map<$tcx>,
             [few, decode] mir_keys: rustc::util::nodemap::DefIdSet,

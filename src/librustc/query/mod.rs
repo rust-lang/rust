@@ -31,6 +31,18 @@ use syntax_pos::symbol::InternedString;
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
     Other {
+        query dep_graph_future(_: ()) -> Lrc<Steal<Option<DepGraphFuture>>> {
+            no_hash
+            eval_always
+            desc { "loading the dependency graph in the background" }
+        }
+
+        query load_dep_graph(_: ()) -> &'tcx DepGraph {
+            no_hash
+            eval_always
+            desc { "loading the dependency graph" }
+        }
+
         query parse(_: ()) -> Result<Lrc<Steal<ast::Crate>>, ErrorReported> {
             no_hash
             eval_always
@@ -75,6 +87,13 @@ rustc_queries! {
             no_hash
             eval_always
             desc { "indexing HIR" }
+        }
+
+        /// Run analysis passes on the crate
+        query analysis(_: CrateNum) -> Result<(), ErrorReported> {
+            no_hash
+            eval_always
+            desc { "running analysis passes on this crate" }
         }
 
         /// Records the type of every item.

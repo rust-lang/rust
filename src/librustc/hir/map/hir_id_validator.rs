@@ -1,11 +1,12 @@
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::{self, intravisit, HirId, ItemLocalId};
+use crate::dep_graph::DepGraph;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
 
 pub fn check_crate(hir_map: &hir::map::Map<'_>) {
-    hir_map.dep_graph.assert_ignored();
+    DepGraph::assert_ignored();
 
     let errors = Lock::new(Vec::new());
 

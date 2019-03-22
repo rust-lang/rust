@@ -224,7 +224,7 @@ macro_rules! define_dep_nodes {
                                    (tcx.sess.opts.debugging_opts.incremental_info ||
                                     tcx.sess.opts.debugging_opts.query_dep_graph)
                                 {
-                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                    tcx.dep_graph().register_dep_node_debug_str(dep_node, || {
                                         arg.to_debug_str(tcx)
                                     });
                                 }
@@ -247,7 +247,7 @@ macro_rules! define_dep_nodes {
                                    (tcx.sess.opts.debugging_opts.incremental_info ||
                                     tcx.sess.opts.debugging_opts.query_dep_graph)
                                 {
-                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                    tcx.dep_graph().register_dep_node_debug_str(dep_node, || {
                                         tupled_args.to_debug_str(tcx)
                                     });
                                 }
@@ -368,7 +368,7 @@ impl fmt::Debug for DepNode {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
+                } else if let Some(ref s) = tcx.dep_graph().dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
                     write!(f, "{}", self.hash)?;
@@ -402,6 +402,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
+    // Represents all queries which are not incremental.
+    // This is always treated as a red dep node.
+    [] NonIncremental,
+
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
@@ -430,8 +434,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [anon] TraitSelect,
 
     [] CompileCodegenUnit(InternedString),
-
-    [eval_always] Analysis(CrateNum),
 ]);
 
 pub trait RecoverKey<'tcx>: Sized {

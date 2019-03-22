@@ -1149,7 +1149,7 @@ pub fn map_crate(tcx: TyCtxt<'_>) -> Map<'_> {
         let mut collector = NodeCollector::root(
             tcx.sess,
             krate,
-            &tcx.dep_graph,
+            &tcx.dep_graph(),
             &hir.defs,
             &hir_to_node_id,
             hcx
@@ -1167,7 +1167,7 @@ pub fn map_crate(tcx: TyCtxt<'_>) -> Map<'_> {
 
     let map = Map {
         forest: &hir.forest,
-        dep_graph: tcx.dep_graph.clone(),
+        dep_graph: tcx.dep_graph().clone(),
         crate_hash,
         map,
         hir_to_node_id,

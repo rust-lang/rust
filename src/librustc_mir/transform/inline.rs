@@ -105,7 +105,7 @@ impl Inliner<'tcx> {
                     // a lower node id than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
                     // So don't do it if that is enabled.
-                    if !self.tcx.dep_graph.is_fully_enabled()
+                    if !self.tcx.dep_graph().is_fully_enabled()
                         && self_node_id.as_u32() < callee_node_id.as_u32() {
                         self.tcx.optimized_mir(callsite.callee)
                     } else {

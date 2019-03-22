@@ -227,7 +227,7 @@ impl PpSourceMode {
                     tcx,
                     tables: Cell::new(&empty_tables)
                 };
-                tcx.dep_graph.with_ignore(|| {
+                tcx.dep_graph().with_ignore(|| {
                     f(&annotation, tcx.hir().forest.krate())
                 })
             }
