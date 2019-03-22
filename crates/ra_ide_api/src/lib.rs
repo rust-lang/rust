@@ -279,8 +279,10 @@ impl Analysis {
     /// stuff like trailing commas.
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
         let file = self.db.parse(frange.file_id);
-        let file_edit =
-            SourceFileEdit { file_id: frange.file_id, edit: join_lines::join_lines(&file, frange) };
+        let file_edit = SourceFileEdit {
+            file_id: frange.file_id,
+            edit: join_lines::join_lines(&file, frange.range),
+        };
         SourceChange {
             label: "join lines".to_string(),
             source_file_edits: vec![file_edit],

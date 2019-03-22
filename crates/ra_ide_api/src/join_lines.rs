@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use ra_db::FileRange;
 use ra_syntax::{
     SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
@@ -12,17 +11,17 @@ use ra_fmt::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-pub fn join_lines(file: &SourceFile, frange: FileRange) -> TextEdit {
-    let range = if frange.range.is_empty() {
+pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
+    let range = if range.is_empty() {
         let syntax = file.syntax();
-        let text = syntax.text().slice(frange.range.start()..);
+        let text = syntax.text().slice(range.start()..);
         let pos = match text.find('\n') {
             None => return TextEditBuilder::default().finish(),
             Some(pos) => pos,
         };
-        TextRange::offset_len(frange.range.start() + pos, TextUnit::of_char('\n'))
+        TextRange::offset_len(range.start() + pos, TextUnit::of_char('\n'))
     } else {
-        frange.range
+        range
     };
 
     let node = find_covering_node(file.syntax(), range);
@@ -507,7 +506,7 @@ fn foo() {
         let (sel, before) = extract_range(before);
         let file = SourceFile::parse(&before);
         let result = join_lines(&file, sel);
-        let actual = result.edit.apply(&before);
+        let actual = result.apply(&before);
         assert_eq_text!(after, &actual);
     }
 
