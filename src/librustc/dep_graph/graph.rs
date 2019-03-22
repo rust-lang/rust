@@ -809,8 +809,7 @@ impl DepGraph {
 
         // ... emitting any stored diagnostic ...
 
-        let diagnostics = tcx.queries.on_disk_cache
-                                .load_diagnostics(tcx, prev_dep_node_index);
+        let diagnostics = tcx.on_disk_cache().load_diagnostics(tcx, prev_dep_node_index);
 
         if unlikely!(diagnostics.len() > 0) {
             self.emit_diagnostics(
@@ -852,8 +851,7 @@ impl DepGraph {
             let handle = tcx.sess.diagnostic();
 
             // Promote the previous diagnostics to the current session.
-            tcx.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, diagnostics.clone().into());
+            tcx.on_disk_cache().store_diagnostics(dep_node_index, diagnostics.clone().into());
 
             for diagnostic in diagnostics {
                 DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();

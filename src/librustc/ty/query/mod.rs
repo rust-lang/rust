@@ -47,7 +47,7 @@ use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxIndexMap, FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, AtomicOnce};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_target::spec::PanicStrategy;
 

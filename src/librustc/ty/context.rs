@@ -1100,7 +1100,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
         self.hir_map.get_or_init(|| {
-            // We can use `with_ignore` here because the hir map does its own tracking
+            // We can use `ignore_deps` here because the hir map does its own tracking
             DepGraph::ignore_deps(|| self.hir_map(LOCAL_CRATE))
         })
     }
@@ -1187,7 +1187,6 @@ impl<'tcx> TyCtxt<'tcx> {
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
-        on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: Option<String>,
         tx: mpsc::Sender<Box<dyn Any + Send>>,
         io: InputsAndOutputs,
@@ -1227,7 +1226,6 @@ impl<'tcx> TyCtxt<'tcx> {
             queries: query::Queries::new(
                 providers,
                 extern_providers,
-                on_disk_query_result_cache,
             ),
             rcache: Default::default(),
             selection_cache: Default::default(),
@@ -1424,7 +1422,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                            -> Result<(), E::Error>
         where E: ty::codec::TyEncoder
     {
-        self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
+        self.on_disk_cache().serialize(self.global_tcx(), encoder)
     }
 
     /// If true, we should use the AST-based borrowck (we may *also* use

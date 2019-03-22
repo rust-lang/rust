@@ -249,10 +249,10 @@ pub(super) enum TryGetJob<'a, 'tcx, D: QueryDescription<'tcx>> {
 
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
-    pub fn on_disk_cache(self) -> &'gcx OnDiskCache<'gcx> {
+    pub fn on_disk_cache(self) -> &'tcx OnDiskCache<'tcx> {
         self.queries.on_disk_cache.get_or_init(|| {
             // Don't track the loading of the query result cache
-            self.dep_graph().with_ignore(|| self.load_query_result_cache(LocalCrate))
+            self.dep_graph().with_ignore(|| self.load_query_result_cache(()))
         })
     }
 

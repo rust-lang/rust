@@ -43,6 +43,12 @@ rustc_queries! {
             desc { "loading the dependency graph" }
         }
 
+        query load_query_result_cache(_: ()) -> &'tcx OnDiskCache<'tcx> {
+            no_hash
+            eval_always
+            desc { "loading the query result cache" }
+        }
+
         query parse(_: ()) -> Result<Lrc<Steal<ast::Crate>>, ErrorReported> {
             no_hash
             eval_always
@@ -106,7 +112,7 @@ rustc_queries! {
         query generics_of(key: DefId) -> &'tcx ty::Generics {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
-                let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
+                let generics: Option<ty::Generics> = tcx.on_disk_cache()
                                                         .try_load_query_result(tcx, id);
                 generics.map(|x| &*tcx.arena.alloc(x))
             }
@@ -184,8 +190,8 @@ rustc_queries! {
         query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
-                let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
-                                                            .try_load_query_result(tcx, id);
+                let mir: Option<crate::mir::Body<'tcx>> = tcx.on_disk_cache()
+                                                             .try_load_query_result(tcx, id);
                 mir.map(|x| &*tcx.arena.alloc(x))
             }
         }
@@ -420,7 +426,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
-                    .queries.on_disk_cache
+                    .on_disk_cache()
                     .try_load_query_result(tcx, id);
 
                 typeck_tables.map(|tables| &*tcx.arena.alloc(tables))

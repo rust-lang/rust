@@ -12,6 +12,7 @@ use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
 use rustc::ty::steal::Steal;
+use rustc::ty::query::OnDiskCache;
 use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
@@ -895,6 +896,15 @@ fn load_dep_graph<'tcx>(
     })
 }
 
+fn load_query_result_cache<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _: (),
+) -> &'tcx OnDiskCache<'tcx> {
+    time(tcx.sess, "load query result cache", || {
+        tcx.arena.alloc(rustc_incremental::load_query_result_cache(tcx.sess))
+    })
+}
+
 pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     providers.hir_map = hir_map;
@@ -906,6 +916,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.early_crate_name = early_crate_name;
     providers.dep_graph_future = dep_graph_future;
     providers.load_dep_graph = load_dep_graph;
+    providers.load_query_result_cache = load_query_result_cache;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
     hir::provide(providers);
@@ -966,10 +977,6 @@ pub fn create_global_ctxt(
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
 
-        let query_result_on_disk_cache = time(sess, "load query result cache", || {
-            rustc_incremental::load_query_result_cache(sess)
-        });
-
         let mut local_providers = ty::query::Providers::default();
         default_provide(&mut local_providers);
         codegen_backend.provide(&mut local_providers);
@@ -985,7 +992,6 @@ pub fn create_global_ctxt(
             local_providers,
             extern_providers,
             &arenas,
-            query_result_on_disk_cache,
             crate_name,
             tx,
             io,
