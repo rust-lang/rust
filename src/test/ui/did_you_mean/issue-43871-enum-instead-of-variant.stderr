@@ -1,34 +1,63 @@
 error[E0423]: expected function, found enum `Option`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:4:13
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:19:13
    |
 LL |     let x = Option(1);
    |             ^^^^^^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `std::prelude::v1::Option::None`
-           - `std::prelude::v1::Option::Some`
+LL |     let x = std::prelude::v1::Option::None(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let x = std::prelude::v1::Option::Some(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0532]: expected tuple struct/variant, found enum `Option`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:6:12
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:21:12
    |
 LL |     if let Option(_) = x {
    |            ^^^^^^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `std::prelude::v1::Option::None`
-           - `std::prelude::v1::Option::Some`
+LL |     if let std::prelude::v1::Option::None(_) = x {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     if let std::prelude::v1::Option::Some(_) = x {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0532]: expected tuple struct/variant, found enum `Example`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:12:12
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:27:12
    |
 LL |     if let Example(_) = y {
    |            ^^^^^^^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `Example::Ex`
-           - `Example::NotEx`
+LL |     if let Example::Ex(_) = y {
+   |            ^^^^^^^^^^^
+LL |     if let Example::NotEx(_) = y {
+   |            ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0423]: expected function, found enum `Void`
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:31:13
+   |
+LL |     let y = Void();
+   |             ^^^^
+
+error[E0423]: expected function, found enum `ManyVariants`
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:33:13
+   |
+LL |     let z = ManyVariants();
+   |             ^^^^^^^^^^^^
+help: try using one of the enum's variants
+   |
+LL |     let z = ManyVariants::Eight();
+   |             ^^^^^^^^^^^^^^^^^^^
+LL |     let z = ManyVariants::Five();
+   |             ^^^^^^^^^^^^^^^^^^
+LL |     let z = ManyVariants::Four();
+   |             ^^^^^^^^^^^^^^^^^^
+LL |     let z = ManyVariants::Nine();
+   |             ^^^^^^^^^^^^^^^^^^
+and 6 other candidates
+
+error: aborting due to 5 previous errors
 
 Some errors occurred: E0423, E0532.
 For more information about an error, try `rustc --explain E0423`.

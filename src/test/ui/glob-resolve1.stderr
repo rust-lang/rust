@@ -22,10 +22,7 @@ error[E0423]: expected value, found enum `B`
   --> $DIR/glob-resolve1.rs:24:5
    |
 LL |     B;
-   |     ^
-   |
-   = note: did you mean to use one of the following variants?
-           - `B::B1`
+   |     ^ help: try using the enum's variant: `B::B1`
 
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/glob-resolve1.rs:25:5
