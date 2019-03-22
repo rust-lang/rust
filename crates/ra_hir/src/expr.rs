@@ -14,7 +14,7 @@ use crate::{
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
-use crate::{ path::GenericArgs, ty::primitive::{UintTy, UncertainIntTy, UncertainFloatTy}};
+use crate::{ path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
 
 pub use self::scope::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax};
 
@@ -723,7 +723,8 @@ impl ExprCollector {
 
                 let lit = match child.flavor() {
                     LiteralFlavor::IntNumber { suffix } => {
-                        let known_name = suffix.and_then(|it| UncertainIntTy::from_suffix(&it));
+                        let known_name = suffix
+                            .and_then(|it| IntTy::from_suffix(&it).map(UncertainIntTy::Known));
 
                         Literal::Int(
                             Default::default(),
@@ -731,7 +732,8 @@ impl ExprCollector {
                         )
                     }
                     LiteralFlavor::FloatNumber { suffix } => {
-                        let known_name = suffix.and_then(|it| UncertainFloatTy::from_suffix(&it));
+                        let known_name = suffix
+                            .and_then(|it| FloatTy::from_suffix(&it).map(UncertainFloatTy::Known));
 
                         Literal::Float(
                             Default::default(),
@@ -741,7 +743,7 @@ impl ExprCollector {
                     LiteralFlavor::ByteString => Literal::ByteString(Default::default()),
                     LiteralFlavor::String => Literal::String(Default::default()),
                     LiteralFlavor::Byte => {
-                        Literal::Int(Default::default(), UncertainIntTy::Unsigned(UintTy::U8))
+                        Literal::Int(Default::default(), UncertainIntTy::Known(IntTy::u8()))
                     }
                     LiteralFlavor::Bool => Literal::Bool(Default::default()),
                     LiteralFlavor::Char => Literal::Char(Default::default()),

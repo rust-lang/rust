@@ -61,10 +61,10 @@ impl Ty {
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         if let Some(name) = path.as_ident() {
             // TODO handle primitive type names in resolver as well?
-            if let Some(int_ty) = primitive::UncertainIntTy::from_type_name(name) {
-                return Ty::simple(TypeCtor::Int(int_ty));
-            } else if let Some(float_ty) = primitive::UncertainFloatTy::from_type_name(name) {
-                return Ty::simple(TypeCtor::Float(float_ty));
+            if let Some(int_ty) = primitive::IntTy::from_type_name(name) {
+                return Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(int_ty)));
+            } else if let Some(float_ty) = primitive::FloatTy::from_type_name(name) {
+                return Ty::simple(TypeCtor::Float(primitive::UncertainFloatTy::Known(float_ty)));
             } else if let Some(known) = name.as_known_name() {
                 match known {
                     KnownName::Bool => return Ty::simple(TypeCtor::Bool),
