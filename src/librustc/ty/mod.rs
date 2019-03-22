@@ -2146,6 +2146,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
+
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
             AdtKind::Union => AdtFlags::IS_UNION,
@@ -2299,21 +2300,25 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
+    /// Return a `VariantDef` given a variant id.
     pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
         self.variants.iter().find(|v| v.def_id == vid)
             .expect("variant_with_id: unknown variant")
     }
 
+    /// Return a `VariantDef` given a constructor id.
     pub fn variant_with_ctor_id(&self, cid: DefId) -> &VariantDef {
         self.variants.iter().find(|v| v.ctor_def_id == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
+    /// Return the index of `VariantDef` given a variant id.
     pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
         self.variants.iter_enumerated().find(|(_, v)| v.def_id == vid)
             .expect("variant_index_with_id: unknown variant").0
     }
 
+    /// Return the index of `VariantDef` given a constructor id.
     pub fn variant_index_with_ctor_id(&self, cid: DefId) -> VariantIdx {
         self.variants.iter_enumerated().find(|(_, v)| v.ctor_def_id == Some(cid))
             .expect("variant_index_with_ctor_id: unknown variant").0
