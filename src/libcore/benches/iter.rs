@@ -344,3 +344,15 @@ fn bench_partial_cmp(b: &mut Bencher) {
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
 }
+
+// rust-lang/rust#11084: benchmark how built-in `FromIterator` for
+// `Result` performs, to avoid unknowingly regressing its performance.
+#[bench]
+fn bench_result_from_iter_into_vec(b: &mut Bencher) {
+    let expected = vec![1; 1000];
+    let v: Vec<Result<isize, String>> = vec![Ok(1); 1000];
+    b.iter(|| {
+        let result: Result<Vec<isize>, String> = FromIterator::from_iter(v.iter().cloned());
+        assert_eq!(result.unwrap(), expected);
+    });
+}
