@@ -892,6 +892,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
     /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
     /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
+    /// assert!((std::f64::NAN).clamp(-2.0f64, 1.0f64).is_nan());
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
@@ -1521,5 +1522,23 @@ mod tests {
 
         assert_eq!(f64::from_bits(masked_nan1).to_bits(), masked_nan1);
         assert_eq!(f64::from_bits(masked_nan2).to_bits(), masked_nan2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_greater_than_max() {
+        1.0f64.clamp(3.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_is_nan() {
+        1.0f64.clamp(NAN, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_max_is_nan() {
+        1.0f64.clamp(3.0, NAN);
     }
 }
