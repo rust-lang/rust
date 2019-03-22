@@ -163,7 +163,7 @@ export async function interactivelyStartCargoWatch() {
             'yes',
             'no'
         );
-        if (watch === 'no') {
+        if (watch !== 'yes') {
             return;
         }
     }
@@ -180,7 +180,7 @@ export async function interactivelyStartCargoWatch() {
             'yes',
             'no'
         );
-        if (install === 'no') {
+        if (install !== 'yes') {
             return;
         }
 
