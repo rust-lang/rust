@@ -34,3 +34,24 @@ this should be skipped</div>
         }
     .to_string();
 }
+
+fn visitor_made_from_same_context() {
+    let pair = (
+        || {
+            foo!(<div>
+this should be mangled</div>
+            );
+            skip_macro_mod!(<div>
+this should be skipped</div>
+            );
+        },
+        || {
+            foo!(<div>
+this should be mangled</div>
+            );
+            skip_macro_mod!(<div>
+this should be skipped</div>
+            );
+        },
+    );
+}
