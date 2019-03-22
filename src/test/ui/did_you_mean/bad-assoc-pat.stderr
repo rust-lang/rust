@@ -22,6 +22,21 @@ error: missing angle brackets in associated item path
 LL |         &(u8,)::AssocItem => {}
    |          ^^^^^^^^^^^^^^^^ help: try: `<(u8,)>::AssocItem`
 
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:32:9
+   |
+LL |         ty!()::AssocItem => {}
+   |         ^^^^^^^^^^^^^^^^ help: try: `<ty!()>::AssocItem`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:21:19
+   |
+LL |     ($ty: ty) => ($ty::AssocItem)
+   |                   ^^^^^^^^^^^^^^ help: try: `<$ty>::AssocItem`
+...
+LL |         pat!(u8) => {}
+   |         -------- in this macro invocation
+
 error[E0599]: no associated item named `AssocItem` found for type `[u8]` in the current scope
   --> $DIR/bad-assoc-pat.rs:3:15
    |
@@ -54,6 +69,25 @@ LL |         &(u8,)::AssocItem => {}
    |          |
    |          associated item not found in `(u8,)`
 
-error: aborting due to 8 previous errors
+error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
+  --> $DIR/bad-assoc-pat.rs:21:24
+   |
+LL |     ($ty: ty) => ($ty::AssocItem)
+   |                   -----^^^^^^^^^
+   |                   |
+   |                   associated item not found in `u8`
+...
+LL |         pat!(u8) => {}
+   |         -------- in this macro invocation
+
+error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
+  --> $DIR/bad-assoc-pat.rs:32:16
+   |
+LL |         ty!()::AssocItem => {}
+   |         -------^^^^^^^^^
+   |         |
+   |         associated item not found in `u8`
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0599`.
