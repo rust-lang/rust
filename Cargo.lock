@@ -1005,6 +1005,7 @@ dependencies = [
  "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proptest 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_assists 0.1.0",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
@@ -1014,6 +1015,7 @@ dependencies = [
  "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "superslice 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
  "unicase 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

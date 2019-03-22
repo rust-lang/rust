@@ -33,6 +33,8 @@ mod impls;
 mod assists;
 mod diagnostics;
 mod syntax_tree;
+mod line_index;
+mod line_index_utils;
 
 #[cfg(test)]
 mod marks;
@@ -60,10 +62,11 @@ pub use crate::{
     references::ReferenceSearchResult,
     assists::{Assist, AssistId},
     hover::{HoverResult},
+    line_index::{LineIndex, LineCol},
+    line_index_utils::translate_offset_with_edit,
 };
 pub use ra_ide_api_light::{
     Fold, FoldKind, HighlightedRange, Severity, StructureNode, LocalEdit,
-    LineIndex, LineCol, translate_offset_with_edit,
 };
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
