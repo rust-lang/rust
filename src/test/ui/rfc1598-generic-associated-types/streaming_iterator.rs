@@ -10,13 +10,13 @@ trait StreamingIterator {
     type Item<'a>;
     // Applying the lifetime parameter `'a` to `Self::Item` inside the trait.
     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
-    //~^ ERROR lifetime arguments are not allowed on this entity [E0110]
+    //~^ ERROR lifetime arguments are not allowed for this type [E0109]
 }
 
 struct Foo<T: StreamingIterator> {
     // Applying a concrete lifetime to the constructor outside the trait.
     bar: <T as StreamingIterator>::Item<'static>,
-    //~^ ERROR lifetime arguments are not allowed on this entity [E0110]
+    //~^ ERROR lifetime arguments are not allowed for this type [E0109]
 }
 
 // Users can bound parameters by the type constructed by that trait's associated type constructor
@@ -24,7 +24,7 @@ struct Foo<T: StreamingIterator> {
 //FIXME(sunjay): This next line should parse and be valid
 //fn foo<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(iter: T) { /* ... */ }
 fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
-//~^ ERROR lifetime arguments are not allowed on this entity [E0110]
+//~^ ERROR lifetime arguments are not allowed for this type [E0109]
 
 // Full example of enumerate iterator
 
@@ -36,9 +36,9 @@ struct StreamEnumerate<I> {
 
 impl<I: StreamingIterator> StreamingIterator for StreamEnumerate<I> {
     type Item<'a> = (usize, I::Item<'a>);
-    //~^ ERROR lifetime arguments are not allowed on this entity [E0110]
+    //~^ ERROR lifetime arguments are not allowed for this type [E0109]
     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
-        //~^ ERROR lifetime arguments are not allowed on this entity [E0110]
+        //~^ ERROR lifetime arguments are not allowed for this type [E0109]
         match self.iter.next() {
             None => None,
             Some(val) => {

@@ -620,7 +620,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<Spanned<FieldPat>>, bool),
+    Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -2133,7 +2133,7 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<StructField>, NodeId),
+    Struct(Vec<StructField>, NodeId, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
@@ -2147,13 +2147,13 @@ pub enum VariantData {
 impl VariantData {
     pub fn fields(&self) -> &[StructField] {
         match *self {
-            VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => fields,
+            VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
             _ => &[],
         }
     }
     pub fn id(&self) -> NodeId {
         match *self {
-            VariantData::Struct(_, id) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
+            VariantData::Struct(_, id, _) | VariantData::Tuple(_, id) | VariantData::Unit(id) => id,
         }
     }
     pub fn is_struct(&self) -> bool {

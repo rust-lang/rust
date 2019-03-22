@@ -293,13 +293,20 @@ impl<'a> Resolver<'a> {
             (Def::Enum(..), PathSource::TupleStruct)
                 | (Def::Enum(..), PathSource::Expr(..))  => {
                 if let Some(variants) = self.collect_enum_variants(def) {
-                    err.note(&format!("did you mean to use one \
-                                       of the following variants?\n{}",
-                        variants.iter()
-                            .map(|suggestion| path_names_to_string(suggestion))
-                            .map(|suggestion| format!("- `{}`", suggestion))
-                            .collect::<Vec<_>>()
-                            .join("\n")));
+                    if !variants.is_empty() {
+                        let msg = if variants.len() == 1 {
+                            "try using the enum's variant"
+                        } else {
+                            "try using one of the enum's variants"
+                        };
+
+                        err.span_suggestions(
+                            span,
+                            msg,
+                            variants.iter().map(path_names_to_string),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 } else {
                     err.note("did you mean to use one of the enum's variants?");
                 }

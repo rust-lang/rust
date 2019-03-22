@@ -4229,19 +4229,24 @@ impl<'a> Parser<'a> {
     fn parse_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
         let mut fields = Vec::new();
         let mut ddpos = None;
+        let mut prev_dd_sp = None;
         let mut trailing_comma = false;
         loop {
             if self.eat(&token::DotDot) {
                 if ddpos.is_none() {
                     ddpos = Some(fields.len());
+                    prev_dd_sp = Some(self.prev_span);
                 } else {
                     // Emit a friendly error, ignore `..` and continue parsing
-                    self.struct_span_err(
+                    let mut err = self.struct_span_err(
                         self.prev_span,
                         "`..` can only be used once per tuple or tuple struct pattern",
-                    )
-                        .span_label(self.prev_span, "can only be used once per pattern")
-                        .emit();
+                    );
+                    err.span_label(self.prev_span, "can only be used once per pattern");
+                    if let Some(sp) = prev_dd_sp {
+                        err.span_label(sp, "previously present here");
+                    }
+                    err.emit();
                 }
             } else if !self.check(&token::CloseDelim(token::Paren)) {
                 fields.push(self.parse_pat(None)?);
@@ -6837,14 +6842,16 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(ast::DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+                let (fields, recovered) = self.parse_record_struct_body()?;
+                VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
             }
         // No `where` so: `struct Foo<T>;`
         } else if self.eat(&token::Semi) {
             VariantData::Unit(ast::DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+            let (fields, recovered) = self.parse_record_struct_body()?;
+            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, ast::DUMMY_NODE_ID);
@@ -6872,9 +6879,11 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(keywords::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+            let (fields, recovered) = self.parse_record_struct_body()?;
+            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+            let (fields, recovered) = self.parse_record_struct_body()?;
+            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
         } else {
             let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!(
@@ -6906,12 +6915,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_record_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
+    fn parse_record_struct_body(
+        &mut self,
+    ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
         let mut fields = Vec::new();
+        let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
                 let field = self.parse_struct_decl_field().map_err(|e| {
                     self.recover_stmt();
+                    recovered = true;
                     e
                 });
                 match field {
@@ -6930,7 +6943,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         }
 
-        Ok(fields)
+        Ok((fields, recovered))
     }
 
     fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
@@ -7693,12 +7706,14 @@ impl<'a> Parser<'a> {
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
-                struct_def = VariantData::Struct(self.parse_record_struct_body()?,
-                                                 ast::DUMMY_NODE_ID);
+                let (fields, recovered) = self.parse_record_struct_body()?;
+                struct_def = VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered);
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
-                struct_def = VariantData::Tuple(self.parse_tuple_struct_body()?,
-                                                ast::DUMMY_NODE_ID);
+                struct_def = VariantData::Tuple(
+                    self.parse_tuple_struct_body()?,
+                    ast::DUMMY_NODE_ID,
+                );
             } else if self.eat(&token::Eq) {
                 disr_expr = Some(AnonConst {
                     id: ast::DUMMY_NODE_ID,

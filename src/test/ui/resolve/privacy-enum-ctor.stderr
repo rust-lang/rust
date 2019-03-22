@@ -3,22 +3,32 @@ error[E0423]: expected value, found enum `n::Z`
    |
 LL |         n::Z;
    |         ^^^^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `m::Z::Fn`
-           - `m::Z::Struct`
-           - `m::Z::Unit`
+LL |         m::Z::Fn;
+   |         ^^^^^^^^
+LL |         m::Z::Struct;
+   |         ^^^^^^^^^^^^
+LL |         m::Z::Unit;
+   |         ^^^^^^^^^^
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
-   |         ^ help: a function with a similar name exists: `f`
+   |         ^
+help: a function with a similar name exists
    |
-   = note: did you mean to use one of the following variants?
-           - `m::Z::Fn`
-           - `m::Z::Struct`
-           - `m::Z::Unit`
+LL |         f;
+   |         ^
+help: try using one of the enum's variants
+   |
+LL |         m::Z::Fn;
+   |         ^^^^^^^^
+LL |         m::Z::Struct;
+   |         ^^^^^^^^^^^^
+LL |         m::Z::Unit;
+   |         ^^^^^^^^^^
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
@@ -31,15 +41,18 @@ error[E0423]: expected value, found enum `m::E`
    |
 LL |     let _: E = m::E;
    |                ^^^^
-   |
-   = note: did you mean to use one of the following variants?
-           - `E::Fn`
-           - `E::Struct`
-           - `E::Unit`
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
    |                   ^
+help: try using one of the enum's variants
+   |
+LL |     let _: E = E::Fn;
+   |                ^^^^^
+LL |     let _: E = E::Struct;
+   |                ^^^^^^^^^
+LL |     let _: E = E::Unit;
+   |                ^^^^^^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use std::f32::consts::E;
@@ -58,11 +71,14 @@ error[E0423]: expected value, found enum `E`
    |
 LL |     let _: E = E;
    |                ^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `E::Fn`
-           - `E::Struct`
-           - `E::Unit`
+LL |     let _: E = E::Fn;
+   |                ^^^^^
+LL |     let _: E = E::Struct;
+   |                ^^^^^^^^^
+LL |     let _: E = E::Unit;
+   |                ^^^^^^^
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use std::f32::consts::E;
@@ -95,11 +111,14 @@ error[E0423]: expected value, found enum `m::n::Z`
    |
 LL |     let _: Z = m::n::Z;
    |                ^^^^^^^
+help: try using one of the enum's variants
    |
-   = note: did you mean to use one of the following variants?
-           - `m::Z::Fn`
-           - `m::Z::Struct`
-           - `m::Z::Unit`
+LL |     let _: Z = m::Z::Fn;
+   |                ^^^^^^^^
+LL |     let _: Z = m::Z::Struct;
+   |                ^^^^^^^^^^^^
+LL |     let _: Z = m::Z::Unit;
+   |                ^^^^^^^^^^
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12

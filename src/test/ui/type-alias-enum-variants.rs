@@ -7,5 +7,5 @@ fn main() {
     let _ = Option::None::<u8>; // OK (Lint in future!)
     let _ = Alias::<u8>::None; // OK
     let _ = Alias::None::<u8>; // Error
-    //~^ type arguments are not allowed on this entity
+    //~^ type arguments are not allowed for this type
 }

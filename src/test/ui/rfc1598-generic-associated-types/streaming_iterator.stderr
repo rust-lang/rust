@@ -4,31 +4,31 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/streaming_iterator.rs:18:41
    |
 LL |     bar: <T as StreamingIterator>::Item<'static>,
    |                                         ^^^^^^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/streaming_iterator.rs:26:64
    |
 LL | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
    |                                                                ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/streaming_iterator.rs:12:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
    |                                                ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/streaming_iterator.rs:38:37
    |
 LL |     type Item<'a> = (usize, I::Item<'a>);
    |                                     ^^ lifetime argument not allowed
 
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/streaming_iterator.rs:40:48
    |
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
@@ -36,4 +36,4 @@ LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0110`.
+For more information about this error, try `rustc --explain E0109`.

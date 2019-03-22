@@ -918,14 +918,16 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         pat_ty
     }
 
-    fn check_struct_pat_fields(&self,
-                               adt_ty: Ty<'tcx>,
-                               pat_id: hir::HirId,
-                               span: Span,
-                               variant: &'tcx ty::VariantDef,
-                               fields: &'gcx [Spanned<hir::FieldPat>],
-                               etc: bool,
-                               def_bm: ty::BindingMode) -> bool {
+    fn check_struct_pat_fields(
+        &self,
+        adt_ty: Ty<'tcx>,
+        pat_id: hir::HirId,
+        span: Span,
+        variant: &'tcx ty::VariantDef,
+        fields: &'gcx [Spanned<hir::FieldPat>],
+        etc: bool,
+        def_bm: ty::BindingMode,
+    ) -> bool {
         let tcx = self.tcx;
 
         let (substs, adt) = match adt_ty.sty {
@@ -985,7 +987,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 .map(|field| field.ident.modern())
                 .filter(|ident| !used_fields.contains_key(&ident))
                 .collect::<Vec<_>>();
-        if inexistent_fields.len() > 0 {
+        if inexistent_fields.len() > 0 && !variant.recovered {
             let (field_names, t, plural) = if inexistent_fields.len() == 1 {
                 (format!("a field named `{}`", inexistent_fields[0].1), "this", "")
             } else {

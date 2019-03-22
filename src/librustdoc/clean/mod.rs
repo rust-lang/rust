@@ -17,11 +17,11 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::mir::interpret::{GlobalId, ConstValue};
-use rustc::hir::{self, GenericArg, HirVec};
+use rustc::hir::{self, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::DisambiguatedDefPathData;
-use rustc::ty::subst::{Kind, InternalSubsts, SubstsRef};
+use rustc::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -1057,7 +1057,7 @@ impl GenericBound {
         GenericBound::TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path,
-                typarams: None,
+                param_names: None,
                 did,
                 is_generic: false,
             },
@@ -1101,24 +1101,37 @@ impl Clean<GenericBound> for hir::GenericBound {
     }
 }
 
-fn external_generic_args(cx: &DocContext<'_>, trait_did: Option<DefId>, has_self: bool,
-                        bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> GenericArgs {
-    let lifetimes = substs.regions().filter_map(|v| v.clean(cx)).collect();
-    let types = substs.types().skip(has_self as usize).collect::<Vec<_>>();
+fn external_generic_args(
+    cx: &DocContext<'_>,
+    trait_did: Option<DefId>,
+    has_self: bool,
+    bindings: Vec<TypeBinding>,
+    substs: SubstsRef<'_>,
+) -> GenericArgs {
+    let mut skip_self = has_self;
+    let mut ty_sty = None;
+    let args: Vec<_> = substs.iter().filter_map(|kind| match kind.unpack() {
+        UnpackedKind::Lifetime(lt) => {
+            lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
+        }
+        UnpackedKind::Type(_) if skip_self => {
+            skip_self = false;
+            None
+        }
+        UnpackedKind::Type(ty) => {
+            ty_sty = Some(&ty.sty);
+            Some(GenericArg::Type(ty.clean(cx)))
+        }
+        UnpackedKind::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+    }).collect();
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
-            assert_eq!(types.len(), 1);
-            let inputs = match types[0].sty {
-                ty::Tuple(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
-                _ => {
-                    return GenericArgs::AngleBracketed {
-                        lifetimes,
-                        types: types.clean(cx),
-                        bindings,
-                    }
-                }
+            assert!(ty_sty.is_some());
+            let inputs = match ty_sty {
+                Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.clean(cx)).collect(),
+                _ => return GenericArgs::AngleBracketed { args, bindings },
             };
             let output = None;
             // FIXME(#20299) return type comes from a projection now
@@ -1126,17 +1139,10 @@ fn external_generic_args(cx: &DocContext<'_>, trait_did: Option<DefId>, has_self
             //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
             // };
-            GenericArgs::Parenthesized {
-                inputs,
-                output,
-            }
+            GenericArgs::Parenthesized { inputs, output }
         },
         _ => {
-            GenericArgs::AngleBracketed {
-                lifetimes,
-                types: types.clean(cx),
-                bindings,
-            }
+            GenericArgs::AngleBracketed { args, bindings }
         }
     }
 }
@@ -1188,7 +1194,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
             PolyTrait {
                 trait_: ResolvedPath {
                     path,
-                    typarams: None,
+                    param_names: None,
                     did: trait_ref.def_id,
                     is_generic: false,
                 },
@@ -1474,14 +1480,14 @@ impl GenericParamDef {
     }
 }
 
-impl<'tcx> Clean<GenericParamDef> for ty::GenericParamDef {
+impl Clean<GenericParamDef> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             ty::GenericParamDefKind::Lifetime => {
                 (self.name.to_string(), GenericParamDefKind::Lifetime)
             }
             ty::GenericParamDefKind::Type { has_default, .. } => {
-                cx.renderinfo.borrow_mut().external_typarams
+                cx.renderinfo.borrow_mut().external_param_names
                              .insert(self.def_id, self.name.clean(cx));
                 let default = if has_default {
                     Some(cx.tcx.type_of(self.def_id).clean(cx))
@@ -1496,7 +1502,10 @@ impl<'tcx> Clean<GenericParamDef> for ty::GenericParamDef {
                 })
             }
             ty::GenericParamDefKind::Const { .. } => {
-                unimplemented!() // FIXME(const_generics)
+                (self.name.clean(cx), GenericParamDefKind::Const {
+                    did: self.def_id,
+                    ty: cx.tcx.type_of(self.def_id).clean(cx),
+                })
             }
         };
 
@@ -1697,9 +1706,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                         .flat_map(|param| match param.kind {
                             ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
                             ty::GenericParamDefKind::Type { .. } => None,
-                            ty::GenericParamDefKind::Const { .. } => {
-                                unimplemented!() // FIXME(const_generics)
-                            }
+                            ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
                         }).chain(simplify::ty_params(stripped_typarams).into_iter())
                         .collect(),
             where_predicates: simplify::where_clauses(cx, where_predicates),
@@ -2260,7 +2267,7 @@ pub enum Type {
     /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
-        typarams: Option<Vec<GenericBound>>,
+        param_names: Option<Vec<GenericBound>>,
         did: DefId,
         /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,
@@ -2381,12 +2388,15 @@ impl Type {
         }
     }
 
-    pub fn generics(&self) -> Option<&[Type]> {
+    pub fn generics(&self) -> Option<Vec<Type>> {
         match *self {
             ResolvedPath { ref path, .. } => {
                 path.segments.last().and_then(|seg| {
-                    if let GenericArgs::AngleBracketed { ref types, .. } = seg.args {
-                        Some(&**types)
+                    if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
+                        Some(args.iter().filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty.clone()),
+                            _ => None,
+                        }).collect())
                     } else {
                         None
                     }
@@ -2722,7 +2732,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
-                    ResolvedPath { path, typarams: None, did, is_generic } => {
+                    ResolvedPath { path, param_names: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..].iter().map(|bound| {
                             self::GenericBound::TraitBound(bound.clean(cx),
                                                            hir::TraitBoundModifier::None)
@@ -2730,7 +2740,7 @@ impl Clean<Type> for hir::Ty {
                         if !lifetime.is_elided() {
                             bounds.push(self::GenericBound::Outlives(lifetime.clean(cx)));
                         }
-                        ResolvedPath { path, typarams: Some(bounds), did, is_generic, }
+                        ResolvedPath { path, param_names: Some(bounds), did, is_generic, }
                     }
                     _ => Infer // shouldn't happen
                 }
@@ -2797,7 +2807,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                          None, false, vec![], substs);
                 ResolvedPath {
                     path,
-                    typarams: None,
+                    param_names: None,
                     did,
                     is_generic: false,
                 }
@@ -2808,7 +2818,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                          None, false, vec![], InternalSubsts::empty());
                 ResolvedPath {
                     path: path,
-                    typarams: None,
+                    param_names: None,
                     did: did,
                     is_generic: false,
                 }
@@ -2829,8 +2839,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
-                let mut typarams = vec![];
-                reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
+                let mut param_names = vec![];
+                reg.clean(cx).map(|b| param_names.push(GenericBound::Outlives(b)));
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
@@ -2839,13 +2849,13 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let bound = GenericBound::TraitBound(PolyTrait {
                         trait_: ResolvedPath {
                             path,
-                            typarams: None,
+                            param_names: None,
                             did,
                             is_generic: false,
                         },
                         generic_params: Vec::new(),
                     }, hir::TraitBoundModifier::None);
-                    typarams.push(bound);
+                    param_names.push(bound);
                 }
 
                 let mut bindings = vec![];
@@ -2860,7 +2870,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     false, bindings, substs);
                 ResolvedPath {
                     path,
-                    typarams: Some(typarams),
+                    param_names: Some(param_names),
                     did,
                     is_generic: false,
                 }
@@ -2933,6 +2943,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),
             ty::Error => panic!("Error"),
+        }
+    }
+}
+
+impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
+    fn clean(&self, cx: &DocContext<'_>) -> Constant {
+        Constant {
+            type_: self.ty.clean(cx),
+            expr: format!("{:?}", self.val), // FIXME(const_generics)
         }
     }
 }
@@ -3245,10 +3264,26 @@ impl Clean<Path> for hir::Path {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+pub enum GenericArg {
+    Lifetime(Lifetime),
+    Type(Type),
+    Const(Constant),
+}
+
+impl fmt::Display for GenericArg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GenericArg::Lifetime(lt) => lt.fmt(f),
+            GenericArg::Type(ty) => ty.fmt(f),
+            GenericArg::Const(ct) => ct.fmt(f),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum GenericArgs {
     AngleBracketed {
-        lifetimes: Vec<Lifetime>,
-        types: Vec<Type>,
+        args: Vec<GenericArg>,
         bindings: Vec<TypeBinding>,
     },
     Parenthesized {
@@ -3266,27 +3301,19 @@ impl Clean<GenericArgs> for hir::GenericArgs {
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None }
             }
         } else {
-            let (mut lifetimes, mut types) = (vec![], vec![]);
-            let mut elided_lifetimes = true;
-            for arg in &self.args {
-                match arg {
-                    GenericArg::Lifetime(lt) => {
-                        if !lt.is_elided() {
-                            elided_lifetimes = false;
-                        }
-                        lifetimes.push(lt.clean(cx));
-                    }
-                    GenericArg::Type(ty) => {
-                        types.push(ty.clean(cx));
-                    }
-                    GenericArg::Const(..) => {
-                        unimplemented!() // FIXME(const_generics)
-                    }
-                }
-            }
+            let elide_lifetimes = self.args.iter().all(|arg| match arg {
+                hir::GenericArg::Lifetime(lt) => lt.is_elided(),
+                _ => true,
+            });
             GenericArgs::AngleBracketed {
-                lifetimes: if elided_lifetimes { vec![] } else { lifetimes },
-                types,
+                args: self.args.iter().filter_map(|arg| match arg {
+                    hir::GenericArg::Lifetime(lt) if !elide_lifetimes => {
+                        Some(GenericArg::Lifetime(lt.clean(cx)))
+                    }
+                    hir::GenericArg::Lifetime(_) => None,
+                    hir::GenericArg::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
+                    hir::GenericArg::Const(ct) => Some(GenericArg::Const(ct.clean(cx))),
+                }).collect(),
                 bindings: self.bindings.clean(cx),
             }
         }
@@ -3310,8 +3337,8 @@ impl Clean<PathSegment> for hir::PathSegment {
 
 fn strip_type(ty: Type) -> Type {
     match ty {
-        Type::ResolvedPath { path, typarams, did, is_generic } => {
-            Type::ResolvedPath { path: strip_path(&path), typarams, did, is_generic }
+        Type::ResolvedPath { path, param_names, did, is_generic } => {
+            Type::ResolvedPath { path: strip_path(&path), param_names, did, is_generic }
         }
         Type::Tuple(inner_tys) => {
             Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
@@ -3338,9 +3365,8 @@ fn strip_path(path: &Path) -> Path {
         PathSegment {
             name: s.name.clone(),
             args: GenericArgs::AngleBracketed {
-                lifetimes: Vec::new(),
-                types: Vec::new(),
-                bindings: Vec::new(),
+                args: vec![],
+                bindings: vec![],
             }
         }
     }).collect();
@@ -3491,7 +3517,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct Constant {
     pub type_: Type,
     pub expr: String,
@@ -3971,7 +3997,7 @@ fn resolve_type(cx: &DocContext<'_>,
         _ => false,
     };
     let did = register_def(&*cx, path.def);
-    ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
+    ResolvedPath { path: path, param_names: None, did: did, is_generic: is_generic }
 }
 
 pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
@@ -4397,9 +4423,9 @@ impl From<GenericBound> for SimpleBound {
         match bound.clone() {
             GenericBound::Outlives(l) => SimpleBound::Outlives(l),
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
-                Type::ResolvedPath { path, typarams, .. } => {
+                Type::ResolvedPath { path, param_names, .. } => {
                     SimpleBound::TraitBound(path.segments,
-                                            typarams
+                                            param_names
                                                 .map_or_else(|| Vec::new(), |v| v.iter()
                                                         .map(|p| SimpleBound::from(p.clone()))
                                                         .collect()),

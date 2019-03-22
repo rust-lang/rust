@@ -1,4 +1,4 @@
-error[E0110]: lifetime arguments are not allowed on this entity
+error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/E0110.rs:1:14
    |
 LL | type X = u32<'static>;
@@ -6,4 +6,4 @@ LL | type X = u32<'static>;
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0110`.
+For more information about this error, try `rustc --explain E0109`.

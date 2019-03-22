@@ -14,13 +14,13 @@ error: unknown character escape: /u{25cf}
   --> $DIR/lex-bad-char-literals-1.rs:11:7
    |
 LL |     '/●'
-   |       ^
+   |       ^ unknown character escape
 
 error: unknown character escape: /u{25cf}
   --> $DIR/lex-bad-char-literals-1.rs:15:7
    |
 LL |     "/●"
-   |       ^
+   |       ^ unknown character escape
 
 error: aborting due to 4 previous errors
 

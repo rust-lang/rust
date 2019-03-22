@@ -726,6 +726,17 @@ impl Build {
         }
     }
 
+    pub fn is_verbose_than(&self, level: usize) -> bool {
+        self.verbosity > level
+    }
+
+    /// Prints a message if this build is configured in more verbose mode than `level`.
+    fn verbose_than(&self, level: usize, msg: &str) {
+        if self.is_verbose_than(level) {
+            println!("{}", msg);
+        }
+    }
+
     fn info(&self, msg: &str) {
         if self.config.dry_run { return; }
         println!("{}", msg);
@@ -1158,6 +1169,7 @@ impl Build {
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
+        self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {

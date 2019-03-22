@@ -1,4 +1,4 @@
-error[E0109]: type arguments are not allowed on this entity
+error[E0109]: type arguments are not allowed for this type
   --> $DIR/qualified-path-params-2.rs:18:26
    |
 LL | type A = <S as Tr>::A::f<u8>;

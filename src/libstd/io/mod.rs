@@ -1381,7 +1381,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "0")]
+    #[unstable(feature = "seek_convenience", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
         let old_pos = self.stream_position()?;
         let len = self.seek(SeekFrom::End(0))?;
@@ -1420,7 +1420,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "0")]
+    #[unstable(feature = "seek_convenience", issue = "59359")]
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
