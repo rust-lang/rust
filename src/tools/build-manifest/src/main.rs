@@ -390,7 +390,7 @@ impl Builder {
         package("rust-src", &["*"]);
         package("rls-preview", HOSTS);
         package("clippy-preview", HOSTS);
-        package("miri", HOSTS);
+        package("miri-preview", HOSTS);
         package("rustfmt-preview", HOSTS);
         package("rust-analysis", TARGETS);
         package("llvm-tools-preview", TARGETS);
@@ -408,7 +408,7 @@ impl Builder {
             "rustc", "cargo", "rust-std", "rust-mingw",
             "rust-docs", "rustfmt-preview", "clippy-preview",
             "rls-preview", "rust-src", "llvm-tools-preview",
-            "lldb-preview", "rust-analysis", "miri"
+            "lldb-preview", "rust-analysis", "miri-preview"
         ]);
     }
 
@@ -420,6 +420,7 @@ impl Builder {
         rename("rls", "rls-preview");
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
+        rename("miri", "miri-preview");
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
@@ -468,7 +469,7 @@ impl Builder {
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
             host_component("clippy-preview"),
-            host_component("miri"),
+            host_component("miri-preview"),
             host_component("rls-preview"),
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
