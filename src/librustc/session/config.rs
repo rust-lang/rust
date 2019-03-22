@@ -1706,6 +1706,12 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "Specify the name of the crate being built",
             "NAME",
         ),
+        opt::opt_s(
+            "",
+            "edition",
+            "Specify which edition of the compiler to use when compiling code.",
+            EDITION_NAME_LIST,
+        ),
         opt::multi_s(
             "",
             "emit",
@@ -1807,12 +1813,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                   `expanded` (crates expanded), or
                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
             "TYPE",
-        ),
-        opt::opt_s(
-            "",
-            "edition",
-            "Specify which edition of the compiler to use when compiling code.",
-            EDITION_NAME_LIST,
         ),
         opt::multi_s(
             "",
