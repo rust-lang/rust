@@ -765,7 +765,7 @@ pub fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis:
 
 pub fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut T) {
     match vdata {
-        VariantData::Struct(fields, id) |
+        VariantData::Struct(fields, id, _) |
         VariantData::Tuple(fields, id) => {
             visit_vec(fields, |field| vis.visit_struct_field(field));
             vis.visit_id(id);

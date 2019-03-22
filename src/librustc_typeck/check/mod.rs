@@ -3734,12 +3734,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            field, expr_t)
     }
 
-    fn report_unknown_field(&self,
-                            ty: Ty<'tcx>,
-                            variant: &'tcx ty::VariantDef,
-                            field: &hir::Field,
-                            skip_fields: &[hir::Field],
-                            kind_name: &str) {
+    fn report_unknown_field(
+        &self,
+        ty: Ty<'tcx>,
+        variant: &'tcx ty::VariantDef,
+        field: &hir::Field,
+        skip_fields: &[hir::Field],
+        kind_name: &str,
+    ) {
+        if variant.recovered {
+            return;
+        }
         let mut err = self.type_error_struct_with_diag(
             field.ident.span,
             |actual| match ty.sty {
