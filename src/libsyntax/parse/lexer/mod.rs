@@ -968,9 +968,10 @@ impl<'a> StringReader<'a> {
                                 } else {
                                     let span = self.mk_sp(start, self.pos);
                                     let mut suggestion = "\\u{".to_owned();
+                                    let msg = "incorrect unicode escape sequence";
                                     let mut err = self.sess.span_diagnostic.struct_span_err(
                                         span,
-                                        "incorrect unicode escape sequence",
+                                        msg,
                                     );
                                     let mut i = 0;
                                     while let (Some(ch), true) = (self.ch, i < 6) {
@@ -991,8 +992,8 @@ impl<'a> StringReader<'a> {
                                             Applicability::MaybeIncorrect,
                                         );
                                     } else {
-                                        err.span_help(
-                                            span,
+                                        err.span_label(span, msg);
+                                        err.help(
                                             "format of unicode escape sequences is `\\u{...}`",
                                         );
                                     }
@@ -1018,25 +1019,24 @@ impl<'a> StringReader<'a> {
                             }
                             c => {
                                 let pos = self.pos;
-                                let mut err = self.struct_err_span_char(escaped_pos,
-                                                                        pos,
-                                                                        if ascii_only {
-                                                                            "unknown byte escape"
-                                                                        } else {
-                                                                            "unknown character \
-                                                                             escape"
-                                                                        },
-                                                                        c);
+                                let msg = if ascii_only {
+                                    "unknown byte escape"
+                                } else {
+                                    "unknown character escape"
+                                };
+                                let mut err = self.struct_err_span_char(escaped_pos, pos, msg, c);
+                                err.span_label(self.mk_sp(escaped_pos, pos), msg);
                                 if e == '\r' {
-                                    err.span_help(self.mk_sp(escaped_pos, pos),
-                                                  "this is an isolated carriage return; consider \
-                                                   checking your editor and version control \
-                                                   settings");
+                                    err.help(
+                                        "this is an isolated carriage return; consider checking \
+                                         your editor and version control settings",
+                                    );
                                 }
                                 if (e == '{' || e == '}') && !ascii_only {
-                                    err.span_help(self.mk_sp(escaped_pos, pos),
-                                                  "if used in a formatting string, curly braces \
-                                                   are escaped with `{{` and `}}`");
+                                    err.help(
+                                        "if used in a formatting string, curly braces are escaped \
+                                         with `{{` and `}}`",
+                                    );
                                 }
                                 err.emit();
                                 false
