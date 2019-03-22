@@ -481,8 +481,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
 
         let (value, fields) = match item.node {
-            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) |
-            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, _), _) => {
+            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, ..), _) |
+            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, ..), _) => {
                 let include_priv_fields = !self.save_ctxt.config.pub_only;
                 let fields_str = fields
                     .iter()
@@ -560,7 +560,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             let name_span = variant.node.ident.span;
 
             match variant.node.data {
-                ast::VariantData::Struct(ref fields, _) => {
+                ast::VariantData::Struct(ref fields, ..) => {
                     let fields_str = fields
                         .iter()
                         .enumerate()

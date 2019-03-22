@@ -576,7 +576,8 @@ impl<'a, 'tcx> CrateMetadata {
             }).collect(),
             adt_kind,
             data.ctor_kind,
-            attribute_def_id
+            attribute_def_id,
+            false,
         )
     }
 

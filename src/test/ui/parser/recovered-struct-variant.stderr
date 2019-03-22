@@ -1,0 +1,8 @@
+error: expected `:`, found `,`
+  --> $DIR/recovered-struct-variant.rs:2:10
+   |
+LL |     A { a, b: usize }
+   |          ^ expected `:`
+
+error: aborting due to previous error
+
