@@ -990,7 +990,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         match &inner_ty {
                             Ty::Apply(a_ty) => match a_ty.ctor {
                                 TypeCtor::Int(primitive::UncertainIntTy::Unknown)
-                                | TypeCtor::Int(primitive::UncertainIntTy::Signed(..))
+                                | TypeCtor::Int(primitive::UncertainIntTy::Known(
+                                    primitive::IntTy {
+                                        signedness: primitive::Signedness::Signed,
+                                        ..
+                                    },
+                                ))
                                 | TypeCtor::Float(..) => inner_ty,
                                 _ => Ty::Unknown,
                             },
@@ -1064,8 +1069,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), Ty::simple(TypeCtor::Str))
                 }
                 Literal::ByteString(..) => {
-                    let byte_type = Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Unsigned(
-                        primitive::UintTy::U8,
+                    let byte_type = Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(
+                        primitive::IntTy::u8(),
                     )));
                     let slice_type = Ty::apply_one(TypeCtor::Slice, byte_type);
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
@@ -1208,10 +1213,10 @@ impl InferTy {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
             InferTy::IntVar(..) => {
-                Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Signed(primitive::IntTy::I32)))
+                Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(primitive::IntTy::i32())))
             }
             InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(
-                primitive::UncertainFloatTy::Known(primitive::FloatTy::F64),
+                primitive::UncertainFloatTy::Known(primitive::FloatTy::f64()),
             )),
         }
     }
