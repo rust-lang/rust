@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use crate::cold_path;
 use crate::owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -570,6 +571,34 @@ impl<T> Once<T> {
     #[inline(always)]
     pub fn borrow(&self) -> &T {
         self.get()
+    }
+}
+
+/// A type whose inner value can be written once and then will stay read-only
+pub struct AtomicOnce<T: Copy>(AtomicCell<Option<T>>);
+
+impl<T: Copy> AtomicOnce<T> {
+    /// Creates an AtomicOnce value which is uninitialized
+    #[inline]
+    pub fn new() -> Self {
+        AtomicOnce(AtomicCell::new(None))
+    }
+
+    /// Gets the inner value. If the value is not already initalized.
+    /// It will be initalized by the closure. The closure may be called
+    /// concurrently by many threads.
+    #[inline(always)]
+    pub fn get_or_init(&self, f: impl FnOnce() -> T) -> T {
+        let value = self.0.load();
+        if unlikely!(value.is_none()) {
+            cold_path(|| {
+                let value = f();
+                self.0.store(Some(value));
+                value
+            })
+        } else {
+            value.unwrap()
+        }
     }
 }
 
