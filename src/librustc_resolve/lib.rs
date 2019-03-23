@@ -951,7 +951,7 @@ enum RibKind<'a> {
     TraitOrImplItemRibKind,
 
     /// We passed through a function definition. Disallow upvars.
-    /// Permit only those const parameters specified in the function's generics.
+    /// Permit only those const parameters that are specified in the function's generics.
     FnItemRibKind,
 
     /// We passed through an item scope. Disallow upvars.
@@ -3924,19 +3924,16 @@ impl<'a> Resolver<'a> {
                     ribs.next();
                 }
                 for rib in ribs {
-                    match rib.kind {
-                        ItemRibKind | FnItemRibKind => {
-                            // This was an attempt to use a const parameter outside its scope.
-                            if record_used {
-                                resolve_error(
-                                    self,
-                                    span,
-                                    ResolutionError::GenericParamsFromOuterFunction(def),
-                                );
-                            }
-                            return Def::Err;
+                    if let ItemRibKind | FnItemRibKind = rib.kind {
+                        // This was an attempt to use a const parameter outside its scope.
+                        if record_used {
+                            resolve_error(
+                                self,
+                                span,
+                                ResolutionError::GenericParamsFromOuterFunction(def),
+                            );
                         }
-                        _ => {}
+                        return Def::Err;
                     }
                 }
             }
