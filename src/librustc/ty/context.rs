@@ -54,9 +54,8 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::SyncDroplessArena;
-use rustc_data_structures::cold_path;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal, AtomicCell};
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal, AtomicOnce};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -1067,7 +1066,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub hir_defs: hir::map::Definitions,
 
-    hir_map: AtomicCell<Option<&'tcx hir_map::Map<'tcx>>>,
+    hir_map: AtomicOnce<&'tcx hir_map::Map<'tcx>>,
 
     /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -1136,17 +1135,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(always)]
     pub fn hir(self) -> &'tcx hir_map::Map<'tcx> {
-        let value = self.hir_map.load();
-        if unlikely!(value.is_none()) {
+        self.hir_map.get_or_init(|| {
             // We can use `with_ignore` here because the hir map does its own tracking
-            cold_path(|| self.dep_graph.with_ignore(|| {
-                let map = self.hir_map(LOCAL_CRATE);
-                self.hir_map.store(Some(map));
-                map
-            }))
-        } else {
-            value.unwrap()
-        }
+            self.dep_graph.with_ignore(|| self.hir_map(LOCAL_CRATE))
+        })
     }
 
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
@@ -1335,7 +1327,7 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_prelude: resolutions.extern_prelude,
             hir_forest,
             hir_defs,
-            hir_map: AtomicCell::new(None),
+            hir_map: AtomicOnce::new(),
             def_path_hash_to_def_id,
             queries: query::Queries::new(
                 providers,
