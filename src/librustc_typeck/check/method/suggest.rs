@@ -69,6 +69,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         error: MethodError<'tcx>,
         args: Option<&'gcx [hir::Expr]>,
     ) {
+        let orig_span = span;
         let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -397,7 +398,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 } else {
                     err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
-                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(span);
+                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
