@@ -1,8 +1,8 @@
 use ra_db::FileId;
-use ra_syntax::{ast, SyntaxNode, TreeArc, AstNode};
+use ra_syntax::{ast, TreeArc, AstNode};
 
 use crate::{
-    Module, ModuleSource, Problem, Name,
+    Module, ModuleSource, Name,
     nameres::{CrateModuleId, ImportId},
     HirDatabase, DefDatabase,
     HirFileId, SourceItemId,
@@ -107,20 +107,5 @@ impl Module {
         let def_map = db.crate_def_map(self.krate);
         let parent_id = def_map[self.module_id].parent?;
         Some(self.with_module_id(parent_id))
-    }
-
-    pub(crate) fn problems_impl(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
-        let def_map = db.crate_def_map(self.krate);
-        let (my_file_id, _) = self.definition_source(db);
-        // FIXME: not entirely corret filterint by module
-        def_map
-            .problems()
-            .iter()
-            .filter(|(source_item_id, _problem)| my_file_id == source_item_id.file_id)
-            .map(|(source_item_id, problem)| (db.file_item(*source_item_id), problem.clone()))
-            .collect()
     }
 }

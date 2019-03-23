@@ -6,9 +6,9 @@ use ra_db::FileId;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    DefDatabase, HirFileId, Name, Path, Problem, Crate,
+    DefDatabase, HirFileId, Name, Path, Crate,
     KnownName,
-    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw},
+    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw, DefDiagnostic},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
 };
 
@@ -405,25 +405,27 @@ where
             raw::ModuleData::Declaration { name, source_item_id } => {
                 let source_item_id = source_item_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
-                let (file_ids, problem) =
-                    resolve_submodule(self.def_collector.db, self.file_id, name, is_root);
-
-                if let Some(problem) = problem {
-                    self.def_collector.def_map.problems.add(source_item_id, problem)
-                }
-
-                if let Some(&file_id) = file_ids.first() {
-                    let module_id =
-                        self.push_child_module(name.clone(), source_item_id, Some(file_id));
-                    let raw_items = self.def_collector.db.raw_items(file_id);
-                    ModCollector {
-                        def_collector: &mut *self.def_collector,
-                        module_id,
-                        file_id: file_id.into(),
-                        raw_items: &raw_items,
+                match resolve_submodule(self.def_collector.db, self.file_id, name, is_root) {
+                    Ok(file_id) => {
+                        let module_id =
+                            self.push_child_module(name.clone(), source_item_id, Some(file_id));
+                        let raw_items = self.def_collector.db.raw_items(file_id);
+                        ModCollector {
+                            def_collector: &mut *self.def_collector,
+                            module_id,
+                            file_id: file_id.into(),
+                            raw_items: &raw_items,
+                        }
+                        .collect(raw_items.items())
                     }
-                    .collect(raw_items.items())
-                }
+                    Err(candidate) => self.def_collector.def_map.diagnostics.push(
+                        DefDiagnostic::UnresolvedModule {
+                            module: self.module_id,
+                            declaration: source_item_id,
+                            candidate,
+                        },
+                    ),
+                };
             }
         }
     }
@@ -524,7 +526,7 @@ fn resolve_submodule(
     file_id: HirFileId,
     name: &Name,
     is_root: bool,
-) -> (Vec<FileId>, Option<Problem>) {
+) -> Result<FileId, RelativePathBuf> {
     // FIXME: handle submodules of inline modules properly
     let file_id = file_id.original_file(db);
     let source_root_id = db.file_source_root(file_id);
@@ -545,17 +547,10 @@ fn resolve_submodule(
         candidates.push(file_dir_mod.clone());
     };
     let sr = db.source_root(source_root_id);
-    let points_to = candidates
-        .into_iter()
-        .filter_map(|path| sr.files.get(&path))
-        .map(|&it| it)
-        .collect::<Vec<_>>();
-    let problem = if points_to.is_empty() {
-        Some(Problem::UnresolvedModule {
-            candidate: if is_dir_owner { file_mod } else { file_dir_mod },
-        })
-    } else {
-        None
-    };
-    (points_to, problem)
+    let mut points_to = candidates.into_iter().filter_map(|path| sr.files.get(&path)).map(|&it| it);
+    // FIXME: handle ambiguity
+    match points_to.next() {
+        Some(file_id) => Ok(file_id),
+        None => Err(if is_dir_owner { file_mod } else { file_dir_mod }),
+    }
 }

@@ -56,14 +56,17 @@ mod tests;
 use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
+use relative_path::RelativePathBuf;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
+use ra_syntax::{AstNode, AstPtr, ast};
 use test_utils::tested_by;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, Problem,
+    ModuleDef, Name, Crate, Module,
     DefDatabase, Path, PathKind, HirFileId,
     ids::{SourceItemId, SourceFileItemId, MacroCallId},
+    diagnostics::{Diagnostics, UnresolvedModule},
 };
 
 pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
@@ -85,7 +88,7 @@ pub struct CrateDefMap {
     macros: Arena<CrateMacroId, mbe::MacroRules>,
     public_macros: FxHashMap<Name, CrateMacroId>,
     macro_resolutions: FxHashMap<MacroCallId, (Crate, CrateMacroId)>,
-    problems: CrateDefMapProblems,
+    diagnostics: Vec<DefDiagnostic>,
 }
 
 impl std::ops::Index<CrateModuleId> for CrateDefMap {
@@ -123,21 +126,6 @@ pub(crate) struct ModuleData {
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub(crate) definition: Option<FileId>,
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct CrateDefMapProblems {
-    problems: Vec<(SourceItemId, Problem)>,
-}
-
-impl CrateDefMapProblems {
-    fn add(&mut self, source_item_id: SourceItemId, problem: Problem) {
-        self.problems.push((source_item_id, problem))
-    }
-
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (&'a SourceItemId, &'a Problem)> + 'a {
-        self.problems.iter().map(|(s, p)| (s, p))
-    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -212,7 +200,7 @@ impl CrateDefMap {
                 macros: Arena::default(),
                 public_macros: FxHashMap::default(),
                 macro_resolutions: FxHashMap::default(),
-                problems: CrateDefMapProblems::default(),
+                diagnostics: Vec::new(),
             }
         };
         let def_map = collector::collect_defs(db, def_map);
@@ -222,10 +210,6 @@ impl CrateDefMap {
 
     pub(crate) fn root(&self) -> CrateModuleId {
         self.root
-    }
-
-    pub(crate) fn problems(&self) -> &CrateDefMapProblems {
-        &self.problems
     }
 
     pub(crate) fn mk_module(&self, module_id: CrateModuleId) -> Module {
@@ -238,6 +222,15 @@ impl CrateDefMap {
 
     pub(crate) fn extern_prelude(&self) -> &FxHashMap<Name, ModuleDef> {
         &self.extern_prelude
+    }
+
+    pub(crate) fn add_diagnostics(
+        &self,
+        db: &impl DefDatabase,
+        module: CrateModuleId,
+        sink: &mut Diagnostics,
+    ) {
+        self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
     }
 
     pub(crate) fn resolve_macro(
@@ -449,6 +442,34 @@ impl CrateDefMap {
             resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
         } else {
             PerNs::none()
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum DefDiagnostic {
+    UnresolvedModule {
+        module: CrateModuleId,
+        declaration: SourceItemId,
+        candidate: RelativePathBuf,
+    },
+}
+
+impl DefDiagnostic {
+    fn add_to(&self, db: &impl DefDatabase, target_module: CrateModuleId, sink: &mut Diagnostics) {
+        match self {
+            DefDiagnostic::UnresolvedModule { module, declaration, candidate } => {
+                if *module != target_module {
+                    return;
+                }
+                let syntax = db.file_item(*declaration);
+                let decl = ast::Module::cast(&syntax).unwrap();
+                sink.push(UnresolvedModule {
+                    file: declaration.file_id,
+                    decl: AstPtr::new(&decl),
+                    candidate: candidate.clone(),
+                })
+            }
         }
     }
 }

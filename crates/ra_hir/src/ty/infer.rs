@@ -120,9 +120,9 @@ impl InferenceResult {
         &self,
         db: &impl HirDatabase,
         owner: Function,
-        diagnostics: &mut Diagnostics,
+        sink: &mut Diagnostics,
     ) {
-        self.diagnostics.iter().for_each(|it| it.add_to(db, owner, diagnostics))
+        self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
     }
 }
 
@@ -1277,12 +1277,17 @@ mod diagnostics {
     }
 
     impl InferenceDiagnostic {
-        pub(super) fn add_to(&self, db: &impl HirDatabase, owner: Function, acc: &mut Diagnostics) {
+        pub(super) fn add_to(
+            &self,
+            db: &impl HirDatabase,
+            owner: Function,
+            sink: &mut Diagnostics,
+        ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
                     let (file, _) = owner.source(db);
                     let field = owner.body_source_map(db).field_syntax(*expr, *field);
-                    acc.push(NoSuchField { file, field })
+                    sink.push(NoSuchField { file, field })
                 }
             }
         }

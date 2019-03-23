@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use hir::{Problem, source_binder};
+use hir::{source_binder, diagnostics::Diagnostic as _};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
@@ -28,7 +28,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     }
 
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
-        check_module(&mut res, db, file_id, m);
+        check_module(&mut res, db, m);
     };
     res
 }
@@ -128,46 +128,40 @@ fn check_struct_shorthand_initialization(
     Some(())
 }
 
-fn check_module(
-    acc: &mut Vec<Diagnostic>,
-    db: &RootDatabase,
-    file_id: FileId,
-    module: hir::Module,
-) {
+fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Module) {
+    let mut diagnostics = hir::diagnostics::Diagnostics::default();
+    module.diagnostics(db, &mut diagnostics);
     for decl in module.declarations(db) {
         match decl {
-            hir::ModuleDef::Function(f) => check_function(acc, db, f),
+            hir::ModuleDef::Function(f) => f.diagnostics(db, &mut diagnostics),
             _ => (),
         }
     }
 
-    let source_root = db.file_source_root(file_id);
-    for (name_node, problem) in module.problems(db) {
-        let diag = match problem {
-            Problem::UnresolvedModule { candidate } => {
-                let create_file =
-                    FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
-                let fix = SourceChange::file_system_edit("create module", create_file);
-                Diagnostic {
-                    range: name_node.range(),
-                    message: "unresolved module".to_string(),
-                    severity: Severity::Error,
-                    fix: Some(fix),
-                }
-            }
-        };
-        acc.push(diag)
-    }
-}
-
-fn check_function(acc: &mut Vec<Diagnostic>, db: &RootDatabase, function: hir::Function) {
-    for d in function.diagnostics(db).iter() {
-        acc.push(Diagnostic {
-            message: d.message(),
-            range: d.syntax_node().range(),
-            severity: Severity::Error,
-            fix: None,
-        })
+    for d in diagnostics.iter() {
+        if let Some(d) = d.downcast_ref::<hir::diagnostics::UnresolvedModule>() {
+            let source_root = db.file_source_root(d.file().original_file(db));
+            let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
+            let fix = SourceChange {
+                label: "create module".to_string(),
+                source_file_edits: Vec::new(),
+                file_system_edits: vec![create_file],
+                cursor_position: None,
+            };
+            acc.push(Diagnostic {
+                range: d.syntax_node().range(),
+                message: d.message(),
+                severity: Severity::Error,
+                fix: Some(fix),
+            })
+        } else {
+            acc.push(Diagnostic {
+                message: d.message(),
+                range: d.syntax_node().range(),
+                severity: Severity::Error,
+                fix: None,
+            })
+        }
     }
 }
 

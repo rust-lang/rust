@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use relative_path::RelativePathBuf;
 use ra_db::{CrateId, SourceRootId, Edition};
-use ra_syntax::{ast::self, TreeArc, SyntaxNode};
+use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
     Name, ScopesWithSourceMap, Ty, HirFileId,
@@ -96,11 +95,6 @@ pub enum ModuleSource {
     Module(TreeArc<ast::Module>),
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Problem {
-    UnresolvedModule { candidate: RelativePathBuf },
-}
-
 impl Module {
     /// Name of this module.
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
@@ -172,8 +166,8 @@ impl Module {
         db.crate_def_map(self.krate)[self.module_id].scope.clone()
     }
 
-    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
-        self.problems_impl(db)
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut Diagnostics) {
+        db.crate_def_map(self.krate).add_diagnostics(db, self.module_id, sink);
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
@@ -521,10 +515,8 @@ impl Function {
         r
     }
 
-    pub fn diagnostics(&self, db: &impl HirDatabase) -> Diagnostics {
-        let mut res = Diagnostics::default();
-        self.infer(db).add_diagnostics(db, *self, &mut res);
-        res
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut Diagnostics) {
+        self.infer(db).add_diagnostics(db, *self, sink);
     }
 }
 
