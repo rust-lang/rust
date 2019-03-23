@@ -69,7 +69,13 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
             debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
             cplace
         }
-        Err(_) => crate::trap::trap_unreachable_ret_place(fx, fx.layout_of(dest_ty)),
+        Err(_) => {
+            crate::trap::trap_unreachable_ret_place(
+                fx,
+                fx.layout_of(dest_ty),
+                "[panic] Tried to get value of promoted value with errored during const eval.",
+            )
+        }
     }
 }
 

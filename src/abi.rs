@@ -590,7 +590,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
-        trap_unreachable(&mut fx.bcx);
+        trap_unreachable(fx, "[corruption] Diverging function returned");
     }
 }
 

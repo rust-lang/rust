@@ -108,9 +108,28 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
             let start_ebb = bcx.create_ebb();
             bcx.append_ebb_params_for_function_params(start_ebb);
             bcx.switch_to_block(start_ebb);
-            crate::trap::trap_unreachable(&mut bcx);
-            bcx.seal_all_blocks();
-            bcx.finalize();
+
+            let mut fx = FunctionCx {
+                tcx,
+                module: cx.module,
+                pointer_type: pointer_ty(tcx),
+
+                instance,
+                mir,
+
+                bcx,
+                ebb_map: HashMap::new(),
+                local_map: HashMap::new(),
+
+                clif_comments: crate::pretty_clif::CommentWriter::new(tcx, instance),
+                constants: &mut cx.ccx,
+                caches: &mut cx.caches,
+                source_info_set: indexmap::IndexSet::new(),
+            };
+
+            crate::trap::trap_unreachable(&mut fx, "[unimplemented] Called function with u128 or i128 as argument.");
+            fx.bcx.seal_all_blocks();
+            fx.bcx.finalize();
 
             // Step 2b3. Define function
             cx.caches.context.func = func;
@@ -254,7 +273,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             TerminatorKind::Assert {
                 cond,
                 expected,
-                msg: _,
+                msg,
                 target,
                 cleanup: _,
             } => {
@@ -267,7 +286,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 } else {
                     fx.bcx.ins().brz(cond, target, &[]);
                 };
-                trap_panic(&mut fx.bcx);
+                trap_panic(fx, format!("[panic] Assert {:?} failed.", msg));
             }
 
             TerminatorKind::SwitchInt {
@@ -294,8 +313,11 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             } => {
                 crate::abi::codegen_terminator_call(fx, func, args, destination);
             }
-            TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
-                trap_unreachable(&mut fx.bcx);
+            TerminatorKind::Resume | TerminatorKind::Abort => {
+                trap_unreachable(fx, "[corruption] Unwinding bb reached.");
+            }
+            TerminatorKind::Unreachable => {
+                trap_unreachable(fx, "[corruption] Hit unreachable code.");
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdges { .. }
@@ -742,7 +764,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     let layout = place.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
-        return trap_unreachable_ret_value(fx, dest_layout);
+        return trap_unreachable_ret_value(fx, dest_layout, "[panic] Tried to get discriminant for uninhabited type.");
     }
 
     let (discr_scalar, discr_kind) = match &layout.variants {

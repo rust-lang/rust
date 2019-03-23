@@ -103,10 +103,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // Insert non returning intrinsics here
             match intrinsic {
                 "abort" => {
-                    trap_panic(&mut fx.bcx);
+                    trap_panic(fx, "Called intrinisc::abort.");
                 }
                 "unreachable" => {
-                    trap_unreachable(&mut fx.bcx);
+                    trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }
@@ -339,7 +339,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         init, () {
             if ret.layout().abi == Abi::Uninhabited {
-                crate::trap::trap_panic(&mut fx.bcx);
+                crate::trap::trap_panic(fx, "[panic] Called intrinsic::init for uninhabited type.");
                 return;
             }
 
@@ -377,7 +377,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         uninit, <T> () {
             if ret.layout().abi == Abi::Uninhabited {
-                crate::trap::trap_panic(&mut fx.bcx);
+                crate::trap::trap_panic(fx, "[panic] Called intrinsic::uninit for uninhabited type.");
                 return;
             }
 
@@ -412,7 +412,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         panic_if_uninhabited, <T> () {
             if fx.layout_of(T).abi.is_uninhabited() {
-                crate::trap::trap_panic(&mut fx.bcx);
+                crate::trap::trap_panic(fx, "[panic] Called intrinsic::panic_if_uninhabited for uninhabited type.");
                 return;
             }
         };
@@ -492,6 +492,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
-        trap_unreachable(&mut fx.bcx);
+        trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
     }
 }
