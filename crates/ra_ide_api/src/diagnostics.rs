@@ -152,27 +152,6 @@ fn check_module(
                     fix: Some(fix),
                 }
             }
-            Problem::NotDirOwner { move_to, candidate } => {
-                let move_file = FileSystemEdit::MoveFile {
-                    src: file_id,
-                    dst_source_root: source_root,
-                    dst_path: move_to.clone(),
-                };
-                let create_file =
-                    FileSystemEdit::CreateFile { source_root, path: move_to.join(candidate) };
-                let fix = SourceChange {
-                    label: "move file and create module".to_string(),
-                    source_file_edits: Vec::new(),
-                    file_system_edits: vec![move_file, create_file],
-                    cursor_position: None,
-                };
-                Diagnostic {
-                    range: name_node.range(),
-                    message: "can't declare module at this location".to_string(),
-                    severity: Severity::Error,
-                    fix: Some(fix),
-                }
-            }
         };
         acc.push(diag)
     }
