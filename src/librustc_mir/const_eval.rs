@@ -618,6 +618,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
+        // FIXME(#59378) check_match may have errored but we're not checking for that anymore
         tcx.check_match(def_id);
 
         if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind_by_hir_id(id) {
