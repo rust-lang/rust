@@ -355,7 +355,7 @@ pub trait Into<T>: Sized {
 #[rustc_on_unimplemented(
     on(
         all(_Self="&str", T="std::string::String"),
-        note="you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
+        note="to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
     )
 )]
 pub trait From<T>: Sized {

@@ -4,7 +4,7 @@ error[E0277]: the trait bound `&str: std::convert::From<std::string::String>` is
 LL |     foo(String::new());
    |     ^^^ the trait `std::convert::From<std::string::String>` is not implemented for `&str`
    |
-   = note: you can coerce a `std::string::String` into a `&str` by writing `&*variable`
+   = note: to coerce a `std::string::String` into a `&str`, use `&*` as a prefix
    = note: required because of the requirements on the impl of `std::convert::Into<&str>` for `std::string::String`
 note: required by `foo`
   --> $DIR/into-str.rs:1:1
