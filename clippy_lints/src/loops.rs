@@ -1499,7 +1499,11 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
                                  {1}) in {2}.enumerate()` or similar iterators",
                                 name,
                                 snippet(cx, pat.span, "_"),
-                                snippet(cx, arg.span, "_")
+                                if higher::range(cx, arg).is_some() {
+                                    format!("({})", snippet(cx, arg.span, "_"))
+                                } else {
+                                    format!("{}", sugg::Sugg::hir(cx, arg, "_").maybe_par())
+                                }
                             ),
                         );
                     }
