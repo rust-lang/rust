@@ -1,6 +1,9 @@
+#[cfg(not(test))]
 use crate::alloc::{self, Layout};
 use crate::num::NonZeroUsize;
+#[cfg(not(test))]
 use crate::slice;
+#[cfg(not(test))]
 use crate::str;
 
 use super::waitqueue::{
@@ -147,6 +150,7 @@ impl RWLock {
 
     // only used by __rust_rwlock_unlock below
     #[inline]
+    #[cfg_attr(test, allow(dead_code))]
     unsafe fn unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
@@ -161,9 +165,11 @@ impl RWLock {
     pub unsafe fn destroy(&self) {}
 }
 
+#[cfg(not(test))]
 const EINVAL: i32 = 22;
 
 // used by libunwind port
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -173,6 +179,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     return 0;
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -181,6 +188,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     (*p).write();
     return 0;
 }
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -192,6 +200,7 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
 
 // the following functions are also used by the libunwind port. They're
 // included here to make sure parallel codegen and LTO don't mess things up.
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
     if s < 0 {
@@ -203,17 +212,20 @@ pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
     }
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 // NB. used by both libunwind and libpanic_abort
 pub unsafe extern "C" fn __rust_abort() {
     crate::sys::abort_internal();
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
     alloc::alloc(Layout::from_size_align_unchecked(size, align))
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
     alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
@@ -221,15 +233,13 @@ pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usiz
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use core::array::FixedSizeArray;
-    use crate::mem::MaybeUninit;
-    use crate::{mem, ptr};
+    use crate::mem::{self, MaybeUninit};
 
-    // The below test verifies that the bytes of initialized RWLock are the ones
-    // we use in libunwind.
-    // If they change we need to update src/UnwindRustSgx.h in libunwind.
+    // Verify that the bytes of initialized RWLock are the same as in
+    // libunwind. If they change, `src/UnwindRustSgx.h` in libunwind needs to
+    // be changed too.
     #[test]
     fn test_c_rwlock_initializer() {
         const RWLOCK_INIT: &[u8] = &[
@@ -251,11 +261,28 @@ mod tests {
             0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         ];
 
-        let mut init = MaybeUninit::<RWLock>::zeroed();
-        init.set(RWLock::new());
-        assert_eq!(
-            mem::transmute::<_, [u8; 128]>(init.into_inner()).as_slice(),
-            RWLOCK_INIT
-        );
+        #[inline(never)]
+        fn zero_stack() {
+            test::black_box(MaybeUninit::<[RWLock; 16]>::zeroed());
+        }
+
+        #[inline(never)]
+        unsafe fn rwlock_new(init: &mut MaybeUninit<RWLock>) {
+            init.set(RWLock::new());
+        }
+
+        unsafe {
+            // try hard to make sure that the padding/unused bytes in RWLock
+            // get initialized as 0. If the assertion below fails, that might
+            // just be an issue with the test code and not with the value of
+            // RWLOCK_INIT.
+            zero_stack();
+            let mut init = MaybeUninit::<RWLock>::zeroed();
+            rwlock_new(&mut init);
+            assert_eq!(
+                mem::transmute::<_, [u8; 128]>(init.into_initialized()).as_slice(),
+                RWLOCK_INIT
+            )
+        };
     }
 }

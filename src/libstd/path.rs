@@ -3801,7 +3801,7 @@ mod tests {
             });
         );
 
-        if cfg!(unix) {
+        if cfg!(unix) || cfg!(all(target_env = "sgx", target_vendor = "fortanix")) {
             tp!("", "foo", "foo");
             tp!("foo", "bar", "foo/bar");
             tp!("foo/", "bar", "foo/bar");
@@ -3960,7 +3960,7 @@ mod tests {
         tfn!("foo", "bar", "bar");
         tfn!("foo", "", "");
         tfn!("", "foo", "foo");
-        if cfg!(unix) {
+        if cfg!(unix) || cfg!(all(target_env = "sgx", target_vendor = "fortanix")) {
             tfn!(".", "foo", "./foo");
             tfn!("foo/", "bar", "bar");
             tfn!("foo/.", "bar", "bar");

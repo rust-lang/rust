@@ -1499,7 +1499,7 @@ mod tests {
     fn test_unnamed_thread() {
         thread::spawn(move|| {
             assert!(thread::current().name().is_none());
-        }).join().ok().unwrap();
+        }).join().ok().expect("thread panicked");
     }
 
     #[test]
@@ -1693,6 +1693,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
             thread::park_timeout(Duration::from_millis(10));
@@ -1700,6 +1701,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_called_other_thread() {
         for _ in 0..10 {
             let th = thread::current();
@@ -1714,6 +1716,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
     }
