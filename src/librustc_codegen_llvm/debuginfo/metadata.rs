@@ -266,6 +266,7 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
                                               unfinished_type,
+                                              metadata_stub,
                                               member_holding_stub,
                                               member_descriptions);
                 return MetadataCreationResult::new(metadata_stub, true);
@@ -1215,6 +1216,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 set_members_of_composite_type(cx,
                                               self.enum_type,
                                               variant_type_metadata,
+                                              variant_type_metadata,
                                               member_descriptions);
                 vec![
                     MemberDescription {
@@ -1255,6 +1257,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                     set_members_of_composite_type(cx,
                                                   self.enum_type,
+                                                  variant_type_metadata,
                                                   variant_type_metadata,
                                                   member_descriptions);
                     MemberDescription {
@@ -1297,6 +1300,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                     set_members_of_composite_type(cx,
                                                   self.enum_type,
+                                                  variant_type_metadata,
                                                   variant_type_metadata,
                                                   variant_member_descriptions);
 
@@ -1357,6 +1361,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         set_members_of_composite_type(cx,
                                                       self.enum_type,
+                                                      variant_type_metadata,
                                                       variant_type_metadata,
                                                       member_descriptions);
 
@@ -1698,8 +1703,7 @@ fn prepare_enum_metadata(
             layout.align.abi.bits() as u32,
             DIFlags::FlagZero,
             discriminator_metadata,
-            empty_array,
-            unique_type_id_str.as_ptr())
+            empty_array)
     };
 
     // The variant part must be wrapped in a struct according to DWARF.
@@ -1770,6 +1774,7 @@ fn composite_type_metadata(
     set_members_of_composite_type(cx,
                                   composite_type,
                                   composite_type_metadata,
+                                  composite_type_metadata,
                                   member_descriptions);
 
     composite_type_metadata
@@ -1777,7 +1782,8 @@ fn composite_type_metadata(
 
 fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
                                  composite_type: Ty<'tcx>,
-                                 composite_type_metadata: &'ll DICompositeType,
+                                 metadata_stub: &'ll DICompositeType,
+                                 member_holding_stub: &'ll DICompositeType,
                                  member_descriptions: Vec<MemberDescription<'ll>>) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
@@ -1788,11 +1794,11 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
-        if composite_types_completed.contains(&composite_type_metadata) {
+        if composite_types_completed.contains(&metadata_stub) {
             bug!("debuginfo::set_members_of_composite_type() - \
                   Already completed forward declaration re-encountered.");
         } else {
-            composite_types_completed.insert(composite_type_metadata);
+            composite_types_completed.insert(metadata_stub);
         }
     }
 
@@ -1803,7 +1809,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateVariantMemberType(
                     DIB(cx),
-                    composite_type_metadata,
+                    member_holding_stub,
                     member_name.as_ptr(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
@@ -1824,7 +1830,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
-            DIB(cx), composite_type_metadata, Some(type_array), type_params);
+            DIB(cx), member_holding_stub, Some(type_array), type_params);
     }
 }
 
