@@ -320,7 +320,7 @@ impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
         let stab = self.tcx.stability().local_stability(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
-                        self.access_levels.is_reachable(self.tcx.hir().hir_to_node_id(hir_id));
+                        self.access_levels.is_reachable(hir_id);
         if is_error {
             self.tcx.sess.span_err(
                 span,

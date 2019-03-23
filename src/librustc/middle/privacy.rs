@@ -2,11 +2,11 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
+use crate::hir::HirId;
 use crate::util::nodemap::{DefIdSet, FxHashMap};
 
 use std::hash::Hash;
 use std::fmt;
-use syntax::ast::NodeId;
 use rustc_macros::HashStable;
 
 // Accessibility levels, sorted in ascending order
@@ -27,7 +27,7 @@ pub enum AccessLevel {
 
 // Accessibility levels for reachable HIR nodes
 #[derive(Clone)]
-pub struct AccessLevels<Id = NodeId> {
+pub struct AccessLevels<Id = HirId> {
     pub map: FxHashMap<Id, AccessLevel>
 }
 

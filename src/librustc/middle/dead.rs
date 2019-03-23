@@ -414,7 +414,7 @@ fn create_and_seed_worklist<'a, 'tcx>(
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
     let worklist = access_levels.map.iter().filter_map(|(&id, level)| {
         if level >= &privacy::AccessLevel::Reachable {
-            Some(tcx.hir().node_to_hir_id(id))
+            Some(id)
         } else {
             None
         }
