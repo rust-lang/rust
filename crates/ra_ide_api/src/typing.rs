@@ -5,30 +5,37 @@ use ra_syntax::{
     ast::{self, AstToken},
 };
 use ra_fmt::leading_indent;
-use crate::{LocalEdit, TextEditBuilder};
+use ra_text_edit::{TextEdit, TextEditBuilder};
+use ra_db::{FilePosition, SourceDatabase};
+use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 
-pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
-    let comment =
-        find_leaf_at_offset(file.syntax(), offset).left_biased().and_then(ast::Comment::cast)?;
+pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
+    let file = db.parse(position.file_id);
+    let comment = find_leaf_at_offset(file.syntax(), position.offset)
+        .left_biased()
+        .and_then(ast::Comment::cast)?;
 
     if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
     }
 
     let prefix = comment.prefix();
-    if offset < comment.syntax().range().start() + TextUnit::of_str(prefix) + TextUnit::from(1) {
+    if position.offset
+        < comment.syntax().range().start() + TextUnit::of_str(prefix) + TextUnit::from(1)
+    {
         return None;
     }
 
-    let indent = node_indent(file, comment.syntax())?;
+    let indent = node_indent(&file, comment.syntax())?;
     let inserted = format!("\n{}{} ", indent, prefix);
-    let cursor_position = offset + TextUnit::of_str(&inserted);
+    let cursor_position = position.offset + TextUnit::of_str(&inserted);
     let mut edit = TextEditBuilder::default();
-    edit.insert(offset, inserted);
-    Some(LocalEdit {
+    edit.insert(position.offset, inserted);
+    Some(SourceChange {
         label: "on enter".to_string(),
-        edit: edit.finish(),
-        cursor_position: Some(cursor_position),
+        source_file_edits: vec![SourceFileEdit { edit: edit.finish(), file_id: position.file_id }],
+        file_system_edits: vec![],
+        cursor_position: Some(FilePosition { offset: cursor_position, file_id: position.file_id }),
     })
 }
 
@@ -52,7 +59,7 @@ fn node_indent<'a>(file: &'a SourceFile, node: &SyntaxNode) -> Option<&'a str> {
     Some(&text[pos..])
 }
 
-pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<LocalEdit> {
+pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
     assert_eq!(file.syntax().text().char_at(eq_offset), Some('='));
     let let_stmt: &ast::LetStmt = find_node_at_offset(file.syntax(), eq_offset)?;
     if let_stmt.has_semi() {
@@ -72,17 +79,14 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<LocalEdit> 
     let offset = let_stmt.syntax().range().end();
     let mut edit = TextEditBuilder::default();
     edit.insert(offset, ";".to_string());
-    Some(LocalEdit {
-        label: "add semicolon".to_string(),
-        edit: edit.finish(),
-        cursor_position: None,
-    })
+    Some(edit.finish())
 }
 
-pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit> {
-    assert_eq!(file.syntax().text().char_at(dot_offset), Some('.'));
+pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
+    let file = db.parse(position.file_id);
+    assert_eq!(file.syntax().text().char_at(position.offset), Some('.'));
 
-    let whitespace = find_leaf_at_offset(file.syntax(), dot_offset)
+    let whitespace = find_leaf_at_offset(file.syntax(), position.offset)
         .left_biased()
         .and_then(ast::Whitespace::cast)?;
 
@@ -103,15 +107,18 @@ pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit
     }
     let mut edit = TextEditBuilder::default();
     edit.replace(
-        TextRange::from_to(dot_offset - current_indent_len, dot_offset),
+        TextRange::from_to(position.offset - current_indent_len, position.offset),
         target_indent.into(),
     );
-    let res = LocalEdit {
+    let res = SourceChange {
         label: "reindent dot".to_string(),
-        edit: edit.finish(),
-        cursor_position: Some(
-            dot_offset + target_indent_len - current_indent_len + TextUnit::of_char('.'),
-        ),
+        source_file_edits: vec![SourceFileEdit { edit: edit.finish(), file_id: position.file_id }],
+        file_system_edits: vec![],
+        cursor_position: Some(FilePosition {
+            offset: position.offset + target_indent_len - current_indent_len
+                + TextUnit::of_char('.'),
+            file_id: position.file_id,
+        }),
     };
     Some(res)
 }
@@ -119,6 +126,8 @@ pub fn on_dot_typed(file: &SourceFile, dot_offset: TextUnit) -> Option<LocalEdit
 #[cfg(test)]
 mod tests {
     use test_utils::{add_cursor, assert_eq_text, extract_offset};
+
+    use crate::mock_analysis::single_file;
 
     use super::*;
 
@@ -131,7 +140,7 @@ mod tests {
             let before = edit.finish().apply(&before);
             let file = SourceFile::parse(&before);
             if let Some(result) = on_eq_typed(&file, offset) {
-                let actual = result.edit.apply(&before);
+                let actual = result.apply(&before);
                 assert_eq_text!(after, &actual);
             } else {
                 assert_eq_text!(&before, after)
@@ -177,9 +186,10 @@ fn foo() {
         let mut edit = TextEditBuilder::default();
         edit.insert(offset, ".".to_string());
         let before = edit.finish().apply(&before);
-        let file = SourceFile::parse(&before);
-        if let Some(result) = on_dot_typed(&file, offset) {
-            let actual = result.edit.apply(&before);
+        let (analysis, file_id) = single_file(&before);
+        if let Some(result) = analysis.on_dot_typed(FilePosition { offset, file_id }) {
+            assert_eq!(result.source_file_edits.len(), 1);
+            let actual = result.source_file_edits[0].edit.apply(&before);
             assert_eq_text!(after, &actual);
         } else {
             assert_eq_text!(&before, after)
@@ -358,10 +368,12 @@ fn foo() {
     fn test_on_enter() {
         fn apply_on_enter(before: &str) -> Option<String> {
             let (offset, before) = extract_offset(before);
-            let file = SourceFile::parse(&before);
-            let result = on_enter(&file, offset)?;
-            let actual = result.edit.apply(&before);
-            let actual = add_cursor(&actual, result.cursor_position.unwrap());
+            let (analysis, file_id) = single_file(&before);
+            let result = analysis.on_enter(FilePosition { offset, file_id })?;
+
+            assert_eq!(result.source_file_edits.len(), 1);
+            let actual = result.source_file_edits[0].edit.apply(&before);
+            let actual = add_cursor(&actual, result.cursor_position.unwrap().offset);
             Some(actual)
         }
 

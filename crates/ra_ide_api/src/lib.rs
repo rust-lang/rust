@@ -37,6 +37,8 @@ mod line_index;
 mod folding_ranges;
 mod line_index_utils;
 mod join_lines;
+mod typing;
+mod matching_brace;
 
 #[cfg(test)]
 mod marks;
@@ -69,10 +71,10 @@ pub use crate::{
     line_index::{LineIndex, LineCol},
     line_index_utils::translate_offset_with_edit,
     folding_ranges::{Fold, FoldKind},
+    syntax_highlighting::HighlightedRange,
+    diagnostics::Severity,
 };
-pub use ra_ide_api_light::{
-    HighlightedRange, Severity, StructureNode, LocalEdit,
-};
+pub use ra_ide_api_light::StructureNode;
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
     Edition
@@ -266,7 +268,7 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
         let file = self.db.parse(position.file_id);
-        ra_ide_api_light::matching_brace(&file, position.offset)
+        matching_brace::matching_brace(&file, position.offset)
     }
 
     /// Returns a syntax tree represented as `String`, for debug purposes.
@@ -294,9 +296,7 @@ impl Analysis {
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_enter(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        typing::on_enter(&self.db, position)
     }
 
     /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -304,15 +304,18 @@ impl Analysis {
     // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        let edit = typing::on_eq_typed(&file, position.offset)?;
+        Some(SourceChange {
+            label: "add semicolon".to_string(),
+            source_file_edits: vec![SourceFileEdit { edit, file_id: position.file_id }],
+            file_system_edits: vec![],
+            cursor_position: None,
+        })
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
     pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_dot_typed(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        typing::on_dot_typed(&self.db, position)
     }
 
     /// Returns a tree representation of symbols in the file. Useful to draw a
@@ -431,18 +434,6 @@ impl Analysis {
         f: F,
     ) -> Cancelable<T> {
         self.db.catch_canceled(f)
-    }
-}
-
-impl SourceChange {
-    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit { file_id, edit: edit.edit };
-        SourceChange {
-            label: edit.label,
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: edit.cursor_position.map(|offset| FilePosition { offset, file_id }),
-        }
     }
 }
 
