@@ -407,7 +407,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                     let substs =
                         Ty::substs_from_path_segment(self.db, &self.resolver, segment, typable);
-                    self.db.type_for_def(typable, Namespace::Types).apply_substs(substs)
+                    self.db.type_for_def(typable, Namespace::Types).subst(&substs)
                 }
                 Resolution::LocalBinding(_) => {
                     // can't have a local binding in an associated item path
@@ -466,7 +466,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable, Namespace::Values).apply_substs(substs);
+                let ty = self.db.type_for_def(typable, Namespace::Values).subst(&substs);
                 let ty = self.insert_type_vars(ty);
                 Some(ty)
             }
