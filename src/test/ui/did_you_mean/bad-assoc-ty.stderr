@@ -38,7 +38,22 @@ error: missing angle brackets in associated item path
   --> $DIR/bad-assoc-ty.rs:27:10
    |
 LL | type G = 'static + (Send)::AssocTy;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<'static + Send>::AssocTy`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<'static + (Send)>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:44:10
+   |
+LL | type I = ty!()::AssocTy;
+   |          ^^^^^^^^^^^^^^ help: try: `<ty!()>::AssocTy`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-ty.rs:37:19
+   |
+LL |     ($ty: ty) => ($ty::AssocTy);
+   |                   ^^^^^^^^^^^^ help: try: `<$ty>::AssocTy`
+...
+LL | type J = ty!(u8);
+   |          ------- in this macro invocation
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:1:10
@@ -88,7 +103,22 @@ error[E0223]: ambiguous associated type
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::ops::Fn(u8) -> u8 + 'static) as Trait>::Output`
 
-error: aborting due to 15 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:37:19
+   |
+LL |     ($ty: ty) => ($ty::AssocTy);
+   |                   ^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
+...
+LL | type J = ty!(u8);
+   |          ------- in this macro invocation
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bad-assoc-ty.rs:44:10
+   |
+LL | type I = ty!()::AssocTy;
+   |          ^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
+
+error: aborting due to 19 previous errors
 
 Some errors occurred: E0121, E0223.
 For more information about an error, try `rustc --explain E0121`.

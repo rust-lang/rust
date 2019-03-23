@@ -33,4 +33,16 @@ type G = 'static + (Send)::AssocTy;
 type H = Fn(u8) -> (u8)::Output;
 //~^ ERROR ambiguous associated type
 
+macro_rules! ty {
+    ($ty: ty) => ($ty::AssocTy);
+    //~^ ERROR missing angle brackets in associated item path
+    //~| ERROR ambiguous associated type
+    () => (u8);
+}
+
+type J = ty!(u8);
+type I = ty!()::AssocTy;
+//~^ ERROR missing angle brackets in associated item path
+//~| ERROR ambiguous associated type
+
 fn main() {}
