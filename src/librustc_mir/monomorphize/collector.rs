@@ -184,7 +184,7 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, Location, Promoted};
+use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
@@ -655,8 +655,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     context: mir::visit::PlaceContext<'tcx>,
                     location: Location) {
         match place {
-            mir::Place::Base(
-                mir::PlaceBase::Static(box mir::Static{def_id, promoted:None, ..})
+            Place::Base(
+                PlaceBase::Static(box Static{ kind:StaticKind::Static(def_id), .. })
             ) => {
                 debug!("visiting static {:?} @ {:?}", def_id, location);
 

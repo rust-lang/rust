@@ -1,7 +1,7 @@
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use rustc::mir::{self, Place, PlaceBase};
+use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::EvalErrorKind;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
@@ -621,14 +621,18 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but specified directly in the code. This means it gets promoted
                         // and we can then extract the value by evaluating the promoted.
                         mir::Operand::Copy(
-                            Place::Base(PlaceBase::Static(
-                                box mir::Static {promoted: Some(promoted), ty, ..}
-                            ))
+                            Place::Base(
+                                PlaceBase::Static(
+                                    box Static { kind: StaticKind::Promoted(promoted), ty }
+                                )
+                            )
                         ) |
                         mir::Operand::Move(
-                            Place::Base(PlaceBase::Static(
-                                box mir::Static {promoted: Some(promoted), ty, ..}
-                            ))
+                            Place::Base(
+                                PlaceBase::Static(
+                                    box Static { kind: StaticKind::Promoted(promoted), ty }
+                                )
+                            )
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
                             let cid = mir::interpret::GlobalId {

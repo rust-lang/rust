@@ -409,7 +409,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = match *place {
             mir::Place::Base(mir::PlaceBase::Local(_)) => bug!(), // handled above
             mir::Place::Base(
-                mir::PlaceBase::Static(box mir::Static { def_id: _, ty, promoted: Some(promoted) })
+                mir::PlaceBase::Static(
+                    box mir::Static { ty, kind: mir::StaticKind::Promoted(promoted) }
+                )
             ) => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
@@ -438,7 +440,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::Place::Base(
-                mir::PlaceBase::Static(box mir::Static { def_id, ty, promoted: None })
+                mir::PlaceBase::Static(
+                    box mir::Static { ty, kind: mir::StaticKind::Static(def_id) }
+                )
             ) => {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.

@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Local, Mir, Place, PlaceBase, Mutability};
+use rustc::mir::{Local, Mir, Place, PlaceBase, Mutability, Static, StaticKind};
 use rustc::ty::{self, TyCtxt};
 use crate::borrow_check::borrow_set::LocalsStateAtExit;
 
@@ -49,9 +49,10 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     }
                 }
             }
-            Place::Base(PlaceBase::Static(static_)) => {
-                static_.promoted.is_none() &&
-                    (tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable))
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) =>
+                false,
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
+                tcx.is_static(*def_id) == Some(hir::Mutability::MutMutable)
             }
             Place::Projection(proj) => match proj.elem {
                 ProjectionElem::Field(..)

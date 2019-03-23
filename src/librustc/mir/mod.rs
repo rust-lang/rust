@@ -1915,19 +1915,22 @@ pub enum PlaceBase<'tcx> {
     Static(Box<Static<'tcx>>),
 }
 
-/// The `DefId` of a static, along with its normalized type (which is
-/// stored to avoid requiring normalization when reading MIR).
+/// We store the normalized type to avoid requiring normalization when reading MIR
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
-    pub def_id: DefId,
     pub ty: Ty<'tcx>,
-    pub promoted: Option<Promoted>,
+    pub kind: StaticKind,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable)]
+pub enum StaticKind {
+    Promoted(Promoted),
+    Static(DefId),
 }
 
 impl_stable_hash_for!(struct Static<'tcx> {
-    def_id,
     ty,
-    promoted
+    kind
 });
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -2058,21 +2061,23 @@ impl<'tcx> Debug for Place<'tcx> {
 
         match *self {
             Base(PlaceBase::Local(id)) => write!(fmt, "{:?}", id),
-            Base(PlaceBase::Static(box self::Static { def_id, ty, promoted })) => {
-                match promoted {
-                    None => write!(
-                        fmt,
-                        "({}: {:?})",
-                        ty::tls::with(|tcx| tcx.def_path_str(def_id)),
-                        ty
-                    ),
-                    Some(pr) => write!(
-                        fmt,
-                        "({:?}: {:?})",
-                        pr,
-                        ty
-                    ),
-                }
+            Base(PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) })) => {
+                write!(
+                    fmt,
+                    "({}: {:?})",
+                    ty::tls::with(|tcx| tcx.def_path_str(def_id)),
+                    ty
+                )
+            },
+            Base(PlaceBase::Static(
+                box self::Static { ty, kind: StaticKind::Promoted(promoted) })
+            ) => {
+                write!(
+                    fmt,
+                    "({:?}: {:?})",
+                    promoted,
+                    ty
+                )
             },
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {

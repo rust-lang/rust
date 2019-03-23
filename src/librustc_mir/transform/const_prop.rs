@@ -4,7 +4,7 @@
 
 use rustc::hir::def::Def;
 use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local};
-use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
+use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, Static, StaticKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::interpret::{EvalErrorKind, Scalar, GlobalId, EvalResult};
@@ -266,7 +266,6 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     }
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
-        use rustc::mir::Static;
         match *place {
             Place::Base(PlaceBase::Local(loc)) => self.places[loc].clone(),
             Place::Projection(ref proj) => match proj.elem {
@@ -283,7 +282,9 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 // an `Index` projection would throw us off-track.
                 _ => None,
             },
-            Place::Base(PlaceBase::Static(box Static {promoted: Some(promoted), ..})) => {
+            Place::Base(
+                PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted), ..})
+            ) => {
                 let generics = self.tcx.generics_of(self.source.def_id());
                 if generics.requires_monomorphization(self.tcx) {
                     // FIXME: can't handle code with generics

@@ -188,8 +188,9 @@ trait Qualif {
     fn in_place(cx: &ConstCx<'_, 'tcx>, place: &Place<'tcx>) -> bool {
         match *place {
             Place::Base(PlaceBase::Local(local)) => Self::in_local(cx, local),
+            Place::Base(PlaceBase::Static(box Static {kind: StaticKind::Promoted(_), .. })) =>
+                bug!("qualifying already promoted MIR"),
             Place::Base(PlaceBase::Static(ref static_)) => {
-                assert!(static_.promoted.is_none(), "qualifying already promoted MIR");
                 Self::in_static(cx, static_)
             },
             Place::Projection(ref proj) => Self::in_projection(cx, proj),
@@ -372,11 +373,18 @@ impl Qualif for IsNotConst {
     const IDX: usize = 2;
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
-        // Only allow statics (not consts) to refer to other statics.
-        let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
+        match static_.kind {
+            StaticKind::Promoted(_) => unreachable!(),
+            StaticKind::Static(def_id) => {
+                // Only allow statics (not consts) to refer to other statics.
+                let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
-        !allowed ||
-            cx.tcx.get_attrs(static_.def_id).iter().any(|attr| attr.check_name("thread_local"))
+                !allowed ||
+                    cx.tcx.get_attrs(def_id).iter().any(
+                        |attr| attr.check_name("thread_local"
+                    ))
+            }
+        }
     }
 
     fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &PlaceProjection<'tcx>) -> bool {
@@ -770,8 +778,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     );
                     dest = &proj.base;
                 },
-                Place::Base(PlaceBase::Static(st)) => {
-                    assert!(st.promoted.is_none(), "promoteds don't exist yet during promotion");
+                Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) =>
+                    bug!("promoteds don't exist yet during promotion"),
+                Place::Base(PlaceBase::Static(box Static{ kind: _, .. })) => {
                     // Catch more errors in the destination. `visit_place` also checks that we
                     // do not try to access statics from constants or try to mutate statics
                     self.visit_place(
@@ -921,10 +930,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.super_place(place, context, location);
         match *place {
             Place::Base(PlaceBase::Local(_)) => {}
-            Place::Base(PlaceBase::Static(ref global)) => {
-                assert!(global.promoted.is_none());
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {}
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
                 if self.tcx
-                       .get_attrs(global.def_id)
+                       .get_attrs(def_id)
                        .iter()
                        .any(|attr| attr.check_name("thread_local")) {
                     if self.mode != Mode::Fn {
@@ -1516,7 +1525,7 @@ impl MirPass for QualifyAndPromoteConstants {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            promote_consts::promote_candidates(mir, tcx, temps, candidates, def_id);
+            promote_consts::promote_candidates(mir, tcx, temps, candidates);
         } else {
             if !mir.control_flow_destroyed.is_empty() {
                 let mut locals = mir.vars_iter();
