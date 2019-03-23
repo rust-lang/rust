@@ -1,6 +1,5 @@
 use itertools::Itertools;
 use hir::{Problem, source_binder};
-use ra_ide_api_light::Severity;
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
@@ -10,6 +9,12 @@ use ra_syntax::{
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit, db::RootDatabase};
+
+#[derive(Debug, Copy, Clone)]
+pub enum Severity {
+    Error,
+    WeakWarning,
+}
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let source_file = db.parse(file_id);

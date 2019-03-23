@@ -38,6 +38,7 @@ mod folding_ranges;
 mod line_index_utils;
 mod join_lines;
 mod typing;
+mod matching_brace;
 
 #[cfg(test)]
 mod marks;
@@ -70,10 +71,10 @@ pub use crate::{
     line_index::{LineIndex, LineCol},
     line_index_utils::translate_offset_with_edit,
     folding_ranges::{Fold, FoldKind},
+    syntax_highlighting::HighlightedRange,
+    diagnostics::Severity,
 };
-pub use ra_ide_api_light::{
-    HighlightedRange, Severity, StructureNode,
-};
+pub use ra_ide_api_light::StructureNode;
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
     Edition
@@ -267,7 +268,7 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Option<TextUnit> {
         let file = self.db.parse(position.file_id);
-        ra_ide_api_light::matching_brace(&file, position.offset)
+        matching_brace::matching_brace(&file, position.offset)
     }
 
     /// Returns a syntax tree represented as `String`, for debug purposes.
