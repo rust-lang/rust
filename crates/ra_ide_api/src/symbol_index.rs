@@ -68,7 +68,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
 
     let symbols = source_file_to_file_symbols(&source_file, file_id);
 
-    // TODO: add macros here
+    // FIXME: add macros here
 
     Arc::new(SymbolIndex::new(symbols))
 }

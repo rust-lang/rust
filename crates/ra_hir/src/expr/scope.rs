@@ -39,7 +39,7 @@ pub struct ScopeData {
 }
 
 impl ExprScopes {
-    // TODO: This should take something more general than Function
+    // FIXME: This should take something more general than Function
     pub(crate) fn expr_scopes_query(db: &impl HirDatabase, function: Function) -> Arc<ExprScopes> {
         let body = db.body_hir(function);
         let res = ExprScopes::new(body);
@@ -148,7 +148,7 @@ impl ScopesWithSourceMap {
 
     // XXX: during completion, cursor might be outside of any particular
     // expression. Try to figure out the correct scope...
-    // TODO: move this to source binder?
+    // FIXME: move this to source binder?
     fn adjust(&self, ptr: SyntaxNodePtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
         let r = ptr.range();
         let child_scopes = self

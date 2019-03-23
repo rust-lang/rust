@@ -161,7 +161,7 @@ impl ImplData {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-//TODO: rename to ImplDef?
+//FIXME: rename to ImplDef?
 pub enum ImplItem {
     Method(Function),
     Const(Const),

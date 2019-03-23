@@ -164,7 +164,7 @@ pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> R
                         let scope = scopes.scope_for_offset(position.offset);
                         Some(expr::resolver_for_scope(func.body(db), db, scope))
                     } else {
-                        // TODO const/static/array length
+                        // FIXME const/static/array length
                         None
                     }
                 } else {
@@ -184,7 +184,7 @@ pub fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNo
                     let scope = scopes.scope_for(&node);
                     Some(expr::resolver_for_scope(func.body(db), db, scope))
                 } else {
-                    // TODO const/static/array length
+                    // FIXME const/static/array length
                     None
                 }
             } else {
@@ -212,7 +212,7 @@ fn try_get_resolver_for_node(
     } else if let Some(f) = ast::FnDef::cast(node) {
         function_from_source(db, file_id, f).map(|f| f.resolver(db))
     } else {
-        // TODO add missing cases
+        // FIXME add missing cases
         None
     }
 }

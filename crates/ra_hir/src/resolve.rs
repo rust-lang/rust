@@ -19,7 +19,7 @@ pub struct Resolver {
     scopes: Vec<Scope>,
 }
 
-// TODO how to store these best
+// FIXME how to store these best
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleItemMap {
     crate_def_map: Arc<CrateDefMap>,
@@ -260,7 +260,7 @@ impl Scope {
     fn collect_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, PerNs<Resolution>)) {
         match self {
             Scope::ModuleScope(m) => {
-                // TODO: should we provide `self` here?
+                // FIXME: should we provide `self` here?
                 // f(
                 //     Name::self_param(),
                 //     PerNs::types(Resolution::Def {

@@ -120,7 +120,7 @@ fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
 }
 
 impl Ty {
-    // TODO: cache this as a query?
+    // FIXME: cache this as a query?
     // - if so, what signature? (TyFingerprint, Name)?
     // - or maybe cache all names and def_ids of methods per fingerprint?
     /// Look up the method with the given name, returning the actual autoderefed

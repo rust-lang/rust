@@ -60,7 +60,7 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         if let Some(name) = path.as_ident() {
-            // TODO handle primitive type names in resolver as well?
+            // FIXME handle primitive type names in resolver as well?
             if let Some(int_ty) = primitive::IntTy::from_type_name(name) {
                 return Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(int_ty)));
             } else if let Some(float_ty) = primitive::FloatTy::from_type_name(name) {
@@ -87,7 +87,7 @@ impl Ty {
             Some(Resolution::GenericParam(idx)) => {
                 return Ty::Param {
                     idx,
-                    // TODO: maybe return name in resolution?
+                    // FIXME: maybe return name in resolution?
                     name: path
                         .as_ident()
                         .expect("generic param should be single-segment path")
@@ -139,7 +139,7 @@ impl Ty {
             }
         }
         // add placeholders for args that were not provided
-        // TODO: handle defaults
+        // FIXME: handle defaults
         let supplied_params = substs.len();
         for _ in supplied_params..def_generics.count_params_including_parent() {
             substs.push(Ty::Unknown);

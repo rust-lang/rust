@@ -96,7 +96,7 @@ impl Path {
             if let Some(q) = path.qualifier() {
                 return Some(q);
             }
-            // TODO: this bottom up traversal is not too precise.
+            // FIXME: this bottom up traversal is not too precise.
             // Should we handle do a top-down analysis, recording results?
             let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
             let use_tree = use_tree_list.parent_use_tree();
@@ -166,7 +166,7 @@ fn expand_use_tree<'a>(
             // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
             Some(path) => match convert_path(prefix, path) {
                 Some(it) => Some(it),
-                None => return, // TODO: report errors somewhere
+                None => return, // FIXME: report errors somewhere
             },
         };
         for child_tree in use_tree_list.use_trees() {
@@ -194,7 +194,7 @@ fn expand_use_tree<'a>(
                     cb(path, Some(segment), alias)
                 };
             }
-            // TODO: report errors somewhere
+            // FIXME: report errors somewhere
             // We get here if we do
         }
     }

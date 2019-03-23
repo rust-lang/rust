@@ -21,7 +21,7 @@ fn use_tree(p: &mut Parser) {
         // This does not handle cases such as `use some::path::*`
         // N.B. in Rust 2015 `use *;` imports all from crate root
         // however in Rust 2018 `use *;` errors: ('cannot glob-import all possible crates')
-        // TODO: Add this error (if not out of scope)
+        // FIXME: Add this error (if not out of scope)
 
         // test use_star
         // use *;
@@ -33,7 +33,7 @@ fn use_tree(p: &mut Parser) {
             // Parse `use ::*;`, which imports all from the crate root in Rust 2015
             // This is invalid inside a use_tree_list, (e.g. `use some::path::{::*}`)
             // but still parses and errors later: ('crate root in paths can only be used in start position')
-            // TODO: Add this error (if not out of scope)
+            // FIXME: Add this error (if not out of scope)
             // In Rust 2018, it is always invalid (see above)
             p.bump();
             p.bump();

@@ -77,7 +77,7 @@ impl LineIndex {
     }
 
     pub fn offset(&self, line_col: LineCol) -> TextUnit {
-        //TODO: return Result
+        //FIXME: return Result
         let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
         self.newlines[line_col.line as usize] + col
     }

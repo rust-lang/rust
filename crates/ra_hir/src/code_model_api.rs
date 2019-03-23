@@ -51,7 +51,7 @@ impl Crate {
         crate_graph.edition(self.crate_id)
     }
 
-    // TODO: should this be in source_binder?
+    // FIXME: should this be in source_binder?
     pub fn source_root_crates(
         db: &impl PersistentHirDatabase,
         source_root: SourceRootId,
@@ -301,7 +301,7 @@ impl Struct {
         db.type_for_def((*self).into(), Namespace::Values)
     }
 
-    // TODO move to a more general type
+    // FIXME move to a more general type
     /// Builds a resolver for type references inside this struct.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
@@ -361,7 +361,7 @@ impl Enum {
         db.type_for_def((*self).into(), Namespace::Types)
     }
 
-    // TODO: move to a more general type
+    // FIXME: move to a more general type
     /// Builds a resolver for type references inside this struct.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
@@ -513,7 +513,7 @@ impl Function {
         ImplBlock::containing(module_impls, (*self).into())
     }
 
-    // TODO: move to a more general type for 'body-having' items
+    // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
@@ -558,7 +558,7 @@ impl Const {
         ImplBlock::containing(module_impls, (*self).into())
     }
 
-    // TODO: move to a more general type for 'body-having' items
+    // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...

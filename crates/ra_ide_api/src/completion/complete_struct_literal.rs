@@ -26,7 +26,7 @@ pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionCon
             }
         }
 
-        // TODO unions
+        // FIXME unions
         AdtDef::Enum(_) => (),
     };
 }

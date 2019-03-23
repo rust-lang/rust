@@ -11,7 +11,7 @@ pub(super) fn const_def(p: &mut Parser, m: Marker) {
 fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     assert!(p.at(kw));
     p.bump();
-    p.eat(MUT_KW); // TODO: validator to forbid const mut
+    p.eat(MUT_KW); // FIXME: validator to forbid const mut
     name(p);
     types::ascription(p);
     if p.eat(EQ) {

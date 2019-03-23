@@ -121,7 +121,7 @@ impl<'t> Parser<'t> {
     /// final tree.
     pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
         if self.nth(0) == EOF {
-            // TODO: panic!?
+            // FIXME: panic!?
             return;
         }
         self.do_bump(kind, 1);
@@ -135,7 +135,7 @@ impl<'t> Parser<'t> {
     }
 
     /// Emit error with the `message`
-    /// TODO: this should be much more fancy and support
+    /// FIXME: this should be much more fancy and support
     /// structured errors with spans and notes, like rustc
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {

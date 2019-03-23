@@ -30,7 +30,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
                         acc.add_field(ctx, field, &a_ty.parameters);
                     }
                 }
-                // TODO unions
+                // FIXME unions
                 TypeCtor::Tuple => {
                     for (i, ty) in a_ty.parameters.iter().enumerate() {
                         acc.add_pos_field(ctx, i, ty);
