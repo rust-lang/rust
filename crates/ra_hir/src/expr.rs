@@ -140,8 +140,8 @@ impl BodySourceMap {
         self.pat_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
-    pub fn field_syntax(&self, expr: ExprId, field: usize) -> Option<AstPtr<ast::NamedField>> {
-        self.field_map.get(&(expr, field)).cloned()
+    pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
+        self.field_map[&(expr, field)].clone()
     }
 }
 

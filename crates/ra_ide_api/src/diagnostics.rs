@@ -3,7 +3,7 @@ use hir::{Problem, source_binder};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
-    ast::{self, AstNode, NameOwner},
+    ast::{self, AstNode},
 
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -161,23 +161,13 @@ fn check_module(
 }
 
 fn check_function(acc: &mut Vec<Diagnostic>, db: &RootDatabase, function: hir::Function) {
-    let (_file_id, fn_def) = function.source(db);
-    let source_file = fn_def.syntax().ancestors().find_map(ast::SourceFile::cast).unwrap();
-    let source_map = function.body_source_map(db);
-    for d in function.diagnostics(db) {
-        match d {
-            hir::diagnostics::FunctionDiagnostic::NoSuchField { expr, field } => {
-                if let Some(field) = source_map.field_syntax(expr, field) {
-                    let field = field.to_node(&source_file);
-                    acc.push(Diagnostic {
-                        message: "no such field".into(),
-                        range: field.syntax().range(),
-                        severity: Severity::Error,
-                        fix: None,
-                    })
-                }
-            }
-        }
+    for d in function.diagnostics(db).iter() {
+        acc.push(Diagnostic {
+            message: d.message(),
+            range: d.syntax_node().range(),
+            severity: Severity::Error,
+            fix: None,
+        })
     }
 }
 

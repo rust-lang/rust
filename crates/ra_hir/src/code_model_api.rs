@@ -17,7 +17,7 @@ use crate::{
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplBlock,
     resolve::Resolver,
-    diagnostics::FunctionDiagnostic,
+    diagnostics::Diagnostics,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -521,8 +521,10 @@ impl Function {
         r
     }
 
-    pub fn diagnostics(&self, db: &impl HirDatabase) -> Vec<FunctionDiagnostic> {
-        self.infer(db).diagnostics()
+    pub fn diagnostics(&self, db: &impl HirDatabase) -> Diagnostics {
+        let mut res = Diagnostics::default();
+        self.infer(db).add_diagnostics(db, *self, &mut res);
+        res
     }
 }
 
