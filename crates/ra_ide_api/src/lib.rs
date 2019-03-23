@@ -37,6 +37,7 @@ mod line_index;
 mod folding_ranges;
 mod line_index_utils;
 mod join_lines;
+mod typing;
 
 #[cfg(test)]
 mod marks;
@@ -295,7 +296,7 @@ impl Analysis {
     /// up minor stuff like continuing the comment.
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_enter(&file, position.offset)?;
+        let edit = typing::on_enter(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
 
@@ -304,14 +305,14 @@ impl Analysis {
     // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_eq_typed(&file, position.offset)?;
+        let edit = typing::on_eq_typed(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
     pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
-        let edit = ra_ide_api_light::on_dot_typed(&file, position.offset)?;
+        let edit = typing::on_dot_typed(&file, position.offset)?;
         Some(SourceChange::from_local_edit(position.file_id, edit))
     }
 

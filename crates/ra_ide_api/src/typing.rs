@@ -5,7 +5,8 @@ use ra_syntax::{
     ast::{self, AstToken},
 };
 use ra_fmt::leading_indent;
-use crate::{LocalEdit, TextEditBuilder};
+use crate::LocalEdit;
+use ra_text_edit::TextEditBuilder;
 
 pub fn on_enter(file: &SourceFile, offset: TextUnit) -> Option<LocalEdit> {
     let comment =

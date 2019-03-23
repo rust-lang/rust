@@ -4,10 +4,8 @@
 //! an edit or some auxiliary info.
 
 mod structure;
-mod typing;
 
 use rustc_hash::FxHashSet;
-use ra_text_edit::TextEditBuilder;
 use ra_syntax::{
     SourceFile, SyntaxNode, TextRange, TextUnit, Direction,
     algo::find_leaf_at_offset,
@@ -17,7 +15,6 @@ use ra_syntax::{
 
 pub use crate::{
     structure::{file_structure, StructureNode},
-    typing::{on_enter, on_dot_typed, on_eq_typed},
 };
 
 #[derive(Debug)]
