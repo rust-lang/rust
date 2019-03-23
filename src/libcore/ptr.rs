@@ -2483,6 +2483,10 @@ impl<T: ?Sized> Eq for *mut T {}
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
+/// Smart pointer types, such as `Box`, `Rc`, and `Arc` do not compare
+/// using this function, instead they compare the values rather than
+/// their addresses.
+///
 /// # Examples
 ///
 /// ```
