@@ -12,12 +12,15 @@ build: &rust_build
         - rustup component add rust-src
         - cargo test --no-run  # let's measure compile time separately
         - cargo test
+        - cargo doc --all --no-deps
     env:
         - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
 
 matrix:
     include:
         - os: linux
+          before_script:
+              - DEPLOY_DOCS=1
           <<: *rust_build
         - language: node_js
           node_js: node
@@ -43,3 +46,14 @@ branches:
         - staging
         - master
         - trying
+
+deploy:
+    provider: pages
+    skip-cleanup: true
+    github-token: $DOCS_TOKEN  # Set in the settings page of your repository, as a secure variable
+    keep-history: true
+    local-dir: target/doc
+    branch: gh-pages
+    on:
+        branch: master
+        condition: $DEPLOY_DOCS = 1
