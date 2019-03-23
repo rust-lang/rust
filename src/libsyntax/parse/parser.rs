@@ -3708,11 +3708,7 @@ impl<'a> Parser<'a> {
                           you annotate an expression with a type: `<expr>: <type>`");
                 err.span_note(
                     lhs_span,
-                    "this expression is annotated with type ascription...",
-                );
-                err.span_note(
-                    cur_op_span,
-                    "...due to this, which is why a type is expected after",
+                    "this expression expects an ascribed type after the colon",
                 );
                 err.help("this might be indicative of a syntax error elsewhere");
             }

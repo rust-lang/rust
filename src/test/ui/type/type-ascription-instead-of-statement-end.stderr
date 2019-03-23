@@ -13,16 +13,11 @@ LL |     println!("test"): 0;
    |                       ^ expecting a type here because of type ascription
    |
    = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression is annotated with type ascription...
+note: this expression expects an ascribed type after the colon
   --> $DIR/type-ascription-instead-of-statement-end.rs:9:5
    |
 LL |     println!("test"): 0;
    |     ^^^^^^^^^^^^^^^^
-note: ...due to this, which is why a type is expected after
-  --> $DIR/type-ascription-instead-of-statement-end.rs:9:21
-   |
-LL |     println!("test"): 0;
-   |                     ^
    = help: this might be indicative of a syntax error elsewhere
 
 error: aborting due to 2 previous errors

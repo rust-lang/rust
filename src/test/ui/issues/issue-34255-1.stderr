@@ -5,16 +5,11 @@ LL |     Test::Drill(field: 42);
    |                        ^^ expecting a type here because of type ascription
    |
    = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression is annotated with type ascription...
+note: this expression expects an ascribed type after the colon
   --> $DIR/issue-34255-1.rs:8:17
    |
 LL |     Test::Drill(field: 42);
    |                 ^^^^^
-note: ...due to this, which is why a type is expected after
-  --> $DIR/issue-34255-1.rs:8:22
-   |
-LL |     Test::Drill(field: 42);
-   |                      ^
    = help: this might be indicative of a syntax error elsewhere
 
 error: aborting due to previous error
