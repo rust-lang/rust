@@ -5,7 +5,7 @@ LL | struct Foo;
    | ----------- associated item `NotEvenReal` not found for this
 ...
 LL |     || if let Foo::NotEvenReal() = Foo {};
-   |               -----^^^^^^^^^^^-- associated item not found in `Foo`
+   |                    ^^^^^^^^^^^ associated item not found in `Foo`
 
 error: aborting due to previous error
 

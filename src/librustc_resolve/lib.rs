@@ -4932,7 +4932,7 @@ impl<'a> Resolver<'a> {
             Some((directive, _, true)) if should_remove_import && !directive.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
-                err.span_suggestion(
+                err.tool_only_span_suggestion(
                     directive.use_span_with_attributes,
                     "remove unnecessary import",
                     String::new(),
@@ -5112,7 +5112,7 @@ impl<'a> Resolver<'a> {
                         // extra for the comma.
                         span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
                     ));
-                    err.span_suggestion(
+                    err.tool_only_span_suggestion(
                         span, message, String::new(), Applicability::MaybeIncorrect,
                     );
                     return;

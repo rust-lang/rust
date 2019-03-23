@@ -4,10 +4,7 @@ error[E0254]: the name `core` is defined multiple times
 LL | extern crate core;
    | ------------------ previous import of the extern crate `core` here
 LL | use core;
-   | ----^^^^-
-   | |   |
-   | |   `core` reimported here
-   | help: remove unnecessary import
+   |     ^^^^ `core` reimported here
    |
    = note: `core` must be defined only once in the type namespace of this module
 

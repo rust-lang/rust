@@ -1,8 +1,8 @@
 warning: any use of this value will cause an error
-  --> $DIR/const-err.rs:10:1
+  --> $DIR/const-err.rs:10:17
    |
 LL | const FOO: u8 = [5u8][1];
-   | ^^^^^^^^^^^^^^^^--------^
+   | ----------------^^^^^^^^-
    |                 |
    |                 index out of bounds: the len is 1 but the index is 1
    |

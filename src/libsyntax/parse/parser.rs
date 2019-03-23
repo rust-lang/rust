@@ -5598,8 +5598,14 @@ impl<'a> Parser<'a> {
 
         if !negative_bounds.is_empty() || was_negative {
             let plural = negative_bounds.len() > 1;
-            let mut err = self.struct_span_err(negative_bounds,
-                                               "negative trait bounds are not supported");
+            let last_span = negative_bounds.last().map(|sp| *sp);
+            let mut err = self.struct_span_err(
+                negative_bounds,
+                "negative trait bounds are not supported",
+            );
+            if let Some(sp) = last_span {
+                err.span_label(sp, "negative trait bounds are not supported");
+            }
             if let Some(bound_list) = colon_span {
                 let bound_list = bound_list.to(self.prev_span);
                 let mut new_bound_list = String::new();
@@ -5612,11 +5618,12 @@ impl<'a> Parser<'a> {
                     }
                     new_bound_list = new_bound_list.replacen(" +", ":", 1);
                 }
-                err.span_suggestion_short(bound_list,
-                                        &format!("remove the trait bound{}",
-                                                if plural { "s" } else { "" }),
-                                        new_bound_list,
-                                        Applicability::MachineApplicable);
+                err.span_suggestion_hidden(
+                    bound_list,
+                    &format!("remove the trait bound{}", if plural { "s" } else { "" }),
+                    new_bound_list,
+                    Applicability::MachineApplicable,
+                );
             }
             err.emit();
         }

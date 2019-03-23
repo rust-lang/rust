@@ -41,41 +41,31 @@ error[E0599]: no associated item named `AssocItem` found for type `[u8]` in the 
   --> $DIR/bad-assoc-pat.rs:3:15
    |
 LL |         [u8]::AssocItem => {}
-   |         ------^^^^^^^^^
-   |         |
-   |         associated item not found in `[u8]`
+   |               ^^^^^^^^^ associated item not found in `[u8]`
 
 error[E0599]: no associated item named `AssocItem` found for type `(u8, u8)` in the current scope
   --> $DIR/bad-assoc-pat.rs:6:19
    |
 LL |         (u8, u8)::AssocItem => {}
-   |         ----------^^^^^^^^^
-   |         |
-   |         associated item not found in `(u8, u8)`
+   |                   ^^^^^^^^^ associated item not found in `(u8, u8)`
 
 error[E0599]: no associated item named `AssocItem` found for type `_` in the current scope
   --> $DIR/bad-assoc-pat.rs:9:12
    |
 LL |         _::AssocItem => {}
-   |         ---^^^^^^^^^
-   |         |
-   |         associated item not found in `_`
+   |            ^^^^^^^^^ associated item not found in `_`
 
 error[E0599]: no associated item named `AssocItem` found for type `(u8,)` in the current scope
   --> $DIR/bad-assoc-pat.rs:14:17
    |
 LL |         &(u8,)::AssocItem => {}
-   |          -------^^^^^^^^^
-   |          |
-   |          associated item not found in `(u8,)`
+   |                 ^^^^^^^^^ associated item not found in `(u8,)`
 
 error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
   --> $DIR/bad-assoc-pat.rs:21:24
    |
 LL |     ($ty: ty) => ($ty::AssocItem)
-   |                   -----^^^^^^^^^
-   |                   |
-   |                   associated item not found in `u8`
+   |                        ^^^^^^^^^ associated item not found in `u8`
 ...
 LL |         pat!(u8) => {}
    |         -------- in this macro invocation
@@ -84,9 +74,7 @@ error[E0599]: no associated item named `AssocItem` found for type `u8` in the cu
   --> $DIR/bad-assoc-pat.rs:32:16
    |
 LL |         ty!()::AssocItem => {}
-   |         -------^^^^^^^^^
-   |         |
-   |         associated item not found in `u8`
+   |                ^^^^^^^^^ associated item not found in `u8`
 
 error: aborting due to 12 previous errors
 
