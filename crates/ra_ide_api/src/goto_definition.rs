@@ -117,7 +117,7 @@ pub(crate) fn reference_definition(
                 return Exact(nav);
             }
             Some(Resolution::GenericParam(..)) => {
-                // TODO: go to the generic param def
+                // FIXME: go to the generic param def
             }
             Some(Resolution::SelfType(impl_block)) => {
                 let ty = impl_block.target_ty(db);

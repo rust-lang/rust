@@ -49,7 +49,7 @@ pub(super) fn impl_block(p: &mut Parser) {
         type_params::opt_type_param_list(p);
     }
 
-    // TODO: never type
+    // FIXME: never type
     // impl ! {}
 
     // test impl_block_neg

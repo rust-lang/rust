@@ -15,7 +15,7 @@ impl Ty {
     }
 
     fn autoderef_step(&self, _db: &impl HirDatabase) -> Option<Ty> {
-        // TODO Deref::deref
+        // FIXME Deref::deref
         self.builtin_deref()
     }
 }

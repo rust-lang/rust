@@ -296,7 +296,7 @@ impl CrateDefMap {
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
-            // TODO there must be a nicer way to write this condition
+            // FIXME there must be a nicer way to write this condition
             PathKind::Plain | PathKind::Abs
                 if self.edition == Edition::Edition2015
                     && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>

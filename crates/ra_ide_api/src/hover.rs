@@ -204,7 +204,7 @@ impl NavigationTarget {
     ///
     /// e.g. `struct Name`, `enum Name`, `fn Name`
     fn description(&self, db: &RootDatabase) -> Option<String> {
-        // TODO: After type inference is done, add type information to improve the output
+        // FIXME: After type inference is done, add type information to improve the output
         let node = self.node(db)?;
 
         fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>

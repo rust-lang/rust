@@ -27,7 +27,7 @@ impl_arena_id!(ExprId);
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    // TODO: this should be more general, consts & statics also have bodies
+    // FIXME: this should be more general, consts & statics also have bodies
     /// The Function of the item this body belongs to
     owner: Function,
     exprs: Arena<ExprId, Expr>,
@@ -406,7 +406,7 @@ pub enum Pat {
     Struct {
         path: Option<Path>,
         args: Vec<FieldPat>,
-        // TODO: 'ellipsis' option
+        // FIXME: 'ellipsis' option
     },
     Range {
         start: ExprId,
@@ -547,7 +547,7 @@ impl ExprCollector {
                     if condition.pat().is_none() {
                         self.collect_expr_opt(condition.expr())
                     } else {
-                        // TODO handle while let
+                        // FIXME handle while let
                         return self.alloc_expr(Expr::Missing, syntax_ptr);
                     }
                 } else {
@@ -610,7 +610,7 @@ impl ExprCollector {
                 self.alloc_expr(path, syntax_ptr)
             }
             ast::ExprKind::ContinueExpr(_e) => {
-                // TODO: labels
+                // FIXME: labels
                 self.alloc_expr(Expr::Continue, syntax_ptr)
             }
             ast::ExprKind::BreakExpr(e) => {
@@ -751,7 +751,7 @@ impl ExprCollector {
                 self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }
 
-            // TODO implement HIR for these:
+            // FIXME implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
@@ -844,7 +844,7 @@ impl ExprCollector {
                 Pat::Struct { path, args: fields }
             }
 
-            // TODO: implement
+            // FIXME: implement
             ast::PatKind::LiteralPat(_) => Pat::Missing,
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
@@ -910,7 +910,7 @@ pub(crate) fn body_with_source_map_query(
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
     let mut collector = ExprCollector::new(func);
 
-    // TODO: consts, etc.
+    // FIXME: consts, etc.
     collector.collect_fn_body(&func.source(db).1);
 
     let (body, source_map) = collector.finish();

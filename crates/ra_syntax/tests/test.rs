@@ -61,7 +61,7 @@ fn reparse_fuzz_tests() {
 }
 
 /// Test that Rust-analyzer can parse and validate the rust-analyser
-/// TODO: Use this as a benchmark
+/// FIXME: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
     use std::ffi::OsStr;

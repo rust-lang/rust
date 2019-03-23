@@ -5,7 +5,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_pat_binding {
         return;
     }
-    // TODO: ideally, we should look at the type we are matching against and
+    // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
     let names = ctx.resolver.all_names(ctx.db);
     for (name, res) in names.into_iter() {

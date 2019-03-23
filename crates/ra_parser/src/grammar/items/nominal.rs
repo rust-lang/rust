@@ -15,7 +15,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
                 }
                 L_CURLY => named_field_def_list(p),
                 _ => {
-                    //TODO: special case `(` error message
+                    //FIXME: special case `(` error message
                     p.error("expected `;` or `{`");
                 }
             }

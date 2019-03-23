@@ -207,7 +207,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
         let ty = Ty::from_hir(
             self.db,
-            // TODO use right resolver for block
+            // FIXME use right resolver for block
             &self.resolver,
             type_ref,
         );
@@ -414,11 +414,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     return None;
                 }
                 Resolution::GenericParam(..) => {
-                    // TODO associated item of generic param
+                    // FIXME associated item of generic param
                     return None;
                 }
                 Resolution::SelfType(_) => {
-                    // TODO associated item of self type
+                    // FIXME associated item of self type
                     return None;
                 }
             };
@@ -446,7 +446,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }
                     }
 
-                    // TODO: Resolve associated types
+                    // FIXME: Resolve associated types
                     crate::ImplItem::TypeAlias(_) => None,
                 };
                 match matching_def {
@@ -504,7 +504,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 return (Ty::Unknown, None);
             }
             Some(Resolution::SelfType(..)) => {
-                // TODO this is allowed in an impl for a struct, handle this
+                // FIXME this is allowed in an impl for a struct, handle this
                 return (Ty::Unknown, None);
             }
             None => return (Ty::Unknown, None),
@@ -513,7 +513,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
             Some(it) => it,
         };
-        // TODO remove the duplication between here and `Ty::from_path`?
+        // FIXME remove the duplication between here and `Ty::from_path`?
         let substs = Ty::substs_from_path(self.db, resolver, path, def);
         match def {
             TypableDef::Struct(s) => {
@@ -590,7 +590,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             | Pat::Struct { .. }
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
-            // TODO: Path/Lit might actually evaluate to ref, but inference is unimplemented.
+            // FIXME: Path/Lit might actually evaluate to ref, but inference is unimplemented.
             Pat::Path(..) | Pat::Lit(..) => true,
             Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Missing => false,
         };
@@ -635,7 +635,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let expectation = match expected.as_reference() {
                     Some((inner_ty, exp_mut)) => {
                         if *mutability != exp_mut {
-                            // TODO: emit type error?
+                            // FIXME: emit type error?
                         }
                         inner_ty
                     }
@@ -651,7 +651,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_struct_pat(p.as_ref(), fields, expected, default_bm)
             }
             Pat::Path(path) => {
-                // TODO use correct resolver for the surrounding expression
+                // FIXME use correct resolver for the surrounding expression
                 let resolver = self.resolver.clone();
                 self.infer_path_expr(&resolver, &path, pat.into()).unwrap_or(Ty::Unknown)
             }
@@ -741,7 +741,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::Loop { body } => {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
-                // TODO handle break with value
+                // FIXME handle break with value
                 Ty::simple(TypeCtor::Never)
             }
             Expr::While { condition, body } => {
@@ -769,7 +769,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.infer_pat(*arg_pat, &expected, BindingMode::default());
                 }
 
-                // TODO: infer lambda type etc.
+                // FIXME: infer lambda type etc.
                 let _body_ty = self.infer_expr(*body, &Expectation::none());
                 Ty::Unknown
             }
@@ -795,7 +795,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     },
                     _ => {
                         // not callable
-                        // TODO report an error?
+                        // FIXME report an error?
                         (Vec::new(), Ty::Unknown)
                     }
                 };
@@ -894,14 +894,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 expected.ty
             }
             Expr::Path(p) => {
-                // TODO this could be more efficient...
+                // FIXME this could be more efficient...
                 let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
                 self.infer_path_expr(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
             Expr::Break { expr } => {
                 if let Some(expr) = expr {
-                    // TODO handle break with value
+                    // FIXME handle break with value
                     self.infer_expr(*expr, &Expectation::none());
                 }
                 Ty::simple(TypeCtor::Never)
@@ -957,21 +957,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Cast { expr, type_ref } => {
                 let _inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
-                // TODO check the cast...
+                // FIXME check the cast...
                 cast_ty
             }
             Expr::Ref { expr, mutability } => {
                 let expectation =
                     if let Some((exp_inner, exp_mutability)) = &expected.ty.as_reference() {
                         if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
-                            // TODO: throw type error - expected mut reference but found shared ref,
+                            // FIXME: throw type error - expected mut reference but found shared ref,
                             // which cannot be coerced
                         }
                         Expectation::has_type(Ty::clone(exp_inner))
                     } else {
                         Expectation::none()
                     };
-                // TODO reference coercions etc.
+                // FIXME reference coercions etc.
                 let inner_ty = self.infer_expr(*expr, &expectation);
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
@@ -982,7 +982,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         if let Some(derefed_ty) = inner_ty.builtin_deref() {
                             derefed_ty
                         } else {
-                            // TODO Deref::deref
+                            // FIXME Deref::deref
                             Ty::Unknown
                         }
                     }
@@ -1002,7 +1002,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => {
                                 inner_ty
                             }
-                            // TODO: resolve ops::Neg trait
+                            // FIXME: resolve ops::Neg trait
                             _ => Ty::Unknown,
                         }
                     }
@@ -1013,7 +1013,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                                 _ => Ty::Unknown,
                             },
                             Ty::Infer(InferTy::IntVar(..)) => inner_ty,
-                            // TODO: resolve ops::Not trait for inner_ty
+                            // FIXME: resolve ops::Not trait for inner_ty
                             _ => Ty::Unknown,
                         }
                     }
@@ -1028,12 +1028,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
-                    // TODO: find implementation of trait corresponding to operation
+                    // FIXME: find implementation of trait corresponding to operation
                     // symbol and resolve associated `Output` type
                     let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty);
                     let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
 
-                    // TODO: similar as above, return ty is often associated trait type
+                    // FIXME: similar as above, return ty is often associated trait type
                     op::binary_op_return_ty(*op, rhs_ty)
                 }
                 _ => Ty::Unknown,
@@ -1227,7 +1227,7 @@ impl InferTy {
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct Expectation {
     ty: Ty,
-    // TODO: In some cases, we need to be aware whether the expectation is that
+    // FIXME: In some cases, we need to be aware whether the expectation is that
     // the type match exactly what we passed, or whether it just needs to be
     // coercible to the expected type. See Expectation::rvalue_hint in rustc.
 }
