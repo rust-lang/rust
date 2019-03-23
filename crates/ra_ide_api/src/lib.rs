@@ -72,7 +72,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
 };
 pub use ra_ide_api_light::{
-    HighlightedRange, Severity, StructureNode, LocalEdit,
+    HighlightedRange, Severity, StructureNode,
 };
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
@@ -295,9 +295,7 @@ impl Analysis {
     /// Returns an edit which should be applied when opening a new line, fixing
     /// up minor stuff like continuing the comment.
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.db.parse(position.file_id);
-        let edit = typing::on_enter(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        typing::on_enter(&self.db, position)
     }
 
     /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -306,14 +304,17 @@ impl Analysis {
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
         let edit = typing::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        Some(SourceChange {
+            label: "add semicolon".to_string(),
+            source_file_edits: vec![SourceFileEdit { edit, file_id: position.file_id }],
+            file_system_edits: vec![],
+            cursor_position: None,
+        })
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
     pub fn on_dot_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.db.parse(position.file_id);
-        let edit = typing::on_dot_typed(&file, position.offset)?;
-        Some(SourceChange::from_local_edit(position.file_id, edit))
+        typing::on_dot_typed(&self.db, position)
     }
 
     /// Returns a tree representation of symbols in the file. Useful to draw a
@@ -432,18 +433,6 @@ impl Analysis {
         f: F,
     ) -> Cancelable<T> {
         self.db.catch_canceled(f)
-    }
-}
-
-impl SourceChange {
-    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit { file_id, edit: edit.edit };
-        SourceChange {
-            label: edit.label,
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: edit.cursor_position.map(|offset| FilePosition { offset, file_id }),
-        }
     }
 }
 

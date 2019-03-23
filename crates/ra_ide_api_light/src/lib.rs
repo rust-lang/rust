@@ -18,13 +18,6 @@ pub use crate::{
 };
 
 #[derive(Debug)]
-pub struct LocalEdit {
-    pub label: String,
-    pub edit: ra_text_edit::TextEdit,
-    pub cursor_position: Option<TextUnit>,
-}
-
-#[derive(Debug)]
 pub struct HighlightedRange {
     pub range: TextRange,
     pub tag: &'static str,
@@ -34,14 +27,6 @@ pub struct HighlightedRange {
 pub enum Severity {
     Error,
     WeakWarning,
-}
-
-#[derive(Debug)]
-pub struct Diagnostic {
-    pub range: TextRange,
-    pub msg: String,
-    pub severity: Severity,
-    pub fix: Option<LocalEdit>,
 }
 
 pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
