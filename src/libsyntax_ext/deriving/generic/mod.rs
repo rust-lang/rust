@@ -1539,6 +1539,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
+        let is_tuple = if let ast::VariantData::Tuple(..) = struct_def { true } else { false };
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => {
                 cx.span_bug(self.span,
@@ -1547,9 +1548,10 @@ impl<'a> TraitDef<'a> {
             }
             // named fields
             (_, false) => Named(named_idents),
-            // empty structs
-            _ if struct_def.is_struct() => Named(named_idents),
-            _ => Unnamed(just_spans, struct_def.is_tuple()),
+            // unnamed fields
+            (false, _) => Unnamed(just_spans, is_tuple),
+            // empty
+            _ => Named(Vec::new()),
         }
     }
 

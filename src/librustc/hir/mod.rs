@@ -2208,33 +2208,6 @@ impl VariantData {
             VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
         }
     }
-
-    /// Does this `VariantData` represent a `Struct`-struct/variant?
-    pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Does this `VariantData` represent a tuple struct/variant?
-    pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Does this `VariantData` represent a unit struct/variant?
-    pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 // The bodies for items are stored "out of line", in a separate

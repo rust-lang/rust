@@ -3192,12 +3192,11 @@ pub enum VariantKind {
 
 impl Clean<VariantKind> for hir::VariantData {
     fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
-        if self.is_struct() {
-            VariantKind::Struct(self.clean(cx))
-        } else if self.is_unit() {
-            VariantKind::CLike
-        } else {
-            VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+        match self {
+            hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
+            hir::VariantData::Tuple(..) =>
+                VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect()),
+            hir::VariantData::Unit(..) => VariantKind::CLike,
         }
     }
 }

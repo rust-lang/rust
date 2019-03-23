@@ -2155,33 +2155,6 @@ impl VariantData {
             VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),
         }
     }
-
-    /// Does this `VariantData` represent a `Struct`-struct/variant?
-    pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Does this `VariantData` represent a tuple struct/variant?
-    pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Does this `VariantData` represent a unit struct/variant?
-    pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 /// An item.
