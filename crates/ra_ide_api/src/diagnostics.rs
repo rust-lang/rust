@@ -1,10 +1,9 @@
 use itertools::Itertools;
-use hir::{source_binder, diagnostics::Diagnostic as _};
+use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
     ast::{self, AstNode},
-
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
@@ -129,7 +128,7 @@ fn check_struct_shorthand_initialization(
 }
 
 fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Module) {
-    let mut diagnostics = hir::diagnostics::DiagnosticSink::default();
+    let mut diagnostics = DiagnosticSink::default();
     module.diagnostics(db, &mut diagnostics);
     for decl in module.declarations(db) {
         match decl {
