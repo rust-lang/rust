@@ -38,7 +38,7 @@ use crate::{
     resolve::{Resolver, Resolution},
     nameres::Namespace,
     ty::infer::diagnostics::InferenceDiagnostic,
-    diagnostics::Diagnostics,
+    diagnostics::DiagnosticSink,
 };
 use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
 
@@ -120,7 +120,7 @@ impl InferenceResult {
         &self,
         db: &impl HirDatabase,
         owner: Function,
-        sink: &mut Diagnostics,
+        sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
     }
@@ -1269,7 +1269,7 @@ impl Expectation {
 }
 
 mod diagnostics {
-    use crate::{expr::ExprId, diagnostics::{Diagnostics, NoSuchField}, HirDatabase, Function};
+    use crate::{expr::ExprId, diagnostics::{DiagnosticSink, NoSuchField}, HirDatabase, Function};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {
@@ -1281,7 +1281,7 @@ mod diagnostics {
             &self,
             db: &impl HirDatabase,
             owner: Function,
-            sink: &mut Diagnostics,
+            sink: &mut DiagnosticSink,
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {

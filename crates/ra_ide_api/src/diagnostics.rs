@@ -129,7 +129,7 @@ fn check_struct_shorthand_initialization(
 }
 
 fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Module) {
-    let mut diagnostics = hir::diagnostics::Diagnostics::default();
+    let mut diagnostics = hir::diagnostics::DiagnosticSink::default();
     module.diagnostics(db, &mut diagnostics);
     for decl in module.declarations(db) {
         match decl {
@@ -138,7 +138,7 @@ fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Modul
         }
     }
 
-    for d in diagnostics.iter() {
+    for d in diagnostics.into_diagnostics().iter() {
         if let Some(d) = d.downcast_ref::<hir::diagnostics::UnresolvedModule>() {
             let source_root = db.file_source_root(d.file().original_file(db));
             let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };

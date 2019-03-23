@@ -16,7 +16,7 @@ use crate::{
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplBlock,
     resolve::Resolver,
-    diagnostics::Diagnostics,
+    diagnostics::DiagnosticSink,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -166,7 +166,7 @@ impl Module {
         db.crate_def_map(self.krate)[self.module_id].scope.clone()
     }
 
-    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut Diagnostics) {
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         db.crate_def_map(self.krate).add_diagnostics(db, self.module_id, sink);
     }
 
@@ -515,7 +515,7 @@ impl Function {
         r
     }
 
-    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut Diagnostics) {
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         self.infer(db).add_diagnostics(db, *self, sink);
     }
 }

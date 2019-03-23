@@ -56,17 +56,16 @@ mod tests;
 use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
-use relative_path::RelativePathBuf;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
-use ra_syntax::{AstNode, AstPtr, ast};
 use test_utils::tested_by;
 
 use crate::{
     ModuleDef, Name, Crate, Module,
     DefDatabase, Path, PathKind, HirFileId,
     ids::{SourceItemId, SourceFileItemId, MacroCallId},
-    diagnostics::{Diagnostics, UnresolvedModule},
+    diagnostics::DiagnosticSink,
+    nameres::diagnostics::DefDiagnostic,
 };
 
 pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
@@ -228,7 +227,7 @@ impl CrateDefMap {
         &self,
         db: &impl DefDatabase,
         module: CrateModuleId,
-        sink: &mut Diagnostics,
+        sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
     }
@@ -446,30 +445,47 @@ impl CrateDefMap {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum DefDiagnostic {
-    UnresolvedModule {
-        module: CrateModuleId,
-        declaration: SourceItemId,
-        candidate: RelativePathBuf,
-    },
-}
+mod diagnostics {
+    use relative_path::RelativePathBuf;
+    use ra_syntax::{AstPtr, AstNode, ast};
 
-impl DefDiagnostic {
-    fn add_to(&self, db: &impl DefDatabase, target_module: CrateModuleId, sink: &mut Diagnostics) {
-        match self {
-            DefDiagnostic::UnresolvedModule { module, declaration, candidate } => {
-                if *module != target_module {
-                    return;
+    use crate::{
+        SourceItemId, DefDatabase,
+        nameres::CrateModuleId,
+        diagnostics::{DiagnosticSink, UnresolvedModule},
+};
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub(super) enum DefDiagnostic {
+        UnresolvedModule {
+            module: CrateModuleId,
+            declaration: SourceItemId,
+            candidate: RelativePathBuf,
+        },
+    }
+
+    impl DefDiagnostic {
+        pub(super) fn add_to(
+            &self,
+            db: &impl DefDatabase,
+            target_module: CrateModuleId,
+            sink: &mut DiagnosticSink,
+        ) {
+            match self {
+                DefDiagnostic::UnresolvedModule { module, declaration, candidate } => {
+                    if *module != target_module {
+                        return;
+                    }
+                    let syntax = db.file_item(*declaration);
+                    let decl = ast::Module::cast(&syntax).unwrap();
+                    sink.push(UnresolvedModule {
+                        file: declaration.file_id,
+                        decl: AstPtr::new(&decl),
+                        candidate: candidate.clone(),
+                    })
                 }
-                let syntax = db.file_item(*declaration);
-                let decl = ast::Module::cast(&syntax).unwrap();
-                sink.push(UnresolvedModule {
-                    file: declaration.file_id,
-                    decl: AstPtr::new(&decl),
-                    candidate: candidate.clone(),
-                })
             }
         }
     }
+
 }

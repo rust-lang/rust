@@ -8,11 +8,14 @@ use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
     DefDatabase, HirFileId, Name, Path, Crate,
     KnownName,
-    nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw, DefDiagnostic},
+    nameres::{
+        Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
+        CrateDefMap, CrateModuleId, ModuleData, CrateMacroId,
+        diagnostics::DefDiagnostic,
+        raw,
+    },
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
 };
-
-use super::{CrateDefMap, CrateModuleId, ModuleData, CrateMacroId};
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     // populate external prelude
