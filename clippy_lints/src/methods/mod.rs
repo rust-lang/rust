@@ -918,8 +918,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
-                let node_id = cx.tcx.hir().hir_to_node_id(implitem.hir_id);
-                if cx.access_levels.is_exported(node_id) {
+                if cx.access_levels.is_exported(implitem.hir_id) {
                 // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
