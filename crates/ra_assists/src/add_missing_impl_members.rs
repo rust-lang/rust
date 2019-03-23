@@ -9,7 +9,35 @@ use ra_fmt::{leading_indent, reindent};
 
 use itertools::Itertools;
 
-pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+enum AddMissingImplMembersMode {
+    DefaultMethodsOnly,
+    NoDefaultMethods,
+}
+
+pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    add_missing_impl_members_inner(
+        ctx,
+        AddMissingImplMembersMode::NoDefaultMethods,
+        "add_impl_missing_members",
+        "add missing impl members",
+    )
+}
+
+pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    add_missing_impl_members_inner(
+        ctx,
+        AddMissingImplMembersMode::DefaultMethodsOnly,
+        "add_impl_default_members",
+        "add impl default members",
+    )
+}
+
+fn add_missing_impl_members_inner(
+    mut ctx: AssistCtx<impl HirDatabase>,
+    mode: AddMissingImplMembersMode,
+    assist_id: &'static str,
+    label: &'static str,
+) -> Option<Assist> {
     let impl_node = ctx.node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
@@ -35,7 +63,10 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         trait_fns
             .into_iter()
             .filter(|t| def_name(t).is_some())
-            .filter(|t| t.body().is_none())
+            .filter(|t| match mode {
+                AddMissingImplMembersMode::DefaultMethodsOnly => t.body().is_some(),
+                AddMissingImplMembersMode::NoDefaultMethods => t.body().is_none(),
+            })
             .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
             .collect()
     };
@@ -43,7 +74,7 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         return None;
     }
 
-    ctx.add_action(AssistId("add_impl_missing_members"), "add missing impl members", |edit| {
+    ctx.add_action(AssistId(assist_id), label, |edit| {
         let (parent_indent, indent) = {
             // FIXME: Find a way to get the indent already used in the file.
             // Now, we copy the indent of first item or indent with 4 spaces relative to impl block
@@ -300,4 +331,28 @@ impl Foo for S {
 }"#,
         )
     }
+
+    #[test]
+    fn test_default_methods() {
+        check_assist(
+            add_missing_default_members,
+            "
+trait Foo {
+    fn valid(some: u32) -> bool { false }
+    fn foo(some: u32) -> bool;
+}
+struct S;
+impl Foo for S { <|> }",
+            "
+trait Foo {
+    fn valid(some: u32) -> bool { false }
+    fn foo(some: u32) -> bool;
+}
+struct S;
+impl Foo for S {
+    fn valid(some: u32) -> bool { false }<|>
+}",
+        )
+    }
+
 }
