@@ -112,7 +112,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
             },
             hir::ExprKind::MethodCall(..) => {
-                cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
+                cx.tables.type_dependent_def(expr.hir_id)
             },
             _ => None
         };

@@ -573,8 +573,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::MethodCall(ref seg, ..) => {
                 let expr_hir_id = self.tcx.hir().definitions().node_to_hir_id(expr.id);
-                let method_id = match self.tables.type_dependent_defs().get(expr_hir_id) {
-                    Some(id) => id.def_id(),
+                let method_id = match self.tables.type_dependent_def_id(expr_hir_id) {
+                    Some(id) => id,
                     None => {
                         debug!("Could not resolve method id for {:?}", expr);
                         return None;
