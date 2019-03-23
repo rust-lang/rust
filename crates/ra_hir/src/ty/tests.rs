@@ -1792,6 +1792,29 @@ fn test<R>(query_response: Canonical<QueryResponse<R>>) {
 }
 
 #[test]
+fn bug_1030() {
+    assert_snapshot_matches!(infer(r#"
+struct HashSet<T, H>;
+struct FxHasher;
+type FxHashSet<T> = HashSet<T, FxHasher>;
+
+impl<T, H> HashSet<T, H> {
+    fn default() -> HashSet<T, H> {}
+}
+
+pub fn main_loop() {
+    FxHashSet::default();
+}
+"#),
+    @r###"
+[144; 146) '{}': ()
+[169; 198) '{     ...t(); }': ()
+[175; 193) 'FxHash...efault': fn default<{unknown}, {unknown}>() -> HashSet<T, H>
+[175; 195) 'FxHash...ault()': HashSet<{unknown}, {unknown}>"###
+    );
+}
+
+#[test]
 fn cross_crate_associated_method_call() {
     let (mut db, pos) = MockDatabase::with_position(
         r#"
