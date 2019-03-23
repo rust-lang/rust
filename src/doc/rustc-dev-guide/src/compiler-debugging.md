@@ -165,7 +165,7 @@ then appear in standard error.
 **Note that unless you use a very strict filter, the logger will emit a lot of
 output, so use the most specific module(s) you can (comma-separated if
 multiple)**. It's typically a good idea to pipe standard error to a file and
-look at the log output with a text editor. You should also .
+look at the log output with a text editor.
 
 So to put it together.
 
