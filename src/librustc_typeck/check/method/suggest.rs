@@ -60,13 +60,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_method_error<'b>(&self,
-                                   span: Span,
-                                   rcvr_ty: Ty<'tcx>,
-                                   item_name: ast::Ident,
-                                   source: SelfSource<'b>,
-                                   error: MethodError<'tcx>,
-                                   args: Option<&'gcx [hir::Expr]>) {
+    pub fn report_method_error<'b>(
+        &self,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_name: ast::Ident,
+        source: SelfSource<'b>,
+        error: MethodError<'tcx>,
+        args: Option<&'gcx [hir::Expr]>,
+    ) {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
@@ -390,6 +392,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 } else {
                     err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
+                    self.tcx.sess.trait_methods_not_found.borrow_mut().insert(span);
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {

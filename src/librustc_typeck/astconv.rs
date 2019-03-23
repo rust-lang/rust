@@ -1012,9 +1012,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let object_safety_violations =
             tcx.global_tcx().astconv_object_safety_violations(principal.def_id());
         if !object_safety_violations.is_empty() {
-            tcx.report_object_safety_error(
-                span, principal.def_id(), object_safety_violations)
-               .emit();
+            tcx.report_object_safety_error(span, principal.def_id(), object_safety_violations)
+                .map(|mut err| err.emit());
             return tcx.types.err;
         }
 
