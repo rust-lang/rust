@@ -35,6 +35,7 @@ pub(crate) fn add_missing_impl_members(mut ctx: AssistCtx<impl HirDatabase>) -> 
         trait_fns
             .into_iter()
             .filter(|t| def_name(t).is_some())
+            .filter(|t| t.body().is_none())
             .filter(|t| impl_fns.iter().all(|i| def_name(i) != def_name(t)))
             .collect()
     };
@@ -103,11 +104,13 @@ fn build_func_body(def: &ast::FnDef) -> String {
     let mut buf = String::new();
 
     for child in def.syntax().children() {
-        if child.kind() == SyntaxKind::SEMI {
-            buf.push_str(" { unimplemented!() }")
-        } else {
-            child.text().push_to(&mut buf);
-        }
+        match (child.prev_sibling().map(|c| c.kind()), child.kind()) {
+            (_, SyntaxKind::SEMI) => buf.push_str(" { unimplemented!() }"),
+            (_, SyntaxKind::ATTR) | (_, SyntaxKind::COMMENT) => {}
+            (Some(SyntaxKind::ATTR), SyntaxKind::WHITESPACE)
+            | (Some(SyntaxKind::COMMENT), SyntaxKind::WHITESPACE) => {}
+            _ => child.text().push_to(&mut buf),
+        };
     }
 
     buf.trim_end().to_string()
@@ -180,8 +183,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) { unimplemented!() }
-    fn baz(&self) -> u32 { 42 }<|>
+    fn foo(&self) { unimplemented!() }<|>
 }",
         );
     }
@@ -193,7 +195,7 @@ impl Foo for S {
             "
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S {<|>}",
+impl Foo for S { <|> }",
             "
 trait Foo { fn foo(&self); }
 struct S;
@@ -232,8 +234,8 @@ impl Foo for S { <|> }",
     }
 
     #[test]
-    fn test_ignore_unnamed_trait_members() {
-        check_assist(
+    fn test_ignore_unnamed_trait_members_and_default_methods() {
+        check_assist_not_applicable(
             add_missing_impl_members,
             "
 trait Foo {
@@ -242,15 +244,6 @@ trait Foo {
 }
 struct S;
 impl Foo for S { <|> }",
-            "
-trait Foo {
-    fn (arg: u32);
-    fn valid(some: u32) -> bool { false }
-}
-struct S;
-impl Foo for S {
-    fn valid(some: u32) -> bool { false }<|>
-}",
         )
     }
 
@@ -260,7 +253,7 @@ impl Foo for S {
             add_missing_impl_members,
             "
 trait Foo {
-    fn valid(some: u32) -> bool { false }
+    fn valid(some: u32) -> bool;
 }
 struct S;
 
@@ -269,15 +262,42 @@ mod my_mod {
 }",
             "
 trait Foo {
-    fn valid(some: u32) -> bool { false }
+    fn valid(some: u32) -> bool;
 }
 struct S;
 
 mod my_mod {
     impl crate::Foo for S {
-        fn valid(some: u32) -> bool { false }<|>
+        fn valid(some: u32) -> bool { unimplemented!() }<|>
     }
 }",
+        )
+    }
+
+    #[test]
+    fn test_with_docstring_and_attrs() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[doc(alias = "test alias")]
+trait Foo {
+    /// doc string
+    #[must_use]
+    fn foo(&self);
+}
+struct S;
+impl Foo for S {}<|>"#,
+            r#"
+#[doc(alias = "test alias")]
+trait Foo {
+    /// doc string
+    #[must_use]
+    fn foo(&self);
+}
+struct S;
+impl Foo for S {
+    fn foo(&self) { unimplemented!() }<|>
+}"#,
         )
     }
 }
