@@ -6,7 +6,7 @@ use ra_syntax::{ast::self, TreeArc, SyntaxNode};
 
 use crate::{
     Name, ScopesWithSourceMap, Ty, HirFileId,
-    HirDatabase, PersistentHirDatabase,
+    HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap},
@@ -38,24 +38,21 @@ impl Crate {
         self.crate_id
     }
 
-    pub fn dependencies(&self, db: &impl PersistentHirDatabase) -> Vec<CrateDependency> {
+    pub fn dependencies(&self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         self.dependencies_impl(db)
     }
 
-    pub fn root_module(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
+    pub fn root_module(&self, db: &impl DefDatabase) -> Option<Module> {
         self.root_module_impl(db)
     }
 
-    pub fn edition(&self, db: &impl PersistentHirDatabase) -> Edition {
+    pub fn edition(&self, db: &impl DefDatabase) -> Edition {
         let crate_graph = db.crate_graph();
         crate_graph.edition(self.crate_id)
     }
 
     // FIXME: should this be in source_binder?
-    pub fn source_root_crates(
-        db: &impl PersistentHirDatabase,
-        source_root: SourceRootId,
-    ) -> Vec<Crate> {
+    pub fn source_root_crates(db: &impl DefDatabase, source_root: SourceRootId) -> Vec<Crate> {
         let crate_ids = db.source_root_crates(source_root);
         crate_ids.iter().map(|&crate_id| Crate { crate_id }).collect()
     }
@@ -111,7 +108,7 @@ impl Module {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, ModuleSource) {
+    pub fn definition_source(&self, db: &impl DefDatabase) -> (HirFileId, ModuleSource) {
         self.definition_source_impl(db)
     }
 
@@ -134,14 +131,14 @@ impl Module {
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(&self, _db: &impl PersistentHirDatabase) -> Option<Crate> {
+    pub fn krate(&self, _db: &impl DefDatabase) -> Option<Crate> {
         Some(self.krate)
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
-    pub fn crate_root(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn crate_root(&self, db: &impl DefDatabase) -> Module {
         self.crate_root_impl(db)
     }
 
@@ -151,12 +148,12 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub fn children(&self, db: &impl PersistentHirDatabase) -> impl Iterator<Item = Module> {
+    pub fn children(&self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
         self.children_impl(db)
     }
 
     /// Finds a parent module.
-    pub fn parent(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
+    pub fn parent(&self, db: &impl DefDatabase) -> Option<Module> {
         self.parent_impl(db)
     }
 
@@ -229,7 +226,7 @@ impl StructField {
         self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
     }
 
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, FieldSource) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, FieldSource) {
         self.source_impl(db)
     }
 
@@ -257,7 +254,7 @@ pub struct Struct {
 }
 
 impl Struct {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
         self.id.source(db)
     }
 
@@ -289,7 +286,7 @@ impl Struct {
             .map(|(id, _)| StructField { parent: (*self).into(), id })
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 
@@ -325,7 +322,7 @@ pub struct Enum {
 }
 
 impl Enum {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
         self.id.source(db)
     }
 
@@ -337,7 +334,7 @@ impl Enum {
         db.enum_data(*self).name.clone()
     }
 
-    pub fn variants(&self, db: &impl PersistentHirDatabase) -> Vec<EnumVariant> {
+    pub fn variants(&self, db: &impl DefDatabase) -> Vec<EnumVariant> {
         db.enum_data(*self)
             .variants
             .iter()
@@ -345,7 +342,7 @@ impl Enum {
             .collect()
     }
 
-    pub fn variant(&self, db: &impl PersistentHirDatabase, name: &Name) -> Option<EnumVariant> {
+    pub fn variant(&self, db: &impl DefDatabase, name: &Name) -> Option<EnumVariant> {
         db.enum_data(*self)
             .variants
             .iter()
@@ -353,7 +350,7 @@ impl Enum {
             .map(|(id, _)| EnumVariant { parent: *self, id })
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 
@@ -386,20 +383,17 @@ pub struct EnumVariant {
 }
 
 impl EnumVariant {
-    pub fn source(
-        &self,
-        db: &impl PersistentHirDatabase,
-    ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         self.source_impl(db)
     }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
         self.parent.module(db)
     }
-    pub fn parent_enum(&self, _db: &impl PersistentHirDatabase) -> Enum {
+    pub fn parent_enum(&self, _db: &impl DefDatabase) -> Enum {
         self.parent
     }
 
-    pub fn name(&self, db: &impl PersistentHirDatabase) -> Option<Name> {
+    pub fn name(&self, db: &impl DefDatabase) -> Option<Name> {
         db.enum_data(self.parent).variants[self.id].name.clone()
     }
 
@@ -465,11 +459,11 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn module(&self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
@@ -503,12 +497,12 @@ impl Function {
         db.infer(*self)
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
         ImplBlock::containing(module_impls, (*self).into())
     }
@@ -540,11 +534,11 @@ pub struct Const {
 }
 
 impl Const {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn module(&self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
@@ -553,7 +547,7 @@ impl Const {
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
         ImplBlock::containing(module_impls, (*self).into())
     }
@@ -599,11 +593,11 @@ pub struct Static {
 }
 
 impl Static {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn module(&self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
@@ -630,15 +624,15 @@ pub struct Trait {
 }
 
 impl Trait {
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn module(&self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 }
@@ -655,28 +649,25 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn source(
-        &self,
-        db: &impl PersistentHirDatabase,
-    ) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
         self.id.source(db)
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 
-    pub fn module(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub fn module(&self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl PersistentHirDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
         ImplBlock::containing(module_impls, (*self).into())
     }
 
-    pub fn type_ref(self, db: &impl PersistentHirDatabase) -> Arc<TypeRef> {
+    pub fn type_ref(self, db: &impl DefDatabase) -> Arc<TypeRef> {
         db.type_alias_ref(self)
     }
 

@@ -16,8 +16,8 @@ use crate::{
     type_ref::TypeRef,
 };
 
-#[salsa::query_group(PersistentHirDatabaseStorage)]
-pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
+#[salsa::query_group(DefDatabaseStorage)]
+pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(HirFileId::hir_parse)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
@@ -71,7 +71,7 @@ pub trait PersistentHirDatabase: SourceDatabase + AsRef<HirInterner> {
 }
 
 #[salsa::query_group(HirDatabaseStorage)]
-pub trait HirDatabase: PersistentHirDatabase {
+pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
 

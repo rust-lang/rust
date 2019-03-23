@@ -5,7 +5,7 @@ use ra_syntax::ast::{NameOwner, TypeAscriptionOwner};
 use crate::{
     Name, AsName, Const, ConstSignature, Static,
     type_ref::{TypeRef},
-    PersistentHirDatabase,
+    DefDatabase,
 };
 
 fn const_signature_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstSignature> {
@@ -17,7 +17,7 @@ fn const_signature_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<Cons
 
 impl ConstSignature {
     pub(crate) fn const_signature_query(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         konst: Const,
     ) -> Arc<ConstSignature> {
         let (_, node) = konst.source(db);
@@ -25,7 +25,7 @@ impl ConstSignature {
     }
 
     pub(crate) fn static_signature_query(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         konst: Static,
     ) -> Arc<ConstSignature> {
         let (_, node) = konst.source(db);

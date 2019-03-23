@@ -15,7 +15,7 @@ use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
     hir::db::HirDatabaseStorage,
-    hir::db::PersistentHirDatabaseStorage
+    hir::db::DefDatabaseStorage
 )]
 #[derive(Debug)]
 pub(crate) struct RootDatabase {

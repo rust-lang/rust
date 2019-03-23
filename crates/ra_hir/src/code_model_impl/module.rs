@@ -4,13 +4,13 @@ use ra_syntax::{ast, SyntaxNode, TreeArc, AstNode};
 use crate::{
     Module, ModuleSource, Problem, Name,
     nameres::{CrateModuleId, ImportId},
-    HirDatabase, PersistentHirDatabase,
+    HirDatabase, DefDatabase,
     HirFileId, SourceItemId,
 };
 
 impl ModuleSource {
     pub(crate) fn new(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         file_id: Option<FileId>,
         decl_id: Option<SourceItemId>,
     ) -> ModuleSource {
@@ -49,7 +49,7 @@ impl Module {
 
     pub(crate) fn definition_source_impl(
         &self,
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
     ) -> (HirFileId, ModuleSource) {
         let def_map = db.crate_def_map(self.krate);
         let decl_id = def_map[self.module_id].declaration;
@@ -80,7 +80,7 @@ impl Module {
         source_map.get(&source, import)
     }
 
-    pub(crate) fn crate_root_impl(&self, db: &impl PersistentHirDatabase) -> Module {
+    pub(crate) fn crate_root_impl(&self, db: &impl DefDatabase) -> Module {
         let def_map = db.crate_def_map(self.krate);
         self.with_module_id(def_map.root())
     }
@@ -93,10 +93,7 @@ impl Module {
     }
 
     /// Iterates over all child modules.
-    pub(crate) fn children_impl(
-        &self,
-        db: &impl PersistentHirDatabase,
-    ) -> impl Iterator<Item = Module> {
+    pub(crate) fn children_impl(&self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
         let def_map = db.crate_def_map(self.krate);
         let children = def_map[self.module_id]
             .children
@@ -106,7 +103,7 @@ impl Module {
         children.into_iter()
     }
 
-    pub(crate) fn parent_impl(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
+    pub(crate) fn parent_impl(&self, db: &impl DefDatabase) -> Option<Module> {
         let def_map = db.crate_def_map(self.krate);
         let parent_id = def_map[self.module_id].parent?;
         Some(self.with_module_id(parent_id))

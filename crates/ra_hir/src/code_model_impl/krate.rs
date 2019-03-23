@@ -1,12 +1,9 @@
 use crate::{
-    Crate, CrateDependency, AsName, Module, PersistentHirDatabase,
+    Crate, CrateDependency, AsName, Module, DefDatabase,
 };
 
 impl Crate {
-    pub(crate) fn dependencies_impl(
-        &self,
-        db: &impl PersistentHirDatabase,
-    ) -> Vec<CrateDependency> {
+    pub(crate) fn dependencies_impl(&self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         let crate_graph = db.crate_graph();
         crate_graph
             .dependencies(self.crate_id)
@@ -17,7 +14,7 @@ impl Crate {
             })
             .collect()
     }
-    pub(crate) fn root_module_impl(&self, db: &impl PersistentHirDatabase) -> Option<Module> {
+    pub(crate) fn root_module_impl(&self, db: &impl DefDatabase) -> Option<Module> {
         let module_id = db.crate_def_map(*self).root();
         let module = Module { krate: *self, module_id };
         Some(module)

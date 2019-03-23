@@ -10,7 +10,7 @@ use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
 
 use crate::{
     Module,
-    PersistentHirDatabase,
+    DefDatabase,
 };
 
 #[derive(Debug, Default)]
@@ -63,7 +63,7 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
-    pub fn original_file(self, db: &impl PersistentHirDatabase) -> FileId {
+    pub fn original_file(self, db: &impl DefDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -83,10 +83,7 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_parse(
-        db: &impl PersistentHirDatabase,
-        file_id: HirFileId,
-    ) -> TreeArc<SourceFile> {
+    pub(crate) fn hir_parse(db: &impl DefDatabase, file_id: HirFileId) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -97,10 +94,7 @@ impl HirFileId {
     }
 }
 
-fn parse_macro(
-    db: &impl PersistentHirDatabase,
-    macro_call_id: MacroCallId,
-) -> Option<TreeArc<SourceFile>> {
+fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<TreeArc<SourceFile>> {
     let loc = macro_call_id.loc(db);
     let syntax = db.file_item(loc.source_item_id);
     let macro_call = ast::MacroCall::cast(&syntax).unwrap();
@@ -190,7 +184,7 @@ pub(crate) struct LocationCtx<DB> {
     file_id: HirFileId,
 }
 
-impl<'a, DB: PersistentHirDatabase> LocationCtx<&'a DB> {
+impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
         LocationCtx { db, module, file_id }
     }
@@ -205,13 +199,13 @@ impl<'a, DB: PersistentHirDatabase> LocationCtx<&'a DB> {
 
 pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
-    fn from_ast(ctx: LocationCtx<&impl PersistentHirDatabase>, ast: &N) -> Self {
+    fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
         let item_id = items.id_of(ctx.file_id, ast.syntax());
         Self::from_source_item_id_unchecked(ctx, item_id)
     }
     fn from_source_item_id_unchecked(
-        ctx: LocationCtx<&impl PersistentHirDatabase>,
+        ctx: LocationCtx<&impl DefDatabase>,
         item_id: SourceFileItemId,
     ) -> Self {
         let raw = SourceItemId { file_id: ctx.file_id, item_id };
@@ -219,7 +213,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
 
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
     }
-    fn source(self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<N>) {
+    fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<N>) {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
         let syntax = db.file_item(loc.raw);
@@ -227,7 +221,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
             N::cast(&syntax).unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw)).to_owned();
         (loc.raw.file_id, ast)
     }
-    fn module(self, db: &impl PersistentHirDatabase) -> Module {
+    fn module(self, db: &impl DefDatabase) -> Module {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
         loc.module
@@ -324,7 +318,7 @@ pub struct SourceFileItems {
 
 impl SourceFileItems {
     pub(crate) fn file_items_query(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         file_id: HirFileId,
     ) -> Arc<SourceFileItems> {
         let source_file = db.hir_parse(file_id);
@@ -332,7 +326,7 @@ impl SourceFileItems {
     }
 
     pub(crate) fn file_item_query(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         source_item_id: SourceItemId,
     ) -> TreeArc<SyntaxNode> {
         let source_file = db.hir_parse(source_item_id.file_id);

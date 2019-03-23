@@ -5,14 +5,11 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     Name, AsName, Function, FnSignature,
     type_ref::{TypeRef, Mutability},
-    PersistentHirDatabase,
+    DefDatabase,
 };
 
 impl FnSignature {
-    pub(crate) fn fn_signature_query(
-        db: &impl PersistentHirDatabase,
-        func: Function,
-    ) -> Arc<FnSignature> {
+    pub(crate) fn fn_signature_query(db: &impl DefDatabase, func: Function) -> Arc<FnSignature> {
         let (_, node) = func.source(db);
         let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
