@@ -777,7 +777,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
-    check_for_loop_explicit_counter(cx, arg, body, expr);
+    check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
@@ -1453,6 +1453,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
 
 fn check_for_loop_explicit_counter<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
     arg: &'tcx Expr,
     body: &'tcx Expr,
     expr: &'tcx Expr,
@@ -1495,8 +1496,9 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
                             expr.span,
                             &format!(
                                 "the variable `{0}` is used as a loop counter. Consider using `for ({0}, \
-                                 item) in {1}.enumerate()` or similar iterators",
+                                 {1}) in {2}.enumerate()` or similar iterators",
                                 name,
+                                snippet(cx, pat.span, "_"),
                                 snippet(cx, arg.span, "_")
                             ),
                         );
