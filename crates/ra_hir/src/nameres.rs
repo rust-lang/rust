@@ -192,7 +192,7 @@ impl CrateDefMap {
             CrateDefMap {
                 krate,
                 edition,
-                extern_prelude: FxHashMap::default(),
+                xextern_prelude: FxHashMap::default(),
                 prelude: None,
                 root,
                 modules,

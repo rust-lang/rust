@@ -138,6 +138,15 @@ fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Modul
         }
     }
 
+    for impl_block in module.impl_blocks(db) {
+        for item in impl_block.items(db) {
+            match item {
+                hir::ImplItem::Method(f) => f.diagnostics(db, &mut diagnostics),
+                _ => (),
+            }
+        }
+    }
+
     for d in diagnostics.into_diagnostics().iter() {
         if let Some(d) = d.downcast_ref::<hir::diagnostics::UnresolvedModule>() {
             let source_root = db.file_source_root(d.file().original_file(db));
