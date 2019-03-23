@@ -62,7 +62,7 @@ use test_utils::tested_by;
 
 use crate::{
     ModuleDef, Name, Crate, Module, Problem,
-    PersistentHirDatabase, Path, PathKind, HirFileId,
+    DefDatabase, Path, PathKind, HirFileId,
     ids::{SourceItemId, SourceFileItemId, MacroCallId},
 };
 
@@ -196,10 +196,7 @@ enum ReachedFixedPoint {
 }
 
 impl CrateDefMap {
-    pub(crate) fn crate_def_map_query(
-        db: &impl PersistentHirDatabase,
-        krate: Crate,
-    ) -> Arc<CrateDefMap> {
+    pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: Crate) -> Arc<CrateDefMap> {
         let start = std::time::Instant::now();
         let def_map = {
             let edition = krate.edition(db);
@@ -268,7 +265,7 @@ impl CrateDefMap {
 
     pub(crate) fn resolve_path(
         &self,
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         original_module: CrateModuleId,
         path: &Path,
     ) -> (PerNs<ModuleDef>, Option<usize>) {
@@ -280,7 +277,7 @@ impl CrateDefMap {
     // the result.
     fn resolve_path_fp(
         &self,
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         mode: ResolveMode,
         original_module: CrateModuleId,
         path: &Path,
@@ -422,7 +419,7 @@ impl CrateDefMap {
 
     pub(crate) fn resolve_name_in_module(
         &self,
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         module: CrateModuleId,
         name: &Name,
     ) -> PerNs<ModuleDef> {
@@ -442,7 +439,7 @@ impl CrateDefMap {
         self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
     }
 
-    fn resolve_in_prelude(&self, db: &impl PersistentHirDatabase, name: &Name) -> PerNs<ModuleDef> {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs<ModuleDef> {
         if let Some(prelude) = self.prelude {
             let resolution = if prelude.krate == self.krate {
                 self[prelude.module_id].scope.items.get(name).cloned()

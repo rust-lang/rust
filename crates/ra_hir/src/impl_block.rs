@@ -9,7 +9,7 @@ use ra_syntax::{
 
 use crate::{
     Const, TypeAlias, Function, HirFileId,
-    HirDatabase, PersistentHirDatabase,
+    HirDatabase, DefDatabase,
     ModuleDef, Trait, Resolution,
     type_ref::TypeRef,
     ids::LocationCtx,
@@ -59,7 +59,7 @@ impl ImplBlock {
     }
 
     /// Returns the syntax of the impl block
-    pub fn source(&self, db: &impl PersistentHirDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
         let source_map = db.impls_in_module_source_map(self.module);
         let (file_id, source) = self.module.definition_source(db);
         (file_id, source_map.get(&source, self.impl_id))
@@ -73,11 +73,11 @@ impl ImplBlock {
         self.module
     }
 
-    pub fn target_trait_ref(&self, db: &impl PersistentHirDatabase) -> Option<TypeRef> {
+    pub fn target_trait_ref(&self, db: &impl DefDatabase) -> Option<TypeRef> {
         db.impls_in_module(self.module).impls[self.impl_id].target_trait().cloned()
     }
 
-    pub fn target_type(&self, db: &impl PersistentHirDatabase) -> TypeRef {
+    pub fn target_type(&self, db: &impl DefDatabase) -> TypeRef {
         db.impls_in_module(self.module).impls[self.impl_id].target_type().clone()
     }
 
@@ -97,11 +97,11 @@ impl ImplBlock {
         None
     }
 
-    pub fn items(&self, db: &impl PersistentHirDatabase) -> Vec<ImplItem> {
+    pub fn items(&self, db: &impl DefDatabase) -> Vec<ImplItem> {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
     }
 
-    pub fn generic_params(&self, db: &impl PersistentHirDatabase) -> Arc<GenericParams> {
+    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
 
@@ -124,7 +124,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn from_ast(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         file_id: HirFileId,
         module: Module,
         node: &ast::ImplBlock,
@@ -193,11 +193,7 @@ pub struct ModuleImplBlocks {
 }
 
 impl ModuleImplBlocks {
-    fn collect(
-        db: &impl PersistentHirDatabase,
-        module: Module,
-        source_map: &mut ImplSourceMap,
-    ) -> Self {
+    fn collect(db: &impl DefDatabase, module: Module, source_map: &mut ImplSourceMap) -> Self {
         let mut m = ModuleImplBlocks {
             module,
             impls: Arena::default(),
@@ -228,7 +224,7 @@ impl ModuleImplBlocks {
 }
 
 pub(crate) fn impls_in_module_with_source_map_query(
-    db: &impl PersistentHirDatabase,
+    db: &impl DefDatabase,
     module: Module,
 ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
     let mut source_map = ImplSourceMap::default();
@@ -238,15 +234,12 @@ pub(crate) fn impls_in_module_with_source_map_query(
     (Arc::new(result), Arc::new(source_map))
 }
 
-pub(crate) fn impls_in_module(
-    db: &impl PersistentHirDatabase,
-    module: Module,
-) -> Arc<ModuleImplBlocks> {
+pub(crate) fn impls_in_module(db: &impl DefDatabase, module: Module) -> Arc<ModuleImplBlocks> {
     db.impls_in_module_with_source_map(module).0
 }
 
 pub(crate) fn impls_in_module_source_map_query(
-    db: &impl PersistentHirDatabase,
+    db: &impl DefDatabase,
     module: Module,
 ) -> Arc<ImplSourceMap> {
     db.impls_in_module_with_source_map(module).1

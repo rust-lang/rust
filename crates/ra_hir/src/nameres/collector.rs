@@ -6,7 +6,7 @@ use ra_db::FileId;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    PersistentHirDatabase, HirFileId, Name, Path, Problem, Crate,
+    DefDatabase, HirFileId, Name, Path, Problem, Crate,
     KnownName,
     nameres::{Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode, raw},
     ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
@@ -14,10 +14,7 @@ use crate::{
 
 use super::{CrateDefMap, CrateModuleId, ModuleData, CrateMacroId};
 
-pub(super) fn collect_defs(
-    db: &impl PersistentHirDatabase,
-    mut def_map: CrateDefMap,
-) -> CrateDefMap {
+pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     // populate external prelude
     for dep in def_map.krate.dependencies(db) {
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
@@ -57,7 +54,7 @@ struct DefCollector<DB> {
 
 impl<'a, DB> DefCollector<&'a DB>
 where
-    DB: PersistentHirDatabase,
+    DB: DefDatabase,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -370,7 +367,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
-    DB: PersistentHirDatabase,
+    DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
@@ -523,7 +520,7 @@ fn is_macro_rules(path: &Path) -> bool {
 }
 
 fn resolve_submodule(
-    db: &impl PersistentHirDatabase,
+    db: &impl DefDatabase,
     file_id: HirFileId,
     name: &Name,
     is_root: bool,

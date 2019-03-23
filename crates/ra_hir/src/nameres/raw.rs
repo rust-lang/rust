@@ -12,7 +12,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    PersistentHirDatabase, Name, AsName, Path, HirFileId, ModuleSource,
+    DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
     ids::{SourceFileItemId, SourceFileItems},
 };
 
@@ -47,15 +47,12 @@ impl ImportSourceMap {
 }
 
 impl RawItems {
-    pub(crate) fn raw_items_query(
-        db: &impl PersistentHirDatabase,
-        file_id: FileId,
-    ) -> Arc<RawItems> {
+    pub(crate) fn raw_items_query(db: &impl DefDatabase, file_id: FileId) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &impl PersistentHirDatabase,
+        db: &impl DefDatabase,
         file_id: FileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {

@@ -16,11 +16,7 @@ use vfs_filter::IncludeRustFiles;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
-#[salsa::database(
-    ra_db::SourceDatabaseStorage,
-    db::HirDatabaseStorage,
-    db::PersistentHirDatabaseStorage
-)]
+#[salsa::database(ra_db::SourceDatabaseStorage, db::HirDatabaseStorage, db::DefDatabaseStorage)]
 #[derive(Debug)]
 pub struct BatchDatabase {
     runtime: salsa::Runtime<BatchDatabase>,
