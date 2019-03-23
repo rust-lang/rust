@@ -256,8 +256,7 @@ impl<'a, 'tcx> Functions {
         hir_id: hir::HirId,
     ) {
         let expr = &body.value;
-        let node_id = cx.tcx.hir().hir_to_node_id(hir_id);
-        if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(node_id) {
+        if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(hir_id) {
             let raw_ptrs = iter_input_pats(decl, body)
                 .zip(decl.inputs.iter())
                 .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))

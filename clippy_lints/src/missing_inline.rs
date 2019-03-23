@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(cx.tcx.hir().hir_to_node_id(it.hir_id)) {
+        if !cx.access_levels.is_exported(it.hir_id) {
             return;
         }
         match it.node {
@@ -146,8 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        let node_id = cx.tcx.hir().hir_to_node_id(impl_item.hir_id);
-        if !cx.access_levels.is_exported(node_id) {
+        if !cx.access_levels.is_exported(impl_item.hir_id) {
             return;
         }
 
@@ -163,8 +162,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if let Some(n) = cx.tcx.hir().as_local_node_id(trait_def_id) {
-                if !cx.access_levels.is_exported(n) {
+            if cx.tcx.hir().as_local_node_id(trait_def_id).is_some() {
+                if !cx.access_levels.is_exported(impl_item.hir_id) {
                     // If a trait is being implemented for an item, and the
                     // trait is not exported, we don't need #[inline]
                     return;
