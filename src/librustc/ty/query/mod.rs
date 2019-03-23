@@ -272,7 +272,7 @@ rustc_query_append! { [define_queries!][ <'tcx>
 
     TypeChecking {
         [] fn typeck_item_bodies:
-                typeck_item_bodies_dep_node(CrateNum) -> Result<(), ErrorReported>,
+                typeck_item_bodies_dep_node(CrateNum) -> (),
 
         [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
     },
@@ -325,8 +325,7 @@ rustc_query_append! { [define_queries!][ <'tcx>
     },
 
     TypeChecking {
-        [] fn check_match: CheckMatch(DefId)
-            -> Result<(), ErrorReported>,
+        [] fn check_match: CheckMatch(DefId) -> (),
 
         /// Performs part of the privacy check and computes "access levels".
         [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Lrc<AccessLevels>,

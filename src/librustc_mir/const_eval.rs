@@ -15,7 +15,6 @@ use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
-use rustc::util::common::ErrorReported;
 
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
@@ -619,9 +618,8 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
-        if let Err(ErrorReported) = tcx.check_match(def_id) {
-            return Err(ErrorHandled::Reported)
-        }
+        // FIXME(#59378) check_match may have errored but we're not checking for that anymore
+        tcx.check_match(def_id);
 
         if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind_by_hir_id(id) {
             tcx.mir_const_qualif(def_id);

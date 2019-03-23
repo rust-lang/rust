@@ -363,7 +363,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         })
     })?;
 
-    time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE))?;
+    time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

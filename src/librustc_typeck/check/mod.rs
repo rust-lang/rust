@@ -702,15 +702,11 @@ fn check_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId)
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
 }
 
-fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                                -> Result<(), ErrorReported>
-{
+fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) {
     debug_assert!(crate_num == LOCAL_CRATE);
-    Ok(tcx.sess.track_errors(|| {
-        tcx.par_body_owners(|body_owner_def_id| {
-            tcx.ensure().typeck_tables_of(body_owner_def_id);
-        });
-    })?)
+    tcx.par_body_owners(|body_owner_def_id| {
+        tcx.ensure().typeck_tables_of(body_owner_def_id);
+    });
 }
 
 fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
