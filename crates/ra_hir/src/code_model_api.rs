@@ -98,7 +98,6 @@ pub enum ModuleSource {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
     UnresolvedModule { candidate: RelativePathBuf },
-    NotDirOwner { move_to: RelativePathBuf, candidate: RelativePathBuf },
 }
 
 impl Module {
