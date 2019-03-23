@@ -421,6 +421,9 @@ impl Item {
     pub fn is_enum(&self) -> bool {
         self.type_() == ItemType::Enum
     }
+    pub fn is_variant(&self) -> bool {
+        self.type_() == ItemType::Variant
+    }
     pub fn is_associated_type(&self) -> bool {
         self.type_() == ItemType::AssociatedType
     }
