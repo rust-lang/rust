@@ -62,6 +62,10 @@ fn main() {
         return;
     }
 
+    if matches.opt_present("q") {
+        config.shell().set_verbosity(cargo::core::shell::Verbosity::Quiet);
+    }
+
     if let Err(e) = cli::validate_args(&matches) {
         cli::exit_with_error(&config, e);
     }
@@ -214,6 +218,7 @@ mod cli {
         opts.optflag("h", "help", "print this message and exit");
         opts.optflag("V", "version", "print version information and exit");
         opts.optflag("e", "explain", "print detailed error explanations");
+        opts.optflag("q", "quiet", "surpress regular cargo output, print only important messages");
         opts.optflag("d", "debug", "print command to debug and exit");
         opts.optflag(
             "a",
@@ -293,6 +298,7 @@ mod cli {
 
     /// Exit with error `e`.
     pub fn exit_with_error(config: &cargo::Config, e: failure::Error) -> ! {
+        config.shell().set_verbosity(cargo::core::shell::Verbosity::Normal);
         cargo::exit_with_error(CliError::new(e, 1), &mut config.shell());
     }
 }
