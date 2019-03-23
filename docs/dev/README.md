@@ -22,6 +22,15 @@ Discussion happens in this Zulip stream:
 
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
 
+# Work List
+
+We have this "work list" paper document:
+
+https://paper.dropbox.com/doc/RLS-2.0-work-list--AZ3BgHKKCtqszbsi3gi6sjchAQ-42vbnxzuKq2lKwW0mkn8Y
+
+It shows what everyone is working on right now. If you want to (this is not
+mandatory), add yourself to the list!
+
 # Issue Labels
 
 * [good-first-issue](https://github.com/rust-analyzer/rust-analyzer/labels/good%20first%20issue)
