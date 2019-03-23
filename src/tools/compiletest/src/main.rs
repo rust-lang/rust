@@ -10,7 +10,6 @@ extern crate log;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-extern crate test;
 
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
@@ -24,7 +23,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use test::ColorConfig;
+use libtest::ColorConfig;
 use crate::util::logv;
 use walkdir::WalkDir;
 use env_logger;
@@ -510,7 +509,7 @@ pub fn run_tests(config: &Config) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
-    let res = test::run_tests_console(&opts, tests);
+    let res = libtest::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
@@ -520,19 +519,20 @@ pub fn run_tests(config: &Config) {
     }
 }
 
-pub fn test_opts(config: &Config) -> test::TestOpts {
-    test::TestOpts {
+pub fn test_opts(config: &Config) -> libtest::TestOpts {
+    libtest::TestOpts {
+        exclude_should_panic: false,
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored {
-            test::RunIgnored::Yes
+            libtest::RunIgnored::Yes
         } else {
-            test::RunIgnored::No
+            libtest::RunIgnored::No
         },
         format: if config.quiet {
-            test::OutputFormat::Terse
+            libtest::OutputFormat::Terse
         } else {
-            test::OutputFormat::Pretty
+            libtest::OutputFormat::Pretty
         },
         logfile: config.logfile.clone(),
         run_tests: true,
@@ -545,11 +545,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_threads: None,
         skip: vec![],
         list: false,
-        options: test::Options::new(),
+        options: libtest::Options::new(),
     }
 }
 
-pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
+pub fn make_tests(config: &Config) -> Vec<libtest::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
     let mut tests = Vec::new();
     collect_tests_from_dir(
@@ -567,7 +567,7 @@ fn collect_tests_from_dir(
     base: &Path,
     dir: &Path,
     relative_dir_path: &Path,
-    tests: &mut Vec<test::TestDescAndFn>,
+    tests: &mut Vec<libtest::TestDescAndFn>,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -632,7 +632,7 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAndFn> {
+pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<libtest::TestDescAndFn> {
     let early_props = if config.mode == Mode::RunMake {
         // Allow `ignore` directives to be in the Makefile.
         EarlyProps::from_file(config, &testpaths.file.join("Makefile"))
@@ -644,11 +644,11 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
-        Pretty => test::ShouldPanic::No,
+        Pretty => libtest::ShouldPanic::No,
         _ => if early_props.should_fail {
-            test::ShouldPanic::Yes
+            libtest::ShouldPanic::Yes
         } else {
-            test::ShouldPanic::No
+            libtest::ShouldPanic::No
         },
     };
 
@@ -675,8 +675,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
                 || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb());
-            test::TestDescAndFn {
-                desc: test::TestDesc {
+            libtest::TestDescAndFn {
+                desc: libtest::TestDesc {
                     name: make_test_name(config, testpaths, revision),
                     ignore,
                     should_panic,
@@ -786,7 +786,7 @@ fn make_test_name(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&String>,
-) -> test::TestName {
+) -> libtest::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
@@ -797,7 +797,7 @@ fn make_test_name(
         Some(ref mode) => format!(" ({})", mode.to_str()),
         None => String::new(),
     };
-    test::DynTestName(format!(
+    libtest::DynTestName(format!(
         "[{}{}] {}{}",
         config.mode,
         mode_suffix,
@@ -811,7 +811,7 @@ fn make_test_closure(
     ignore: Ignore,
     testpaths: &TestPaths,
     revision: Option<&String>,
-) -> test::TestFn {
+) -> libtest::TestFn {
     let mut config = config.clone();
     if config.mode == DebugInfoBoth {
         // If both gdb and lldb were ignored, then the test as a whole
@@ -825,7 +825,7 @@ fn make_test_closure(
 
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || {
+    libtest::DynTestFn(Box::new(move || {
         runtest::run(config, &testpaths, revision.as_ref().map(|s| s.as_str()))
     }))
 }

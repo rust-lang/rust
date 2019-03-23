@@ -4,7 +4,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use test::ColorConfig;
+use libtest::ColorConfig;
 use crate::util::PathBufExt;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
