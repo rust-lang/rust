@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use itertools::Itertools;
 use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
@@ -25,11 +27,36 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
         check_struct_shorthand_initialization(&mut res, file_id, node);
     }
-
+    let res = RefCell::new(res);
+    let mut sink = DiagnosticSink::new(|d| {
+        res.borrow_mut().push(Diagnostic {
+            message: d.message(),
+            range: d.syntax_node().range(),
+            severity: Severity::Error,
+            fix: None,
+        })
+    })
+    .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
+        let source_root = db.file_source_root(d.file().original_file(db));
+        let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
+        let fix = SourceChange {
+            label: "create module".to_string(),
+            source_file_edits: Vec::new(),
+            file_system_edits: vec![create_file],
+            cursor_position: None,
+        };
+        res.borrow_mut().push(Diagnostic {
+            range: d.syntax_node().range(),
+            message: d.message(),
+            severity: Severity::Error,
+            fix: Some(fix),
+        })
+    });
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
-        check_module(&mut res, db, m);
+        m.diagnostics(db, &mut sink);
     };
-    res
+    drop(sink);
+    res.into_inner()
 }
 
 fn syntax_errors(acc: &mut Vec<Diagnostic>, source_file: &SourceFile) {
@@ -125,52 +152,6 @@ fn check_struct_shorthand_initialization(
         }
     }
     Some(())
-}
-
-fn check_module(acc: &mut Vec<Diagnostic>, db: &RootDatabase, module: hir::Module) {
-    let mut diagnostics = DiagnosticSink::default();
-    module.diagnostics(db, &mut diagnostics);
-    for decl in module.declarations(db) {
-        match decl {
-            hir::ModuleDef::Function(f) => f.diagnostics(db, &mut diagnostics),
-            _ => (),
-        }
-    }
-
-    for impl_block in module.impl_blocks(db) {
-        for item in impl_block.items(db) {
-            match item {
-                hir::ImplItem::Method(f) => f.diagnostics(db, &mut diagnostics),
-                _ => (),
-            }
-        }
-    }
-
-    for d in diagnostics.into_diagnostics().iter() {
-        if let Some(d) = d.downcast_ref::<hir::diagnostics::UnresolvedModule>() {
-            let source_root = db.file_source_root(d.file().original_file(db));
-            let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
-            let fix = SourceChange {
-                label: "create module".to_string(),
-                source_file_edits: Vec::new(),
-                file_system_edits: vec![create_file],
-                cursor_position: None,
-            };
-            acc.push(Diagnostic {
-                range: d.syntax_node().range(),
-                message: d.message(),
-                severity: Severity::Error,
-                fix: Some(fix),
-            })
-        } else {
-            acc.push(Diagnostic {
-                message: d.message(),
-                range: d.syntax_node().range(),
-                severity: Severity::Error,
-                fix: None,
-            })
-        }
-    }
 }
 
 #[cfg(test)]

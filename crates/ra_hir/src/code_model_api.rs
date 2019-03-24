@@ -168,6 +168,22 @@ impl Module {
 
     pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         db.crate_def_map(self.krate).add_diagnostics(db, self.module_id, sink);
+        for decl in self.declarations(db) {
+            match decl {
+                crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
+                crate::ModuleDef::Module(f) => f.diagnostics(db, sink),
+                _ => (),
+            }
+        }
+
+        for impl_block in self.impl_blocks(db) {
+            for item in impl_block.items(db) {
+                match item {
+                    crate::ImplItem::Method(f) => f.diagnostics(db, sink),
+                    _ => (),
+                }
+            }
+        }
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
