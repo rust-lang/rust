@@ -311,8 +311,7 @@ fn run_rustfmt(
     fmt_args: &[String],
     verbosity: Verbosity,
 ) -> Result<i32, io::Error> {
-    let default_edition = String::from("2015");
-    let mut by_edition = targets
+    let by_edition = targets
         .iter()
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
@@ -324,10 +323,8 @@ fn run_rustfmt(
             h.entry(t.0).or_insert_with(Vec::new).push(t.1);
             h
         });
-    if by_edition.is_empty() {
-        by_edition.insert(&default_edition, Vec::new());
-    }
 
+    let mut status = vec![];
     for (edition, files) in by_edition {
         let stdout = if verbosity == Verbosity::Quiet {
             std::process::Stdio::null()
@@ -357,13 +354,14 @@ fn run_rustfmt(
                 _ => e,
             })?;
 
-        let status = command.wait()?;
-        if !status.success() {
-            return Ok(status.code().unwrap_or(FAILURE));
-        }
+        status.push(command.wait()?);
     }
 
-    Ok(SUCCESS)
+    Ok(status
+        .iter()
+        .filter_map(|s| if s.success() { None } else { s.code() })
+        .next()
+        .unwrap_or(SUCCESS))
 }
 
 fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
