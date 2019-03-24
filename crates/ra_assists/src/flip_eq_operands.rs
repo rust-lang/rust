@@ -1,24 +1,23 @@
 use hir::db::HirDatabase;
-use ra_syntax::{
-    ast::{AstNode, BinExpr, BinOp}
-};
+use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn flip_eq_operands(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.node_at_offset::<BinExpr>()?;
+    let lhs = expr.lhs()?.syntax();
+    let rhs = expr.rhs()?.syntax();
+    let op_range = expr.op()?.range();
+    let cursor_in_range = ctx.frange.range.is_subrange(&op_range);
     let allowed_ops = [BinOp::EqualityTest, BinOp::NegatedEqualityTest];
-    let expr_op = expr.op()?;
-    if !allowed_ops.iter().any(|o| *o == expr_op) {
+    let expr_op = expr.op_kind()?;
+    if !cursor_in_range || !allowed_ops.iter().any(|o| *o == expr_op) {
         return None;
     }
-    let node = expr.syntax();
-    let prev = node.first_child()?;
-    let next = node.last_child()?;
     ctx.add_action(AssistId("flip_eq_operands"), "flip equality operands", |edit| {
-        edit.target(node.range());
-        edit.replace(prev.range(), next.text());
-        edit.replace(next.range(), prev.text());
+        edit.target(op_range);
+        edit.replace(lhs.range(), rhs.text());
+        edit.replace(rhs.range(), lhs.text());
     });
 
     ctx.build()
@@ -82,6 +81,6 @@ mod tests {
 
     #[test]
     fn flip_eq_operands_target() {
-        check_assist_target(flip_eq_operands, "fn f() { let res = 1 ==<|> 2; }", "1 == 2")
+        check_assist_target(flip_eq_operands, "fn f() { let res = 1 ==<|> 2; }", "==")
     }
 }
