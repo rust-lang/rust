@@ -7,7 +7,7 @@ use crate::hir::{self, PatKind, TyKind};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::CodegenFnAttrFlags;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::lint;
@@ -54,8 +54,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId) {
         if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
-            if should_explore(self.tcx, hir_id) ||
-               self.struct_constructors.contains_key(&hir_id) {
+            if should_explore(self.tcx, hir_id) || self.struct_constructors.contains_key(&hir_id) {
                 self.worklist.push(hir_id);
             }
             self.live_symbols.insert(hir_id);
@@ -77,10 +76,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ if self.in_pat => (),
             Def::PrimTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) |
             Def::Local(..) | Def::Upvar(..) => {}
-            Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
-                if let Some(enum_id) = self.tcx.parent(variant_id) {
-                    self.check_def_id(enum_id);
+            Def::Ctor(ctor_def_id, CtorOf::Variant, ..) => {
+                let variant_id = self.tcx.parent(ctor_def_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id).unwrap();
+                self.check_def_id(enum_id);
+                if !self.ignore_variant_stack.contains(&ctor_def_id) {
+                    self.check_def_id(variant_id);
                 }
+            }
+            Def::Variant(variant_id) => {
+                let enum_id = self.tcx.parent(variant_id).unwrap();
+                self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
                 }
@@ -360,9 +366,16 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
             self.worklist.push(item.hir_id);
         }
         match item.node {
-            hir::ItemKind::Enum(ref enum_def, _) if allow_dead_code => {
-                self.worklist.extend(enum_def.variants.iter()
-                                                      .map(|variant| variant.node.data.hir_id()));
+            hir::ItemKind::Enum(ref enum_def, _) => {
+                if allow_dead_code {
+                    self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
+                }
+
+                for variant in &enum_def.variants {
+                    if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
+                        self.struct_constructors.insert(ctor_hir_id, variant.node.id);
+                    }
+                }
             }
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
@@ -392,7 +405,9 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                 }
             }
             hir::ItemKind::Struct(ref variant_data, _) => {
-                self.struct_constructors.insert(variant_data.hir_id(), item.hir_id);
+                if let Some(ctor_hir_id) = variant_data.ctor_hir_id() {
+                    self.struct_constructors.insert(ctor_hir_id, item.hir_id);
+                }
             }
             _ => ()
         }
@@ -484,9 +499,9 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::VariantKind) -> bool {
-        !self.symbol_is_live(variant.data.hir_id())
+        !self.symbol_is_live(variant.id)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
-                                                 variant.data.hir_id(),
+                                                 variant.id,
                                                  &variant.attrs)
     }
 
@@ -583,7 +598,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                      g: &'tcx hir::Generics,
                      id: hir::HirId) {
         if self.should_warn_about_variant(&variant.node) {
-            self.warn_dead_code(variant.node.data.hir_id(), variant.span, variant.node.ident.name,
+            self.warn_dead_code(variant.node.id, variant.span, variant.node.ident.name,
                                 "variant", "constructed");
         } else {
             intravisit::walk_variant(self, variant, g, id);

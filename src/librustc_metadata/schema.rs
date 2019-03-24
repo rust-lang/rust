@@ -445,11 +445,8 @@ impl_stable_hash_for!(struct FnData<'tcx> { constness, arg_names, sig });
 pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
-
-    /// If this is a struct's only variant, this
-    /// is the index of the "struct ctor" item.
-    pub struct_ctor: Option<DefIndex>,
-
+    /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
+    pub ctor: Option<DefIndex>,
     /// If this is a tuple struct or variant
     /// ctor, this is its "function" signature.
     pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
@@ -458,7 +455,7 @@ pub struct VariantData<'tcx> {
 impl_stable_hash_for!(struct VariantData<'tcx> {
     ctor_kind,
     discr,
-    struct_ctor,
+    ctor,
     ctor_sig
 });
 

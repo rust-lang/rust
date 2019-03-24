@@ -6,9 +6,8 @@ pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
 use crate::hir::{HirId, Node};
-use crate::hir::def::{Def, CtorKind, ExportMap};
+use crate::hir::def::{Def, CtorOf, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use crate::hir::map::DefPathData;
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
 use crate::ich::Fingerprint;
@@ -1775,12 +1774,19 @@ bitflags! {
     #[derive(HashStable)]
     pub struct AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0;
+        /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
+        /// Indicates whether the ADT is a union.
         const IS_UNION            = 1 << 1;
+        /// Indicates whether the ADT is a struct.
         const IS_STRUCT           = 1 << 2;
+        /// Indicates whether the ADT is a struct and has a constructor.
         const HAS_CTOR            = 1 << 3;
+        /// Indicates whether the type is a `PhantomData`.
         const IS_PHANTOM_DATA     = 1 << 4;
+        /// Indicates whether the type has a `#[fundamental]` attribute.
         const IS_FUNDAMENTAL      = 1 << 5;
+        /// Indicates whether the type is a `Box`.
         const IS_BOX              = 1 << 6;
         /// Indicates whether the type is an `Arc`.
         const IS_ARC              = 1 << 7;
@@ -1801,55 +1807,73 @@ bitflags! {
     }
 }
 
+/// Definition of a variant -- a struct's fields or a enum variant.
 #[derive(Debug)]
 pub struct VariantDef {
-    /// The variant's `DefId`. If this is a tuple-like struct,
-    /// this is the `DefId` of the struct's ctor.
-    pub did: DefId,
-    pub ident: Ident, // struct's name if this is a struct
+    /// `DefId` that identifies the variant itself.
+    /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
+    pub def_id: DefId,
+    /// `DefId` that identifies the variant's constructor.
+    /// If this variant is a struct variant, then this is `None`.
+    pub ctor_def_id: Option<DefId>,
+    /// Variant or struct name.
+    pub ident: Ident,
+    /// Discriminant of this variant.
     pub discr: VariantDiscr,
+    /// Fields of this variant.
     pub fields: Vec<FieldDef>,
+    /// Type of constructor of variant.
     pub ctor_kind: CtorKind,
+    /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
+    /// Recovered?
     pub recovered: bool,
 }
 
 impl<'a, 'gcx, 'tcx> VariantDef {
     /// Creates a new `VariantDef`.
     ///
-    /// - `did` is the `DefId` used for the variant.
-    /// This is the constructor `DefId` for tuple stucts, and the variant `DefId` for everything
-    /// else.
-    /// - `attribute_def_id` is the DefId that has the variant's attributes.
-    /// This is the struct `DefId` for structs, and the variant `DefId` for variants.
+    /// `variant_did` is the `DefId` that identifies the enum variant (if this `VariantDef`
+    /// represents an enum variant).
     ///
-    /// Note that we *could* use the constructor `DefId`, because the constructor attributes
-    /// redirect to the base attributes, but compiling a small crate requires
-    /// loading the `AdtDef`s for all the structs in the universe (e.g., coherence for any
+    /// `ctor_did` is the `DefId` that identifies the constructor of unit or
+    /// tuple-variants/structs. If this is a `struct`-variant then this should be `None`.
+    ///
+    /// `parent_did` is the `DefId` of the `AdtDef` representing the enum or struct that
+    /// owns this variant. It is used for checking if a struct has `#[non_exhaustive]` w/out having
+    /// to go through the redirect of checking the ctor's attributes - but compiling a small crate
+    /// requires loading the `AdtDef`s for all the structs in the universe (e.g., coherence for any
     /// built-in trait), and we do not want to load attributes twice.
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        did: DefId,
         ident: Ident,
+        variant_did: Option<DefId>,
+        ctor_def_id: Option<DefId>,
         discr: VariantDiscr,
         fields: Vec<FieldDef>,
-        adt_kind: AdtKind,
         ctor_kind: CtorKind,
-        attribute_def_id: DefId,
+        adt_kind: AdtKind,
+        parent_did: DefId,
         recovered: bool,
     ) -> Self {
-        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, ident, discr,
-               fields, adt_kind, ctor_kind, attribute_def_id);
+        debug!(
+            "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
+             fields = {:?}, ctor_kind = {:?}, adt_kind = {:?}, parent_did = {:?})",
+             ident, variant_did, ctor_def_id, discr, fields, ctor_kind, adt_kind, parent_did,
+        );
+
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
-        if adt_kind == AdtKind::Struct && tcx.has_attr(attribute_def_id, "non_exhaustive") {
-            debug!("found non-exhaustive field list for {:?}", did);
+        if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, "non_exhaustive") {
+            debug!("found non-exhaustive field list for {:?}", parent_did);
             flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
+
         VariantDef {
-            did,
+            def_id: variant_did.unwrap_or(parent_did),
+            ctor_def_id,
             ident,
             discr,
             fields,
@@ -1859,6 +1883,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         }
     }
 
+    /// Is this field list non-exhaustive?
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
@@ -1866,7 +1891,8 @@ impl<'a, 'gcx, 'tcx> VariantDef {
 }
 
 impl_stable_hash_for!(struct VariantDef {
-    did,
+    def_id,
+    ctor_def_id,
     ident -> (ident.name),
     discr,
     fields,
@@ -1898,12 +1924,15 @@ pub struct FieldDef {
 
 /// The definition of an abstract data type -- a struct or enum.
 ///
-/// These are all interned (by `intern_adt_def`) into the `adt_defs`
-/// table.
+/// These are all interned (by `intern_adt_def`) into the `adt_defs` table.
 pub struct AdtDef {
+    /// `DefId` of the struct, enum or union item.
     pub did: DefId,
+    /// Variants of the ADT. If this is a struct or enum, then there will be a single variant.
     pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
+    /// Flags of the ADT (e.g. is this a struct? is this non-exhaustive?)
     flags: AdtFlags,
+    /// Repr options provided by the user.
     pub repr: ReprOptions,
 }
 
@@ -2102,11 +2131,14 @@ impl ReprOptions {
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
-    fn new(tcx: TyCtxt<'_, '_, '_>,
-           did: DefId,
-           kind: AdtKind,
-           variants: IndexVec<VariantIdx, VariantDef>,
-           repr: ReprOptions) -> Self {
+    /// Creates a new `AdtDef`.
+    fn new(
+        tcx: TyCtxt<'_, '_, '_>,
+        did: DefId,
+        kind: AdtKind,
+        variants: IndexVec<VariantIdx, VariantDef>,
+        repr: ReprOptions
+    ) -> Self {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
@@ -2120,13 +2152,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if let AdtKind::Struct = kind {
-            let variant_def = &variants[VariantIdx::new(0)];
-            let def_key = tcx.def_key(variant_def.did);
-            match def_key.disambiguated_data.data {
-                DefPathData::StructCtor => flags |= AdtFlags::HAS_CTOR,
-                _ => (),
-            }
+        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_def_id.is_some() {
+            flags |= AdtFlags::HAS_CTOR;
         }
 
         let attrs = tcx.get_attrs(did);
@@ -2154,21 +2181,25 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    /// Returns `true` if this is a struct.
     #[inline]
     pub fn is_struct(&self) -> bool {
         self.flags.contains(AdtFlags::IS_STRUCT)
     }
 
+    /// Returns `true` if this is a union.
     #[inline]
     pub fn is_union(&self) -> bool {
         self.flags.contains(AdtFlags::IS_UNION)
     }
 
+    /// Returns `true` if this is a enum.
     #[inline]
     pub fn is_enum(&self) -> bool {
         self.flags.contains(AdtFlags::IS_ENUM)
     }
 
+    /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`.
     #[inline]
     pub fn is_variant_list_non_exhaustive(&self) -> bool {
         self.flags.contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
@@ -2186,6 +2217,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    /// Returns a description of this abstract data type.
     pub fn descr(&self) -> &'static str {
         match self.adt_kind() {
             AdtKind::Struct => "struct",
@@ -2194,6 +2226,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    /// Returns a description of a variant of this abstract data type.
     #[inline]
     pub fn variant_descr(&self) -> &'static str {
         match self.adt_kind() {
@@ -2267,24 +2300,30 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
-        self.variants
-            .iter()
-            .find(|v| v.did == vid)
+        self.variants.iter().find(|v| v.def_id == vid)
             .expect("variant_with_id: unknown variant")
     }
 
+    pub fn variant_with_ctor_id(&self, cid: DefId) -> &VariantDef {
+        self.variants.iter().find(|v| v.ctor_def_id == Some(cid))
+            .expect("variant_with_ctor_id: unknown variant")
+    }
+
     pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
-        self.variants
-            .iter_enumerated()
-            .find(|(_, v)| v.did == vid)
-            .expect("variant_index_with_id: unknown variant")
-            .0
+        self.variants.iter_enumerated().find(|(_, v)| v.def_id == vid)
+            .expect("variant_index_with_id: unknown variant").0
+    }
+
+    pub fn variant_index_with_ctor_id(&self, cid: DefId) -> VariantIdx {
+        self.variants.iter_enumerated().find(|(_, v)| v.ctor_def_id == Some(cid))
+            .expect("variant_index_with_ctor_id: unknown variant").0
     }
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {
         match def {
-            Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
+            Def::Variant(vid) => self.variant_with_id(vid),
+            Def::Ctor(cid, ..) => self.variant_with_ctor_id(cid),
+            Def::Struct(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
             Def::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
@@ -2820,7 +2859,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant.fields.iter().position(|field| {
-            self.adjust_ident(ident, variant.did, hir::DUMMY_HIR_ID).0 == field.ident.modern()
+            self.adjust_ident(ident, variant.def_id, hir::DUMMY_HIR_ID).0 == field.ident.modern()
         })
     }
 
@@ -2895,32 +2934,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
-            Def::Variant(did) | Def::VariantCtor(did, ..) => {
+            Def::Variant(did) => {
                 let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
             }
-            Def::StructCtor(ctor_did, ..) => {
-                let did = self.parent(ctor_did).expect("struct ctor has no parent");
-                self.adt_def(did).non_enum_variant()
+            Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
+                let variant_did = self.parent(variant_ctor_did).unwrap();
+                let enum_did = self.parent(variant_did).unwrap();
+                self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
+            }
+            Def::Ctor(ctor_did, CtorOf::Struct, ..) => {
+                let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
+                self.adt_def(struct_did).non_enum_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
-        }
-    }
-
-    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
-    pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
-        let def_key = self.def_key(variant_def.did);
-        match def_key.disambiguated_data.data {
-            // for enum variants and tuple structs, the def-id of the ADT itself
-            // is the *parent* of the variant
-            DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
-                DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
-
-            // otherwise, for structs and unions, they share a def-id
-            _ => variant_def.did,
         }
     }
 
@@ -2929,16 +2959,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.original_crate_name(id.krate).as_interned_str()
         } else {
             let def_key = self.def_key(id);
-            // The name of a StructCtor is that of its struct parent.
-            if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
-                self.item_name(DefId {
-                    krate: id.krate,
-                    index: def_key.parent.unwrap()
-                })
-            } else {
-                def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
+            match def_key.disambiguated_data.data {
+                // The name of a constructor is that of its parent.
+                hir_map::DefPathData::Ctor =>
+                    self.item_name(DefId {
+                        krate: id.krate,
+                        index: def_key.parent.unwrap()
+                    }),
+                _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
                     bug!("item_name: no name for {:?}", self.def_path(id));
-                })
+                }),
             }
         }
     }

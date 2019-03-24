@@ -62,7 +62,7 @@ use crate::middle::region;
 use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::Node;
 use crate::infer::InferCtxt;
-use crate::hir::def::{Def, CtorKind};
+use crate::hir::def::{CtorOf, Def, CtorKind};
 use crate::ty::adjustment;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
@@ -704,7 +704,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                hir_id, expr_ty, def);
 
         match def {
-            Def::StructCtor(..) | Def::VariantCtor(..) | Def::Const(..) | Def::ConstParam(..) |
+            Def::Ctor(..) | Def::Const(..) | Def::ConstParam(..) |
             Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) => {
                 Ok(self.cat_rvalue_node(hir_id, span, expr_ty))
             }
@@ -1274,12 +1274,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::VariantCtor(def_id, CtorKind::Fn) => {
-                        let enum_def = self.tcx.parent(def_id).unwrap();
-                        (self.cat_downcast_if_needed(pat, cmt, def_id),
-                        self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len())
+                    Def::Ctor(variant_ctor_did, CtorOf::Variant, CtorKind::Fn) => {
+                        let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
+                        let enum_did = self.tcx.parent(variant_did).unwrap();
+                        (self.cat_downcast_if_needed(pat, cmt, variant_did),
+                         self.tcx.adt_def(enum_did)
+                             .variant_with_ctor_id(variant_ctor_did).fields.len())
                     }
-                    Def::StructCtor(_, CtorKind::Fn) | Def::SelfCtor(..) => {
+                    Def::Ctor(_, CtorOf::Struct, CtorKind::Fn) | Def::SelfCtor(..) => {
                         let ty = self.pat_ty_unadjusted(&pat)?;
                         match ty.sty {
                             ty::Adt(adt_def, _) => {
@@ -1314,8 +1316,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::Variant(variant_did) |
-                    Def::VariantCtor(variant_did, ..) => {
+                    Def::Ctor(variant_ctor_did, CtorOf::Variant, _) => {
+                        let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
+                        self.cat_downcast_if_needed(pat, cmt, variant_did)
+                    }
+                    Def::Variant(variant_did) => {
                         self.cat_downcast_if_needed(pat, cmt, variant_did)
                     }
                     _ => cmt,

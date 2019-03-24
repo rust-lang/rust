@@ -1077,23 +1077,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => ArgKind::empty()
                 }).collect::<Vec<ArgKind>>())
             }
-            Node::Variant(&hir::Variant {
-                span,
-                node: hir::VariantKind {
-                    data: hir::VariantData::Tuple(ref fields, ..),
-                    ..
-                },
-                ..
-            }) => {
-                (self.tcx.sess.source_map().def_span(span),
-                 fields.iter().map(|field|
-                     ArgKind::Arg(field.ident.to_string(), "_".to_string())
-                 ).collect::<Vec<_>>())
-            }
-            Node::StructCtor(ref variant_data) => {
-                (self.tcx.sess.source_map().def_span(
-                    self.tcx.hir().span_by_hir_id(variant_data.hir_id())),
-                 vec![ArgKind::empty(); variant_data.fields().len()])
+            Node::Ctor(ref variant_data) => {
+                let span = variant_data.ctor_hir_id()
+                    .map(|hir_id| self.tcx.hir().span_by_hir_id(hir_id))
+                    .unwrap_or(DUMMY_SP);
+                let span = self.tcx.sess.source_map().def_span(span);
+
+                (span, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),
         }

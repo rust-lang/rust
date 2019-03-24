@@ -85,8 +85,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     let owner_id = tcx.hir().as_local_hir_id(owner_def_id).unwrap();
 
     match tcx.hir().get_by_hir_id(owner_id) {
-        Node::StructCtor(_) |
-        Node::Variant(_) => {
+        Node::Ctor(..) => {
             // We get invoked with anything that has MIR, but some of
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body

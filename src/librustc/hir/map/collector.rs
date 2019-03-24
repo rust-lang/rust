@@ -360,9 +360,9 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {
                 if let ItemKind::Struct(ref struct_def, _) = i.node {
-                    // If this is a tuple-like struct, register the constructor.
-                    if !struct_def.is_struct() {
-                        this.insert(i.span, struct_def.hir_id(), Node::StructCtor(struct_def));
+                    // If this is a tuple or unit-like struct, register the constructor.
+                    if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
+                        this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
                     }
                 }
                 intravisit::walk_item(this, i);
@@ -515,8 +515,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
-        self.insert(v.span, v.node.data.hir_id(), Node::Variant(v));
-        self.with_parent(v.node.data.hir_id(), |this| {
+        self.insert(v.span, v.node.id, Node::Variant(v));
+        self.with_parent(v.node.id, |this| {
+            // Register the constructor of this variant.
+            if let Some(ctor_hir_id) = v.node.data.ctor_hir_id() {
+                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.node.data));
+            }
             intravisit::walk_variant(this, v, g, item_id);
         });
     }

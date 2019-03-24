@@ -15,7 +15,7 @@ use crate::namespace::Namespace;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::{CtorOf, Def};
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -417,7 +417,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(variant_def) = variant_def {
                     check_type_alias_enum_variants_enabled(tcx, span);
 
-                    let def = Def::VariantCtor(variant_def.did, variant_def.ctor_kind);
+                    // Braced variants generate unusable names in value namespace (reserved for
+                    // possible future use), so variants resolved as associated items may refer to
+                    // them as well. It's ok to use the variant's id as a ctor id since an
+                    // error will be reported on any use of such resolution anyway.
+                    let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
+                    let def = Def::Ctor(ctor_def_id, CtorOf::Variant, variant_def.ctor_kind);
                     tcx.check_stability(def.def_id(), Some(expr_id), span);
                     return Ok(def);
                 }

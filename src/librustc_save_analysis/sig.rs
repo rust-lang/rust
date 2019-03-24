@@ -586,7 +586,7 @@ impl Sig for ast::Path {
                     refs: vec![],
                 })
             }
-            Def::AssociatedConst(..) | Def::Variant(..) | Def::VariantCtor(..) => {
+            Def::AssociatedConst(..) | Def::Variant(..) | Def::Ctor(..) => {
                 let len = self.segments.len();
                 if len < 2 {
                     return Err("Bad path");
@@ -700,10 +700,11 @@ impl Sig for ast::StructField {
 
 
 impl Sig for ast::Variant_ {
-    fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
+    fn make(&self, offset: usize, parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {
-            ast::VariantData::Struct(ref fields, id, r) => {
+            ast::VariantData::Struct(ref fields, r) => {
+                let id = parent_id.unwrap();
                 let name_def = SigElement {
                     id: id_from_node_id(id, scx),
                     start: offset,

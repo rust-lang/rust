@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let sole_field = &variant.fields[0];
                         let sole_field_ty = sole_field.ty(self.tcx, substs);
                         if self.can_coerce(expr_ty, sole_field_ty) {
-                            let variant_path = self.tcx.def_path_str(variant.did);
+                            let variant_path = self.tcx.def_path_str(variant.def_id);
                             // FIXME #56861: DRYer prelude filtering
                             Some(variant_path.trim_start_matches("std::prelude::v1::").to_string())
                         } else {

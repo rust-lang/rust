@@ -807,14 +807,12 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, CtorKind::Fictive) |
-            Def::VariantCtor(_, CtorKind::Fn) => {
+            Def::Ctor(_, _, CtorKind::Fictive) |
+            Def::Ctor(_, _, CtorKind::Fn) => {
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, CtorKind::Const) |
-            Def::StructCtor(_, CtorKind::Const) |
-            Def::SelfCtor(..) |
+            Def::Ctor(_, _, CtorKind::Const) | Def::SelfCtor(..) |
             Def::Const(..) | Def::AssociatedConst(..) => {} // OK
             _ => bug!("unexpected pattern definition: {:?}", def)
         }
@@ -876,8 +874,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, CtorKind::Fn) |
-            Def::StructCtor(_, CtorKind::Fn) => {
+            Def::Ctor(_, _, CtorKind::Fn) => {
                 tcx.expect_variant_def(def)
             }
             _ => bug!("unexpected pattern definition: {:?}", def)
@@ -950,7 +947,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.def_id, self.body_id).0;
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,
@@ -1003,13 +1000,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                            E0026,
                                            "{} `{}` does not have {}",
                                            kind_name,
-                                           tcx.def_path_str(variant.did),
+                                           tcx.def_path_str(variant.def_id),
                                            field_names);
             if let Some((span, ident)) = inexistent_fields.last() {
                 err.span_label(*span,
                                format!("{} `{}` does not have {} field{}",
                                        kind_name,
-                                       tcx.def_path_str(variant.did),
+                                       tcx.def_path_str(variant.def_id),
                                        t,
                                        plural));
                 if plural == "" {

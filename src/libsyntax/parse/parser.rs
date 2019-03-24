@@ -6844,7 +6844,7 @@ impl<'a> Parser<'a> {
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
                 let (fields, recovered) = self.parse_record_struct_body()?;
-                VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
+                VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
         } else if self.eat(&token::Semi) {
@@ -6852,7 +6852,7 @@ impl<'a> Parser<'a> {
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
             let (fields, recovered) = self.parse_record_struct_body()?;
-            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
+            VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, ast::DUMMY_NODE_ID);
@@ -6881,10 +6881,10 @@ impl<'a> Parser<'a> {
         let vdata = if self.token.is_keyword(keywords::Where) {
             generics.where_clause = self.parse_where_clause()?;
             let (fields, recovered) = self.parse_record_struct_body()?;
-            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
+            VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
             let (fields, recovered) = self.parse_record_struct_body()?;
-            VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered)
+            VariantData::Struct(fields, recovered)
         } else {
             let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!(
@@ -7708,7 +7708,7 @@ impl<'a> Parser<'a> {
                 // Parse a struct variant.
                 all_nullary = false;
                 let (fields, recovered) = self.parse_record_struct_body()?;
-                struct_def = VariantData::Struct(fields, ast::DUMMY_NODE_ID, recovered);
+                struct_def = VariantData::Struct(fields, recovered);
             } else if self.check(&token::OpenDelim(token::Paren)) {
                 all_nullary = false;
                 struct_def = VariantData::Tuple(
@@ -7730,6 +7730,7 @@ impl<'a> Parser<'a> {
 
             let vr = ast::Variant_ {
                 ident,
+                id: ast::DUMMY_NODE_ID,
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,

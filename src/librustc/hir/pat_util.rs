@@ -1,4 +1,4 @@
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
 use syntax::ast;
@@ -55,7 +55,7 @@ impl hir::Pat {
             PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
             PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
                 match path.def {
-                    Def::Variant(..) | Def::VariantCtor(..) => true,
+                    Def::Variant(..) => true,
                     _ => false
                 }
             }
@@ -125,8 +125,8 @@ impl hir::Pat {
                 PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
                 PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
                     match path.def {
-                        Def::Variant(id) |
-                        Def::VariantCtor(id, ..) => variants.push(id),
+                        Def::Variant(id) => variants.push(id),
+                        Def::Ctor(id, CtorOf::Variant, ..) => variants.push(id),
                         _ => ()
                     }
                 }

@@ -225,10 +225,9 @@ impl<'a> StripUnconfigured<'a> {
 
     fn configure_variant_data(&mut self, vdata: &mut ast::VariantData) {
         match vdata {
-            ast::VariantData::Struct(fields, _id, _) |
-            ast::VariantData::Tuple(fields, _id) =>
+            ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) =>
                 fields.flat_map_in_place(|field| self.configure(field)),
-            ast::VariantData::Unit(_id) => {}
+            ast::VariantData::Unit(_) => {}
         }
     }
 

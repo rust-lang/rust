@@ -803,7 +803,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        self.with_lint_attrs(v.node.data.hir_id(), &v.node.attrs, |builder| {
+        self.with_lint_attrs(v.node.id, &v.node.attrs, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })
     }

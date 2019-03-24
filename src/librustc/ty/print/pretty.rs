@@ -285,14 +285,18 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
         let mut cur_def_key = self.tcx().def_key(def_id);
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
-        // For a UnitStruct or TupleStruct we want the name of its parent rather than <unnamed>.
-        if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
-            let parent = DefId {
-                krate: def_id.krate,
-                index: cur_def_key.parent.expect("DefPathData::StructCtor missing a parent"),
-            };
+        // For a constructor we want the name of its parent rather than <unnamed>.
+        match cur_def_key.disambiguated_data.data {
+            DefPathData::Ctor => {
+                let parent = DefId {
+                    krate: def_id.krate,
+                    index: cur_def_key.parent
+                        .expect("DefPathData::Ctor/VariantData missing a parent"),
+                };
 
-            cur_def_key = self.tcx().def_key(parent);
+                cur_def_key = self.tcx().def_key(parent);
+            },
+            _ => {},
         }
 
         let visible_parent = match visible_parent_map.get(&def_id).cloned() {
@@ -860,7 +864,7 @@ impl TyCtxt<'_, '_, '_> {
             DefPathData::AnonConst |
             DefPathData::ConstParam(..) |
             DefPathData::ClosureExpr |
-            DefPathData::StructCtor => Namespace::ValueNS,
+            DefPathData::Ctor => Namespace::ValueNS,
 
             DefPathData::MacroDef(..) => Namespace::MacroNS,
 
@@ -1024,7 +1028,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
 
         // Skip `::{{constructor}}` on tuple/unit structs.
         match disambiguated_data.data {
-            DefPathData::StructCtor => return Ok(self),
+            DefPathData::Ctor => return Ok(self),
             _ => {}
         }
 

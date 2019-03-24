@@ -75,7 +75,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 self.visit_node_helper(item.hir_id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
-                    self.visit_node_helper(struct_def.hir_id());
+                    self.visit_node_helper(struct_def.ctor_hir_id().unwrap());
                 }
             }
 
@@ -84,7 +84,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
                 for variant in &enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.node.data {
-                        self.visit_node_helper(variant.node.data.hir_id());
+                        self.visit_node_helper(variant.node.data.ctor_hir_id().unwrap());
                     }
                 }
             }

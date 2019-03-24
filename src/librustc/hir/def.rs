@@ -9,6 +9,15 @@ use crate::ty;
 
 use self::Namespace::*;
 
+/// Encodes if a `Def::Ctor` is the constructor of an enum variant or a struct.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+pub enum CtorOf {
+    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit struct.
+    Struct,
+    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit variant.
+    Variant,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
@@ -37,9 +46,11 @@ pub enum NonMacroAttrKind {
 pub enum Def {
     // Type namespace
     Mod(DefId),
-    Struct(DefId), // `DefId` refers to `NodeId` of the struct itself
+    /// `DefId` refers to the struct itself, `Def::Ctor` refers to its constructor if it exists.
+    Struct(DefId),
     Union(DefId),
     Enum(DefId),
+    /// `DefId` refers to the variant itself, `Def::Ctor` refers to its constructor if it exists.
     Variant(DefId),
     Trait(DefId),
     /// `existential type Foo: Bar;`
@@ -61,8 +72,8 @@ pub enum Def {
     Const(DefId),
     ConstParam(DefId),
     Static(DefId, bool /* is_mutbl */),
-    StructCtor(DefId, CtorKind), // `DefId` refers to `NodeId` of the struct's constructor
-    VariantCtor(DefId, CtorKind), // `DefId` refers to the enum variant
+    /// `DefId` refers to the struct or enum variant's constructor.
+    Ctor(DefId, CtorOf, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Method(DefId),
     AssociatedConst(DefId),
@@ -265,10 +276,9 @@ impl Def {
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
+            Def::Variant(id) | Def::Ctor(id, ..) | Def::Enum(id) |
             Def::TyAlias(id) | Def::TraitAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::ConstParam(id) | Def::Struct(id) |
-            Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
             Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
@@ -303,20 +313,21 @@ impl Def {
             Def::Fn(..) => "function",
             Def::Mod(..) => "module",
             Def::Static(..) => "static",
-            Def::Variant(..) => "variant",
-            Def::VariantCtor(.., CtorKind::Fn) => "tuple variant",
-            Def::VariantCtor(.., CtorKind::Const) => "unit variant",
-            Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
             Def::Enum(..) => "enum",
+            Def::Variant(..) => "variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Fn) => "tuple variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Const) => "unit variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Fictive) => "struct variant",
+            Def::Struct(..) => "struct",
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Fn) => "tuple struct",
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Const) => "unit struct",
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Fictive) =>
+                bug!("impossible struct constructor"),
             Def::Existential(..) => "existential type",
             Def::TyAlias(..) => "type alias",
             Def::TraitAlias(..) => "trait alias",
             Def::AssociatedTy(..) => "associated type",
             Def::AssociatedExistential(..) => "associated existential type",
-            Def::Struct(..) => "struct",
-            Def::StructCtor(.., CtorKind::Fn) => "tuple struct",
-            Def::StructCtor(.., CtorKind::Const) => "unit struct",
-            Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
             Def::SelfCtor(..) => "self constructor",
             Def::Union(..) => "union",
             Def::Trait(..) => "trait",

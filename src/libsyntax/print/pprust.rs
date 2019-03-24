@@ -1550,44 +1550,47 @@ impl<'a> State<'a> {
                         print_finalizer: bool) -> io::Result<()> {
         self.print_ident(ident)?;
         self.print_generic_params(&generics.params)?;
-        if !struct_def.is_struct() {
-            if struct_def.is_tuple() {
-                self.popen()?;
-                self.commasep(
-                    Inconsistent, struct_def.fields(),
-                    |s, field| {
-                        s.maybe_print_comment(field.span.lo())?;
-                        s.print_outer_attributes(&field.attrs)?;
-                        s.print_visibility(&field.vis)?;
-                        s.print_type(&field.ty)
-                    }
-                )?;
-                self.pclose()?;
+        match struct_def {
+            ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
+                if let ast::VariantData::Tuple(..) = struct_def {
+                    self.popen()?;
+                    self.commasep(
+                        Inconsistent, struct_def.fields(),
+                        |s, field| {
+                            s.maybe_print_comment(field.span.lo())?;
+                            s.print_outer_attributes(&field.attrs)?;
+                            s.print_visibility(&field.vis)?;
+                            s.print_type(&field.ty)
+                        }
+                    )?;
+                    self.pclose()?;
+                }
+                self.print_where_clause(&generics.where_clause)?;
+                if print_finalizer {
+                    self.s.word(";")?;
+                }
+                self.end()?;
+                self.end() // close the outer-box
             }
-            self.print_where_clause(&generics.where_clause)?;
-            if print_finalizer {
-                self.s.word(";")?;
-            }
-            self.end()?;
-            self.end() // close the outer-box
-        } else {
-            self.print_where_clause(&generics.where_clause)?;
-            self.nbsp()?;
-            self.bopen()?;
-            self.hardbreak_if_not_bol()?;
-
-            for field in struct_def.fields() {
+            ast::VariantData::Struct(..) => {
+                self.print_where_clause(&generics.where_clause)?;
+                self.nbsp()?;
+                self.bopen()?;
                 self.hardbreak_if_not_bol()?;
-                self.maybe_print_comment(field.span.lo())?;
-                self.print_outer_attributes(&field.attrs)?;
-                self.print_visibility(&field.vis)?;
-                self.print_ident(field.ident.unwrap())?;
-                self.word_nbsp(":")?;
-                self.print_type(&field.ty)?;
-                self.s.word(",")?;
-            }
 
-            self.bclose(span)
+                for field in struct_def.fields() {
+                    self.hardbreak_if_not_bol()?;
+                    self.maybe_print_comment(field.span.lo())?;
+                    self.print_outer_attributes(&field.attrs)?;
+                    self.print_visibility(&field.vis)?;
+                    self.print_ident(field.ident.unwrap())?;
+                    self.word_nbsp(":")?;
+                    self.print_type(&field.ty)?;
+                    self.s.word(",")?;
+                }
+
+                self.bclose(span)
+            }
         }
     }
 
@@ -3266,6 +3269,7 @@ mod tests {
             let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
                 ident,
                 attrs: Vec::new(),
+                id: ast::DUMMY_NODE_ID,
                 // making this up as I go.... ?
                 data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
                 disr_expr: None,

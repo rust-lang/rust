@@ -322,8 +322,8 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Path(ref qpath) => {
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
-                Def::VariantCtor(..) | Def::StructCtor(..) |
-                Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) => Promotable,
+                Def::Ctor(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) =>
+                    Promotable,
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
@@ -387,8 +387,7 @@ fn check_expr_kind<'a, 'tcx>(
                 Def::Err
             };
             let def_result = match def {
-                Def::StructCtor(_, CtorKind::Fn) |
-                Def::VariantCtor(_, CtorKind::Fn) |
+                Def::Ctor(_, _, CtorKind::Fn) |
                 Def::SelfCtor(..) => Promotable,
                 Def::Fn(did) => v.handle_const_fn_call(did),
                 Def::Method(did) => {

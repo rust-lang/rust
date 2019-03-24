@@ -4,7 +4,7 @@ use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{CtorOf, Def, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
@@ -261,10 +261,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
                         match path.def {
-                            Def::VariantCtor(variant_id, CtorKind::Fn) => {
-                                Some((adt_def, adt_def.variant_index_with_id(variant_id)))
-                            }
-                            Def::StructCtor(_, CtorKind::Fn) |
+                            Def::Ctor(ctor_id, _, CtorKind::Fn) =>
+                                Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id))),
                             Def::SelfCtor(..) => Some((adt_def, VariantIdx::new(0))),
                             _ => None,
                         }
@@ -677,8 +675,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         .ty_adt_def()
                         .and_then(|adt_def| {
                         match def {
-                            Def::VariantCtor(variant_id, CtorKind::Const) => {
-                                let idx = adt_def.variant_index_with_id(variant_id);
+                            Def::Ctor(variant_ctor_id, CtorOf::Variant, CtorKind::Const) => {
+                                let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                 use rustc::ty::util::IntTypeExt;
                                 let ty = adt_def.repr.discr_type();
@@ -804,8 +802,7 @@ fn user_substs_applied_to_def(
         // `Fn` but with the user-given substitutions.
         Def::Fn(_) |
         Def::Method(_) |
-        Def::StructCtor(_, CtorKind::Fn) |
-        Def::VariantCtor(_, CtorKind::Fn) |
+        Def::Ctor(_, _, CtorKind::Fn) |
         Def::Const(_) |
         Def::AssociatedConst(_) => cx.tables().user_provided_types().get(hir_id).map(|u_ty| *u_ty),
 
@@ -813,8 +810,7 @@ fn user_substs_applied_to_def(
         // `None`). This has the type of the enum/struct that defines
         // this variant -- but with the substitutions given by the
         // user.
-        Def::StructCtor(_def_id, CtorKind::Const) |
-        Def::VariantCtor(_def_id, CtorKind::Const) =>
+        Def::Ctor(_, _, CtorKind::Const) =>
             cx.user_substs_applied_to_ty_of_hir_id(hir_id),
 
         // `Self` is used in expression as a tuple struct constructor or an unit struct constructor
@@ -911,8 +907,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         // A regular function, constructor function or a constant.
         Def::Fn(_) |
         Def::Method(_) |
-        Def::StructCtor(_, CtorKind::Fn) |
-        Def::VariantCtor(_, CtorKind::Fn) |
+        Def::Ctor(_, _, CtorKind::Fn) |
         Def::SelfCtor(..) => {
             let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             debug!("convert_path_expr: user_ty={:?}", user_ty);
@@ -956,8 +951,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         },
 
-        Def::StructCtor(def_id, CtorKind::Const) |
-        Def::VariantCtor(def_id, CtorKind::Const) => {
+        Def::Ctor(def_id, _, CtorKind::Const) => {
             let user_provided_types = cx.tables.user_provided_types();
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
@@ -968,7 +962,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::Adt(adt_def, substs) => {
                     ExprKind::Adt {
                         adt_def,
-                        variant_index: adt_def.variant_index_with_id(def_id),
+                        variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
                         user_ty: user_provided_type,
                         fields: vec![],

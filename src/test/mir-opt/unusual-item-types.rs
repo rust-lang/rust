@@ -72,7 +72,7 @@ fn main() {
 // }
 // END rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 
-// START rustc.Test-X.mir_map.0.mir
+// START rustc.Test-X-{{constructor}}.mir_map.0.mir
 // fn Test::X(_1: usize) -> Test {
 //     let mut _0: Test;
 //
@@ -81,4 +81,4 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.Test-X.mir_map.0.mir
+// END rustc.Test-X-{{constructor}}.mir_map.0.mir

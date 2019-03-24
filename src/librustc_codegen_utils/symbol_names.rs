@@ -522,7 +522,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
 
         // Skip `::{{constructor}}` on tuple/unit structs.
         match disambiguated_data.data {
-            DefPathData::StructCtor => return Ok(self),
+            DefPathData::Ctor => return Ok(self),
             _ => {}
         }
 

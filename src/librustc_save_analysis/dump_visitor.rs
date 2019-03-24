@@ -488,8 +488,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
 
         let (value, fields) = match item.node {
-            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, ..), _) |
-            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, ..), _) => {
+            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, ..), ..) |
+            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, ..), ..) => {
                 let include_priv_fields = !self.save_ctxt.config.pub_only;
                 let fields_str = fields
                     .iter()
@@ -581,7 +581,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.node.data.id(), &self.save_ctxt);
+                        let id = id_from_node_id(variant.node.id, &self.save_ctxt);
                         let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(
@@ -619,7 +619,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.node.data.id(), &self.save_ctxt);
+                        let id = id_from_node_id(variant.node.id, &self.save_ctxt);
                         let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(
@@ -648,7 +648,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
 
             for field in variant.node.data.fields() {
-                self.process_struct_field_def(field, variant.node.data.id());
+                self.process_struct_field_def(field, variant.node.id);
                 self.visit_ty(&field.ty);
             }
         }
@@ -957,8 +957,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         );
                     }
                 }
-                HirDef::StructCtor(..) |
-                HirDef::VariantCtor(..) |
+                HirDef::Ctor(_, _, _) |
                 HirDef::Const(..) |
                 HirDef::AssociatedConst(..) |
                 HirDef::Struct(..) |

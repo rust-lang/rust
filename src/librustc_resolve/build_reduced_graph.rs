@@ -532,9 +532,10 @@ impl<'a> Resolver<'a> {
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                if !struct_def.is_struct() {
-                    let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
-                                                   CtorKind::from_ast(struct_def));
+                if let Some(ctor_node_id) = struct_def.ctor_id() {
+                    let ctor_def = Def::Ctor(self.definitions.local_def_id(ctor_node_id),
+                                             CtorOf::Struct,
+                                             CtorKind::from_ast(struct_def));
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
                     self.struct_constructors.insert(def.def_id(), (ctor_def, ctor_vis));
                 }
@@ -581,18 +582,21 @@ impl<'a> Resolver<'a> {
                                        vis: ty::Visibility,
                                        expansion: Mark) {
         let ident = variant.node.ident;
-        let def_id = self.definitions.local_def_id(variant.node.data.id());
 
         // Define a name in the type namespace.
+        let def_id = self.definitions.local_def_id(variant.node.id);
         let def = Def::Variant(def_id);
         self.define(parent, ident, TypeNS, (def, vis, variant.span, expansion));
 
         // Define a constructor name in the value namespace.
         // Braced variants, unlike structs, generate unusable names in
         // value namespace, they are reserved for possible future use.
+        // It's ok to use the variant's id as a ctor id since an
+        // error will be reported on any use of such resolution anyway.
+        let ctor_node_id = variant.node.data.ctor_id().unwrap_or(variant.node.id);
+        let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
-        let ctor_def = Def::VariantCtor(def_id, ctor_kind);
-
+        let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
@@ -649,10 +653,11 @@ impl<'a> Resolver<'a> {
             Def::TraitAlias(..) | Def::PrimTy(..) | Def::ToolMod => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
+            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
+            Def::Ctor(_, CtorOf::Variant, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::StructCtor(def_id, ..) => {
+            Def::Ctor(def_id, CtorOf::Struct, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =

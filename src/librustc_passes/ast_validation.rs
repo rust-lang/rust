@@ -661,7 +661,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Union(ref vdata, _) => {
-                if !vdata.is_struct() {
+                if let VariantData::Tuple(..) | VariantData::Unit(..) = vdata {
                     self.err_handler().span_err(item.span,
                                                 "tuple and unit unions are not permitted");
                 }

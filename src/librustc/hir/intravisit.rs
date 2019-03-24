@@ -559,6 +559,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         generics: &'v Generics,
                                         parent_item_id: HirId) {
     visitor.visit_ident(variant.node.ident);
+    visitor.visit_id(variant.node.id);
     visitor.visit_variant_data(&variant.node.data,
                                variant.node.ident.name,
                                generics,
@@ -923,7 +924,9 @@ pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'
 
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData) {
-    visitor.visit_id(struct_definition.hir_id());
+    if let Some(ctor_hir_id) = struct_definition.ctor_hir_id() {
+        visitor.visit_id(ctor_hir_id);
+    }
     walk_list!(visitor, visit_struct_field, struct_definition.fields());
 }
 

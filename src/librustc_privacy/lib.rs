@@ -239,36 +239,48 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                         node => bug!("unexpected node kind: {:?}", node),
                     }
                 }
-                Node::StructCtor(vdata) => {
-                    let struct_hir_id = tcx.hir().get_parent_item(hir_id);
-                    let item = match tcx.hir().get_by_hir_id(struct_hir_id) {
-                        Node::Item(item) => item,
+                Node::Ctor(vdata) => {
+                    let parent_hir_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                    match tcx.hir().get_by_hir_id(parent_hir_id) {
+                        Node::Variant(..) => {
+                            let parent_did = tcx.hir().local_def_id_from_hir_id(parent_hir_id);
+                            return def_id_visibility(tcx, parent_did);
+                        }
+                        Node::Item(..) => {
+                            let item = match tcx.hir().get_by_hir_id(parent_hir_id) {
+                                Node::Item(item) => item,
+                                node => bug!("unexpected node kind: {:?}", node),
+                            };
+                            let (mut ctor_vis, mut span, mut descr) =
+                                (ty::Visibility::from_hir(&item.vis, parent_hir_id, tcx),
+                                item.vis.span, item.vis.node.descr());
+                            for field in vdata.fields() {
+                                let field_vis = ty::Visibility::from_hir(&field.vis, hir_id, tcx);
+                                if ctor_vis.is_at_least(field_vis, tcx) {
+                                    ctor_vis = field_vis;
+                                    span = field.vis.span;
+                                    descr = field.vis.node.descr();
+                                }
+                            }
+
+                            // If the structure is marked as non_exhaustive then lower the
+                            // visibility to within the crate.
+                            if ctor_vis == ty::Visibility::Public {
+                                let adt_def =
+                                    tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
+                                if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
+                                    ctor_vis =
+                                        ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                                    span = attr::find_by_name(&item.attrs, "non_exhaustive")
+                                                .unwrap().span;
+                                    descr = "crate-visible";
+                                }
+                            }
+
+                            return (ctor_vis, span, descr);
+                        }
                         node => bug!("unexpected node kind: {:?}", node),
-                    };
-                    let (mut ctor_vis, mut span, mut descr) =
-                        (ty::Visibility::from_hir(&item.vis, struct_hir_id, tcx),
-                         item.vis.span, item.vis.node.descr());
-                    for field in vdata.fields() {
-                        let field_vis = ty::Visibility::from_hir(&field.vis, hir_id, tcx);
-                        if ctor_vis.is_at_least(field_vis, tcx) {
-                            ctor_vis = field_vis;
-                            span = field.vis.span;
-                            descr = field.vis.node.descr();
-                        }
                     }
-
-                    // If the structure is marked as non_exhaustive then lower the
-                    // visibility to within the crate.
-                    if ctor_vis == ty::Visibility::Public {
-                        let adt_def = tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
-                        if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
-                            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                            span = attr::find_by_name(&item.attrs, "non_exhaustive").unwrap().span;
-                            descr = "crate-visible";
-                        }
-                    }
-
-                    return (ctor_vis, span, descr);
                 }
                 Node::Expr(expr) => {
                     return (ty::Visibility::Restricted(
@@ -504,7 +516,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         match item.node {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    let variant_level = self.update(variant.node.data.hir_id(), item_level);
+                    let variant_level = self.update(variant.node.id, item_level);
+                    if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
+                        self.update(ctor_hir_id, item_level);
+                    }
                     for field in variant.node.data.fields() {
                         self.update(field.hir_id, variant_level);
                     }
@@ -523,8 +538,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
-                if !def.is_struct() {
-                    self.update(def.hir_id(), item_level);
+                if let Some(ctor_hir_id) = def.ctor_hir_id() {
+                    self.update(ctor_hir_id, item_level);
                 }
                 for field in def.fields() {
                     if field.vis.node.is_pub() {
@@ -624,7 +639,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates();
                 }
                 for variant in &def.variants {
-                    let variant_level = self.get(variant.node.data.hir_id());
+                    let variant_level = self.get(variant.node.id);
                     if variant_level.is_some() {
                         for field in variant.node.data.fields() {
                             self.reach(field.hir_id, variant_level).ty();
@@ -1468,7 +1483,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        if self.access_levels.is_reachable(v.node.data.hir_id()) {
+        if self.access_levels.is_reachable(v.node.id) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;

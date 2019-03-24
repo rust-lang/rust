@@ -9,12 +9,12 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
 use crate::middle::region;
-use crate::ty::{self, TyCtxt, adjustment};
+use crate::ty::{self, DefIdTree, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
 use rustc_data_structures::sync::Lrc;
@@ -902,14 +902,20 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             };
             let def = mc.tables.qpath_def(qpath, pat.hir_id);
             match def {
-                Def::Variant(variant_did) |
-                Def::VariantCtor(variant_did, ..) => {
+                Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
+                    let variant_did = mc.tcx.parent(variant_ctor_did).unwrap();
+                    let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
+
+                    debug!("variantctor downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
+                    delegate.matched_pat(pat, &downcast_cmt, match_mode);
+                }
+                Def::Variant(variant_did) => {
                     let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 
                     debug!("variant downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
                     delegate.matched_pat(pat, &downcast_cmt, match_mode);
                 }
-                Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
+                Def::Struct(..) | Def::Ctor(..) | Def::Union(..) |
                 Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, &cmt_pat, match_mode);

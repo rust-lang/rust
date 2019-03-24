@@ -168,7 +168,7 @@ use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
-use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt, TypeFoldable, Const};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
@@ -399,22 +399,10 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             _ => false,
         }
     }
-
-    fn is_variant_uninhabited(&self,
-                              variant: &'tcx ty::VariantDef,
-                              substs: SubstsRef<'tcx>)
-                              -> bool
-    {
-        if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_enum_variant_uninhabited_from(self.module, variant, substs)
-        } else {
-            false
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor<'tcx> {
+enum Constructor<'tcx> {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g., struct patterns and fixed-length arrays.
     Single,
@@ -435,7 +423,7 @@ impl<'tcx> Constructor<'tcx> {
         adt: &'tcx ty::AdtDef,
     ) -> VariantIdx {
         match self {
-            &Variant(vid) => adt.variant_index_with_id(vid),
+            &Variant(id) => adt.variant_index_with_id(id),
             &Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
@@ -658,8 +646,11 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         ty::Adt(def, substs) if def.is_enum() => {
             def.variants.iter()
-                .filter(|v| !cx.is_variant_uninhabited(v, substs))
-                .map(|v| Variant(v.did))
+                .filter(|v| {
+                    !cx.tcx.features().exhaustive_patterns ||
+                    !v.uninhabited_from(cx.tcx, substs, def.adt_kind()).contains(cx.tcx, cx.module)
+                })
+                .map(|v| Variant(v.def_id))
                 .collect()
         }
         ty::Char => {
@@ -1307,7 +1298,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
         PatternKind::Binding { .. } | PatternKind::Wild => None,
         PatternKind::Leaf { .. } | PatternKind::Deref { .. } => Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } => {
-            Some(vec![Variant(adt_def.variants[variant_index].did)])
+            Some(vec![Variant(adt_def.variants[variant_index].def_id)])
         }
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
@@ -1742,11 +1733,9 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
 
         PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
-            if *constructor == Variant(variant.did) {
-                Some(patterns_for_variant(subpatterns, wild_patterns))
-            } else {
-                None
-            }
+            Some(Variant(variant.def_id))
+                .filter(|variant_constructor| variant_constructor == constructor)
+                .map(|_| patterns_for_variant(subpatterns, wild_patterns))
         }
 
         PatternKind::Leaf { ref subpatterns } => {

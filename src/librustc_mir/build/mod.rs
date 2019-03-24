@@ -31,10 +31,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get_by_hir_id(id) {
-        Node::Variant(variant) =>
-            return create_constructor_shim(tcx, id, &variant.node.data),
-        Node::StructCtor(ctor) =>
-            return create_constructor_shim(tcx, id, ctor),
+        Node::Ctor(ctor) => return create_constructor_shim(tcx, id, ctor),
 
         Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
         | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })

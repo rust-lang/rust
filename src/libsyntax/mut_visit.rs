@@ -450,9 +450,10 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
 }
 
 pub fn noop_visit_variant<T: MutVisitor>(variant: &mut Variant, vis: &mut T) {
-    let Spanned { node: Variant_ { ident, attrs, data, disr_expr }, span } = variant;
+    let Spanned { node: Variant_ { ident, attrs, id, data, disr_expr }, span } = variant;
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
+    vis.visit_id(id);
     vis.visit_variant_data(data);
     visit_opt(disr_expr, |disr_expr| vis.visit_anon_const(disr_expr));
     vis.visit_span(span);
@@ -765,11 +766,11 @@ pub fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis:
 
 pub fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut T) {
     match vdata {
-        VariantData::Struct(fields, id, _) |
+        VariantData::Struct(fields, ..) => visit_vec(fields, |field| vis.visit_struct_field(field)),
         VariantData::Tuple(fields, id) => {
             visit_vec(fields, |field| vis.visit_struct_field(field));
             vis.visit_id(id);
-        }
+        },
         VariantData::Unit(id) => vis.visit_id(id),
     }
 }

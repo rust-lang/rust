@@ -571,24 +571,20 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::Expr(..) => match def {
-                Def::StructCtor(_, CtorKind::Const) | Def::StructCtor(_, CtorKind::Fn) |
-                Def::VariantCtor(_, CtorKind::Const) | Def::VariantCtor(_, CtorKind::Fn) |
+                Def::Ctor(_, _, CtorKind::Const) | Def::Ctor(_, _, CtorKind::Fn) |
                 Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
                 Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
                 Def::SelfCtor(..) | Def::ConstParam(..) => true,
                 _ => false,
             },
             PathSource::Pat => match def {
-                Def::StructCtor(_, CtorKind::Const) |
-                Def::VariantCtor(_, CtorKind::Const) |
+                Def::Ctor(_, _, CtorKind::Const) |
                 Def::Const(..) | Def::AssociatedConst(..) |
                 Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::TupleStruct => match def {
-                Def::StructCtor(_, CtorKind::Fn) |
-                Def::VariantCtor(_, CtorKind::Fn) |
-                Def::SelfCtor(..) => true,
+                Def::Ctor(_, _, CtorKind::Fn) | Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Struct => match def {
@@ -1368,7 +1364,7 @@ impl<'a> NameBinding<'a> {
     fn is_variant(&self) -> bool {
         match self.kind {
             NameBindingKind::Def(Def::Variant(..), _) |
-            NameBindingKind::Def(Def::VariantCtor(..), _) => true,
+            NameBindingKind::Def(Def::Ctor(_, CtorOf::Variant, ..), _) => true,
             _ => false,
         }
     }
@@ -3093,16 +3089,14 @@ impl<'a> Resolver<'a> {
                         let is_syntactic_ambiguity = opt_pat.is_none() &&
                             bmode == BindingMode::ByValue(Mutability::Immutable);
                         match def {
-                            Def::StructCtor(_, CtorKind::Const) |
-                            Def::VariantCtor(_, CtorKind::Const) |
+                            Def::Ctor(_, _, CtorKind::Const) |
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
                                 self.record_use(ident, ValueNS, binding.unwrap(), false);
                                 Some(PathResolution::new(def))
                             }
-                            Def::StructCtor(..) | Def::VariantCtor(..) |
-                            Def::Const(..) | Def::Static(..) => {
+                            Def::Ctor(..) | Def::Const(..) | Def::Static(..) => {
                                 // This is unambiguously a fresh binding, either syntactically
                                 // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
                                 // to something unusable as a pattern (e.g., constructor function),
@@ -4465,8 +4459,7 @@ impl<'a> Resolver<'a> {
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             let did = match def {
-                                Def::StructCtor(did, _) | Def::VariantCtor(did, _) =>
-                                    self.parent(did),
+                                Def::Ctor(did, ..) => self.parent(did),
                                 _ => def.opt_def_id(),
                             };
                             candidates.push(ImportSuggestion { did, path });

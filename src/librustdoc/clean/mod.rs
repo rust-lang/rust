@@ -3133,7 +3133,7 @@ impl Clean<Item> for doctree::Variant {
             visibility: None,
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_hir_id(self.def.hir_id()),
+            def_id: cx.tcx.hir().local_def_id_from_hir_id(self.id),
             inner: VariantItem(Variant {
                 kind: self.def.clean(cx),
             }),
@@ -3171,13 +3171,13 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
         };
         Item {
             name: Some(self.ident.clean(cx)),
-            attrs: inline::load_attrs(cx, self.did),
-            source: cx.tcx.def_span(self.did).clean(cx),
+            attrs: inline::load_attrs(cx, self.def_id),
+            source: cx.tcx.def_span(self.def_id).clean(cx),
             visibility: Some(Inherited),
-            def_id: self.did,
+            def_id: self.def_id,
             inner: VariantItem(Variant { kind }),
-            stability: get_stability(cx, self.did),
-            deprecation: get_deprecation(cx, self.did),
+            stability: get_stability(cx, self.def_id),
+            deprecation: get_deprecation(cx, self.def_id),
         }
     }
 }
@@ -3191,12 +3191,11 @@ pub enum VariantKind {
 
 impl Clean<VariantKind> for hir::VariantData {
     fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
-        if self.is_struct() {
-            VariantKind::Struct(self.clean(cx))
-        } else if self.is_unit() {
-            VariantKind::CLike
-        } else {
-            VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
+        match self {
+            hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
+            hir::VariantData::Tuple(..) =>
+                VariantKind::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect()),
+            hir::VariantData::Unit(..) => VariantKind::CLike,
         }
     }
 }

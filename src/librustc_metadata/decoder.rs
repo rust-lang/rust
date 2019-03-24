@@ -8,7 +8,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def::{self, Def, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
                          CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::hir::map::definitions::DefPathTable;
@@ -544,13 +544,14 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    fn get_variant(&self,
-                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   item: &Entry<'_>,
-                   index: DefIndex,
-                   adt_kind: ty::AdtKind)
-                   -> ty::VariantDef
-    {
+    fn get_variant(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        item: &Entry<'_>,
+        index: DefIndex,
+        parent_did: DefId,
+        adt_kind: ty::AdtKind
+    ) -> ty::VariantDef {
         let data = match item.kind {
             EntryKind::Variant(data) |
             EntryKind::Struct(data, _) |
@@ -558,13 +559,18 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        let def_id = self.local_def_id(data.struct_ctor.unwrap_or(index));
-        let attribute_def_id = self.local_def_id(index);
+        let variant_did = if adt_kind == ty::AdtKind::Enum {
+            Some(self.local_def_id(index))
+        } else {
+            None
+        };
+        let ctor_did = data.ctor.map(|index| self.local_def_id(index));
 
         ty::VariantDef::new(
             tcx,
-            def_id,
             Ident::from_interned_str(self.item_name(index)),
+            variant_did,
+            ctor_did,
             data.discr,
             item.children.decode(self).map(|index| {
                 let f = self.entry(index);
@@ -574,9 +580,9 @@ impl<'a, 'tcx> CrateMetadata {
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
-            adt_kind,
             data.ctor_kind,
-            attribute_def_id,
+            adt_kind,
+            parent_did,
             false,
         )
     }
@@ -599,11 +605,11 @@ impl<'a, 'tcx> CrateMetadata {
             item.children
                 .decode(self)
                 .map(|index| {
-                    self.get_variant(tcx, &self.entry(index), index, kind)
+                    self.get_variant(tcx, &self.entry(index), index, did, kind)
                 })
                 .collect()
         } else {
-            std::iter::once(self.get_variant(tcx, &item, item_id, kind)).collect()
+            std::iter::once(self.get_variant(tcx, &item, item_id, did, kind)).collect()
         };
 
         tcx.alloc_adt_def(did, kind, variants, repr)
@@ -808,22 +814,22 @@ impl<'a, 'tcx> CrateMetadata {
                     // Re-export lists automatically contain constructors when necessary.
                     match def {
                         Def::Struct(..) => {
-                            if let Some(ctor_def_id) = self.get_struct_ctor_def_id(child_index) {
+                            if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
-                                let ctor_def = Def::StructCtor(ctor_def_id, ctor_kind);
-                                callback(def::Export {
-                                    def: ctor_def,
-                                    vis: self.get_visibility(ctor_def_id.index),
-                                    ident, span,
-                                });
+                                let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Struct, ctor_kind);
+                                let vis = self.get_visibility(ctor_def_id.index);
+                                callback(def::Export { def: ctor_def, vis, ident, span });
                             }
                         }
                         Def::Variant(def_id) => {
                             // Braced variants, unlike structs, generate unusable names in
                             // value namespace, they are reserved for possible future use.
+                            // It's ok to use the variant's id as a ctor id since an
+                            // error will be reported on any use of such resolution anyway.
+                            let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
-                            let ctor_def = Def::VariantCtor(def_id, ctor_kind);
-                            let vis = self.get_visibility(child_index);
+                            let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
+                            let vis = self.get_visibility(ctor_def_id.index);
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }
                         _ => {}
@@ -925,10 +931,13 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_struct_ctor_def_id(&self, node_id: DefIndex) -> Option<DefId> {
+    pub fn get_ctor_def_id(&self, node_id: DefIndex) -> Option<DefId> {
         match self.entry(node_id).kind {
             EntryKind::Struct(data, _) => {
-                data.decode(self).struct_ctor.map(|index| self.local_def_id(index))
+                data.decode(self).ctor.map(|index| self.local_def_id(index))
+            }
+            EntryKind::Variant(data) => {
+                data.decode(self).ctor.map(|index| self.local_def_id(index))
             }
             _ => None,
         }
@@ -939,11 +948,11 @@ impl<'a, 'tcx> CrateMetadata {
             return Lrc::new([]);
         }
 
-        // The attributes for a tuple struct are attached to the definition, not the ctor;
+        // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
         let def_key = self.def_key(node_id);
-        let item_id = if def_key.disambiguated_data.data == DefPathData::StructCtor {
+        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
             def_key.parent.unwrap()
         } else {
             node_id

@@ -18,7 +18,7 @@ use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTyp
 use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{CtorOf, Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -733,8 +733,16 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         subpatterns: Vec<FieldPattern<'tcx>>,
     ) -> PatternKind<'tcx> {
+        let def = match def {
+            Def::Ctor(variant_ctor_id, CtorOf::Variant, ..) => {
+                let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
+                Def::Variant(variant_id)
+            },
+            def => def,
+        };
+
         let mut kind = match def {
-            Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
+            Def::Variant(variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
@@ -757,7 +765,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
+            Def::Struct(..) | Def::Ctor(_, CtorOf::Struct, ..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
             }

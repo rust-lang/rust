@@ -125,6 +125,7 @@ pub struct Enum {
 
 pub struct Variant {
     pub name: Name,
+    pub id: hir::HirId,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub def: hir::VariantData,
     pub stab: Option<attr::Stability>,

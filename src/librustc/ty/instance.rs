@@ -150,9 +150,7 @@ impl<'tcx> InstanceDef<'tcx> {
             _ => return true
         };
         match tcx.def_key(def_id).disambiguated_data.data {
-            DefPathData::StructCtor |
-            DefPathData::EnumVariant(..) |
-            DefPathData::ClosureExpr => true,
+            DefPathData::Ctor | DefPathData::ClosureExpr => true,
             _ => false
         }
     }

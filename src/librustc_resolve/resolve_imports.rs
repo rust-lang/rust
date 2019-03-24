@@ -880,10 +880,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Ok(binding) => {
                     let imported_binding = this.import(binding, directive);
                     target_bindings[ns].set(Some(imported_binding));
-                    let conflict = this.try_define(parent, target, ns, imported_binding);
-                    if let Err(old_binding) = conflict {
-                        this.report_conflict(parent, target, ns, imported_binding, old_binding);
-                    }
+                    this.define(parent, target, ns, imported_binding);
                 }
             }
         });

@@ -2049,9 +2049,14 @@ pub struct EnumDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct VariantKind {
+    /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
+    /// Attributes of the variant.
     pub attrs: HirVec<Attribute>,
+    /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
+    pub id: HirId,
+    /// Fields and constructor id of the variant.
     pub data: VariantData,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
@@ -2063,7 +2068,7 @@ pub type Variant = Spanned<VariantKind>;
 pub enum UseKind {
     /// One import, e.g., `use foo::bar` or `use foo::bar as baz`.
     /// Also produced for each element of a list `use`, e.g.
-    // `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
+    /// `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
     Single,
 
     /// Glob import, e.g., `use foo::*`.
@@ -2170,57 +2175,37 @@ impl StructField {
     }
 }
 
-/// Fields and Ids of enum variants and structs
-///
-/// For enum variants: `NodeId` represents both an Id of the variant itself (relevant for all
-/// variant kinds) and an Id of the variant's constructor (not relevant for `Struct`-variants).
-/// One shared Id can be successfully used for these two purposes.
-/// Id of the whole enum lives in `Item`.
-///
-/// For structs: `NodeId` represents an Id of the structure's constructor, so it is not actually
-/// used for `Struct`-structs (but still present). Structures don't have an analogue of "Id of
-/// the variant itself" from enum variants.
-/// Id of the whole struct lives in `Item`.
+/// Fields and constructor ids of enum variants and structs
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum VariantData {
-    Struct(HirVec<StructField>, HirId, /* recovered */ bool),
+    /// Struct variant.
+    ///
+    /// e.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
+    Struct(HirVec<StructField>, /* recovered */ bool),
+    /// Tuple variant.
+    ///
+    /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
     Tuple(HirVec<StructField>, HirId),
+    /// Unit variant.
+    ///
+    /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(HirId),
 }
 
 impl VariantData {
+    /// Return the fields of this variant.
     pub fn fields(&self) -> &[StructField] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
             _ => &[],
         }
     }
-    pub fn hir_id(&self) -> HirId {
+
+    /// Return the `HirId` of this variant's constructor, if it has one.
+    pub fn ctor_hir_id(&self) -> Option<HirId> {
         match *self {
-            VariantData::Struct(_, hir_id, _)
-            | VariantData::Tuple(_, hir_id)
-            | VariantData::Unit(hir_id) => hir_id,
-        }
-    }
-    pub fn is_struct(&self) -> bool {
-        if let VariantData::Struct(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-    pub fn is_tuple(&self) -> bool {
-        if let VariantData::Tuple(..) = *self {
-            true
-        } else {
-            false
-        }
-    }
-    pub fn is_unit(&self) -> bool {
-        if let VariantData::Unit(..) = *self {
-            true
-        } else {
-            false
+            VariantData::Struct(_, _) => None,
+            VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
         }
     }
 }
@@ -2594,8 +2579,9 @@ pub enum Node<'hir> {
     Local(&'hir Local),
     MacroDef(&'hir MacroDef),
 
-    /// StructCtor represents a tuple struct.
-    StructCtor(&'hir VariantData),
+    /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
+    /// with synthesized constructors.
+    Ctor(&'hir VariantData),
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam),

@@ -163,7 +163,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     i == variant_index || {
                         self.hir.tcx().features().never_type &&
                         self.hir.tcx().features().exhaustive_patterns &&
-                        self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
+                        !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
                     }
                 });
                 if irrefutable {

@@ -4,7 +4,7 @@
 
 use errors::{Applicability, DiagnosticId};
 use crate::hir::{self, GenericArg, GenericArgs, ExprKind};
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::def_id::DefId;
 use crate::hir::HirVec;
 use crate::lint;
@@ -1318,10 +1318,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    let def = Def::Variant(variant_def.did);
+                    let def = Def::Variant(variant_def.def_id);
                     if permit_variants {
                         check_type_alias_enum_variants_enabled(tcx, span);
-                        tcx.check_stability(variant_def.did, Some(hir_ref_id), span);
+                        tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span);
                         return (qself_ty, def);
                     } else {
                         variant_resolution = Some(def);
@@ -1596,7 +1596,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         match def {
             // Case 1. Reference to a struct constructor.
-            Def::StructCtor(def_id, ..) |
+            Def::Ctor(def_id, CtorOf::Struct, ..) |
             Def::SelfCtor(.., def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
@@ -1608,8 +1608,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
 
             // Case 2. Reference to a variant constructor.
-            Def::Variant(def_id) |
-            Def::VariantCtor(def_id, ..) => {
+            Def::Ctor(def_id, CtorOf::Variant, ..) | Def::Variant(def_id, ..) => {
                 let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
                 let (generics_def_id, index) = if let Some(adt_def) = adt_def {
                     debug_assert!(adt_def.is_enum());
@@ -1617,6 +1616,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else if last >= 1 && segments[last - 1].args.is_some() {
                     // Everything but the penultimate segment should have no
                     // parameters at all.
+                    let mut def_id = def_id;
+
+                    // `Def::Ctor` -> `Def::Variant`
+                    if let Def::Ctor(..) = def {
+                        def_id = tcx.parent(def_id).unwrap()
+                    }
+
+                    // `Def::Variant` -> `Def::Item` (enum)
                     let enum_def_id = tcx.parent(def_id).unwrap();
                     (enum_def_id, last - 1)
                 } else {

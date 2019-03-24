@@ -572,24 +572,21 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     /// will have to lookup the adt-def by its id, and that gives us
     /// the right to access any information in the adt-def (including,
     /// e.g., the length of the various vectors).
-    fn encode_enum_variant_info(&mut self,
-                                (enum_did, Untracked(index)): (DefId, Untracked<VariantIdx>))
-                                -> Entry<'tcx> {
+    fn encode_enum_variant_info(
+        &mut self,
+        (enum_did, Untracked(index)): (DefId, Untracked<VariantIdx>),
+    ) -> Entry<'tcx> {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
-        let def_id = variant.did;
+        let def_id = variant.def_id;
         debug!("IsolatedEncoder::encode_enum_variant_info({:?})", def_id);
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            struct_ctor: None,
-            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
-                Some(self.lazy(&tcx.fn_sig(def_id)))
-            } else {
-                None
-            }
+            ctor: variant.ctor_def_id.map(|did| did.index),
+            ctor_sig: None,
         };
 
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
@@ -604,6 +601,57 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 assert!(f.did.is_local());
                 f.did.index
             })),
+            stability: self.encode_stability(def_id),
+            deprecation: self.encode_deprecation(def_id),
+
+            ty: Some(self.encode_item_type(def_id)),
+            inherent_impls: LazySeq::empty(),
+            variances: if variant.ctor_kind == CtorKind::Fn {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
+            generics: Some(self.encode_generics(def_id)),
+            predicates: Some(self.encode_predicates(def_id)),
+            predicates_defined_on: None,
+
+            mir: self.encode_optimized_mir(def_id),
+        }
+    }
+
+    /// Encode the constructor for the given variant of the given ADT. See
+    /// `encode_enum_variant_info` for an explanation about why the index is untracked.
+    fn encode_enum_variant_ctor(
+        &mut self,
+        (enum_did, Untracked(index)): (DefId, Untracked<VariantIdx>),
+    ) -> Entry<'tcx> {
+        let tcx = self.tcx;
+        let def = tcx.adt_def(enum_did);
+        let variant = &def.variants[index];
+        let def_id = variant.ctor_def_id.unwrap();
+        debug!("IsolatedEncoder::encode_enum_variant_ctor({:?})", def_id);
+
+        let data = VariantData {
+            ctor_kind: variant.ctor_kind,
+            discr: variant.discr,
+            ctor: Some(def_id.index),
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                Some(self.lazy(&tcx.fn_sig(def_id)))
+            } else {
+                None
+            }
+        };
+
+        // Variant constructors have the same visibility as the parent enums.
+        let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
+        let enum_vis = &tcx.hir().expect_item_by_hir_id(enum_id).vis;
+
+        Entry {
+            kind: EntryKind::Variant(self.lazy(&data)),
+            visibility: self.lazy(&ty::Visibility::from_hir(enum_vis, enum_id, tcx)),
+            span: self.lazy(&tcx.def_span(def_id)),
+            attributes: LazySeq::empty(),
+            children: LazySeq::empty(),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
 
@@ -678,7 +726,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let def_id = field.did;
         debug!("IsolatedEncoder::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().as_local_hir_id(variant.did).unwrap();
+        let variant_id = tcx.hir().as_local_hir_id(variant.def_id).unwrap();
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         Entry {
@@ -710,7 +758,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            struct_ctor: Some(def_id.index),
+            ctor: Some(def_id.index),
             ctor_sig: if variant.ctor_kind == CtorKind::Fn {
                 Some(self.lazy(&tcx.fn_sig(def_id)))
             } else {
@@ -1072,18 +1120,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
                 // needs to know
-                let struct_ctor = if !struct_def.is_struct() {
-                    Some(tcx.hir().local_def_id_from_hir_id(struct_def.hir_id()).index)
-                } else {
-                    None
-                };
+                let ctor = struct_def.ctor_hir_id()
+                    .map(|ctor_hir_id| tcx.hir().local_def_id_from_hir_id(ctor_hir_id).index);
 
                 let repr_options = get_repr_options(&tcx, def_id);
 
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    struct_ctor,
+                    ctor,
                     ctor_sig: None,
                 }), repr_options)
             }
@@ -1094,7 +1139,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    struct_ctor: None,
+                    ctor: None,
                     ctor_sig: None,
                 }), repr_options)
             }
@@ -1171,8 +1216,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Enum(..) => {
                     let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.variants.iter().map(|v| {
-                        assert!(v.did.is_local());
-                        v.did.index
+                        assert!(v.def_id.is_local());
+                        v.def_id.index
                     }))
                 }
                 hir::ItemKind::Struct(..) |
@@ -1765,17 +1810,23 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
                 let def = self.tcx.adt_def(def_id);
                 for (i, variant) in def.variants.iter_enumerated() {
-                    self.record(variant.did,
+                    self.record(variant.def_id,
                                 IsolatedEncoder::encode_enum_variant_info,
                                 (def_id, Untracked(i)));
+
+                    if let Some(ctor_def_id) = variant.ctor_def_id {
+                        self.record(ctor_def_id,
+                                    IsolatedEncoder::encode_enum_variant_ctor,
+                                    (def_id, Untracked(i)));
+                    }
                 }
             }
             hir::ItemKind::Struct(ref struct_def, _) => {
                 self.encode_fields(def_id);
 
                 // If the struct has a constructor, encode it.
-                if !struct_def.is_struct() {
-                    let ctor_def_id = self.tcx.hir().local_def_id_from_hir_id(struct_def.hir_id());
+                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
+                    let ctor_def_id = self.tcx.hir().local_def_id_from_hir_id(ctor_hir_id);
                     self.record(ctor_def_id,
                                 IsolatedEncoder::encode_struct_ctor,
                                 (def_id, ctor_def_id));
