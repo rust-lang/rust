@@ -181,6 +181,30 @@ fn main() {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
 
+        // Build `compiler_builtins` with `-Z emit-stack-sizes` to add stack usage information.
+        //
+        // When you use this flag with Cargo you get stack usage information on all crates compiled
+        // from source, and when you are using LTO you also get information on pre-compiled crates
+        // like `core` and `std`. However, there's an exception: `compiler_builtins`. This crate
+        // is special and doesn't participate in LTO because it's always linked as a separate object
+        // file. Due to this it's impossible to get information about this crate using `RUSTFLAGS`
+        // + Cargo, or `cargo rustc`.
+        //
+        // To make the stack usage information of this crate available to Cargo based stack usage
+        // analysis tools we compile `compiler_builtins` with the `-Z emit-stack-sizes` flag. The
+        // flag is known to currently work with targets that produce ELF files so we limit the use
+        // of the flag to those targets.
+        //
+        // NOTE(japaric) if this ever causes problem with an LLVM upgrade or any PR feel free to
+        // remove it or comment it out
+        if crate_name == "compiler_builtins"
+            && (target.contains("-linux-")
+                || target.contains("-none-eabi")
+                || target.ends_with("-none-elf"))
+        {
+            cmd.arg("-Z").arg("emit-stack-sizes");
+        }
+
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
