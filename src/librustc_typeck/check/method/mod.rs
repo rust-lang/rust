@@ -417,15 +417,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(variant_def) = variant_def {
                     check_type_alias_enum_variants_enabled(tcx, span);
 
-                    let def = if let Some(ctor_def_id) = variant_def.ctor_def_id {
-                        Def::Ctor(hir::CtorOf::Variant, ctor_def_id, variant_def.ctor_kind)
-                    } else {
-                        // Normally, there do not exist any `Def::Ctor` for `Struct`-variants but
-                        // in this case, we can get better error messages as diagnostics will
-                        // specialize the message around a `CtorKind::Fictive`.
-                        Def::Ctor(hir::CtorOf::Variant, variant_def.def_id,
-                                  hir::def::CtorKind::Fictive)
-                    };
+                    // Braced variants generate unusable names in value namespace (reserved for
+                    // possible future use), so variants resolved as associated items may refer to
+                    // them as well. It's ok to use the variant's id as a ctor id since an
+                    // error will be reported on any use of such resolution anyway.
+                    let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
+                    let def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, variant_def.ctor_kind);
 
                     tcx.check_stability(def.def_id(), Some(expr_id), span);
                     return Ok(def);

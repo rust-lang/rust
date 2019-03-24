@@ -582,31 +582,22 @@ impl<'a> Resolver<'a> {
                                        vis: ty::Visibility,
                                        expansion: Mark) {
         let ident = variant.node.ident;
-        let def_id = self.definitions.local_def_id(variant.node.id);
 
         // Define a name in the type namespace.
+        let def_id = self.definitions.local_def_id(variant.node.id);
         let def = Def::Variant(def_id);
         self.define(parent, ident, TypeNS, (def, vis, variant.span, expansion));
 
         // Define a constructor name in the value namespace.
         // Braced variants, unlike structs, generate unusable names in
         // value namespace, they are reserved for possible future use.
-        if let Some(ctor_node_id) = variant.node.data.ctor_id() {
-            let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
-            let ctor_kind = CtorKind::from_ast(&variant.node.data);
-            let ctor_def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ctor_kind);
-
-            self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
-        } else {
-            // We normally don't have a `Def::Ctor(hir::CtorOf::Variant, ..)` for
-            // `Struct`-variants, but we must define one for name resolution to succeed. This also
-            // takes place in `build_reduced_graph_for_external_crate_def`.
-            let def_id = self.definitions.local_def_id(variant.node.id);
-            let ctor_kind = CtorKind::from_ast(&variant.node.data);
-            let ctor_def = Def::Ctor(hir::CtorOf::Variant, def_id, ctor_kind);
-
-            self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
-        }
+        // It's ok to use the variant's id as a ctor id since an
+        // error will be reported on any use of such resolution anyway.
+        let ctor_node_id = variant.node.data.ctor_id().unwrap_or(variant.node.id);
+        let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
+        let ctor_kind = CtorKind::from_ast(&variant.node.data);
+        let ctor_def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ctor_kind);
+        self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -658,27 +649,13 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(def_id) => {
+            Def::Variant(..) | Def::TyAlias(..) | Def::ForeignTy(..) | Def::Existential(..) |
+            Def::TraitAlias(..) | Def::PrimTy(..) | Def::ToolMod => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
-
-                if hir::def::CtorKind::Fictive == self.cstore.ctor_kind_untracked(def_id) {
-                    // We do not normally generate `Def::Ctor(hir::CtorOf::Variant, ..)` for
-                    // `Struct`-variants. Therefore, `build_reduced_graph_for_external_crate_def`
-                    // will not be called to define one. However, name resolution currently expects
-                    // there to be one, so we generate one here. This is easy to solve for local
-                    // code, see `build_reduced_graph_for_variant` for this case.
-                    let ctor_def = Def::Ctor(hir::CtorOf::Variant, def_id,
-                                             hir::def::CtorKind::Fictive);
-
-                    let _ = self.try_define(
-                        parent, ident, ValueNS,
-                        (ctor_def, vis, DUMMY_SP, expansion).to_name_binding(self.arenas),
-                    );
-                }
             }
-            Def::TyAlias(..) | Def::ForeignTy(..) | Def::Existential(..) | Def::TraitAlias(..) |
-            Def::PrimTy(..) | Def::ToolMod => {
-                self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
+            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
+            Def::Ctor(hir::CtorOf::Variant, ..) => {
+                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Ctor(hir::CtorOf::Struct, def_id, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
@@ -688,15 +665,6 @@ impl<'a> Resolver<'a> {
                             .map(|index| DefId { krate: def_id.krate, index: index }) {
                     self.struct_constructors.insert(struct_def_id, (def, vis));
                 }
-            }
-            Def::Ctor(hir::CtorOf::Variant, ..) => {
-                let _ = self.try_define(
-                    parent, ident, ValueNS,
-                    (def, vis, DUMMY_SP, expansion).to_name_binding(self.arenas),
-                );
-            }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) => {
-                self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Trait(def_id) => {
                 let module_kind = ModuleKind::Def(def, ident.name);

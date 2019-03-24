@@ -822,14 +822,16 @@ impl<'a, 'tcx> CrateMetadata {
                                 callback(def::Export { def: ctor_def, vis, ident, span });
                             }
                         }
-                        Def::Variant(..) => {
-                            if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
-                                let ctor_kind = self.get_ctor_kind(child_index);
-                                let ctor_def = Def::Ctor(
-                                    hir::CtorOf::Variant, ctor_def_id, ctor_kind);
-                                let vis = self.get_visibility(ctor_def_id.index);
-                                callback(def::Export { def: ctor_def, ident, vis, span });
-                            }
+                        Def::Variant(def_id) => {
+                            // Braced variants, unlike structs, generate unusable names in
+                            // value namespace, they are reserved for possible future use.
+                            // It's ok to use the variant's id as a ctor id since an
+                            // error will be reported on any use of such resolution anyway.
+                            let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
+                            let ctor_kind = self.get_ctor_kind(child_index);
+                            let ctor_def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ctor_kind);
+                            let vis = self.get_visibility(ctor_def_id.index);
+                            callback(def::Export { def: ctor_def, ident, vis, span });
                         }
                         _ => {}
                     }
