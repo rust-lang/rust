@@ -9,7 +9,7 @@ pub(crate) fn flip_eq_operands(mut ctx: AssistCtx<impl HirDatabase>) -> Option<A
     let expr = ctx.node_at_offset::<BinExpr>()?;
     let allowed_ops = [BinOp::EqualityTest, BinOp::NegatedEqualityTest];
     let expr_op = expr.op()?;
-    if ! allowed_ops.iter().any(|o| *o == expr_op) {
+    if !allowed_ops.iter().any(|o| *o == expr_op) {
         return None;
     }
     let node = expr.syntax();
