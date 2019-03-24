@@ -930,7 +930,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.super_place(place, context, location);
         match *place {
             Place::Base(PlaceBase::Local(_)) => {}
-            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {}
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {
+                unreachable!()
+            }
             Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
                 if self.tcx
                        .get_attrs(def_id)

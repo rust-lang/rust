@@ -725,17 +725,14 @@ macro_rules! make_mir_visitor {
                             place: & $($mutability)? Place<'tcx>,
                             context: PlaceContext<'tcx>,
                             location: Location) {
-                use crate::mir::{Static, StaticKind};
                 match place {
                     Place::Base(PlaceBase::Local(local)) => {
                         self.visit_local(local, context, location);
                     }
-                    Place::Base(
-                        PlaceBase::Static(box Static{kind: StaticKind::Static(def_id), ..})
-                    ) => {
-                        self.visit_def_id(& $($mutability)? *def_id, location)
-                    }
-                    Place::Base(PlaceBase::Static(box Static{ty, ..})) => {
+                    Place::Base(PlaceBase::Static(box Static { kind, ty })) => {
+                        if let StaticKind::Static(def_id) = kind {
+                            self.visit_def_id(& $($mutability)? *def_id, location)
+                        }
                         self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
                     }
                     Place::Projection(proj) => {
