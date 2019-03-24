@@ -2,6 +2,7 @@
 # and modified (mainly removal of deployment) to suit rustfmt.
 
 environment:
+  RUST_MIN_STACK: 8388608
   global:
     PROJECT_NAME: rustfmt
   matrix:

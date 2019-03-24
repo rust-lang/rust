@@ -45,7 +45,7 @@ script:
   - |
     if [ -z ${INTEGRATION} ]; then
       cargo build
-      cargo test
+      RUST_MIN_STACK=8388608 cargo test
     else
       ./ci/integration.sh
     fi
