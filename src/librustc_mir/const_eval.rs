@@ -654,7 +654,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                                         v));
                     v
                 },
-                Err(ErrorReported) => ErrorHandled::Reported,
+                Err(_) => ErrorHandled::Reported,
             }
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
