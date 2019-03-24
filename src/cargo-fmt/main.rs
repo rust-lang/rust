@@ -6,7 +6,8 @@
 use cargo_metadata;
 use getopts;
 
-use std::collections::{HashMap, HashSet};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
@@ -122,7 +123,7 @@ fn handle_command_status(status: Result<i32, io::Error>, opts: &getopts::Options
 }
 
 fn get_version(verbosity: Verbosity) -> Result<i32, io::Error> {
-    run_rustfmt(&HashSet::new(), &[String::from("--version")], verbosity)
+    run_rustfmt(&BTreeSet::new(), &[String::from("--version")], verbosity)
 }
 
 fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32, io::Error> {
@@ -131,7 +132,7 @@ fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32
         .iter()
         .any(|s| ["--print-config", "-h", "--help", "-V", "--version"].contains(&s.as_str()))
     {
-        HashSet::new()
+        BTreeSet::new()
     } else {
         get_targets(strategy)?
     };
@@ -175,6 +176,18 @@ impl PartialEq for Target {
     }
 }
 
+impl PartialOrd for Target {
+    fn partial_cmp(&self, other: &Target) -> Option<Ordering> {
+        Some(self.path.cmp(&other.path))
+    }
+}
+
+impl Ord for Target {
+    fn cmp(&self, other: &Target) -> Ordering {
+        self.path.cmp(&other.path)
+    }
+}
+
 impl Eq for Target {}
 
 impl Hash for Target {
@@ -204,12 +217,12 @@ impl CargoFmtStrategy {
 }
 
 /// Based on the specified `CargoFmtStrategy`, returns a set of main source files.
-fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error> {
-    let mut targets = HashSet::new();
+fn get_targets(strategy: &CargoFmtStrategy) -> Result<BTreeSet<Target>, io::Error> {
+    let mut targets = BTreeSet::new();
 
     match *strategy {
         CargoFmtStrategy::Root => get_targets_root_only(&mut targets)?,
-        CargoFmtStrategy::All => get_targets_recursive(None, &mut targets, &mut HashSet::new())?,
+        CargoFmtStrategy::All => get_targets_recursive(None, &mut targets, &mut BTreeSet::new())?,
         CargoFmtStrategy::Some(ref hitlist) => get_targets_with_hitlist(hitlist, &mut targets)?,
     }
 
@@ -223,7 +236,7 @@ fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error
     }
 }
 
-fn get_targets_root_only(targets: &mut HashSet<Target>) -> Result<(), io::Error> {
+fn get_targets_root_only(targets: &mut BTreeSet<Target>) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(None)?;
     let current_dir = env::current_dir()?.canonicalize()?;
     let current_dir_manifest = current_dir.join("Cargo.toml");
@@ -243,8 +256,8 @@ fn get_targets_root_only(targets: &mut HashSet<Target>) -> Result<(), io::Error>
 
 fn get_targets_recursive(
     manifest_path: Option<&Path>,
-    mut targets: &mut HashSet<Target>,
-    visited: &mut HashSet<String>,
+    mut targets: &mut BTreeSet<Target>,
+    visited: &mut BTreeSet<String>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path)?;
 
@@ -275,11 +288,11 @@ fn get_targets_recursive(
 
 fn get_targets_with_hitlist(
     hitlist: &[String],
-    targets: &mut HashSet<Target>,
+    targets: &mut BTreeSet<Target>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(None)?;
 
-    let mut workspace_hitlist: HashSet<&String> = HashSet::from_iter(hitlist);
+    let mut workspace_hitlist: BTreeSet<&String> = BTreeSet::from_iter(hitlist);
 
     for package in metadata.packages {
         if workspace_hitlist.remove(&package.name) {
@@ -300,14 +313,14 @@ fn get_targets_with_hitlist(
     }
 }
 
-fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Target>) {
+fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut BTreeSet<Target>) {
     for target in target_paths {
         targets.insert(Target::from_target(target));
     }
 }
 
 fn run_rustfmt(
-    targets: &HashSet<Target>,
+    targets: &BTreeSet<Target>,
     fmt_args: &[String],
     verbosity: Verbosity,
 ) -> Result<i32, io::Error> {
@@ -318,9 +331,8 @@ fn run_rustfmt(
                 println!("[{} ({})] {:?}", t.kind, t.edition, t.path)
             }
         })
-        .map(|t| (&t.edition, &t.path))
-        .fold(HashMap::new(), |mut h, t| {
-            h.entry(t.0).or_insert_with(Vec::new).push(t.1);
+        .fold(BTreeMap::new(), |mut h, t| {
+            h.entry(&t.edition).or_insert_with(Vec::new).push(&t.path);
             h
         });
 
