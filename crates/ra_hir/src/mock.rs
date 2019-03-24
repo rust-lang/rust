@@ -9,7 +9,7 @@ use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 use rustc_hash::FxHashMap;
 
-use crate::{db, HirInterner};
+use crate::{db, HirInterner, diagnostics::DiagnosticSink, DefDatabase};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -68,6 +68,24 @@ impl MockDatabase {
             }
         }
         self.set_crate_graph(Arc::new(crate_graph))
+    }
+
+    pub fn diagnostics(&self) -> String {
+        let mut buf = String::from("\n");
+        let mut files: Vec<FileId> = self.files.values().map(|&it| it).collect();
+        files.sort();
+        for file in files {
+            let module = crate::source_binder::module_from_file_id(self, file).unwrap();
+            module.diagnostics(
+                self,
+                &mut DiagnosticSink::new(|d| {
+                    let source_file = self.hir_parse(d.file());
+                    let syntax_node = d.syntax_node().to_node(&source_file);
+                    buf += &format!("{:?}: {}\n", syntax_node.text(), d.message());
+                }),
+            )
+        }
+        buf
     }
 
     fn from_fixture(fixture: &str) -> (MockDatabase, Option<FilePosition>) {
