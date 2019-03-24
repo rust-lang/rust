@@ -775,6 +775,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             Json::Object(crate_data))
 }
 
+const MINIFIED_VARIABLES: &str = "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={};";
+
 fn write_shared(
     cx: &Context,
     krate: &clean::Crate,
@@ -952,10 +954,11 @@ themePicker.onblur = handleThemeButtonsBlur;
         krate: &str,
         key: &str,
         for_search_index: bool,
-    ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>)> {
+    ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>, bool)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
         let mut variables = Vec::new();
+        let mut is_minified = false;
 
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
@@ -964,10 +967,11 @@ themePicker.onblur = handleThemeButtonsBlur;
                     variables.push(line.clone());
                     continue;
                 }
-                if !line.starts_with(key) {
+                if !line.starts_with(key) || line.starts_with(&format!(r#"{}["{}"]"#, key, krate)) {
                     continue;
                 }
-                if line.starts_with(&format!(r#"{}["{}"]"#, key, krate)) {
+                if line.starts_with(MINIFIED_VARIABLES) {
+                    is_minified = true;
                     continue;
                 }
                 ret.push(line.to_string());
@@ -977,7 +981,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                  .unwrap_or_else(|| String::new()));
             }
         }
-        Ok((ret, krates, variables))
+        Ok((ret, krates, variables, is_minified))
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
@@ -992,7 +996,8 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
     {
-        let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
+        let (mut all_aliases, _, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false),
+                                                  &dst);
         let mut w = try_err!(File::create(&dst), &dst);
         let mut output = String::with_capacity(100);
         for (alias, items) in &cache.aliases {
@@ -1088,33 +1093,37 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
 
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
-        let (mut all_sources, _krates, _) = try_err!(collect(&dst, &krate.name, "sourcesIndex",
-                                                             false),
-                                                     &dst);
+        let (mut all_sources, _krates, _, _) = try_err!(collect(&dst, &krate.name, "sourcesIndex",
+                                                                false),
+                                                        &dst);
         all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
         let mut w = try_err!(File::create(&dst), &dst);
         try_err!(writeln!(&mut w,
-                          "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();",
+                          "var N=null,sourcesIndex={{}};\n{}\ncreateSourceSidebar();",
                           all_sources.join("\n")),
                  &dst);
     }
 
     // Update the search index
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
-    let (mut all_indexes, mut krates, variables) = try_err!(collect(&dst,
-                                                                    &krate.name,
-                                                                    "searchIndex",
-                                                                    true), &dst);
+    let (mut all_indexes, mut krates, variables, is_minified) = try_err!(collect(&dst,
+                                                                                 &krate.name,
+                                                                                 "searchIndex",
+                                                                                 true), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
-    try_err!(writeln!(&mut w, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
+    if is_minified || options.enable_minification {
+        try_err!(writeln!(&mut w, "{}", MINIFIED_VARIABLES), &dst);
+    } else {
+        try_err!(writeln!(&mut w, "var searchIndex={{}};"), &dst);
+    }
     try_err!(write_minify_replacer(&mut w,
                                    &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
                                    options.enable_minification),
@@ -1219,9 +1228,9 @@ themePicker.onblur = handleThemeButtonsBlur;
                             remote_item_type.css_class(),
                             remote_path[remote_path.len() - 1]));
 
-        let (mut all_implementors, _, _) = try_err!(collect(&mydst, &krate.name, "implementors",
-                                                            false),
-                                                    &mydst);
+        let (mut all_implementors, _, _, _) = try_err!(collect(&mydst, &krate.name, "implementors",
+                                                               false),
+                                                       &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
