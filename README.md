@@ -179,6 +179,18 @@ needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
 ## Tips
 
 * For things you do not want rustfmt to mangle, use `#[rustfmt::skip]`
+* To prevent rustfmt from formatting a macro,
+  use `#[rustfmt::skip::macros(target_macro_name)]`
+
+  Example:
+
+    ```rust
+    #[rustfmt::skip::macros(html)]
+    fn main() {
+        let macro_result1 = html! { <div>
+    Hello</div>
+        }.to_string();
+    ```
 * When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in
   target file directory or its parents to override the default settings of
   rustfmt. You can generate a file containing the default configuration with
