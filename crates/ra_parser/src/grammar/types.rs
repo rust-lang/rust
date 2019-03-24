@@ -202,12 +202,15 @@ pub(super) fn for_binder(p: &mut Parser) {
 
 // test for_type
 // type A = for<'a> fn() -> ();
+// fn foo<T>(_t: &T) where for<'a> &'a T: Iterator {}
+// fn bar<T>(_t: &T) where for<'a> &'a mut T: Iterator {}
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(FOR_KW));
     let m = p.start();
     for_binder(p);
     match p.current() {
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
+        AMP => reference_type(p),
         _ if paths::is_path_start(p) => path_type_(p, false),
         _ => p.error("expected a path"),
     }
