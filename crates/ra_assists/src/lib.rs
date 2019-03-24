@@ -112,6 +112,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         remove_dbg::remove_dbg,
         auto_import::auto_import,
         add_missing_impl_members::add_missing_impl_members,
+        add_missing_impl_members::add_missing_default_members,
     ]
 }
 
