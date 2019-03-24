@@ -1224,17 +1224,21 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
+                        if let ty::Infer(..) = self.expected_ty.sty {
+                            if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                                if !sp.overlaps(cause.span) {
+                                    db.span_label(*sp, reason_label);
+                                }
                             }
                         }
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
-                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
-                            if !sp.overlaps(cause.span) {
-                                db.span_label(*sp, reason_label);
+                        if let ty::Infer(..) = self.expected_ty.sty {
+                            if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                                if !sp.overlaps(cause.span) {
+                                    db.span_label(*sp, reason_label);
+                                }
                             }
                         }
                     }
