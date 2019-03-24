@@ -1,4 +1,4 @@
-// In contrast to `region-escape-via-bound-invariant`, in this case we
+// In contrast to `region-escape-via-bound.rs`, in this case we
 // *can* return a value of type `&'x u32`, even though `'x` does not
 // appear in the bounds. This is because `&` is contravariant, and so
 // we are *actually* returning a `&'y u32`.

@@ -404,7 +404,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // For soundness, we need to ensure that every region that is captured by the opaque type
         // but does not explicitly appear in the opaque type outlives the actual (concrete) type.
         // This allows for invariant lifetimes to be captured by opaque types as long as
-        // short-lived lifetimes are not permitted to escape and cause UB. 
+        // short-lived lifetimes are not permitted to escape and cause UB.
         let opaque_substs_regions = opaque_defn.substs.regions().collect();
         let captured_regions = concrete_ty_regions.difference(&opaque_substs_regions);
         for captured_region in captured_regions {
