@@ -2685,8 +2685,8 @@ impl MirPass for TypeckMir {
             return;
         }
 
-        if tcx.is_struct_constructor(def_id) {
-            // We just assume that the automatically generated struct constructors are
+        if tcx.is_constructor(def_id) {
+            // We just assume that the automatically generated struct/variant constructors are
             // correct. See the comment in the `mir_borrowck` implementation for an
             // explanation why we need this.
             return;

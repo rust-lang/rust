@@ -2960,8 +2960,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             let def_key = self.def_key(id);
             match def_key.disambiguated_data.data {
-                // The name of a `StructCtor` or `VariantCtor` is that of its parent.
-                hir_map::DefPathData::StructCtor | hir_map::DefPathData::VariantCtor =>
+                // The name of a constructor is that of its parent.
+                hir_map::DefPathData::Ctor =>
                     self.item_name(DefId {
                         krate: id.krate,
                         index: def_key.parent.unwrap()

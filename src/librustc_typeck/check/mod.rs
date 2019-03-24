@@ -5334,7 +5334,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 
-    // Rewrite `SelfCtor` to `StructCtor`
+    // Rewrite `SelfCtor` to `Ctor`
     pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> (Def, DefId, Ty<'tcx>) {
         let tcx = self.tcx;
         if let Def::SelfCtor(impl_def_id) = def {

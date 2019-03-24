@@ -160,10 +160,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                     // If this is a unit or tuple-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_id() {
-                        this.create_def(ctor_hir_id,
-                                        DefPathData::StructCtor,
-                                        REGULAR_SPACE,
-                                        i.span);
+                        this.create_def(ctor_hir_id, DefPathData::Ctor, REGULAR_SPACE, i.span);
                     }
                 }
                 _ => {}
@@ -199,10 +196,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                                   v.span);
         self.with_parent(def, |this| {
             if let Some(ctor_hir_id) = v.node.data.ctor_id() {
-                this.create_def(ctor_hir_id,
-                                DefPathData::VariantCtor,
-                                REGULAR_SPACE,
-                                v.span);
+                this.create_def(ctor_hir_id, DefPathData::Ctor, REGULAR_SPACE, v.span);
             }
             visit::walk_variant(this, v, g, item_id)
         });

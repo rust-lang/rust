@@ -947,11 +947,11 @@ impl<'a, 'tcx> CrateMetadata {
             return Lrc::new([]);
         }
 
-        // The attributes for a tuple struct are attached to the definition, not the ctor;
+        // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
         let def_key = self.def_key(node_id);
-        let item_id = if def_key.disambiguated_data.data == DefPathData::StructCtor {
+        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
             def_key.parent.unwrap()
         } else {
             node_id
