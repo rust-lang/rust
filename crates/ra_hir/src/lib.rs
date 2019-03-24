@@ -27,6 +27,7 @@ mod ids;
 mod name;
 mod nameres;
 mod adt;
+mod traits;
 mod type_alias;
 mod type_ref;
 mod ty;

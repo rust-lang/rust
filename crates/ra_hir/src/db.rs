@@ -14,6 +14,7 @@ use crate::{
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
+    traits::TraitData, Trait
 };
 
 #[salsa::query_group(DefDatabaseStorage)]
@@ -26,6 +27,9 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
 
     #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
     fn enum_data(&self, e: Enum) -> Arc<EnumData>;
+
+    #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
+    fn trait_data(&self, t: Trait) -> Arc<TraitData>;
 
     #[salsa::invoke(crate::ids::SourceFileItems::file_items_query)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;

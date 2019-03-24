@@ -11,7 +11,7 @@ use crate::{
     ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{Ty, TypeCtor},
-    nameres::CrateModuleId,
+    nameres::CrateModuleId, resolve::Resolver, traits::TraitItem
 
 };
 
@@ -73,18 +73,18 @@ impl CrateImplBlocks {
 
             let target_ty = impl_block.target_ty(db);
 
-            if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
-                self.impls
-                    .entry(target_ty_fp)
-                    .or_insert_with(Vec::new)
-                    .push((module.module_id, impl_id));
-            }
-
             if let Some(tr) = impl_block.target_trait(db) {
                 self.impls_by_trait
                     .entry(tr.id)
                     .or_insert_with(Vec::new)
                     .push((module.module_id, impl_id));
+            } else {
+                if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
+                    self.impls
+                        .entry(target_ty_fp)
+                        .or_insert_with(Vec::new)
+                        .push((module.module_id, impl_id));
+                }
             }
         }
 
@@ -120,20 +120,52 @@ fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
 }
 
 impl Ty {
-    // FIXME: cache this as a query?
-    // - if so, what signature? (TyFingerprint, Name)?
-    // - or maybe cache all names and def_ids of methods per fingerprint?
     /// Look up the method with the given name, returning the actual autoderefed
     /// receiver type (but without autoref applied yet).
-    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<(Ty, Function)> {
-        self.iterate_methods(db, |ty, f| {
+    pub fn lookup_method(
+        self,
+        db: &impl HirDatabase,
+        name: &Name,
+        resolver: &Resolver,
+    ) -> Option<(Ty, Function)> {
+        // FIXME: what has priority, an inherent method that needs autoderefs or a trait method?
+        let inherent_method = self.clone().iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
                 Some((ty.clone(), f))
             } else {
                 None
             }
-        })
+        });
+        inherent_method.or_else(|| self.lookup_trait_method(db, name, resolver))
+    }
+
+    fn lookup_trait_method(
+        self,
+        db: &impl HirDatabase,
+        name: &Name,
+        resolver: &Resolver,
+    ) -> Option<(Ty, Function)> {
+        let mut candidates = Vec::new();
+        for t in resolver.traits_in_scope() {
+            let data = t.trait_data(db);
+            for item in data.items() {
+                match item {
+                    &TraitItem::Function(m) => {
+                        let sig = m.signature(db);
+                        if sig.name() == name && sig.has_self_param() {
+                            candidates.push((t, m));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // FIXME the implements check may result in other obligations or unifying variables?
+        candidates.retain(|(_t, _m)| /* self implements t */ true);
+        // FIXME what happens if there are still multiple potential candidates?
+        let (_chosen_trait, chosen_method) = candidates.first()?;
+        Some((self.clone(), *chosen_method))
     }
 
     // This would be nicer if it just returned an iterator, but that runs into

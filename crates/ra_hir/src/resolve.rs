@@ -11,7 +11,7 @@ use crate::{
     generics::GenericParams,
     expr::{scope::{ExprScopes, ScopeId}, PatId, Body},
     impl_block::ImplBlock,
-    path::Path,
+    path::Path, Trait
 };
 
 #[derive(Debug, Clone, Default)]
@@ -173,6 +173,21 @@ impl Resolver {
             });
         }
         names
+    }
+
+    pub(crate) fn traits_in_scope<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
+        // FIXME prelude
+        self.scopes
+            .iter()
+            .rev()
+            .flat_map(|scope| {
+                match scope {
+                    Scope::ModuleScope(m) => Some(m.crate_def_map[m.module_id].scope.traits()),
+                    _ => None,
+                }
+                .into_iter()
+            })
+            .flat_map(|i| i)
     }
 
     fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
