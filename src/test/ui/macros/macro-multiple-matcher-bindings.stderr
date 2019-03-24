@@ -1,15 +1,19 @@
 warning: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:11:6
+  --> $DIR/macro-multiple-matcher-bindings.rs:12:6
    |
 LL |     ($a:ident, $a:ident) => {};
    |      ^^^^^^^^  ^^^^^^^^
    |
-   = note: #[warn(duplicate_matcher_binding_name)] on by default
+note: lint level defined here
+  --> $DIR/macro-multiple-matcher-bindings.rs:9:9
+   |
+LL | #![warn(duplicate_matcher_binding_name)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:12:6
+  --> $DIR/macro-multiple-matcher-bindings.rs:13:6
    |
 LL |     ($a:ident, $a:path) => {};
    |      ^^^^^^^^  ^^^^^^^
@@ -18,7 +22,7 @@ LL |     ($a:ident, $a:path) => {};
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:21:6
+  --> $DIR/macro-multiple-matcher-bindings.rs:22:6
    |
 LL |     ($a:ident, $($a:ident),*) => {};
    |      ^^^^^^^^    ^^^^^^^^
@@ -27,7 +31,7 @@ LL |     ($a:ident, $($a:ident),*) => {};
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
-  --> $DIR/macro-multiple-matcher-bindings.rs:22:8
+  --> $DIR/macro-multiple-matcher-bindings.rs:23:8
    |
 LL |     ($($a:ident)+ # $($($a:path),+);*) => {};
    |        ^^^^^^^^         ^^^^^^^
