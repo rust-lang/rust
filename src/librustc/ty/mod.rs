@@ -1810,12 +1810,12 @@ bitflags! {
 /// Definition of a variant -- a struct's fields or a enum variant.
 #[derive(Debug)]
 pub struct VariantDef {
-    /// `DefId` that identifies this enum variant. If this `VariantDef` is part of a struct or
-    /// union then this is `None`.
-    variant_did: Option<DefId>,
-    /// `DefId` that identifies this enum variant or struct's constructor. If this is a
-    /// `Struct`-variant then this is `None`.
-    ctor_did: Option<DefId>,
+    /// `DefId` that identifies the variant itself.
+    /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
+    pub def_id: DefId,
+    /// `DefId` that identifies the variant's constructor.
+    /// If this variant is a struct variant, then this is `None`.
+    pub ctor_def_id: Option<DefId>,
     /// Variant or struct name.
     pub ident: Ident,
     /// Discriminant of this variant.
@@ -1824,11 +1824,6 @@ pub struct VariantDef {
     pub fields: Vec<FieldDef>,
     /// Type of constructor of variant.
     pub ctor_kind: CtorKind,
-    /// `DefId` of the parent `AdtDef` representing the struct or enum. This is required as there
-    /// is a valid scenario where this type represents a `Struct`-struct and both `ctor_did` and
-    /// `variant_did` would be `None` and we would still want a way to get back to the original
-    /// `AdtDef`.
-    parent_did: DefId,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
     /// Recovered?
@@ -1856,7 +1851,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ident: Ident,
         variant_did: Option<DefId>,
-        ctor_did: Option<DefId>,
+        ctor_def_id: Option<DefId>,
         discr: VariantDiscr,
         fields: Vec<FieldDef>,
         ctor_kind: CtorKind,
@@ -1865,9 +1860,9 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         recovered: bool,
     ) -> Self {
         debug!(
-            "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_did = {:?}, discr = {:?},
+            "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
              fields = {:?}, ctor_kind = {:?}, adt_kind = {:?}, parent_did = {:?})",
-             ident, variant_did, ctor_did, discr, fields, ctor_kind, adt_kind, parent_did,
+             ident, variant_did, ctor_def_id, discr, fields, ctor_kind, adt_kind, parent_did,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1877,14 +1872,13 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         }
 
         VariantDef {
-            variant_did,
-            ctor_did,
+            def_id: variant_did.unwrap_or(parent_did),
+            ctor_def_id,
             ident,
             discr,
             fields,
             ctor_kind,
             flags,
-            parent_did,
             recovered,
         }
     }
@@ -1894,62 +1888,16 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
     }
-
-    /// Returns `true` if this `VariantDef` represents a enum's variant.
-    #[inline]
-    pub fn is_enum_variant(&self) -> bool {
-        self.variant_did.is_some()
-    }
-
-    /// Returns `true` if this `VariantDef` represents a struct.
-    #[inline]
-    pub fn is_struct(&self) -> bool {
-        !self.is_enum_variant()
-    }
-
-    /// Returns the `DefId` of this variant if this `VariantDef` represents an enum's variant, or
-    /// returns the `DefId` of the parent struct.
-    #[inline]
-    pub fn variant_did_or_parent_struct_did(&self) -> DefId {
-        self.variant_did.unwrap_or(self.parent_did)
-    }
-
-    /// Returns `true` if the variant is defined in the local crate.
-    #[inline]
-    pub fn is_local(&self) -> bool {
-        self.variant_did_or_parent_struct_did().krate == LOCAL_CRATE
-    }
-
-    /// Returns the `DefId` of this variant if this `VariantDef` represents an enum's variant or
-    /// panics.
-    #[inline]
-    pub fn variant_did(&self) -> DefId {
-        self.variant_did.expect("enum variant without a variant id")
-    }
-
-    /// Returns the `DefId` of this variant's constructor if this is a unit or
-    /// tuple-variant/struct.
-    #[inline]
-    pub fn ctor_did(&self) -> Option<DefId> {
-        self.ctor_did
-    }
-
-    /// Returns the `AdtDef` representing the struct or enum associated with this `VariantDef`.
-    #[inline]
-    pub fn adt_def(&self, tcx: TyCtxt<'a, 'tcx, 'gcx>) -> &'tcx AdtDef {
-        tcx.adt_def(self.parent_did)
-    }
 }
 
 impl_stable_hash_for!(struct VariantDef {
-    variant_did,
-    ctor_did,
+    def_id,
+    ctor_def_id,
     ident -> (ident.name),
     discr,
     fields,
     ctor_kind,
     flags,
-    parent_did,
     recovered
 });
 
@@ -2204,7 +2152,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_did.is_some() {
+        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_def_id.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
@@ -2351,51 +2299,29 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
-    pub fn variant_with_variant_id(&self, vid: DefId) -> &VariantDef {
-        self.variants
-            .iter()
-            .find(|v| v.variant_did.map(|did| did == vid).unwrap_or(false))
-            .expect("variant_with_variant_id: unknown variant")
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
+        self.variants.iter().find(|v| v.def_id == vid)
+            .expect("variant_with_id: unknown variant")
     }
 
     pub fn variant_with_ctor_id(&self, cid: DefId) -> &VariantDef {
-        self.variants
-            .iter()
-            .find(|v| v.ctor_did.map(|did| did == cid).unwrap_or(false))
+        self.variants.iter().find(|v| v.ctor_def_id == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
-    pub fn variant_index_with_variant_id(&self, vid: DefId) -> VariantIdx {
-        self.variants
-            .iter_enumerated()
-            .find(|(_, v)| v.variant_did.map(|did| did == vid).unwrap_or(false))
-            .expect("variant_index_with_variant_id: unknown variant")
-            .0
+    pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
+        self.variants.iter_enumerated().find(|(_, v)| v.def_id == vid)
+            .expect("variant_index_with_id: unknown variant").0
     }
 
     pub fn variant_index_with_ctor_id(&self, cid: DefId) -> VariantIdx {
-        self.variants
-            .iter_enumerated()
-            .find(|(_, v)| v.ctor_did.map(|did| did == cid).unwrap_or(false))
-            .expect("variant_index_with_ctor_id: unknown variant")
-            .0
-    }
-
-    pub fn variant_index_with_ctor_or_variant_id(&self, id: DefId) -> VariantIdx {
-        self.variants
-            .iter_enumerated()
-            .find(|(_, v)| {
-                let ctor = v.ctor_did.map(|did| did == id);
-                let variant = v.variant_did.map(|did| did == id);
-                ctor.or(variant).unwrap_or(false)
-            })
-            .expect("variant_index_with_ctor_or_variant_id: unknown variant")
-            .0
+        self.variants.iter_enumerated().find(|(_, v)| v.ctor_def_id == Some(cid))
+            .expect("variant_index_with_ctor_id: unknown variant").0
     }
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {
         match def {
-            Def::Variant(vid) => self.variant_with_variant_id(vid),
+            Def::Variant(vid) => self.variant_with_id(vid),
             Def::Ctor(hir::CtorOf::Variant, cid, ..) => self.variant_with_ctor_id(cid),
             Def::Struct(..) | Def::Ctor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
@@ -2933,8 +2859,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant.fields.iter().position(|field| {
-            let did = variant.variant_did.unwrap_or(variant.parent_did);
-            self.adjust_ident(ident, did, hir::DUMMY_HIR_ID).0 == field.ident.modern()
+            self.adjust_ident(ident, variant.def_id, hir::DUMMY_HIR_ID).0 == field.ident.modern()
         })
     }
 
@@ -3011,7 +2936,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match def {
             Def::Variant(did) => {
                 let enum_did = self.parent(did).unwrap();
-                self.adt_def(enum_did).variant_with_variant_id(did)
+                self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
@@ -3027,11 +2952,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
         }
-    }
-
-    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
-    pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
-        variant_def.parent_did
     }
 
     pub fn item_name(self, id: DefId) -> InternedString {

@@ -757,7 +757,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     PatternKind::Variant {
                         adt_def,
                         substs,
-                        variant_index: adt_def.variant_index_with_variant_id(variant_id),
+                        variant_index: adt_def.variant_index_with_id(variant_id),
                         subpatterns,
                     }
                 } else {

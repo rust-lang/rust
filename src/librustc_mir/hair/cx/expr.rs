@@ -486,7 +486,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 Def::Variant(variant_id) => {
                                     assert!(base.is_none());
 
-                                    let index = adt.variant_index_with_variant_id(variant_id);
+                                    let index = adt.variant_index_with_id(variant_id);
                                     let user_provided_types = cx.tables().user_provided_types();
                                     let user_ty = user_provided_types.get(expr.hir_id)
                                         .map(|u_ty| *u_ty);

@@ -104,33 +104,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn ty_inhabitedness_forest(self, ty: Ty<'tcx>) -> DefIdForest {
         ty.uninhabited_from(self)
     }
-
-    pub fn is_enum_variant_uninhabited_from(self,
-                                            module: DefId,
-                                            variant: &'tcx VariantDef,
-                                            substs: SubstsRef<'tcx>)
-                                            -> bool
-    {
-        self.variant_inhabitedness_forest(variant, substs).contains(self, module)
-    }
-
-    pub fn is_variant_uninhabited_from_all_modules(self,
-                                                   variant: &'tcx VariantDef,
-                                                   substs: SubstsRef<'tcx>)
-                                                   -> bool
-    {
-        !self.variant_inhabitedness_forest(variant, substs).is_empty()
-    }
-
-    fn variant_inhabitedness_forest(self, variant: &'tcx VariantDef, substs: SubstsRef<'tcx>)
-                                    -> DefIdForest {
-        // Determine the ADT kind:
-        let adt_def_id = self.adt_def_id_of_variant(variant);
-        let adt_kind = self.adt_def(adt_def_id).adt_kind();
-
-        // Compute inhabitedness forest:
-        variant.uninhabited_from(self, substs, adt_kind)
-    }
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
@@ -148,7 +121,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
 impl<'a, 'gcx, 'tcx> VariantDef {
     /// Calculate the forest of DefIds from which this variant is visibly uninhabited.
-    fn uninhabited_from(
+    pub fn uninhabited_from(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         substs: SubstsRef<'tcx>,

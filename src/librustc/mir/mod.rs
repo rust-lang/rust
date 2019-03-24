@@ -2405,13 +2405,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
-                        let did = variant_def.variant_did_or_parent_struct_did();
 
                         let f = &mut *fmt;
                         ty::tls::with(|tcx| {
                             let substs = tcx.lift(&substs).expect("could not lift for printing");
                             FmtPrinter::new(tcx, f, Namespace::ValueNS)
-                                .print_def_path(did, substs)?;
+                                .print_def_path(variant_def.def_id, substs)?;
                             Ok(())
                         })?;
 

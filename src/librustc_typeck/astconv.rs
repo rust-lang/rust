@@ -1318,11 +1318,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    let did = variant_def.variant_did();
-                    let def = Def::Variant(did);
+                    let def = Def::Variant(variant_def.def_id);
                     if permit_variants {
                         check_type_alias_enum_variants_enabled(tcx, span);
-                        tcx.check_stability(did, Some(hir_ref_id), span);
+                        tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span);
                         return (qself_ty, def);
                     } else {
                         variant_resolution = Some(def);

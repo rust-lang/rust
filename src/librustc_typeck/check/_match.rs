@@ -947,8 +947,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let ident = tcx.adjust_ident(
-                field.ident, variant.variant_did_or_parent_struct_did(), self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.def_id, self.body_id).0;
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,
@@ -996,19 +995,18 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                             .join(", ")), "these", "s")
             };
             let spans = inexistent_fields.iter().map(|(span, _)| *span).collect::<Vec<_>>();
-            let did = variant.variant_did_or_parent_struct_did();
             let mut err = struct_span_err!(tcx.sess,
                                            spans,
                                            E0026,
                                            "{} `{}` does not have {}",
                                            kind_name,
-                                           tcx.def_path_str(did),
+                                           tcx.def_path_str(variant.def_id),
                                            field_names);
             if let Some((span, ident)) = inexistent_fields.last() {
                 err.span_label(*span,
                                format!("{} `{}` does not have {} field{}",
                                        kind_name,
-                                       tcx.def_path_str(did),
+                                       tcx.def_path_str(variant.def_id),
                                        t,
                                        plural));
                 if plural == "" {

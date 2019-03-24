@@ -579,13 +579,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
-        let def_id = variant.variant_did();
+        let def_id = variant.def_id;
         debug!("IsolatedEncoder::encode_enum_variant_info({:?})", def_id);
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            ctor: variant.ctor_did().map(|did| did.index),
+            ctor: variant.ctor_def_id.map(|did| did.index),
             ctor_sig: None,
         };
 
@@ -628,7 +628,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
-        let def_id = variant.ctor_did().unwrap();
+        let def_id = variant.ctor_def_id.unwrap();
         debug!("IsolatedEncoder::encode_enum_variant_ctor({:?})", def_id);
 
         let data = VariantData {
@@ -726,9 +726,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let def_id = field.did;
         debug!("IsolatedEncoder::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir()
-            .as_local_hir_id(variant.variant_did_or_parent_struct_did())
-            .unwrap();
+        let variant_id = tcx.hir().as_local_hir_id(variant.def_id).unwrap();
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         Entry {
@@ -1218,9 +1216,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemKind::Enum(..) => {
                     let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.variants.iter().map(|v| {
-                        let did = v.variant_did();
-                        assert!(did.is_local());
-                        did.index
+                        assert!(v.def_id.is_local());
+                        v.def_id.index
                     }))
                 }
                 hir::ItemKind::Struct(..) |
@@ -1813,12 +1810,12 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
                 let def = self.tcx.adt_def(def_id);
                 for (i, variant) in def.variants.iter_enumerated() {
-                    self.record(variant.variant_did(),
+                    self.record(variant.def_id,
                                 IsolatedEncoder::encode_enum_variant_info,
                                 (def_id, Untracked(i)));
 
-                    if let Some(ctor_hir_did) = variant.ctor_did() {
-                        self.record(ctor_hir_did,
+                    if let Some(ctor_def_id) = variant.ctor_def_id {
+                        self.record(ctor_def_id,
                                     IsolatedEncoder::encode_enum_variant_ctor,
                                     (def_id, Untracked(i)));
                     }

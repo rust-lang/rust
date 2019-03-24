@@ -215,7 +215,7 @@ impl<'tcx> cmt_<'tcx> {
         };
         let variant_def = match self.cat {
             Categorization::Downcast(_, variant_did) => {
-                adt_def.variant_with_variant_id(variant_did)
+                adt_def.variant_with_id(variant_did)
             }
             _ => {
                 assert_eq!(adt_def.variants.len(), 1);

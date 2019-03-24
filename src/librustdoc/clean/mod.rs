@@ -3169,16 +3169,15 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
                 })
             }
         };
-        let did = self.variant_did_or_parent_struct_did();
         Item {
             name: Some(self.ident.clean(cx)),
-            attrs: inline::load_attrs(cx, did),
-            source: cx.tcx.def_span(did).clean(cx),
+            attrs: inline::load_attrs(cx, self.def_id),
+            source: cx.tcx.def_span(self.def_id).clean(cx),
             visibility: Some(Inherited),
-            def_id: did,
+            def_id: self.def_id,
             inner: VariantItem(Variant { kind }),
-            stability: get_stability(cx, did),
-            deprecation: get_deprecation(cx, did),
+            stability: get_stability(cx, self.def_id),
+            deprecation: get_deprecation(cx, self.def_id),
         }
     }
 }
