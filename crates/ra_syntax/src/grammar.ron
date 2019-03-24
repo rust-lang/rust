@@ -595,7 +595,20 @@ Grammar(
                 ["bounds", "TypeBound"],
             ]
         ),
-        "WhereClause": (),
+        "WherePred": (
+            options: [
+                "TypeRef",
+                "Lifetime",
+            ],
+            traits: [
+                "TypeBoundsOwner",
+            ],
+        ),
+        "WhereClause": (
+            collections: [
+                ["predicates", "WherePred"],
+            ],
+        ),
         "ExprStmt": (
             options: [ ["expr", "Expr"] ]
         ),
