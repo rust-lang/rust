@@ -208,6 +208,10 @@ impl<'tcx> UniversalRegions<'tcx> {
         }.build()
     }
 
+    pub fn regions(&self) -> impl Iterator<Item = &ty::Region<'tcx>> {
+        self.indices.indices.keys()
+    }
+
     /// Given a reference to a closure type, extracts all the values
     /// from its free regions and returns a vector with them. This is
     /// used when the closure's creator checks that the

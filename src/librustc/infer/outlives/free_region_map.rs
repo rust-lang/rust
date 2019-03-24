@@ -1,4 +1,5 @@
 use crate::ty::{self, Lift, TyCtxt, Region};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
@@ -51,12 +52,18 @@ impl<'tcx> FreeRegionMap<'tcx> {
 /// slightly different way; this trait allows functions to be abstract
 /// over which version is in use.
 pub trait FreeRegionRelations<'tcx> {
-    /// Tests whether `r_a <= r_b`. Both must be free regions or
-    /// `'static`.
+    /// Gets all the free regions in the set of relations.
+    fn all_regions(&self) -> FxHashSet<ty::Region<'tcx>>;
+
+    /// Tests whether `r_a <= r_b`. Both must be free regions or `'static`.
     fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool;
 }
 
 impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
+    fn all_regions(&self) -> FxHashSet<ty::Region<'tcx>> {
+        self.relation.elements().map(|r| *r).collect()
+    }
+
     fn sub_free_regions(&self,
                         r_a: Region<'tcx>,
                         r_b: Region<'tcx>)

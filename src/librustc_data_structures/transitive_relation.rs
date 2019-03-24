@@ -53,6 +53,10 @@ struct Edge {
 }
 
 impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
+    pub fn elements(&self) -> impl Iterator<Item = &T> {
+        self.elements.iter()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }

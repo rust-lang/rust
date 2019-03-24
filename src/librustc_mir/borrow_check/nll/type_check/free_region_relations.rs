@@ -10,6 +10,7 @@ use rustc::mir::ConstraintCategory;
 use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc::traits::query::type_op::{self, TypeOp};
 use rustc::ty::{self, RegionVid, Ty};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use std::rc::Rc;
 use syntax_pos::DUMMY_SP;
@@ -358,6 +359,10 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
 /// over the `FreeRegionMap` from lexical regions and
 /// `UniversalRegions` (from NLL)`.
 impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegionRelations<'tcx> {
+    fn all_regions(&self) -> FxHashSet<ty::Region<'tcx>> {
+        self.universal_regions.regions().map(|r| *r).collect()
+    }
+
     fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
         let shorter = shorter.to_region_vid();
         assert!(self.universal_regions.is_universal_region(shorter));
