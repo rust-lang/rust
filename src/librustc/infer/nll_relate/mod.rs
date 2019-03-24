@@ -22,13 +22,14 @@
 //!   constituents)
 
 use crate::infer::InferCtxt;
+use crate::traits::DomainGoal;
+use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::error::TypeError;
-use crate::traits::DomainGoal;
 use rustc_data_structures::fx::FxHashMap;
+use std::fmt::Debug;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum NormalizationStrategy {
@@ -239,6 +240,7 @@ where
         first_free_index: ty::DebruijnIndex,
         scopes: &[BoundRegionScope<'tcx>],
     ) -> ty::Region<'tcx> {
+        debug!("replace_bound_regions(scopes={:?})", scopes);
         if let ty::ReLateBound(debruijn, br) = r {
             Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
         } else {
@@ -265,7 +267,7 @@ where
     fn relate_projection_ty(
         &mut self,
         projection_ty: ty::ProjectionTy<'tcx>,
-        value_ty: ty::Ty<'tcx>
+        value_ty: ty::Ty<'tcx>,
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::TypeVariableOrigin;
         use crate::traits::WhereClause;
@@ -273,7 +275,9 @@ where
 
         match value_ty.sty {
             ty::Projection(other_projection_ty) => {
-                let var = self.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+                let var = self
+                    .infcx
+                    .next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var
@@ -284,32 +288,55 @@ where
                     projection_ty,
                     ty: value_ty,
                 };
-                self.delegate.push_domain_goal(
-                    DomainGoal::Holds(WhereClause::ProjectionEq(projection))
-                );
+                self.delegate
+                    .push_domain_goal(DomainGoal::Holds(WhereClause::ProjectionEq(projection)));
                 value_ty
             }
         }
     }
 
-    /// Relate a type inference variable with a value type.
-    fn relate_ty_var(
+    /// Relate a type inference variable with a value type. This works
+    /// by creating a "generalization" G of the value where all the
+    /// lifetimes are replaced with fresh inference values. This
+    /// genearlization G becomes the value of the inference variable,
+    /// and is then related in turn to the value. So e.g. if you had
+    /// `vid = ?0` and `value = &'a u32`, we might first instantiate
+    /// `?0` to a type like `&'0 u32` where `'0` is a fresh variable,
+    /// and then relate `&'0 u32` with `&'a u32` (resulting in
+    /// relations between `'0` and `'a`).
+    ///
+    /// The variable `pair` can be either a `(vid, ty)` or `(ty, vid)`
+    /// -- in other words, it is always a (unresolved) inference
+    /// variable `vid` and a type `ty` that are being related, but the
+    /// vid may appear either as the "a" type or the "b" type,
+    /// depending on where it appears in the tuple. The trait
+    /// `VidValuePair` lets us work with the vid/type while preserving
+    /// the "sidedness" when necessary -- the sidedness is relevant in
+    /// particular for the variance and set of in-scope things.
+    fn relate_ty_var<PAIR: VidValuePair<'tcx>>(
         &mut self,
-        vid: ty::TyVid,
-        value_ty: Ty<'tcx>
+        pair: PAIR,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("relate_ty_var(vid={:?}, value_ty={:?})", vid, value_ty);
+        debug!("relate_ty_var({:?})", pair);
 
+        let vid = pair.vid();
+        let value_ty = pair.value_ty();
+
+        // FIXME -- this logic assumes invariance, but that is wrong.
+        // This only presently applies to chalk integration, as NLL
+        // doesn't permit type variables to appear on both sides (and
+        // doesn't use lazy norm).
         match value_ty.sty {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
-                self.infcx.type_variables.borrow_mut().equate(vid, value_vid);
+                self.infcx
+                    .type_variables
+                    .borrow_mut()
+                    .equate(vid, value_vid);
                 return Ok(value_ty);
             }
 
-            ty::Projection(projection_ty)
-                if D::normalization() == NormalizationStrategy::Lazy =>
-            {
+            ty::Projection(projection_ty) if D::normalization() == NormalizationStrategy::Lazy => {
                 return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_ty_var(vid)));
             }
 
@@ -326,19 +353,22 @@ where
             assert!(!generalized_ty.has_infer_types());
         }
 
-        self.infcx.type_variables.borrow_mut().instantiate(vid, generalized_ty);
+        self.infcx
+            .type_variables
+            .borrow_mut()
+            .instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
         // doesn't matter -- just to be sure, put an empty vector
         // in there.
-        let old_a_scopes = ::std::mem::replace(&mut self.a_scopes, vec![]);
+        let old_a_scopes = ::std::mem::replace(pair.vid_scopes(self), vec![]);
 
         // Relate the generalized kind to the original one.
-        let result = self.relate(&generalized_ty, &value_ty);
+        let result = pair.relate_generalized_ty(self, generalized_ty);
 
         // Restore the old scopes now.
-        self.a_scopes = old_a_scopes;
+        *pair.vid_scopes(self) = old_a_scopes;
 
         debug!("relate_ty_var: complete, result = {:?}", result);
         result
@@ -347,7 +377,7 @@ where
     fn generalize_value<T: Relate<'tcx>>(
         &mut self,
         value: T,
-        for_vid: ty::TyVid
+        for_vid: ty::TyVid,
     ) -> RelateResult<'tcx, T> {
         let universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
 
@@ -361,6 +391,104 @@ where
         };
 
         generalizer.relate(&value, &value)
+    }
+}
+
+/// When we instantiate a inference variable with a value in
+/// `relate_ty_var`, we always have the pair of a `TyVid` and a `Ty`,
+/// but the ordering may vary (depending on whether the inference
+/// variable was found on the `a` or `b` sides). Therefore, this trait
+/// allows us to factor out common code, while preserving the order
+/// when needed.
+trait VidValuePair<'tcx>: Debug {
+    /// Extract the inference variable (which could be either the
+    /// first or second part of the tuple).
+    fn vid(&self) -> ty::TyVid;
+
+    /// Extract the value it is being related to (which will be the
+    /// opposite part of the tuple from the vid).
+    fn value_ty(&self) -> Ty<'tcx>;
+
+    /// Extract the scopes that apply to whichever side of the tuple
+    /// the vid was found on.  See the comment where this is called
+    /// for more details on why we want them.
+    fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
+
+    /// Given a generalized type G that should replace the vid, relate
+    /// G to the value, putting G on whichever side the vid would have
+    /// appeared.
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>;
+}
+
+impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
+    fn vid(&self) -> ty::TyVid {
+        self.0
+    }
+
+    fn value_ty(&self) -> Ty<'tcx> {
+        self.1
+    }
+
+    fn vid_scopes<D>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        &mut relate.a_scopes
+    }
+
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        relate.relate(&generalized_ty, &self.value_ty())
+    }
+}
+
+// In this case, the "vid" is the "b" type.
+impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
+    fn vid(&self) -> ty::TyVid {
+        self.1
+    }
+
+    fn value_ty(&self) -> Ty<'tcx> {
+        self.0
+    }
+
+    fn vid_scopes<D>(
+        &self,
+        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+    ) -> &'r mut Vec<BoundRegionScope<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        &mut relate.b_scopes
+    }
+
+    fn relate_generalized_ty<D>(
+        &self,
+        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        generalized_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        D: TypeRelatingDelegate<'tcx>,
+    {
+        relate.relate(&self.value_ty(), &generalized_ty)
     }
 }
 
@@ -421,11 +549,11 @@ where
                     // Forbid inference variables in the RHS.
                     bug!("unexpected inference var {:?}", b)
                 } else {
-                    self.relate_ty_var(vid, a)
+                    self.relate_ty_var((a, vid))
                 }
             }
 
-            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var(vid, b),
+            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Projection(projection_ty), _)
                 if D::normalization() == NormalizationStrategy::Lazy =>
@@ -752,7 +880,9 @@ where
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        TypeVariableValue::Unknown { universe: _universe } => {
+                        TypeVariableValue::Unknown {
+                            universe: _universe,
+                        } => {
                             if self.ambient_variance == ty::Bivariant {
                                 // FIXME: we may need a WF predicate (related to #54105).
                             }
@@ -767,8 +897,7 @@ where
                             let u = self.tcx().mk_ty_var(new_var_id);
                             debug!(
                                 "generalize: replacing original vid={:?} with new={:?}",
-                                vid,
-                                u
+                                vid, u
                             );
                             return Ok(u);
                         }
@@ -776,8 +905,7 @@ where
                 }
             }
 
-            ty::Infer(ty::IntVar(_)) |
-            ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
@@ -788,9 +916,8 @@ where
                 if self.universe.cannot_name(placeholder.universe) {
                     debug!(
                         "TypeGeneralizer::tys: root universe {:?} cannot name\
-                        placeholder in universe {:?}",
-                        self.universe,
-                        placeholder.universe
+                         placeholder in universe {:?}",
+                        self.universe, placeholder.universe
                     );
                     Err(TypeError::Mismatch)
                 } else {
@@ -798,9 +925,7 @@ where
                 }
             }
 
-            _ => {
-                relate::super_relate_tys(self, a, a)
-            }
+            _ => relate::super_relate_tys(self, a, a),
         }
     }
 

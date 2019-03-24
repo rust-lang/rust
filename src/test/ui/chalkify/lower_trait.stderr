@@ -18,7 +18,7 @@ LL |     #[rustc_dump_program_clauses]
    = note: forall<Self, S, T, ^3> { ProjectionEq(<Self as Foo<S, T>>::Assoc == ^3) :- Normalize(<Self as Foo<S, T>>::Assoc -> ^3). }
    = note: forall<Self, S, T> { FromEnv(Self: Foo<S, T>) :- FromEnv(Unnormalized(<Self as Foo<S, T>>::Assoc)). }
    = note: forall<Self, S, T> { ProjectionEq(<Self as Foo<S, T>>::Assoc == Unnormalized(<Self as Foo<S, T>>::Assoc)). }
-   = note: forall<Self, S, T> { WellFormed(Unnormalized(<Self as Foo<S, T>>::Assoc)) :- Implemented(Self: Foo<S, T>). }
+   = note: forall<Self, S, T> { WellFormed(Unnormalized(<Self as Foo<S, T>>::Assoc)) :- WellFormed(Self: Foo<S, T>). }
 
 error: aborting due to 2 previous errors
 

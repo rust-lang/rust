@@ -209,6 +209,10 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let implemented_from_env = Clause::ForAll(ty::Binder::bind(implemented_from_env));
 
     let predicates = &tcx.predicates_defined_on(def_id).predicates;
+
+    // Warning: these where clauses are not substituted for bound vars yet,
+    // so that we don't need to adjust binders in the `FromEnv` rules below
+    // (see the FIXME).
     let where_clauses = &predicates
         .iter()
         .map(|(wc, _)| wc.lower())
@@ -258,6 +262,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // `WellFormed(WC)`
     let wf_conditions = where_clauses
         .into_iter()
+        .map(|wc| wc.subst(tcx, bound_vars))
         .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()));
 
     // `WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)`
@@ -332,7 +337,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     //
     // ```
     // forall<P1..Pn> {
-    //   WellFormed(Ty<...>) :- WC1, ..., WCm`
+    //   WellFormed(Ty<...>) :- WellFormed(WC1), ..., WellFormed(WCm)`
     // }
     // ```
 
@@ -341,19 +346,22 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     // `Ty<...>`
     let ty = tcx.type_of(def_id).subst(tcx, bound_vars);
 
-    // `WC`
+    // Warning: these where clauses are not substituted for bound vars yet,
+    // so that we don't need to adjust binders in the `FromEnv` rules below
+    // (see the FIXME).
     let where_clauses = tcx.predicates_of(def_id).predicates
         .iter()
         .map(|(wc, _)| wc.lower())
         .collect::<Vec<_>>();
 
-    // `WellFormed(Ty<...>) :- WC1, ..., WCm`
+    // `WellFormed(Ty<...>) :- WellFormed(WC1), ..., WellFormed(WCm)`
     let well_formed_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
         hypotheses: tcx.mk_goals(
             where_clauses
                 .iter()
                 .map(|wc| wc.subst(tcx, bound_vars))
+                .map(|wc| wc.map_bound(|bound| bound.into_well_formed_goal()))
                 .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
         ),
         category: ProgramClauseCategory::WellFormed,
@@ -450,13 +458,13 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     // ```
     // forall<Self, P1..Pn, Pn+1..Pm> {
     //     WellFormed((Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>)
-    //         :- Implemented(Self: Trait<P1..Pn>)
+    //         :- WellFormed(Self: Trait<P1..Pn>)
     // }
     // ```
 
     let trait_predicate = ty::TraitPredicate { trait_ref };
     let hypothesis = tcx.mk_goal(
-        DomainGoal::Holds(WhereClause::Implemented(trait_predicate)).into_goal()
+        DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)).into_goal()
     );
 
     let wf_clause = ProgramClause {

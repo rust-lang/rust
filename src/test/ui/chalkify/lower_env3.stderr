@@ -4,7 +4,6 @@ error: program clause dump
 LL |     #[rustc_dump_env_program_clauses]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: forall<'^0, ^1> { TypeOutlives(^1: '^0) :- FromEnv(&^1). }
    = note: forall<Self> { Implemented(Self: Foo) :- FromEnv(Self: Foo). }
 
 error: program clause dump
@@ -13,7 +12,6 @@ error: program clause dump
 LL |     #[rustc_dump_env_program_clauses]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: forall<'^0, ^1> { TypeOutlives(^1: '^0) :- FromEnv(&^1). }
    = note: forall<Self> { FromEnv(Self: std::marker::Sized) :- FromEnv(Self: std::clone::Clone). }
    = note: forall<Self> { Implemented(Self: std::clone::Clone) :- FromEnv(Self: std::clone::Clone). }
    = note: forall<Self> { Implemented(Self: std::marker::Sized) :- FromEnv(Self: std::marker::Sized). }
