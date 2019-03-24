@@ -62,13 +62,32 @@ pub unsafe fn unreachable_unchecked() -> ! {
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    unsafe {
-        asm!("pause" ::: "memory" : "volatile");
+    #[cfg(
+        all(
+            any(target_arch = "x86", target_arch = "x86_64"),
+            target_feature = "sse2"
+        )
+    )] {
+        #[cfg(target_arch = "x86")] {
+            unsafe { crate::arch::x86::_mm_pause() };
+        }
+
+        #[cfg(target_arch = "x86_64")] {
+            unsafe { crate::arch::x86_64::_mm_pause() };
+        }
     }
 
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        asm!("yield" ::: "memory" : "volatile");
+    #[cfg(
+        any(
+            target_arch = "aarch64",
+            all(target_arch = "arm", target_feature = "v6")
+        )
+    )] {
+        #[cfg(target_arch = "aarch64")] {
+            unsafe { crate::arch::aarch64::__yield() };
+        }
+        #[cfg(target_arch = "arm")] {
+            unsafe { crate::arch::arm::__yield() };
+        }
     }
 }
