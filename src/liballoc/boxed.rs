@@ -677,6 +677,9 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
     }
+    fn nth_back(&mut self, n: usize) -> Option<I::Item> {
+        (**self).nth_back(n)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {

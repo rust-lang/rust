@@ -3867,6 +3867,19 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
             ret
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let (end, overflow) = self.v.len().overflowing_sub(n);
+        if end < self.size || overflow {
+            self.v = &[];
+            None
+        } else {
+            let ret = &self.v[end-self.size..end];
+            self.v = &self.v[..end-1];
+            Some(ret)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -579,6 +579,19 @@ fn test_windows_nth() {
 }
 
 #[test]
+fn test_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.windows(2);
+    assert_eq!(c.nth_back(2).unwrap()[0], 2);
+    assert_eq!(c.next_back().unwrap()[1], 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.windows(4);
+    assert_eq!(c2.nth_back(1).unwrap()[1], 1);
+    assert_eq!(c2.next_back(), None);
+}
+
+#[test]
 fn test_windows_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.windows(2);
