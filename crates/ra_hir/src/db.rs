@@ -14,7 +14,7 @@ use crate::{
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
-    traits::TraitData, Trait
+    traits::TraitData, Trait, ty::TraitRef
 };
 
 #[salsa::query_group(DefDatabaseStorage)]
@@ -102,6 +102,9 @@ pub trait HirDatabase: DefDatabase {
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
+
+    #[salsa::invoke(crate::ty::method_resolution::implements)]
+    fn implements(&self, trait_ref: TraitRef) -> bool;
 }
 
 #[test]
