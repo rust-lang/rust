@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use syntax::ast;
-use syntax::errors::emitter::{ColorConfig, EmitterWriter};
+use syntax::errors::emitter::{ColorConfig, Emitter};
 use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
@@ -89,7 +89,7 @@ fn format_project<T: FormatHandler>(
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
-    let silent_emitter = silent_emitter(source_map);
+    let silent_emitter = silent_emitter();
     parse_session.span_diagnostic = Handler::with_emitter(true, None, silent_emitter);
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
@@ -670,18 +670,20 @@ fn parse_crate(
     Err(ErrorKind::ParseError)
 }
 
-fn silent_emitter(source_map: Rc<SourceMap>) -> Box<EmitterWriter> {
-    Box::new(EmitterWriter::new(
-        Box::new(Vec::new()),
-        Some(source_map),
-        false,
-        false,
-    ))
+/// Emitter which discards every error.
+struct SilentEmitter;
+
+impl Emitter for SilentEmitter {
+    fn emit(&mut self, _db: &DiagnosticBuilder<'_>) {}
+}
+
+fn silent_emitter() -> Box<SilentEmitter> {
+    Box::new(SilentEmitter {})
 }
 
 fn make_parse_sess(source_map: Rc<SourceMap>, config: &Config) -> ParseSess {
     let tty_handler = if config.hide_parse_errors() {
-        let silent_emitter = silent_emitter(source_map.clone());
+        let silent_emitter = silent_emitter();
         Handler::with_emitter(true, None, silent_emitter)
     } else {
         let supports_color = term::stderr().map_or(false, |term| term.supports_color());
