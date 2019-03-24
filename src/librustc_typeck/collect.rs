@@ -1247,7 +1247,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
             ForeignItemKind::Type => tcx.mk_foreign(def_id),
         },
 
-        Node::Ctor(_, &ref def) | Node::Variant(&Spanned {
+        Node::Ctor(&ref def) | Node::Variant(&Spanned {
             node: hir::VariantKind { data: ref def, .. },
             ..
         }) => match *def {
@@ -1625,7 +1625,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
 
-        Ctor(_, data) | Variant(Spanned {
+        Ctor(data) | Variant(Spanned {
             node: hir::VariantKind { data, ..  },
             ..
         }) if data.ctor_hir_id().is_some() => {

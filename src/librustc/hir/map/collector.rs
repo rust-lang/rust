@@ -362,9 +362,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
                 if let ItemKind::Struct(ref struct_def, _) = i.node {
                     // If this is a tuple or unit-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                        this.insert(i.span,
-                                    ctor_hir_id,
-                                    Node::Ctor(hir::CtorOf::Struct, struct_def));
+                        this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
                     }
                 }
                 intravisit::walk_item(this, i);
@@ -521,7 +519,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(v.node.id, |this| {
             // Register the constructor of this variant.
             if let Some(ctor_hir_id) = v.node.data.ctor_hir_id() {
-                this.insert(v.span, ctor_hir_id, Node::Ctor(hir::CtorOf::Variant, &v.node.data));
+                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.node.data));
             }
             intravisit::walk_variant(this, v, g, item_id);
         });

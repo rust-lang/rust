@@ -1077,7 +1077,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => ArgKind::empty()
                 }).collect::<Vec<ArgKind>>())
             }
-            Node::Ctor(_, ref variant_data) => {
+            Node::Ctor(ref variant_data) => {
                 let span = variant_data.ctor_hir_id()
                     .map(|hir_id| self.tcx.hir().span_by_hir_id(hir_id))
                     .unwrap_or(DUMMY_SP);

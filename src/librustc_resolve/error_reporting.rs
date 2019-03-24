@@ -2,8 +2,7 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{Def, CtorKind};
-use rustc::hir::def::Namespace::*;
+use rustc::hir::def::{Def, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::config::nightly_options;
 use syntax::ast::{ExprKind};

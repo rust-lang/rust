@@ -2590,7 +2590,7 @@ pub enum Node<'hir> {
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
-    Ctor(CtorOf, &'hir VariantData),
+    Ctor(&'hir VariantData),
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam),

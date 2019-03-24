@@ -369,12 +369,15 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id_from_hir_id(variant.node.id);
                 Some(Def::Variant(def_id))
             }
-            Node::Ctor(ctor_of, variant_data) => {
+            Node::Ctor(variant_data) => {
+                let ctor_of = match self.find(self.get_parent_node(node_id)) {
+                    Some(Node::Item(..)) => CtorOf::Struct,
+                    Some(Node::Variant(..)) => CtorOf::Variant,
+                    _ => unreachable!(),
+                };
                 variant_data.ctor_hir_id()
                     .map(|hir_id| self.local_def_id_from_hir_id(hir_id))
-                    .map(|def_id| Def::Ctor(
-                        ctor_of, def_id, def::CtorKind::from_hir(variant_data),
-                    ))
+                    .map(|def_id| Def::Ctor(ctor_of, def_id, def::CtorKind::from_hir(variant_data)))
             }
             Node::AnonConst(_) |
             Node::Field(_) |
@@ -951,7 +954,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Some(Node::Variant(variant)) => &variant.node.data,
-            Some(Node::Ctor(_, data)) => data,
+            Some(Node::Ctor(data)) => data,
             _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
         }
     }
@@ -1070,10 +1073,11 @@ impl<'hir> Map<'hir> {
             Some(Node::Binding(pat)) => pat.span,
             Some(Node::Pat(pat)) => pat.span,
             Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(CtorOf::Struct, _)) =>
-                self.expect_item(self.get_parent(id)).span,
-            Some(Node::Ctor(CtorOf::Variant, _)) =>
-                self.expect_variant(self.node_to_hir_id(self.get_parent_node(id))).span,
+            Some(Node::Ctor(..)) => match self.find(self.get_parent_node(id)) {
+                Some(Node::Item(item)) => item.span,
+                Some(Node::Variant(variant)) => variant.span,
+                _ => unreachable!(),
+            }
             Some(Node::Lifetime(lifetime)) => lifetime.span,
             Some(Node::GenericParam(param)) => param.span,
             Some(Node::Visibility(&Spanned {
