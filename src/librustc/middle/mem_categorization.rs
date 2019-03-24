@@ -62,7 +62,7 @@ use crate::middle::region;
 use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::Node;
 use crate::infer::InferCtxt;
-use crate::hir::def::{Def, CtorKind};
+use crate::hir::def::{CtorOf, Def, CtorKind};
 use crate::ty::adjustment;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
@@ -1274,14 +1274,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::Ctor(hir::CtorOf::Variant, variant_ctor_did, CtorKind::Fn) => {
+                    Def::Ctor(CtorOf::Variant, variant_ctor_did, CtorKind::Fn) => {
                         let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
                         let enum_did = self.tcx.parent(variant_did).unwrap();
                         (self.cat_downcast_if_needed(pat, cmt, variant_did),
                          self.tcx.adt_def(enum_did)
                              .variant_with_ctor_id(variant_ctor_did).fields.len())
                     }
-                    Def::Ctor(hir::CtorOf::Struct, _, CtorKind::Fn) | Def::SelfCtor(..) => {
+                    Def::Ctor(CtorOf::Struct, _, CtorKind::Fn) | Def::SelfCtor(..) => {
                         let ty = self.pat_ty_unadjusted(&pat)?;
                         match ty.sty {
                             ty::Adt(adt_def, _) => {
@@ -1316,7 +1316,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::Ctor(hir::CtorOf::Variant, variant_ctor_did, _) => {
+                    Def::Ctor(CtorOf::Variant, variant_ctor_did, _) => {
                         let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
                         self.cat_downcast_if_needed(pat, cmt, variant_did)
                     }

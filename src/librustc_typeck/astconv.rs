@@ -4,7 +4,7 @@
 
 use errors::{Applicability, DiagnosticId};
 use crate::hir::{self, GenericArg, GenericArgs, ExprKind};
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::def_id::DefId;
 use crate::hir::HirVec;
 use crate::lint;
@@ -1596,7 +1596,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         match def {
             // Case 1. Reference to a struct constructor.
-            Def::Ctor(hir::CtorOf::Struct, def_id, ..) |
+            Def::Ctor(CtorOf::Struct, def_id, ..) |
             Def::SelfCtor(.., def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
@@ -1608,7 +1608,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
 
             // Case 2. Reference to a variant constructor.
-            Def::Ctor(hir::CtorOf::Variant, def_id, ..) | Def::Variant(def_id, ..) => {
+            Def::Ctor(CtorOf::Variant, def_id, ..) | Def::Variant(def_id, ..) => {
                 let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
                 let (generics_def_id, index) = if let Some(adt_def) = adt_def {
                     debug_assert!(adt_def.is_enum());

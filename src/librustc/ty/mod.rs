@@ -6,7 +6,7 @@ pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
 use crate::hir::{HirId, Node};
-use crate::hir::def::{Def, CtorKind, ExportMap};
+use crate::hir::def::{Def, CtorOf, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
@@ -2941,12 +2941,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
             }
-            Def::Ctor(hir::CtorOf::Variant, variant_ctor_did, ..) => {
+            Def::Ctor(CtorOf::Variant, variant_ctor_did, ..) => {
                 let variant_did = self.parent(variant_ctor_did).unwrap();
                 let enum_did = self.parent(variant_did).unwrap();
                 self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
-            Def::Ctor(hir::CtorOf::Struct, ctor_did, ..) => {
+            Def::Ctor(CtorOf::Struct, ctor_did, ..) => {
                 let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(struct_did).non_enum_variant()
             }

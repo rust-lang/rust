@@ -12,7 +12,7 @@ use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
 use crate::{resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::bug;
-use rustc::hir::{self, def::*};
+use rustc::hir::def::*;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
@@ -533,7 +533,7 @@ impl<'a> Resolver<'a> {
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if let Some(ctor_node_id) = struct_def.ctor_id() {
-                    let ctor_def = Def::Ctor(hir::CtorOf::Struct,
+                    let ctor_def = Def::Ctor(CtorOf::Struct,
                                              self.definitions.local_def_id(ctor_node_id),
                                              CtorKind::from_ast(struct_def));
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
@@ -596,7 +596,7 @@ impl<'a> Resolver<'a> {
         let ctor_node_id = variant.node.data.ctor_id().unwrap_or(variant.node.id);
         let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
-        let ctor_def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ctor_kind);
+        let ctor_def = Def::Ctor(CtorOf::Variant, ctor_def_id, ctor_kind);
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
@@ -654,10 +654,10 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Fn(..) | Def::Static(..) | Def::Const(..) |
-            Def::Ctor(hir::CtorOf::Variant, ..) => {
+            Def::Ctor(CtorOf::Variant, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::Ctor(hir::CtorOf::Struct, def_id, ..) => {
+            Def::Ctor(CtorOf::Struct, def_id, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =

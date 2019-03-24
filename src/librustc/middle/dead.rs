@@ -7,7 +7,7 @@ use crate::hir::{self, PatKind, TyKind};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::CodegenFnAttrFlags;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::lint;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ if self.in_pat => (),
             Def::PrimTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) |
             Def::Local(..) | Def::Upvar(..) => {}
-            Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ..) => {
+            Def::Ctor(CtorOf::Variant, ctor_def_id, ..) => {
                 let variant_id = self.tcx.parent(ctor_def_id).unwrap();
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 self.check_def_id(enum_id);

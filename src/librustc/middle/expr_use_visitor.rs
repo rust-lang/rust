@@ -9,7 +9,7 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use crate::hir::def::Def;
+use crate::hir::def::{CtorOf, Def};
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
@@ -902,7 +902,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             };
             let def = mc.tables.qpath_def(qpath, pat.hir_id);
             match def {
-                Def::Ctor(hir::CtorOf::Variant, variant_ctor_did, ..) => {
+                Def::Ctor(CtorOf::Variant, variant_ctor_did, ..) => {
                     let variant_did = mc.tcx.parent(variant_ctor_did).unwrap();
                     let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 

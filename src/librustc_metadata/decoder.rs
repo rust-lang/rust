@@ -8,7 +8,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def::{self, Def, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
                          CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::hir::map::definitions::DefPathTable;
@@ -817,7 +817,7 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
                                 let ctor_def = Def::Ctor(
-                                    hir::CtorOf::Struct, ctor_def_id, ctor_kind);
+                                    hir::def::CtorOf::Struct, ctor_def_id, ctor_kind);
                                 let vis = self.get_visibility(ctor_def_id.index);
                                 callback(def::Export { def: ctor_def, vis, ident, span });
                             }
@@ -829,7 +829,7 @@ impl<'a, 'tcx> CrateMetadata {
                             // error will be reported on any use of such resolution anyway.
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
-                            let ctor_def = Def::Ctor(hir::CtorOf::Variant, ctor_def_id, ctor_kind);
+                            let ctor_def = Def::Ctor(CtorOf::Variant, ctor_def_id, ctor_kind);
                             let vis = self.get_visibility(ctor_def_id.index);
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }

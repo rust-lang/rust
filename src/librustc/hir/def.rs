@@ -9,6 +9,15 @@ use crate::ty;
 
 use self::Namespace::*;
 
+/// Encodes if a `Def::Ctor` is the constructor of an enum variant or a struct.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+pub enum CtorOf {
+    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit struct.
+    Struct,
+    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit variant.
+    Variant,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
@@ -64,7 +73,7 @@ pub enum Def {
     ConstParam(DefId),
     Static(DefId, bool /* is_mutbl */),
     /// `DefId` refers to the struct or enum variant's constructor.
-    Ctor(hir::CtorOf, DefId, CtorKind),
+    Ctor(CtorOf, DefId, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Method(DefId),
     AssociatedConst(DefId),
@@ -306,13 +315,13 @@ impl Def {
             Def::Static(..) => "static",
             Def::Enum(..) => "enum",
             Def::Variant(..) => "variant",
-            Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fn) => "tuple variant",
-            Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Const) => "unit variant",
-            Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fictive) => "struct variant",
+            Def::Ctor(CtorOf::Variant, _, CtorKind::Fn) => "tuple variant",
+            Def::Ctor(CtorOf::Variant, _, CtorKind::Const) => "unit variant",
+            Def::Ctor(CtorOf::Variant, _, CtorKind::Fictive) => "struct variant",
             Def::Struct(..) => "struct",
-            Def::Ctor(hir::CtorOf::Struct, _, CtorKind::Fn) => "tuple struct",
-            Def::Ctor(hir::CtorOf::Struct, _, CtorKind::Const) => "unit struct",
-            Def::Ctor(hir::CtorOf::Struct, _, CtorKind::Fictive) =>
+            Def::Ctor(CtorOf::Struct, _, CtorKind::Fn) => "tuple struct",
+            Def::Ctor(CtorOf::Struct, _, CtorKind::Const) => "unit struct",
+            Def::Ctor(CtorOf::Struct, _, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
             Def::Existential(..) => "existential type",
             Def::TyAlias(..) => "type alias",

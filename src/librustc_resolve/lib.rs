@@ -1360,7 +1360,7 @@ impl<'a> NameBinding<'a> {
     fn is_variant(&self) -> bool {
         match self.kind {
             NameBindingKind::Def(Def::Variant(..), _) |
-            NameBindingKind::Def(Def::Ctor(hir::CtorOf::Variant, ..), _) => true,
+            NameBindingKind::Def(Def::Ctor(CtorOf::Variant, ..), _) => true,
             _ => false,
         }
     }

@@ -4,7 +4,7 @@ use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{CtorOf, Def, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
@@ -675,7 +675,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         .ty_adt_def()
                         .and_then(|adt_def| {
                         match def {
-                            Def::Ctor(hir::CtorOf::Variant, variant_ctor_id, CtorKind::Const) => {
+                            Def::Ctor(CtorOf::Variant, variant_ctor_id, CtorKind::Const) => {
                                 let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                 use rustc::ty::util::IntTypeExt;

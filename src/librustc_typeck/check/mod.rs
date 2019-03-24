@@ -86,7 +86,7 @@ mod op;
 use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
-use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def::{CtorOf, CtorKind, Def};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -5345,7 +5345,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Ctor(hir::CtorOf::Struct, ctor_def_id, variant.ctor_kind);
+                    let def = Def::Ctor(CtorOf::Struct, ctor_def_id, variant.ctor_kind);
                     (def, ctor_def_id, tcx.type_of(ctor_def_id))
                 }
                 _ => {
@@ -5418,7 +5418,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match def {
-            Def::Ctor(hir::CtorOf::Variant, _, _) => {
+            Def::Ctor(CtorOf::Variant, _, _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {

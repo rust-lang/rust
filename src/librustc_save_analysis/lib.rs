@@ -14,7 +14,7 @@ mod span_utils;
 mod sig;
 
 use rustc::hir;
-use rustc::hir::def::Def as HirDef;
+use rustc::hir::def::{CtorOf, Def as HirDef};
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
@@ -757,7 +757,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Ctor(hir::CtorOf::Struct, def_id, _) => {
+            HirDef::Ctor(CtorOf::Struct, def_id, _) => {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.

@@ -2559,15 +2559,6 @@ impl CodegenFnAttrs {
     }
 }
 
-/// Encodes if a `Node::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
-pub enum CtorOf {
-    /// This `Node::Ctor` is a synthesized constructor of a tuple or unit struct.
-    Struct,
-    /// This `Node::Ctor` is a synthesized constructor of a tuple or unit variant.
-    Variant,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
     Item(&'hir Item),

@@ -371,8 +371,8 @@ impl<'hir> Map<'hir> {
             }
             Node::Ctor(variant_data) => {
                 let ctor_of = match self.find(self.get_parent_node(node_id)) {
-                    Some(Node::Item(..)) => CtorOf::Struct,
-                    Some(Node::Variant(..)) => CtorOf::Variant,
+                    Some(Node::Item(..)) => def::CtorOf::Struct,
+                    Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
                 };
                 variant_data.ctor_hir_id()
