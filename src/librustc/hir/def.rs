@@ -37,13 +37,11 @@ pub enum NonMacroAttrKind {
 pub enum Def {
     // Type namespace
     Mod(DefId),
-    /// `DefId` refers to `NodeId` of the struct. `Def::VariantCtor` represents the constructor of
-    /// a struct.
+    /// `DefId` refers to the struct itself, `Def::Ctor` refers to its constructor if it exists.
     Struct(DefId),
     Union(DefId),
     Enum(DefId),
-    /// `DefId` refers to the `NodeId` of the variant. `Def::VariantCtor` represents the
-    /// constructor of an enum variant.
+    /// `DefId` refers to the variant itself, `Def::Ctor` refers to its constructor if it exists.
     Variant(DefId),
     Trait(DefId),
     /// `existential type Foo: Bar;`
@@ -65,7 +63,7 @@ pub enum Def {
     Const(DefId),
     ConstParam(DefId),
     Static(DefId, bool /* is_mutbl */),
-    /// `DefId` refers to `NodeId` of the struct or enum variant's constructor.
+    /// `DefId` refers to the struct or enum variant's constructor.
     Ctor(hir::CtorOf, DefId, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Method(DefId),

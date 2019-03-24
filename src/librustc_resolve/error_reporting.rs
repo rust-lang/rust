@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::{self, def::*};
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::config::nightly_options;
@@ -417,7 +417,7 @@ impl<'a> Resolver<'a> {
             }
             (Def::Union(..), _) |
             (Def::Variant(..), _) |
-            (Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fictive), _) if ns == ValueNS => {
+            (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
                 err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
                                              path_str));
             }

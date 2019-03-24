@@ -807,13 +807,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fictive) |
-            Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fn) => {
+            Def::Ctor(_, _, CtorKind::Fictive) |
+            Def::Ctor(_, _, CtorKind::Fn) => {
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Const) | Def::SelfCtor(..) | Def::Const(..) |
-            Def::AssociatedConst(..) => {} // OK
+            Def::Ctor(_, _, CtorKind::Const) | Def::SelfCtor(..) |
+            Def::Const(..) | Def::AssociatedConst(..) => {} // OK
             _ => bug!("unexpected pattern definition: {:?}", def)
         }
 

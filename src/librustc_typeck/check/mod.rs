@@ -4238,7 +4238,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.set_tainted_by_errors();
                         tcx.types.err
                     }
-                    Def::Ctor(hir::CtorOf::Variant, _, CtorKind::Fictive) => {
+                    Def::Ctor(_, _, CtorKind::Fictive) => {
                         report_unexpected_variant_def(tcx, &def, expr.span, qpath);
                         tcx.types.err
                     }

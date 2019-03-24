@@ -261,10 +261,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
                         match path.def {
-                            Def::Ctor(hir::CtorOf::Variant, variant_ctor_id, CtorKind::Fn) => {
-                                Some((adt_def, adt_def.variant_index_with_ctor_id(variant_ctor_id)))
-                            }
-                            Def::Ctor(hir::CtorOf::Struct, _, CtorKind::Fn) |
+                            Def::Ctor(_, ctor_id, CtorKind::Fn) =>
+                                Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id))),
                             Def::SelfCtor(..) => Some((adt_def, VariantIdx::new(0))),
                             _ => None,
                         }
