@@ -814,7 +814,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         debug!("(resolving function) entering function");
         let (rib_kind, asyncness) = match function_kind {
             FnKind::ItemFn(_, ref header, ..) =>
-                (ItemRibKind, header.asyncness.node),
+                (FnItemRibKind, header.asyncness.node),
             FnKind::Method(_, ref sig, _, _) =>
                 (TraitOrImplItemRibKind, sig.header.asyncness.node),
             FnKind::Closure(_) =>
@@ -949,6 +949,10 @@ enum RibKind<'a> {
     /// binds. Disallow any other upvars (including other ty params that are
     /// upvars).
     TraitOrImplItemRibKind,
+
+    /// We passed through a function definition. Disallow upvars.
+    /// Permit only those const parameters that are specified in the function's generics.
+    FnItemRibKind,
 
     /// We passed through an item scope. Disallow upvars.
     ItemRibKind,
@@ -3863,7 +3867,7 @@ impl<'a> Resolver<'a> {
                                 seen.insert(node_id, depth);
                             }
                         }
-                        ItemRibKind | TraitOrImplItemRibKind => {
+                        ItemRibKind | FnItemRibKind | TraitOrImplItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -3897,7 +3901,7 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind => {
                             // Nothing to do. Continue.
                         }
-                        ItemRibKind => {
+                        ItemRibKind | FnItemRibKind => {
                             // This was an attempt to use a type parameter outside its scope.
                             if record_used {
                                 resolve_error(
@@ -3912,12 +3916,15 @@ impl<'a> Resolver<'a> {
                 }
             }
             Def::ConstParam(..) => {
-                // A const param is always declared in a signature, which is always followed by
-                // some kind of function rib kind (specifically, ItemRibKind in the case of a
-                // normal function), so we can skip the first rib as it will be guaranteed to
-                // (spuriously) conflict with the const param.
-                for rib in &ribs[1..] {
-                    if let ItemRibKind = rib.kind {
+                let mut ribs = ribs.iter().peekable();
+                if let Some(Rib { kind: FnItemRibKind, .. }) = ribs.peek() {
+                    // When declaring const parameters inside function signatures, the first rib
+                    // is always a `FnItemRibKind`. In this case, we can skip it, to avoid it
+                    // (spuriously) conflicting with the const param.
+                    ribs.next();
+                }
+                for rib in ribs {
+                    if let ItemRibKind | FnItemRibKind = rib.kind {
                         // This was an attempt to use a const parameter outside its scope.
                         if record_used {
                             resolve_error(
