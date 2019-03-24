@@ -28,12 +28,13 @@ matrix:
     - env: INTEGRATION=mdbook
     - env: INTEGRATION=packed_simd
     - env: INTEGRATION=rand
-    - env: INTEGRATION=rust-clippy
     - env: INTEGRATION=rust-semverver
     - env: INTEGRATION=stdsimd TARGET=x86_64-unknown-linux-gnu
     - env: INTEGRATION=tempdir
     - env: INTEGRATION=futures-rs
   allow_failures:
+    # Doesn't build - keep this in allow_failures as it's fragile to breaking changes of rustc.
+    - env: INTEGRATION=rust-clippy
     # Doesn't build - seems to be because of an option
     - env: INTEGRATION=packed_simd
     # Doesn't build - a temporal build failure due to breaking changes in the nightly compilre
@@ -45,7 +46,7 @@ script:
   - |
     if [ -z ${INTEGRATION} ]; then
       cargo build
-      cargo test
+      RUST_MIN_STACK=8388608 cargo test
     else
       ./ci/integration.sh
     fi
