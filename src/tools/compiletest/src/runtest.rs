@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::fs::{self, create_dir_all, File};
+use std::fs::{self, create_dir_all, File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -2818,6 +2818,28 @@ impl<'test> TestCx<'test> {
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
+        } else if self.config.rustfix_coverage {
+            // Find out which tests have `MachineApplicable` suggestions but are missing
+            // `run-rustfix` or `run-rustfix-only-machine-applicable` headers
+            let suggestions = get_suggestions_from_json(
+                &proc_res.stderr,
+                &HashSet::new(),
+                Filter::MachineApplicableOnly
+            ).unwrap();
+            if suggestions.len() > 0
+                && !self.props.run_rustfix
+                && !self.props.rustfix_only_machine_applicable {
+                    let coverage_file_path = Path::new("/tmp/rustfix_missing_coverage.txt");
+                    let mut file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(coverage_file_path)
+                        .expect("could not create or open file");
+
+                    if let Err(_) = writeln!(file, "{}", self.testpaths.file.display()) {
+                        panic!("couldn't write to {}", coverage_file_path.display());
+                    }
+            }
         } else if self.props.run_rustfix {
             // Apply suggestions from rustc to the code itself
             let unfixed_code = self
