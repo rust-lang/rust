@@ -31,12 +31,14 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     let cursor_position = position.offset + TextUnit::of_str(&inserted);
     let mut edit = TextEditBuilder::default();
     edit.insert(position.offset, inserted);
-    Some(SourceChange {
-        label: "on enter".to_string(),
-        source_file_edits: vec![SourceFileEdit { edit: edit.finish(), file_id: position.file_id }],
-        file_system_edits: vec![],
-        cursor_position: Some(FilePosition { offset: cursor_position, file_id: position.file_id }),
-    })
+
+    Some(
+        SourceChange::source_edit(
+            "on enter",
+            SourceFileEdit { edit: edit.finish(), file_id: position.file_id },
+        )
+        .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
+    )
 }
 
 fn node_indent<'a>(file: &'a SourceFile, node: &SyntaxNode) -> Option<&'a str> {

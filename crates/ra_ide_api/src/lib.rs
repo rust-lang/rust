@@ -97,6 +97,44 @@ pub struct SourceChange {
     pub cursor_position: Option<FilePosition>,
 }
 
+impl SourceChange {
+    pub fn source_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits: edits,
+            file_system_edits: vec![],
+            cursor_position: None,
+        }
+    }
+
+    pub fn system_edits<L: Into<String>>(label: L, edits: Vec<FileSystemEdit>) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits: vec![],
+            file_system_edits: edits,
+            cursor_position: None,
+        }
+    }
+
+    pub fn source_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
+        SourceChange::source_edits(label, vec![edit])
+    }
+
+    pub fn system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
+        SourceChange::system_edits(label, vec![edit])
+    }
+
+    pub fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
+        self.cursor_position = Some(cursor_position);
+        self
+    }
+
+    pub fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
+        self.cursor_position = cursor_position;
+        self
+    }
+}
+
 #[derive(Debug)]
 pub struct SourceFileEdit {
     pub file_id: FileId,
@@ -285,12 +323,7 @@ impl Analysis {
             file_id: frange.file_id,
             edit: join_lines::join_lines(&file, frange.range),
         };
-        SourceChange {
-            label: "join lines".to_string(),
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: None,
-        }
+        SourceChange::source_edit("join lines", file_edit)
     }
 
     /// Returns an edit which should be applied when opening a new line, fixing
@@ -305,12 +338,10 @@ impl Analysis {
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
         let edit = typing::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange {
-            label: "add semicolon".to_string(),
-            source_file_edits: vec![SourceFileEdit { edit, file_id: position.file_id }],
-            file_system_edits: vec![],
-            cursor_position: None,
-        })
+        Some(SourceChange::source_edit(
+            "add semicolon",
+            SourceFileEdit { edit, file_id: position.file_id },
+        ))
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
