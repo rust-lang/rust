@@ -5345,7 +5345,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Ctor(CtorOf::Struct, ctor_def_id, variant.ctor_kind);
+                    let def = Def::Ctor(ctor_def_id, CtorOf::Struct, variant.ctor_kind);
                     (def, ctor_def_id, tcx.type_of(ctor_def_id))
                 }
                 _ => {
@@ -5418,7 +5418,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match def {
-            Def::Ctor(CtorOf::Variant, _, _) => {
+            Def::Ctor(_, CtorOf::Variant, _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {

@@ -757,7 +757,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Ctor(CtorOf::Struct, def_id, _) => {
+            HirDef::Ctor(def_id, CtorOf::Struct, ..) => {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.

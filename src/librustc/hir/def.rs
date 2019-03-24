@@ -73,7 +73,7 @@ pub enum Def {
     ConstParam(DefId),
     Static(DefId, bool /* is_mutbl */),
     /// `DefId` refers to the struct or enum variant's constructor.
-    Ctor(CtorOf, DefId, CtorKind),
+    Ctor(DefId, CtorOf, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Method(DefId),
     AssociatedConst(DefId),
@@ -276,7 +276,7 @@ impl Def {
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::Ctor(_, id, ..) | Def::Enum(id) |
+            Def::Variant(id) | Def::Ctor(id, ..) | Def::Enum(id) |
             Def::TyAlias(id) | Def::TraitAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::ConstParam(id) | Def::Struct(id) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
@@ -315,13 +315,13 @@ impl Def {
             Def::Static(..) => "static",
             Def::Enum(..) => "enum",
             Def::Variant(..) => "variant",
-            Def::Ctor(CtorOf::Variant, _, CtorKind::Fn) => "tuple variant",
-            Def::Ctor(CtorOf::Variant, _, CtorKind::Const) => "unit variant",
-            Def::Ctor(CtorOf::Variant, _, CtorKind::Fictive) => "struct variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Fn) => "tuple variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Const) => "unit variant",
+            Def::Ctor(_, CtorOf::Variant, CtorKind::Fictive) => "struct variant",
             Def::Struct(..) => "struct",
-            Def::Ctor(CtorOf::Struct, _, CtorKind::Fn) => "tuple struct",
-            Def::Ctor(CtorOf::Struct, _, CtorKind::Const) => "unit struct",
-            Def::Ctor(CtorOf::Struct, _, CtorKind::Fictive) =>
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Fn) => "tuple struct",
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Const) => "unit struct",
+            Def::Ctor(_, CtorOf::Struct, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
             Def::Existential(..) => "existential type",
             Def::TyAlias(..) => "type alias",

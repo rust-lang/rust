@@ -2322,7 +2322,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {
         match def {
             Def::Variant(vid) => self.variant_with_id(vid),
-            Def::Ctor(_, cid, ..) => self.variant_with_ctor_id(cid),
+            Def::Ctor(cid, ..) => self.variant_with_ctor_id(cid),
             Def::Struct(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
             Def::SelfCtor(..) => self.non_enum_variant(),
@@ -2941,12 +2941,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
             }
-            Def::Ctor(CtorOf::Variant, variant_ctor_did, ..) => {
+            Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
                 let variant_did = self.parent(variant_ctor_did).unwrap();
                 let enum_did = self.parent(variant_did).unwrap();
                 self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
-            Def::Ctor(CtorOf::Struct, ctor_did, ..) => {
+            Def::Ctor(ctor_did, CtorOf::Struct, ..) => {
                 let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(struct_did).non_enum_variant()
             }

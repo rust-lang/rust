@@ -422,7 +422,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // them as well. It's ok to use the variant's id as a ctor id since an
                     // error will be reported on any use of such resolution anyway.
                     let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    let def = Def::Ctor(CtorOf::Variant, ctor_def_id, variant_def.ctor_kind);
+                    let def = Def::Ctor(ctor_def_id, CtorOf::Variant, variant_def.ctor_kind);
                     tcx.check_stability(def.def_id(), Some(expr_id), span);
                     return Ok(def);
                 }

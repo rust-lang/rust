@@ -816,8 +816,7 @@ impl<'a, 'tcx> CrateMetadata {
                         Def::Struct(..) => {
                             if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
-                                let ctor_def = Def::Ctor(
-                                    hir::def::CtorOf::Struct, ctor_def_id, ctor_kind);
+                                let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Struct, ctor_kind);
                                 let vis = self.get_visibility(ctor_def_id.index);
                                 callback(def::Export { def: ctor_def, vis, ident, span });
                             }
@@ -829,7 +828,7 @@ impl<'a, 'tcx> CrateMetadata {
                             // error will be reported on any use of such resolution anyway.
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
-                            let ctor_def = Def::Ctor(CtorOf::Variant, ctor_def_id, ctor_kind);
+                            let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
                             let vis = self.get_visibility(ctor_def_id.index);
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }

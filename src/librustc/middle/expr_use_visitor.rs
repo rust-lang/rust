@@ -902,7 +902,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             };
             let def = mc.tables.qpath_def(qpath, pat.hir_id);
             match def {
-                Def::Ctor(CtorOf::Variant, variant_ctor_did, ..) => {
+                Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
                     let variant_did = mc.tcx.parent(variant_ctor_did).unwrap();
                     let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 

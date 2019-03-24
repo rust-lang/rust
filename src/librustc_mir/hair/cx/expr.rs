@@ -261,7 +261,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
                         match path.def {
-                            Def::Ctor(_, ctor_id, CtorKind::Fn) =>
+                            Def::Ctor(ctor_id, _, CtorKind::Fn) =>
                                 Some((adt_def, adt_def.variant_index_with_ctor_id(ctor_id))),
                             Def::SelfCtor(..) => Some((adt_def, VariantIdx::new(0))),
                             _ => None,
@@ -675,7 +675,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         .ty_adt_def()
                         .and_then(|adt_def| {
                         match def {
-                            Def::Ctor(CtorOf::Variant, variant_ctor_id, CtorKind::Const) => {
+                            Def::Ctor(variant_ctor_id, CtorOf::Variant, CtorKind::Const) => {
                                 let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                 use rustc::ty::util::IntTypeExt;
@@ -951,7 +951,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         },
 
-        Def::Ctor(_, def_id, CtorKind::Const) => {
+        Def::Ctor(def_id, _, CtorKind::Const) => {
             let user_provided_types = cx.tables.user_provided_types();
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);

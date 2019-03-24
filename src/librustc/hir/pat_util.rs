@@ -126,7 +126,7 @@ impl hir::Pat {
                 PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
                     match path.def {
                         Def::Variant(id) => variants.push(id),
-                        Def::Ctor(CtorOf::Variant, id, _) => variants.push(id),
+                        Def::Ctor(id, CtorOf::Variant, ..) => variants.push(id),
                         _ => ()
                     }
                 }

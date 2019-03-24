@@ -734,7 +734,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         subpatterns: Vec<FieldPattern<'tcx>>,
     ) -> PatternKind<'tcx> {
         let def = match def {
-            Def::Ctor(CtorOf::Variant, variant_ctor_id, ..) => {
+            Def::Ctor(variant_ctor_id, CtorOf::Variant, ..) => {
                 let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
                 Def::Variant(variant_id)
             },
@@ -765,7 +765,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::Ctor(CtorOf::Struct, ..) | Def::Union(..) |
+            Def::Struct(..) | Def::Ctor(_, CtorOf::Struct, ..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
             }

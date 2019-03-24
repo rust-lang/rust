@@ -1360,7 +1360,7 @@ impl<'a> NameBinding<'a> {
     fn is_variant(&self) -> bool {
         match self.kind {
             NameBindingKind::Def(Def::Variant(..), _) |
-            NameBindingKind::Def(Def::Ctor(CtorOf::Variant, ..), _) => true,
+            NameBindingKind::Def(Def::Ctor(_, CtorOf::Variant, ..), _) => true,
             _ => false,
         }
     }
@@ -4452,7 +4452,7 @@ impl<'a> Resolver<'a> {
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             let did = match def {
-                                Def::Ctor(_, did, _) => self.parent(did),
+                                Def::Ctor(did, ..) => self.parent(did),
                                 _ => def.opt_def_id(),
                             };
                             candidates.push(ImportSuggestion { did, path });

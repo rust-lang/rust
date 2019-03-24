@@ -377,7 +377,7 @@ impl<'hir> Map<'hir> {
                 };
                 variant_data.ctor_hir_id()
                     .map(|hir_id| self.local_def_id_from_hir_id(hir_id))
-                    .map(|def_id| Def::Ctor(ctor_of, def_id, def::CtorKind::from_hir(variant_data)))
+                    .map(|def_id| Def::Ctor(def_id, ctor_of, def::CtorKind::from_hir(variant_data)))
             }
             Node::AnonConst(_) |
             Node::Field(_) |
