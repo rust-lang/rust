@@ -34,19 +34,11 @@ pub(crate) fn rewrite_all_pairs(
     shape: Shape,
     context: &RewriteContext<'_>,
 ) -> Option<String> {
-    // First we try formatting on one line.
-    if let Some(list) = expr.flatten(false) {
-        if let Some(r) = rewrite_pairs_one_line(&list, shape, context) {
-            return Some(r);
-        }
-    }
-
-    // We can't format on line, so try many. When we flatten here we make sure
-    // to only flatten pairs with the same operator, that way we don't
-    // necessarily need one line per sub-expression, but we don't do anything
-    // too funny wrt precedence.
-    expr.flatten(true)
-        .and_then(|list| rewrite_pairs_multiline(&list, shape, context))
+    expr.flatten(context, shape).and_then(|list| {
+        // First we try formatting on one line.
+        rewrite_pairs_one_line(&list, shape, context)
+            .or_else(|| rewrite_pairs_multiline(&list, shape, context))
+    })
 }
 
 // This may return a multi-line result since we allow the last expression to go
@@ -61,22 +53,23 @@ fn rewrite_pairs_one_line<T: Rewrite>(
     let mut result = String::new();
     let base_shape = shape.block();
 
-    for (e, s) in list.list.iter().zip(list.separators.iter()) {
-        let cur_shape = base_shape.offset_left(last_line_width(&result))?;
-        let rewrite = e.rewrite(context, cur_shape)?;
+    for ((_, rewrite), s) in list.list.iter().zip(list.separators.iter()) {
+        if let Some(rewrite) = rewrite {
+            if !is_single_line(&rewrite) || result.len() > shape.width {
+                return None;
+            }
 
-        if !is_single_line(&rewrite) || result.len() > shape.width {
+            result.push_str(&rewrite);
+            result.push(' ');
+            result.push_str(s);
+            result.push(' ');
+        } else {
             return None;
         }
-
-        result.push_str(&rewrite);
-        result.push(' ');
-        result.push_str(s);
-        result.push(' ');
     }
 
     let prefix_len = result.len();
-    let last = list.list.last().unwrap();
+    let last = list.list.last()?.0;
     let cur_shape = base_shape.offset_left(last_line_width(&result))?;
     let last_rewrite = last.rewrite(context, cur_shape)?;
     result.push_str(&last_rewrite);
@@ -112,10 +105,9 @@ fn rewrite_pairs_multiline<T: Rewrite>(
     let indent_str = nested_shape.indent.to_string_with_newline(context.config);
     let mut result = String::new();
 
-    let rewrite = list.list[0].rewrite(context, shape)?;
-    result.push_str(&rewrite);
+    result.push_str(&list.list[0].1.as_ref()?);
 
-    for (e, s) in list.list[1..].iter().zip(list.separators.iter()) {
+    for ((e, default_rw), s) in list.list[1..].iter().zip(list.separators.iter()) {
         // The following test checks if we should keep two subexprs on the same
         // line. We do this if not doing so would create an orphan and there is
         // enough space to do so.
@@ -139,24 +131,20 @@ fn rewrite_pairs_multiline<T: Rewrite>(
             }
         }
 
-        let nested_overhead = s.len() + 1;
-        let line_shape = match context.config.binop_separator() {
+        match context.config.binop_separator() {
             SeparatorPlace::Back => {
                 result.push(' ');
                 result.push_str(s);
                 result.push_str(&indent_str);
-                nested_shape.sub_width(nested_overhead)?
             }
             SeparatorPlace::Front => {
                 result.push_str(&indent_str);
                 result.push_str(s);
                 result.push(' ');
-                nested_shape.offset_left(nested_overhead)?
             }
-        };
+        }
 
-        let rewrite = e.rewrite(context, line_shape)?;
-        result.push_str(&rewrite);
+        result.push_str(&default_rw.as_ref()?);
     }
     Some(result)
 }
@@ -250,25 +238,44 @@ where
 
 // A pair which forms a tree and can be flattened (e.g., binops).
 trait FlattenPair: Rewrite + Sized {
-    // If `_same_op` is `true`, then we only combine binops with the same
-    // operator into the list. E.g,, if the source is `a * b + c`, if `_same_op`
-    // is true, we make `[(a * b), c]` if `_same_op` is false, we make
-    // `[a, b, c]`
-    fn flatten(&self, _same_op: bool) -> Option<PairList<'_, '_, Self>> {
+    fn flatten(&self, _: &RewriteContext<'_>, _: Shape) -> Option<PairList<'_, '_, Self>> {
         None
     }
 }
 
 struct PairList<'a, 'b, T: Rewrite> {
-    list: Vec<&'b T>,
+    list: Vec<(&'b T, Option<String>)>,
     separators: Vec<&'a str>,
 }
 
 impl FlattenPair for ast::Expr {
-    fn flatten(&self, same_op: bool) -> Option<PairList<'_, '_, ast::Expr>> {
+    fn flatten(
+        &self,
+        context: &RewriteContext<'_>,
+        shape: Shape,
+    ) -> Option<PairList<'_, '_, ast::Expr>> {
         let top_op = match self.node {
             ast::ExprKind::Binary(op, _, _) => op.node,
             _ => return None,
+        };
+
+        let default_rewrite = |node: &ast::Expr, sep: usize, is_first: bool| {
+            if is_first {
+                return node.rewrite(context, shape);
+            }
+            let nested_overhead = sep + 1;
+            let rhs_offset = shape.rhs_overhead(&context.config);
+            let nested_shape = (match context.config.indent_style() {
+                IndentStyle::Visual => shape.visual_indent(0),
+                IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
+            })
+            .with_max_width(&context.config)
+            .sub_width(rhs_offset)?;
+            let default_shape = match context.config.binop_separator() {
+                SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,
+                SeparatorPlace::Front => nested_shape.offset_left(nested_overhead)?,
+            };
+            node.rewrite(context, default_shape)
         };
 
         // Turn a tree of binop expressions into a list using a depth-first,
@@ -279,12 +286,14 @@ impl FlattenPair for ast::Expr {
         let mut node = self;
         loop {
             match node.node {
-                ast::ExprKind::Binary(op, ref lhs, _) if !same_op || op.node == top_op => {
+                ast::ExprKind::Binary(op, ref lhs, _) if op.node == top_op => {
                     stack.push(node);
                     node = lhs;
                 }
                 _ => {
-                    list.push(node);
+                    let op_len = separators.last().map_or(0, |s: &&str| s.len());
+                    let rw = default_rewrite(node, op_len, list.is_empty());
+                    list.push((node, rw));
                     if let Some(pop) = stack.pop() {
                         match pop.node {
                             ast::ExprKind::Binary(op, _, ref rhs) => {
