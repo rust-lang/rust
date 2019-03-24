@@ -374,7 +374,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn visit_region_obligations(&mut self, hir_id: hir::HirId) {
         debug!("visit_region_obligations: hir_id={:?}", hir_id);
 
-        // region checking can introduce new pending obligations
+        // Region checking can introduce new pending obligations,
         // which, when processed, might generate new region
         // obligations. So make sure we process those.
         self.select_all_obligations_or_error();
@@ -402,7 +402,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // data will be accessible from anywhere that the variable is
             // accessed. We must be wary of loops like this:
             //
-            //     // from src/test/compile-fail/borrowck-lend-flow.rs
+            //     // from `src/test/compile-fail/borrowck-lend-flow.rs`
             //     let mut v = box 3, w = box 4;
             //     let mut x = &mut w;
             //     loop {

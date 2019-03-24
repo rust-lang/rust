@@ -158,7 +158,7 @@ rustc_query_append! { [define_queries!][ <'tcx>
         [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
 
 
-        /// Returns true if calls to the function may be promoted
+        /// Returns `true` if calls to the function may be promoted.
         ///
         /// This is either because the function is e.g., a tuple-struct or tuple-variant
         /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
@@ -174,22 +174,22 @@ rustc_query_append! { [define_queries!][ <'tcx>
         /// instead.
         [] fn crate_variances: crate_variances(CrateNum) -> Lrc<ty::CrateVariancesMap>,
 
-        /// Maps from def-id of a type or region parameter to its
+        /// Maps from def-ID of a type or region parameter to its
         /// (inferred) variance.
         [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
     },
 
     TypeChecking {
-        /// Maps from def-id of a type to its (inferred) outlives.
+        /// Maps from def-ID of a type to its (inferred) outlives.
         [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)
             -> Lrc<ty::CratePredicatesMap<'tcx>>,
     },
 
     Other {
-        /// Maps from an impl/trait def-id to a list of the def-ids of its items
+        /// Maps from an impl/trait def-ID to a list of the def-IDs of its items.
         [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
 
-        /// Maps from a trait item to the trait item "descriptor"
+        /// Maps from a trait item to the trait item "descriptor".
         [] fn associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
         [] fn impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,

@@ -37,8 +37,9 @@ use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
 use crate::hir::def::{Def, PathResolution, PerNS};
 use crate::hir::{GenericArg, ConstArg};
-use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                    ELIDED_LIFETIMES_IN_PATHS};
+use crate::lint::builtin::{
+    self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES, ELIDED_LIFETIMES_IN_PATHS
+};
 use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::session::config::nightly_options;
@@ -5145,7 +5146,7 @@ impl<'a> LoweringContext<'a> {
     /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
     fn elided_dyn_bound(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
-            // NB. We intentionally ignore the create-parameter mode here.
+            // N.B., We intentionally ignore the create-parameter mode here.
             // and instead "pass through" to resolve-lifetimes, which will apply
             // the object-lifetime-defaulting rules. Elided object lifetime defaults
             // do not act like other elided lifetimes. In other words, given this:

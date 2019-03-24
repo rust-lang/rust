@@ -7,10 +7,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
-
 #[derive(Clone, Debug)]
 pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
-    // List of elements. This is used to map from a T to a usize.
+    // List of elements. This is used to map from a `T` to a `usize`.
     elements: Vec<T>,
 
     // Maps each element to an index.
@@ -22,7 +21,7 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
 
     // This is a cached transitive closure derived from the edges.
     // Currently, we build it lazilly and just throw out any existing
-    // copy whenever a new edge is added. (The Lock is to permit
+    // copy whenever a new edge is added. (The `Lock` is to permit
     // the lazy computation.) This is kind of silly, except for the
     // fact its size is tied to `self.elements.len()`, so I wanted to
     // wait before building it up to avoid reallocating as new edges
@@ -209,10 +208,10 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             }
         };
 
-        // in some cases, there are some arbitrary choices to be made;
+        // In some cases, there are some arbitrary choices to be made;
         // it doesn't really matter what we pick, as long as we pick
         // the same thing consistently when queried, so ensure that
-        // (a, b) are in a consistent relative order
+        // (a, b) are in a consistent relative order.
         if a > b {
             mem::swap(&mut a, &mut b);
         }

@@ -13,27 +13,27 @@ use crate::util::nodemap::DefIdMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
-/// Information about the opaque, abstract types whose values we
+/// Information about the opaque, existential types whose values we
 /// are inferring in this function (these are the `impl Trait` that
 /// appear in the return type).
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
-    /// The substitutions that we apply to the abstract that this
+    /// The substitutions that we apply to the existential type that this
     /// `impl Trait` desugars to. e.g., if:
     ///
     ///     fn foo<'a, 'b, T>() -> impl Trait<'a>
     ///
     /// winds up desugared to:
     ///
-    ///     abstract type Foo<'x, X>: Trait<'x>
+    ///     existential type Foo<'x, X>: Trait<'x>
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.
     pub substs: SubstsRef<'tcx>,
 
-    /// The type variable that represents the value of the abstract type
+    /// The type variable that represents the value of the existential type
     /// that we require. In other words, after we compile this function,
-    /// we will be created a constraint like:
+    /// we will have created a constraint like:
     ///
     ///     Foo<'a, T> = ?C
     ///
@@ -141,12 +141,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Here, we have two `impl Trait` types whose values are being
     /// inferred (the `impl Bar<'a>` and the `impl
     /// Bar<'b>`). Conceptually, this is sugar for a setup where we
-    /// define underlying abstract types (`Foo1`, `Foo2`) and then, in
+    /// define underlying existential types (`Foo1`, `Foo2`) and then, in
     /// the return type of `foo`, we *reference* those definitions:
     ///
     /// ```text
-    /// abstract type Foo1<'x>: Bar<'x>;
-    /// abstract type Foo2<'x>: Bar<'x>;
+    /// existential type Foo1<'x>: Bar<'x>;
+    /// existential type Foo2<'x>: Bar<'x>;
     /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///                    //  ^^^^ ^^
     ///                    //  |    |
@@ -205,7 +205,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// This is actually a bit of a tricky constraint in general. We
     /// want to say that each variable (e.g., `'0`) can only take on
-    /// values that were supplied as arguments to the abstract type
+    /// values that were supplied as arguments to the existential type
     /// (e.g., `'a` for `Foo1<'a>`) or `'static`, which is always in
     /// scope. We don't have a constraint quite of this kind in the current
     /// region checker.
@@ -232,10 +232,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// # The `free_region_relations` parameter
     ///
     /// The `free_region_relations` argument is used to find the
-    /// "minimum" of the regions supplied to a given abstract type.
+    /// "minimum" of the regions supplied to a given existential type.
     /// It must be a relation that can answer whether `'a <= 'b`,
     /// where `'a` and `'b` are regions that appear in the "substs"
-    /// for the abstract type references (the `<'a>` in `Foo1<'a>`).
+    /// for the existential type references (the `<'a>` in `Foo1<'a>`).
     ///
     /// Note that we do not impose the constraints based on the
     /// generic regions from the `Foo1` definition (e.g., `'x`). This
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Here, the fact that `'b: 'a` is known only because of the
     /// implied bounds from the `&'a &'b u32` parameter, and is not
-    /// "inherent" to the abstract type definition.
+    /// "inherent" to the existential type definition.
     ///
     /// # Parameters
     ///
@@ -364,16 +364,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     Component::Param(_) => {
-                        // ignore type parameters like `T`, they are captured
-                        // implicitly by the `impl Trait`
+                        // Ignore type parameters like `T`, since they are captured
+                        // implicitly by the `impl Trait`.
                     }
 
                     Component::UnresolvedInferenceVariable(_) => {
-                        // we should get an error that more type
-                        // annotations are needed in this case
+                        // We should get an error that more type
+                        // annotations are needed in this case.
                         self.tcx
                             .sess
-                            .delay_span_bug(span, "unresolved inf var in opaque");
+                            .delay_span_bug(span, "unresolved inf var in opaque type");
                     }
 
                     Component::Projection(ty::ProjectionTy {
@@ -397,20 +397,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
+
+        // For soundness, we need to ensure that every region that is captured by the opaque type
+        // but does not explicitly appear in the opaque type outlives the actual (concrete) type.
+        // This allows for invariant lifetimes to be captured by opaque types as long as
+        // short-lived lifetimes are not permitted to escape and cause UB. 
+        let opaque_substs_regions = opaque_defn.substs.regions().collect();
+        let captured_regions = concrete_ty_regions.difference(&opaque_substs_regions);
+        for captured_region in captured_regions {
+            for concrete_ty_region in &concrete_ty_regions {
+                self.sub_regions(infer::CallReturn(span), *concrete_ty_region, captured_region)
+            }
+        }
     }
 
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
-    /// (*), computes the "definition type" for an abstract type
+    /// (*), computes the "definition type" for an existential type
     /// definition -- that is, the inferred value of `Foo1<'x>` or
     /// `Foo2<'x>` that we would conceptually use in its definition:
     ///
-    ///     abstract type Foo1<'x>: Bar<'x> = AAA; <-- this type AAA
-    ///     abstract type Foo2<'x>: Bar<'x> = BBB; <-- or this type BBB
+    ///     existential type Foo1<'x>: Bar<'x> = AAA; <-- this type AAA
+    ///     existential type Foo2<'x>: Bar<'x> = BBB; <-- or this type BBB
     ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
     ///
-    /// Note that these values are defined in terms of a distinct set of
-    /// generic parameters (`'x` instead of `'a`) from C1 or C2. The main
+    /// Note that these values are defined in terms of a set of generic
+    /// parameters (`'x` instead of `'a`) distinct from C1 and C2. The main
     /// purpose of this function is to do that translation.
     ///
     /// (*) C1 and C2 were introduced in the comments on
@@ -450,23 +462,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .collect();
 
         // Convert the type from the function into a type valid outside
-        // the function, by replacing invalid regions with 'static,
+        // the function, by replacing invalid regions with `'static`,
         // after producing an error for each of them.
         let definition_ty =
-            instantiated_ty.fold_with(&mut ReverseMapper::new(
-                self.tcx,
-                self.is_tainted_by_errors(),
-                def_id,
+            instantiated_ty.fold_with(&mut ReverseMapper {
+                tcx: self.tcx,
                 map,
-                instantiated_ty,
-            ));
+            });
         debug!(
             "infer_opaque_definition_from_instantiation: definition_ty={:?}",
             definition_ty
         );
 
         // We can unwrap here because our reverse mapper always
-        // produces things with 'gcx lifetime, though the type folder
+        // produces things with `'gcx` lifetime, though the type folder
         // obscures that.
         let definition_ty = gcx.lift(&definition_ty).unwrap();
 
@@ -656,20 +665,20 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // value we are inferring.  At present, this is
                     // always true during the first phase of
                     // type-check, but not always true later on during
-                    // NLL. Once we support named abstract types more fully,
+                    // NLL. Once we support named existential types more fully,
                     // this same scenario will be able to arise during all phases.
                     //
-                    // Here is an example using `abstract type` that indicates
+                    // Here is an example using `existential type` that indicates
                     // the distinction we are checking for:
                     //
                     // ```rust
                     // mod a {
-                    //   pub abstract type Foo: Iterator;
-                    //   pub fn make_foo() -> Foo { .. }
+                    //     pub existential type Foo: Iterator;
+                    //     pub fn make_foo() -> Foo { .. }
                     // }
                     //
                     // mod b {
-                    //   fn foo() -> a::Foo { a::make_foo() }
+                    //     fn foo() -> a::Foo { a::make_foo() }
                     // }
                     // ```
                     //
@@ -777,7 +786,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             required_region_bounds
         );
 
-        // make sure that we are in fact defining the *entire* type
+        // Make sure that we are in fact defining the *entire* type
         // e.g., `existential type Foo<T: Bound>: Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
         debug!(

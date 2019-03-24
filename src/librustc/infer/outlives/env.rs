@@ -197,8 +197,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     ) where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
-        // Record relationships such as `T:'x` that don't go into the
-        // free-region-map but which we use here.
+        // Record relationships such as `T: 'x`, which don't go into the
+        // free-region-map, but which we use here.
         for outlives_bound in outlives_bounds {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {

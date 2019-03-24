@@ -1643,7 +1643,7 @@ pub struct ParamEnv<'tcx> {
     pub reveal: traits::Reveal,
 
     /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
-    /// register that `def_id` (useful for transitioning to the chalk trait
+    /// register that `def_id` (useful for transitioning to the Chalk trait
     /// solver).
     pub def_id: Option<DefId>,
 }

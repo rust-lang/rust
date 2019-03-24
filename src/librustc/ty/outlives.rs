@@ -1,4 +1,4 @@
-// The outlines relation `T: 'a` or `'a: 'b`. This code frequently
+// The outlives relation; `T: 'a` or `'a: 'b`. This code frequently
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 

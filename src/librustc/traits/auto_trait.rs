@@ -141,9 +141,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // selection and projection:
             //
             // * We can always cache the result of a particular trait selection for the lifetime of
-            // an InfCtxt
+            // an `InferCtxt`.
             // * Given a projection bound such as '<T as SomeTrait>::SomeItem = K', if 'T:
-            // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'
+            // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'.
             //
             // We fix the first assumption by manually clearing out all of the InferCtxt's caches
             // in between calls to SelectionContext.select. This allows us to keep all of the

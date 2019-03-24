@@ -15,7 +15,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         self.relation.is_empty()
     }
 
-    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
+    // Record that `'sup: 'sub`. Or, put another way, `'sub <= 'sup`.
     // (with the exception that `'static: 'x` is not notable)
     pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
         debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
@@ -24,7 +24,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         }
     }
 
-    /// Computes the least-upper-bound of two free regions. In some
+    /// Computes the least upper bound of two free regions. In some
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
@@ -90,6 +90,7 @@ impl_stable_hash_for!(struct FreeRegionMap<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
+
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<FreeRegionMap<'tcx>> {
         self.relation.maybe_map(|&fr| tcx.lift(&fr))
                      .map(|relation| FreeRegionMap { relation })
