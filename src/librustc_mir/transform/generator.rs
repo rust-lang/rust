@@ -390,13 +390,13 @@ fn locals_live_across_suspend_points(
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
 ) {
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
-    let hir_id = tcx.hir().as_local_hir_id(source.def_id()).unwrap();
+    let def_id = source.def_id();
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let storage_live_analysis = MaybeStorageLive::new(mir);
     let storage_live =
-        do_dataflow(tcx, mir, hir_id, &[], &dead_unwinds, storage_live_analysis,
+        do_dataflow(tcx, mir, def_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
@@ -410,7 +410,7 @@ fn locals_live_across_suspend_points(
     let borrowed_locals = if !movable {
         let analysis = HaveBeenBorrowedLocals::new(mir);
         let result =
-            do_dataflow(tcx, mir, hir_id, &[], &dead_unwinds, analysis,
+            do_dataflow(tcx, mir, def_id, &[], &dead_unwinds, analysis,
                         |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
         Some((analysis, result))
     } else {
