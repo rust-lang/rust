@@ -88,7 +88,7 @@ where
 mod add_derive;
 mod add_impl;
 mod flip_comma;
-mod flip_eq_operands;
+mod flip_binexpr;
 mod change_visibility;
 mod fill_match_arms;
 mod fill_struct_fields;
@@ -108,7 +108,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         fill_match_arms::fill_match_arms,
         fill_struct_fields::fill_struct_fields,
         flip_comma::flip_comma,
-        flip_eq_operands::flip_eq_operands,
+        flip_binexpr::flip_binexpr,
         introduce_variable::introduce_variable,
         replace_if_let_with_match::replace_if_let_with_match,
         split_import::split_import,
