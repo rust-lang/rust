@@ -6,7 +6,6 @@ use super::RegionVariableOrigin;
 use super::type_variable::TypeVariableOrigin;
 
 use std::ops::Range;
-use rustc_data_structures::fx::FxHashMap;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// This rather funky routine is used while processing expected
@@ -102,10 +101,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // Micro-optimization: if no variables have been created, then
         // `value` can't refer to any of them. =) So we can just return it.
-        if fudger.type_vars.is_empty() &&
+        if fudger.type_vars.0.is_empty() &&
             fudger.int_vars.is_empty() &&
             fudger.float_vars.is_empty() &&
-            fudger.region_vars.is_empty() {
+            fudger.region_vars.0.is_empty() {
             Ok(value)
         } else {
             Ok(value.fold_with(&mut fudger))
@@ -115,10 +114,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_vars: FxHashMap<TyVid, TypeVariableOrigin>,
+    type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
-    region_vars: FxHashMap<RegionVid, RegionVariableOrigin>,
+    region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> {
@@ -129,9 +128,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
-                if let Some(&origin) = self.type_vars.get(&vid) {
+                if self.type_vars.0.contains(&vid) {
                     // This variable was created during the fudging.
                     // Recreate it with a fresh variable here.
+                    let idx = (vid.index - self.type_vars.0.start.index) as usize;
+                    let origin = self.type_vars.1[idx];
                     self.infcx.next_ty_var(origin)
                 } else {
                     // This variable was created before the
@@ -165,7 +166,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReVar(vid) = r {
-            if let Some(&origin) = self.region_vars.get(&vid) {
+            if self.region_vars.0.contains(&vid) {
+                let idx = (vid.index() - self.region_vars.0.start.index()) as usize;
+                let origin = self.region_vars.1[idx];
                 return self.infcx.next_region_var(origin);
             }
         }

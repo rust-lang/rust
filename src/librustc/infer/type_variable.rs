@@ -5,7 +5,7 @@ use crate::ty::{self, Ty, TyVid};
 use std::cmp;
 use std::marker::PhantomData;
 use std::u32;
-use rustc_data_structures::fx::FxHashMap;
+use std::ops::Range;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
@@ -294,12 +294,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn vars_since_snapshot(
         &mut self,
         s: &Snapshot<'tcx>,
-    ) -> FxHashMap<TyVid, TypeVariableOrigin> {
+    ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
         let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
-        (range.start.vid.index..range.end.vid.index).map(|index| {
-            let origin = self.values.get(index as usize).origin.clone();
-            (TyVid { index }, origin)
-        }).collect()
+        (range.start.vid..range.end.vid, (range.start.vid.index..range.end.vid.index).map(|index| {
+            self.values.get(index as usize).origin.clone()
+        }).collect())
     }
 
     /// Finds the set of type variables that existed *before* `s`
