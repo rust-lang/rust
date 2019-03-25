@@ -118,12 +118,8 @@ pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> bool {
         None => return false,
     };
     let crate_impl_blocks = db.impls_in_crate(krate);
-    for impl_block in crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_) {
-        if &impl_block.target_ty(db) == trait_ref.self_ty() {
-            return true;
-        }
-    }
-    false
+    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
+    impl_blocks.any(|impl_block| &impl_block.target_ty(db) == trait_ref.self_ty())
 }
 
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
@@ -145,7 +141,7 @@ impl Ty {
         name: &Name,
         resolver: &Resolver,
     ) -> Option<(Ty, Function)> {
-        // FIXME: what has priority, an inherent method that needs autoderefs or a trait method?
+        // FIXME: trait methods should be used before autoderefs
         let inherent_method = self.clone().iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
@@ -178,12 +174,21 @@ impl Ty {
                 }
             }
         }
-        // FIXME the implements check may result in other obligations or unifying variables?
+        // FIXME:
+        //  - we might not actually be able to determine fully that the type
+        //    implements the trait here; it's enough if we (well, Chalk) determine
+        //    that it's possible.
+        //  - when the trait method is picked, we need to register an
+        //    'obligation' somewhere so that we later check that it's really
+        //    implemented
+        //  - both points go for additional requirements from where clauses as
+        //    well (in fact, the 'implements' condition could just be considered a
+        //    'where Self: Trait' clause)
         candidates.retain(|(t, _m)| {
             let trait_ref = TraitRef { trait_: *t, substs: Substs::single(self.clone()) };
             db.implements(trait_ref)
         });
-        // FIXME what happens if there are still multiple potential candidates?
+        // FIXME if there's multiple candidates here, that's an ambiguity error
         let (_chosen_trait, chosen_method) = candidates.first()?;
         Some((self.clone(), *chosen_method))
     }

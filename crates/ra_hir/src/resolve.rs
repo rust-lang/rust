@@ -187,7 +187,7 @@ impl Resolver {
                 }
                 .into_iter()
             })
-            .flat_map(|i| i)
+            .flatten()
     }
 
     fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
