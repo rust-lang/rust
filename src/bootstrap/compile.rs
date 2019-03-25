@@ -97,6 +97,8 @@ impl Step for Std {
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
+        // compile with `-Z emit-stack-sizes`; see bootstrap/src/rustc.rs for more details
+        cargo.env("RUSTC_EMIT_STACK_SIZES", "1");
         run_cargo(builder,
                   &mut cargo,
                   &libstd_stamp(builder, compiler, target),
@@ -382,6 +384,8 @@ impl Step for Test {
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         builder.info(&format!("Building stage{} test artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
+        // compile with `-Z emit-stack-sizes`; see bootstrap/src/rustc.rs for more details
+        cargo.env("RUSTC_EMIT_STACK_SIZES", "1");
         run_cargo(builder,
                   &mut cargo,
                   &libtest_stamp(builder, compiler, target),
