@@ -140,7 +140,7 @@ fn check_module(
             Problem::UnresolvedModule { candidate } => {
                 let create_file =
                     FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
-                let fix = SourceChange::system_edit("create module", create_file);
+                let fix = SourceChange::file_system_edit("create module", create_file);
                 Diagnostic {
                     range: name_node.range(),
                     message: "unresolved module".to_string(),

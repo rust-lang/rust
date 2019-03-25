@@ -112,16 +112,14 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
         TextRange::from_to(position.offset - current_indent_len, position.offset),
         target_indent.into(),
     );
-    let res = SourceChange {
-        label: "reindent dot".to_string(),
-        source_file_edits: vec![SourceFileEdit { edit: edit.finish(), file_id: position.file_id }],
-        file_system_edits: vec![],
-        cursor_position: Some(FilePosition {
+
+    let res = SourceChange::source_file_edit_from("reindent dot", position.file_id, edit.finish())
+        .with_cursor(FilePosition {
             offset: position.offset + target_indent_len - current_indent_len
                 + TextUnit::of_char('.'),
             file_id: position.file_id,
-        }),
-    };
+        });
+
     Some(res)
 }
 

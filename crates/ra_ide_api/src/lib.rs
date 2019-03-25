@@ -98,7 +98,24 @@ pub struct SourceChange {
 }
 
 impl SourceChange {
-    pub fn source_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+    /// Creates a new SourceChange with the given label
+    /// from the edits.
+    pub(crate) fn from_edits<L: Into<String>>(
+        label: L,
+        source_file_edits: Vec<SourceFileEdit>,
+        file_system_edits: Vec<FileSystemEdit>,
+    ) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits,
+            file_system_edits,
+            cursor_position: None,
+        }
+    }
+
+    /// Creates a new SourceChange with the given label,
+    /// containing only the given `SourceFileEdits`.
+    pub(crate) fn source_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
         SourceChange {
             label: label.into(),
             source_file_edits: edits,
@@ -107,7 +124,9 @@ impl SourceChange {
         }
     }
 
-    pub fn system_edits<L: Into<String>>(label: L, edits: Vec<FileSystemEdit>) -> Self {
+    /// Creates a new SourceChange with the given label,
+    /// containing only the given `FileSystemEdits`.
+    pub(crate) fn file_system_edits<L: Into<String>>(label: L, edits: Vec<FileSystemEdit>) -> Self {
         SourceChange {
             label: label.into(),
             source_file_edits: vec![],
@@ -116,20 +135,36 @@ impl SourceChange {
         }
     }
 
-    pub fn source_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
+    /// Creates a new SourceChange with the given label,
+    /// containing only a single `SourceFileEdit`.
+    pub(crate) fn source_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
         SourceChange::source_edits(label, vec![edit])
     }
 
-    pub fn system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
-        SourceChange::system_edits(label, vec![edit])
+    /// Creates a new SourceChange with the given label
+    /// from the given `FileId` and `TextEdit`
+    pub(crate) fn source_file_edit_from<L: Into<String>>(
+        label: L,
+        file_id: FileId,
+        edit: TextEdit,
+    ) -> Self {
+        SourceChange::source_edit(label, SourceFileEdit { file_id, edit })
     }
 
-    pub fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
+    /// Creates a new SourceChange with the given label
+    /// from the given `FileId` and `TextEdit`
+    pub(crate) fn file_system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
+        SourceChange::file_system_edits(label, vec![edit])
+    }
+
+    /// Sets the cursor position to the given `FilePosition`
+    pub(crate) fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
         self.cursor_position = Some(cursor_position);
         self
     }
 
-    pub fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
+    /// Sets the cursor position to the given `FilePosition`
+    pub(crate) fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
         self.cursor_position = cursor_position;
         self
     }
