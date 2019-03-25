@@ -4047,13 +4047,27 @@ impl<'a> Resolver<'a> {
                     } else {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
-                            names.extend(self.extern_prelude.iter().map(|(ident, _)| {
-                                TypoSuggestion {
-                                    candidate: ident.name,
-                                    article: "a",
-                                    kind: "crate",
-                                }
+                            names.extend(self.extern_prelude.clone().iter().flat_map(|(ident, _)| {
+                                self.crate_loader
+                                    .maybe_process_path_extern(ident.name, ident.span)
+                                    .and_then(|crate_id| {
+                                        let crate_mod = Def::Mod(DefId {
+                                            krate: crate_id,
+                                            index: CRATE_DEF_INDEX,
+                                        });
+
+                                        if filter_fn(crate_mod) {
+                                            Some(TypoSuggestion {
+                                                candidate: ident.name,
+                                                article: "a",
+                                                kind: "crate",
+                                            })
+                                        } else {
+                                            None
+                                        }
+                                    })
                             }));
+
                             if let Some(prelude) = self.prelude {
                                 add_module_candidates(prelude, &mut names);
                             }
