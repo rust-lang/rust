@@ -1,6 +1,6 @@
+//! Traits for conversions between types.
 //!
 //! The traits in this module provide a way to convert from one type to another type.
-//!
 //! Each trait serves a different purpose:
 //!
 //! - Implement the [`AsRef`] trait for cheap reference-to-reference conversions
@@ -99,12 +99,14 @@ use fmt;
 pub const fn identity<T>(x: T) -> T { x }
 
 /// Used to do a cheap reference-to-reference conversion.
+///
 /// This trait is similar to [`AsMut`] which is used for converting between mutable references.
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
 ///
 /// `AsRef` is very similar to, but serves a slightly different purpose than [`Borrow`]:
+///
 /// - Use `AsRef` when the goal is to simply convert into a reference
 /// - Use `Borrow` when the goal is related to writing code that is agnostic to
 ///   the type of borrow and whether it is a reference or value
@@ -127,6 +129,7 @@ pub const fn identity<T>(x: T) -> T { x }
 ///
 /// By using trait bounds we can accept arguments of different types as long as they can be
 /// converted a the specified type `T`.
+///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
 /// want to accept all references that can be converted to &str as an argument.
 /// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
@@ -153,6 +156,7 @@ pub trait AsRef<T: ?Sized> {
 }
 
 /// Used to do a cheap mutable-to-mutable reference conversion.
+///
 /// This trait is similar to [`AsRef`] but used for converting between mutable
 /// references. If you need to do a costly conversion it is better to
 /// implement [`From`] with type `&mut T` or write a custom function.
@@ -199,9 +203,9 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// One should only implement [`Into`] if a conversion to a type outside the current crate is
 /// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
-/// implementing [`From`] automatically provides one with a implementation of [`Into`]
-/// thanks to the blanket implementation in the standard library.
-/// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
+/// implementing [`From`] automatically provides one with a implementation of [`Into`] thanks to
+/// the blanket implementation in the standard library. [`From`] cannot do these type of
+/// conversions because of Rust's orphaning rules.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryInto`].
 ///
@@ -211,6 +215,7 @@ pub trait AsMut<T: ?Sized> {
 /// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// # Implementing `Into` for conversions to external types
+///
 /// If the destination type is not part of the current crate
 /// then you can't implement [`From`] directly.
 /// For example, take this code:
@@ -239,6 +244,7 @@ pub trait AsMut<T: ?Sized> {
 /// It is important to understand that `Into` does not provide a [`From`] implementation
 /// (as [`From`] does with `Into`). Therefore, you should always try to implement [`From`]
 /// and then fall back to `Into` if [`From`] can't be implemented.
+///
 /// Prefer using `Into` over [`From`] when specifying trait bounds on a generic function
 /// to ensure that types that only implement `Into` can be used as well.
 ///
@@ -280,6 +286,7 @@ pub trait Into<T>: Sized {
 /// One should always prefer implementing [`From`] over [`Into`]
 /// because implementing [`From`] automatically provides one with a implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
+///
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
 /// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
 /// See [`Into`] for more details.
@@ -287,12 +294,11 @@ pub trait Into<T>: Sized {
 /// Prefer using [`Into`] over using [`From`] when specifying trait bounds on a generic function.
 /// This way, types that directly implement [`Into`] can be used as arguments as well.
 ///
-/// The [`From`] is also very useful when performing error handling.
-/// When constructing a function that is capable of failing, the return type
-/// will generally be of the form `Result<T, E>`.
+/// The [`From`] is also very useful when performing error handling. When constructing a function
+/// that is capable of failing, the return type will generally be of the form `Result<T, E>`.
 /// The `From` trait simplifies error handling by allowing a function to return a single error type
-/// that encapsulate multiple error types. See the "Examples" section
-/// and [the book][book] for more details.
+/// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
+/// details.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
 ///
@@ -313,13 +319,12 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 ///
-/// While performing error handling it is often useful to implement `From`
-/// for your own error type. By converting underlying error types to our own custom error type
-/// that encapsulates the underlying error type, we can return a single error type
-/// without losing information on the underlying cause. The '?' operator automatically converts
-/// the underlying error type to our custom error type by calling `Into<CliError>::into`
-/// which is automatically provided when implementing `From`.
-/// The compiler then infers which implementation of `Into` should be used.
+/// While performing error handling it is often useful to implement `From` for your own error type.
+/// By converting underlying error types to our own custom error type that encapsulates the
+/// underlying error type, we can return a single error type without losing information on the
+/// underlying cause. The '?' operator automatically converts the underlying error type to our
+/// custom error type by calling `Into<CliError>::into` which is automatically provided when
+/// implementing `From`. The compiler then infers which implementation of `Into` should be used.
 ///
 /// ```
 /// use std::fs;
