@@ -106,7 +106,10 @@ pub fn black_box<T>(dummy: T) -> T {
         dummy
     }
     #[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))] {
-        #[inline(never)] fn black_box_(x: T) -> T { x }
-        black_box_(dummy)
-    }
+        unsafe {
+            let ret = crate::ptr::read_volatile(&dummy);
+            crate::mem::forget(dummy);
+            ret
+        }
+   }
 }
