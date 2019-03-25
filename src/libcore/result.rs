@@ -1220,10 +1220,10 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// ```
     /// let v = vec![3, 2, 1, 10];
     /// let mut shared = 0;
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32|
+    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32| {
     ///     shared += x;
     ///     x.checked_sub(2).ok_or("Underflow!")
-    /// ).collect();
+    /// }).collect();
     /// assert_eq!(res, Err("Underflow!"));
     /// assert_eq!(shared, 6);
     /// ```
