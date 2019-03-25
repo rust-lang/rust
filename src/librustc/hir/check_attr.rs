@@ -177,16 +177,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut is_transparent = false;
 
         for hint in &hints {
-            let name = if let Some(name) = hint.ident_str() {
-                name
-            } else {
-                // Invalid repr hint like repr(42). We don't check for unrecognized hints here
-                // (libsyntax does that), so just ignore it.
-                continue;
-            };
-
-            let (article, allowed_targets) = match name {
-                "C" | "align" => {
+            let (article, allowed_targets) = match hint.name_or_empty().get() {
+                name @ "C" | name @ "align" => {
                     is_c |= name == "C";
                     if target != Target::Struct &&
                             target != Target::Union &&

@@ -463,9 +463,10 @@ impl<'a> TraitDef<'a> {
                 let mut attrs = newitem.attrs.clone();
                 attrs.extend(item.attrs
                     .iter()
-                    .filter(|a| a.ident_str().map_or(false, |name| {
-                        ["allow", "warn", "deny", "forbid", "stable", "unstable"].contains(&name)
-                    }))
+                    .filter(|a| {
+                        ["allow", "warn", "deny", "forbid", "stable", "unstable"]
+                            .contains(&a.name_or_empty().get())
+                    })
                     .cloned());
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
             }

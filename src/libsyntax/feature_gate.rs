@@ -1341,9 +1341,9 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = attr.ident_str();
+        let name = attr.name_or_empty();
         for &(n, ty, _template, ref gateage) in BUILTIN_ATTRIBUTES {
-            if name == Some(n) {
+            if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
                     if !attr.span.allows_unstable(name) {
                         gate_feature_fn!(
@@ -1373,7 +1373,7 @@ impl<'a> Context<'a> {
             }
         }
         if !attr::is_known(attr) {
-            if name.map_or(false, |name| name.starts_with("rustc_")) {
+            if name.starts_with("rustc_") {
                 let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics";
                 gate_feature!(self, rustc_attrs, attr.span, msg);
@@ -2054,12 +2054,12 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         };
 
         for mi in list {
-            let name = match mi.ident_str() {
-                Some(name) if mi.is_word() => name,
-                _ => continue,
-            };
+            if !mi.is_word() {
+                continue;
+            }
 
-            if incomplete_features.iter().any(|f| *f == name) {
+            let name = mi.name_or_empty();
+            if incomplete_features.iter().any(|f| name == *f) {
                 span_handler.struct_span_warn(
                     mi.span(),
                     &format!(

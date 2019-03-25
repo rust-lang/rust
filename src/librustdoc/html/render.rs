@@ -562,23 +562,23 @@ pub fn run(mut krate: clean::Crate,
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
         for attr in attrs.lists("doc") {
-            match (attr.ident_str(), attr.value_str()) {
-                (Some("html_favicon_url"), Some(s)) => {
+            match (attr.name_or_empty().get(), attr.value_str()) {
+                ("html_favicon_url", Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
-                (Some("html_logo_url"), Some(s)) => {
+                ("html_logo_url", Some(s)) => {
                     scx.layout.logo = s.to_string();
                 }
-                (Some("html_playground_url"), Some(s)) => {
+                ("html_playground_url", Some(s)) => {
                     markdown::PLAYGROUND.with(|slot| {
                         let name = krate.name.clone();
                         *slot.borrow_mut() = Some((Some(name), s.to_string()));
                     });
                 }
-                (Some("issue_tracker_base_url"), Some(s)) => {
+                ("issue_tracker_base_url", Some(s)) => {
                     scx.issue_tracker_base_url = Some(s.to_string());
                 }
-                (Some("html_no_source"), None) if attr.is_word() => {
+                ("html_no_source", None) if attr.is_word() => {
                     scx.include_sources = false;
                 }
                 _ => {}
@@ -3751,7 +3751,7 @@ fn render_attributes(w: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::Resul
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        if !attr.ident_str().map_or(false, |name| ATTRIBUTE_WHITELIST.contains(&name)) {
+        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty().get()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {
