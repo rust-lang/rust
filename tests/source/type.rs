@@ -83,6 +83,10 @@ impl Future<Item = (), Error = SomeError> + 'a,
     'c {
 }
 
+// #3051
+token![impl];
+token![ impl ];
+
 // #3060
 macro_rules! foo {
     ($foo_api: ty) => {

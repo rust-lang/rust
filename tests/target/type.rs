@@ -82,6 +82,10 @@ pub fn do_something<'a, T: Trait1 + Trait2 + 'a>(
 > + 'a + 'b + 'c {
 }
 
+// #3051
+token![impl];
+token![impl];
+
 // #3060
 macro_rules! foo {
     ($foo_api: ty) => {
