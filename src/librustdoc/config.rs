@@ -7,7 +7,7 @@ use errors::emitter::ColorConfig;
 use getopts;
 use rustc::lint::Level;
 use rustc::session::early_error;
-use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, ExternEntry};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options};
 use rustc::session::search_paths::SearchPath;
@@ -588,7 +588,8 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
                         enable `--extern crate_name` without `=path`".to_string());
         }
         let name = name.to_string();
-        externs.entry(name).or_default().insert(location);
+        // For Rustdoc purposes, we can treat all externs as public
+        externs.entry(name).or_default().insert(ExternEntry { location, public: true });
     }
     Ok(Externs::new(externs))
 }
