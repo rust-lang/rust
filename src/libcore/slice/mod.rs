@@ -499,11 +499,12 @@ impl<T> [T] {
         }
 
         while i < ln / 2 {
-            // Unsafe swap to avoid the bounds check in safe swap.
+            // Unsafe swap to avoid the bounds check in safe swap. This loop
+            // quits right before pa==pb, so swap_nonoverlapping is safe.
             unsafe {
                 let pa: *mut T = self.get_unchecked_mut(i);
                 let pb: *mut T = self.get_unchecked_mut(ln - i - 1);
-                ptr::swap(pa, pb);
+                ptr::swap_nonoverlapping(pa, pb, 1);
             }
             i += 1;
         }
