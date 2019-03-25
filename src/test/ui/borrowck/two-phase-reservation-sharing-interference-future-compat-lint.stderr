@@ -14,7 +14,7 @@ note: lint level defined here
    |
 LL |     #![warn(mutable_borrow_reservation_conflict)]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
    = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
 
 error: cannot borrow `v` as mutable because it is also borrowed as immutable
@@ -33,7 +33,7 @@ note: lint level defined here
    |
 LL |     #![deny(mutable_borrow_reservation_conflict)]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
    = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
 
 error: aborting due to previous error

@@ -23,7 +23,7 @@ mod future_compat_warn {
 
         v.push(shared.len());
         //~^ WARNING cannot borrow `v` as mutable
-        //~| WARNING will become a hard error in a future release
+        //~| WARNING may become a hard error in the future
     }
 }
 
@@ -36,7 +36,7 @@ mod future_compat_deny {
 
         v.push(shared.len());
         //~^ ERROR cannot borrow `v` as mutable
-        //~| WARNING will become a hard error in a future release
+        //~| WARNING may become a hard error in the future
     }
 }
 
