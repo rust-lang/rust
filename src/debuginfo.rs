@@ -6,9 +6,9 @@ use syntax::source_map::FileName;
 
 use gimli::write::{
     Address, AttributeValue, DwarfUnit, EndianVec, FileId, LineProgram, LineString,
-    LineStringTable, Range, RangeList, Result, SectionId, Sections, UnitEntryId, Writer,
+    LineStringTable, Range, RangeList, Result, Sections, UnitEntryId, Writer,
 };
-use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
+use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, SectionId};
 
 use faerie::*;
 
