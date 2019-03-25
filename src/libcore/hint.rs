@@ -97,7 +97,6 @@ pub fn spin_loop() {
 /// elimination.
 ///
 /// This function is a no-op, and does not even read from `dummy`.
-#[cfg_attr(any(target_arch = "asmjs", target_arch = "wasm32"), inline(never))]
 #[unstable(feature = "test", issue = "27812")]
 pub fn black_box<T>(dummy: T) -> T {
     #[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))] {
@@ -107,6 +106,7 @@ pub fn black_box<T>(dummy: T) -> T {
         dummy
     }
     #[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))] {
-        dummy
+        #[inline(never)] fn black_box_(x: T) -> T { x }
+        black_box_(dummy)
     }
 }
