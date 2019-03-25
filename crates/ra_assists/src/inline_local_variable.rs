@@ -17,33 +17,33 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     }
     let initializer = let_stmt.initializer()?;
     let wrap_in_parens = match initializer.kind() {
-        ExprKind::LambdaExpr(_) => true,
-        ExprKind::IfExpr(_) => true,
-        ExprKind::LoopExpr(_) => true,
-        ExprKind::ForExpr(_) => true,
-        ExprKind::WhileExpr(_) => true,
-        ExprKind::ContinueExpr(_) => true,
-        ExprKind::BreakExpr(_) => true,
-        ExprKind::Label(_) => true,
-        ExprKind::ReturnExpr(_) => true,
-        ExprKind::MatchExpr(_) => true,
-        ExprKind::StructLit(_) => true,
-        ExprKind::CastExpr(_) => true,
-        ExprKind::PrefixExpr(_) => true,
-        ExprKind::RangeExpr(_) => true,
-        ExprKind::BinExpr(_) => true,
-        ExprKind::CallExpr(_) => false,
-        ExprKind::IndexExpr(_) => false,
-        ExprKind::MethodCallExpr(_) => false,
-        ExprKind::FieldExpr(_) => false,
-        ExprKind::TryExpr(_) => false,
-        ExprKind::RefExpr(_) => false,
-        ExprKind::Literal(_) => false,
-        ExprKind::TupleExpr(_) => false,
-        ExprKind::ArrayExpr(_) => false,
-        ExprKind::ParenExpr(_) => false,
-        ExprKind::PathExpr(_) => false,
-        ExprKind::BlockExpr(_) => false,
+        ExprKind::LambdaExpr(_)
+        | ExprKind::IfExpr(_)
+        | ExprKind::LoopExpr(_)
+        | ExprKind::ForExpr(_)
+        | ExprKind::WhileExpr(_)
+        | ExprKind::ContinueExpr(_)
+        | ExprKind::BreakExpr(_)
+        | ExprKind::Label(_)
+        | ExprKind::ReturnExpr(_)
+        | ExprKind::MatchExpr(_)
+        | ExprKind::StructLit(_)
+        | ExprKind::CastExpr(_)
+        | ExprKind::PrefixExpr(_)
+        | ExprKind::RangeExpr(_)
+        | ExprKind::BinExpr(_) => true,
+        ExprKind::CallExpr(_)
+        | ExprKind::IndexExpr(_)
+        | ExprKind::MethodCallExpr(_)
+        | ExprKind::FieldExpr(_)
+        | ExprKind::TryExpr(_)
+        | ExprKind::RefExpr(_)
+        | ExprKind::Literal(_)
+        | ExprKind::TupleExpr(_)
+        | ExprKind::ArrayExpr(_)
+        | ExprKind::ParenExpr(_)
+        | ExprKind::PathExpr(_)
+        | ExprKind::BlockExpr(_) => false,
     };
 
     let delete_range = if let Some(whitespace) =
