@@ -16,12 +16,12 @@ index ad5a207..04712b8 100644
  #[unstable(feature = "renamed_spin_loop", issue = "55002")]
  pub fn spin_loop() {
 +    /*
-     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-     unsafe {
-         asm!("pause" ::: "memory" : "volatile");
+     #[cfg(
+         all(
+             any(target_arch = "x86", target_arch = "x86_64"),
 @@ -71,4 +72,5 @@ pub fn spin_loop() {
-     unsafe {
-         asm!("yield" ::: "memory" : "volatile");
+             unsafe { crate::arch::arm::__yield() };
+         }
      }
 +    */
  }
