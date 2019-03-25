@@ -17,6 +17,7 @@ use crate::{
     impl_block::ImplBlock,
     resolve::Resolver,
     diagnostics::DiagnosticSink,
+    traits::{TraitItem, TraitData},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -648,6 +649,18 @@ impl Trait {
 
     pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
+    }
+
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+        self.trait_data(db).name().clone()
+    }
+
+    pub fn items(self, db: &impl DefDatabase) -> Vec<TraitItem> {
+        self.trait_data(db).items().to_vec()
+    }
+
+    pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
+        db.trait_data(self)
     }
 }
 

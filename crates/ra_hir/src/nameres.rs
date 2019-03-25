@@ -62,7 +62,7 @@ use test_utils::tested_by;
 
 use crate::{
     ModuleDef, Name, Crate, Module,
-    DefDatabase, Path, PathKind, HirFileId,
+    DefDatabase, Path, PathKind, HirFileId, Trait,
     ids::{SourceItemId, SourceFileItemId, MacroCallId},
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
@@ -138,6 +138,12 @@ impl ModuleScope {
     }
     pub fn get(&self, name: &Name) -> Option<&Resolution> {
         self.items.get(name)
+    }
+    pub fn traits<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
+        self.items.values().filter_map(|r| match r.def.take_types() {
+            Some(ModuleDef::Trait(t)) => Some(t),
+            _ => None,
+        })
     }
 }
 
