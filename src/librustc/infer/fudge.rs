@@ -3,8 +3,10 @@ use crate::ty::fold::{TypeFoldable, TypeFolder};
 
 use super::InferCtxt;
 use super::RegionVariableOrigin;
+use super::type_variable::TypeVariableOrigin;
 
 use std::ops::Range;
+use rustc_data_structures::fx::FxHashMap;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// This rather funky routine is used while processing expected
@@ -115,7 +117,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_vars: Range<TyVid>,
+    type_vars: FxHashMap<TyVid, TypeVariableOrigin>,
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
     region_vars: Range<RegionVid>,
@@ -130,10 +132,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
             ty::Infer(ty::InferTy::TyVar(vid)) => {
-                if self.type_vars.contains(&vid) {
+                if let Some(&origin) = self.type_vars.get(&vid) {
                     // This variable was created during the fudging.
                     // Recreate it with a fresh variable here.
-                    let origin = self.infcx.type_variables.borrow().var_origin(vid).clone();
                     self.infcx.next_ty_var(origin)
                 } else {
                     // This variable was created before the
