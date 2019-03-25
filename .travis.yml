@@ -19,7 +19,7 @@ matrix:
 
         - os: linux
           if: branch = master AND type = push
-          before_stript:
+          before_script:
               - DEPLOY_DOCS=1
           language: rust
           rust: stable
