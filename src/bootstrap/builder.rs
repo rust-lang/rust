@@ -1856,6 +1856,7 @@ mod __test {
             doc_tests: DocTests::No,
             bless: false,
             compare_mode: None,
+            rustfix_coverage: false,
         };
 
         let build = Build::new(config);
@@ -1897,6 +1898,7 @@ mod __test {
             doc_tests: DocTests::No,
             bless: false,
             compare_mode: None,
+            rustfix_coverage: false,
         };
 
         let build = Build::new(config);
