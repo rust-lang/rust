@@ -27,42 +27,31 @@ list!
 
 ## Running Miri on your own project (and its test suite)
 
-Install Miri as a cargo subcommand:
+Install Miri via `rustup`:
 
 ```sh
-cargo +nightly install --force --git https://github.com/rust-lang/miri miri
+rustup component add miri
 ```
-
-If this does not work, try using the nightly version given in
-[this file](https://raw.githubusercontent.com/rust-lang/miri/master/rust-version). CI
-should ensure that this nightly always works.
-
-You have to use a consistent Rust version for building miri and your project, so
-remember to either always specify the nightly version manually (like in the
-example above), overriding it in your project directory as well, or use `rustup
-default nightly` (or `rustup default nightly-YYYY-MM-DD`) to globally make
-`nightly` the default toolchain.
 
 Now you can run your project in Miri:
 
 1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
    dependencies to be compiled the right way, that would not happen if they have
    previously already been compiled.
-2. To run all tests in your project through Miri, use `cargo +nightly miri test`.
-3. If you have a binary project, you can run it through Miri using `cargo
-   +nightly miri run`.
+2. To run all tests in your project through Miri, use `cargo miri test`.
+3. If you have a binary project, you can run it through Miri using `cargo miri run`.
 
 The first time you run Miri, it will perform some extra setup and install some
 dependencies.  It will ask you for confirmation before installing anything.  If
-you run Miri on CI, run `cargo +nightly miri setup` to avoid getting interactive
+you run Miri on CI, run `cargo miri setup` to avoid getting interactive
 questions.
 
 You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
-+nightly miri run -- -Zmiri-disable-validation` runs the program without
-validation of basic type invariants and references.  `cargo +nightly miri test
--- -- -Zunstable-options --exclude-should-panic` skips `#[should_panic]` tests,
-which is a good idea because Miri does not support unwinding or catching panics.
+miri run -- -Zmiri-disable-validation` runs the program without validation of
+basic type invariants and references.  `cargo miri test -- -- -Zunstable-options
+--exclude-should-panic` skips `#[should_panic]` tests, which is a good idea
+because Miri does not support unwinding or catching panics.
 
 When running code via `cargo miri`, the `miri` config flag is set.  You can
 use this to exclude test cases that will fail under Miri because they do things
@@ -110,9 +99,13 @@ convenient way is to install Miri using cargo, then you can easily run it on
 other projects:
 
 ```sh
+rustup component remove miri # avoid having Miri installed twice
 cargo +nightly install --path "$DIR" --force # or the nightly in `rust-version`
 cargo +nightly miri setup
 ```
+
+(We are giving `+nightly` explicitly here all the time because it is important
+that all of these commands get executed with the same toolchain.)
 
 If you want to use a different libstd (not the one that comes with the
 nightly), you can do that by running
@@ -123,9 +116,6 @@ XARGO_RUST_SRC=~/src/rust/rustc/src/ cargo +nightly miri setup
 
 Either way, you can now do `cargo +nightly miri run` to run Miri with your
 local changes on whatever project you are debugging.
-
-(We are giving `+nightly` explicitly here all the time because it is important
-that all of these commands get executed with the same toolchain.)
 
 `cargo miri setup` should end in printing the directory where the libstd was
 built.  For the next step to work, set that as your `MIRI_SYSROOT` environment
