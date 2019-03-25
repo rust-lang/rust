@@ -93,6 +93,7 @@ mod change_visibility;
 mod fill_match_arms;
 mod fill_struct_fields;
 mod introduce_variable;
+mod inline_local_variable;
 mod replace_if_let_with_match;
 mod split_import;
 mod remove_dbg;
@@ -115,6 +116,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         auto_import::auto_import,
         add_missing_impl_members::add_missing_impl_members,
         add_missing_impl_members::add_missing_default_members,
+        inline_local_variable::inline_local_varialbe,
     ]
 }
 
