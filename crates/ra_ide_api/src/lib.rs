@@ -97,6 +97,79 @@ pub struct SourceChange {
     pub cursor_position: Option<FilePosition>,
 }
 
+impl SourceChange {
+    /// Creates a new SourceChange with the given label
+    /// from the edits.
+    pub(crate) fn from_edits<L: Into<String>>(
+        label: L,
+        source_file_edits: Vec<SourceFileEdit>,
+        file_system_edits: Vec<FileSystemEdit>,
+    ) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits,
+            file_system_edits,
+            cursor_position: None,
+        }
+    }
+
+    /// Creates a new SourceChange with the given label,
+    /// containing only the given `SourceFileEdits`.
+    pub(crate) fn source_file_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits: edits,
+            file_system_edits: vec![],
+            cursor_position: None,
+        }
+    }
+
+    /// Creates a new SourceChange with the given label,
+    /// containing only the given `FileSystemEdits`.
+    pub(crate) fn file_system_edits<L: Into<String>>(label: L, edits: Vec<FileSystemEdit>) -> Self {
+        SourceChange {
+            label: label.into(),
+            source_file_edits: vec![],
+            file_system_edits: edits,
+            cursor_position: None,
+        }
+    }
+
+    /// Creates a new SourceChange with the given label,
+    /// containing only a single `SourceFileEdit`.
+    pub(crate) fn source_file_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
+        SourceChange::source_file_edits(label, vec![edit])
+    }
+
+    /// Creates a new SourceChange with the given label
+    /// from the given `FileId` and `TextEdit`
+    pub(crate) fn source_file_edit_from<L: Into<String>>(
+        label: L,
+        file_id: FileId,
+        edit: TextEdit,
+    ) -> Self {
+        SourceChange::source_file_edit(label, SourceFileEdit { file_id, edit })
+    }
+
+    /// Creates a new SourceChange with the given label
+    /// from the given `FileId` and `TextEdit`
+    pub(crate) fn file_system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
+        SourceChange::file_system_edits(label, vec![edit])
+    }
+
+    /// Sets the cursor position to the given `FilePosition`
+    pub(crate) fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
+        self.cursor_position = Some(cursor_position);
+        self
+    }
+
+    /// Sets the cursor position to the given `FilePosition`
+    pub(crate) fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
+        self.cursor_position = cursor_position;
+        self
+    }
+}
+
 #[derive(Debug)]
 pub struct SourceFileEdit {
     pub file_id: FileId,
@@ -285,12 +358,7 @@ impl Analysis {
             file_id: frange.file_id,
             edit: join_lines::join_lines(&file, frange.range),
         };
-        SourceChange {
-            label: "join lines".to_string(),
-            source_file_edits: vec![file_edit],
-            file_system_edits: vec![],
-            cursor_position: None,
-        }
+        SourceChange::source_file_edit("join lines", file_edit)
     }
 
     /// Returns an edit which should be applied when opening a new line, fixing
@@ -305,12 +373,10 @@ impl Analysis {
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
         let edit = typing::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange {
-            label: "add semicolon".to_string(),
-            source_file_edits: vec![SourceFileEdit { edit, file_id: position.file_id }],
-            file_system_edits: vec![],
-            cursor_position: None,
-        })
+        Some(SourceChange::source_file_edit(
+            "add semicolon",
+            SourceFileEdit { edit, file_id: position.file_id },
+        ))
     }
 
     /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.

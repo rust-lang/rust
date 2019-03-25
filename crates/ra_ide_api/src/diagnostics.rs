@@ -71,12 +71,10 @@ fn check_unnecessary_braces_in_use_statement(
             range,
             message: format!("Unnecessary braces in use statement"),
             severity: Severity::WeakWarning,
-            fix: Some(SourceChange {
-                label: "Remove unnecessary braces".to_string(),
-                source_file_edits: vec![SourceFileEdit { file_id, edit }],
-                file_system_edits: Vec::new(),
-                cursor_position: None,
-            }),
+            fix: Some(SourceChange::source_file_edit(
+                "Remove unnecessary braces",
+                SourceFileEdit { file_id, edit },
+            )),
         });
     }
 
@@ -119,12 +117,10 @@ fn check_struct_shorthand_initialization(
                     range: named_field.syntax().range(),
                     message: format!("Shorthand struct initialization"),
                     severity: Severity::WeakWarning,
-                    fix: Some(SourceChange {
-                        label: "use struct shorthand initialization".to_string(),
-                        source_file_edits: vec![SourceFileEdit { file_id, edit }],
-                        file_system_edits: Vec::new(),
-                        cursor_position: None,
-                    }),
+                    fix: Some(SourceChange::source_file_edit(
+                        "use struct shorthand initialization",
+                        SourceFileEdit { file_id, edit },
+                    )),
                 });
             }
         }
@@ -144,12 +140,7 @@ fn check_module(
             Problem::UnresolvedModule { candidate } => {
                 let create_file =
                     FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
-                let fix = SourceChange {
-                    label: "create module".to_string(),
-                    source_file_edits: Vec::new(),
-                    file_system_edits: vec![create_file],
-                    cursor_position: None,
-                };
+                let fix = SourceChange::file_system_edit("create module", create_file);
                 Diagnostic {
                     range: name_node.range(),
                     message: "unresolved module".to_string(),

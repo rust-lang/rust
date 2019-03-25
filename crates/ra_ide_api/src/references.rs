@@ -187,12 +187,7 @@ fn rename_mod(
     };
     source_file_edits.push(edit);
 
-    Some(SourceChange {
-        label: "rename".to_string(),
-        source_file_edits,
-        file_system_edits,
-        cursor_position: None,
-    })
+    Some(SourceChange::from_edits("rename", source_file_edits, file_system_edits))
 }
 
 fn rename_reference(
@@ -211,12 +206,7 @@ fn rename_reference(
         return None;
     }
 
-    Some(SourceChange {
-        label: "rename".to_string(),
-        source_file_edits: edit,
-        file_system_edits: Vec::new(),
-        cursor_position: None,
-    })
+    Some(SourceChange::source_file_edits("rename", edit))
 }
 
 #[cfg(test)]
