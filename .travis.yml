@@ -4,42 +4,35 @@ before_cache:
     - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*tools*,*gen_lsp*,*thread_worker*}
     - rm -f  ./target/.rustc_info.json
 
-build: &rust_build
-    language: rust
-    rust: stable
-    script:
-        - rustup component add rustfmt
-        - rustup component add rust-src
-        - cargo test --no-run  # let's measure compile time separately
-        - cargo test
-        - cargo doc --all --no-deps
-    env:
-        - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
-
 matrix:
     include:
         - os: linux
-          before_script:
+          language: rust
+          rust: stable
+          script:
+              - rustup component add rustfmt
+              - rustup component add rust-src
+              - cargo test --no-run  # let's measure compile time separately
+              - cargo test
+          env:
+              - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
+
+        - os: linux
+          if: branch = master AND type = push
+          before_stript:
               - DEPLOY_DOCS=1
-          <<: *rust_build
+          language: rust
+          rust: stable
+          script:
+              - cargo doc --all --no-deps
+          env:
+              - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
+
         - language: node_js
           node_js: node
           before_script: false
           script:
               - cd editors/code && npm ci && npm run travis
-
-        - os: windows
-          if: branch = master AND type = push
-          before_script:
-              - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
-              - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
-          <<: *rust_build
-
-    allow_failures:
-        # Because Travis-Windows-Rust can be flaky
-        # We still support Windows and want the tests to be succeeding,
-        # but there are too many spurious failures
-        - os: windows
 
 branches:
     only:
