@@ -19,6 +19,7 @@ use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
+use errors::emitter::HumanReadableErrorType;
 
 use errors::{ColorConfig, FatalError, Handler};
 
@@ -204,19 +205,18 @@ impl OutputType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
-    HumanReadable(ColorConfig),
+    HumanReadable(HumanReadableErrorType),
     Json {
         /// Render the json in a human readable way (with indents and newlines)
         pretty: bool,
-        /// The `rendered` field with the command line diagnostics include color codes
-        colorful_rendered: bool,
+        /// The way the `rendered` field is created
+        json_rendered: HumanReadableErrorType,
     },
-    Short(ColorConfig),
 }
 
 impl Default for ErrorOutputType {
     fn default() -> ErrorOutputType {
-        ErrorOutputType::HumanReadable(ColorConfig::Auto)
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
     }
 }
 
@@ -1350,8 +1350,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print some statistics about AST and HIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata"),
-    colorful_json: bool = (false, parse_bool, [UNTRACKED],
-        "encode color codes in the `rendered` field of json diagnostics"),
+    json_rendered: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "describes how to render the `rendered` field of json diagnostics"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the breaks off const evaluation. NOTE: this is unsound"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -1807,9 +1807,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         ),
         opt::opt(
             "",
-            "colorful-json",
-            "Emit ansi color codes to the `rendered` field of json diagnostics",
-            "TYPE",
+            "json-rendered",
+            "Choose `rendered` field of json diagnostics render scheme",
+            "plain|termcolor",
         ),
         opt::opt_s(
             "",
@@ -1951,7 +1951,17 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let colorful_rendered = matches.opt_present("colorful-json");
+    let json_rendered = matches.opt_str("json-rendered").and_then(|s| match s.as_str() {
+        "plain" => None,
+        "termcolor" => Some(HumanReadableErrorType::Default(ColorConfig::Always)),
+        _ => early_error(
+            ErrorOutputType::default(),
+            &format!(
+                "argument for --json-rendered must be `plain` or `termcolor` (instead was `{}`)",
+                s,
+            ),
+        ),
+    }).unwrap_or(HumanReadableErrorType::Default(ColorConfig::Never));
 
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
@@ -1959,14 +1969,14 @@ pub fn build_session_options_and_crate_config(
     // opt_present because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json { pretty: false, colorful_rendered },
-            Some("pretty-json") => ErrorOutputType::Json { pretty: true, colorful_rendered },
-            Some("short") => ErrorOutputType::Short(color),
-            None => ErrorOutputType::HumanReadable(color),
+            None |
+            Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
+            Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
+            Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
+            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
 
             Some(arg) => early_error(
-                ErrorOutputType::HumanReadable(color),
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
                 &format!(
                     "argument for --error-format must be `human`, `json` or \
                      `short` (instead was `{}`)",
@@ -1975,7 +1985,7 @@ pub fn build_session_options_and_crate_config(
             ),
         }
     } else {
-        ErrorOutputType::HumanReadable(color)
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
@@ -1988,12 +1998,12 @@ pub fn build_session_options_and_crate_config(
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options {
-        if colorful_rendered {
-            early_error(error_format, "--colorful-json=true is unstable");
+        if matches.opt_str("json-rendered").is_some() {
+            early_error(error_format, "`--json-rendered=x` is unstable");
         }
-        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
+        if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
             early_error(
-                ErrorOutputType::Json { pretty: false, colorful_rendered: false },
+                ErrorOutputType::Json { pretty: false, json_rendered },
                 "--error-format=pretty-json is unstable",
             );
         }
@@ -2902,7 +2912,7 @@ mod tests {
 
         const JSON: super::ErrorOutputType = super::ErrorOutputType::Json {
             pretty: false,
-            colorful_rendered: false,
+            json_rendered: super::HumanReadableErrorType::Default(super::ColorConfig::Never),
         };
 
         // Reference

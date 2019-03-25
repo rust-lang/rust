@@ -14,7 +14,7 @@ use crate::source_map::{SourceMap, FilePathMapping};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
 use errors::{DiagnosticId, Applicability};
-use errors::emitter::{Emitter, EmitterWriter};
+use errors::emitter::{Emitter, HumanReadableErrorType};
 
 use syntax_pos::{MacroBacktrace, Span, SpanLabel, MultiSpan};
 use rustc_data_structures::sync::{self, Lrc};
@@ -30,7 +30,7 @@ pub struct JsonEmitter {
     sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
-    colorful_rendered: bool,
+    json_rendered: HumanReadableErrorType,
 }
 
 impl JsonEmitter {
@@ -38,7 +38,7 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         pretty: bool,
-        colorful_rendered: bool,
+        json_rendered: HumanReadableErrorType,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
@@ -46,14 +46,14 @@ impl JsonEmitter {
             sm: source_map,
             pretty,
             ui_testing: false,
-            colorful_rendered,
+            json_rendered,
         }
     }
 
-    pub fn basic(pretty: bool, colorful_rendered: bool) -> JsonEmitter {
+    pub fn basic(pretty: bool, json_rendered: HumanReadableErrorType) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(None, Lrc::new(SourceMap::new(file_path_mapping)),
-                            pretty, colorful_rendered)
+                            pretty, json_rendered)
     }
 
     pub fn new(
@@ -61,7 +61,7 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         pretty: bool,
-        colorful_rendered: bool,
+        json_rendered: HumanReadableErrorType,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -69,7 +69,7 @@ impl JsonEmitter {
             sm: source_map,
             pretty,
             ui_testing: false,
-            colorful_rendered,
+            json_rendered,
         }
     }
 
@@ -199,7 +199,7 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.sm.clone()), false, false, je.colorful_rendered)
+        je.json_rendered.new_emitter(Box::new(buf), Some(je.sm.clone()), false)
             .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();

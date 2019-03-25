@@ -1037,44 +1037,42 @@ fn default_emitter(
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     match (sopts.error_format, emitter_dest) {
-        (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                Some(source_map.clone()),
-                false,
-                sopts.debugging_opts.teach,
-            ).ui_testing(sopts.debugging_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
-            EmitterWriter::new(
-                dst, Some(source_map.clone()), false, false, sopts.debugging_opts.colorful_json,
-            ).ui_testing(sopts.debugging_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::Json { pretty, colorful_rendered }, None) => Box::new(
+        (config::ErrorOutputType::HumanReadable(kind), dst) => {
+            let (short, color_config) = kind.unzip();
+            let emitter = match dst {
+                None => EmitterWriter::stderr(
+                    color_config,
+                    Some(source_map.clone()),
+                    short,
+                    sopts.debugging_opts.teach,
+                ),
+                Some(dst) => EmitterWriter::new(
+                    dst,
+                    Some(source_map.clone()),
+                    short,
+                    false,
+                    color_config.suggests_using_colors(),
+                ),
+            };
+            Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+        },
+        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
             JsonEmitter::stderr(
                 Some(registry),
                 source_map.clone(),
                 pretty,
-                colorful_rendered,
+                json_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Json { pretty, colorful_rendered }, Some(dst)) => Box::new(
+        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
                 dst,
                 Some(registry),
                 source_map.clone(),
                 pretty,
-                colorful_rendered,
+                json_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Short(color_config), None) => Box::new(
-            EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
-        ),
-        (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(
-                dst, Some(source_map.clone()), true, false, sopts.debugging_opts.colorful_json,
-            ))
-        }
     }
 }
 
@@ -1319,14 +1317,12 @@ pub enum IncrCompSession {
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+        config::ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(EmitterWriter::stderr(color_config, None, short, false))
         }
-        config::ErrorOutputType::Json { pretty, colorful_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, colorful_rendered)),
-        config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
-        }
+        config::ErrorOutputType::Json { pretty, json_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, json_rendered)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
@@ -1335,14 +1331,12 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+        config::ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(EmitterWriter::stderr(color_config, None, short, false))
         }
-        config::ErrorOutputType::Json { pretty, colorful_rendered } =>
-            Box::new(JsonEmitter::basic(pretty, colorful_rendered)),
-        config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
-        }
+        config::ErrorOutputType::Json { pretty, json_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, json_rendered)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);

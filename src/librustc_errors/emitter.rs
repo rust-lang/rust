@@ -19,6 +19,32 @@ use std::cmp::{min, Reverse};
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
 
+/// Describes the way the content of the `rendered` field of the json output is generated
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HumanReadableErrorType {
+    Default(ColorConfig),
+    Short(ColorConfig),
+}
+
+impl HumanReadableErrorType {
+    /// Returns a (`short`, `color`) tuple
+    pub fn unzip(self) -> (bool, ColorConfig) {
+        match self {
+            HumanReadableErrorType::Default(cc) => (false, cc),
+            HumanReadableErrorType::Short(cc) => (true, cc),
+        }
+    }
+    pub fn new_emitter(
+        self,
+        dst: Box<dyn Write + Send>,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        teach: bool,
+    ) -> EmitterWriter {
+        let (short, color_config) = self.unzip();
+        EmitterWriter::new(dst, source_map, short, teach, color_config.suggests_using_colors())
+    }
+}
+
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
@@ -104,8 +130,8 @@ pub enum ColorConfig {
 }
 
 impl ColorConfig {
-    fn to_color_choice(&self) -> ColorChoice {
-        match *self {
+    fn to_color_choice(self) -> ColorChoice {
+        match self {
             ColorConfig::Always => {
                 if atty::is(atty::Stream::Stderr) {
                     ColorChoice::Always
@@ -118,6 +144,14 @@ impl ColorConfig {
                 ColorChoice::Auto
             }
             ColorConfig::Auto => ColorChoice::Never,
+        }
+    }
+    pub fn suggests_using_colors(self) -> bool {
+        match self {
+            | ColorConfig::Always
+            | ColorConfig::Auto
+            => true,
+            ColorConfig::Never => false,
         }
     }
 }
@@ -1540,6 +1574,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
 pub enum Destination {
     Terminal(StandardStream),
     Buffered(BufferWriter),
+    // The bool denotes whether we should be emitting ansi color codes or not
     Raw(Box<(dyn Write + Send)>, bool),
 }
 
