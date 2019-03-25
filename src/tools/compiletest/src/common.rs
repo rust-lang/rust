@@ -246,8 +246,8 @@ pub struct Config {
     pub compare_mode: Option<CompareMode>,
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
-    /// lints but are missing `run-rustfix` annotations. The generated coverage file is created in
-    /// `/tmp/rustfix_missing_coverage.txt`
+    /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
+    /// created in `/tmp/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
     // Configuration for various run-make tests frobbing things like C compilers
