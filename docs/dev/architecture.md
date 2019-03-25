@@ -130,19 +130,6 @@ APIs in this crate are IDE centric: they take text offsets as input and produce
 offsets and strings as output. This works on top of rich code model powered by
 `hir`.
 
-### `crates/ra_ide_api_light`
-
-All IDE features which can be implemented if you only have access to a single
-file. `ra_ide_api_light` could be used to enhance editing of Rust code without
-the need to fiddle with build-systems, file synchronization and such.
-
-In a sense, `ra_ide_api_light` is just a bunch of pure functions which take a
-syntax tree as input.
-
-The tests for `ra_ide_api_light` are `#[cfg(test)] mod tests` unit-tests spread
-throughout its modules.
-
-
 ### `crates/ra_lsp_server`
 
 An LSP implementation which wraps `ra_ide_api` into a langauge server protocol.

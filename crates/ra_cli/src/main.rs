@@ -5,7 +5,7 @@ use std::{fs, io::Read, path::Path, time::Instant};
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
 use ra_ide_api::{Analysis, FileRange};
-use ra_ide_api_light::file_structure;
+use ra_ide_api::file_structure;
 use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
 use tools::collect_tests;
 use flexi_logger::Logger;
