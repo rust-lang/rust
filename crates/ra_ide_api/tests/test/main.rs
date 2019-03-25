@@ -1,25 +1,9 @@
-use insta::assert_debug_snapshot_matches;
 use ra_ide_api::{
     mock_analysis::{single_file, single_file_with_position, single_file_with_range, MockAnalysis},
     AnalysisChange, CrateGraph, Edition::Edition2018, Query, NavigationTarget,
     ReferenceSearchResult,
 };
 use ra_syntax::SmolStr;
-
-#[test]
-fn test_unresolved_module_diagnostic() {
-    let (analysis, file_id) = single_file("mod foo;");
-    let diagnostics = analysis.diagnostics(file_id).unwrap();
-    assert_debug_snapshot_matches!("unresolved_module_diagnostic", &diagnostics);
-}
-
-// FIXME: move this test to hir
-#[test]
-fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
-    let (analysis, file_id) = single_file("mod foo {}");
-    let diagnostics = analysis.diagnostics(file_id).unwrap();
-    assert!(diagnostics.is_empty());
-}
 
 #[test]
 fn test_resolve_crate_root() {

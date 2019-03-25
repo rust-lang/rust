@@ -560,6 +560,7 @@ fn unresolved_module_diagnostics() {
         //- /lib.rs
         mod foo;
         mod bar;
+        mod baz {}
         //- /foo.rs
         ",
     )

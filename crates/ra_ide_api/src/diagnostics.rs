@@ -152,6 +152,9 @@ fn check_struct_shorthand_initialization(
 #[cfg(test)]
 mod tests {
     use test_utils::assert_eq_text;
+    use insta::assert_debug_snapshot_matches;
+
+    use crate::mock_analysis::single_file;
 
     use super::*;
 
@@ -178,6 +181,34 @@ mod tests {
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let actual = edit.apply(&before);
         assert_eq_text!(after, &actual);
+    }
+
+    #[test]
+    fn test_unresolved_module_diagnostic() {
+        let (analysis, file_id) = single_file("mod foo;");
+        let diagnostics = analysis.diagnostics(file_id).unwrap();
+        assert_debug_snapshot_matches!(diagnostics, @r####"[
+    Diagnostic {
+        message: "unresolved module",
+        range: [0; 8),
+        fix: Some(
+            SourceChange {
+                label: "create module",
+                source_file_edits: [],
+                file_system_edits: [
+                    CreateFile {
+                        source_root: SourceRootId(
+                            0
+                        ),
+                        path: "foo.rs"
+                    }
+                ],
+                cursor_position: None
+            }
+        ),
+        severity: Error
+    }
+]"####);
     }
 
     #[test]
