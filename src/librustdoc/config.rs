@@ -7,9 +7,9 @@ use errors::emitter::ColorConfig;
 use getopts;
 use rustc::lint::Level;
 use rustc::session::early_error;
-use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, ExternEntry};
+use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options};
+                             get_cmd_lint_options, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
