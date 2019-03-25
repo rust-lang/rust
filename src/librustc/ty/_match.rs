@@ -21,17 +21,19 @@ use crate::mir::interpret::ConstValue;
 /// affects any type variables or unification state.
 pub struct Match<'tcx> {
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl Match<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Match<'tcx> {
-        Match { tcx }
+    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Match<'tcx> {
+        Match { tcx, param_env }
     }
 }
 
 impl TypeRelation<'tcx> for Match<'tcx> {
     fn tag(&self) -> &'static str { "Match" }
     fn tcx(&self) -> TyCtxt<'tcx> { self.tcx }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,

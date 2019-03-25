@@ -696,7 +696,7 @@ pub trait PrettyPrinter<'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                if let Some(n) = sz.try_eval_usize(self.tcx()) {
+                if let Some(n) = sz.try_eval_usize(self.tcx(), ty::ParamEnv::empty()) {
                     p!(write("{}", n));
                 } else {
                     p!(write("_"));
@@ -915,7 +915,7 @@ pub trait PrettyPrinter<'tcx>:
         if let ty::Ref(_, ref_ty, _) = ct.ty.sty {
             let byte_str = match (ct.val, &ref_ty.sty) {
                 (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                    let n = n.eval_usize(self.tcx());
+                    let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
                     Some(self.tcx()
                         .alloc_map.lock()
                         .unwrap_memory(ptr.alloc_id)

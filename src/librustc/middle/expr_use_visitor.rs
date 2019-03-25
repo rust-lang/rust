@@ -277,6 +277,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(tcx,
+                                                  param_env,
                                                   body_owner,
                                                   region_scope_tree,
                                                   tables,
@@ -299,6 +300,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::with_infer(
                 infcx,
+                param_env,
                 body_owner,
                 region_scope_tree,
                 tables,

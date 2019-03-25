@@ -9,7 +9,7 @@ use crate::borrow_check::{ReadKind, WriteKind};
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::path_utils::*;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Body, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
@@ -19,6 +19,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
@@ -34,6 +35,7 @@ pub(super) fn generate_invalidates<'tcx>(
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
+            param_env,
             tcx,
             location_table,
             body,
@@ -45,6 +47,7 @@ pub(super) fn generate_invalidates<'tcx>(
 
 struct InvalidationGenerator<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
@@ -401,11 +404,13 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         );
         let tcx = self.tcx;
         let body = self.body;
+        let param_env = self.param_env;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
         each_borrow_involving_path(
             self,
             tcx,
+            param_env,
             body,
             location,
             (sd, place),

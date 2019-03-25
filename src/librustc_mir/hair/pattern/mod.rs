@@ -446,7 +446,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             self.tcx,
                             lo,
                             hi,
-                            ty,
+                            self.param_env.and(ty),
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
@@ -728,7 +728,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::Array(_, len) => {
                 // fixed-length array
-                let len = len.eval_usize(self.tcx);
+                let len = len.eval_usize(self.tcx, self.param_env);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Array(_, n) => {
                 PatternKind::Array {
-                    prefix: (0..n.eval_usize(self.tcx))
+                    prefix: (0..n.eval_usize(self.tcx, self.param_env))
                         .map(|i| adt_subpattern(i as usize, None))
                         .collect(),
                     slice: None,
@@ -1206,7 +1206,8 @@ fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
                     // (But still tell caller to continue search.)
                     return false;
                 }
-                ty::Array(_, n) if n.try_eval_usize(self.tcx) == Some(0) => {
+                ty::Array(_, n) if n.try_eval_usize(self.tcx, ty::ParamEnv::reveal_all()) == Some(0)
+                => {
                     // rust-lang/rust#62336: ignore type of contents
                     // for empty array.
                     return false;
@@ -1451,7 +1452,7 @@ pub fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
-    ty: Ty<'tcx>,
+    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
@@ -1466,13 +1467,13 @@ pub fn compare_const_vals<'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty {
+    if a.ty != b.ty || a.ty != ty.value {
         return fallback();
     }
 
     if let (Some(a), Some(b)) = (a.try_eval_bits(tcx, ty), b.try_eval_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;
-        return match ty.sty {
+        return match ty.value.sty {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1495,7 +1496,7 @@ pub fn compare_const_vals<'tcx>(
         }
     }
 
-    if let ty::Str = ty.sty {
+    if let ty::Str = ty.value.sty {
         match (a.val, b.val) {
             (
                 ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },

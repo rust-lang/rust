@@ -174,6 +174,11 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        // FIXME(oli-obk): learn chalk and create param envs
+        ty::ParamEnv::empty()
+    }
+
     fn tag(&self) -> &'static str {
         "chalk_context::answer_substitutor"
     }
