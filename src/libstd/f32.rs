@@ -960,17 +960,27 @@ impl f32 {
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
-    /// Returns max if self is greater than max, and min if self is less than min.
-    /// Otherwise this returns self.  Panics if min > max, min equals NaN, or max equals NaN.
+
+    /// Restrict a value to a certain interval unless it is NaN.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// Not that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(clamp)]
-    /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
-    /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
-    /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
-    /// assert!((std::f32::NAN).clamp(-2.0f32, 1.0f32).is_nan());
+    /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
+    /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
+    /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
+    /// assert!((std::f32::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
