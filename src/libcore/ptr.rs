@@ -2483,9 +2483,13 @@ impl<T: ?Sized> Eq for *mut T {}
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
-/// Smart pointer types, such as `Box`, `Rc`, and `Arc` do not compare
-/// using this function, instead they compare the values rather than
-/// their addresses.
+/// A reference in Rust is sometimes stored different than a raw
+/// memory address.  These cases are called fat pointers.  A reference
+/// to a slice must store both the address of the slice and the length
+/// of the slice.  A reference to an object satisfying a trait must
+/// also point to the vtable for the trait's methods.  Since this
+/// function compares pointers in totality, careful consideration to
+/// the type of the variable must be made.
 ///
 /// # Examples
 ///
@@ -2499,9 +2503,9 @@ impl<T: ?Sized> Eq for *mut T {}
 /// let other_five_ref = &other_five;
 ///
 /// assert!(five_ref == same_five_ref);
-/// assert!(five_ref == other_five_ref);
-///
 /// assert!(ptr::eq(five_ref, same_five_ref));
+///
+/// assert!(five_ref == other_five_ref);
 /// assert!(!ptr::eq(five_ref, other_five_ref));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
