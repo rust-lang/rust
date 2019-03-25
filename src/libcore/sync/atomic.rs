@@ -1134,22 +1134,19 @@ macro_rules! atomic_int {
      $align:expr,
      $atomic_new:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
-        /// An integer type which can be safely shared between threads.
-        ///
-        /// This type has the same in-memory representation as the underlying
-        /// integer type, [`
-        #[doc = $s_int_type]
-        /// `](
-        #[doc = $int_ref]
-        /// ). For more about the differences between atomic types and
-        /// non-atomic types as well as information about the portability of
-        /// this type, please see the [module-level documentation].
-        ///
-        /// [module-level documentation]: index.html
-        #[$stable]
-        #[repr(C, align($align))]
-        pub struct $atomic_type {
-            v: UnsafeCell<$int_type>,
+        doc_comment! { concat!("An integer type which can be safely shared between threads.
+
+This type has the same in-memory representation as the underlying integer type, [`",
+$s_int_type, "`](", $int_ref, "). For more about the differences between atomic types and
+non-atomic types as well as information about the portability of
+this type, please see the [module-level documentation].
+
+[module-level documentation]: index.html"),
+            #[$stable]
+            #[repr(C, align($align))]
+            pub struct $atomic_type {
+                v: UnsafeCell<$int_type>,
+            }
         }
 
         /// An atomic integer initialized to `0`.

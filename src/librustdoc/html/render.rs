@@ -1354,7 +1354,7 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
 }
 
 /// Attempts to find where an external crate is located, given that we're
-/// rendering in to the specified source destination.
+/// rendering it to the specified source destination.
 fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Path)
     -> ExternalLocation
 {
