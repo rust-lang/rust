@@ -1525,7 +1525,7 @@ impl<'a> LoweringContext<'a> {
             }
             TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
             TyKind::CVarArgs => {
-                // Create the implicit lifetime of the "spoofed" `VaList`.
+                // Create the implicit lifetime of the "spoofed" `VaListImpl`.
                 let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
                 let lt = self.new_implicit_lifetime(span);
                 hir::TyKind::CVarArgs(lt)

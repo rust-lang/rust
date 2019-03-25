@@ -132,16 +132,6 @@ pub(super) fn emit_va_arg(
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
-        _ => {
-            let va_list = if (target.arch == "aarch64" ||
-                              target.arch == "x86_64" ||
-                              target.arch == "powerpc") &&
-                             !target.options.is_like_windows {
-                bx.load(addr.immediate(), bx.tcx().data_layout.pointer_align.abi)
-            } else {
-                addr.immediate()
-            };
-            bx.va_arg(va_list, bx.cx.layout_of(target_ty).llvm_type(bx.cx))
-        }
+        _ => bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
     }
 }
