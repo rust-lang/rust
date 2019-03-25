@@ -16,7 +16,6 @@ use crate::ty::{Region, RegionVid};
 
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};
-use std::ops::Range;
 
 mod leak_check;
 
@@ -841,8 +840,16 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn vars_since_snapshot(&self, mark: &RegionSnapshot) -> Range<RegionVid> {
-        self.unification_table.vars_since_snapshot(&mark.region_snapshot)
+    pub fn vars_since_snapshot(
+        &self,
+        mark: &RegionSnapshot,
+    ) -> FxHashMap<RegionVid, RegionVariableOrigin> {
+        let range = self.unification_table.vars_since_snapshot(&mark.region_snapshot);
+        (range.start.index()..range.end.index()).map(|index| {
+            let vid = ty::RegionVid::from(index);
+            let origin = self.var_infos[vid].origin.clone();
+            (vid, origin)
+        }).collect()
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`].

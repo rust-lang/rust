@@ -92,7 +92,7 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
-use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
+use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
@@ -3229,8 +3229,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ret) => ret,
             None => return Vec::new()
         };
-        let origin = RegionVariableOrigin::Coercion(call_span);
-        let expect_args = self.fudge_inference_if_ok(&origin, || {
+        let expect_args = self.fudge_inference_if_ok(|| {
             // Attempt to apply a subtyping relationship between the formal
             // return type (likely containing type variables if the function
             // is polymorphic) and the expected return type.

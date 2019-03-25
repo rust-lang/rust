@@ -50,13 +50,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// unified.
     pub fn fudge_inference_if_ok<T, E, F>(
         &self,
-        origin: &RegionVariableOrigin,
         f: F,
     ) -> Result<T, E> where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
-        debug!("fudge_inference_if_ok(origin={:?})", origin);
+        debug!("fudge_inference_if_ok()");
 
         let (mut fudger, value) = self.probe(|snapshot| {
             match f() {
@@ -88,7 +87,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         int_vars,
                         float_vars,
                         region_vars,
-                        origin,
                     };
 
                     Ok((fudger, value))
@@ -120,8 +118,7 @@ pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     type_vars: FxHashMap<TyVid, TypeVariableOrigin>,
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
-    region_vars: Range<RegionVid>,
-    origin: &'a RegionVariableOrigin,
+    region_vars: FxHashMap<RegionVid, RegionVariableOrigin>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> {
@@ -167,11 +164,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> 
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
-            ty::ReVar(vid) if self.region_vars.contains(&vid) => {
-                self.infcx.next_region_var(self.origin.clone())
+        if let ty::ReVar(vid) = r {
+            if let Some(&origin) = self.region_vars.get(&vid) {
+                return self.infcx.next_region_var(origin);
             }
-            _ => r,
         }
+        r
     }
 }
