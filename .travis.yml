@@ -26,14 +26,14 @@ matrix:
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       name: dist-x86_64-linux
-      if: branch = try OR branch = auto
+      if: (branch = try AND NOT commit_message ~= parallel-compiler) OR branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
       name: dist-x86_64-linux-alt
-      if: branch = try OR branch = auto
+      if: (branch = try AND NOT commit_message ~= parallel-compiler) OR branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -238,6 +238,25 @@ matrix:
         MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
         . src/ci/docker/x86_64-gnu-tools/repo.sh;
         commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
+
+    - env: IMAGE=dist-x86_64-linux DEPLOY=1 DIST_PARALLEL_COMPILER=1
+      name: dist-x86_64-linux-parallel-compiler
+      if: branch = try AND commit_message ~= parallel-compiler
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc"
+        SRC=.
+        DEPLOY=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
+        DIST_REQUIRE_ALL_TOOLS=1
+        DIST_PARALLEL_COMPILER=1
+      os: osx
+      osx_image: xcode9.3-moar
+      name: dist-x86_64-apple-parallel-compiler
+      if: branch = try AND commit_message ~= parallel-compiler
 
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers as well as

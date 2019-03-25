@@ -139,6 +139,7 @@ exec docker \
   --env CARGO_HOME=/cargo \
   --env DEPLOY \
   --env DEPLOY_ALT \
+  --env DIST_PARALLEL_COMPILER \
   --env LOCAL_USER_ID=`id -u` \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
