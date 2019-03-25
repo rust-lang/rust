@@ -2483,14 +2483,6 @@ impl<T: ?Sized> Eq for *mut T {}
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
-/// A reference in Rust is sometimes stored different than a raw
-/// memory address.  These cases are called fat pointers.  A reference
-/// to a slice must store both the address of the slice and the length
-/// of the slice.  A reference to an object satisfying a trait must
-/// also point to the vtable for the trait's methods.  Since this
-/// function compares pointers in totality, careful consideration to
-/// the type of the variable must be made.
-///
 /// # Examples
 ///
 /// ```
@@ -2507,6 +2499,52 @@ impl<T: ?Sized> Eq for *mut T {}
 ///
 /// assert!(five_ref == other_five_ref);
 /// assert!(!ptr::eq(five_ref, other_five_ref));
+/// ```
+///
+/// Slices are also compared by their length (fat pointers):
+///
+/// ```
+/// let a = [1, 2, 3];
+/// assert!(std::ptr::eq(&a[..3], &a[..3]));
+/// assert!(!std::ptr::eq(&a[..2], &a[..3]));
+/// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
+/// ```
+///
+/// Traits are also compared by their implementation:
+///
+/// ```
+/// #[repr(transparent)]
+/// struct Wrapper { member: i32 }
+///
+/// trait Trait {}
+/// impl Trait for Wrapper {}
+/// impl Trait for i32 {}
+///
+/// fn main() {
+///     let wrapper = Wrapper { member: 10 };
+///
+///     // Pointers are equal address
+///     assert!(std::ptr::eq(
+///         &wrapper as *const Wrapper as *const u8,
+///         &wrapper.member as *const i32 as *const u8
+///     ));
+///
+///     // Objects have equal addresses, but `Trait` has different implementations
+///     assert!(!std::ptr::eq(
+///         &wrapper as &Trait,
+///         &wrapper.member as &Trait,
+///     ));
+///     assert!(!std::ptr::eq(
+///         &wrapper as &Trait as *const Trait,
+///         &wrapper.member as &Trait as *const Trait,
+///     ));
+///
+///     // Converting the reference to a `*const u8` compares by address
+///     assert!(std::ptr::eq(
+///         &wrapper as &Trait as *const Trait as *const u8,
+///         &wrapper.member as &Trait as *const Trait as *const u8,
+///     ));
+/// }
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
