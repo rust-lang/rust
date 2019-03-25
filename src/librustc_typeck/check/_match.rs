@@ -970,7 +970,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            inexistent_fields.push((span, field.ident));
+                            inexistent_fields.push(field.ident);
                             no_field_errors = false;
                             tcx.types.err
                         })
@@ -986,15 +986,15 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 .collect::<Vec<_>>();
         if inexistent_fields.len() > 0 && !variant.recovered {
             let (field_names, t, plural) = if inexistent_fields.len() == 1 {
-                (format!("a field named `{}`", inexistent_fields[0].1), "this", "")
+                (format!("a field named `{}`", inexistent_fields[0]), "this", "")
             } else {
                 (format!("fields named {}",
                          inexistent_fields.iter()
-                            .map(|(_, name)| format!("`{}`", name))
+                            .map(|ident| format!("`{}`", ident))
                             .collect::<Vec<String>>()
                             .join(", ")), "these", "s")
             };
-            let spans = inexistent_fields.iter().map(|(span, _)| *span).collect::<Vec<_>>();
+            let spans = inexistent_fields.iter().map(|ident| ident.span).collect::<Vec<_>>();
             let mut err = struct_span_err!(tcx.sess,
                                            spans,
                                            E0026,
@@ -1002,8 +1002,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                            kind_name,
                                            tcx.def_path_str(variant.def_id),
                                            field_names);
-            if let Some((span, ident)) = inexistent_fields.last() {
-                err.span_label(*span,
+            if let Some(ident) = inexistent_fields.last() {
+                err.span_label(ident.span,
                                format!("{} `{}` does not have {} field{}",
                                        kind_name,
                                        tcx.def_path_str(variant.def_id),
@@ -1015,8 +1015,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                         find_best_match_for_name(input, &ident.as_str(), None);
                     if let Some(suggested_name) = suggested_name {
                         err.span_suggestion(
-                            *span,
-                            "did you mean",
+                            ident.span,
+                            "a field with a similar name exists",
                             suggested_name.to_string(),
                             Applicability::MaybeIncorrect,
                         );
