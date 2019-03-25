@@ -283,33 +283,24 @@ impl OutputTypes {
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
 // would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
-pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
+pub struct Externs(BTreeMap<String, BTreeSet<ExternEntry>>);
 
+#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub struct ExternEntry {
+    pub location: Option<String>,
+    pub public: bool
+}
 
 impl Externs {
-    pub fn new(data: BTreeMap<String, BTreeSet<Option<String>>>) -> Externs {
+    pub fn new(data: BTreeMap<String, BTreeSet<ExternEntry>>) -> Externs {
         Externs(data)
     }
 
-    pub fn get(&self, key: &str) -> Option<&BTreeSet<Option<String>>> {
+    pub fn get(&self, key: &str) -> Option<&BTreeSet<ExternEntry>> {
         self.0.get(key)
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<Option<String>>> {
-        self.0.iter()
-    }
-}
-
-// Similar to 'Externs', but used for the '--extern-private' option
-#[derive(Clone, Hash)]
-pub struct ExternPrivates(BTreeMap<String, BTreeSet<String>>);
-
-impl ExternPrivates {
-    pub fn get(&self, key: &str) -> Option<&BTreeSet<String>> {
-        self.0.get(key)
-    }
-
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<String>> {
+    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<ExternEntry>> {
         self.0.iter()
     }
 }
@@ -446,7 +437,7 @@ top_level_options!(
 
         // The crates to consider private when
         // checking leaked private dependency types in public interfaces
-        extern_private: ExternPrivates [UNTRACKED],
+        //extern_private: ExternPrivates [UNTRACKED],
     }
 );
 
@@ -649,7 +640,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_private: ExternPrivates(BTreeMap::new())
+            //extern_private: ExternPrivates(BTreeMap::new())
         }
     }
 }
@@ -2331,7 +2322,7 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let mut extern_private: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+    /*let mut extern_private: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
 
     for arg in matches.opt_strs("extern-private").into_iter() {
         let mut parts = arg.splitn(2, '=');
@@ -2346,10 +2337,16 @@ pub fn build_session_options_and_crate_config(
             .or_default()
             .insert(location);
 
-    }
+    }*/
 
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-    for arg in matches.opt_strs("extern").into_iter() {
+    // We start out with a Vec<(Option<String>, bool)>>,
+    // and later convert it into a BTreeSet<(Option<String>, bool)>
+    // This allows to modify entries in-place to set their correct
+    // 'public' value
+    let mut externs: BTreeMap<_, BTreeMap<Option<String>, bool>> = BTreeMap::new();
+    for (arg, public) in matches.opt_strs("extern").into_iter().map(|v| (v, true))
+        .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, false))) {
+
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
@@ -2362,11 +2359,37 @@ pub fn build_session_options_and_crate_config(
             );
         };
 
+
+        // Externsl crates start out public,
+        // and become private if we later see
+        // an '--extern-private' key. They never
+        // go back to being public once we've seen
+        // '--extern-private', so we logical-AND
+        // their current and new 'public' value together
+
         externs
             .entry(name.to_owned())
             .or_default()
-            .insert(location);
+            .entry(location)
+            .and_modify(|e| *e &= public)
+            .or_insert(public);
     }
+
+    // Now that we've determined the 'public' status of each extern,
+    // collect them into a set of ExternEntry
+    let externs: BTreeMap<String, BTreeSet<ExternEntry>> = externs.into_iter()
+        .map(|(k, v)| {
+            let values =v.into_iter().map(|(location, public)| {
+                ExternEntry {
+                    location,
+                    public
+                }
+            }).collect::<BTreeSet<ExternEntry>>();
+            (k, values)
+        })
+        .collect();
+        
+
 
     let crate_name = matches.opt_str("crate-name");
 
@@ -2417,7 +2440,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
-            extern_private: ExternPrivates(extern_private)
+            //extern_private: ExternPrivates(extern_private)
         },
         cfg,
     )

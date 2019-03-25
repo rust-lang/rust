@@ -133,7 +133,7 @@ impl<'a> CrateLoader<'a> {
             let source = &self.cstore.get_crate_data(cnum).source;
             if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                let found = locs.iter().filter_map(|l| l.as_ref()).any(|l| {
+                let found = locs.iter().filter_map(|l| l.location.as_ref()).any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
@@ -202,13 +202,14 @@ impl<'a> CrateLoader<'a> {
         self.verify_no_symbol_conflicts(span, &crate_root);
 
         let mut private_dep = false;
-        if let Some(s) = self.sess.opts.extern_private.get(&name.as_str()) {
-            for path in s {
-                let p = Some(path.as_str());
+        if let Some(s) = self.sess.opts.externs.get(&name.as_str()) {
+            for entry in s {
+                let p = entry.location.as_ref().map(|s| s.as_str());
                 if p == lib.dylib.as_ref().and_then(|r| r.0.to_str()) ||
                     p == lib.rlib.as_ref().and_then(|r| r.0.to_str()) {
 
-                    private_dep = true;
+                    private_dep = !entry.public;
+                    break;
                 }
             }
         }
