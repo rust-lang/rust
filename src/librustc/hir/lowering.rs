@@ -4326,13 +4326,14 @@ impl<'a> LoweringContext<'a> {
                 //   }
 
                 // expand <head>
-                let head = self.lower_expr(head);
+                let mut head = self.lower_expr(head);
                 let head_sp = head.span;
                 let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
                     None,
                 );
+                head.span = desugared_span;
 
                 let iter = self.str_to_ident("iter");
 
