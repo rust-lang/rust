@@ -12,7 +12,11 @@ should be enough to get you started!
 To learn more about how rust-analyzer works, see
 [./architecture.md](./architecture.md) document.
 
-Various organizational and process issues are discussed here.
+We also publish rustdoc docs to pages:
+
+https://rust-analyzer.github.io/rust-analyzer/ra_ide_api/index.html
+
+Various organizational and process issues are discussed in this document.
 
 # Getting in Touch
 

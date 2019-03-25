@@ -1,7 +1,6 @@
 # Rust Analyzer
 
 [![Build Status](https://travis-ci.org/rust-analyzer/rust-analyzer.svg?branch=master)](https://travis-ci.org/rust-analyzer/rust-analyzer)
-[![Master docs](https://img.shields.io/badge/docs-master-blue.svg)](https://rust-analyzer.github.io/rust-analyzer/ra_ide_api/index.html)
 
 Rust Analyzer is an **experimental** modular compiler frontend for the Rust
 language. It is a part of a larger rls-2.0 effort to create excellent IDE
