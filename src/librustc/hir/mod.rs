@@ -1930,7 +1930,7 @@ pub enum TyKind {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
-    /// Placeholder for C-variadic arguments. We "spoof" the `VaList` created
+    /// Placeholder for C-variadic arguments. We "spoof" the `VaListImpl` created
     /// from the variadic arguments. This type is only valid up to typeck.
     CVarArgs(Lifetime),
 }

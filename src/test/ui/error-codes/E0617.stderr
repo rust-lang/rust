@@ -28,15 +28,15 @@ error[E0617]: can't pass `u16` to variadic function
 LL |         printf(::std::ptr::null(), 0u16);
    |                                    ^^^^ help: cast the value to `c_uint`: `0u16 as c_uint`
 
-error[E0617]: can't pass `for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaList<'r>, ...) {printf}` to variadic function
+error[E0617]: can't pass `for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaListImpl<'r>, ...) {printf}` to variadic function
   --> $DIR/E0617.rs:24:36
    |
 LL |         printf(::std::ptr::null(), printf);
    |                                    ^^^^^^
-help: cast the value to `for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaList<'r>, ...)`
+help: cast the value to `for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaListImpl<'r>, ...)`
    |
-LL |         printf(::std::ptr::null(), printf as for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaList<'r>, ...));
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         printf(::std::ptr::null(), printf as for<'r> unsafe extern "C" fn(*const i8, std::ffi::VaListImpl<'r>, ...));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

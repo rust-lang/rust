@@ -57,7 +57,7 @@ fn main() {
         }
 
         // Test type mangling, by putting them in an `impl` header.
-        // FIXME(eddyb) test C varargs when `core::ffi::VaList` stops leaking into the signature
+        // FIXME(eddyb) test C varargs when `core::ffi::VaListImpl` stops leaking into the signature
         // (which is a problem because `core` has an unpredictable hash) - see also #44930.
         impl Bar for [&'_ (dyn Foo<Assoc = extern fn(&u8, /*...*/)> + AutoTrait); 3] {
             #[rustc_symbol_name]

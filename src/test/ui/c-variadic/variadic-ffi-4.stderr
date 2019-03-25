@@ -1,16 +1,16 @@
 error[E0621]: explicit lifetime required in the type of `ap`
   --> $DIR/variadic-ffi-4.rs:8:5
    |
-LL | pub unsafe extern "C" fn no_escape0<'a>(_: usize, ap: ...) -> VaList<'a> {
-   |                                                       --- help: add explicit lifetime `'a` to the type of `ap`: `core::ffi::VaList<'a>`
+LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
+   |                                                       --- help: add explicit lifetime `'f` to the type of `ap`: `core::ffi::VaListImpl<'f>`
 LL |     ap
-   |     ^^ lifetime `'a` required
+   |     ^^ lifetime `'f` required
 
 error[E0621]: explicit lifetime required in the type of `ap`
   --> $DIR/variadic-ffi-4.rs:12:5
    |
-LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
-   |                                                   --- help: add explicit lifetime `'static` to the type of `ap`: `core::ffi::VaList<'static>`
+LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'static> {
+   |                                                   --- help: add explicit lifetime `'static` to the type of `ap`: `core::ffi::VaListImpl<'static>`
 LL |     ap
    |     ^^ lifetime `'static` required
 
@@ -26,14 +26,14 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
 LL |     let _ = ap.with_copy(|ap| { ap });
    |                          ^^^^^^^^^^^
    = note: ...so that the expression is assignable:
-           expected core::ffi::VaList<'_>
-              found core::ffi::VaList<'_>
+           expected core::ffi::VaList<'_, '_>
+              found core::ffi::VaList<'_, '_>
 note: but, the lifetime must be valid for the method call at 16:13...
   --> $DIR/variadic-ffi-4.rs:16:13
    |
 LL |     let _ = ap.with_copy(|ap| { ap });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...so type `core::ffi::VaList<'_>` of expression is valid during the expression
+note: ...so type `core::ffi::VaList<'_, '_>` of expression is valid during the expression
   --> $DIR/variadic-ffi-4.rs:16:13
    |
 LL |     let _ = ap.with_copy(|ap| { ap });
@@ -45,24 +45,24 @@ error[E0308]: mismatched types
 LL |     *ap0 = ap1;
    |            ^^^ lifetime mismatch
    |
-   = note: expected type `core::ffi::VaList<'_>`
-              found type `core::ffi::VaList<'_>`
+   = note: expected type `core::ffi::VaListImpl<'_>`
+              found type `core::ffi::VaListImpl<'_>`
 note: the anonymous lifetime #3 defined on the function body at 19:1...
   --> $DIR/variadic-ffi-4.rs:19:1
    |
-LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     *ap0 = ap1;
 LL | | }
    | |_^
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 19:1
   --> $DIR/variadic-ffi-4.rs:19:1
    |
-LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     *ap0 = ap1;
 LL | | }
    | |_^
 
-error[E0490]: a value of type `core::ffi::VaList<'_>` is borrowed for too long
+error[E0490]: a value of type `core::ffi::VaListImpl<'_>` is borrowed for too long
   --> $DIR/variadic-ffi-4.rs:24:11
    |
 LL |     ap0 = &mut ap1;
@@ -71,7 +71,7 @@ LL |     ap0 = &mut ap1;
 note: the type is valid for the anonymous lifetime #1 defined on the function body at 23:1
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -82,7 +82,7 @@ LL | | }
 note: but the borrow lasts for the anonymous lifetime #3 defined on the function body at 23:1
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -97,12 +97,12 @@ error[E0308]: mismatched types
 LL |     ap0 = &mut ap1;
    |           ^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `&mut core::ffi::VaList<'_>`
-              found type `&mut core::ffi::VaList<'_>`
+   = note: expected type `&mut core::ffi::VaListImpl<'_>`
+              found type `&mut core::ffi::VaListImpl<'_>`
 note: the anonymous lifetime #3 defined on the function body at 23:1...
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -113,7 +113,7 @@ LL | | }
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 23:1
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -128,12 +128,12 @@ error[E0308]: mismatched types
 LL |     ap0 = &mut ap1;
    |           ^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `&mut core::ffi::VaList<'_>`
-              found type `&mut core::ffi::VaList<'_>`
+   = note: expected type `&mut core::ffi::VaListImpl<'_>`
+              found type `&mut core::ffi::VaListImpl<'_>`
 note: the anonymous lifetime #2 defined on the function body at 23:1...
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -144,7 +144,7 @@ LL | | }
 note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 23:1
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -162,7 +162,7 @@ LL |     ap0 = &mut ap1;
 note: first, the lifetime cannot outlive the anonymous lifetime #3 defined on the function body at 23:1...
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -170,7 +170,7 @@ LL | |
 LL | |
 LL | | }
    | |_^
-note: ...so that the type `core::ffi::VaList<'_>` is not borrowed for too long
+note: ...so that the type `core::ffi::VaListImpl<'_>` is not borrowed for too long
   --> $DIR/variadic-ffi-4.rs:24:11
    |
 LL |     ap0 = &mut ap1;
@@ -178,7 +178,7 @@ LL |     ap0 = &mut ap1;
 note: but, the lifetime must be valid for the anonymous lifetime #1 defined on the function body at 23:1...
   --> $DIR/variadic-ffi-4.rs:23:1
    |
-LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaList, mut ap1: ...) {
+LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
 LL | |     ap0 = &mut ap1;
 LL | |
 LL | |
@@ -192,7 +192,34 @@ note: ...so that reference does not outlive borrowed content
 LL |     ap0 = &mut ap1;
    |           ^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/variadic-ffi-4.rs:32:16
+   |
+LL |     *ap0 = ap1.clone();
+   |                ^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #3 defined on the function body at 31:1...
+  --> $DIR/variadic-ffi-4.rs:31:1
+   |
+LL | / pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
+LL | |     *ap0 = ap1.clone();
+LL | | }
+   | |_^
+   = note: ...so that the types are compatible:
+           expected &core::ffi::VaListImpl<'_>
+              found &core::ffi::VaListImpl<'_>
+note: but, the lifetime must be valid for the anonymous lifetime #2 defined on the function body at 31:1...
+  --> $DIR/variadic-ffi-4.rs:31:1
+   |
+LL | / pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
+LL | |     *ap0 = ap1.clone();
+LL | | }
+   | |_^
+   = note: ...so that the expression is assignable:
+           expected core::ffi::VaListImpl<'_>
+              found core::ffi::VaListImpl<'_>
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0308, E0621.
 For more information about an error, try `rustc --explain E0308`.
