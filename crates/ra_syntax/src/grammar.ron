@@ -494,6 +494,7 @@ Grammar(
                 "RangeExpr",
                 "BinExpr",
                 "Literal",
+                "MacroCall",
             ],
         ),
 

@@ -114,6 +114,10 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     pub(crate) fn covering_element(&self) -> SyntaxElement<'a> {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
+
+    pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement<'a> {
+        find_covering_element(self.source_file.syntax(), range)
+    }
 }
 
 #[derive(Default)]
