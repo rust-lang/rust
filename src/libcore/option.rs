@@ -1325,7 +1325,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     ///
     /// let res: Option<Vec<u16>> = items
     ///     .iter()
-    ///     .map(|x| shared += x; x.checked_sub(2))
+    ///     .map(|x| { shared += x; x.checked_sub(2) })
     ///     .collect();
     ///
     /// assert_eq!(res, None);
