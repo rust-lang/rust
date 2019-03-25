@@ -1,9 +1,9 @@
 use std::{fmt, any::Any};
 
-use ra_syntax::{SyntaxNodePtr, AstPtr, ast};
+use ra_syntax::{SyntaxNodePtr, TreeArc, AstPtr, TextRange, ast, SyntaxNode};
 use relative_path::RelativePathBuf;
 
-use crate::HirFileId;
+use crate::{HirFileId, HirDatabase};
 
 /// Diagnostic defines hir API for errors and warnings.
 ///
@@ -20,11 +20,18 @@ use crate::HirFileId;
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
     fn file(&self) -> HirFileId;
-    fn syntax_node(&self) -> SyntaxNodePtr;
+    fn syntax_node_ptr(&self) -> SyntaxNodePtr;
+    fn highlight_range(&self) -> TextRange {
+        self.syntax_node_ptr().range()
+    }
     fn as_any(&self) -> &(dyn Any + Send + 'static);
 }
 
 impl dyn Diagnostic {
+    pub fn syntax_node(&self, db: &impl HirDatabase) -> TreeArc<SyntaxNode> {
+        let source_file = db.hir_parse(self.file());
+        self.syntax_node_ptr().to_node(&source_file).to_owned()
+    }
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
         self.as_any().downcast_ref()
     }
@@ -77,7 +84,7 @@ impl Diagnostic for NoSuchField {
     fn file(&self) -> HirFileId {
         self.file
     }
-    fn syntax_node(&self) -> SyntaxNodePtr {
+    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
         self.field.into()
     }
     fn as_any(&self) -> &(Any + Send + 'static) {
@@ -99,7 +106,7 @@ impl Diagnostic for UnresolvedModule {
     fn file(&self) -> HirFileId {
         self.file
     }
-    fn syntax_node(&self) -> SyntaxNodePtr {
+    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
         self.decl.into()
     }
     fn as_any(&self) -> &(Any + Send + 'static) {

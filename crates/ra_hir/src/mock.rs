@@ -9,7 +9,7 @@ use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 use rustc_hash::FxHashMap;
 
-use crate::{db, HirInterner, diagnostics::DiagnosticSink, DefDatabase};
+use crate::{db, HirInterner, diagnostics::DiagnosticSink};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -79,9 +79,7 @@ impl MockDatabase {
             module.diagnostics(
                 self,
                 &mut DiagnosticSink::new(|d| {
-                    let source_file = self.hir_parse(d.file());
-                    let syntax_node = d.syntax_node().to_node(&source_file);
-                    buf += &format!("{:?}: {}\n", syntax_node.text(), d.message());
+                    buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
                 }),
             )
         }

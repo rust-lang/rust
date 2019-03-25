@@ -31,7 +31,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let mut sink = DiagnosticSink::new(|d| {
         res.borrow_mut().push(Diagnostic {
             message: d.message(),
-            range: d.syntax_node().range(),
+            range: d.highlight_range(),
             severity: Severity::Error,
             fix: None,
         })
@@ -46,7 +46,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             cursor_position: None,
         };
         res.borrow_mut().push(Diagnostic {
-            range: d.syntax_node().range(),
+            range: d.highlight_range(),
             message: d.message(),
             severity: Severity::Error,
             fix: Some(fix),
