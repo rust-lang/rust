@@ -667,9 +667,13 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(_, ref it) => it
-                .rewrite(context, shape)
-                .map(|it_str| format!("impl {}", it_str)),
+            ast::TyKind::ImplTrait(_, ref it) => {
+                // Empty trait is not a parser error.
+                it.rewrite(context, shape).map(|it_str| {
+                    let space = if it_str.is_empty() { "" } else { " " };
+                    format!("impl{}{}", space, it_str)
+                })
+            }
             ast::TyKind::CVarArgs => Some("...".to_owned()),
             ast::TyKind::Err | ast::TyKind::Typeof(..) => unreachable!(),
         }
