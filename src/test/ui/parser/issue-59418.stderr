@@ -1,0 +1,8 @@
+error: tuple index with a suffix is invalid
+  --> $DIR/issue-59418.rs:5:15
+   |
+LL |     let b = a.1suffix;
+   |               ^^^^^^^ invalid suffix `suffix`
+
+error: aborting due to previous error
+

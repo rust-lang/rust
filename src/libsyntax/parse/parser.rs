@@ -3196,51 +3196,60 @@ impl<'a> Parser<'a> {
             // expr.f
             if self.eat(&token::Dot) {
                 match self.token {
-                  token::Ident(..) => {
-                    e = self.parse_dot_suffix(e, lo)?;
-                  }
-                  token::Literal(token::Integer(name), _) => {
-                    let span = self.span;
-                    self.bump();
-                    let field = ExprKind::Field(e, Ident::new(name, span));
-                    e = self.mk_expr(lo.to(span), field, ThinVec::new());
-                  }
-                  token::Literal(token::Float(n), _suf) => {
-                    self.bump();
-                    let fstr = n.as_str();
-                    let mut err = self.diagnostic()
-                        .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
-                    err.span_label(self.prev_span, "unexpected token");
-                    if fstr.chars().all(|x| "0123456789.".contains(x)) {
-                        let float = match fstr.parse::<f64>().ok() {
-                            Some(f) => f,
-                            None => continue,
-                        };
-                        let sugg = pprust::to_string(|s| {
-                            use crate::print::pprust::PrintState;
-                            s.popen()?;
-                            s.print_expr(&e)?;
-                            s.s.word( ".")?;
-                            s.print_usize(float.trunc() as usize)?;
-                            s.pclose()?;
-                            s.s.word(".")?;
-                            s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
-                        });
-                        err.span_suggestion(
-                            lo.to(self.prev_span),
-                            "try parenthesizing the first index",
-                            sugg,
-                            Applicability::MachineApplicable
-                        );
+                    token::Ident(..) => {
+                        e = self.parse_dot_suffix(e, lo)?;
                     }
-                    return Err(err);
+                    token::Literal(token::Integer(name), suffix) => {
+                        let span = self.span;
+                        self.bump();
+                        let field = ExprKind::Field(e, Ident::new(name, span));
+                        e = self.mk_expr(lo.to(span), field, ThinVec::new());
 
-                  }
-                  _ => {
-                    // FIXME Could factor this out into non_fatal_unexpected or something.
-                    let actual = self.this_token_to_string();
-                    self.span_err(self.span, &format!("unexpected token: `{}`", actual));
-                  }
+                        if let Some(suffix) = suffix {
+                            let mut err = self.diagnostic().struct_span_err(
+                                span,
+                                "tuple index with a suffix is invalid",
+                            );
+                            err.span_label(span, format!("invalid suffix `{}`", suffix));
+                            err.emit();
+                        }
+                    }
+                    token::Literal(token::Float(n), _suf) => {
+                      self.bump();
+                      let fstr = n.as_str();
+                      let mut err = self.diagnostic()
+                          .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
+                      err.span_label(self.prev_span, "unexpected token");
+                      if fstr.chars().all(|x| "0123456789.".contains(x)) {
+                          let float = match fstr.parse::<f64>().ok() {
+                              Some(f) => f,
+                              None => continue,
+                          };
+                          let sugg = pprust::to_string(|s| {
+                              use crate::print::pprust::PrintState;
+                              s.popen()?;
+                              s.print_expr(&e)?;
+                              s.s.word( ".")?;
+                              s.print_usize(float.trunc() as usize)?;
+                              s.pclose()?;
+                              s.s.word(".")?;
+                              s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
+                          });
+                          err.span_suggestion(
+                              lo.to(self.prev_span),
+                              "try parenthesizing the first index",
+                              sugg,
+                              Applicability::MachineApplicable
+                          );
+                      }
+                      return Err(err);
+
+                    }
+                    _ => {
+                        // FIXME Could factor this out into non_fatal_unexpected or something.
+                        let actual = self.this_token_to_string();
+                        self.span_err(self.span, &format!("unexpected token: `{}`", actual));
+                    }
                 }
                 continue;
             }
