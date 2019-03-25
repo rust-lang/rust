@@ -35,6 +35,7 @@ mod expr;
 mod generics;
 mod docs;
 mod resolve;
+pub mod diagnostics;
 
 mod code_model_api;
 mod code_model_impl;
@@ -63,7 +64,7 @@ pub use self::{
 
 pub use self::code_model_api::{
     Crate, CrateDependency,
-    Module, ModuleDef, ModuleSource, Problem,
+    Module, ModuleDef, ModuleSource,
     Struct, Enum, EnumVariant,
     Function, FnSignature,
     StructField, FieldSource,

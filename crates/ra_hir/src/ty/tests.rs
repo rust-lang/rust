@@ -2319,3 +2319,27 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }
 }
+
+#[test]
+fn no_such_field_diagnostics() {
+    let diagnostics = MockDatabase::with_files(
+        r"
+        //- /lib.rs
+        struct S { foo: i32, bar: () }
+        impl S {
+            fn new() -> S {
+                S {
+                    foo: 92,
+                    baz: 62,
+                }
+            }
+        }
+        ",
+    )
+    .diagnostics();
+
+    assert_snapshot_matches!(diagnostics, @r###"
+"baz: 62": no such field
+"###
+    );
+}

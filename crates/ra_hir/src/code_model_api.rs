@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use relative_path::RelativePathBuf;
 use ra_db::{CrateId, SourceRootId, Edition};
-use ra_syntax::{ast::self, TreeArc, SyntaxNode};
+use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
     Name, ScopesWithSourceMap, Ty, HirFileId,
@@ -17,6 +16,7 @@ use crate::{
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
     impl_block::ImplBlock,
     resolve::Resolver,
+    diagnostics::DiagnosticSink,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -95,11 +95,6 @@ pub enum ModuleSource {
     Module(TreeArc<ast::Module>),
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Problem {
-    UnresolvedModule { candidate: RelativePathBuf },
-}
-
 impl Module {
     /// Name of this module.
     pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
@@ -171,8 +166,24 @@ impl Module {
         db.crate_def_map(self.krate)[self.module_id].scope.clone()
     }
 
-    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
-        self.problems_impl(db)
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
+        db.crate_def_map(self.krate).add_diagnostics(db, self.module_id, sink);
+        for decl in self.declarations(db) {
+            match decl {
+                crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
+                crate::ModuleDef::Module(f) => f.diagnostics(db, sink),
+                _ => (),
+            }
+        }
+
+        for impl_block in self.impl_blocks(db) {
+            for item in impl_block.items(db) {
+                match item {
+                    crate::ImplItem::Method(f) => f.diagnostics(db, sink),
+                    _ => (),
+                }
+            }
+        }
     }
 
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
@@ -518,6 +529,10 @@ impl Function {
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
+    }
+
+    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
+        self.infer(db).add_diagnostics(db, *self, sink);
     }
 }
 

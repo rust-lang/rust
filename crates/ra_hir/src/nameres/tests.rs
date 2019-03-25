@@ -552,3 +552,22 @@ foo: v
 "###
     );
 }
+
+#[test]
+fn unresolved_module_diagnostics() {
+    let diagnostics = MockDatabase::with_files(
+        r"
+        //- /lib.rs
+        mod foo;
+        mod bar;
+        mod baz {}
+        //- /foo.rs
+        ",
+    )
+    .diagnostics();
+
+    assert_snapshot_matches!(diagnostics, @r###"
+"mod bar;": unresolved module
+"###
+    );
+}
