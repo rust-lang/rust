@@ -680,7 +680,7 @@ impl ExprCollector {
             }
             ast::ExprKind::PrefixExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                if let Some(op) = e.op() {
+                if let Some(op) = e.op_kind() {
                     self.alloc_expr(Expr::UnaryOp { expr, op }, syntax_ptr)
                 } else {
                     self.alloc_expr(Expr::Missing, syntax_ptr)
@@ -703,7 +703,7 @@ impl ExprCollector {
             ast::ExprKind::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
                 let rhs = self.collect_expr_opt(e.rhs());
-                let op = e.op();
+                let op = e.op_kind();
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::ExprKind::TupleExpr(e) => {

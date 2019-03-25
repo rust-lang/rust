@@ -521,13 +521,17 @@ pub enum PrefixOp {
 }
 
 impl PrefixExpr {
-    pub fn op(&self) -> Option<PrefixOp> {
+    pub fn op_kind(&self) -> Option<PrefixOp> {
         match self.syntax().first_child()?.kind() {
             STAR => Some(PrefixOp::Deref),
             EXCL => Some(PrefixOp::Not),
             MINUS => Some(PrefixOp::Neg),
             _ => None,
         }
+    }
+
+    pub fn op(&self) -> Option<&SyntaxNode> {
+        self.syntax().first_child()
     }
 }
 
@@ -598,44 +602,52 @@ pub enum BinOp {
 }
 
 impl BinExpr {
-    pub fn op(&self) -> Option<BinOp> {
+    fn op_details(&self) -> Option<(&SyntaxNode, BinOp)> {
         self.syntax()
             .children()
             .filter_map(|c| match c.kind() {
-                PIPEPIPE => Some(BinOp::BooleanOr),
-                AMPAMP => Some(BinOp::BooleanAnd),
-                EQEQ => Some(BinOp::EqualityTest),
-                NEQ => Some(BinOp::NegatedEqualityTest),
-                LTEQ => Some(BinOp::LesserEqualTest),
-                GTEQ => Some(BinOp::GreaterEqualTest),
-                L_ANGLE => Some(BinOp::LesserTest),
-                R_ANGLE => Some(BinOp::GreaterTest),
-                PLUS => Some(BinOp::Addition),
-                STAR => Some(BinOp::Multiplication),
-                MINUS => Some(BinOp::Subtraction),
-                SLASH => Some(BinOp::Division),
-                PERCENT => Some(BinOp::Remainder),
-                SHL => Some(BinOp::LeftShift),
-                SHR => Some(BinOp::RightShift),
-                CARET => Some(BinOp::BitwiseXor),
-                PIPE => Some(BinOp::BitwiseOr),
-                AMP => Some(BinOp::BitwiseAnd),
-                DOTDOT => Some(BinOp::RangeRightOpen),
-                DOTDOTEQ => Some(BinOp::RangeRightClosed),
-                EQ => Some(BinOp::Assignment),
-                PLUSEQ => Some(BinOp::AddAssign),
-                SLASHEQ => Some(BinOp::DivAssign),
-                STAREQ => Some(BinOp::MulAssign),
-                PERCENTEQ => Some(BinOp::RemAssign),
-                SHREQ => Some(BinOp::ShrAssign),
-                SHLEQ => Some(BinOp::ShlAssign),
-                MINUSEQ => Some(BinOp::SubAssign),
-                PIPEEQ => Some(BinOp::BitOrAssign),
-                AMPEQ => Some(BinOp::BitAndAssign),
-                CARETEQ => Some(BinOp::BitXorAssign),
+                PIPEPIPE => Some((c, BinOp::BooleanOr)),
+                AMPAMP => Some((c, BinOp::BooleanAnd)),
+                EQEQ => Some((c, BinOp::EqualityTest)),
+                NEQ => Some((c, BinOp::NegatedEqualityTest)),
+                LTEQ => Some((c, BinOp::LesserEqualTest)),
+                GTEQ => Some((c, BinOp::GreaterEqualTest)),
+                L_ANGLE => Some((c, BinOp::LesserTest)),
+                R_ANGLE => Some((c, BinOp::GreaterTest)),
+                PLUS => Some((c, BinOp::Addition)),
+                STAR => Some((c, BinOp::Multiplication)),
+                MINUS => Some((c, BinOp::Subtraction)),
+                SLASH => Some((c, BinOp::Division)),
+                PERCENT => Some((c, BinOp::Remainder)),
+                SHL => Some((c, BinOp::LeftShift)),
+                SHR => Some((c, BinOp::RightShift)),
+                CARET => Some((c, BinOp::BitwiseXor)),
+                PIPE => Some((c, BinOp::BitwiseOr)),
+                AMP => Some((c, BinOp::BitwiseAnd)),
+                DOTDOT => Some((c, BinOp::RangeRightOpen)),
+                DOTDOTEQ => Some((c, BinOp::RangeRightClosed)),
+                EQ => Some((c, BinOp::Assignment)),
+                PLUSEQ => Some((c, BinOp::AddAssign)),
+                SLASHEQ => Some((c, BinOp::DivAssign)),
+                STAREQ => Some((c, BinOp::MulAssign)),
+                PERCENTEQ => Some((c, BinOp::RemAssign)),
+                SHREQ => Some((c, BinOp::ShrAssign)),
+                SHLEQ => Some((c, BinOp::ShlAssign)),
+                MINUSEQ => Some((c, BinOp::SubAssign)),
+                PIPEEQ => Some((c, BinOp::BitOrAssign)),
+                AMPEQ => Some((c, BinOp::BitAndAssign)),
+                CARETEQ => Some((c, BinOp::BitXorAssign)),
                 _ => None,
             })
             .next()
+    }
+
+    pub fn op_kind(&self) -> Option<BinOp> {
+        self.op_details().map(|t| t.1)
+    }
+
+    pub fn op(&self) -> Option<&SyntaxNode> {
+        self.op_details().map(|t| t.0)
     }
 
     pub fn lhs(&self) -> Option<&Expr> {
