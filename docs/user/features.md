@@ -210,7 +210,7 @@ fn main() {
 }
 ```
 
--- Fill struct fields
+- Fill struct fields
 
 ```rust
 // before:
@@ -285,7 +285,7 @@ fn foo() {
 }
 ```
 
--- Remove `dbg!`
+- Remove `dbg!`
 
 ```rust
 // before:
