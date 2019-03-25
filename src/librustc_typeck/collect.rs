@@ -889,7 +889,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
     let node = tcx.hir().get_by_hir_id(hir_id);
     let parent_def_id = match node {
         Node::ImplItem(_) | Node::TraitItem(_) | Node::Variant(_) |
-        Node::Ctor(..) | Node::Field(_) => {
+        Node::Ctor(..) | Node::Field(_) | Node::AnonConst(_) => {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id_from_hir_id(parent_id))
         }
