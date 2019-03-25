@@ -237,7 +237,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "rustfix-coverage",
             "enable this to generate a Rustfix coverage file, which is saved in \
-                `/tmp/rustfix_missing_coverage.txt`",
+                `./<build_base>/rustfix_missing_coverage.txt`",
         )
         .optflag("h", "help", "show this message");
 
@@ -486,9 +486,10 @@ pub fn run_tests(config: &Config) {
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
     if config.rustfix_coverage {
-        let coverage_file_path = Path::new("/tmp/rustfix_missing_coverage.txt");
+        let mut coverage_file_path = config.build_base.clone();
+        coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
-            if let Err(e) = fs::remove_file(coverage_file_path) {
+            if let Err(e) = fs::remove_file(&coverage_file_path) {
                 panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
             }
         }

@@ -2829,11 +2829,14 @@ impl<'test> TestCx<'test> {
             if suggestions.len() > 0
                 && !self.props.run_rustfix
                 && !self.props.rustfix_only_machine_applicable {
-                    let coverage_file_path = Path::new("/tmp/rustfix_missing_coverage.txt");
+                    let mut coverage_file_path = self.config.build_base.clone();
+                    coverage_file_path.push("rustfix_missing_coverage.txt");
+                    debug!("coverage_file_path: {}", coverage_file_path.display());
+
                     let mut file = OpenOptions::new()
                         .create(true)
                         .append(true)
-                        .open(coverage_file_path)
+                        .open(coverage_file_path.as_path())
                         .expect("could not create or open file");
 
                     if let Err(_) = writeln!(file, "{}", self.testpaths.file.display()) {

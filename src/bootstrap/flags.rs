@@ -193,7 +193,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "",
                     "rustfix-coverage",
                     "enable this to generate a Rustfix coverage file, which is saved in \
-                        `/tmp/rustfix_missing_coverage.txt`",
+                        `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
             "bench" => {
