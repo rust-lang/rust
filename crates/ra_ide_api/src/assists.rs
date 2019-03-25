@@ -17,7 +17,7 @@ pub(crate) fn assists(db: &RootDatabase, frange: FileRange) -> Vec<Assist> {
             let file_id = frange.file_id;
             let file_edit = SourceFileEdit { file_id, edit: action.edit };
             let id = label.id;
-            let change = SourceChange::source_edit(label.label, file_edit).with_cursor_opt(
+            let change = SourceChange::source_file_edit(label.label, file_edit).with_cursor_opt(
                 action.cursor_position.map(|offset| FilePosition { offset, file_id }),
             );
             Assist { id, change }

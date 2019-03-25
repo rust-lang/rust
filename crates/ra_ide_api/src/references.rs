@@ -206,7 +206,7 @@ fn rename_reference(
         return None;
     }
 
-    Some(SourceChange::source_edits("rename", edit))
+    Some(SourceChange::source_file_edits("rename", edit))
 }
 
 #[cfg(test)]

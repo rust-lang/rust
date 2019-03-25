@@ -33,7 +33,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     edit.insert(position.offset, inserted);
 
     Some(
-        SourceChange::source_edit(
+        SourceChange::source_file_edit(
             "on enter",
             SourceFileEdit { edit: edit.finish(), file_id: position.file_id },
         )

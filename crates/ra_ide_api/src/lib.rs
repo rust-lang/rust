@@ -115,7 +115,7 @@ impl SourceChange {
 
     /// Creates a new SourceChange with the given label,
     /// containing only the given `SourceFileEdits`.
-    pub(crate) fn source_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+    pub(crate) fn source_file_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
         SourceChange {
             label: label.into(),
             source_file_edits: edits,
@@ -137,8 +137,8 @@ impl SourceChange {
 
     /// Creates a new SourceChange with the given label,
     /// containing only a single `SourceFileEdit`.
-    pub(crate) fn source_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
-        SourceChange::source_edits(label, vec![edit])
+    pub(crate) fn source_file_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
+        SourceChange::source_file_edits(label, vec![edit])
     }
 
     /// Creates a new SourceChange with the given label
@@ -148,7 +148,7 @@ impl SourceChange {
         file_id: FileId,
         edit: TextEdit,
     ) -> Self {
-        SourceChange::source_edit(label, SourceFileEdit { file_id, edit })
+        SourceChange::source_file_edit(label, SourceFileEdit { file_id, edit })
     }
 
     /// Creates a new SourceChange with the given label
@@ -358,7 +358,7 @@ impl Analysis {
             file_id: frange.file_id,
             edit: join_lines::join_lines(&file, frange.range),
         };
-        SourceChange::source_edit("join lines", file_edit)
+        SourceChange::source_file_edit("join lines", file_edit)
     }
 
     /// Returns an edit which should be applied when opening a new line, fixing
@@ -373,7 +373,7 @@ impl Analysis {
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.db.parse(position.file_id);
         let edit = typing::on_eq_typed(&file, position.offset)?;
-        Some(SourceChange::source_edit(
+        Some(SourceChange::source_file_edit(
             "add semicolon",
             SourceFileEdit { edit, file_id: position.file_id },
         ))
