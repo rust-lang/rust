@@ -119,42 +119,63 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
 
-        // If the expected type is an enum (Issue #55250) with any variants whose
-        // sole field is of the found type, suggest such variants. (Issue #42764)
-        if let ty::Adt(expected_adt, substs) = expected.sty {
-            if expected_adt.is_enum() {
-                let mut compatible_variants = expected_adt.variants
-                    .iter()
-                    .filter(|variant| variant.fields.len() == 1)
-                    .filter_map(|variant| {
-                        let sole_field = &variant.fields[0];
-                        let sole_field_ty = sole_field.ty(self.tcx, substs);
-                        if self.can_coerce(expr_ty, sole_field_ty) {
-                            let variant_path = self.tcx.def_path_str(variant.def_id);
-                            // FIXME #56861: DRYer prelude filtering
-                            Some(variant_path.trim_start_matches("std::prelude::v1::").to_string())
-                        } else {
-                            None
-                        }
-                    }).peekable();
-
-                if compatible_variants.peek().is_some() {
-                    let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
-                    let suggestions = compatible_variants
-                        .map(|v| format!("{}({})", v, expr_text));
-                    err.span_suggestions(
-                        expr.span,
-                        "try using a variant of the expected type",
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
+        if self.is_assign_to_bool(expr, expected) {
+            // Error reported in `check_assign` so avoid emitting error again.
+            err.delay_as_bug();
+            return (expected, None)
         }
 
+        self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
         self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
 
         (expected, Some(err))
+    }
+
+    /// Returns whether the expected type is `bool` and the expression is `x = y`.
+    pub fn is_assign_to_bool(&self, expr: &hir::Expr, expected: Ty<'tcx>) -> bool {
+        if let hir::ExprKind::Assign(..) = expr.node {
+            return expected == self.tcx.types.bool;
+        }
+        false
+    }
+
+    /// If the expected type is an enum (Issue #55250) with any variants whose
+    /// sole field is of the found type, suggest such variants. (Issue #42764)
+    fn suggest_compatible_variants(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        expr_ty: Ty<'tcx>,
+    ) {
+        if let ty::Adt(expected_adt, substs) = expected.sty {
+            if !expected_adt.is_enum() {
+                return;
+            }
+
+            let mut compatible_variants = expected_adt.variants
+                .iter()
+                .filter(|variant| variant.fields.len() == 1)
+                .filter_map(|variant| {
+                    let sole_field = &variant.fields[0];
+                    let sole_field_ty = sole_field.ty(self.tcx, substs);
+                    if self.can_coerce(expr_ty, sole_field_ty) {
+                        let variant_path = self.tcx.def_path_str(variant.def_id);
+                        // FIXME #56861: DRYer prelude filtering
+                        Some(variant_path.trim_start_matches("std::prelude::v1::").to_string())
+                    } else {
+                        None
+                    }
+                }).peekable();
+
+            if compatible_variants.peek().is_some() {
+                let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
+                let suggestions = compatible_variants
+                    .map(|v| format!("{}({})", v, expr_text));
+                let msg = "try using a variant of the expected type";
+                err.span_suggestions(expr.span, msg, suggestions, Applicability::MaybeIncorrect);
+            }
+        }
     }
 
     pub fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
