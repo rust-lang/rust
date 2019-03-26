@@ -63,7 +63,7 @@ use test_utils::tested_by;
 use crate::{
     ModuleDef, Name, Crate, Module, SourceItemId,
     DefDatabase, Path, PathKind, HirFileId, Trait,
-    ids::{MacroCallId, MacroDefId},
+    ids::MacroDefId,
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
 };
@@ -84,9 +84,7 @@ pub struct CrateDefMap {
     extern_prelude: FxHashMap<Name, ModuleDef>,
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
-    macros: Arena<CrateMacroId, mbe::MacroRules>,
     public_macros: FxHashMap<Name, MacroDefId>,
-    macro_resolutions: FxHashMap<MacroCallId, (Crate, CrateMacroId)>,
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -96,18 +94,6 @@ impl std::ops::Index<CrateModuleId> for CrateDefMap {
         &self.modules[id]
     }
 }
-
-impl std::ops::Index<CrateMacroId> for CrateDefMap {
-    type Output = mbe::MacroRules;
-    fn index(&self, id: CrateMacroId) -> &mbe::MacroRules {
-        &self.macros[id]
-    }
-}
-
-/// An ID of a macro, **local** to a specific crate
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct CrateMacroId(RawId);
-impl_arena_id!(CrateMacroId);
 
 /// An ID of a module, **local** to a specific crate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -202,9 +188,7 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
-                macros: Arena::default(),
                 public_macros: FxHashMap::default(),
-                macro_resolutions: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
