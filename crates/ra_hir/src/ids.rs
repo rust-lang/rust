@@ -21,7 +21,7 @@ pub struct HirInterner {
     consts: LocationInterner<ItemLoc<ast::ConstDef>, ConstId>,
     statics: LocationInterner<ItemLoc<ast::StaticDef>, StaticId>,
     traits: LocationInterner<ItemLoc<ast::TraitDef>, TraitId>,
-    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeId>,
+    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeAliasId>,
 }
 
 impl HirInterner {
@@ -229,7 +229,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(RawId);
+pub(crate) struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
 impl AstItemDef<ast::FnDef> for FunctionId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::FnDef>, Self> {
@@ -238,7 +238,7 @@ impl AstItemDef<ast::FnDef> for FunctionId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructId(RawId);
+pub(crate) struct StructId(RawId);
 impl_arena_id!(StructId);
 impl AstItemDef<ast::StructDef> for StructId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StructDef>, Self> {
@@ -247,7 +247,7 @@ impl AstItemDef<ast::StructDef> for StructId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumId(RawId);
+pub(crate) struct EnumId(RawId);
 impl_arena_id!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::EnumDef>, Self> {
@@ -256,7 +256,7 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConstId(RawId);
+pub(crate) struct ConstId(RawId);
 impl_arena_id!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::ConstDef>, Self> {
@@ -265,7 +265,7 @@ impl AstItemDef<ast::ConstDef> for ConstId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StaticId(RawId);
+pub(crate) struct StaticId(RawId);
 impl_arena_id!(StaticId);
 impl AstItemDef<ast::StaticDef> for StaticId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StaticDef>, Self> {
@@ -274,7 +274,7 @@ impl AstItemDef<ast::StaticDef> for StaticId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitId(RawId);
+pub(crate) struct TraitId(RawId);
 impl_arena_id!(TraitId);
 impl AstItemDef<ast::TraitDef> for TraitId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TraitDef>, Self> {
@@ -283,9 +283,9 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeId(RawId);
-impl_arena_id!(TypeId);
-impl AstItemDef<ast::TypeAliasDef> for TypeId {
+pub(crate) struct TypeAliasId(RawId);
+impl_arena_id!(TypeAliasId);
+impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TypeAliasDef>, Self> {
         &interner.types
     }
