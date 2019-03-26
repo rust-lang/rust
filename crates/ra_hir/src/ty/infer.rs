@@ -821,7 +821,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
-                let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
+                let resolved =
+                    receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
                 let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
                     Some((ty, func)) => {
                         self.write_method_resolution(tgt_expr, func);

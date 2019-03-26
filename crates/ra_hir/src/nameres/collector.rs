@@ -3,18 +3,20 @@ use rustc_hash::FxHashMap;
 use relative_path::RelativePathBuf;
 use test_utils::tested_by;
 use ra_db::FileId;
+use ra_syntax::ast;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    DefDatabase, HirFileId, Name, Path, Crate,
+    DefDatabase, HirFileId, Name, Path,
     KnownName,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
-        CrateDefMap, CrateModuleId, ModuleData, CrateMacroId,
+        CrateDefMap, CrateModuleId, ModuleData,
         diagnostics::DefDiagnostic,
         raw,
     },
-    ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId},
+    ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId},
+    AstId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -51,8 +53,8 @@ struct DefCollector<DB> {
     def_map: CrateDefMap,
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
-    unexpanded_macros: Vec<(CrateModuleId, MacroCallId, Path, tt::Subtree)>,
-    global_macro_scope: FxHashMap<Name, CrateMacroId>,
+    unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
+    global_macro_scope: FxHashMap<Name, MacroDefId>,
 }
 
 impl<'a, DB> DefCollector<&'a DB>
@@ -62,7 +64,7 @@ where
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
         let file_id = crate_graph.crate_root(self.def_map.krate.crate_id());
-        let raw_items = self.db.raw_items(file_id);
+        let raw_items = self.db.raw_items(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].definition = Some(file_id);
         ModCollector {
@@ -93,14 +95,11 @@ where
         }
     }
 
-    fn define_macro(&mut self, name: Name, tt: &tt::Subtree, export: bool) {
-        if let Ok(rules) = mbe::MacroRules::parse(tt) {
-            let macro_id = self.def_map.macros.alloc(rules);
-            if export {
-                self.def_map.public_macros.insert(name.clone(), macro_id);
-            }
-            self.global_macro_scope.insert(name, macro_id);
+    fn define_macro(&mut self, name: Name, macro_id: MacroDefId, export: bool) {
+        if export {
+            self.def_map.public_macros.insert(name.clone(), macro_id);
         }
+        self.global_macro_scope.insert(name, macro_id);
     }
 
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
@@ -296,7 +295,7 @@ where
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
-        macros.retain(|(module_id, call_id, path, tt)| {
+        macros.retain(|(module_id, ast_id, path)| {
             if path.segments.len() != 2 {
                 return true;
             }
@@ -312,47 +311,23 @@ where
             res = ReachedFixedPoint::No;
             let def_map = self.db.crate_def_map(krate);
             if let Some(macro_id) = def_map.public_macros.get(&path.segments[1].name).cloned() {
-                resolved.push((*module_id, *call_id, (krate, macro_id), tt.clone()));
+                let call_id = MacroCallLoc { def: macro_id, ast_id: *ast_id }.id(self.db);
+                resolved.push((*module_id, call_id));
             }
             false
         });
 
-        for (module_id, macro_call_id, macro_def_id, arg) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id, macro_def_id, arg);
+        for (module_id, macro_call_id) in resolved {
+            self.collect_macro_expansion(module_id, macro_call_id);
         }
         res
     }
 
-    fn collect_macro_expansion(
-        &mut self,
-        module_id: CrateModuleId,
-        macro_call_id: MacroCallId,
-        macro_def_id: (Crate, CrateMacroId),
-        macro_arg: tt::Subtree,
-    ) {
-        let (macro_krate, macro_id) = macro_def_id;
-        let dm;
-        let rules = if macro_krate == self.def_map.krate {
-            &self.def_map[macro_id]
-        } else {
-            dm = self.db.crate_def_map(macro_krate);
-            &dm[macro_id]
-        };
-        if let Ok(expansion) = rules.expand(&macro_arg) {
-            self.def_map.macro_resolutions.insert(macro_call_id, macro_def_id);
-            // XXX: this **does not** go through a database, because we can't
-            // identify macro_call without adding the whole state of name resolution
-            // as a parameter to the query.
-            //
-            // So, we run the queries "manually" and we must ensure that
-            // `db.hir_parse(macro_call_id)` returns the same source_file.
-            let file_id: HirFileId = macro_call_id.into();
-            let source_file = mbe::token_tree_to_ast_item_list(&expansion);
-
-            let raw_items = raw::RawItems::from_source_file(&source_file, file_id);
-            ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-                .collect(raw_items.items())
-        }
+    fn collect_macro_expansion(&mut self, module_id: CrateModuleId, macro_call_id: MacroCallId) {
+        let file_id: HirFileId = macro_call_id.into();
+        let raw_items = self.db.raw_items(file_id);
+        ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
+            .collect(raw_items.items())
     }
 
     fn finish(self) -> CrateDefMap {
@@ -390,12 +365,9 @@ where
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, source_item_id } => {
-                let module_id = self.push_child_module(
-                    name.clone(),
-                    source_item_id.with_file_id(self.file_id),
-                    None,
-                );
+            raw::ModuleData::Definition { name, items, ast_id } => {
+                let module_id =
+                    self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
@@ -405,14 +377,13 @@ where
                 .collect(&*items);
             }
             // out of line module, resovle, parse and recurse
-            raw::ModuleData::Declaration { name, source_item_id } => {
-                let source_item_id = source_item_id.with_file_id(self.file_id);
+            raw::ModuleData::Declaration { name, ast_id } => {
+                let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
                 match resolve_submodule(self.def_collector.db, self.file_id, name, is_root) {
                     Ok(file_id) => {
-                        let module_id =
-                            self.push_child_module(name.clone(), source_item_id, Some(file_id));
-                        let raw_items = self.def_collector.db.raw_items(file_id);
+                        let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
+                        let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             module_id,
@@ -424,7 +395,7 @@ where
                     Err(candidate) => self.def_collector.def_map.diagnostics.push(
                         DefDiagnostic::UnresolvedModule {
                             module: self.module_id,
-                            declaration: source_item_id,
+                            declaration: ast_id,
                             candidate,
                         },
                     ),
@@ -436,7 +407,7 @@ where
     fn push_child_module(
         &mut self,
         name: Name,
-        declaration: SourceItemId,
+        declaration: AstId<ast::Module>,
         definition: Option<FileId>,
     ) -> CrateModuleId {
         let modules = &mut self.def_collector.def_map.modules;
@@ -458,23 +429,24 @@ where
     fn define_def(&mut self, def: &raw::DefData) {
         let module = Module { krate: self.def_collector.def_map.krate, module_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id.into());
-        macro_rules! id {
-            () => {
-                AstItemDef::from_source_item_id_unchecked(ctx, def.source_item_id)
+
+        macro_rules! def {
+            ($kind:ident, $ast_id:ident) => {
+                $kind { id: AstItemDef::from_ast_id(ctx, $ast_id) }.into()
             };
         }
         let name = def.name.clone();
         let def: PerNs<ModuleDef> = match def.kind {
-            raw::DefKind::Function => PerNs::values(Function { id: id!() }.into()),
-            raw::DefKind::Struct => {
-                let s = Struct { id: id!() }.into();
+            raw::DefKind::Function(ast_id) => PerNs::values(def!(Function, ast_id)),
+            raw::DefKind::Struct(ast_id) => {
+                let s = def!(Struct, ast_id);
                 PerNs::both(s, s)
             }
-            raw::DefKind::Enum => PerNs::types(Enum { id: id!() }.into()),
-            raw::DefKind::Const => PerNs::values(Const { id: id!() }.into()),
-            raw::DefKind::Static => PerNs::values(Static { id: id!() }.into()),
-            raw::DefKind::Trait => PerNs::types(Trait { id: id!() }.into()),
-            raw::DefKind::TypeAlias => PerNs::types(TypeAlias { id: id!() }.into()),
+            raw::DefKind::Enum(ast_id) => PerNs::types(def!(Enum, ast_id)),
+            raw::DefKind::Const(ast_id) => PerNs::values(def!(Const, ast_id)),
+            raw::DefKind::Static(ast_id) => PerNs::values(def!(Static, ast_id)),
+            raw::DefKind::Trait(ast_id) => PerNs::types(def!(Trait, ast_id)),
+            raw::DefKind::TypeAlias(ast_id) => PerNs::types(def!(TypeAlias, ast_id)),
         };
         let resolution = Resolution { def, import: None };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
@@ -484,39 +456,27 @@ where
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                self.def_collector.define_macro(name.clone(), &mac.arg, mac.export)
+                let macro_id = MacroDefId(mac.ast_id.with_file_id(self.file_id));
+                self.def_collector.define_macro(name.clone(), macro_id, mac.export)
             }
             return;
         }
 
-        let source_item_id = SourceItemId { file_id: self.file_id, item_id: mac.source_item_id };
-        let macro_call_id = MacroCallLoc {
-            module: Module { krate: self.def_collector.def_map.krate, module_id: self.module_id },
-            source_item_id,
-        }
-        .id(self.def_collector.db);
+        let ast_id = mac.ast_id.with_file_id(self.file_id);
 
         // Case 2: try to expand macro_rules from this crate, triggering
         // recursive item collection.
         if let Some(&macro_id) =
             mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(name))
         {
-            self.def_collector.collect_macro_expansion(
-                self.module_id,
-                macro_call_id,
-                (self.def_collector.def_map.krate, macro_id),
-                mac.arg.clone(),
-            );
+            let macro_call_id = MacroCallLoc { def: macro_id, ast_id }.id(self.def_collector.db);
+
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id);
             return;
         }
 
         // Case 3: path to a macro from another crate, expand during name resolution
-        self.def_collector.unexpanded_macros.push((
-            self.module_id,
-            macro_call_id,
-            mac.path.clone(),
-            mac.arg.clone(),
-        ))
+        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, mac.path.clone()))
     }
 }
 

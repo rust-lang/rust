@@ -13,10 +13,11 @@ use crate::{
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
-    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
+    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId},
     impl_block::ImplBlock,
     resolve::Resolver,
     diagnostics::DiagnosticSink,
+    traits::{TraitItem, TraitData},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -649,6 +650,18 @@ impl Trait {
     pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params((*self).into())
     }
+
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+        self.trait_data(db).name().clone()
+    }
+
+    pub fn items(self, db: &impl DefDatabase) -> Vec<TraitItem> {
+        self.trait_data(db).items().to_vec()
+    }
+
+    pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
+        db.trait_data(self)
+    }
 }
 
 impl Docs for Trait {
@@ -659,7 +672,7 @@ impl Docs for Trait {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAlias {
-    pub(crate) id: TypeId,
+    pub(crate) id: TypeAliasId,
 }
 
 impl TypeAlias {

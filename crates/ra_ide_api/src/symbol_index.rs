@@ -270,3 +270,61 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
         container_name: None,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use ra_syntax::SmolStr;
+    use crate::{
+        navigation_target::NavigationTarget,
+        mock_analysis::single_file,
+        Query,
+};
+
+    #[test]
+    fn test_world_symbols_with_no_container() {
+        let code = r#"
+    enum FooInner { }
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert!(s.container_name().is_none());
+    }
+
+    #[test]
+    fn test_world_symbols_include_container_name() {
+        let code = r#"
+fn foo() {
+    enum FooInner { }
+}
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+
+        let code = r#"
+mod foo {
+    struct FooInner;
+}
+    "#;
+
+        let mut symbols = get_symbols_matching(code, "FooInner");
+
+        let s = symbols.pop().unwrap();
+
+        assert_eq!(s.name(), "FooInner");
+        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+    }
+
+    fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
+        let (analysis, _) = single_file(text);
+        analysis.symbol_search(Query::new(query.into())).unwrap()
+    }
+}

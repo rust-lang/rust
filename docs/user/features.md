@@ -210,7 +210,7 @@ fn main() {
 }
 ```
 
--- Fill struct fields
+- Fill struct fields
 
 ```rust
 // before:
@@ -270,7 +270,22 @@ fn foo() {
 }
 ```
 
--- Remove `dbg!`
+- Inline local variable:
+
+```rust
+// before:
+fn foo() {
+    let a<|> = 1 + 1;
+    let b = a * 10;
+}
+
+// after:
+fn foo() {
+    let b = (1 + 1) * 10;
+}
+```
+
+- Remove `dbg!`
 
 ```rust
 // before:

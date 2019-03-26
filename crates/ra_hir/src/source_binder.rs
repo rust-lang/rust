@@ -15,8 +15,8 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, Struct, Enum,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
-    ids::{LocationCtx, SourceFileItemId},
-    expr
+    ids::LocationCtx,
+    expr, AstId
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -54,8 +54,8 @@ fn module_from_inline(
 ) -> Option<Module> {
     assert!(!module.has_semi());
     let file_id = file_id.into();
-    let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(file_id, module.syntax());
+    let ast_id_map = db.ast_id_map(file_id);
+    let item_id = ast_id_map.ast_id(module).with_file_id(file_id);
     module_from_source(db, file_id, Some(item_id))
 }
 
@@ -75,7 +75,7 @@ pub fn module_from_child_node(
 fn module_from_source(
     db: &impl HirDatabase,
     file_id: HirFileId,
-    decl_id: Option<SourceFileItemId>,
+    decl_id: Option<AstId<ast::Module>>,
 ) -> Option<Module> {
     let source_root_id = db.file_source_root(file_id.as_original_file());
     db.source_root_crates(source_root_id).iter().map(|&crate_id| Crate { crate_id }).find_map(

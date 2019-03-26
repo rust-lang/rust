@@ -4061,7 +4061,11 @@ impl ast::NameOwner for TraitDef {}
 impl ast::AttrsOwner for TraitDef {}
 impl ast::DocCommentsOwner for TraitDef {}
 impl ast::TypeParamsOwner for TraitDef {}
-impl TraitDef {}
+impl TraitDef {
+    pub fn item_list(&self) -> Option<&ItemList> {
+        super::child_opt(self)
+    }
+}
 
 // TrueKw
 #[derive(Debug, PartialEq, Eq, Hash)]
