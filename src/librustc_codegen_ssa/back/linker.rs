@@ -596,18 +596,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         // This will cause the Microsoft linker to embed .natvis info into the PDB file
         let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
-            // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
-            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
-            // them, eventually mooting this workaround, per this landed patch:
-            // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
-            if let Some(ref linker_path) = self.sess.opts.cg.linker {
-                if let Some(linker_name) = Path::new(&linker_path).file_stem() {
-                    if linker_name.to_str().unwrap().to_lowercase() == "lld-link" {
-                        self.sess.warn("not embedding natvis: lld-link may not support the flag");
-                        return;
-                    }
-                }
-            }
             for entry in natvis_dir {
                 match entry {
                     Ok(entry) => {
