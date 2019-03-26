@@ -45,6 +45,22 @@ of the rustc-guide instead._
     $ ./x.py build && sudo ./x.py install
     ```
 
+    If after running `sudo ./x.py install` you see an error message like
+
+    ```
+    error: failed to load source for a dependency on 'cc'
+    ```
+
+    then run these two commands and then try `sudo ./x.py install` again:
+
+    ```
+    $ cargo install cargo-vendor
+    ```
+
+    ```
+    $ cargo vendor
+    ```
+
     > ***Note:*** Install locations can be adjusted by copying the config file
     > from `./config.toml.example` to `./config.toml`, and
     > adjusting the `prefix` option under `[install]`. Various other options, such
