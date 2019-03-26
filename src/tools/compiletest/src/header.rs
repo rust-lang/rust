@@ -333,7 +333,10 @@ pub struct TestProps {
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
     pub failure_status: i32,
+    // Whether or not `rustfix` should apply the `CodeSuggestion`s of this test and compile the
+    // resulting Rust code.
     pub run_rustfix: bool,
+    // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub rustfix_only_machine_applicable: bool,
     pub assembly_output: Option<String>,
 }

@@ -117,6 +117,7 @@ impl CompareMode {
     }
 }
 
+/// Configuration for compiletest
 #[derive(Clone)]
 pub struct Config {
     /// `true` to to overwrite stderr/stdout files instead of complaining about changes in output.
@@ -254,6 +255,8 @@ pub struct Config {
     pub linker: Option<String>,
     pub llvm_components: String,
     pub llvm_cxxflags: String,
+
+    /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
     pub nodejs: Option<String>,
 }
 

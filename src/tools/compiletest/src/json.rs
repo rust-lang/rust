@@ -1,11 +1,11 @@
+//! These structs are a subset of the ones found in `syntax::json`.
+//! They are only used for deserialization of JSON output provided by libtest.
+
 use crate::errors::{Error, ErrorKind};
 use crate::runtest::ProcRes;
 use serde_json;
 use std::path::Path;
 use std::str::FromStr;
-
-// These structs are a subset of the ones found in
-// `syntax::json`.
 
 #[derive(Deserialize)]
 struct Diagnostic {
