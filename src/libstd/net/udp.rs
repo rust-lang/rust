@@ -837,7 +837,7 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
 mod tests {
     use crate::io::ErrorKind;
     use crate::net::*;
