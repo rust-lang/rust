@@ -5318,10 +5318,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> Option<Span> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
-        let last_stmt = match blk.stmts.last() {
-            Some(s) => s,
-            None => return None,
-        };
+        let last_stmt = blk.stmts.last()?;
         let last_expr = match last_stmt.node {
             hir::StmtKind::Semi(ref e) => e,
             _ => return None,

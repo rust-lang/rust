@@ -239,10 +239,8 @@ impl<'a> Formatted<'a> {
 
         let mut written = self.sign.len();
         for part in self.parts {
-            match part.write(&mut out[written..]) {
-                Some(len) => { written += len; }
-                None => { return None; }
-            }
+            let len = part.write(&mut out[written..])?;
+            written += len;
         }
         Some(written)
     }
