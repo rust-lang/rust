@@ -8,7 +8,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, EvalContext, MPlaceTy, OpTy,
+    Machine, InterpretCx, MPlaceTy, OpTy,
 };
 
 // A thing that we can project into, and that has a layout.
@@ -22,7 +22,7 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     /// Makes this into an `OpTy`.
     fn to_op(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     /// Creates this from an `MPlaceTy`.
@@ -31,14 +31,14 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     /// Projects to the given enum variant.
     fn project_downcast(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, Self>;
 
     /// Projects to the n-th field.
     fn project_field(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self>;
 }
@@ -56,7 +56,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn to_op(
         self,
-        _ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self)
     }
@@ -69,7 +69,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, Self> {
         ecx.operand_downcast(self, variant)
@@ -78,7 +78,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self> {
         ecx.operand_field(self, field)
@@ -95,7 +95,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn to_op(
         self,
-        _ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self.into())
     }
@@ -108,7 +108,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> EvalResult<'tcx, Self> {
         ecx.mplace_downcast(self, variant)
@@ -117,7 +117,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         self,
-        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self> {
         ecx.mplace_field(self, field)
@@ -130,9 +130,9 @@ macro_rules! make_value_visitor {
         pub trait $visitor_trait_name<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Sized {
             type V: Value<'a, 'mir, 'tcx, M>;
 
-            /// The visitor must have an `EvalContext` in it.
+            /// The visitor must have an `InterpretCx` in it.
             fn ecx(&$($mutability)? self)
-                -> &$($mutability)? EvalContext<'a, 'mir, 'tcx, M>;
+                -> &$($mutability)? InterpretCx<'a, 'mir, 'tcx, M>;
 
             // Recursive actions, ready to be overloaded.
             /// Visits the given value, dispatching as appropriate to more specialized visitors.

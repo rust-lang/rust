@@ -1,4 +1,4 @@
-//! This module contains the `EvalContext` methods for executing a single step of the interpreter.
+//! This module contains the `InterpretCx` methods for executing a single step of the interpreter.
 //!
 //! The main entry point is the `step` method.
 
@@ -6,7 +6,7 @@ use rustc::mir;
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
-use super::{EvalContext, Machine};
+use super::{InterpretCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -35,7 +35,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     pub fn run(&mut self) -> EvalResult<'tcx> {
         while self.step()? {}
         Ok(())
