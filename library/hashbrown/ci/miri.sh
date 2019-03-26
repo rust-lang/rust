@@ -5,7 +5,7 @@ set -ex
 export CARGO_NET_RETRY=5
 export CARGO_NET_TIMEOUT=10
 
-if cargo install --force --git https://github.com/rust-lang/miri miri ; then
+if rustup component add miri ; then
     cargo miri setup
-    cargo miri test
+    cargo miri test -- -- -Zunstable-options --exclude-should-panic
 fi
