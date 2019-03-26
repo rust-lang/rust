@@ -889,6 +889,7 @@ impl Step for ErrorIndex {
         );
         index.arg("html");
         index.arg(out.join("error-index.html"));
+        index.arg(crate::channel::CFG_RELEASE_NUM);
 
         // FIXME: shouldn't have to pass this env var
         index.env("CFG_BUILD", &builder.config.build)
