@@ -54,7 +54,7 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    source_id::{SourceFileItems, SourceItemId},
+    source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, HirInterner},
     nameres::{PerNs, Namespace},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},

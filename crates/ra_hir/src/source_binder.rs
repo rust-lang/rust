@@ -54,8 +54,8 @@ fn module_from_inline(
 ) -> Option<Module> {
     assert!(!module.has_semi());
     let file_id = file_id.into();
-    let file_items = db.file_items(file_id);
-    let item_id = file_items.ast_id(module).with_file_id(file_id);
+    let ast_id_map = db.ast_id_map(file_id);
+    let item_id = ast_id_map.ast_id(module).with_file_id(file_id);
     module_from_source(db, file_id, Some(item_id))
 }
 

@@ -5,7 +5,9 @@ use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
 
-/// `AstId` points to an AST node in any file
+/// `AstId` points to an AST node in any file.
+///
+/// It is stable across reparses, and can be used as salsa key/value.
 #[derive(Debug)]
 pub(crate) struct AstId<N: AstNode> {
     file_id: HirFileId,
@@ -37,9 +39,7 @@ impl<N: AstNode> AstId<N> {
     }
 
     pub(crate) fn to_node(&self, db: &impl DefDatabase) -> TreeArc<N> {
-        let source_item_id =
-            SourceItemId { file_id: self.file_id(), item_id: self.file_ast_id.raw };
-        let syntax_node = db.file_item(source_item_id);
+        let syntax_node = db.ast_id_to_node(self.file_id, self.file_ast_id.raw);
         N::cast(&syntax_node).unwrap().to_owned()
     }
 }
@@ -47,7 +47,7 @@ impl<N: AstNode> AstId<N> {
 /// `AstId` points to an AST node in a specific file.
 #[derive(Debug)]
 pub(crate) struct FileAstId<N: AstNode> {
-    raw: SourceFileItemId,
+    raw: ErasedFileAstId,
     _ty: PhantomData<N>,
 }
 
@@ -76,41 +76,29 @@ impl<N: AstNode> FileAstId<N> {
     }
 }
 
-/// Identifier of item within a specific file. This is stable over reparses, so
-/// it's OK to use it as a salsa key/value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct SourceFileItemId(RawId);
-impl_arena_id!(SourceFileItemId);
+pub struct ErasedFileAstId(RawId);
+impl_arena_id!(ErasedFileAstId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SourceItemId {
-    file_id: HirFileId,
-    item_id: SourceFileItemId,
-}
-
-/// Maps items' `SyntaxNode`s to `SourceFileItemId`s and back.
+/// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
 #[derive(Debug, PartialEq, Eq)]
-pub struct SourceFileItems {
-    arena: Arena<SourceFileItemId, SyntaxNodePtr>,
+pub struct AstIdMap {
+    arena: Arena<ErasedFileAstId, SyntaxNodePtr>,
 }
 
-impl SourceFileItems {
-    pub(crate) fn file_items_query(
-        db: &impl DefDatabase,
-        file_id: HirFileId,
-    ) -> Arc<SourceFileItems> {
+impl AstIdMap {
+    pub(crate) fn ast_id_map_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
         let source_file = db.hir_parse(file_id);
-        Arc::new(SourceFileItems::from_source_file(&source_file))
+        Arc::new(AstIdMap::from_source_file(&source_file))
     }
 
     pub(crate) fn file_item_query(
         db: &impl DefDatabase,
-        source_item_id: SourceItemId,
+        file_id: HirFileId,
+        ast_id: ErasedFileAstId,
     ) -> TreeArc<SyntaxNode> {
-        let source_file = db.hir_parse(source_item_id.file_id);
-        db.file_items(source_item_id.file_id).arena[source_item_id.item_id]
-            .to_node(&source_file)
-            .to_owned()
+        let source_file = db.hir_parse(file_id);
+        db.ast_id_map(file_id).arena[ast_id].to_node(&source_file).to_owned()
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
@@ -118,7 +106,7 @@ impl SourceFileItems {
         let raw = match self.arena.iter().find(|(_id, i)| **i == ptr) {
             Some((it, _)) => it,
             None => panic!(
-                "Can't find {:?} in SourceFileItems:\n{:?}",
+                "Can't find {:?} in AstIdMap:\n{:?}",
                 item.syntax(),
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
             ),
@@ -127,8 +115,8 @@ impl SourceFileItems {
         FileAstId { raw, _ty: PhantomData }
     }
 
-    fn from_source_file(source_file: &SourceFile) -> SourceFileItems {
-        let mut res = SourceFileItems { arena: Arena::default() };
+    fn from_source_file(source_file: &SourceFile) -> AstIdMap {
+        let mut res = AstIdMap { arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
@@ -143,7 +131,7 @@ impl SourceFileItems {
         res
     }
 
-    fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {
+    fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {
         self.arena.alloc(SyntaxNodePtr::new(item))
     }
 }

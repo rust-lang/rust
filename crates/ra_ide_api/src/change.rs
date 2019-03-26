@@ -220,8 +220,8 @@ impl RootDatabase {
         self.query(ra_db::ParseQuery).sweep(sweep);
 
         self.query(hir::db::HirParseQuery).sweep(sweep);
-        self.query(hir::db::FileItemsQuery).sweep(sweep);
-        self.query(hir::db::FileItemQuery).sweep(sweep);
+        self.query(hir::db::AstIdMapQuery).sweep(sweep);
+        self.query(hir::db::AstIdToNodeQuery).sweep(sweep);
 
         self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);

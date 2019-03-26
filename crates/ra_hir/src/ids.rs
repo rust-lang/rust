@@ -207,7 +207,7 @@ impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
 pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
-        let items = ctx.db.file_items(ctx.file_id);
+        let items = ctx.db.ast_id_map(ctx.file_id);
         let item_id = items.ast_id(ast);
         Self::from_ast_id(ctx, item_id)
     }
