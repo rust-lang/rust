@@ -305,12 +305,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>) -> Cow<'static, str> {
-        format!("erasing regions from `{:?}`", ty).into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, (_, def_id): (DefId, DefId)) -> Cow<'static, str> {
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -428,12 +422,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval_raw<'tcx> {
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
         tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::mir_keys<'tcx> {
-    fn describe(_: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "getting a list of all mir_keys".into()
     }
 }
 
@@ -614,12 +602,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::extern_crate<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "running analysis passes on this crate".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::lint_levels<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "computing the lint levels for items in this crate".into()
     }
 }
 
@@ -898,21 +880,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
-    #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, def_id: Self::Key) -> bool {
-        def_id.is_local()
-    }
-
-    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: SerializedDepNodeIndex)
-                              -> Option<Self::Value> {
-        let mir: Option<crate::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
-                                               .try_load_query_result(tcx, id);
-        mir.map(|x| tcx.alloc_mir(x))
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: (DefId, SubstsRef<'tcx>)) -> Cow<'static, str> {
         format!("testing substituted normalized predicates:`{}`", tcx.def_path_str(key.0)).into()
@@ -937,33 +904,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
-        "generating chalk-style clauses".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for_env<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: traits::Environment<'tcx>) -> Cow<'static, str> {
-        "generating chalk-style clauses for environment".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::environment<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: DefId) -> Cow<'static, str> {
-        "return a chalk-style environment".into()
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::wasm_import_module_map<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "wasm import module map".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::dllimport_foreign_items<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "wasm import module map".into()
+        "dllimport_foreign_items".into()
     }
 }
 
@@ -997,7 +940,6 @@ impl_disk_cacheable_query!(mir_borrowck, |tcx, def_id| {
 
 impl_disk_cacheable_query!(unsafety_check_result, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(borrowck, |_, def_id| def_id.is_local());
-impl_disk_cacheable_query!(mir_const_qualif, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |_, def_id| def_id.is_local());
 impl_disk_cacheable_query!(def_symbol_name, |_, _| true);
 impl_disk_cacheable_query!(predicates_of, |_, def_id| def_id.is_local());
