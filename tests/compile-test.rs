@@ -100,13 +100,13 @@ fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<TestDescAndFn>
                 .position(|test| test.desc.name.to_string() == test_name.to_string())
                 .expect("The test should be in there");
             let opts = libtest::TestOpts {
-                list: opts.list.clone(),
+                list: opts.list,
                 filter: opts.filter.clone(),
-                filter_exact: opts.filter_exact.clone(),
+                filter_exact: opts.filter_exact,
                 exclude_should_panic: Default::default(),
                 run_ignored: libtest::RunIgnored::No,
-                run_tests: opts.run_tests.clone(),
-                bench_benchmarks: opts.bench_benchmarks.clone(),
+                run_tests: opts.run_tests,
+                bench_benchmarks: opts.bench_benchmarks,
                 logfile: opts.logfile.clone(),
                 nocapture: opts.nocapture,
                 color: libtest::ColorConfig::AutoColor,

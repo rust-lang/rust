@@ -161,8 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     .ctxt()
                     .outer()
                     .expn_info()
-                    .map(|info| info.call_site)
-                    .unwrap_or(expr.span);
+                    .map_or(expr.span, |info| info.call_site);
                 span_lint_and_then(
                     cx,
                     RANGE_PLUS_ONE,
