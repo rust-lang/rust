@@ -3,38 +3,26 @@ use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{AssistCtx, Assist, AssistId};
 
-/// Flip binary comparison expressions (==, !=, >, >=, <, <=).
+/// Flip binary expression assist.
 pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax();
     let rhs = expr.rhs()?.syntax();
     let op_range = expr.op()?.range();
-    // The assist should be available only if the cursor is on the operator
+    // The assist should be applied only if the cursor is on the operator
     let cursor_in_range = ctx.frange.range.is_subrange(&op_range);
-    // The assist should be available only for these binary operators
-    // (it should not change the meaning of the expression)
-    let allowed_ops = [
-        BinOp::EqualityTest,
-        BinOp::NegatedEqualityTest,
-        BinOp::GreaterTest,
-        BinOp::GreaterEqualTest,
-        BinOp::LesserTest,
-        BinOp::LesserEqualTest,
-    ];
-    let op_kind = expr.op_kind()?;
-    if !cursor_in_range || !allowed_ops.iter().any(|o| *o == op_kind) {
+    if !cursor_in_range {
         return None;
     }
-    let new_op = match op_kind {
-        BinOp::GreaterTest => Some("<"),
-        BinOp::GreaterEqualTest => Some("<="),
-        BinOp::LesserTest => Some(">"),
-        BinOp::LesserEqualTest => Some(">="),
-        _ => None,
-    };
+    let action: FlipAction = expr.op_kind()?.into();
+    // The assist should not be applied for certain operators
+    if let FlipAction::DontFlip = action {
+        return None;
+    }
+
     ctx.add_action(AssistId("flip_binexpr"), "flip binary expression", |edit| {
         edit.target(op_range);
-        if let Some(new_op) = new_op {
+        if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }
         edit.replace(lhs.range(), rhs.text());
@@ -44,14 +32,56 @@ pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
     ctx.build()
 }
 
+enum FlipAction {
+    // Flip the expression
+    Flip,
+    // Flip the expression and replace the operator with this string
+    FlipAndReplaceOp(&'static str),
+    // Do not flip the expression
+    DontFlip,
+}
+
+impl From<BinOp> for FlipAction {
+    fn from(op_kind: BinOp) -> Self {
+        match op_kind {
+            BinOp::Assignment => FlipAction::DontFlip,
+            BinOp::AddAssign => FlipAction::DontFlip,
+            BinOp::DivAssign => FlipAction::DontFlip,
+            BinOp::MulAssign => FlipAction::DontFlip,
+            BinOp::RemAssign => FlipAction::DontFlip,
+            BinOp::ShrAssign => FlipAction::DontFlip,
+            BinOp::ShlAssign => FlipAction::DontFlip,
+            BinOp::SubAssign => FlipAction::DontFlip,
+            BinOp::BitOrAssign => FlipAction::DontFlip,
+            BinOp::BitAndAssign => FlipAction::DontFlip,
+            BinOp::BitXorAssign => FlipAction::DontFlip,
+            BinOp::GreaterTest => FlipAction::FlipAndReplaceOp("<"),
+            BinOp::GreaterEqualTest => FlipAction::FlipAndReplaceOp("<="),
+            BinOp::LesserTest => FlipAction::FlipAndReplaceOp(">"),
+            BinOp::LesserEqualTest => FlipAction::FlipAndReplaceOp(">="),
+            _ => FlipAction::Flip,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::helpers::{ check_assist, check_assist_target, check_assist_not_applicable };
 
     #[test]
-    fn flip_eq_operands_for_simple_stmt() {
+    fn flip_binexpr_target_is_the_op() {
+        check_assist_target(flip_binexpr, "fn f() { let res = 1 ==<|> 2; }", "==")
+    }
+
+    #[test]
+    fn flip_binexpr_not_applicable_for_assignment() {
+        check_assist_not_applicable(flip_binexpr, "fn f() { let mut _x = 1; _x +=<|> 2 }")
+    }
+
+    #[test]
+    fn flip_binexpr_works_for_eq() {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 ==<|> 2; }",
@@ -60,16 +90,7 @@ mod tests {
     }
 
     #[test]
-    fn flip_neq_operands_for_simple_stmt() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 !=<|> 2; }",
-            "fn f() { let res = 2 !=<|> 1; }",
-        )
-    }
-
-    #[test]
-    fn flip_gt_operands_for_simple_stmt() {
+    fn flip_binexpr_works_for_gt() {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 ><|> 2; }",
@@ -78,25 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn flip_gteq_operands_for_simple_stmt() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 >=<|> 2; }",
-            "fn f() { let res = 2 <=<|> 1; }",
-        )
-    }
-
-    #[test]
-    fn flip_lt_operands_for_simple_stmt() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 <<|> 2; }",
-            "fn f() { let res = 2 ><|> 1; }",
-        )
-    }
-
-    #[test]
-    fn flip_lteq_operands_for_simple_stmt() {
+    fn flip_binexpr_works_for_lteq() {
         check_assist(
             flip_binexpr,
             "fn f() { let res = 1 <=<|> 2; }",
@@ -105,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn flip_eq_operands_for_complex_stmt() {
+    fn flip_binexpr_works_for_complex_expr() {
         check_assist(
             flip_binexpr,
             "fn f() { let res = (1 + 1) ==<|> (2 + 2); }",
@@ -114,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn flip_eq_operands_in_match_expr() {
+    fn flip_binexpr_works_inside_match() {
         check_assist(
             flip_binexpr,
             r#"
@@ -135,15 +138,4 @@ mod tests {
             "#,
         )
     }
-
-    #[test]
-    fn flip_eq_operands_target() {
-        check_assist_target(flip_binexpr, "fn f() { let res = 1 ==<|> 2; }", "==")
-    }
-
-    #[test]
-    fn flip_gt_operands_target() {
-        check_assist_target(flip_binexpr, "fn f() { let res = 1 ><|> 2; }", ">")
-    }
-
 }
