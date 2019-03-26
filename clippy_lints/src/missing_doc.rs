@@ -58,9 +58,9 @@ impl MissingDoc {
             if let Some(meta) = meta;
             if let MetaItemKind::List(list) = meta.node;
             if let Some(meta) = list.get(0);
-            if let Some(name) = meta.ident_str();
+            if let Some(name) = meta.ident();
             then {
-                name == "include"
+                name.as_str() == "include"
             } else {
                 false
             }

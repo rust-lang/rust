@@ -72,7 +72,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
             if let ExprKind::Path(ref qpath) = callee.node {
                 let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
-                    Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
+                    Def::Struct(..) | Def::Variant(..) | Def::Ctor(..) => {
                         !has_drop(cx, cx.tables.expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,
@@ -166,9 +166,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
             if let ExprKind::Path(ref qpath) = callee.node {
                 let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
-                    Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..)
-                        if !has_drop(cx, cx.tables.expr_ty(expr)) =>
-                    {
+                    Def::Struct(..) | Def::Variant(..) | Def::Ctor(..) if !has_drop(cx, cx.tables.expr_ty(expr)) => {
                         Some(args.iter().collect())
                     },
                     _ => None,

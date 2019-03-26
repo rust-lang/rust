@@ -233,7 +233,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
             if self.item_path.def == path.def {
                 span_use_self_lint(self.cx, path);
-            } else if let Def::StructCtor(ctor_did, CtorKind::Fn) = path.def {
+            } else if let Def::Ctor(ctor_did, def::CtorOf::Struct, CtorKind::Fn) = path.def {
                 if self.item_path.def.opt_def_id() == self.cx.tcx.parent(ctor_did) {
                     span_use_self_lint(self.cx, path);
                 }

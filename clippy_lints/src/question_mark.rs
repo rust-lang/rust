@@ -128,7 +128,7 @@ impl Pass {
             },
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
-                if let Def::VariantCtor(def_id, _) = cx.tables.qpath_def(qp, expression.hir_id) {
+                if let Def::Ctor(def_id, def::CtorOf::Variant, _) = cx.tables.qpath_def(qp, expression.hir_id) {
                     return match_def_path(cx.tcx, def_id, &OPTION_NONE);
                 }
 

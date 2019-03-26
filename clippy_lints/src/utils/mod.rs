@@ -863,7 +863,7 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
         matches!(
             cx.tables.qpath_def(qpath, id),
-            def::Def::Variant(..) | def::Def::VariantCtor(..)
+            def::Def::Variant(..) | def::Def::Ctor(_, def::CtorOf::Variant, _)
         )
     }
 
