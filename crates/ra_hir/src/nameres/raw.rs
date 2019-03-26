@@ -15,6 +15,10 @@ use crate::{
     ids::{SourceFileItemId, SourceFileItems},
 };
 
+/// `RawItems` is a set of top-level items in a file (except for impls).
+///
+/// It is the input to name resolution algorithm. `RawItems` are not invalidated
+/// on most edits.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
     modules: Arena<Module, ModuleData>,
@@ -31,11 +35,11 @@ pub struct ImportSourceMap {
 }
 
 impl ImportSourceMap {
-    pub(crate) fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
+    fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
         self.map.insert(import, AstPtr::new(segment))
     }
 
-    pub fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
+    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
         let file = match source {
             ModuleSource::SourceFile(file) => &*file,
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
@@ -64,7 +68,7 @@ impl RawItems {
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
-    pub(crate) fn items(&self) -> &[RawItem] {
+    pub(super) fn items(&self) -> &[RawItem] {
         &self.items
     }
 }
@@ -98,7 +102,7 @@ impl Index<Macro> for RawItems {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum RawItem {
+pub(super) enum RawItem {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -106,11 +110,11 @@ pub(crate) enum RawItem {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Module(RawId);
+pub(super) struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum ModuleData {
+pub(super) enum ModuleData {
     Declaration { name: Name, source_item_id: SourceFileItemId },
     Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
 }
@@ -121,26 +125,26 @@ impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(crate) path: Path,
-    pub(crate) alias: Option<Name>,
-    pub(crate) is_glob: bool,
-    pub(crate) is_prelude: bool,
-    pub(crate) is_extern_crate: bool,
+    pub(super) path: Path,
+    pub(super) alias: Option<Name>,
+    pub(super) is_glob: bool,
+    pub(super) is_prelude: bool,
+    pub(super) is_extern_crate: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Def(RawId);
+pub(super) struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct DefData {
-    pub(crate) source_item_id: SourceFileItemId,
-    pub(crate) name: Name,
-    pub(crate) kind: DefKind,
+pub(super) struct DefData {
+    pub(super) source_item_id: SourceFileItemId,
+    pub(super) name: Name,
+    pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum DefKind {
+pub(super) enum DefKind {
     Function,
     Struct,
     Enum,
@@ -151,15 +155,15 @@ pub(crate) enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Macro(RawId);
+pub(super) struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct MacroData {
-    pub(crate) source_item_id: SourceFileItemId,
-    pub(crate) path: Path,
-    pub(crate) name: Option<Name>,
-    pub(crate) export: bool,
+pub(super) struct MacroData {
+    pub(super) source_item_id: SourceFileItemId,
+    pub(super) path: Path,
+    pub(super) name: Option<Name>,
+    pub(super) export: bool,
 }
 
 struct RawItemsCollector {
