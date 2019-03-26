@@ -7,7 +7,7 @@ use ra_syntax::ast;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    DefDatabase, HirFileId, Name, Path, SourceItemId,
+    DefDatabase, HirFileId, Name, Path,
     KnownName,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
@@ -53,7 +53,7 @@ struct DefCollector<DB> {
     def_map: CrateDefMap,
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
-    unexpanded_macros: Vec<(CrateModuleId, SourceItemId, Path)>,
+    unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
     global_macro_scope: FxHashMap<Name, MacroDefId>,
 }
 
@@ -295,7 +295,7 @@ where
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
-        macros.retain(|(module_id, source_item_id, path)| {
+        macros.retain(|(module_id, ast_id, path)| {
             if path.segments.len() != 2 {
                 return true;
             }
@@ -311,8 +311,7 @@ where
             res = ReachedFixedPoint::No;
             let def_map = self.db.crate_def_map(krate);
             if let Some(macro_id) = def_map.public_macros.get(&path.segments[1].name).cloned() {
-                let call_id =
-                    MacroCallLoc { def: macro_id, source_item_id: *source_item_id }.id(self.db);
+                let call_id = MacroCallLoc { def: macro_id, ast_id: *ast_id }.id(self.db);
                 resolved.push((*module_id, call_id));
             }
             false
@@ -456,34 +455,27 @@ where
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id = MacroDefId::MacroByExample {
-                    source_item_id: mac.source_item_id.with_file_id(self.file_id),
-                };
+                let macro_id = MacroDefId(mac.ast_id.with_file_id(self.file_id));
                 self.def_collector.define_macro(name.clone(), macro_id, mac.export)
             }
             return;
         }
 
-        let source_item_id = SourceItemId { file_id: self.file_id, item_id: mac.source_item_id };
+        let ast_id = mac.ast_id.with_file_id(self.file_id);
 
         // Case 2: try to expand macro_rules from this crate, triggering
         // recursive item collection.
         if let Some(&macro_id) =
             mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(name))
         {
-            let macro_call_id =
-                MacroCallLoc { def: macro_id, source_item_id }.id(self.def_collector.db);
+            let macro_call_id = MacroCallLoc { def: macro_id, ast_id }.id(self.def_collector.db);
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id);
             return;
         }
 
         // Case 3: path to a macro from another crate, expand during name resolution
-        self.def_collector.unexpanded_macros.push((
-            self.module_id,
-            source_item_id,
-            mac.path.clone(),
-        ))
+        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, mac.path.clone()))
     }
 }
 

@@ -160,7 +160,7 @@ impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct MacroData {
-    pub(super) source_item_id: SourceFileItemId,
+    pub(super) ast_id: FileAstId<ast::MacroCall>,
     pub(super) path: Path,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
@@ -285,9 +285,9 @@ impl RawItemsCollector {
         };
 
         let name = m.name().map(|it| it.as_name());
-        let source_item_id = self.source_file_items.id_of_unchecked(m.syntax());
+        let ast_id = self.source_file_items.ast_id(m);
         let export = m.has_atom_attr("macro_export");
-        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, name, export });
+        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));
     }
 

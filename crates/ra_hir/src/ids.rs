@@ -10,7 +10,7 @@ use ra_arena::{RawId, ArenaId, impl_arena_id};
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, SourceItemId, SourceFileItemId,
+    Module, DefDatabase, SourceItemId, SourceFileItemId, AstId,
 };
 
 #[derive(Debug, Default)]
@@ -68,7 +68,7 @@ impl HirFileId {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
                 let loc = macro_call_id.loc(db);
-                loc.source_item_id.file_id.original_file(db)
+                loc.ast_id.file_id().original_file(db)
             }
         }
     }
@@ -96,8 +96,7 @@ impl HirFileId {
 
 fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<TreeArc<SourceFile>> {
     let loc = macro_call_id.loc(db);
-    let syntax = db.file_item(loc.source_item_id);
-    let macro_call = ast::MacroCall::cast(&syntax).unwrap();
+    let macro_call = loc.ast_id.to_node(db);
     let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
 
     let macro_rules = db.macro_def(loc.def)?;
@@ -124,15 +123,10 @@ impl From<MacroCallId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroDefId {
-    MacroByExample { source_item_id: SourceItemId },
-}
+pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 
 pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
-    let syntax_node = match id {
-        MacroDefId::MacroByExample { source_item_id } => db.file_item(source_item_id),
-    };
-    let macro_call = ast::MacroCall::cast(&syntax_node).unwrap();
+    let macro_call = id.0.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(arg)?;
     let rules = MacroRules::parse(&tt).ok()?;
@@ -148,7 +142,7 @@ impl_arena_id!(MacroCallId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
-    pub(crate) source_item_id: SourceItemId,
+    pub(crate) ast_id: AstId<ast::MacroCall>,
 }
 
 impl MacroCallId {

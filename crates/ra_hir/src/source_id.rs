@@ -5,7 +5,7 @@ use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct AstId<N: AstNode> {
     file_id: HirFileId,
     file_ast_id: FileAstId<N>,
@@ -30,7 +30,7 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct FileAstId<N: AstNode> {
     raw: SourceFileItemId,
     _ty: PhantomData<N>,
