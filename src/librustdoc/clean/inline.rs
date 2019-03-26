@@ -210,15 +210,20 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     };
 
     let predicates = cx.tcx.predicates_of(did);
+    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
+    let decl = (did, sig).clean(cx);
+    let (all_types, ret_types) = clean::get_all_types(&generics, &decl, cx);
     clean::Function {
-        decl: (did, sig).clean(cx),
-        generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
+        decl,
+        generics,
         header: hir::FnHeader {
             unsafety: sig.unsafety(),
             abi: sig.abi(),
             constness,
             asyncness: hir::IsAsync::NotAsync,
-        }
+        },
+        all_types,
+        ret_types,
     }
 }
 
