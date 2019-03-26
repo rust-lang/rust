@@ -5,7 +5,7 @@ use log::debug;
 use rustc::hir::def::{Def, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::config::nightly_options;
-use syntax::ast::{ExprKind};
+use syntax::ast::{Expr, ExprKind};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
@@ -250,6 +250,29 @@ impl<'a> Resolver<'a> {
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
 
+        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.node {
+            ExprKind::Field(_, ident) => {
+                err.span_suggestion(
+                    expr.span,
+                    "use the path separator to refer to an item",
+                    format!("{}::{}", path_str, ident),
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::MethodCall(ref segment, ..) => {
+                let span = expr.span.with_hi(segment.ident.span.hi());
+                err.span_suggestion(
+                    span,
+                    "use the path separator to refer to an item",
+                    format!("{}::{}", path_str, segment.ident),
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            _ => false,
+        };
+
         match (def, source) {
             (Def::Macro(..), _) => {
                 err.span_suggestion(
@@ -259,8 +282,7 @@ impl<'a> Resolver<'a> {
                     Applicability::MaybeIncorrect,
                 );
                 if path_str == "try" && span.rust_2015() {
-                    err.note("if you want the `try` keyword, \
-                        you need to be in the 2018 edition");
+                    err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
             }
             (Def::TyAlias(..), PathSource::Trait(_)) => {
@@ -269,25 +291,8 @@ impl<'a> Resolver<'a> {
                     err.note("did you mean to use a trait alias?");
                 }
             }
-            (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
-                ExprKind::Field(_, ident) => {
-                    err.span_suggestion(
-                        parent.span,
-                        "use the path separator to refer to an item",
-                        format!("{}::{}", path_str, ident),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                ExprKind::MethodCall(ref segment, ..) => {
-                    let span = parent.span.with_hi(segment.ident.span.hi());
-                    err.span_suggestion(
-                        span,
-                        "use the path separator to refer to an item",
-                        format!("{}::{}", path_str, segment.ident),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                _ => return false,
+            (Def::Mod(..), PathSource::Expr(Some(parent))) => if !path_sep(err, &parent) {
+                return false;
             },
             (Def::Enum(..), PathSource::TupleStruct)
                 | (Def::Enum(..), PathSource::Expr(..))  => {
@@ -315,8 +320,10 @@ impl<'a> Resolver<'a> {
                         = self.struct_constructors.get(&def_id).cloned() {
                     let accessible_ctor = self.is_accessible(ctor_vis);
                     if is_expected(ctor_def) && !accessible_ctor {
-                        err.span_label(span, format!("constructor is not visible \
-                                                      here due to private fields"));
+                        err.span_label(
+                            span,
+                            format!("constructor is not visible here due to private fields"),
+                        );
                     }
                 } else {
                     // HACK(estebank): find a better way to figure out that this was a
@@ -366,28 +373,12 @@ impl<'a> Resolver<'a> {
                         }
                     }
                     match source {
-                        PathSource::Expr(Some(parent)) => {
-                            match parent.node {
-                                ExprKind::MethodCall(ref path_assignment, _)  => {
-                                    err.span_suggestion(
-                                        sm.start_point(parent.span)
-                                            .to(path_assignment.ident.span),
-                                        "use `::` to access an associated function",
-                                        format!("{}::{}",
-                                                path_str,
-                                                path_assignment.ident),
-                                        Applicability::MaybeIncorrect
-                                    );
-                                },
-                                _ => {
-                                    err.span_label(
-                                        span,
-                                        format!("did you mean `{} {{ /* fields */ }}`?",
-                                                path_str),
-                                    );
-                                },
-                            }
-                        },
+                        PathSource::Expr(Some(parent)) => if !path_sep(err, &parent) {
+                            err.span_label(
+                                span,
+                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
+                            );
+                        }
                         PathSource::Expr(None) if followed_by_brace == true => {
                             if let Some((sp, snippet)) = closing_brace {
                                 err.span_suggestion(
@@ -399,16 +390,14 @@ impl<'a> Resolver<'a> {
                             } else {
                                 err.span_label(
                                     span,
-                                    format!("did you mean `({} {{ /* fields */ }})`?",
-                                            path_str),
+                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
                                 );
                             }
                         },
                         _ => {
                             err.span_label(
                                 span,
-                                format!("did you mean `{} {{ /* fields */ }}`?",
-                                        path_str),
+                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
                             );
                         },
                     }
@@ -417,13 +406,11 @@ impl<'a> Resolver<'a> {
             (Def::Union(..), _) |
             (Def::Variant(..), _) |
             (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
-                err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
-                                             path_str));
+                err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?", path_str));
             }
             (Def::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);
-                err.note("can't use `Self` as a constructor, you must use the \
-                          implemented struct");
+                err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
             (Def::TyAlias(_), _) | (Def::AssociatedTy(..), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
