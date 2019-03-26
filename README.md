@@ -51,6 +51,12 @@ We are on the rust-lang Zulip!
 
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
 
+## Quick Links
+
+* Work List: https://paper.dropbox.com/doc/RLS-2.0-work-list--AZ3BgHKKCtqszbsi3gi6sjchAQ-42vbnxzuKq2lKwW0mkn8Y
+* API docs: https://rust-analyzer.github.io/rust-analyzer/ra_ide_api/index.html
+* CI: https://travis-ci.org/rust-analyzer/rust-analyzer
+
 ## License
 
 Rust analyzer is primarily distributed under the terms of both the MIT
