@@ -99,13 +99,29 @@ pub fn spin_loop() {
 /// This function is a no-op, and does not even read from `dummy`.
 #[unstable(feature = "test", issue = "27812")]
 pub fn black_box<T>(dummy: T) -> T {
-    #[cfg(not(target_arch = "asmjs"))] {
+    #[cfg(not(
+        any(
+            target_arch = "asmjs",
+            all(
+                target_arch = "wasm32",
+                target_os = "emscripten"
+            )
+        )
+    ))] {
         // we need to "use" the argument in some way LLVM can't
         // introspect.
         unsafe { asm!("" : : "r"(&dummy)) }
         dummy
     }
-    #[cfg(target_arch = "asmjs")] {
+    #[cfg(
+        any(
+            target_arch = "asmjs",
+            all(
+                target_arch = "wasm32",
+                target_os = "emscripten"
+            )
+        )
+    )] {
         unsafe {
             let ret = crate::ptr::read_volatile(&dummy);
             crate::mem::forget(dummy);
