@@ -568,8 +568,14 @@ pub trait Ord: Eq + PartialOrd<Self> {
         if self <= other { self } else { other }
     }
 
-    /// Returns max if self is greater than max, and min if self is less than min.
-    /// Otherwise this will return self.  Panics if min > max.
+    /// Restrict a value to a certain interval.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`.
     ///
     /// # Examples
     ///
@@ -586,8 +592,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         assert!(min <= max);
         if self < min {
             min
-        }
-        else if self > max {
+        } else if self > max {
             max
         } else {
             self

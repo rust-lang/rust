@@ -160,7 +160,6 @@ impl<'tcx> Place<'tcx> {
         match *self {
             Place::Base(PlaceBase::Local(index)) =>
                 PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
-            Place::Base(PlaceBase::Promoted(ref data)) => PlaceTy::Ty { ty: data.1 },
             Place::Base(PlaceBase::Static(ref data)) =>
                 PlaceTy::Ty { ty: data.ty },
             Place::Projection(ref proj) =>

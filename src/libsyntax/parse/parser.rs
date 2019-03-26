@@ -3538,22 +3538,19 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue
             } else if op == AssocOp::Colon {
+                let maybe_path = self.could_ascription_be_path(&lhs.node);
+                let next_sp = self.span;
+
                 lhs = match self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type) {
                     Ok(lhs) => lhs,
                     Err(mut err) => {
-                        err.span_label(self.span,
-                                       "expecting a type here because of type ascription");
-                        let cm = self.sess.source_map();
-                        let cur_pos = cm.lookup_char_pos(self.span.lo());
-                        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
-                        if cur_pos.line != op_pos.line {
-                            err.span_suggestion(
-                                cur_op_span,
-                                "try using a semicolon",
-                                ";".to_string(),
-                                Applicability::MaybeIncorrect // speculative
-                            );
-                        }
+                        self.bad_type_ascription(
+                            &mut err,
+                            lhs_span,
+                            cur_op_span,
+                            next_sp,
+                            maybe_path,
+                        );
                         return Err(err);
                     }
                 };
@@ -3656,6 +3653,58 @@ impl<'a> Parser<'a> {
             if op.fixity() == Fixity::None { break }
         }
         Ok(lhs)
+    }
+
+    fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
+        self.token.is_ident() &&
+            if let ast::ExprKind::Path(..) = node { true } else { false } &&
+            !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
+            self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren)) ||
+            self.look_ahead(1, |t| t == &token::Lt) &&     // `foo:bar<baz`
+            self.look_ahead(2, |t| t.is_ident()) ||
+            self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
+            self.look_ahead(2, |t| t.is_ident()) ||
+            self.look_ahead(1, |t| t == &token::ModSep) &&  // `foo:bar::baz`
+            self.look_ahead(2, |t| t.is_ident())
+    }
+
+    fn bad_type_ascription(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        lhs_span: Span,
+        cur_op_span: Span,
+        next_sp: Span,
+        maybe_path: bool,
+    ) {
+        err.span_label(self.span, "expecting a type here because of type ascription");
+        let cm = self.sess.source_map();
+        let next_pos = cm.lookup_char_pos(next_sp.lo());
+        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
+        if op_pos.line != next_pos.line {
+            err.span_suggestion(
+                cur_op_span,
+                "try using a semicolon",
+                ";".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            if maybe_path {
+                err.span_suggestion(
+                    cur_op_span,
+                    "maybe you meant to write a path separator here",
+                    "::".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.note("type ascription is a nightly-only feature that lets \
+                          you annotate an expression with a type: `<expr>: <type>`");
+                err.span_note(
+                    lhs_span,
+                    "this expression expects an ascribed type after the colon",
+                );
+                err.help("this might be indicative of a syntax error elsewhere");
+            }
+        }
     }
 
     fn parse_assoc_op_cast(&mut self, lhs: P<Expr>, lhs_span: Span,

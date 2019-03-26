@@ -10,7 +10,7 @@ use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, Constant,
     ConstraintCategory, Field, Local, LocalDecl, LocalKind, Location, Operand,
     Place, PlaceBase, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
-    TerminatorKind, VarBindingForm,
+    Static, StaticKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
 use rustc::ty::print::Print;
@@ -1598,14 +1598,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match *place {
-            Place::Base(PlaceBase::Promoted(_)) => {
-                buf.push_str("promoted");
-            }
             Place::Base(PlaceBase::Local(local)) => {
                 self.append_local_to_string(local, buf)?;
             }
-            Place::Base(PlaceBase::Static(ref static_)) => {
-                buf.push_str(&self.infcx.tcx.item_name(static_.def_id).to_string());
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {
+                buf.push_str("promoted");
+            }
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
+                buf.push_str(&self.infcx.tcx.item_name(def_id).to_string());
             }
             Place::Projection(ref proj) => {
                 match proj.elem {
@@ -1744,8 +1744,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
-            Place::Base(PlaceBase::Promoted(ref prom)) =>
-                self.describe_field_from_ty(&prom.1, field),
             Place::Base(PlaceBase::Static(ref static_)) =>
                 self.describe_field_from_ty(&static_.ty, field),
             Place::Projection(ref proj) => match proj.elem {
@@ -1809,8 +1807,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Checks if a place is a thread-local static.
     pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
-        if let Place::Base(PlaceBase::Static(statik)) = place {
-            let attrs = self.infcx.tcx.get_attrs(statik.def_id);
+        if let Place::Base(
+            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })
+        ) = place {
+            let attrs = self.infcx.tcx.get_attrs(*def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
 
             debug!(
@@ -1828,8 +1828,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         match place {
             Place::Base(PlaceBase::Local(_)) |
-            Place::Base(PlaceBase::Static(_)) |
-            Place::Base(PlaceBase::Promoted(_)) => {
+            Place::Base(PlaceBase::Static(_)) => {
                 StorageDeadOrDrop::LocalStorageDead
             }
             Place::Projection(box PlaceProjection { base, elem }) => {

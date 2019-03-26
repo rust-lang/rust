@@ -8,6 +8,7 @@ use syn::parse::{Result, Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn;
 use quote::quote;
+use itertools::Itertools;
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -41,6 +42,18 @@ enum QueryModifier {
 
     /// A cycle error for this query aborting the compilation with a fatal error.
     FatalCycle,
+
+    /// Don't hash the result, instead just mark a query red if it runs
+    NoHash,
+
+    /// Don't force the query
+    NoForce,
+
+    /// Generate a dep node based on the dependencies of the query
+    Anon,
+
+    // Always evaluate the query, ignoring its depdendencies
+    EvalAlways,
 }
 
 impl Parse for QueryModifier {
@@ -88,6 +101,14 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::LoadCached(tcx, id, block))
         } else if modifier == "fatal_cycle" {
             Ok(QueryModifier::FatalCycle)
+        } else if modifier == "no_hash" {
+            Ok(QueryModifier::NoHash)
+        } else if modifier == "no_force" {
+            Ok(QueryModifier::NoForce)
+        } else if modifier == "anon" {
+            Ok(QueryModifier::Anon)
+        } else if modifier == "eval_always" {
+            Ok(QueryModifier::EvalAlways)
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -185,6 +206,18 @@ struct QueryModifiers {
 
     /// A cycle error for this query aborting the compilation with a fatal error.
     fatal_cycle: bool,
+
+    /// Don't hash the result, instead just mark a query red if it runs
+    no_hash: bool,
+
+    /// Don't force the query
+    no_force: bool,
+
+    /// Generate a dep node based on the dependencies of the query
+    anon: bool,
+
+    // Always evaluate the query, ignoring its depdendencies
+    eval_always: bool,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -193,6 +226,10 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut cache = None;
     let mut desc = None;
     let mut fatal_cycle = false;
+    let mut no_hash = false;
+    let mut no_force = false;
+    let mut anon = false;
+    let mut eval_always = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -219,6 +256,30 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 fatal_cycle = true;
             }
+            QueryModifier::NoHash => {
+                if no_hash {
+                    panic!("duplicate modifier `no_hash` for query `{}`", query.name);
+                }
+                no_hash = true;
+            }
+            QueryModifier::NoForce => {
+                if no_force {
+                    panic!("duplicate modifier `no_force` for query `{}`", query.name);
+                }
+                no_force = true;
+            }
+            QueryModifier::Anon => {
+                if anon {
+                    panic!("duplicate modifier `anon` for query `{}`", query.name);
+                }
+                anon = true;
+            }
+            QueryModifier::EvalAlways => {
+                if eval_always {
+                    panic!("duplicate modifier `eval_always` for query `{}`", query.name);
+                }
+                eval_always = true;
+            }
         }
     }
     QueryModifiers {
@@ -226,6 +287,10 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         cache,
         desc,
         fatal_cycle,
+        no_hash,
+        no_force,
+        anon,
+        eval_always,
     }
 }
 
@@ -312,6 +377,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut dep_node_force_stream = quote! {};
+    let mut no_force_queries = Vec::new();
 
     for group in groups.0 {
         let mut group_stream = quote! {};
@@ -325,41 +391,83 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 _ => quote! { #result_full },
             };
 
+            let mut attributes = Vec::new();
+
             // Pass on the fatal_cycle modifier
-            let fatal_cycle = if modifiers.fatal_cycle {
-                quote! { fatal_cycle }
-            } else {
-                quote! {}
+            if modifiers.fatal_cycle {
+                attributes.push(quote! { fatal_cycle });
             };
+            // Pass on the no_hash modifier
+            if modifiers.no_hash {
+                attributes.push(quote! { no_hash });
+            };
+
+            let mut attribute_stream = quote! {};
+
+            for e in attributes.into_iter().intersperse(quote! {,}) {
+                attribute_stream.extend(e);
+            }
 
             // Add the query to the group
             group_stream.extend(quote! {
-                [#fatal_cycle] fn #name: #name(#arg) #result,
+                [#attribute_stream] fn #name: #name(#arg) #result,
             });
 
-            add_query_description_impl(&query, modifiers, &mut query_description_stream);
+            let mut attributes = Vec::new();
 
+            // Pass on the anon modifier
+            if modifiers.anon {
+                attributes.push(quote! { anon });
+            };
+            // Pass on the eval_always modifier
+            if modifiers.eval_always {
+                attributes.push(quote! { eval_always });
+            };
+
+            let mut attribute_stream = quote! {};
+            for e in attributes.into_iter().intersperse(quote! {,}) {
+                attribute_stream.extend(e);
+            }
             // Create a dep node for the query
             dep_node_def_stream.extend(quote! {
-                [] #name(#arg),
+                [#attribute_stream] #name(#arg),
             });
 
-            // Add a match arm to force the query given the dep node
-            dep_node_force_stream.extend(quote! {
-                DepKind::#name => {
-                    if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
-                        force_ex!($tcx, #name, key);
-                    } else {
-                        return false;
+            if modifiers.no_force {
+                no_force_queries.push(name.clone());
+            } else {
+                // Add a match arm to force the query given the dep node
+                dep_node_force_stream.extend(quote! {
+                    DepKind::#name => {
+                        if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
+                            force_ex!($tcx, #name, key);
+                        } else {
+                            return false;
+                        }
                     }
-                }
-            });
+                });
+            }
+
+            add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
         let name = &group.name;
         query_stream.extend(quote! {
             #name { #group_stream },
         });
     }
+
+    // Add an arm for the no force queries to panic when trying to force them
+    for query in no_force_queries {
+        dep_node_force_stream.extend(quote! {
+            DepKind::#query |
+        });
+    }
+    dep_node_force_stream.extend(quote! {
+        DepKind::Null => {
+            bug!("Cannot force dep node: {:?}", $dep_node)
+        }
+    });
+
     TokenStream::from(quote! {
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {

@@ -461,11 +461,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    [] MirConstQualif(DefId),
-    [] MirBuilt(DefId),
-    [] MirConst(DefId),
-    [] MirValidated(DefId),
-    [] MirOptimized(DefId),
     [] MirShim { instance_def: InstanceDef<'tcx> },
 
     [] BorrowCheckKrate,
@@ -485,7 +480,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] CollectModItemTypes(DefId),
 
     [] Reachability,
-    [] MirKeys,
     [eval_always] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
@@ -544,7 +538,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [anon] TraitSelect,
 
     [] ParamEnv(DefId),
-    [] Environment(DefId),
     [] DescribeDef(DefId),
 
     // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -571,7 +564,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] HasGlobalAllocator(CrateNum),
     [] HasPanicHandler(CrateNum),
     [input] ExternCrate(DefId),
-    [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
     [input] ModuleExports(DefId),
@@ -621,14 +613,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
 
-    // These queries are not expected to have inputs -- as a result, they
-    // are not good candidates for "replay" because they are essentially
-    // pure functions of their input (and hence the expectation is that
-    // no caller would be green **apart** from just these
-    // queries). Making them anonymous avoids hashing the result, which
-    // may save a bit of time.
-    [anon] EraseRegionsTy { ty: Ty<'tcx> },
-
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),
     [input] MaybeUnusedExternCrates,
@@ -667,9 +651,6 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [input] Features,
 
-    [] ProgramClausesFor(DefId),
-    [] ProgramClausesForEnv(traits::Environment<'tcx>),
-    [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
 
     [] UpstreamMonomorphizations(CrateNum),

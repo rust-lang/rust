@@ -8,7 +8,9 @@ use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place, PlaceBase};
+use rustc::mir::{
+    ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place, PlaceBase, Static, StaticKind
+};
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
@@ -1226,8 +1228,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 }
                                 Operand::Move(Place::Base(PlaceBase::Static(..)))
                                 | Operand::Copy(Place::Base(PlaceBase::Static(..)))
-                                | Operand::Move(Place::Base(PlaceBase::Promoted(..)))
-                                | Operand::Copy(Place::Base(PlaceBase::Promoted(..)))
                                 | Operand::Constant(..) => {}
                             }
                         }
@@ -1310,12 +1310,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // FIXME: allow thread-locals to borrow other thread locals?
         let (might_be_alive, will_be_dropped) = match root_place {
-            Place::Base(PlaceBase::Promoted(_)) => (true, false),
-            Place::Base(PlaceBase::Static(_)) => {
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {
+                (true, false)
+            }
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(_), .. })) => {
                 // Thread-locals might be dropped after the function exits, but
                 // "true" statics will never be.
-                let is_thread_local = self.is_place_thread_local(&root_place);
-                (true, is_thread_local)
+                (true, self.is_place_thread_local(&root_place))
             }
             Place::Base(PlaceBase::Local(_)) => {
                 // Locals are always dropped at function exit, and if they
@@ -1578,7 +1579,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *last_prefix {
             Place::Base(PlaceBase::Local(_)) => panic!("should have move path for every Local"),
             Place::Projection(_) => panic!("PrefixSet::All meant don't stop for Projection"),
-            Place::Base(PlaceBase::Promoted(_)) |
             Place::Base(PlaceBase::Static(_)) => Err(NoMovePathFound::ReachedStatic),
         }
     }
@@ -1605,7 +1605,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut place = place;
         loop {
             match *place {
-                Place::Base(PlaceBase::Promoted(_)) |
                 Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
                     // assigning to `x` does not require `x` be initialized.
                     break;
@@ -1954,10 +1953,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             RootPlace {
-                place: Place::Base(PlaceBase::Promoted(..)),
-                is_local_mutation_allowed: _,
-            } => {}
-            RootPlace {
                 place: Place::Base(PlaceBase::Static(..)),
                 is_local_mutation_allowed: _,
             } => {}
@@ -1994,12 +1989,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
-            Place::Base(PlaceBase::Promoted(_)) => Ok(RootPlace {
-                place,
-                is_local_mutation_allowed,
-            }),
-            Place::Base(PlaceBase::Static(ref static_)) => {
-                if self.infcx.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
+            Place::Base(PlaceBase::Static(box Static{kind: StaticKind::Promoted(_), ..})) =>
+                Ok(RootPlace {
+                    place,
+                    is_local_mutation_allowed,
+                }),
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
+                if self.infcx.tcx.is_static(def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
                 } else {
                     Ok(RootPlace {

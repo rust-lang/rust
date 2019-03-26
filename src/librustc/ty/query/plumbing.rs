@@ -1223,7 +1223,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CompileCodegenUnit |
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
-        DepKind::EraseRegionsTy |
         DepKind::NormalizeProjectionTy |
         DepKind::NormalizeTyAfterErasingRegions |
         DepKind::ImpliedOutlivesBounds |
@@ -1240,11 +1239,7 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::TypeOpNormalizeFnSig |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::MethodAutoderefSteps |
-        DepKind::InstanceDefSizeEstimate |
-        DepKind::ProgramClausesForEnv |
-
-        // This one should never occur in this context
-        DepKind::Null => {
+        DepKind::InstanceDefSizeEstimate => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
@@ -1262,11 +1257,6 @@ pub fn force_from_dep_node<'tcx>(
         },
         DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
         DepKind::CheckPrivateInPublic => { force!(check_private_in_public, LOCAL_CRATE); }
-        DepKind::MirBuilt => { force!(mir_built, def_id!()); }
-        DepKind::MirConstQualif => { force!(mir_const_qualif, def_id!()); }
-        DepKind::MirConst => { force!(mir_const, def_id!()); }
-        DepKind::MirValidated => { force!(mir_validated, def_id!()); }
-        DepKind::MirOptimized => { force!(optimized_mir, def_id!()); }
 
         DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
         DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
@@ -1282,7 +1272,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CheckModImplWf => { force!(check_mod_impl_wf, def_id!()); }
         DepKind::CollectModItemTypes => { force!(collect_mod_item_types, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
-        DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
         DepKind::AssociatedItems => { force!(associated_item, def_id!()); }
         DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
@@ -1317,7 +1306,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::CheckMatch => { force!(check_match, def_id!()); }
 
         DepKind::ParamEnv => { force!(param_env, def_id!()); }
-        DepKind::Environment => { force!(environment, def_id!()); }
         DepKind::DescribeDef => { force!(describe_def, def_id!()); }
         DepKind::DefSpan => { force!(def_span, def_id!()); }
         DepKind::LookupStability => { force!(lookup_stability, def_id!()); }
@@ -1344,7 +1332,6 @@ pub fn force_from_dep_node<'tcx>(
         DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
         DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
         DepKind::ExternCrate => { force!(extern_crate, def_id!()); }
-        DepKind::LintLevels => { force!(lint_levels, LOCAL_CRATE); }
         DepKind::InScopeTraits => { force!(in_scope_traits_map, def_id!().index); }
         DepKind::ModuleExports => { force!(module_exports, def_id!()); }
         DepKind::IsSanitizerRuntime => { force!(is_sanitizer_runtime, krate!()); }
@@ -1425,8 +1412,6 @@ pub fn force_from_dep_node<'tcx>(
 
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
 
-        DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
-        DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
         DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
 
         DepKind::UpstreamMonomorphizations => {
@@ -1491,11 +1476,11 @@ macro_rules! impl_load_from_cache {
 
 impl_load_from_cache!(
     TypeckTables => typeck_tables_of,
-    MirOptimized => optimized_mir,
+    optimized_mir => optimized_mir,
     UnsafetyCheckResult => unsafety_check_result,
     BorrowCheck => borrowck,
     MirBorrowCheck => mir_borrowck,
-    MirConstQualif => mir_const_qualif,
+    mir_const_qualif => mir_const_qualif,
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     CheckMatch => check_match,

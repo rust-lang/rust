@@ -149,12 +149,11 @@ mod inner {
             true
         }
 
-        pub fn sub_instant(&self, other: &Instant) -> Duration {
+        pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+            let diff = self.t.checked_sub(other.t)?;
             let info = info();
-            let diff = self.t.checked_sub(other.t)
-                           .expect("second instant is later than self");
             let nanos = mul_div_u64(diff, info.numer as u64, info.denom as u64);
-            Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
+            Some(Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32))
         }
 
         pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
@@ -285,10 +284,8 @@ mod inner {
             false // last clause, used so `||` is always trailing above
         }
 
-        pub fn sub_instant(&self, other: &Instant) -> Duration {
-            self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
-                panic!("specified instant was later than self")
-            })
+        pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+            self.t.sub_timespec(&other.t).ok()
         }
 
         pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {

@@ -692,12 +692,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            Place::Base(PlaceBase::Promoted(ref mut promoted)) => {
-                if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
-                    promoted.0 = p;
+            Place::Base(
+                PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted), .. })
+            ) => {
+                if let Some(p) = self.promoted_map.get(*promoted).cloned() {
+                    *promoted = p;
                 }
             },
-            _ => self.super_place(place, _ctxt, _location),
+            _ => self.super_place(place, _ctxt, _location)
         }
     }
 
