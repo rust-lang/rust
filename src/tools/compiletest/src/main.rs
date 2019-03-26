@@ -598,6 +598,8 @@ fn collect_tests_from_dir(
     Ok(())
 }
 
+
+/// Returns true if `file_name` looks like a proper test file name.
 pub fn is_test(file_name: &OsString) -> bool {
     let file_name = file_name.to_str().unwrap();
 
@@ -1047,4 +1049,13 @@ fn test_extract_gdb_version() {
         7012000: "GNU gdb (GDB) 7.12.20161027-git",
         7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
     }
+}
+
+#[test]
+fn is_test_test() {
+    assert_eq!(true, is_test(&OsString::from("a_test.rs")));
+    assert_eq!(false, is_test(&OsString::from(".a_test.rs")));
+    assert_eq!(false, is_test(&OsString::from("a_cat.gif")));
+    assert_eq!(false, is_test(&OsString::from("#a_dog_gif")));
+    assert_eq!(false, is_test(&OsString::from("~a_temp_file")));
 }
