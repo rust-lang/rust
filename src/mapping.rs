@@ -334,9 +334,8 @@ impl NameMapping {
             Const(_) |
             ConstParam(_) |
             Static(_, _) |
-            StructCtor(_, _) |
+            Ctor(_, _, _) |
             SelfCtor(_) |
-            VariantCtor(_, _) |
             Method(_) |
             AssociatedConst(_) |
             Local(_) |

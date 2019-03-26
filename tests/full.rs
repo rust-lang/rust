@@ -22,9 +22,11 @@ mod full {
 
         let mut cmd = Command::new("./target/debug/cargo-semver");
         cmd.args(&[
-            "-S", &format!("{}:{}", crate_name, old_version),
-            "-C", &format!("{}:{}", crate_name, new_version),
-            "-q"
+            "-S",
+            &format!("{}:{}", crate_name, old_version),
+            "-C",
+            &format!("{}:{}", crate_name, new_version),
+            "-q",
         ])
         .env("RUST_BACKTRACE", "full")
         .stdin(Stdio::null())
@@ -37,8 +39,11 @@ mod full {
 
         let output = cmd.output().expect("could not run cargo semver");
 
-        assert_eq!(output.status.success(), expected_result,
-            "cargo-semver returned unexpected exit status {}", output.status
+        assert_eq!(
+            output.status.success(),
+            expected_result,
+            "cargo-semver returned unexpected exit status {}",
+            output.status
         );
 
         // Choose solution depending on the platform
@@ -58,11 +63,17 @@ mod full {
             crate_name, old_version, new_version, file_ext
         ));
 
-        assert!(filename.exists(), "file `{}` does not exist", filename.display());
+        assert!(
+            filename.exists(),
+            "file `{}` does not exist",
+            filename.display()
+        );
 
         let mut file = File::create(&filename).expect("could not create output file");
 
-        for line in output.stdout.lines()
+        for line in output
+            .stdout
+            .lines()
             .chain(output.stderr.lines())
             .map(|r| r.expect("could not read line from cargo-semver output"))
             .skip_while(|line|
@@ -86,7 +97,12 @@ mod full {
         }
 
         let git_result = Command::new("git")
-            .args(&["diff", "--ignore-space-at-eol", "--exit-code", filename.to_str().unwrap()])
+            .args(&[
+                "diff",
+                "--ignore-space-at-eol",
+                "--exit-code",
+                filename.to_str().unwrap(),
+            ])
             .env("PAGER", "")
             .status()
             .expect("could not run git diff")

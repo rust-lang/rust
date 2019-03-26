@@ -19,13 +19,14 @@ use crate::{
 use log::{debug, info};
 use rustc::{
     hir::{
-        def::{CtorKind, Def, Export},
+        def::{CtorKind, CtorOf, Def, Export},
         def_id::DefId,
     },
     ty::{
         subst::{InternalSubsts, Subst},
         AssociatedItem, DefIdTree, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
-        Visibility, Visibility::Public,
+        Visibility,
+        Visibility::Public,
     },
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
@@ -146,7 +147,9 @@ fn diff_structure<'a, 'tcx>(
                         }
                     } else if id_mapping.add_export(o.def, n.def) {
                         // struct constructors are weird/hard - let's go shopping!
-                        if let (StructCtor(_, _), StructCtor(_, _)) = (o.def, n.def) {
+                        if let (Ctor(_, CtorOf::Struct, _), Ctor(_, CtorOf::Struct, _)) =
+                            (o.def, n.def)
+                        {
                             continue;
                         }
 
@@ -183,8 +186,8 @@ fn diff_structure<'a, 'tcx>(
                             | (PrimTy(_), PrimTy(_))
                             | (TyParam(_), TyParam(_))
                             | (SelfTy(_, _), SelfTy(_, _))
-                            | (StructCtor(_, _), StructCtor(_, _))
-                            | (VariantCtor(_, _), VariantCtor(_, _))
+                            | (Ctor(_, CtorOf::Struct, _), Ctor(_, CtorOf::Struct, _))
+                            | (Ctor(_, CtorOf::Variant, _), Ctor(_, CtorOf::Variant, _))
                             | (AssociatedConst(_), AssociatedConst(_))
                             | (Local(_), Local(_))
                             | (Upvar(_, _, _), Upvar(_, _, _))
@@ -254,7 +257,7 @@ fn diff_structure<'a, 'tcx>(
                 // only an old item is found
                 (Some(o), None) => {
                     // struct constructors are weird/hard - let's go shopping!
-                    if let StructCtor(_, _) = o.def {
+                    if let Ctor(_, CtorOf::Struct, _) = o.def {
                         continue;
                     }
 
@@ -266,7 +269,7 @@ fn diff_structure<'a, 'tcx>(
                 // only a new item is found
                 (None, Some(n)) => {
                     // struct constructors are weird/hard - let's go shopping!
-                    if let StructCtor(_, _) = n.def {
+                    if let Ctor(_, CtorOf::Struct, _) = n.def {
                         continue;
                     }
 
@@ -421,7 +424,7 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                         now_struct: new.ctor_kind == CtorKind::Fictive,
                         total_private,
                     };
-                    changes.add_change(c, old_def_id, Some(tcx.def_span(new.did)));
+                    changes.add_change(c, old_def_id, Some(tcx.def_span(new.def_id)));
 
                     continue;
                 }
@@ -469,14 +472,14 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                 changes.add_change(
                     ChangeType::VariantRemoved,
                     old_def_id,
-                    Some(tcx.def_span(old.did)),
+                    Some(tcx.def_span(old.def_id)),
                 );
             }
             (None, Some(new)) => {
                 changes.add_change(
                     ChangeType::VariantAdded,
                     old_def_id,
-                    Some(tcx.def_span(new.did)),
+                    Some(tcx.def_span(new.def_id)),
                 );
             }
             (None, None) => unreachable!(),
