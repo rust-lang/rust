@@ -97,36 +97,33 @@ pub fn spin_loop() {
 /// elimination.
 ///
 /// This function is a no-op, and does not even read from `dummy`.
+#[inline]
 #[unstable(feature = "test", issue = "27812")]
 pub fn black_box<T>(dummy: T) -> T {
-    #[cfg(not(
-        any(
+    cfg_if! {
+        if #[cfg(any(
             target_arch = "asmjs",
             all(
                 target_arch = "wasm32",
                 target_os = "emscripten"
             )
-        )
-    ))] {
-        // we need to "use" the argument in some way LLVM can't
-        // introspect.
-        unsafe { asm!("" : : "r"(&dummy)) }
-        dummy
-    }
-    #[cfg(
-        any(
-            target_arch = "asmjs",
-            all(
-                target_arch = "wasm32",
-                target_os = "emscripten"
-            )
-        )
-    )] {
-        // asm.js and emscripten do not support inline assembly
-        unsafe {
-            let ret = crate::ptr::read_volatile(&dummy);
-            crate::mem::forget(dummy);
-            ret
+        ))] {
+            #[inline]
+            unsafe fn black_box_impl<T>(d: T) -> T {
+                // these targets do not support inline assembly
+                let ret = crate::ptr::read_volatile(&d);
+                crate::mem::forget(d);
+                ret
+            }
+        } else {
+            #[inline]
+            unsafe fn black_box_impl<T>(d: T) -> T {
+                // we need to "use" the argument in some way LLVM can't
+                // introspect.
+                asm!("" : : "r"(&d));
+                d
+            }
         }
     }
+    unsafe { black_box_impl(dummy) }
 }
