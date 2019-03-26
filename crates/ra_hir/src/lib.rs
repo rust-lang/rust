@@ -53,7 +53,7 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    ids::{HirFileId, MacroCallId, MacroCallLoc, HirInterner},
+    ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, HirInterner},
     nameres::{PerNs, Namespace},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},

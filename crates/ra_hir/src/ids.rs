@@ -101,7 +101,7 @@ fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<Tree
     let macro_call = ast::MacroCall::cast(&syntax).unwrap();
     let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
 
-    let macro_rules = macro_def_query(db, loc.def)?;
+    let macro_rules = db.macro_def(loc.def)?;
     let tt = macro_rules.expand(&macro_arg).ok()?;
     Some(mbe::token_tree_to_ast_item_list(&tt))
 }
@@ -125,11 +125,11 @@ impl From<MacroCallId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum MacroDefId {
+pub enum MacroDefId {
     MacroByExample { source_item_id: SourceItemId },
 }
 
-fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
+pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
     let syntax_node = match id {
         MacroDefId::MacroByExample { source_item_id } => db.file_item(source_item_id),
     };

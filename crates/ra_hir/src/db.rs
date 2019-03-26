@@ -4,7 +4,7 @@ use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
 use ra_db::{SourceDatabase, salsa};
 
 use crate::{
-    HirFileId, SourceFileItems, SourceItemId, Crate, Module, HirInterner,
+    HirFileId, MacroDefId, SourceFileItems, SourceItemId, Crate, Module, HirInterner,
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
@@ -19,6 +19,9 @@ use crate::{
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
+    #[salsa::invoke(crate::ids::macro_def_query)]
+    fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
+
     #[salsa::invoke(HirFileId::hir_parse)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
