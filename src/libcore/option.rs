@@ -1315,6 +1315,26 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Since the last element is zero, it would underflow. Thus, the resulting
     /// value is `None`.
     ///
+    /// Here is a variation on the previous example, showing that no
+    /// further elements are taken from `iter` after the first `None`.
+    ///
+    /// ```
+    /// let items = vec![3_u16, 2, 1, 10];
+    ///
+    /// let mut shared = 0;
+    ///
+    /// let res: Option<Vec<u16>> = items
+    ///     .iter()
+    ///     .map(|x| { shared += x; x.checked_sub(2) })
+    ///     .collect();
+    ///
+    /// assert_eq!(res, None);
+    /// assert_eq!(shared, 6);
+    /// ```
+    ///
+    /// Since the third element caused an underflow, no further elements were taken,
+    /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
+    ///
     /// [`Iterator`]: ../iter/trait.Iterator.html
     #[inline]
     fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
