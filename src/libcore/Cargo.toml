@@ -21,7 +21,7 @@ path = "../libcore/benches/lib.rs"
 
 [dev-dependencies]
 rand = "0.6"
-cfg_if = "1.0"
+cfg-if = "1.0"
 
 [features]
 # Make panics and failed asserts immediately abort without formatting any message
