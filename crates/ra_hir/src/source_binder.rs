@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum, SourceFileItemId,
+    HirDatabase, Function, Struct, Enum, SourceItemId,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::LocationCtx,
     expr
@@ -55,7 +55,7 @@ fn module_from_inline(
     assert!(!module.has_semi());
     let file_id = file_id.into();
     let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(file_id, module.syntax());
+    let item_id = file_items.id_of(file_id, module.syntax()).with_file_id(file_id);
     module_from_source(db, file_id, Some(item_id))
 }
 
@@ -75,7 +75,7 @@ pub fn module_from_child_node(
 fn module_from_source(
     db: &impl HirDatabase,
     file_id: HirFileId,
-    decl_id: Option<SourceFileItemId>,
+    decl_id: Option<SourceItemId>,
 ) -> Option<Module> {
     let source_root_id = db.file_source_root(file_id.as_original_file());
     db.source_root_crates(source_root_id).iter().map(|&crate_id| Crate { crate_id }).find_map(

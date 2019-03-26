@@ -8,7 +8,7 @@ use crate::{HirFileId, DefDatabase};
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SourceFileItemId(RawId);
+pub(crate) struct SourceFileItemId(RawId);
 impl_arena_id!(SourceFileItemId);
 
 impl SourceFileItemId {
