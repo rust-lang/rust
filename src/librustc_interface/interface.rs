@@ -1,4 +1,8 @@
-use queries::Queries;
+use crate::queries::Queries;
+use crate::util;
+use crate::profile;
+pub use crate::passes::BoxedResolver;
+
 use rustc::lint;
 use rustc::session::config::{self, Input};
 use rustc::session::{DiagnosticOutput, Session};
@@ -15,10 +19,6 @@ use std::result;
 use std::sync::{Arc, Mutex};
 use syntax;
 use syntax::source_map::{FileLoader, SourceMap};
-use util;
-use profile;
-
-pub use passes::BoxedResolver;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
