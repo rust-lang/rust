@@ -429,23 +429,24 @@ where
     fn define_def(&mut self, def: &raw::DefData) {
         let module = Module { krate: self.def_collector.def_map.krate, module_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id.into());
-        macro_rules! id {
-            () => {
-                AstItemDef::from_source_item_id_unchecked(ctx, def.source_item_id)
+
+        macro_rules! def {
+            ($kind:ident, $ast_id:ident) => {
+                $kind { id: AstItemDef::from_ast_id(ctx, $ast_id) }.into()
             };
         }
         let name = def.name.clone();
         let def: PerNs<ModuleDef> = match def.kind {
-            raw::DefKind::Function => PerNs::values(Function { id: id!() }.into()),
-            raw::DefKind::Struct => {
-                let s = Struct { id: id!() }.into();
+            raw::DefKind::Function(ast_id) => PerNs::values(def!(Function, ast_id)),
+            raw::DefKind::Struct(ast_id) => {
+                let s = def!(Struct, ast_id);
                 PerNs::both(s, s)
             }
-            raw::DefKind::Enum => PerNs::types(Enum { id: id!() }.into()),
-            raw::DefKind::Const => PerNs::values(Const { id: id!() }.into()),
-            raw::DefKind::Static => PerNs::values(Static { id: id!() }.into()),
-            raw::DefKind::Trait => PerNs::types(Trait { id: id!() }.into()),
-            raw::DefKind::TypeAlias => PerNs::types(TypeAlias { id: id!() }.into()),
+            raw::DefKind::Enum(ast_id) => PerNs::types(def!(Enum, ast_id)),
+            raw::DefKind::Const(ast_id) => PerNs::values(def!(Const, ast_id)),
+            raw::DefKind::Static(ast_id) => PerNs::values(def!(Static, ast_id)),
+            raw::DefKind::Trait(ast_id) => PerNs::types(def!(Trait, ast_id)),
+            raw::DefKind::TypeAlias(ast_id) => PerNs::types(def!(TypeAlias, ast_id)),
         };
         let resolution = Resolution { def, import: None };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])

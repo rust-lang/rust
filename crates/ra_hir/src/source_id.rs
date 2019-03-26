@@ -1,11 +1,11 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc, hash::{Hash, Hasher}};
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub(crate) struct AstId<N: AstNode> {
     file_id: HirFileId,
     file_ast_id: FileAstId<N>,
@@ -16,8 +16,19 @@ impl<N: AstNode> Clone for AstId<N> {
         *self
     }
 }
-
 impl<N: AstNode> Copy for AstId<N> {}
+
+impl<N: AstNode> PartialEq for AstId<N> {
+    fn eq(&self, other: &Self) -> bool {
+        (self.file_id, self.file_ast_id) == (other.file_id, other.file_ast_id)
+    }
+}
+impl<N: AstNode> Eq for AstId<N> {}
+impl<N: AstNode> Hash for AstId<N> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        (self.file_id, self.file_ast_id).hash(hasher);
+    }
+}
 
 impl<N: AstNode> AstId<N> {
     pub(crate) fn file_id(&self) -> HirFileId {
@@ -30,7 +41,7 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub(crate) struct FileAstId<N: AstNode> {
     raw: SourceFileItemId,
     _ty: PhantomData<N>,
@@ -41,8 +52,19 @@ impl<N: AstNode> Clone for FileAstId<N> {
         *self
     }
 }
-
 impl<N: AstNode> Copy for FileAstId<N> {}
+
+impl<N: AstNode> PartialEq for FileAstId<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw == other.raw
+    }
+}
+impl<N: AstNode> Eq for FileAstId<N> {}
+impl<N: AstNode> Hash for FileAstId<N> {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.raw.hash(hasher);
+    }
+}
 
 impl<N: AstNode> FileAstId<N> {
     pub(crate) fn with_file_id(self, file_id: HirFileId) -> AstId<N> {
@@ -115,14 +137,6 @@ impl SourceFileItems {
 
     fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(SyntaxNodePtr::new(item))
-    }
-    pub(crate) fn id_of(&self, file_id: HirFileId, item: &SyntaxNode) -> SourceFileItemId {
-        assert_eq!(
-            self.file_id, file_id,
-            "SourceFileItems: wrong file, expected {:?}, got {:?}",
-            self.file_id, file_id
-        );
-        self.id_of_unchecked(item)
     }
     pub(crate) fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
         let ptr = SyntaxNodePtr::new(item);

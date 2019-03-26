@@ -12,7 +12,7 @@ use ra_syntax::{
 
 use crate::{
     DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    SourceFileItemId, SourceFileItems, FileAstId,
+    SourceFileItems, FileAstId,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -138,20 +138,19 @@ impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct DefData {
-    pub(super) source_item_id: SourceFileItemId,
     pub(super) name: Name,
     pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum DefKind {
-    Function,
-    Struct,
-    Enum,
-    Const,
-    Static,
-    Trait,
-    TypeAlias,
+    Function(FileAstId<ast::FnDef>),
+    Struct(FileAstId<ast::StructDef>),
+    Enum(FileAstId<ast::EnumDef>),
+    Const(FileAstId<ast::ConstDef>),
+    Static(FileAstId<ast::StaticDef>),
+    Trait(FileAstId<ast::TraitDef>),
+    TypeAlias(FileAstId<ast::TypeAliasDef>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -200,18 +199,31 @@ impl RawItemsCollector {
                 // impls don't participate in name resolution
                 return;
             }
-            ast::ModuleItemKind::StructDef(it) => (DefKind::Struct, it.name()),
-            ast::ModuleItemKind::EnumDef(it) => (DefKind::Enum, it.name()),
-            ast::ModuleItemKind::FnDef(it) => (DefKind::Function, it.name()),
-            ast::ModuleItemKind::TraitDef(it) => (DefKind::Trait, it.name()),
-            ast::ModuleItemKind::TypeAliasDef(it) => (DefKind::TypeAlias, it.name()),
-            ast::ModuleItemKind::ConstDef(it) => (DefKind::Const, it.name()),
-            ast::ModuleItemKind::StaticDef(it) => (DefKind::Static, it.name()),
+            ast::ModuleItemKind::StructDef(it) => {
+                (DefKind::Struct(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::EnumDef(it) => {
+                (DefKind::Enum(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::FnDef(it) => {
+                (DefKind::Function(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::TraitDef(it) => {
+                (DefKind::Trait(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::TypeAliasDef(it) => {
+                (DefKind::TypeAlias(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::ConstDef(it) => {
+                (DefKind::Const(self.source_file_items.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::StaticDef(it) => {
+                (DefKind::Static(self.source_file_items.ast_id(it)), it.name())
+            }
         };
         if let Some(name) = name {
             let name = name.as_name();
-            let source_item_id = self.source_file_items.id_of_unchecked(item.syntax());
-            let def = self.raw_items.defs.alloc(DefData { name, kind, source_item_id });
+            let def = self.raw_items.defs.alloc(DefData { name, kind });
             self.push_item(current_module, RawItem::Def(def))
         }
     }

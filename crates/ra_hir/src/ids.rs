@@ -1,5 +1,4 @@
 use std::{
-    marker::PhantomData,
     hash::{Hash, Hasher},
     sync::Arc,
 };
@@ -10,7 +9,7 @@ use ra_arena::{RawId, ArenaId, impl_arena_id};
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, SourceItemId, SourceFileItemId, AstId,
+    Module, DefDatabase, AstId, FileAstId,
 };
 
 #[derive(Debug, Default)]
@@ -123,6 +122,7 @@ impl From<MacroCallId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
 pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 
 pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
@@ -161,26 +161,25 @@ impl MacroCallLoc {
 #[derive(Debug)]
 pub struct ItemLoc<N: AstNode> {
     pub(crate) module: Module,
-    raw: SourceItemId,
-    _ty: PhantomData<N>,
+    ast_id: AstId<N>,
 }
 
 impl<N: AstNode> PartialEq for ItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
-        self.module == other.module && self.raw == other.raw
+        self.module == other.module && self.ast_id == other.ast_id
     }
 }
 impl<N: AstNode> Eq for ItemLoc<N> {}
 impl<N: AstNode> Hash for ItemLoc<N> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.module.hash(hasher);
-        self.raw.hash(hasher);
+        self.ast_id.hash(hasher);
     }
 }
 
 impl<N: AstNode> Clone for ItemLoc<N> {
     fn clone(&self) -> ItemLoc<N> {
-        ItemLoc { module: self.module, raw: self.raw, _ty: PhantomData }
+        ItemLoc { module: self.module, ast_id: self.ast_id }
     }
 }
 
@@ -208,25 +207,18 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
         let items = ctx.db.file_items(ctx.file_id);
-        let item_id = items.id_of(ctx.file_id, ast.syntax());
-        Self::from_source_item_id_unchecked(ctx, item_id)
+        let item_id = items.ast_id(ast);
+        Self::from_ast_id(ctx, item_id)
     }
-    fn from_source_item_id_unchecked(
-        ctx: LocationCtx<&impl DefDatabase>,
-        item_id: SourceFileItemId,
-    ) -> Self {
-        let raw = SourceItemId { file_id: ctx.file_id, item_id };
-        let loc = ItemLoc { module: ctx.module, raw, _ty: PhantomData };
-
+    fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
+        let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
     }
     fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<N>) {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
-        let syntax = db.file_item(loc.raw);
-        let ast =
-            N::cast(&syntax).unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw)).to_owned();
-        (loc.raw.file_id, ast)
+        let ast = loc.ast_id.to_node(db);
+        (loc.ast_id.file_id(), ast)
     }
     fn module(self, db: &impl DefDatabase) -> Module {
         let int = Self::interner(db.as_ref());
