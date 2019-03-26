@@ -3219,7 +3219,6 @@ mod test_map {
 
     #[test]
     #[should_panic]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/636
     fn test_index_nonexistent() {
         let mut map = HashMap::new();
 
