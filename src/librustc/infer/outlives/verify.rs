@@ -141,9 +141,9 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = ty.walk_shallow()
+        let mut bounds: Vec<_> = ty.walk_shallow()
             .map(|subty| self.type_bound(subty))
-            .collect::<Vec<_>>();
+            .collect();
 
         let mut regions = smallvec![];
         ty.push_regions(&mut regions);

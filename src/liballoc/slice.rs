@@ -123,12 +123,12 @@ pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 ////////////////////////////////////////////////////////////////////////////////
 
 // HACK(japaric) needed for the implementation of `vec!` macro during testing
-// NB see the hack module in this file for more details
+// N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::into_vec;
 
 // HACK(japaric) needed for the implementation of `Vec::clone` during testing
-// NB see the hack module in this file for more details
+// N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::to_vec;
 
@@ -376,7 +376,7 @@ impl<T> [T] {
     pub fn to_vec(&self) -> Vec<T>
         where T: Clone
     {
-        // NB see hack module in this file
+        // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self)
     }
 
@@ -397,7 +397,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn into_vec(self: Box<Self>) -> Vec<T> {
-        // NB see hack module in this file
+        // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
 

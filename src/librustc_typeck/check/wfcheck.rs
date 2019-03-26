@@ -1019,7 +1019,7 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
         .iter()
         .map(|(p, _)| *p)
         .collect();
-    // Check elaborated bounds
+    // Check elaborated bounds.
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 
     for pred in implied_obligations {
