@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if let hir::Node::Expr(_) = self.hir().get_by_hir_id(id) {
                     diag.span_suggestion(
                         span,
-                        &msg,
+                        "replace the use of the deprecated item",
                         suggestion.to_string(),
                         Applicability::MachineApplicable,
                     );
