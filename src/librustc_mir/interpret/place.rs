@@ -582,19 +582,20 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
+        use rustc::mir::{Static, StaticKind};
         Ok(match *mir_place {
-            Base(PlaceBase::Promoted(ref promoted)) => {
+            Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted), .. })) => {
                 let instance = self.frame().instance;
                 self.const_eval_raw(GlobalId {
                     instance,
-                    promoted: Some(promoted.0),
+                    promoted: Some(promoted),
                 })?
             }
 
-            Base(PlaceBase::Static(ref static_)) => {
-                assert!(!static_.ty.needs_subst());
-                let layout = self.layout_of(static_.ty)?;
-                let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+            Base(PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), ty })) => {
+                assert!(!ty.needs_subst());
+                let layout = self.layout_of(ty)?;
+                let instance = ty::Instance::mono(*self.tcx, def_id);
                 let cid = GlobalId {
                     instance,
                     promoted: None
