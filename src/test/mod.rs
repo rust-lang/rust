@@ -7,6 +7,7 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::Chars;
+use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
 use crate::formatting::{ReportedErrors, SourceFile};
@@ -24,6 +25,32 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     "configs/skip_children/foo/mod.rs",
     "issue-3434/no_entry.rs",
 ];
+
+struct TestSetting {
+    /// The size of the stack of the thread that run tests.
+    stack_size: usize,
+}
+
+impl Default for TestSetting {
+    fn default() -> Self {
+        TestSetting {
+            stack_size: 8388608, // 8MB
+        }
+    }
+}
+
+fn run_test_with<F>(test_setting: &TestSetting, f: F)
+where
+    F: FnOnce(),
+    F: Send + 'static,
+{
+    thread::Builder::new()
+        .stack_size(test_setting.stack_size)
+        .spawn(f)
+        .expect("Failed to create a test thread")
+        .join()
+        .expect("Failed to join a test thread")
+}
 
 fn is_file_skip(path: &Path) -> bool {
     SKIP_FILE_WHITE_LIST
@@ -114,13 +141,15 @@ fn write_message(msg: &str) {
 // exactly.
 #[test]
 fn system_tests() {
-    // Get all files in the tests/source directory.
-    let files = get_test_files(Path::new("tests/source"), true);
-    let (_reports, count, fails) = check_files(files, &None);
+    run_test_with(&TestSetting::default(), || {
+        // Get all files in the tests/source directory.
+        let files = get_test_files(Path::new("tests/source"), true);
+        let (_reports, count, fails) = check_files(files, &None);
 
-    // Display results.
-    println!("Ran {} system tests.", count);
-    assert_eq!(fails, 0, "{} system tests failed", fails);
+        // Display results.
+        println!("Ran {} system tests.", count);
+        assert_eq!(fails, 0, "{} system tests failed", fails);
+    });
 }
 
 // Do the same for tests/coverage-source directory.
@@ -228,17 +257,19 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 // rustfmt.
 #[test]
 fn idempotence_tests() {
-    match option_env!("CFG_RELEASE_CHANNEL") {
-        None | Some("nightly") => {}
-        _ => return, // these tests require nightly
-    }
-    // Get all files in the tests/target directory.
-    let files = get_test_files(Path::new("tests/target"), true);
-    let (_reports, count, fails) = check_files(files, &None);
+    run_test_with(&TestSetting::default(), || {
+        match option_env!("CFG_RELEASE_CHANNEL") {
+            None | Some("nightly") => {}
+            _ => return, // these tests require nightly
+        }
+        // Get all files in the tests/target directory.
+        let files = get_test_files(Path::new("tests/target"), true);
+        let (_reports, count, fails) = check_files(files, &None);
 
-    // Display results.
-    println!("Ran {} idempotent tests.", count);
-    assert_eq!(fails, 0, "{} idempotent tests failed", fails);
+        // Display results.
+        println!("Ran {} idempotent tests.", count);
+        assert_eq!(fails, 0, "{} idempotent tests failed", fails);
+    });
 }
 
 // Run rustfmt on itself. This operation must be idempotent. We also check that
