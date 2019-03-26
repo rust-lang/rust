@@ -82,7 +82,10 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_parse(db: &impl DefDatabase, file_id: HirFileId) -> TreeArc<SourceFile> {
+    pub(crate) fn hir_parse_query(
+        db: &impl DefDatabase,
+        file_id: HirFileId,
+    ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -122,7 +125,6 @@ impl From<MacroCallId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-
 pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 
 pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
@@ -152,7 +154,6 @@ impl MacroCallId {
 }
 
 impl MacroCallLoc {
-    #[allow(unused)]
     pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> MacroCallId {
         db.as_ref().macros.loc2id(&self)
     }

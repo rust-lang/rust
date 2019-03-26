@@ -22,7 +22,7 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
 
-    #[salsa::invoke(HirFileId::hir_parse)]
+    #[salsa::invoke(HirFileId::hir_parse_query)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]

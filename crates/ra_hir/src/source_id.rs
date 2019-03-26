@@ -5,6 +5,7 @@ use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
 
+/// `AstId` points to an AST node in any file
 #[derive(Debug)]
 pub(crate) struct AstId<N: AstNode> {
     file_id: HirFileId,
@@ -43,6 +44,7 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
+/// `AstId` points to an AST node in a specific file.
 #[derive(Debug)]
 pub(crate) struct FileAstId<N: AstNode> {
     raw: SourceFileItemId,
@@ -89,7 +91,6 @@ pub struct SourceItemId {
 /// Maps items' `SyntaxNode`s to `SourceFileItemId`s and back.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
-    file_id: HirFileId,
     arena: Arena<SourceFileItemId, SyntaxNodePtr>,
 }
 
@@ -99,7 +100,7 @@ impl SourceFileItems {
         file_id: HirFileId,
     ) -> Arc<SourceFileItems> {
         let source_file = db.hir_parse(file_id);
-        Arc::new(SourceFileItems::from_source_file(&source_file, file_id))
+        Arc::new(SourceFileItems::from_source_file(&source_file))
     }
 
     pub(crate) fn file_item_query(
@@ -113,11 +114,21 @@ impl SourceFileItems {
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
-        FileAstId { raw: self.id_of_unchecked(item.syntax()), _ty: PhantomData }
+        let ptr = SyntaxNodePtr::new(item.syntax());
+        let raw = match self.arena.iter().find(|(_id, i)| **i == ptr) {
+            Some((it, _)) => it,
+            None => panic!(
+                "Can't find {:?} in SourceFileItems:\n{:?}",
+                item.syntax(),
+                self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
+            ),
+        };
+
+        FileAstId { raw, _ty: PhantomData }
     }
 
-    fn from_source_file(source_file: &SourceFile, file_id: HirFileId) -> SourceFileItems {
-        let mut res = SourceFileItems { file_id, arena: Arena::default() };
+    fn from_source_file(source_file: &SourceFile) -> SourceFileItems {
+        let mut res = SourceFileItems { arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
@@ -134,18 +145,6 @@ impl SourceFileItems {
 
     fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(SyntaxNodePtr::new(item))
-    }
-
-    fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
-        let ptr = SyntaxNodePtr::new(item);
-        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| **i == ptr) {
-            return id;
-        }
-        panic!(
-            "Can't find {:?} in SourceFileItems:\n{:?}",
-            item,
-            self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
-        );
     }
 }
 
