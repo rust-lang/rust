@@ -1119,9 +1119,8 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                let msg = format!("{} with a suffix is invalid", kind);
-                self.struct_span_err(sp, &msg)
-                    .span_label(sp, msg)
+                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                    .span_label(sp, format!("invalid suffix `{}`", text))
                     .emit();
             }
         }
@@ -2150,7 +2149,7 @@ impl<'a> Parser<'a> {
 
                 if suffix_illegal {
                     let sp = self.span;
-                    self.expect_no_suffix(sp, lit.literal_name(), suf)
+                    self.expect_no_suffix(sp, &format!("a {}", lit.literal_name()), suf)
                 }
 
                 result.unwrap()
@@ -3205,7 +3204,7 @@ impl<'a> Parser<'a> {
                         let field = ExprKind::Field(e, Ident::new(name, span));
                         e = self.mk_expr(lo.to(span), field, ThinVec::new());
 
-                        self.expect_no_suffix(span, "tuple index", suffix);
+                        self.expect_no_suffix(span, "a tuple index", suffix);
                     }
                     token::Literal(token::Float(n), _suf) => {
                       self.bump();
@@ -7791,7 +7790,7 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
                 let sp = self.span;
-                self.expect_no_suffix(sp, "ABI spec", suf);
+                self.expect_no_suffix(sp, "an ABI spec", suf);
                 self.bump();
                 match abi::lookup(&s.as_str()) {
                     Some(abi) => Ok(Some(abi)),
@@ -8612,7 +8611,7 @@ impl<'a> Parser<'a> {
         match self.parse_optional_str() {
             Some((s, style, suf)) => {
                 let sp = self.prev_span;
-                self.expect_no_suffix(sp, "string literal", suf);
+                self.expect_no_suffix(sp, "a string literal", suf);
                 Ok((s, style))
             }
             _ => {

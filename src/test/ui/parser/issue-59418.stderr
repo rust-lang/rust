@@ -1,14 +1,14 @@
-error: tuple index with a suffix is invalid
+error: suffixes on a tuple index are invalid
   --> $DIR/issue-59418.rs:5:15
    |
 LL |     let b = a.1suffix;
-   |               ^^^^^^^ tuple index with a suffix is invalid
+   |               ^^^^^^^ invalid suffix `suffix`
 
-error: tuple index with a suffix is invalid
+error: suffixes on a tuple index are invalid
   --> $DIR/issue-59418.rs:9:15
    |
 LL |     let d = c.1suffix;
-   |               ^^^^^^^ tuple index with a suffix is invalid
+   |               ^^^^^^^ invalid suffix `suffix`
 
 error: aborting due to 2 previous errors
 
