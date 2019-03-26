@@ -327,6 +327,10 @@ pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{unreachable, unimplemented, write, writeln, r#try, todo};
 
+#[unstable(feature = "cfg_if", issue = "59442")]
+pub use core::cfg_if;
+
+
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
