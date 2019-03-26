@@ -75,7 +75,7 @@ impl CommentWriter {
             global_comments: vec![
                 format!("symbol {}", tcx.symbol_name(instance).as_str()),
                 format!("instance {:?}", instance),
-                format!("sig {:?}", crate::abi::ty_fn_sig(tcx, instance.ty(tcx))),
+                format!("sig {:?}", tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx))),
                 String::new(),
             ],
             entity_comments: HashMap::new(),

@@ -69,8 +69,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         // FIXME implement u128 and i128 support
 
         // Step 2a. Check sig for u128 and i128
-        let fn_ty = instance.ty(tcx);
-        let fn_sig = crate::abi::ty_fn_sig(tcx, fn_ty);
+        let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx));
 
         struct UI128Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, bool);
 

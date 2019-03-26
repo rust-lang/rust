@@ -206,4 +206,6 @@ fn main() {
     }
 
     unsafe { assert_eq!(ABC as usize, 0); }
+
+    &mut (|| Some(0 as *const ())) as &mut FnMut() -> Option<*const ()>;
 }

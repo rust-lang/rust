@@ -1,7 +1,5 @@
 use std::borrow::Cow;
-use std::iter;
 
-use rustc::hir;
 use rustc::ty::layout::{FloatTy, Integer, Primitive, Scalar};
 use rustc_target::spec::abi::Abi;
 
@@ -44,26 +42,16 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
 fn get_pass_mode<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
-    is_return: bool,
 ) -> PassMode {
     let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
     assert!(!layout.is_unsized());
 
-    if layout.size.bytes() == 0 {
-        if is_return {
-            PassMode::NoPass
-        } else {
-            PassMode::ByRef
-        }
+    if layout.is_zst() {
+        // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
+        PassMode::NoPass
     } else {
         match &layout.abi {
-            layout::Abi::Uninhabited => {
-                if is_return {
-                    PassMode::NoPass
-                } else {
-                    PassMode::ByRef
-                }
-            }
+            layout::Abi::Uninhabited => PassMode::NoPass,
             layout::Abi::Scalar(scalar) => {
                 PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
             }
@@ -80,11 +68,11 @@ fn get_pass_mode<'a, 'tcx: 'a>(
 fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
-) -> Value {
-    match get_pass_mode(fx.tcx, arg.layout().ty, false) {
-        PassMode::NoPass => unimplemented!("pass mode nopass"),
-        PassMode::ByVal(_) => arg.load_scalar(fx),
-        PassMode::ByRef => arg.force_stack(fx),
+) -> Option<Value> {
+    match get_pass_mode(fx.tcx, arg.layout().ty) {
+        PassMode::NoPass => None,
+        PassMode::ByVal(_) => Some(arg.load_scalar(fx)),
+        PassMode::ByRef => Some(arg.force_stack(fx)),
     }
 }
 
@@ -109,13 +97,13 @@ fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'t
 
     let inputs = inputs
         .into_iter()
-        .filter_map(|ty| match get_pass_mode(tcx, ty, false) {
+        .filter_map(|ty| match get_pass_mode(tcx, ty) {
+            PassMode::NoPass => None,
             PassMode::ByVal(clif_ty) => Some(clif_ty),
-            PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByRef => Some(pointer_ty(tcx)),
         });
 
-    let (params, returns) = match get_pass_mode(tcx, output, true) {
+    let (params, returns) = match get_pass_mode(tcx, output) {
         PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
         PassMode::ByVal(ret_ty) => (
             inputs.map(AbiParam::new).collect(),
@@ -140,59 +128,13 @@ fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'t
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'tcx> {
-    let sig = match ty.sty {
-        ty::FnDef(..) |
-        // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::FnPtr(_) => ty.fn_sig(tcx),
-        ty::Closure(def_id, substs) => {
-            let sig = substs.closure_sig(def_id, tcx);
-
-            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-            sig.map_bound(|sig| tcx.mk_fn_sig(
-                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                sig.output(),
-                sig.c_variadic,
-                sig.unsafety,
-                sig.abi
-            ))
-        }
-        ty::Generator(def_id, substs, _) => {
-            let sig = substs.poly_sig(def_id, tcx);
-
-            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
-
-            sig.map_bound(|sig| {
-                let state_did = tcx.lang_items().gen_state().unwrap();
-                let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[
-                    sig.yield_ty.into(),
-                    sig.return_ty.into(),
-                ]);
-                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-                tcx.mk_fn_sig(iter::once(env_ty),
-                    ret_ty,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            })
-        }
-        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
-    };
-    tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
-}
-
 pub fn get_function_name_and_sig<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     inst: Instance<'tcx>,
     support_vararg: bool,
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
-    let fn_ty = inst.ty(tcx);
-    let fn_sig = ty_fn_sig(tcx, fn_ty);
+    let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &inst.fn_sig(tcx));
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
@@ -293,7 +235,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     }
 
     fn self_sig(&self) -> FnSig<'tcx> {
-        ty_fn_sig(self.tcx, self.instance.ty(self.tcx))
+        self.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &self.instance.fn_sig(self.tcx))
     }
 
     fn return_type(&self) -> Ty<'tcx> {
@@ -405,9 +347,14 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
     ssa_flags: crate::analyze::Flags,
-) -> CValue<'tcx> {
+) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.tcx, arg_ty, false);
+    let pass_mode = get_pass_mode(fx.tcx, arg_ty);
+
+    if let PassMode::NoPass = pass_mode {
+        return None;
+    }
+
     let clif_type = pass_mode.get_param_ty(fx);
     let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
 
@@ -424,9 +371,9 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     );
 
     match pass_mode {
-        PassMode::NoPass => unimplemented!("pass mode nopass"),
-        PassMode::ByVal(_) => CValue::ByVal(ebb_param, layout),
-        PassMode::ByRef => CValue::ByRef(ebb_param, layout),
+        PassMode::NoPass => unreachable!(),
+        PassMode::ByVal(_) => Some(CValue::ByVal(ebb_param, layout)),
+        PassMode::ByRef => Some(CValue::ByRef(ebb_param, layout)),
     }
 }
 
@@ -440,7 +387,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     let ret_layout = fx.layout_of(fx.return_type());
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_type(), true);
+    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_type());
     let ret_param = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByVal(_) => None,
@@ -462,9 +409,10 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         );
     }
 
+    // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
-        Normal(CValue<'tcx>),
-        Spread(Vec<CValue<'tcx>>),
+        Normal(Option<CValue<'tcx>>),
+        Spread(Vec<Option<CValue<'tcx>>>),
     }
 
     let func_params = fx
@@ -542,13 +490,17 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
         match arg_kind {
             ArgKind::Normal(param) => {
-                place.write_cvalue(fx, param);
+                if let Some(param) = param {
+                    place.write_cvalue(fx, param);
+                }
             }
             ArgKind::Spread(params) => {
                 for (i, param) in params.into_iter().enumerate() {
-                    place
-                        .place_field(fx, mir::Field::new(i))
-                        .write_cvalue(fx, param);
+                    if let Some(param) = param {
+                        place
+                            .place_field(fx, mir::Field::new(i))
+                            .write_cvalue(fx, param);
+                    }
                 }
             }
         }
@@ -578,7 +530,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
-    let sig = ty_fn_sig(fx.tcx, fn_ty);
+    let sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
@@ -649,11 +601,11 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     args: Vec<CValue<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
 ) {
-    let fn_sig = ty_fn_sig(fx.tcx, fn_ty);
+    let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
     let ret_layout = fx.layout_of(fn_sig.output());
 
-    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.output(), true);
+    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.output());
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
@@ -683,7 +635,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         }
 
         // Normal call
-        Some(_) => (None, args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg))),
+        Some(_) => (None, args.get(0).and_then(|arg| adjust_arg_for_abi(fx, *arg))),
 
         // Indirect call
         None => {
@@ -691,7 +643,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
                 .load_scalar(fx);
             (
                 Some(func),
-                args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)),
+                args.get(0).and_then(|arg| adjust_arg_for_abi(fx, *arg)),
             )
         }
     };
@@ -702,7 +654,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         .chain(
             args.into_iter()
                 .skip(1)
-                .map(|arg| adjust_arg_for_abi(fx, arg)),
+                .filter_map(|arg| adjust_arg_for_abi(fx, arg)),
         )
         .collect::<Vec<_>>();
 
@@ -756,9 +708,9 @@ pub fn codegen_drop<'a, 'tcx: 'a>(
     let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
     let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
-    let fn_sig = ty_fn_sig(fx.tcx, drop_fn_ty);
+    let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &drop_fn_ty.fn_sig(fx.tcx));
 
-    match get_pass_mode(fx.tcx, fn_sig.output(), true) {
+    match get_pass_mode(fx.tcx, fn_sig.output()) {
         PassMode::NoPass => {}
         _ => unreachable!(),
     };
@@ -770,7 +722,7 @@ pub fn codegen_drop<'a, 'tcx: 'a>(
 }
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
-    match get_pass_mode(fx.tcx, fx.return_type(), true) {
+    match get_pass_mode(fx.tcx, fx.return_type()) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
         }
