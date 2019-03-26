@@ -48,7 +48,7 @@ mod marks;
 use crate::{
     db::{HirDatabase, DefDatabase},
     name::{AsName, KnownName},
-    source_id::SourceFileItemId,
+    source_id::{SourceFileItemId, FileAstId, AstId},
 };
 
 pub use self::{

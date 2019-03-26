@@ -1,9 +1,54 @@
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct AstId<N: AstNode> {
+    file_id: HirFileId,
+    file_ast_id: FileAstId<N>,
+}
+
+impl<N: AstNode> Clone for AstId<N> {
+    fn clone(&self) -> AstId<N> {
+        *self
+    }
+}
+
+impl<N: AstNode> Copy for AstId<N> {}
+
+impl<N: AstNode> AstId<N> {
+    pub(crate) fn file_id(&self) -> HirFileId {
+        self.file_id
+    }
+
+    pub(crate) fn to_node(&self, db: &impl DefDatabase) -> TreeArc<N> {
+        let syntax_node = db.file_item(self.file_ast_id.raw.with_file_id(self.file_id));
+        N::cast(&syntax_node).unwrap().to_owned()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct FileAstId<N: AstNode> {
+    raw: SourceFileItemId,
+    _ty: PhantomData<N>,
+}
+
+impl<N: AstNode> Clone for FileAstId<N> {
+    fn clone(&self) -> FileAstId<N> {
+        *self
+    }
+}
+
+impl<N: AstNode> Copy for FileAstId<N> {}
+
+impl<N: AstNode> FileAstId<N> {
+    pub(crate) fn with_file_id(self, file_id: HirFileId) -> AstId<N> {
+        AstId { file_id, file_ast_id: self }
+    }
+}
 
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
@@ -89,6 +134,9 @@ impl SourceFileItems {
             item,
             self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
         );
+    }
+    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
+        FileAstId { raw: self.id_of_unchecked(item.syntax()), _ty: PhantomData }
     }
 }
 

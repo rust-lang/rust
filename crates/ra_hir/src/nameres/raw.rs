@@ -12,7 +12,7 @@ use ra_syntax::{
 
 use crate::{
     DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    SourceFileItemId, SourceFileItems,
+    SourceFileItemId, SourceFileItems, FileAstId,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -115,8 +115,8 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, source_item_id: SourceFileItemId },
-    Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
+    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
+    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -221,10 +221,9 @@ impl RawItemsCollector {
             Some(it) => it.as_name(),
             None => return,
         };
-        let source_item_id = self.source_file_items.id_of_unchecked(module.syntax());
+        let ast_id = self.source_file_items.ast_id(module);
         if module.has_semi() {
-            let item =
-                self.raw_items.modules.alloc(ModuleData::Declaration { name, source_item_id });
+            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
             self.push_item(current_module, RawItem::Module(item));
             return;
         }
@@ -232,7 +231,7 @@ impl RawItemsCollector {
         if let Some(item_list) = module.item_list() {
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
-                source_item_id,
+                ast_id,
                 items: Vec::new(),
             });
             self.process_module(Some(item), item_list);

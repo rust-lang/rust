@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use relative_path::RelativePathBuf;
 use test_utils::tested_by;
 use ra_db::FileId;
+use ra_syntax::ast;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
@@ -15,6 +16,7 @@ use crate::{
         raw,
     },
     ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId},
+    AstId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -364,12 +366,9 @@ where
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, source_item_id } => {
-                let module_id = self.push_child_module(
-                    name.clone(),
-                    source_item_id.with_file_id(self.file_id),
-                    None,
-                );
+            raw::ModuleData::Definition { name, items, ast_id } => {
+                let module_id =
+                    self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
@@ -379,13 +378,12 @@ where
                 .collect(&*items);
             }
             // out of line module, resovle, parse and recurse
-            raw::ModuleData::Declaration { name, source_item_id } => {
-                let source_item_id = source_item_id.with_file_id(self.file_id);
+            raw::ModuleData::Declaration { name, ast_id } => {
+                let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
                 match resolve_submodule(self.def_collector.db, self.file_id, name, is_root) {
                     Ok(file_id) => {
-                        let module_id =
-                            self.push_child_module(name.clone(), source_item_id, Some(file_id));
+                        let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
@@ -398,7 +396,7 @@ where
                     Err(candidate) => self.def_collector.def_map.diagnostics.push(
                         DefDiagnostic::UnresolvedModule {
                             module: self.module_id,
-                            declaration: source_item_id,
+                            declaration: ast_id,
                             candidate,
                         },
                     ),
@@ -410,7 +408,7 @@ where
     fn push_child_module(
         &mut self,
         name: Name,
-        declaration: SourceItemId,
+        declaration: AstId<ast::Module>,
         definition: Option<FileId>,
     ) -> CrateModuleId {
         let modules = &mut self.def_collector.def_map.modules;
