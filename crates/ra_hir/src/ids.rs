@@ -7,6 +7,7 @@ use std::{
 use ra_db::{LocationInterner, FileId};
 use ra_syntax::{TreeArc, SyntaxNode, SourceFile, AstNode, SyntaxNodePtr, ast};
 use ra_arena::{Arena, RawId, ArenaId, impl_arena_id};
+use mbe::MacroRules;
 
 use crate::{
     Module,
@@ -100,10 +101,7 @@ fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<Tree
     let macro_call = ast::MacroCall::cast(&syntax).unwrap();
     let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
 
-    let def_map = db.crate_def_map(loc.module.krate);
-    let (krate, macro_id) = def_map.resolve_macro(macro_call_id)?;
-    let def_map = db.crate_def_map(krate);
-    let macro_rules = &def_map[macro_id];
+    let macro_rules = macro_def_query(db, loc.def)?;
     let tt = macro_rules.expand(&macro_arg).ok()?;
     Some(mbe::token_tree_to_ast_item_list(&tt))
 }
@@ -126,6 +124,22 @@ impl From<MacroCallId> for HirFileId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum MacroDefId {
+    MacroByExample { source_item_id: SourceItemId },
+}
+
+fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
+    let syntax_node = match id {
+        MacroDefId::MacroByExample { source_item_id } => db.file_item(source_item_id),
+    };
+    let macro_call = ast::MacroCall::cast(&syntax_node).unwrap();
+    let arg = macro_call.token_tree()?;
+    let (tt, _) = mbe::ast_to_token_tree(arg)?;
+    let rules = MacroRules::parse(&tt).ok()?;
+    Some(Arc::new(rules))
+}
+
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -134,7 +148,7 @@ impl_arena_id!(MacroCallId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    pub(crate) module: Module,
+    pub(crate) def: MacroDefId,
     pub(crate) source_item_id: SourceItemId,
 }
 
