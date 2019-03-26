@@ -432,7 +432,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     | (Read(_), BorrowKind::Shared)
                     | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
                     | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
-                        // Reads/reservations don't invalidate shared or shallow borrows
+                        // Reads don't invalidate shared or shallow borrows
                     }
 
                     (Read(_), BorrowKind::Unique) | (Read(_), BorrowKind::Mut { .. }) => {
