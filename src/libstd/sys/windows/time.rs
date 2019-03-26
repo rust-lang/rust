@@ -49,17 +49,17 @@ impl Instant {
         Instant { t: Duration::from_secs(0) }
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,
         // check the docs on epsilon.
         let epsilon =
             perf_counter::PerformanceCounterInstant::epsilon();
         if other.t > self.t && other.t - self.t <= epsilon {
-            return Duration::new(0, 0)
+            Some(Duration::new(0, 0))
+        } else {
+            self.t.checked_sub(other.t)
         }
-        self.t.checked_sub(other.t)
-              .expect("specified instant was later than self")
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
