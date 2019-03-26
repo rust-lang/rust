@@ -449,53 +449,49 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         context: PlaceContext<'_>,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
-        let place_ty = match *place {
+        let place_ty = match place {
             Place::Base(PlaceBase::Local(index)) => PlaceTy::Ty {
-                ty: self.mir.local_decls[index].ty,
+                ty: self.mir.local_decls[*index].ty,
             },
-            Place::Base(PlaceBase::Promoted(box (index, sty))) => {
+            Place::Base(PlaceBase::Static(box Static { kind, ty: sty })) => {
                 let sty = self.sanitize_type(place, sty);
-
-                if !self.errors_reported {
-                    let promoted_mir = &self.mir.promoted[index];
-                    self.sanitize_promoted(promoted_mir, location);
-
-                    let promoted_ty = promoted_mir.return_ty();
-
-                    if let Err(terr) = self.cx.eq_types(
-                        sty,
-                        promoted_ty,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    ) {
-                        span_mirbug!(
-                            self,
+                let check_err =
+                    |verifier: &mut TypeVerifier<'a, 'b, 'gcx, 'tcx>,
+                     place: &Place<'tcx>,
+                     ty,
+                     sty| {
+                        if let Err(terr) = verifier.cx.eq_types(
+                            sty,
+                            ty,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                            verifier,
                             place,
                             "bad promoted type ({:?}: {:?}): {:?}",
-                            promoted_ty,
+                            ty,
                             sty,
                             terr
                         );
+                        };
                     };
-                }
-                PlaceTy::Ty { ty: sty }
-            }
-            Place::Base(PlaceBase::Static(box Static { def_id, ty: sty })) => {
-                let sty = self.sanitize_type(place, sty);
-                let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(ty, location);
-                if let Err(terr) =
-                    self.cx
-                        .eq_types(ty, sty, location.to_locations(), ConstraintCategory::Boring)
-                {
-                    span_mirbug!(
-                        self,
-                        place,
-                        "bad static type ({:?}: {:?}): {:?}",
-                        ty,
-                        sty,
-                        terr
-                    );
+                match kind {
+                    StaticKind::Promoted(promoted) => {
+                        if !self.errors_reported {
+                            let promoted_mir = &self.mir.promoted[*promoted];
+                            self.sanitize_promoted(promoted_mir, location);
+
+                            let promoted_ty = promoted_mir.return_ty();
+                            check_err(self, place, promoted_ty, sty);
+                        }
+                    }
+                    StaticKind::Static(def_id) => {
+                        let ty = self.tcx().type_of(*def_id);
+                        let ty = self.cx.normalize(ty, location);
+
+                        check_err(self, place, ty, sty);
+                    }
                 }
                 PlaceTy::Ty { ty: sty }
             }

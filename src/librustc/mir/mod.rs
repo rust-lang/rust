@@ -1913,22 +1913,24 @@ pub enum PlaceBase<'tcx> {
 
     /// static or static mut variable
     Static(Box<Static<'tcx>>),
-
-    /// Constant code promoted to an injected static
-    Promoted(Box<(Promoted, Ty<'tcx>)>),
 }
 
-/// The `DefId` of a static, along with its normalized type (which is
-/// stored to avoid requiring normalization when reading MIR).
+/// We store the normalized type to avoid requiring normalization when reading MIR
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
-    pub def_id: DefId,
     pub ty: Ty<'tcx>,
+    pub kind: StaticKind,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable)]
+pub enum StaticKind {
+    Promoted(Promoted),
+    Static(DefId),
 }
 
 impl_stable_hash_for!(struct Static<'tcx> {
-    def_id,
-    ty
+    ty,
+    kind
 });
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -2048,7 +2050,7 @@ impl<'tcx> Place<'tcx> {
         match self {
             Place::Base(PlaceBase::Local(local)) => Some(*local),
             Place::Projection(box Projection { base, elem: _ }) => base.base_local(),
-            Place::Base(PlaceBase::Promoted(..)) | Place::Base(PlaceBase::Static(..)) => None,
+            Place::Base(PlaceBase::Static(..)) => None,
         }
     }
 }
@@ -2059,18 +2061,24 @@ impl<'tcx> Debug for Place<'tcx> {
 
         match *self {
             Base(PlaceBase::Local(id)) => write!(fmt, "{:?}", id),
-            Base(PlaceBase::Static(box self::Static { def_id, ty })) => write!(
-                fmt,
-                "({}: {:?})",
-                ty::tls::with(|tcx| tcx.def_path_str(def_id)),
-                ty
-            ),
-            Base(PlaceBase::Promoted(ref promoted)) => write!(
-                fmt,
-                "({:?}: {:?})",
-                promoted.0,
-                promoted.1
-            ),
+            Base(PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) })) => {
+                write!(
+                    fmt,
+                    "({}: {:?})",
+                    ty::tls::with(|tcx| tcx.def_path_str(def_id)),
+                    ty
+                )
+            },
+            Base(PlaceBase::Static(
+                box self::Static { ty, kind: StaticKind::Promoted(promoted) })
+            ) => {
+                write!(
+                    fmt,
+                    "({:?}: {:?})",
+                    promoted,
+                    ty
+                )
+            },
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {
                     write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].ident)

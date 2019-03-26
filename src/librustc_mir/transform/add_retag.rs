@@ -22,7 +22,6 @@ fn is_stable<'tcx>(
     match *place {
         // Locals and statics have stable addresses, for sure
         Base(PlaceBase::Local { .. }) |
-        Base(PlaceBase::Promoted { .. }) |
         Base(PlaceBase::Static { .. }) =>
             true,
         // Recurse for projections

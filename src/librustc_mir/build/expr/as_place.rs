@@ -126,8 +126,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(place)
             }
             ExprKind::StaticRef { id } => block.and(Place::Base(PlaceBase::Static(Box::new(Static {
-                def_id: id,
                 ty: expr.ty,
+                kind: StaticKind::Static(id),
             })))),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {

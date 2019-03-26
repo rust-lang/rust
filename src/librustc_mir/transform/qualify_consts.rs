@@ -188,8 +188,11 @@ trait Qualif {
     fn in_place(cx: &ConstCx<'_, 'tcx>, place: &Place<'tcx>) -> bool {
         match *place {
             Place::Base(PlaceBase::Local(local)) => Self::in_local(cx, local),
-            Place::Base(PlaceBase::Promoted(_)) => bug!("qualifying already promoted MIR"),
-            Place::Base(PlaceBase::Static(ref static_)) => Self::in_static(cx, static_),
+            Place::Base(PlaceBase::Static(box Static {kind: StaticKind::Promoted(_), .. })) =>
+                bug!("qualifying already promoted MIR"),
+            Place::Base(PlaceBase::Static(ref static_)) => {
+                Self::in_static(cx, static_)
+            },
             Place::Projection(ref proj) => Self::in_projection(cx, proj),
         }
     }
@@ -370,11 +373,18 @@ impl Qualif for IsNotConst {
     const IDX: usize = 2;
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
-        // Only allow statics (not consts) to refer to other statics.
-        let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
+        match static_.kind {
+            StaticKind::Promoted(_) => unreachable!(),
+            StaticKind::Static(def_id) => {
+                // Only allow statics (not consts) to refer to other statics.
+                let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
-        !allowed ||
-            cx.tcx.get_attrs(static_.def_id).iter().any(|attr| attr.check_name("thread_local"))
+                !allowed ||
+                    cx.tcx.get_attrs(def_id).iter().any(
+                        |attr| attr.check_name("thread_local"
+                    ))
+            }
+        }
     }
 
     fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &PlaceProjection<'tcx>) -> bool {
@@ -768,9 +778,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     );
                     dest = &proj.base;
                 },
-                Place::Base(PlaceBase::Promoted(..)) =>
+                Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) =>
                     bug!("promoteds don't exist yet during promotion"),
-                Place::Base(PlaceBase::Static(..)) => {
+                Place::Base(PlaceBase::Static(box Static{ kind: _, .. })) => {
                     // Catch more errors in the destination. `visit_place` also checks that we
                     // do not try to access statics from constants or try to mutate statics
                     self.visit_place(
@@ -919,11 +929,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
         self.super_place(place, context, location);
         match *place {
-            Place::Base(PlaceBase::Local(_)) |
-            Place::Base(PlaceBase::Promoted(_)) => {}
-            Place::Base(PlaceBase::Static(ref global)) => {
+            Place::Base(PlaceBase::Local(_)) => {}
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {
+                unreachable!()
+            }
+            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
                 if self.tcx
-                       .get_attrs(global.def_id)
+                       .get_attrs(def_id)
                        .iter()
                        .any(|attr| attr.check_name("thread_local")) {
                     if self.mode != Mode::Fn {
