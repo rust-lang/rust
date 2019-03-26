@@ -28,7 +28,11 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::analysis_and_position;
+    use crate::{
+        AnalysisChange, CrateGraph,
+        mock_analysis::{analysis_and_position, MockAnalysis},
+        Edition::Edition2018,
+};
 
     #[test]
     fn test_resolve_parent_module() {
@@ -58,5 +62,29 @@ mod tests {
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
         nav.assert_match("baz MODULE FileId(1) [32; 44)");
+    }
+
+    #[test]
+    fn test_resolve_crate_root() {
+        let mock = MockAnalysis::with_files(
+            "
+        //- /bar.rs
+        mod foo;
+        //- /foo.rs
+        // empty <|>
+    ",
+        );
+        let root_file = mock.id_of("/bar.rs");
+        let mod_file = mock.id_of("/foo.rs");
+        let mut host = mock.analysis_host();
+        assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
+
+        let mut crate_graph = CrateGraph::default();
+        let crate_id = crate_graph.add_crate_root(root_file, Edition2018);
+        let mut change = AnalysisChange::new();
+        change.set_crate_graph(crate_graph);
+        host.apply_change(change);
+
+        assert_eq!(host.analysis().crate_for(mod_file).unwrap(), vec![crate_id]);
     }
 }
