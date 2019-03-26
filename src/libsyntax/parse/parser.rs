@@ -3205,14 +3205,7 @@ impl<'a> Parser<'a> {
                         let field = ExprKind::Field(e, Ident::new(name, span));
                         e = self.mk_expr(lo.to(span), field, ThinVec::new());
 
-                        if let Some(suffix) = suffix {
-                            let mut err = self.diagnostic().struct_span_err(
-                                span,
-                                "suffixes on tuple indexes are invalid",
-                            );
-                            err.span_label(span, format!("invalid suffix `{}`", suffix));
-                            err.emit();
-                        }
+                        self.expect_no_suffix(span, "tuple index", suffix);
                     }
                     token::Literal(token::Float(n), _suf) => {
                       self.bump();
