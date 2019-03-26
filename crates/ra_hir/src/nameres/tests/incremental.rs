@@ -92,12 +92,14 @@ fn adding_inner_items_should_not_invalidate_def_map() {
 
 #[test]
 fn typing_inside_a_macro_should_not_invalidate_def_map() {
-    check_def_map_is_not_recomputed(
+    let (mut db, pos) = MockDatabase::with_position(
         "
         //- /lib.rs
         macro_rules! m {
             ($ident:ident) => {
-                struct Foo;
+                fn f() {
+                    $ident + $ident;
+                };
             }
         }
         mod foo;
@@ -109,8 +111,23 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         <|>
         m!(X);
         ",
-        "
-        m!(Y);
-        ",
     );
+    {
+        let events = db.log_executed(|| {
+            let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
+            let decls = module.declarations(&db);
+            assert_eq!(decls.len(), 1);
+        });
+        assert!(format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+    }
+    db.set_file_text(pos.file_id, Arc::new("m!(Y);".to_string()));
+
+    {
+        let events = db.log_executed(|| {
+            let module = crate::source_binder::module_from_file_id(&db, pos.file_id).unwrap();
+            let decls = module.declarations(&db);
+            assert_eq!(decls.len(), 1);
+        });
+        assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
+    }
 }
