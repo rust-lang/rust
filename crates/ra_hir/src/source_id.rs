@@ -36,7 +36,9 @@ impl<N: AstNode> AstId<N> {
     }
 
     pub(crate) fn to_node(&self, db: &impl DefDatabase) -> TreeArc<N> {
-        let syntax_node = db.file_item(self.file_ast_id.raw.with_file_id(self.file_id));
+        let source_item_id =
+            SourceItemId { file_id: self.file_id(), item_id: self.file_ast_id.raw };
+        let syntax_node = db.file_item(source_item_id);
         N::cast(&syntax_node).unwrap().to_owned()
     }
 }
@@ -75,19 +77,13 @@ impl<N: AstNode> FileAstId<N> {
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct SourceFileItemId(RawId);
+struct SourceFileItemId(RawId);
 impl_arena_id!(SourceFileItemId);
-
-impl SourceFileItemId {
-    pub(crate) fn with_file_id(self, file_id: HirFileId) -> SourceItemId {
-        SourceItemId { file_id, item_id: self }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
-    pub(crate) file_id: HirFileId,
-    pub(crate) item_id: SourceFileItemId,
+    file_id: HirFileId,
+    item_id: SourceFileItemId,
 }
 
 /// Maps items' `SyntaxNode`s to `SourceFileItemId`s and back.
@@ -111,15 +107,16 @@ impl SourceFileItems {
         source_item_id: SourceItemId,
     ) -> TreeArc<SyntaxNode> {
         let source_file = db.hir_parse(source_item_id.file_id);
-        db.file_items(source_item_id.file_id)[source_item_id.item_id]
+        db.file_items(source_item_id.file_id).arena[source_item_id.item_id]
             .to_node(&source_file)
             .to_owned()
     }
 
-    pub(crate) fn from_source_file(
-        source_file: &SourceFile,
-        file_id: HirFileId,
-    ) -> SourceFileItems {
+    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
+        FileAstId { raw: self.id_of_unchecked(item.syntax()), _ty: PhantomData }
+    }
+
+    fn from_source_file(source_file: &SourceFile, file_id: HirFileId) -> SourceFileItems {
         let mut res = SourceFileItems { file_id, arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
@@ -138,7 +135,8 @@ impl SourceFileItems {
     fn alloc(&mut self, item: &SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(SyntaxNodePtr::new(item))
     }
-    pub(crate) fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
+
+    fn id_of_unchecked(&self, item: &SyntaxNode) -> SourceFileItemId {
         let ptr = SyntaxNodePtr::new(item);
         if let Some((id, _)) = self.arena.iter().find(|(_id, i)| **i == ptr) {
             return id;
@@ -148,16 +146,6 @@ impl SourceFileItems {
             item,
             self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
         );
-    }
-    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
-        FileAstId { raw: self.id_of_unchecked(item.syntax()), _ty: PhantomData }
-    }
-}
-
-impl std::ops::Index<SourceFileItemId> for SourceFileItems {
-    type Output = SyntaxNodePtr;
-    fn index(&self, idx: SourceFileItemId) -> &SyntaxNodePtr {
-        &self.arena[idx]
     }
 }
 
