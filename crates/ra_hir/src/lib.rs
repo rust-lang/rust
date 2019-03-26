@@ -23,6 +23,7 @@ pub mod mock;
 mod path;
 pub mod source_binder;
 
+mod source_id;
 mod ids;
 mod name;
 mod nameres;
@@ -47,12 +48,13 @@ mod marks;
 use crate::{
     db::{HirDatabase, DefDatabase},
     name::{AsName, KnownName},
-    ids::{SourceItemId, SourceFileItems},
+    source_id::SourceFileItemId,
 };
 
 pub use self::{
     path::{Path, PathKind},
     name::Name,
+    source_id::{SourceFileItems, SourceItemId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, HirInterner},
     nameres::{PerNs, Namespace},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},

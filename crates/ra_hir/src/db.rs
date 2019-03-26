@@ -34,10 +34,10 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
     fn trait_data(&self, t: Trait) -> Arc<TraitData>;
 
-    #[salsa::invoke(crate::ids::SourceFileItems::file_items_query)]
+    #[salsa::invoke(crate::source_id::SourceFileItems::file_items_query)]
     fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;
 
-    #[salsa::invoke(crate::ids::SourceFileItems::file_item_query)]
+    #[salsa::invoke(crate::source_id::SourceFileItems::file_item_query)]
     fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]

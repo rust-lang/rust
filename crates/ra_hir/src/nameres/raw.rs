@@ -12,7 +12,7 @@ use ra_syntax::{
 
 use crate::{
     DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    ids::{SourceFileItemId, SourceFileItems},
+    SourceFileItemId, SourceFileItems,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).

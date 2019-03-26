@@ -61,9 +61,9 @@ use ra_db::{FileId, Edition};
 use test_utils::tested_by;
 
 use crate::{
-    ModuleDef, Name, Crate, Module,
+    ModuleDef, Name, Crate, Module, SourceItemId,
     DefDatabase, Path, PathKind, HirFileId, Trait,
-    ids::{SourceItemId, SourceFileItemId, MacroCallId, MacroDefId},
+    ids::{MacroCallId, MacroDefId},
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
 };
@@ -241,9 +241,8 @@ impl CrateDefMap {
     pub(crate) fn find_module_by_source(
         &self,
         file_id: HirFileId,
-        decl_id: Option<SourceFileItemId>,
+        decl_id: Option<SourceItemId>,
     ) -> Option<CrateModuleId> {
-        let decl_id = decl_id.map(|it| it.with_file_id(file_id));
         let (module_id, _module_data) = self.modules.iter().find(|(_module_id, module_data)| {
             if decl_id.is_some() {
                 module_data.declaration == decl_id

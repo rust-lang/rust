@@ -6,7 +6,7 @@ use ra_db::FileId;
 
 use crate::{
     Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
-    DefDatabase, HirFileId, Name, Path,
+    DefDatabase, HirFileId, Name, Path, SourceItemId,
     KnownName,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
@@ -14,7 +14,7 @@ use crate::{
         diagnostics::DefDiagnostic,
         raw,
     },
-    ids::{AstItemDef, LocationCtx, MacroCallLoc, SourceItemId, MacroCallId, MacroDefId},
+    ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId},
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
