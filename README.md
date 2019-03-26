@@ -19,6 +19,26 @@ Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
+Be aware that Miri will not catch all possible errors in your program, and
+cannot run all programs:
+
+* There are still plenty of open questions around the basic invariants for some
+  types and when these invariants even have to hold, so if you program runs fine
+  in Miri right now that is by no means a guarantee that it is UB-free when
+  these questions get answered.
+* If the program relies on unspecified details of how data is laid out, it will
+  still run fine in Miri -- but might break (including causing UB) on different
+  compiler versions or different platforms.
+* Miri is fully deterministic and does not actually pick a base address in
+  virtual memory for the program's allocations.  If program behavior depends on
+  the base address of an allocation, Miri will stop execution (with a few
+  exceptions to make some common pointer comparisons work).
+* Miri runs the program as a platform-independent interpreter, so the program
+  has no access to any platform-specific APIs or FFI. A few APIs have been
+  implemented (such as printing to stdout) but most have not: for example, Miri
+  currently does not support concurrency, or networking, or file system access,
+  or gathering entropy from the system.
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
