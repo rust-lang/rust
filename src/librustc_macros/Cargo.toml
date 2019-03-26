@@ -12,3 +12,4 @@ synstructure = "0.10.1"
 syn = { version = "0.15.22", features = ["full"] }
 proc-macro2 = "0.4.24"
 quote = "0.6.10"
+itertools = "0.8"
