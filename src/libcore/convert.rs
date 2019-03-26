@@ -1,26 +1,25 @@
 //! Traits for conversions between types.
 //!
-//! The traits in this module provide a general way to talk about conversions
-//! from one type to another. They follow the standard Rust conventions of
-//! `as`/`into`/`from`.
+//! The traits in this module provide a way to convert from one type to another type.
+//! Each trait serves a different purpose:
 //!
-//! Like many traits, these are often used as bounds for generic functions, to
-//! support arguments of multiple types.
+//! - Implement the [`AsRef`] trait for cheap reference-to-reference conversions
+//! - Implement the [`AsMut`] trait for cheap mutable-to-mutable conversions
+//! - Implement the [`From`] trait for consuming value-to-value conversions
+//! - Implement the [`Into`] trait for consuming value-to-value conversions to types
+//!   outside the current crate
+//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`],
+//!   but should be implemented when the conversion can fail.
 //!
-//! - Implement the `As*` traits for reference-to-reference conversions
-//! - Implement the [`Into`] trait when you want to consume the value in the conversion
-//! - The [`From`] trait is the most flexible, useful for value _and_ reference conversions
-//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`], but allow for the
-//!   conversion to fail
+//! The traits in this module are often used as trait bounds for generic functions such that to
+//! arguments of multiple types are supported. See the documentation of each trait for examples.
 //!
-//! As a library author, you should prefer implementing [`From<T>`][`From`] or
+//! As a library author, you should always prefer implementing [`From<T>`][`From`] or
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library.  However, there are some cases
-//! where this is not possible, such as creating conversions into a type defined
-//! outside your library, so implementing [`Into`] instead of [`From`] is
-//! sometimes necessary.
+//! blanket implementation in the standard library. Only implement [`Into`] or [`TryInto`]
+//! when a conversion to a type outside the current crate is required.
 //!
 //! # Generic Implementations
 //!
@@ -99,20 +98,14 @@ use fmt;
 #[inline]
 pub const fn identity<T>(x: T) -> T { x }
 
-/// A cheap reference-to-reference conversion. Used to convert a value to a
-/// reference value within generic code.
+/// Used to do a cheap reference-to-reference conversion.
 ///
-/// `AsRef` is very similar to, but serves a slightly different purpose than,
-/// [`Borrow`].
+/// This trait is similar to [`AsMut`] which is used for converting between mutable references.
+/// If you need to do a costly conversion it is better to implement [`From`] with type
+/// `&T` or write a custom function.
 ///
-/// `AsRef` is to be used when wishing to convert to a reference of another
-/// type.
-/// `Borrow` is more related to the notion of taking the reference. It is
-/// useful when wishing to abstract over the type of reference
-/// (`&T`, `&mut T`) or allow both the referenced and owned type to be treated
-/// in the same manner.
 ///
-/// The key difference between the two traits is the intention:
+/// `AsRef` is very similar to, but serves a slightly different purpose than [`Borrow`]:
 ///
 /// - Use `AsRef` when the goal is to simply convert into a reference
 /// - Use `Borrow` when the goal is related to writing code that is agnostic to
@@ -120,7 +113,7 @@ pub const fn identity<T>(x: T) -> T { x }
 ///
 /// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use a
+/// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// [`Option<T>`]: ../../std/option/enum.Option.html
@@ -134,7 +127,12 @@ pub const fn identity<T>(x: T) -> T { x }
 ///
 /// # Examples
 ///
-/// Both [`String`] and `&str` implement `AsRef<str>`:
+/// By using trait bounds we can accept arguments of different types as long as they can be
+/// converted a the specified type `T`.
+///
+/// For example: By creating a generic function that takes an `AsRef<str>` we express that we
+/// want to accept all references that can be converted to &str as an argument.
+/// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
 ///
 /// [`String`]: ../../std/string/struct.String.html
 ///
@@ -157,12 +155,13 @@ pub trait AsRef<T: ?Sized> {
     fn as_ref(&self) -> &T;
 }
 
-/// A cheap, mutable reference-to-mutable reference conversion.
+/// Used to do a cheap mutable-to-mutable reference conversion.
 ///
-/// This trait is similar to `AsRef` but used for converting between mutable
-/// references.
+/// This trait is similar to [`AsRef`] but used for converting between mutable
+/// references. If you need to do a costly conversion it is better to
+/// implement [`From`] with type `&mut T` or write a custom function.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use a
+/// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// [`Option<T>`]: ../../std/option/enum.Option.html
@@ -176,10 +175,11 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Examples
 ///
-/// [`Box<T>`] implements `AsMut<T>`:
-///
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
-///
+/// Using `AsMut` as trait bound for a generic function we can accept all mutable references
+/// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
+/// write a function `add_one`that takes all arguments that can be converted to `&mut u64`.
+/// Because [`Box<T>`] implements `AsMut<T>` `add_one` accepts arguments of type
+/// `&mut Box<u64>` as well:
 /// ```
 /// fn add_one<T: AsMut<u64>>(num: &mut T) {
 ///     *num.as_mut() += 1;
@@ -189,7 +189,7 @@ pub trait AsRef<T: ?Sized> {
 /// add_one(&mut boxed_num);
 /// assert_eq!(*boxed_num, 1);
 /// ```
-///
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
@@ -198,29 +198,27 @@ pub trait AsMut<T: ?Sized> {
     fn as_mut(&mut self) -> &mut T;
 }
 
-/// A conversion that consumes `self`, which may or may not be expensive. The
-/// reciprocal of [`From`][From].
+/// A value-to-value conversion that consumes the input value. The
+/// opposite of [`From`].
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use
-/// [`TryInto`] or a dedicated method which returns an [`Option<T>`] or a
-/// [`Result<T, E>`].
+/// One should only implement [`Into`] if a conversion to a type outside the current crate is
+/// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
+/// implementing [`From`] automatically provides one with a implementation of [`Into`] thanks to
+/// the blanket implementation in the standard library. [`From`] cannot do these type of
+/// conversions because of Rust's orphaning rules.
 ///
-/// Library authors should not directly implement this trait, but should prefer
-/// implementing the [`From`][From] trait, which offers greater flexibility and
-/// provides an equivalent `Into` implementation for free, thanks to a blanket
-/// implementation in the standard library.
+/// **Note: This trait must not fail**. If the conversion can fail, use [`TryInto`].
 ///
 /// # Generic Implementations
 ///
-/// - [`From<T>`][From]` for U` implies `Into<U> for T`
-/// - [`into`] is reflexive, which means that `Into<T> for T` is implemented
+/// - [`From<T>`]` for U` implies `Into<U> for T`
+/// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
 ///
-/// # Implementing `Into`
+/// # Implementing `Into` for conversions to external types
 ///
-/// There is one exception to implementing `Into`, and it's kind of esoteric.
-/// If the destination type is not part of the current crate, and it uses a
-/// generic variable, then you can't implement `From` directly. For example,
-/// take this crate:
+/// If the destination type is not part of the current crate
+/// then you can't implement [`From`] directly.
+/// For example, take this code:
 ///
 /// ```compile_fail
 /// struct Wrapper<T>(Vec<T>);
@@ -230,8 +228,9 @@ pub trait AsMut<T: ?Sized> {
 ///     }
 /// }
 /// ```
-///
-/// To fix this, you can implement `Into` directly:
+/// This will fail to compile because we cannot implement a trait for a type
+/// if both the trait and the type are not defined by the current crate.
+/// This is due to Rust's orphaning rules. To bypass this, you can implement `Into` directly:
 ///
 /// ```
 /// struct Wrapper<T>(Vec<T>);
@@ -242,16 +241,21 @@ pub trait AsMut<T: ?Sized> {
 /// }
 /// ```
 ///
-/// This won't always allow the conversion: for example, `try!` and `?`
-/// always use `From`. However, in most cases, people use `Into` to do the
-/// conversions, and this will allow that.
+/// It is important to understand that `Into` does not provide a [`From`] implementation
+/// (as [`From`] does with `Into`). Therefore, you should always try to implement [`From`]
+/// and then fall back to `Into` if [`From`] can't be implemented.
 ///
-/// In almost all cases, you should try to implement `From`, then fall back
-/// to `Into` if `From` can't be implemented.
+/// Prefer using `Into` over [`From`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement `Into` can be used as well.
 ///
 /// # Examples
 ///
 /// [`String`] implements `Into<Vec<u8>>`:
+///
+/// In order to express that we want a generic function to take all arguments that can be
+/// converted to a specified type `T`, we can use a trait bound of `Into<T>`.
+/// For example: The function `is_hello` takes all arguments that can be converted into a
+/// `Vec<u8>`.
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -276,36 +280,38 @@ pub trait Into<T>: Sized {
     fn into(self) -> T;
 }
 
-/// Simple and safe type conversions in to `Self`. It is the reciprocal of
-/// `Into`.
+/// Used to do value-to-value conversions while consuming the input value. It is the reciprocal of
+/// [`Into`].
 ///
-/// This trait is useful when performing error handling as described by
-/// [the book][book] and is closely related to the `?` operator.
+/// One should always prefer implementing [`From`] over [`Into`]
+/// because implementing [`From`] automatically provides one with a implementation of [`Into`]
+/// thanks to the blanket implementation in the standard library.
 ///
-/// When constructing a function that is capable of failing the return type
-/// will generally be of the form `Result<T, E>`.
+/// Only implement [`Into`] if a conversion to a type outside the current crate is required.
+/// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
+/// See [`Into`] for more details.
 ///
-/// The `From` trait allows for simplification of error handling by providing a
-/// means of returning a single error type that encapsulates numerous possible
-/// erroneous situations.
+/// Prefer using [`Into`] over using [`From`] when specifying trait bounds on a generic function.
+/// This way, types that directly implement [`Into`] can be used as arguments as well.
 ///
-/// This trait is not limited to error handling, rather the general case for
-/// this trait would be in any type conversions to have an explicit definition
-/// of how they are performed.
+/// The [`From`] is also very useful when performing error handling. When constructing a function
+/// that is capable of failing, the return type will generally be of the form `Result<T, E>`.
+/// The `From` trait simplifies error handling by allowing a function to return a single error type
+/// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
+/// details.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use
-/// [`TryFrom`] or a dedicated method which returns an [`Option<T>`] or a
-/// [`Result<T, E>`].
+/// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
 ///
 /// # Generic Implementations
 ///
-/// - `From<T> for U` implies [`Into<U>`]` for T`
-/// - [`from`] is reflexive, which means that `From<T> for T` is implemented
+/// - [`From<T>`]` for U` implies [`Into<U>`]` for T`
+/// - [`From`] is reflexive, which means that `From<T> for T` is implemented
 ///
 /// # Examples
 ///
 /// [`String`] implements `From<&str>`:
 ///
+/// An explicit conversion from a &str to a String is done as follows:
 /// ```
 /// let string = "hello".to_string();
 /// let other_string = String::from("hello");
@@ -313,7 +319,12 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 ///
-/// An example usage for error handling:
+/// While performing error handling it is often useful to implement `From` for your own error type.
+/// By converting underlying error types to our own custom error type that encapsulates the
+/// underlying error type, we can return a single error type without losing information on the
+/// underlying cause. The '?' operator automatically converts the underlying error type to our
+/// custom error type by calling `Into<CliError>::into` which is automatically provided when
+/// implementing `From`. The compiler then infers which implementation of `Into` should be used.
 ///
 /// ```
 /// use std::fs;
