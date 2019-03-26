@@ -42,7 +42,6 @@ LL |     f(Box::new(|a| {
    |     -          ^^^ move out of `f` occurs here
    |     |
    |     borrow of `f` occurs here
-   |     borrow later used by call
 LL |         foo(f);
    |             - move occurs due to use in closure
 

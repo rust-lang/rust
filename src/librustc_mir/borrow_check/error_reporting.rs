@@ -19,6 +19,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
+use syntax::source_map::CompilerDesugaringKind;
 
 use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
@@ -154,6 +155,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         span,
                         format!("value moved{} here, in previous iteration of loop", move_msg),
                     );
+                    if Some(CompilerDesugaringKind::ForLoop) == span.compiler_desugaring_kind() {
+                        if let Ok(snippet) = self.infcx.tcx.sess.source_map()
+                            .span_to_snippet(span)
+                        {
+                            err.span_suggestion(
+                                move_span,
+                                "consider borrowing this to avoid moving it into the for loop",
+                                format!("&{}", snippet),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                     is_loop_move = true;
                 } else if move_site.traversed_back_edge {
                     err.span_label(
@@ -291,8 +304,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             format!("move occurs due to use{}", move_spans.describe())
         );
 
-        self.explain_why_borrow_contains_point(context, borrow, None)
-            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+        self.explain_why_borrow_contains_point(
+            context,
+            borrow,
+            None,
+        ).add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", Some(borrow_span));
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -329,7 +345,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(context, borrow, None)
-            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
         err.buffer(&mut self.errors_buffer);
     }
 
@@ -542,8 +558,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             ));
         }
 
-        explanation
-            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
+        explanation.add_explanation_to_diagnostic(
+            self.infcx.tcx,
+            self.mir,
+            &mut err,
+            first_borrow_desc,
+            None,
+        );
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -866,7 +887,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
-                explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+                explanation.add_explanation_to_diagnostic(
+                    self.infcx.tcx,
+                    self.mir,
+                    &mut err,
+                    "",
+                    None,
+                );
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
@@ -886,7 +913,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 format!("value captured here{}", within),
             );
 
-            explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+            explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
         }
 
         err
@@ -946,7 +973,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => {}
         }
 
-        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
 
         err.buffer(&mut self.errors_buffer);
     }
@@ -1027,7 +1054,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             _ => {}
         }
-        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+        explanation.add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
 
         let within = if borrow_spans.for_generator() {
             " by generator"
@@ -1367,7 +1394,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         self.explain_why_borrow_contains_point(context, loan, None)
-            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "");
+            .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, "", None);
 
         err.buffer(&mut self.errors_buffer);
     }
