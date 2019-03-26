@@ -17,7 +17,6 @@
 #![feature(rustc_attrs)]
 #![feature(specialization)]
 #![feature(step_trait)]
-#![cfg_attr(not(stage0), feature(stdsimd))]
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
