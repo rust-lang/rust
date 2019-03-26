@@ -97,7 +97,6 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         debug!("lookup({:?})", place);
         match *place {
             Place::Base(PlaceBase::Local(local)) => Ok(self.builder.data.rev_lookup.locals[local]),
-            Place::Base(PlaceBase::Promoted(..)) |
             Place::Base(PlaceBase::Static(..)) => {
                 Err(MoveError::cannot_move_out_of(self.loc, Static))
             }

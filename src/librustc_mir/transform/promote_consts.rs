@@ -292,9 +292,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let promoted_id = Promoted::new(self.source.promoted.len());
             let mut promoted_place = |ty, span| {
                 promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] =
-                    LocalDecl::new_return_place(ty, span);
-                Place::Base(PlaceBase::Promoted(box (promoted_id, ty)))
+                promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
+                Place::Base(
+                    PlaceBase::Static(box Static{ kind: StaticKind::Promoted(promoted_id), ty })
+                )
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {

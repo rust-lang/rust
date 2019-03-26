@@ -300,10 +300,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             &Place::Base(PlaceBase::Local(..)) => {
                 // locals are safe
             }
-            &Place::Base(PlaceBase::Promoted(_)) => {
+            &Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. })) => {
                 bug!("unsafety checking should happen before promotion")
             }
-            &Place::Base(PlaceBase::Static(box Static { def_id, ty: _ })) => {
+            &Place::Base(
+                PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. })
+            ) => {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing violations \

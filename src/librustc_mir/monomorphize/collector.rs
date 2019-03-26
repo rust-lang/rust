@@ -184,7 +184,7 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, Location, Promoted};
+use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
@@ -650,19 +650,26 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_terminator_kind(block, kind, location);
     }
 
-    fn visit_static(&mut self,
-                    static_: &mir::Static<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mir::Place<'tcx>,
                     context: mir::visit::PlaceContext<'tcx>,
                     location: Location) {
-        debug!("visiting static {:?} @ {:?}", static_.def_id, location);
+        match place {
+            Place::Base(
+                PlaceBase::Static(box Static{ kind:StaticKind::Static(def_id), .. })
+            ) => {
+                debug!("visiting static {:?} @ {:?}", def_id, location);
 
-        let tcx = self.tcx;
-        let instance = Instance::mono(tcx, static_.def_id);
-        if should_monomorphize_locally(tcx, &instance) {
-            self.output.push(MonoItem::Static(static_.def_id));
+                let tcx = self.tcx;
+                let instance = Instance::mono(tcx, *def_id);
+                if should_monomorphize_locally(tcx, &instance) {
+                    self.output.push(MonoItem::Static(*def_id));
+                }
+            }
+            _ => {}
         }
 
-        self.super_static(static_, context, location);
+        self.super_place(place, context, location);
     }
 }
 

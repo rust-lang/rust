@@ -2,7 +2,7 @@ use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
-use rustc::mir::{BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem};
+use rustc::mir::{BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem, StaticKind};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
 
@@ -338,7 +338,6 @@ fn unroll_place<'tcx, R>(
             op,
         ),
 
-        Place::Base(PlaceBase::Promoted(_)) |
         Place::Base(PlaceBase::Local(_)) | Place::Base(PlaceBase::Static(_)) => {
             let list = PlaceComponents {
                 component: place,
@@ -371,41 +370,45 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 Overlap::Disjoint
             }
         }
-        (Place::Base(PlaceBase::Static(static1)), Place::Base(PlaceBase::Static(static2))) => {
-            if static1.def_id != static2.def_id {
-                debug!("place_element_conflict: DISJOINT-STATIC");
-                Overlap::Disjoint
-            } else if tcx.is_static(static1.def_id) == Some(hir::Mutability::MutMutable) {
-                // We ignore mutable statics - they can only be unsafe code.
-                debug!("place_element_conflict: IGNORE-STATIC-MUT");
-                Overlap::Disjoint
-            } else {
-                debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
-                Overlap::EqualOrDisjoint
-            }
-        }
-        (Place::Base(PlaceBase::Promoted(p1)), Place::Base(PlaceBase::Promoted(p2))) => {
-            if p1.0 == p2.0 {
-                if let ty::Array(_, size) = p1.1.sty {
-                    if size.unwrap_usize(tcx) == 0 {
-                        // Ignore conflicts with promoted [T; 0].
-                        debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
-                        return Overlap::Disjoint;
+        (Place::Base(PlaceBase::Static(s1)), Place::Base(PlaceBase::Static(s2))) => {
+            match (&s1.kind, &s2.kind) {
+                (StaticKind::Static(def_id_1), StaticKind::Static(def_id_2)) => {
+                    if def_id_1 != def_id_2 {
+                        debug!("place_element_conflict: DISJOINT-STATIC");
+                        Overlap::Disjoint
+                    } else if tcx.is_static(*def_id_1) == Some(hir::Mutability::MutMutable) {
+                        // We ignore mutable statics - they can only be unsafe code.
+                        debug!("place_element_conflict: IGNORE-STATIC-MUT");
+                        Overlap::Disjoint
+                    } else {
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
+                        Overlap::EqualOrDisjoint
                     }
+                },
+                (StaticKind::Promoted(promoted_1), StaticKind::Promoted(promoted_2)) => {
+                    if promoted_1 == promoted_2 {
+                        if let ty::Array(_, size) = s1.ty.sty {
+                            if size.unwrap_usize(tcx) == 0 {
+                                // Ignore conflicts with promoted [T; 0].
+                                debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
+                                return Overlap::Disjoint;
+                            }
+                        }
+                        // the same promoted - base case, equal
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-PROMOTED");
+                        Overlap::EqualOrDisjoint
+                    } else {
+                        // different promoteds - base case, disjoint
+                        debug!("place_element_conflict: DISJOINT-PROMOTED");
+                        Overlap::Disjoint
+                    }
+                },
+                (_, _) => {
+                    debug!("place_element_conflict: DISJOINT-STATIC-PROMOTED");
+                    Overlap::Disjoint
                 }
-                // the same promoted - base case, equal
-                debug!("place_element_conflict: DISJOINT-OR-EQ-PROMOTED");
-                Overlap::EqualOrDisjoint
-            } else {
-                // different promoteds - base case, disjoint
-                debug!("place_element_conflict: DISJOINT-PROMOTED");
-                Overlap::Disjoint
             }
         }
-        (Place::Base(PlaceBase::Local(_)), Place::Base(PlaceBase::Promoted(_))) |
-        (Place::Base(PlaceBase::Promoted(_)), Place::Base(PlaceBase::Local(_))) |
-        (Place::Base(PlaceBase::Promoted(_)), Place::Base(PlaceBase::Static(_))) |
-        (Place::Base(PlaceBase::Static(_)), Place::Base(PlaceBase::Promoted(_))) |
         (Place::Base(PlaceBase::Local(_)), Place::Base(PlaceBase::Static(_))) |
         (Place::Base(PlaceBase::Static(_)), Place::Base(PlaceBase::Local(_))) => {
             debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");

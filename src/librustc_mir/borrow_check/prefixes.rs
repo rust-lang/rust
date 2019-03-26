@@ -26,7 +26,6 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
             }
 
             match *cursor {
-                Place::Base(PlaceBase::Promoted(_)) |
                 Place::Base(PlaceBase::Local(_)) |
                 Place::Base(PlaceBase::Static(_)) => return false,
                 Place::Projection(ref proj) => {
@@ -87,7 +86,6 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
 
         'cursor: loop {
             let proj = match *cursor {
-                Place::Base(PlaceBase::Promoted(_)) |
                 Place::Base(PlaceBase::Local(_)) | // search yielded this leaf
                 Place::Base(PlaceBase::Static(_)) => {
                     self.next = None;
