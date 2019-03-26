@@ -122,6 +122,7 @@ pub fn black_box<T>(dummy: T) -> T {
             )
         )
     )] {
+        // asm.js and emscripten do not support inline assembly
         unsafe {
             let ret = crate::ptr::read_volatile(&dummy);
             crate::mem::forget(dummy);
