@@ -1,0 +1,10 @@
+error: expected type, found `""`
+  --> $DIR/type-ascription-instead-of-variant.rs:2:25
+   |
+LL |     let _ = Option:Some("");
+   |                   -     ^^ expecting a type here because of type ascription
+   |                   |
+   |                   help: maybe you meant to write a path separator here: `::`
+
+error: aborting due to previous error
+
