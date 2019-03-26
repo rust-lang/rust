@@ -647,9 +647,6 @@ macro_rules! uninitialized_array {
 /// # Example
 ///
 /// ```
-/// #[macro_use]
-/// extern crate cfg_if;
-///
 /// cfg_if! {
 ///     if #[cfg(unix)] {
 ///         fn foo() { /* unix specific functionality */ }
