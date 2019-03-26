@@ -76,7 +76,7 @@ impl Module {
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         let (file_id, source) = self.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(file_id.original_file(db));
+        let (_, source_map) = db.raw_items_with_source_map(file_id);
         source_map.get(&source, import)
     }
 

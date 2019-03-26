@@ -90,34 +90,27 @@ fn adding_inner_items_should_not_invalidate_def_map() {
     );
 }
 
-// It would be awesome to make this work, but it's unclear how
 #[test]
-#[ignore]
-fn typing_inside_a_function_inside_a_macro_should_not_invalidate_def_map() {
+fn typing_inside_a_macro_should_not_invalidate_def_map() {
     check_def_map_is_not_recomputed(
         "
         //- /lib.rs
+        macro_rules! m {
+            ($ident:ident) => {
+                struct Foo;
+            }
+        }
         mod foo;
-
-        use crate::foo::bar::Baz;
 
         //- /foo/mod.rs
         pub mod bar;
 
         //- /foo/bar.rs
         <|>
-        salsa::query_group! {
-            trait Baz {
-                fn foo() -> i32 { 1 + 1 }
-            }
-        }
+        m!(X);
         ",
         "
-        salsa::query_group! {
-            trait Baz {
-                fn foo() -> i32 { 92 }
-            }
-        }
+        m!(Y);
         ",
     );
 }

@@ -63,7 +63,7 @@ use test_utils::tested_by;
 use crate::{
     ModuleDef, Name, Crate, Module,
     DefDatabase, Path, PathKind, HirFileId, Trait,
-    ids::{SourceItemId, SourceFileItemId, MacroCallId},
+    ids::{SourceItemId, SourceFileItemId, MacroCallId, MacroDefId},
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
 };
@@ -85,7 +85,7 @@ pub struct CrateDefMap {
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
     macros: Arena<CrateMacroId, mbe::MacroRules>,
-    public_macros: FxHashMap<Name, CrateMacroId>,
+    public_macros: FxHashMap<Name, MacroDefId>,
     macro_resolutions: FxHashMap<MacroCallId, (Crate, CrateMacroId)>,
     diagnostics: Vec<DefDiagnostic>,
 }
@@ -236,13 +236,6 @@ impl CrateDefMap {
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
-    }
-
-    pub(crate) fn resolve_macro(
-        &self,
-        macro_call_id: MacroCallId,
-    ) -> Option<(Crate, CrateMacroId)> {
-        self.macro_resolutions.get(&macro_call_id).map(|&it| it)
     }
 
     pub(crate) fn find_module_by_source(

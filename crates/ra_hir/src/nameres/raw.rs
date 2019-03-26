@@ -4,7 +4,6 @@ use std::{
 };
 
 use test_utils::tested_by;
-use ra_db::FileId;
 use ra_arena::{Arena, impl_arena_id, RawId, map::ArenaMap};
 use ra_syntax::{
     AstNode, SourceFile, AstPtr, TreeArc,
@@ -16,6 +15,10 @@ use crate::{
     ids::{SourceFileItemId, SourceFileItems},
 };
 
+/// `RawItems` is a set of top-level items in a file (except for impls).
+///
+/// It is the input to name resolution algorithm. `RawItems` are not invalidated
+/// on most edits.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
     modules: Arena<Module, ModuleData>,
@@ -32,11 +35,11 @@ pub struct ImportSourceMap {
 }
 
 impl ImportSourceMap {
-    pub(crate) fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
+    fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
         self.map.insert(import, AstPtr::new(segment))
     }
 
-    pub fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
+    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
         let file = match source {
             ModuleSource::SourceFile(file) => &*file,
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
@@ -47,39 +50,26 @@ impl ImportSourceMap {
 }
 
 impl RawItems {
-    pub(crate) fn raw_items_query(db: &impl DefDatabase, file_id: FileId) -> Arc<RawItems> {
+    pub(crate) fn raw_items_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
         db: &impl DefDatabase,
-        file_id: FileId,
+        file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_file_items: db.file_items(file_id.into()),
             source_map: ImportSourceMap::default(),
         };
-        let source_file = db.parse(file_id);
+        let source_file = db.hir_parse(file_id);
         collector.process_module(None, &*source_file);
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
-    pub(crate) fn items(&self) -> &[RawItem] {
+    pub(super) fn items(&self) -> &[RawItem] {
         &self.items
-    }
-
-    // We can't use queries during name resolution for fear of cycles, so this
-    // is a query-less variant of the above function.
-    pub(crate) fn from_source_file(source_file: &SourceFile, file_id: HirFileId) -> RawItems {
-        let source_file_items = SourceFileItems::from_source_file(source_file, file_id);
-        let mut collector = RawItemsCollector {
-            raw_items: RawItems::default(),
-            source_file_items: Arc::new(source_file_items),
-            source_map: ImportSourceMap::default(),
-        };
-        collector.process_module(None, &*source_file);
-        collector.raw_items
     }
 }
 
@@ -112,7 +102,7 @@ impl Index<Macro> for RawItems {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum RawItem {
+pub(super) enum RawItem {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -120,11 +110,11 @@ pub(crate) enum RawItem {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Module(RawId);
+pub(super) struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum ModuleData {
+pub(super) enum ModuleData {
     Declaration { name: Name, source_item_id: SourceFileItemId },
     Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
 }
@@ -135,26 +125,26 @@ impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(crate) path: Path,
-    pub(crate) alias: Option<Name>,
-    pub(crate) is_glob: bool,
-    pub(crate) is_prelude: bool,
-    pub(crate) is_extern_crate: bool,
+    pub(super) path: Path,
+    pub(super) alias: Option<Name>,
+    pub(super) is_glob: bool,
+    pub(super) is_prelude: bool,
+    pub(super) is_extern_crate: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Def(RawId);
+pub(super) struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct DefData {
-    pub(crate) source_item_id: SourceFileItemId,
-    pub(crate) name: Name,
-    pub(crate) kind: DefKind,
+pub(super) struct DefData {
+    pub(super) source_item_id: SourceFileItemId,
+    pub(super) name: Name,
+    pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum DefKind {
+pub(super) enum DefKind {
     Function,
     Struct,
     Enum,
@@ -165,16 +155,15 @@ pub(crate) enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Macro(RawId);
+pub(super) struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct MacroData {
-    pub(crate) source_item_id: SourceFileItemId,
-    pub(crate) path: Path,
-    pub(crate) name: Option<Name>,
-    pub(crate) arg: tt::Subtree,
-    pub(crate) export: bool,
+pub(super) struct MacroData {
+    pub(super) source_item_id: SourceFileItemId,
+    pub(super) path: Path,
+    pub(super) name: Option<Name>,
+    pub(super) export: bool,
 }
 
 struct RawItemsCollector {
@@ -291,18 +280,15 @@ impl RawItemsCollector {
     }
 
     fn add_macro(&mut self, current_module: Option<Module>, m: &ast::MacroCall) {
-        let (path, arg) = match (
-            m.path().and_then(Path::from_ast),
-            m.token_tree().and_then(mbe::ast_to_token_tree),
-        ) {
-            (Some(path), Some((token_tree, _token_map))) => (path, token_tree),
+        let path = match m.path().and_then(Path::from_ast) {
+            Some(it) => it,
             _ => return,
         };
 
         let name = m.name().map(|it| it.as_name());
         let source_item_id = self.source_file_items.id_of_unchecked(m.syntax());
         let export = m.has_atom_attr("macro_export");
-        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, arg, name, export });
+        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));
     }
 
