@@ -87,6 +87,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("fuchsia-zircon-sys"),
     Crate("getopts"),
     Crate("humantime"),
+    Crate("itertools"),
     Crate("jobserver"),
     Crate("kernel32-sys"),
     Crate("lazy_static"),

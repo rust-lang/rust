@@ -25,7 +25,7 @@ pub fn change_callee_function() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_callee_function() {
     callee2(1, 2)
@@ -40,7 +40,7 @@ pub fn change_argument_function() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_argument_function() {
     callee1(1, 3)
@@ -81,7 +81,7 @@ pub fn change_callee_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_callee_method() {
     let s = Struct;
@@ -98,7 +98,7 @@ pub fn change_argument_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_argument_method() {
     let s = Struct;
@@ -115,7 +115,7 @@ pub fn change_ufcs_callee_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_ufcs_callee_method() {
     let s = Struct;
@@ -132,7 +132,7 @@ pub fn change_argument_method_ufcs() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_argument_method_ufcs() {
     let s = Struct;
@@ -149,7 +149,7 @@ pub fn change_to_ufcs() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 // One might think this would be expanded in the HirBody/Mir, but it actually
 // results in slightly different Hir/Mir.
@@ -171,7 +171,7 @@ pub mod change_ufcs_callee_indirectly {
     #[cfg(not(cfail1))]
     use super::Struct2 as Struct;
 
-    #[rustc_clean(cfg="cfail2", except="HirBody,MirBuilt,MirOptimized,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
     #[rustc_clean(cfg="cfail3")]
 
 

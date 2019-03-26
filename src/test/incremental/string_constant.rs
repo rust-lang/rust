@@ -19,7 +19,7 @@ pub mod x {
 
     #[cfg(cfail2)]
     #[rustc_dirty(label="HirBody", cfg="cfail2")]
-    #[rustc_dirty(label="MirOptimized", cfg="cfail2")]
+    #[rustc_dirty(label="optimized_mir", cfg="cfail2")]
     pub fn x() {
         println!("{}", "2");
     }
@@ -29,7 +29,7 @@ pub mod y {
     use x;
 
     #[rustc_clean(label="TypeckTables", cfg="cfail2")]
-    #[rustc_clean(label="MirOptimized", cfg="cfail2")]
+    #[rustc_clean(label="optimized_mir", cfg="cfail2")]
     pub fn y() {
         x::x();
     }
@@ -39,7 +39,7 @@ pub mod z {
     use y;
 
     #[rustc_clean(label="TypeckTables", cfg="cfail2")]
-    #[rustc_clean(label="MirOptimized", cfg="cfail2")]
+    #[rustc_clean(label="optimized_mir", cfg="cfail2")]
     pub fn z() {
         y::y();
     }
