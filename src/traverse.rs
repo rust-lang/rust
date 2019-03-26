@@ -25,7 +25,8 @@ use rustc::{
     ty::{
         subst::{InternalSubsts, Subst},
         AssociatedItem, DefIdTree, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
-        Visibility, Visibility::Public,
+        Visibility,
+        Visibility::Public,
     },
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
@@ -146,8 +147,9 @@ fn diff_structure<'a, 'tcx>(
                         }
                     } else if id_mapping.add_export(o.def, n.def) {
                         // struct constructors are weird/hard - let's go shopping!
-                        if let (Ctor(_, CtorOf::Struct, _),
-                                Ctor(_, CtorOf::Struct, _)) = (o.def, n.def) {
+                        if let (Ctor(_, CtorOf::Struct, _), Ctor(_, CtorOf::Struct, _)) =
+                            (o.def, n.def)
+                        {
                             continue;
                         }
 
