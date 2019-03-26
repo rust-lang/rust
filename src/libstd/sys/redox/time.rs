@@ -137,10 +137,8 @@ impl Instant {
         false
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
-        self.t.sub_timespec(&other.t).unwrap_or_else(|_| {
-            panic!("specified instant was later than self")
-        })
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+        self.t.sub_timespec(&other.t).ok()
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
