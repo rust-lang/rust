@@ -63,7 +63,8 @@ use test_utils::tested_by;
 use crate::{
     ModuleDef, Name, Crate, Module,
     DefDatabase, Path, PathKind, HirFileId, Trait,
-    ids::{SourceItemId, SourceFileItemId, MacroCallId, MacroDefId},
+    SourceItemId, SourceFileItemId,
+    ids::{MacroCallId, MacroDefId},
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
 };

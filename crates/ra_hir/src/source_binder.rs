@@ -13,9 +13,9 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum,
+    HirDatabase, Function, Struct, Enum, SourceFileItemId,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
-    ids::{LocationCtx, SourceFileItemId},
+    ids::LocationCtx,
     expr
 };
 
