@@ -72,7 +72,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let mut rawarray = MaybeUninit::<RawArray<T>>::uninit();
     let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);
