@@ -153,9 +153,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
         TypeAliasBounds: TypeAliasBounds,
 
-        // May Depend on constants elsewhere
-        UnusedBrokenConst: UnusedBrokenConst,
-
         TrivialConstraints: TrivialConstraints,
         TypeLimits: TypeLimits::new(),
 
@@ -171,6 +168,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_late_pass(sess, false, true, box BuiltinCombinedModuleLateLintPass::new());
 
     late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+        // FIXME: Look into regression when this is used as a module lint
+        // May Depend on constants elsewhere
+        UnusedBrokenConst: UnusedBrokenConst,
+
         // Uses attr::is_used which is untracked, can't be an incremental module pass.
         UnusedAttributes: UnusedAttributes,
 
