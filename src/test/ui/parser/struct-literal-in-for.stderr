@@ -3,6 +3,14 @@ error: expected type, found `3`
    |
 LL |         x: 3
    |            ^ expecting a type here because of type ascription
+   |
+   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
+note: this expression expects an ascribed type after the colon
+  --> $DIR/struct-literal-in-for.rs:13:9
+   |
+LL |         x: 3
+   |         ^
+   = help: this might be indicative of a syntax error elsewhere
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
   --> $DIR/struct-literal-in-for.rs:14:12

@@ -1,0 +1,10 @@
+error: expected type, found `"foo"`
+  --> $DIR/type-ascription-instead-of-method.rs:2:13
+   |
+LL |     Box:new("foo".to_string())
+   |        -    ^^^^^ expecting a type here because of type ascription
+   |        |
+   |        help: maybe you meant to write a path separator here: `::`
+
+error: aborting due to previous error
+

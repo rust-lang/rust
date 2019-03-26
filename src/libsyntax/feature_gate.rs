@@ -1836,8 +1836,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
             }
             ast::ExprKind::Type(..) => {
-                gate_feature_post!(&self, type_ascription, e.span,
-                                  "type ascription is experimental");
+                // To avoid noise about type ascription in common syntax errors, only emit if it
+                // is the *only* error.
+                if self.context.parse_sess.span_diagnostic.err_count() == 0 {
+                    gate_feature_post!(&self, type_ascription, e.span,
+                                       "type ascription is experimental");
+                }
             }
             ast::ExprKind::ObsoleteInPlace(..) => {
                 // these get a hard error in ast-validation
