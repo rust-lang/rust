@@ -44,7 +44,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // Since we need to generate *something*, we just
     // use a dummy string that should make it clear
     // that something unusual is going on
-    if visited.insert(t) {
+    if !visited.insert(t) {
         output.push_str("<recursive_type>");
         return;
     }
