@@ -59,13 +59,15 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
 use test_utils::tested_by;
+use ra_syntax::ast;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, SourceItemId,
+    ModuleDef, Name, Crate, Module,
     DefDatabase, Path, PathKind, HirFileId, Trait,
     ids::MacroDefId,
     diagnostics::DiagnosticSink,
     nameres::diagnostics::DefDiagnostic,
+    AstId,
 };
 
 pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
@@ -106,7 +108,7 @@ pub(crate) struct ModuleData {
     pub(crate) children: FxHashMap<Name, CrateModuleId>,
     pub(crate) scope: ModuleScope,
     /// None for root
-    pub(crate) declaration: Option<SourceItemId>,
+    pub(crate) declaration: Option<AstId<ast::Module>>,
     /// None for inline modules.
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
@@ -225,7 +227,7 @@ impl CrateDefMap {
     pub(crate) fn find_module_by_source(
         &self,
         file_id: HirFileId,
-        decl_id: Option<SourceItemId>,
+        decl_id: Option<AstId<ast::Module>>,
     ) -> Option<CrateModuleId> {
         let (module_id, _module_data) = self.modules.iter().find(|(_module_id, module_data)| {
             if decl_id.is_some() {
@@ -429,10 +431,10 @@ impl CrateDefMap {
 
 mod diagnostics {
     use relative_path::RelativePathBuf;
-    use ra_syntax::{AstPtr, AstNode, ast};
+    use ra_syntax::{AstPtr, ast};
 
     use crate::{
-        SourceItemId, DefDatabase,
+        AstId, DefDatabase,
         nameres::CrateModuleId,
         diagnostics::{DiagnosticSink, UnresolvedModule},
 };
@@ -441,7 +443,7 @@ mod diagnostics {
     pub(super) enum DefDiagnostic {
         UnresolvedModule {
             module: CrateModuleId,
-            declaration: SourceItemId,
+            declaration: AstId<ast::Module>,
             candidate: RelativePathBuf,
         },
     }
@@ -458,10 +460,9 @@ mod diagnostics {
                     if *module != target_module {
                         return;
                     }
-                    let syntax = db.file_item(*declaration);
-                    let decl = ast::Module::cast(&syntax).unwrap();
+                    let decl = declaration.to_node(db);
                     sink.push(UnresolvedModule {
-                        file: declaration.file_id,
+                        file: declaration.file_id(),
                         decl: AstPtr::new(&decl),
                         candidate: candidate.clone(),
                     })
@@ -469,5 +470,4 @@ mod diagnostics {
             }
         }
     }
-
 }

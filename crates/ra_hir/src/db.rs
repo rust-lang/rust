@@ -4,7 +4,7 @@ use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
 use ra_db::{SourceDatabase, salsa};
 
 use crate::{
-    HirFileId, MacroDefId, SourceFileItems, SourceItemId, Crate, Module, HirInterner,
+    HirFileId, MacroDefId, AstIdMap, ErasedFileAstId, Crate, Module, HirInterner,
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
@@ -22,7 +22,7 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
 
-    #[salsa::invoke(HirFileId::hir_parse)]
+    #[salsa::invoke(HirFileId::hir_parse_query)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
@@ -34,11 +34,11 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
     #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
     fn trait_data(&self, t: Trait) -> Arc<TraitData>;
 
-    #[salsa::invoke(crate::source_id::SourceFileItems::file_items_query)]
-    fn file_items(&self, file_id: HirFileId) -> Arc<SourceFileItems>;
+    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
+    fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
-    #[salsa::invoke(crate::source_id::SourceFileItems::file_item_query)]
-    fn file_item(&self, source_item_id: SourceItemId) -> TreeArc<SyntaxNode>;
+    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
+    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;

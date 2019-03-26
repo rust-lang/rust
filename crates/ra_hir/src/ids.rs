@@ -1,5 +1,4 @@
 use std::{
-    marker::PhantomData,
     hash::{Hash, Hasher},
     sync::Arc,
 };
@@ -10,7 +9,7 @@ use ra_arena::{RawId, ArenaId, impl_arena_id};
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, SourceItemId, SourceFileItemId,
+    Module, DefDatabase, AstId, FileAstId,
 };
 
 #[derive(Debug, Default)]
@@ -22,7 +21,7 @@ pub struct HirInterner {
     consts: LocationInterner<ItemLoc<ast::ConstDef>, ConstId>,
     statics: LocationInterner<ItemLoc<ast::StaticDef>, StaticId>,
     traits: LocationInterner<ItemLoc<ast::TraitDef>, TraitId>,
-    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeId>,
+    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeAliasId>,
 }
 
 impl HirInterner {
@@ -68,7 +67,7 @@ impl HirFileId {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
                 let loc = macro_call_id.loc(db);
-                loc.source_item_id.file_id.original_file(db)
+                loc.ast_id.file_id().original_file(db)
             }
         }
     }
@@ -83,7 +82,10 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_parse(db: &impl DefDatabase, file_id: HirFileId) -> TreeArc<SourceFile> {
+    pub(crate) fn hir_parse_query(
+        db: &impl DefDatabase,
+        file_id: HirFileId,
+    ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(macro_call_id) => {
@@ -96,8 +98,7 @@ impl HirFileId {
 
 fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<TreeArc<SourceFile>> {
     let loc = macro_call_id.loc(db);
-    let syntax = db.file_item(loc.source_item_id);
-    let macro_call = ast::MacroCall::cast(&syntax).unwrap();
+    let macro_call = loc.ast_id.to_node(db);
     let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
 
     let macro_rules = db.macro_def(loc.def)?;
@@ -124,15 +125,10 @@ impl From<MacroCallId> for HirFileId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroDefId {
-    MacroByExample { source_item_id: SourceItemId },
-}
+pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 
 pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
-    let syntax_node = match id {
-        MacroDefId::MacroByExample { source_item_id } => db.file_item(source_item_id),
-    };
-    let macro_call = ast::MacroCall::cast(&syntax_node).unwrap();
+    let macro_call = id.0.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(arg)?;
     let rules = MacroRules::parse(&tt).ok()?;
@@ -148,7 +144,7 @@ impl_arena_id!(MacroCallId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
-    pub(crate) source_item_id: SourceItemId,
+    pub(crate) ast_id: AstId<ast::MacroCall>,
 }
 
 impl MacroCallId {
@@ -158,7 +154,6 @@ impl MacroCallId {
 }
 
 impl MacroCallLoc {
-    #[allow(unused)]
     pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> MacroCallId {
         db.as_ref().macros.loc2id(&self)
     }
@@ -167,26 +162,25 @@ impl MacroCallLoc {
 #[derive(Debug)]
 pub struct ItemLoc<N: AstNode> {
     pub(crate) module: Module,
-    raw: SourceItemId,
-    _ty: PhantomData<N>,
+    ast_id: AstId<N>,
 }
 
 impl<N: AstNode> PartialEq for ItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
-        self.module == other.module && self.raw == other.raw
+        self.module == other.module && self.ast_id == other.ast_id
     }
 }
 impl<N: AstNode> Eq for ItemLoc<N> {}
 impl<N: AstNode> Hash for ItemLoc<N> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.module.hash(hasher);
-        self.raw.hash(hasher);
+        self.ast_id.hash(hasher);
     }
 }
 
 impl<N: AstNode> Clone for ItemLoc<N> {
     fn clone(&self) -> ItemLoc<N> {
-        ItemLoc { module: self.module, raw: self.raw, _ty: PhantomData }
+        ItemLoc { module: self.module, ast_id: self.ast_id }
     }
 }
 
@@ -213,26 +207,19 @@ impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
 pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
     fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
-        let items = ctx.db.file_items(ctx.file_id);
-        let item_id = items.id_of(ctx.file_id, ast.syntax());
-        Self::from_source_item_id_unchecked(ctx, item_id)
+        let items = ctx.db.ast_id_map(ctx.file_id);
+        let item_id = items.ast_id(ast);
+        Self::from_ast_id(ctx, item_id)
     }
-    fn from_source_item_id_unchecked(
-        ctx: LocationCtx<&impl DefDatabase>,
-        item_id: SourceFileItemId,
-    ) -> Self {
-        let raw = SourceItemId { file_id: ctx.file_id, item_id };
-        let loc = ItemLoc { module: ctx.module, raw, _ty: PhantomData };
-
+    fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
+        let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::interner(ctx.db.as_ref()).loc2id(&loc)
     }
     fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<N>) {
         let int = Self::interner(db.as_ref());
         let loc = int.id2loc(self);
-        let syntax = db.file_item(loc.raw);
-        let ast =
-            N::cast(&syntax).unwrap_or_else(|| panic!("invalid ItemLoc: {:?}", loc.raw)).to_owned();
-        (loc.raw.file_id, ast)
+        let ast = loc.ast_id.to_node(db);
+        (loc.ast_id.file_id(), ast)
     }
     fn module(self, db: &impl DefDatabase) -> Module {
         let int = Self::interner(db.as_ref());
@@ -242,7 +229,7 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(RawId);
+pub(crate) struct FunctionId(RawId);
 impl_arena_id!(FunctionId);
 impl AstItemDef<ast::FnDef> for FunctionId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::FnDef>, Self> {
@@ -251,7 +238,7 @@ impl AstItemDef<ast::FnDef> for FunctionId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructId(RawId);
+pub(crate) struct StructId(RawId);
 impl_arena_id!(StructId);
 impl AstItemDef<ast::StructDef> for StructId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StructDef>, Self> {
@@ -260,7 +247,7 @@ impl AstItemDef<ast::StructDef> for StructId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumId(RawId);
+pub(crate) struct EnumId(RawId);
 impl_arena_id!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::EnumDef>, Self> {
@@ -269,7 +256,7 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConstId(RawId);
+pub(crate) struct ConstId(RawId);
 impl_arena_id!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::ConstDef>, Self> {
@@ -278,7 +265,7 @@ impl AstItemDef<ast::ConstDef> for ConstId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StaticId(RawId);
+pub(crate) struct StaticId(RawId);
 impl_arena_id!(StaticId);
 impl AstItemDef<ast::StaticDef> for StaticId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StaticDef>, Self> {
@@ -287,7 +274,7 @@ impl AstItemDef<ast::StaticDef> for StaticId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitId(RawId);
+pub(crate) struct TraitId(RawId);
 impl_arena_id!(TraitId);
 impl AstItemDef<ast::TraitDef> for TraitId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TraitDef>, Self> {
@@ -296,9 +283,9 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeId(RawId);
-impl_arena_id!(TypeId);
-impl AstItemDef<ast::TypeAliasDef> for TypeId {
+pub(crate) struct TypeAliasId(RawId);
+impl_arena_id!(TypeAliasId);
+impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TypeAliasDef>, Self> {
         &interner.types
     }

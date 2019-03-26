@@ -13,7 +13,7 @@ use crate::{
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::GenericParams,
     docs::{Documentation, Docs, docs_from_ast},
-    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeId},
+    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId},
     impl_block::ImplBlock,
     resolve::Resolver,
     diagnostics::DiagnosticSink,
@@ -672,7 +672,7 @@ impl Docs for Trait {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAlias {
-    pub(crate) id: TypeId,
+    pub(crate) id: TypeAliasId,
 }
 
 impl TypeAlias {

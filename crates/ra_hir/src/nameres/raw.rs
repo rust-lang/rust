@@ -12,7 +12,7 @@ use ra_syntax::{
 
 use crate::{
     DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    SourceFileItemId, SourceFileItems,
+    AstIdMap, FileAstId,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -60,7 +60,7 @@ impl RawItems {
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
-            source_file_items: db.file_items(file_id.into()),
+            source_ast_id_map: db.ast_id_map(file_id.into()),
             source_map: ImportSourceMap::default(),
         };
         let source_file = db.hir_parse(file_id);
@@ -115,8 +115,8 @@ impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
-    Declaration { name: Name, source_item_id: SourceFileItemId },
-    Definition { name: Name, source_item_id: SourceFileItemId, items: Vec<RawItem> },
+    Declaration { name: Name, ast_id: FileAstId<ast::Module> },
+    Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -138,20 +138,19 @@ impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct DefData {
-    pub(super) source_item_id: SourceFileItemId,
     pub(super) name: Name,
     pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum DefKind {
-    Function,
-    Struct,
-    Enum,
-    Const,
-    Static,
-    Trait,
-    TypeAlias,
+    Function(FileAstId<ast::FnDef>),
+    Struct(FileAstId<ast::StructDef>),
+    Enum(FileAstId<ast::EnumDef>),
+    Const(FileAstId<ast::ConstDef>),
+    Static(FileAstId<ast::StaticDef>),
+    Trait(FileAstId<ast::TraitDef>),
+    TypeAlias(FileAstId<ast::TypeAliasDef>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -160,7 +159,7 @@ impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct MacroData {
-    pub(super) source_item_id: SourceFileItemId,
+    pub(super) ast_id: FileAstId<ast::MacroCall>,
     pub(super) path: Path,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
@@ -168,7 +167,7 @@ pub(super) struct MacroData {
 
 struct RawItemsCollector {
     raw_items: RawItems,
-    source_file_items: Arc<SourceFileItems>,
+    source_ast_id_map: Arc<AstIdMap>,
     source_map: ImportSourceMap,
 }
 
@@ -200,18 +199,31 @@ impl RawItemsCollector {
                 // impls don't participate in name resolution
                 return;
             }
-            ast::ModuleItemKind::StructDef(it) => (DefKind::Struct, it.name()),
-            ast::ModuleItemKind::EnumDef(it) => (DefKind::Enum, it.name()),
-            ast::ModuleItemKind::FnDef(it) => (DefKind::Function, it.name()),
-            ast::ModuleItemKind::TraitDef(it) => (DefKind::Trait, it.name()),
-            ast::ModuleItemKind::TypeAliasDef(it) => (DefKind::TypeAlias, it.name()),
-            ast::ModuleItemKind::ConstDef(it) => (DefKind::Const, it.name()),
-            ast::ModuleItemKind::StaticDef(it) => (DefKind::Static, it.name()),
+            ast::ModuleItemKind::StructDef(it) => {
+                (DefKind::Struct(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::EnumDef(it) => {
+                (DefKind::Enum(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::FnDef(it) => {
+                (DefKind::Function(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::TraitDef(it) => {
+                (DefKind::Trait(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::TypeAliasDef(it) => {
+                (DefKind::TypeAlias(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::ConstDef(it) => {
+                (DefKind::Const(self.source_ast_id_map.ast_id(it)), it.name())
+            }
+            ast::ModuleItemKind::StaticDef(it) => {
+                (DefKind::Static(self.source_ast_id_map.ast_id(it)), it.name())
+            }
         };
         if let Some(name) = name {
             let name = name.as_name();
-            let source_item_id = self.source_file_items.id_of_unchecked(item.syntax());
-            let def = self.raw_items.defs.alloc(DefData { name, kind, source_item_id });
+            let def = self.raw_items.defs.alloc(DefData { name, kind });
             self.push_item(current_module, RawItem::Def(def))
         }
     }
@@ -221,10 +233,9 @@ impl RawItemsCollector {
             Some(it) => it.as_name(),
             None => return,
         };
-        let source_item_id = self.source_file_items.id_of_unchecked(module.syntax());
+        let ast_id = self.source_ast_id_map.ast_id(module);
         if module.has_semi() {
-            let item =
-                self.raw_items.modules.alloc(ModuleData::Declaration { name, source_item_id });
+            let item = self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id });
             self.push_item(current_module, RawItem::Module(item));
             return;
         }
@@ -232,7 +243,7 @@ impl RawItemsCollector {
         if let Some(item_list) = module.item_list() {
             let item = self.raw_items.modules.alloc(ModuleData::Definition {
                 name,
-                source_item_id,
+                ast_id,
                 items: Vec::new(),
             });
             self.process_module(Some(item), item_list);
@@ -286,9 +297,9 @@ impl RawItemsCollector {
         };
 
         let name = m.name().map(|it| it.as_name());
-        let source_item_id = self.source_file_items.id_of_unchecked(m.syntax());
+        let ast_id = self.source_ast_id_map.ast_id(m);
         let export = m.has_atom_attr("macro_export");
-        let m = self.raw_items.macros.alloc(MacroData { source_item_id, path, name, export });
+        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));
     }
 

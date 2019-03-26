@@ -48,13 +48,13 @@ mod marks;
 use crate::{
     db::{HirDatabase, DefDatabase},
     name::{AsName, KnownName},
-    source_id::SourceFileItemId,
+    source_id::{FileAstId, AstId},
 };
 
 pub use self::{
     path::{Path, PathKind},
     name::Name,
-    source_id::{SourceFileItems, SourceItemId},
+    source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, HirInterner},
     nameres::{PerNs, Namespace},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
