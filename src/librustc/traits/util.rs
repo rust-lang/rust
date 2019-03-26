@@ -292,11 +292,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
     type Item = DefId;
 
     fn next(&mut self) -> Option<DefId> {
-        let def_id = match self.stack.pop() {
-            Some(def_id) => def_id,
-            None => { return None; }
-        };
-
+        let def_id = self.stack.pop()?;
         let predicates = self.tcx.super_predicates_of(def_id);
         let visited = &mut self.visited;
         self.stack.extend(
