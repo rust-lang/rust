@@ -58,7 +58,13 @@ impl Cfg {
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
     pub fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        let name = cfg.name();
+        let name = match cfg.ident() {
+            Some(ident) => ident.name,
+            None => return Err(InvalidCfgError {
+                msg: "expected a single identifier",
+                span: cfg.span
+            }),
+        };
         match cfg.node {
             MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),
             MetaItemKind::NameValue(ref lit) => match lit.node {

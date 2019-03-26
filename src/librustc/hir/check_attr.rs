@@ -166,7 +166,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| attr.name() == "repr")
+            .filter(|attr| attr.check_name("repr"))
             .filter_map(|attr| attr.meta_item_list())
             .flatten()
             .collect();
@@ -177,7 +177,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut is_transparent = false;
 
         for hint in &hints {
-            let name = if let Some(name) = hint.name() {
+            let name = if let Some(name) = hint.ident_str() {
                 name
             } else {
                 // Invalid repr hint like repr(42). We don't check for unrecognized hints here
@@ -185,7 +185,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 continue;
             };
 
-            let (article, allowed_targets) = match &*name.as_str() {
+            let (article, allowed_targets) = match name {
                 "C" | "align" => {
                     is_c |= name == "C";
                     if target != Target::Struct &&
@@ -313,7 +313,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
-            if attr.name() == "used" && target != Target::Static {
+            if attr.check_name("used") && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
