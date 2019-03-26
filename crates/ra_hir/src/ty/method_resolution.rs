@@ -72,9 +72,9 @@ impl CrateImplBlocks {
 
             let target_ty = impl_block.target_ty(db);
 
-            if let Some(tr) = impl_block.target_trait(db) {
+            if let Some(tr) = impl_block.target_trait_ref(db) {
                 self.impls_by_trait
-                    .entry(tr)
+                    .entry(tr.trait_)
                     .or_insert_with(Vec::new)
                     .push((module.module_id, impl_id));
             } else {
@@ -185,6 +185,8 @@ impl Ty {
         //    well (in fact, the 'implements' condition could just be considered a
         //    'where Self: Trait' clause)
         candidates.retain(|(t, _m)| {
+            // FIXME construct substs of the correct length for the trait
+            //  - check in rustc whether it does anything smarter than putting variables for everything
             let trait_ref = TraitRef { trait_: *t, substs: Substs::single(self.clone()) };
             db.implements(trait_ref)
         });

@@ -56,7 +56,11 @@ impl GenericParams {
             GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Trait(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Trait(it) => {
+                // traits get the Self type as an implicit first type parameter
+                generics.params.push(GenericParam { idx: start, name: Name::self_type() });
+                generics.fill(&*it.source(db).1, start + 1);
+            }
             GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
         }
