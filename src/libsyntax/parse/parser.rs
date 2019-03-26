@@ -3208,7 +3208,7 @@ impl<'a> Parser<'a> {
                         if let Some(suffix) = suffix {
                             let mut err = self.diagnostic().struct_span_err(
                                 span,
-                                "tuple index with a suffix is invalid",
+                                "suffixes on tuple indexes are invalid",
                             );
                             err.span_label(span, format!("invalid suffix `{}`", suffix));
                             err.emit();
