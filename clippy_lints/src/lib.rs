@@ -255,6 +255,7 @@ pub mod suspicious_trait_impl;
 pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
+pub mod transmuting_null;
 pub mod trivially_copy_pass_by_ref;
 pub mod types;
 pub mod unicode;
@@ -570,6 +571,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box types::RefToMut);
     reg.register_late_lint_pass(box assertions_on_constants::AssertionsOnConstants);
     reg.register_late_lint_pass(box missing_const_for_fn::MissingConstForFn);
+    reg.register_late_lint_pass(box transmuting_null::Pass);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -841,6 +843,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
+        transmuting_null::TRANSMUTING_NULL,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
@@ -1078,6 +1081,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         swap::ALMOST_SWAPPED,
         transmute::WRONG_TRANSMUTE,
+        transmuting_null::TRANSMUTING_NULL,
         types::ABSURD_EXTREME_COMPARISONS,
         types::CAST_PTR_ALIGNMENT,
         types::CAST_REF_TO_MUT,

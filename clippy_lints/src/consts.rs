@@ -41,6 +41,8 @@ pub enum Constant {
     Repeat(Box<Constant>, u64),
     /// A tuple of constants.
     Tuple(Vec<Constant>),
+    /// A raw pointer.
+    RawPtr(u128),
     /// A literal with syntax error.
     Err(Symbol),
 }
@@ -108,6 +110,9 @@ impl Hash for Constant {
             Constant::Repeat(ref c, l) => {
                 c.hash(state);
                 l.hash(state);
+            },
+            Constant::RawPtr(u) => {
+                u.hash(state);
             },
             Constant::Err(ref s) => {
                 s.hash(state);
@@ -192,7 +197,7 @@ pub fn constant_simple<'c, 'cc>(
     constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`
+/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`.
 pub fn constant_context<'c, 'cc>(
     lcx: &LateContext<'c, 'cc>,
     tables: &'c ty::TypeckTables<'cc>,
@@ -215,7 +220,7 @@ pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
 }
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
-    /// simple constant folding: Insert an expression, get a constant or none.
+    /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
@@ -238,7 +243,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             ExprKind::Call(ref callee, ref args) => {
-                // We only handle a few const functions for now
+                // We only handle a few const functions for now.
                 if_chain! {
                     if args.is_empty();
                     if let ExprKind::Path(qpath) = &callee.node;
@@ -262,7 +267,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     }
                 }
             },
-            // TODO: add other expressions
+            // TODO: add other expressions.
             _ => None,
         }
     }
@@ -304,13 +309,13 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    /// create `Some(Vec![..])` of all constants, unless there is any
-    /// non-constant part
+    /// Create `Some(Vec![..])` of all constants, unless there is any
+    /// non-constant part.
     fn multi(&mut self, vec: &[Expr]) -> Option<Vec<Constant>> {
         vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
-    /// lookup a possibly constant expression from a ExprKind::Path
+    /// Lookup a possibly constant expression from a ExprKind::Path.
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         use rustc::mir::interpret::GlobalId;
 
@@ -334,14 +339,14 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 if ret.is_some() {
                     self.needed_resolution = true;
                 }
-                return ret;
+                ret
             },
-            _ => {},
+            // FIXME: cover all useable cases.
+            _ => None,
         }
-        None
     }
 
-    /// A block can only yield a constant if it only has one constant expression
+    /// A block can only yield a constant if it only has one constant expression.
     fn block(&mut self, block: &Block) -> Option<Constant> {
         if block.stmts.is_empty() {
             block.expr.as_ref().and_then(|b| self.expr(b))
@@ -467,7 +472,13 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
                 b.try_into().expect("invalid f64 bit representation"),
             ))),
-            // FIXME: implement other conversion
+            ty::RawPtr(type_and_mut) => {
+                if let ty::Uint(_) = type_and_mut.ty.sty {
+                    return Some(Constant::RawPtr(b));
+                }
+                None
+            },
+            // FIXME: implement other conversions.
             _ => None,
         },
         ConstValue::Slice(Scalar::Ptr(ptr), n) => match result.ty.sty {
@@ -484,7 +495,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             },
             _ => None,
         },
-        // FIXME: implement other conversions
+        // FIXME: implement other conversions.
         _ => None,
     }
 }
