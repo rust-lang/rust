@@ -714,7 +714,10 @@ if (!DOMTokenList.prototype.remove) {
                 }
                 lev_distance = Math.min(levenshtein(obj[NAME], val.name), lev_distance);
                 if (lev_distance <= MAX_LEV_DISTANCE) {
-                    lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
+                    // The generics didn't match but the name kinda did so we give it
+                    // a levenshtein distance value that isn't *this* good so it goes
+                    // into the search results but not too high.
+                    lev_distance = Math.ceil((checkGenerics(obj, val) + lev_distance) / 2);
                 } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     // We can check if the type we're looking for is inside the generics!
                     var olength = obj[GENERICS_DATA].length;
@@ -752,13 +755,26 @@ if (!DOMTokenList.prototype.remove) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
-                    var tmp = checkType(obj.type[OUTPUT_DATA], val, literalSearch);
-                    if (literalSearch === true && tmp === true) {
-                        return true;
+                    var ret = obj.type[OUTPUT_DATA];
+                    if (!obj.type[OUTPUT_DATA].length) {
+                        ret = [ret];
                     }
-                    lev_distance = Math.min(tmp, lev_distance);
-                    if (lev_distance === 0) {
-                        return 0;
+                    for (var x = 0; x < ret.length; ++x) {
+                        var r = ret[x];
+                        if (typeof r === "string") {
+                            r = [r];
+                        }
+                        var tmp = checkType(r, val, literalSearch);
+                        if (literalSearch === true) {
+                            if (tmp === true) {
+                                return true;
+                            }
+                            continue;
+                        }
+                        lev_distance = Math.min(tmp, lev_distance);
+                        if (lev_distance === 0) {
+                            return 0;
+                        }
                     }
                 }
                 return literalSearch === true ? false : lev_distance;

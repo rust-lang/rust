@@ -115,6 +115,8 @@ use util::common::time;
 
 use std::iter;
 
+pub use collect::checked_type_of;
+
 pub struct TypeAndSubsts<'tcx> {
     substs: SubstsRef<'tcx>,
     ty: Ty<'tcx>,

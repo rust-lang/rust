@@ -1195,7 +1195,7 @@ pre.rust {
 	border-top: 2px solid;
 }
 
-#titles > div:not(:last-child):not(.selected) {
+#titles > div:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
 }

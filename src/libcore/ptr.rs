@@ -2869,10 +2869,10 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
 /// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
-/// for your use case, you should include some PhantomData in your type to
+/// for your use case, you should include some [`PhantomData`] in your type to
 /// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
 /// Usually this won't be necessary; covariance is correct for most safe abstractions,
-/// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
+/// such as `Box`, `Rc`, `Arc`, `Vec`, and `LinkedList`. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 ///
 /// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
@@ -2883,6 +2883,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
+/// [`PhantomData`]: ../marker/struct.PhantomData.html
 /// [`UnsafeCell<T>`]: ../cell/struct.UnsafeCell.html
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]

@@ -446,7 +446,7 @@ impl ToJson for Type {
                 }
                 Json::Array(data)
             }
-            None => Json::Null
+            None => Json::Null,
         }
     }
 }
@@ -455,19 +455,27 @@ impl ToJson for Type {
 #[derive(Debug)]
 struct IndexItemFunctionType {
     inputs: Vec<Type>,
-    output: Option<Type>,
+    output: Option<Vec<Type>>,
 }
 
 impl ToJson for IndexItemFunctionType {
     fn to_json(&self) -> Json {
         // If we couldn't figure out a type, just write `null`.
-        if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
+        let mut iter = self.inputs.iter();
+        if match self.output {
+            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
+            None => iter.any(|ref i| i.name.is_none()),
+        } {
             Json::Null
         } else {
             let mut data = Vec::with_capacity(2);
             data.push(self.inputs.to_json());
             if let Some(ref output) = self.output {
-                data.push(output.to_json());
+                if output.len() > 1 {
+                    data.push(output.to_json());
+                } else {
+                    data.push(output[0].to_json());
+                }
             }
             Json::Array(data)
         }
@@ -5025,20 +5033,26 @@ fn make_item_keywords(it: &clean::Item) -> String {
 }
 
 fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
-    let decl = match item.inner {
-        clean::FunctionItem(ref f) => &f.decl,
-        clean::MethodItem(ref m) => &m.decl,
-        clean::TyMethodItem(ref m) => &m.decl,
-        _ => return None
+    let (all_types, ret_types) = match item.inner {
+        clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
+        clean::MethodItem(ref m) => (&m.all_types, &m.ret_types),
+        clean::TyMethodItem(ref m) => (&m.all_types, &m.ret_types),
+        _ => return None,
     };
 
-    let inputs = decl.inputs.values.iter().map(|arg| get_index_type(&arg.type_)).collect();
-    let output = match decl.output {
-        clean::FunctionRetTy::Return(ref return_type) => Some(get_index_type(return_type)),
-        _ => None
+    let inputs = all_types.iter().map(|arg| {
+        get_index_type(&arg)
+    }).filter(|a| a.name.is_some()).collect();
+    let output = ret_types.iter().map(|arg| {
+        get_index_type(&arg)
+    }).filter(|a| a.name.is_some()).collect::<Vec<_>>();
+    let output = if output.is_empty() {
+        None
+    } else {
+        Some(output)
     };
 
-    Some(IndexItemFunctionType { inputs: inputs, output: output })
+    Some(IndexItemFunctionType { inputs, output })
 }
 
 fn get_index_type(clean_type: &clean::Type) -> Type {
