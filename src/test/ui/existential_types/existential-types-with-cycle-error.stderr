@@ -1,0 +1,30 @@
+error[E0391]: cycle detected when processing `Foo`
+  --> $DIR/existential-types-with-cycle-error.rs:3:1
+   |
+LL | existential type Foo: Fn() -> Foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires processing `crash`...
+  --> $DIR/existential-types-with-cycle-error.rs:6:25
+   |
+LL |   fn crash(x: Foo) -> Foo {
+   |  _________________________^
+LL | |     x
+LL | | }
+   | |_^
+   = note: ...which again requires processing `Foo`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/existential-types-with-cycle-error.rs:1:1
+   |
+LL | / #![feature(existential_type)]
+LL | |
+LL | | existential type Foo: Fn() -> Foo;
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
