@@ -180,9 +180,8 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         let mut path = print_prefix(self)?;
 
         // Skip `::{{constructor}}` on tuple/unit structs.
-        match disambiguated_data.data {
-            DefPathData::Ctor => return Ok(path),
-            _ => {}
+        if let DefPathData::Ctor = disambiguated_data.data {
+            return Ok(path);
         }
 
         path.push(disambiguated_data.data.as_interned_str().as_str());
