@@ -1256,7 +1256,10 @@ impl Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.name(), f)
+        f.debug_struct("Thread")
+            .field("id", &self.id())
+            .field("name", &self.name())
+            .finish()
     }
 }
 
