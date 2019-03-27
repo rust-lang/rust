@@ -352,6 +352,7 @@ mod fn_keyword { }
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
 /// [`impl`]: keyword.impl.html
+/// [higher-ranked trait bounds]: https://doc.rust-lang.org/nightly/reference/trait-bounds.html#higher-ranked-trait-bounds
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
 /// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
