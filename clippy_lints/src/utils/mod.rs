@@ -27,7 +27,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::map::DisambiguatedDefPathData;
+use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
@@ -178,6 +178,13 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         let mut path = print_prefix(self)?;
+
+        // Skip `::{{constructor}}` on tuple/unit structs.
+        match disambiguated_data.data {
+            DefPathData::Ctor => return Ok(path),
+            _ => {}
+        }
+
         path.push(disambiguated_data.data.as_interned_str().as_str());
         Ok(path)
     }
