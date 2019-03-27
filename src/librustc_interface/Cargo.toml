@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_interface"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_interface"
@@ -10,7 +11,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 log = "0.4"
-rustc-rayon = "0.1.1"
+rayon = { version = "0.1.1", package = "rustc-rayon" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 scoped-tls = "1.0"
 syntax = { path = "../libsyntax" }
