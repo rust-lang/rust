@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `&str: std::convert::From<std::string::String>` is not satisfied
+  --> $DIR/into-str.rs:4:5
+   |
+LL |     foo(String::new());
+   |     ^^^ the trait `std::convert::From<std::string::String>` is not implemented for `&str`
+   |
+   = note: to coerce a `std::string::String` into a `&str`, use `&*` as a prefix
+   = note: required because of the requirements on the impl of `std::convert::Into<&str>` for `std::string::String`
+note: required by `foo`
+  --> $DIR/into-str.rs:1:1
+   |
+LL | fn foo<'a, T>(_t: T) where T: Into<&'a str> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

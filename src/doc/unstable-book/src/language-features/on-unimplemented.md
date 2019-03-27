@@ -138,3 +138,16 @@ error[E0277]: `&str` is not an iterator
   = help: the trait `std::iter::Iterator` is not implemented for `&str`
   = note: required by `std::iter::IntoIterator::into_iter`
 ```
+
+If you need to filter on multiple attributes, you can use `all`, `any` or
+`not` in the following way:
+
+```rust,compile_fail
+#[rustc_on_unimplemented(
+    on(
+        all(_Self="&str", T="std::string::String"),
+        note="you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
+    )
+)]
+pub trait From<T>: Sized { /* ... */ }
+```
