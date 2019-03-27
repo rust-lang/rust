@@ -1903,7 +1903,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, true)?;
+        self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;
         path.span = ty_span.to(self.prev_span);
 
         let ty_str = self.sess.source_map().span_to_snippet(ty_span)
@@ -2294,7 +2294,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let qself = QSelf { ty, path_span, position: path.segments.len() };
-        self.parse_path_segments(&mut path.segments, style, true)?;
+        self.parse_path_segments(&mut path.segments, style)?;
 
         Ok((qself, ast::Path { segments: path.segments, span: lo.to(self.prev_span) }))
     }
@@ -2310,11 +2310,6 @@ impl<'a> Parser<'a> {
     /// `Fn(Args)` (without disambiguator)
     /// `Fn::(Args)` (with disambiguator)
     pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
-        self.parse_path_common(style, true)
-    }
-
-    crate fn parse_path_common(&mut self, style: PathStyle, enable_warning: bool)
-                             -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod &&
                path.segments.iter().any(|segment| segment.args.is_some()) {
@@ -2329,7 +2324,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
-        self.parse_path_segments(&mut segments, style, enable_warning)?;
+        self.parse_path_segments(&mut segments, style)?;
 
         Ok(ast::Path { segments, span: lo.to(self.prev_span) })
     }
@@ -2357,11 +2352,10 @@ impl<'a> Parser<'a> {
 
     fn parse_path_segments(&mut self,
                            segments: &mut Vec<PathSegment>,
-                           style: PathStyle,
-                           enable_warning: bool)
+                           style: PathStyle)
                            -> PResult<'a, ()> {
         loop {
-            let segment = self.parse_path_segment(style, enable_warning)?;
+            let segment = self.parse_path_segment(style)?;
             if style == PathStyle::Expr {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
@@ -2389,8 +2383,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_path_segment(&mut self, style: PathStyle, enable_warning: bool)
-                          -> PResult<'a, PathSegment> {
+    fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
         let is_args_start = |token: &token::Token| match *token {
@@ -2407,13 +2400,6 @@ impl<'a> Parser<'a> {
         Ok(if style == PathStyle::Type && check_args_start(self) ||
               style != PathStyle::Mod && self.check(&token::ModSep)
                                       && self.look_ahead(1, |t| is_args_start(t)) {
-            // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-            if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
-                self.diagnostic().struct_span_warn(self.prev_span, "unnecessary path disambiguator")
-                                 .span_label(self.prev_span, "try removing `::`").emit();
-            }
-            let lo = self.span;
-
             // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
             // it isn't, then we reset the unmatched angle bracket count as we're about to start
             // parsing a new path.
@@ -2422,6 +2408,9 @@ impl<'a> Parser<'a> {
                 self.max_angle_bracket_count = 0;
             }
 
+            // Generic arguments are found - `<`, `(`, `::<` or `::(`.
+            self.eat(&token::ModSep);
+            let lo = self.span;
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
                 let (args, bindings) =
@@ -3043,7 +3032,7 @@ impl<'a> Parser<'a> {
 
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        let segment = self.parse_path_segment(PathStyle::Expr, true)?;
+        let segment = self.parse_path_segment(PathStyle::Expr)?;
         self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 
         Ok(match self.token {
