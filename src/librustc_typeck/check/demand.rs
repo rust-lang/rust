@@ -277,6 +277,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
+        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+        let mut is_struct_pat_shorthand_field = false;
+        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+            // Account for fields
+            if let Node::Expr(hir::Expr {
+                node: hir::ExprKind::Struct(_, fields, ..), ..
+            }) = parent {
+                if let Ok(src) = cm.span_to_snippet(sp) {
+                    for field in fields {
+                        if field.ident.as_str() == src.as_str() && field.is_shorthand {
+                            is_struct_pat_shorthand_field = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+
         match (&expected.sty, &checked_ty.sty) {
             (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
                 (&ty::Str, &ty::Array(arr, _)) |
@@ -341,13 +359,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some(sugg);
                         }
-                        return Some(match mutability {
-                            hir::Mutability::MutMutable => {
-                                (sp, "consider mutably borrowing here", format!("&mut {}",
-                                                                                sugg_expr))
+                        return Some(match (mutability, is_struct_pat_shorthand_field) {
+                            (hir::Mutability::MutMutable, false) => {
+                                (sp, "consider mutably borrowing here",
+                                 format!("&mut {}", sugg_expr))
                             }
-                            hir::Mutability::MutImmutable => {
+                            (hir::Mutability::MutImmutable, false) => {
                                 (sp, "consider borrowing here", format!("&{}", sugg_expr))
+                            }
+                            (hir::Mutability::MutMutable, true) => {
+                                (sp, "consider mutably borrowing here",
+                                 format!("{}: &mut {}", sugg_expr, sugg_expr))
+                            }
+                            (hir::Mutability::MutImmutable, true) => {
+                                (sp, "consider borrowing here",
+                                 format!("{}: &{}", sugg_expr, sugg_expr))
                             }
                         });
                     }
@@ -389,12 +415,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                       checked,
                                                                       sp) {
                                 // do not suggest if the span comes from a macro (#52783)
-                                if let (Ok(code),
-                                        true) = (cm.span_to_snippet(sp), sp == expr.span) {
+                                if let (Ok(code), true) = (
+                                    cm.span_to_snippet(sp),
+                                    sp == expr.span,
+                                ) {
                                     return Some((
                                         sp,
                                         "consider dereferencing the borrow",
-                                        format!("*{}", code),
+                                        if is_struct_pat_shorthand_field {
+                                            format!("{}: *{}", code, code)
+                                        } else {
+                                            format!("*{}", code)
+                                        },
                                     ));
                                 }
                             }
