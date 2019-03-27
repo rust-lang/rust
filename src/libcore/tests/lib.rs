@@ -31,6 +31,7 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(copy_within)]
+#![feature(int_error_matching)]
 
 extern crate core;
 extern crate test;
