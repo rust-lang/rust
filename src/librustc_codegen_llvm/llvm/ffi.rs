@@ -1736,7 +1736,9 @@ extern "C" {
     pub fn LLVMRustArchiveIteratorFree(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    pub fn LLVMRustGetSectionName(SI: &SectionIterator<'_>, data: &mut *const c_char) -> size_t;
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustGetSectionName(SI: &SectionIterator<'_>,
+                                  data: &mut Option<std::ptr::NonNull<c_char>>) -> size_t;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
