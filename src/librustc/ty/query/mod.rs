@@ -217,6 +217,8 @@ rustc_query_append! { [define_queries!][ <'tcx>
     },
 
     Other {
+        [] fn lint_mod: LintMod(DefId) -> (),
+
         /// Checks the attributes in the module
         [] fn check_mod_attrs: CheckModAttrs(DefId) -> (),
 

@@ -125,37 +125,72 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         store.register_early_pass(sess, false, true, box BuiltinCombinedEarlyLintPass::new());
     }
 
-    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedModuleLateLintPass, [
         HardwiredLints: HardwiredLints,
         WhileTrue: WhileTrue,
         ImproperCTypes: ImproperCTypes,
         VariantSizeDifferences: VariantSizeDifferences,
         BoxPointers: BoxPointers,
-        UnusedAttributes: UnusedAttributes,
         PathStatements: PathStatements,
+
+        // Depends on referenced function signatures in expressions
         UnusedResults: UnusedResults,
-        NonSnakeCase: NonSnakeCase,
+
         NonUpperCaseGlobals: NonUpperCaseGlobals,
         NonShorthandFieldPatterns: NonShorthandFieldPatterns,
         UnusedAllocation: UnusedAllocation,
+
+        // Depends on types used in type definitions
         MissingCopyImplementations: MissingCopyImplementations,
-        UnstableFeatures: UnstableFeatures,
-        InvalidNoMangleItems: InvalidNoMangleItems,
+
         PluginAsLibrary: PluginAsLibrary,
+
+        // Depends on referenced function signatures in expressions
         MutableTransmutes: MutableTransmutes,
+
+        // Depends on types of fields, checks if they implement Drop
         UnionsWithDropFields: UnionsWithDropFields,
-        UnreachablePub: UnreachablePub,
-        UnnameableTestItems: UnnameableTestItems::new(),
+
         TypeAliasBounds: TypeAliasBounds,
-        UnusedBrokenConst: UnusedBrokenConst,
+
         TrivialConstraints: TrivialConstraints,
         TypeLimits: TypeLimits::new(),
-        MissingDoc: MissingDoc::new(),
-        MissingDebugImplementations: MissingDebugImplementations::new(),
+
+        NonSnakeCase: NonSnakeCase,
+        InvalidNoMangleItems: InvalidNoMangleItems,
+
+        // Depends on access levels
+        UnreachablePub: UnreachablePub,
+
         ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
     ]], ['tcx]);
 
-    store.register_late_pass(sess, false, box BuiltinCombinedLateLintPass::new());
+    store.register_late_pass(sess, false, true, box BuiltinCombinedModuleLateLintPass::new());
+
+    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+        // FIXME: Look into regression when this is used as a module lint
+        // May Depend on constants elsewhere
+        UnusedBrokenConst: UnusedBrokenConst,
+
+        // Uses attr::is_used which is untracked, can't be an incremental module pass.
+        UnusedAttributes: UnusedAttributes,
+
+        // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
+        UnstableFeatures: UnstableFeatures,
+
+        // Tracks state across modules
+        UnnameableTestItems: UnnameableTestItems::new(),
+
+        // Tracks attributes of parents
+        MissingDoc: MissingDoc::new(),
+
+        // Depends on access levels
+        // FIXME: Turn the computation of types which implement Debug into a query
+        // and change this to a module lint pass
+        MissingDebugImplementations: MissingDebugImplementations::new(),
+    ]], ['tcx]);
+
+    store.register_late_pass(sess, false, false, box BuiltinCombinedLateLintPass::new());
 
     add_lint_group!(sess,
                     "nonstandard_style",

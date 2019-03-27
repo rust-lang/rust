@@ -267,11 +267,15 @@ impl LintPass for NonSnakeCase {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, cr: &hir::Crate) {
+    fn check_mod(&mut self, cx: &LateContext<'_, '_>, _: &'tcx hir::Mod, _: Span, id: hir::HirId) {
+        if id != hir::CRATE_HIR_ID {
+            return;
+        }
+
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            attr::find_by_name(&cr.attrs, "crate_name")
+            attr::find_by_name(&cx.tcx.hir().attrs_by_hir_id(hir::CRATE_HIR_ID), "crate_name")
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
                     meta.name_value_literal().and_then(|lit| {
