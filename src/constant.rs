@@ -44,11 +44,12 @@ pub fn codegen_static<'a, 'tcx: 'a>(ccx: &mut ConstantCx, def_id: DefId) {
 
 pub fn codegen_static_ref<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    static_: &Static<'tcx>,
+    def_id: DefId,
+    ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
-    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, static_.def_id);
-    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id, linkage);
-    cplace_for_dataid(fx, static_.ty, data_id)
+    let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
+    cplace_for_dataid(fx, ty, data_id)
 }
 
 pub fn trans_promoted<'a, 'tcx: 'a>(
