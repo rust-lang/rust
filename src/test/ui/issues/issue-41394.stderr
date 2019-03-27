@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-41394.rs:2:9
+  --> $DIR/issue-41394.rs:2:12
    |
 LL |     A = "" + 1
-   |         ^^^^^^
+   |         -- ^ - {integer}
+   |         |
+   |         &str
    |
    = note: an implementation of `std::ops::Add` might be missing for `&str`
 

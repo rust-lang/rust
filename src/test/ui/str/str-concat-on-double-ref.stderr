@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `&std::string::String`
-  --> $DIR/str-concat-on-double-ref.rs:4:13
+  --> $DIR/str-concat-on-double-ref.rs:4:15
    |
 LL |     let c = a + b;
-   |             ^^^^^
+   |             - ^ - &str
+   |             |
+   |             &std::string::String
    |
    = note: an implementation of `std::ops::Add` might be missing for `&std::string::String`
 

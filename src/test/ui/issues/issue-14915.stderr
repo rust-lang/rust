@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
-  --> $DIR/issue-14915.rs:6:20
+  --> $DIR/issue-14915.rs:6:22
    |
 LL |     println!("{}", x + 1);
-   |                    ^^^^^
+   |                    - ^ - {integer}
+   |                    |
+   |                    std::boxed::Box<isize>
    |
    = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
 

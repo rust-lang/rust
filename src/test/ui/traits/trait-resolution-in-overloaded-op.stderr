@@ -1,8 +1,10 @@
 error[E0369]: binary operation `*` cannot be applied to type `&T`
-  --> $DIR/trait-resolution-in-overloaded-op.rs:8:5
+  --> $DIR/trait-resolution-in-overloaded-op.rs:8:7
    |
 LL |     a * b
-   |     ^^^^^
+   |     - ^ - f64
+   |     |
+   |     &T
    |
    = note: an implementation of `std::ops::Mul` might be missing for `&T`
 

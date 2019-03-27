@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `T`
-  --> $DIR/missing_trait_impl.rs:5:13
+  --> $DIR/missing_trait_impl.rs:5:15
    |
 LL |     let z = x + y;
-   |             ^^^^^
+   |             - ^ - T
+   |             |
+   |             T
    |
    = note: `T` might need a bound for `std::ops::Add`
 

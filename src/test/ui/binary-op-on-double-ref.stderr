@@ -1,8 +1,10 @@
 error[E0369]: binary operation `%` cannot be applied to type `&&{integer}`
-  --> $DIR/binary-op-on-double-ref.rs:4:9
+  --> $DIR/binary-op-on-double-ref.rs:4:11
    |
 LL |         x % 2 == 0
-   |         ^^^^^
+   |         - ^ - {integer}
+   |         |
+   |         &&{integer}
    |
    = help: `%` can be used on '{integer}', you can dereference `x`: `*x`
 

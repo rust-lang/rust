@@ -327,10 +327,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             err.emit();
                         }
                         IsAssign::No => {
-                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
+                            let mut err = struct_span_err!(self.tcx.sess, op.span, E0369,
                                 "binary operation `{}` cannot be applied to type `{}`",
                                 op.node.as_str(),
                                 lhs_ty);
+
+                            err.span_label(lhs_expr.span, lhs_ty.to_string());
+                            err.span_label(rhs_expr.span, rhs_ty.to_string());
+
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {

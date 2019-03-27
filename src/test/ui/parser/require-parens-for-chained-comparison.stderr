@@ -38,10 +38,12 @@ LL |     false == 0 < 2;
               found type `{integer}`
 
 error[E0369]: binary operation `<` cannot be applied to type `fn() {f::<_>}`
-  --> $DIR/require-parens-for-chained-comparison.rs:13:5
+  --> $DIR/require-parens-for-chained-comparison.rs:13:6
    |
 LL |     f<X>();
-   |     ^^^
+   |     -^- X
+   |     |
+   |     fn() {f::<_>}
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() {f::<_>}`
 
