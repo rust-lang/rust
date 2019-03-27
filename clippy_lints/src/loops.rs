@@ -1490,21 +1490,31 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 
                 if visitor2.state == VarState::Warn {
                     if let Some(name) = visitor2.name {
-                        span_lint(
+                        let mut applicability = Applicability::MachineApplicable;
+                        span_lint_and_sugg(
                             cx,
                             EXPLICIT_COUNTER_LOOP,
                             expr.span,
-                            &format!(
-                                "the variable `{0}` is used as a loop counter. Consider using `for ({0}, \
-                                 {1}) in {2}.enumerate()` or similar iterators",
+                            &format!("the variable `{}` is used as a loop counter.", name),
+                            "consider using",
+                            format!(
+                                "for ({}, {}) in {}.enumerate()",
                                 name,
-                                snippet(cx, pat.span, "_"),
+                                snippet_with_applicability(cx, pat.span, "item", &mut applicability),
                                 if higher::range(cx, arg).is_some() {
-                                    format!("({})", snippet(cx, arg.span, "_"))
+                                    format!(
+                                        "({})",
+                                        snippet_with_applicability(cx, arg.span, "_", &mut applicability)
+                                    )
                                 } else {
-                                    format!("{}", sugg::Sugg::hir(cx, arg, "_").maybe_par())
+                                    format!(
+                                        "{}",
+                                        sugg::Sugg::hir_with_applicability(cx, arg, "_", &mut applicability)
+                                            .maybe_par()
+                                    )
                                 }
                             ),
+                            applicability,
                         );
                     }
                 }
