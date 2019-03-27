@@ -130,6 +130,22 @@ LL |         || (0 = 0);
    = note: expected type `bool`
               found type `()`
 
-error: aborting due to 11 previous errors
+error[E0070]: invalid left-hand side expression
+  --> $DIR/assignment-expected-bool.rs:31:20
+   |
+LL |     let _: usize = 0 = 0;
+   |                    ^^^^^ left-hand of expression not valid
 
-For more information about this error, try `rustc --explain E0308`.
+error[E0308]: mismatched types
+  --> $DIR/assignment-expected-bool.rs:31:20
+   |
+LL |     let _: usize = 0 = 0;
+   |                    ^^^^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error: aborting due to 13 previous errors
+
+Some errors occurred: E0070, E0308.
+For more information about an error, try `rustc --explain E0070`.
