@@ -34,7 +34,7 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-/// The `EvalContext` is only meant to be used to do field and index projections into constants for
+/// The `InterpretCx` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
