@@ -25,6 +25,7 @@ libc = "0.2.53"
 tempfile = "3.0.7"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 indexmap = "1.0.2"
+object = "0.11.0"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
