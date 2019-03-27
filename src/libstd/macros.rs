@@ -210,7 +210,8 @@ macro_rules! eprintln {
     })
 }
 
-/// Prints the value of a given expression for quick and dirty debugging.
+/// Prints and returns the value of a given expression for quick and dirty
+/// debugging.
 ///
 /// An example:
 ///
