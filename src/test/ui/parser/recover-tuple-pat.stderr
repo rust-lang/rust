@@ -1,0 +1,24 @@
+error: expected pattern, found `.`
+  --> $DIR/recover-tuple-pat.rs:5:13
+   |
+LL |         (1, .=., 4) => { let _: usize = ""; }
+   |             ^ expected pattern
+
+error: expected pattern, found `.`
+  --> $DIR/recover-tuple-pat.rs:8:10
+   |
+LL |         (.=., 4) => {}
+   |          ^ expected pattern
+
+error[E0308]: mismatched types
+  --> $DIR/recover-tuple-pat.rs:5:41
+   |
+LL |         (1, .=., 4) => { let _: usize = ""; }
+   |                                         ^^ expected usize, found reference
+   |
+   = note: expected type `usize`
+              found type `&'static str`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
