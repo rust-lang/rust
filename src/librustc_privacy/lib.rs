@@ -1790,8 +1790,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
         current_item: hir::DUMMY_HIR_ID,
         empty_tables: &empty_tables,
     };
-    let (module, span, node_id) = tcx.hir().get_module(module_def_id);
-    let hir_id = tcx.hir().node_to_hir_id(node_id);
+    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
     intravisit::walk_mod(&mut visitor, module, hir_id);
 
     // Check privacy of explicitly written types and traits as well as

@@ -469,6 +469,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] UnsafetyCheckResult(DefId),
     [] UnsafeDeriveOnReprPacked(DefId),
 
+    [] LintMod(DefId),
     [] CheckModAttrs(DefId),
     [] CheckModLoops(DefId),
     [] CheckModUnstableApiUsage(DefId),
