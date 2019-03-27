@@ -1,11 +1,11 @@
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyVid};
 
 use std::cmp;
 use std::marker::PhantomData;
 use std::u32;
-use rustc_data_structures::fx::FxHashMap;
+use std::ops::Range;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
@@ -57,8 +57,6 @@ pub enum TypeVariableOrigin {
     LatticeVariable(Span),
     Generalized(ty::TyVid),
 }
-
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
 
 struct TypeVariableData {
     origin: TypeVariableOrigin,
@@ -292,24 +290,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.commit(sub_snapshot);
     }
 
-    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
-    /// ty-variables created during the snapshot, and the values
-    /// `{V2}` are the root variables that they were unified with,
-    /// along with their origin.
-    pub fn types_created_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
-        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
-
-        actions_since_snapshot
-            .iter()
-            .filter_map(|action| match action {
-                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
-                _ => None,
-            })
-            .map(|vid| {
-                let origin = self.values.get(vid.index as usize).origin.clone();
-                (vid, origin)
-            })
-            .collect()
+    /// Returns a range of the type variables created during the snapshot.
+    pub fn vars_since_snapshot(
+        &mut self,
+        s: &Snapshot<'tcx>,
+    ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
+        let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
+        (range.start.vid..range.end.vid, (range.start.vid.index..range.end.vid.index).map(|index| {
+            self.values.get(index as usize).origin.clone()
+        }).collect())
     }
 
     /// Finds the set of type variables that existed *before* `s`

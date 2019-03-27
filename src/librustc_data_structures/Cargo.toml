@@ -10,7 +10,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-ena = "0.11"
+ena = "0.13"
 log = "0.4"
 jobserver_crate = { version = "0.1", package = "jobserver" }
 lazy_static = "1"
