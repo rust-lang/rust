@@ -929,7 +929,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();
             FatalError.raise()
         }
-        "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
+        "path" => token::NtPath(panictry!(p.parse_path(PathStyle::Type))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
         "lifetime" => if p.check_lifetime() {
