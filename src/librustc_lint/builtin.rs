@@ -1360,6 +1360,7 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
         promoted: None
     };
     // trigger the query once for all constants since that will already report the errors
+    // FIXME: Use ensure here
     let _ = cx.tcx.const_eval(param_env.and(cid));
 }
 
