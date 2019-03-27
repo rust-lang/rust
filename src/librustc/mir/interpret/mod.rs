@@ -344,7 +344,7 @@ impl<'tcx> AllocMap<'tcx> {
         }
     }
 
-    /// Returns `None` in case the `AllocId` is dangling. An `EvalContext` can still have a
+    /// Returns `None` in case the `AllocId` is dangling. An `InterpretCx` can still have a
     /// local `Allocation` for that `AllocId`, but having such an `AllocId` in a constant is
     /// illegal and will likely ICE.
     /// This function exists to allow const eval to detect the difference between evaluation-
