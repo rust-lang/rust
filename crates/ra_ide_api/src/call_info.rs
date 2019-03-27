@@ -40,13 +40,8 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     } else if num_params > 1 {
         // Count how many parameters into the call we are.
         if let Some(arg_list) = calling_node.arg_list() {
-            // Number of arguments specified at the caller site
-            let mut num_args_of_call = arg_list.args().count();
-
-            // If we are calling a method account for the `self` argument.
-            if has_self {
-                num_args_of_call = num_args_of_call + 1;
-            }
+            // Number of arguments specified at the call site
+            let num_args_at_callsite = arg_list.args().count();
 
             let arg_list_range = arg_list.syntax().range();
             if !arg_list_range.contains_inclusive(position.offset) {
@@ -54,12 +49,18 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 return None;
             }
 
-            let param = arg_list
-                .args()
-                .position(|arg| arg.syntax().range().contains(position.offset))
-                .or(Some(num_params - 1))
-                .min(Some(num_args_of_call))
-                .unwrap();
+            let mut param = std::cmp::min(
+                num_args_at_callsite,
+                arg_list
+                    .args()
+                    .take_while(|arg| arg.syntax().range().end() < position.offset)
+                    .count(),
+            );
+
+            // If we are in a method account for `self`
+            if has_self {
+                param = param + 1;
+            }
 
             call_info.active_parameter = Some(param);
         }
