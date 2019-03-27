@@ -21,7 +21,10 @@ use crate::time::SystemTime;
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
 /// that the file contains internally.
 ///
-/// Files are automatically closed when they go out of scope.
+/// Files are automatically closed when they go out of scope.  All errors are
+/// ignored due to complications with correctly handling them.  For instance, an
+/// error in closing a file could mean that closing failed, or that the file had
+/// an error before closing that was only unearthed by closing the file.
 ///
 /// # Examples
 ///
