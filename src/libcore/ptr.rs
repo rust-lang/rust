@@ -296,7 +296,7 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp = MaybeUninit::<T>::uninit();
 
     // Perform the swap
     copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
@@ -388,7 +388,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t = mem::MaybeUninit::<Block>::uninitialized();
+        let mut t = mem::MaybeUninit::<Block>::uninit();
         let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
@@ -403,7 +403,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
+        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninit();
         let rem = len - i;
 
         let t = t.as_mut_ptr() as *mut u8;
@@ -571,9 +571,9 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp = MaybeUninit::<T>::uninit();
     copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-    tmp.into_initialized()
+    tmp.assume_init()
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -638,11 +638,11 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp = MaybeUninit::<T>::uninit();
     copy_nonoverlapping(src as *const u8,
                         tmp.as_mut_ptr() as *mut u8,
                         mem::size_of::<T>());
-    tmp.into_initialized()
+    tmp.assume_init()
 }
 
 /// Overwrites a memory location with the given value without reading or
