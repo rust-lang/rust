@@ -1334,7 +1334,6 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` overlap.
 fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
-    use crate::cmp::Ordering;
     let src_usize = src as usize;
     let dst_usize = dst as usize;
     let size = mem::size_of::<T>().checked_mul(count).unwrap();
