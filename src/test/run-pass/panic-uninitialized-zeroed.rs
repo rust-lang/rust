@@ -36,7 +36,7 @@ fn main() {
 
         assert_eq!(
             panic::catch_unwind(|| {
-                mem::MaybeUninit::<!>::uninitialized().into_initialized()
+                mem::MaybeUninit::<!>::uninit().assume_init()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
                 s == "Attempted to instantiate uninhabited type !"
             })),
@@ -63,7 +63,7 @@ fn main() {
 
         assert_eq!(
             panic::catch_unwind(|| {
-                mem::MaybeUninit::<Foo>::uninitialized().into_initialized()
+                mem::MaybeUninit::<Foo>::uninit().assume_init()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
                 s == "Attempted to instantiate uninhabited type Foo"
             })),
@@ -90,7 +90,7 @@ fn main() {
 
         assert_eq!(
             panic::catch_unwind(|| {
-                mem::MaybeUninit::<Bar>::uninitialized().into_initialized()
+                mem::MaybeUninit::<Bar>::uninit().assume_init()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
                 s == "Attempted to instantiate uninhabited type Bar"
             })),

@@ -60,7 +60,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = x % base;               // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -72,7 +72,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = zero - (x % base);      // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
