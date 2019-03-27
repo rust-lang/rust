@@ -740,4 +740,7 @@ impl server::Span for Rustc<'_> {
     fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {
         span.with_ctxt(at.ctxt())
     }
+    fn source_text(&mut self,  span: Self::Span) -> Option<String> {
+        self.sess.source_map().span_to_snippet(span).ok()
+    }
 }

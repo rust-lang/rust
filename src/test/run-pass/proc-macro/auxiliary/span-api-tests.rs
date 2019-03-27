@@ -33,3 +33,14 @@ pub fn assert_source_file(input: TokenStream) -> TokenStream {
 
     "".parse().unwrap()
 }
+
+#[proc_macro]
+pub fn macro_stringify(input: TokenStream) -> TokenStream {
+    let mut tokens = input.into_iter();
+    let first_span = tokens.next().expect("first token").span();
+    let last_span = tokens.last().map(|x| x.span()).unwrap_or(first_span);
+    let span = first_span.join(last_span).expect("joined span");
+    let src = span.source_text().expect("source_text");
+    TokenTree::Literal(Literal::string(&src)).into()
+}
+
