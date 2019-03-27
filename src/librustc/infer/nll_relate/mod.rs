@@ -28,6 +28,7 @@ use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
+use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
