@@ -35,9 +35,9 @@ pub use self::UserIdentifiedItem::*;
 pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
-use abort_on_err;
+use crate::abort_on_err;
 
-use source_name;
+use crate::source_name;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
@@ -191,7 +191,7 @@ impl PpSourceMode {
         tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         f: F
     ) -> A
-        where F: FnOnce(&dyn HirPrinterSupport, &hir::Crate) -> A
+        where F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A
     {
         match *self {
             PpmNormal => {
@@ -296,7 +296,7 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
 
 impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
-    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested)
               -> io::Result<()> {
         if let Some(tcx) = self.tcx {
             pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
@@ -322,13 +322,13 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
 }
 
 impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
-    fn pre(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
+    fn pre(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
-    fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
+    fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust::AnnNode::Ident(_) |
             pprust::AnnNode::Name(_) => Ok(()),
@@ -373,7 +373,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
 }
 
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
-    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested)
               -> io::Result<()> {
         if let Some(ref tcx) = self.tcx {
             pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
@@ -381,13 +381,13 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             Ok(())
         }
     }
-    fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
+    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust_hir::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
-    fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
+    fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust_hir::AnnNode::Name(_) => Ok(()),
             pprust_hir::AnnNode::Item(item) => {
@@ -434,7 +434,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 }
 
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
-    fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
+    fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
                 s.s.space()?;
@@ -476,7 +476,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
 }
 
 impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
-    fn nested(&self, state: &mut pprust_hir::State, nested: pprust_hir::Nested)
+    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested)
               -> io::Result<()> {
         let old_tables = self.tables.get();
         if let pprust_hir::Nested::Body(id) = nested {
@@ -486,13 +486,13 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         self.tables.set(old_tables);
         Ok(())
     }
-    fn pre(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
+    fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust_hir::AnnNode::Expr(_) => s.popen(),
             _ => Ok(()),
         }
     }
-    fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
+    fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) -> io::Result<()> {
         match node {
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
@@ -580,7 +580,11 @@ impl UserIdentifiedItem {
         }
     }
 
-    fn to_one_node_id(self, user_option: &str, sess: &Session, map: &hir_map::Map) -> ast::NodeId {
+    fn to_one_node_id(self,
+                      user_option: &str,
+                      sess: &Session,
+                      map: &hir_map::Map<'_>)
+                      -> ast::NodeId {
         let fail_because = |is_wrong_because| -> ast::NodeId {
             let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
                                    {}, which {}",
