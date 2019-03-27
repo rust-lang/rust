@@ -1,0 +1,9 @@
+[package]
+edition = "2018"
+name = "ra_prof"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+publish = false
+
+[dependencies]
+lazy_static = "1.3.0"
