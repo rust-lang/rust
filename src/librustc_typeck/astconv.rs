@@ -981,7 +981,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let mut projection_bounds = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        let mut bound_trait_refs = Vec::with_capacity(trait_bounds.len());
         let (principal, potential_assoc_types) = self.instantiate_poly_trait_ref(
             &trait_bounds[0],
             dummy_self,
@@ -989,6 +988,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         );
         debug!("principal: {:?}", principal);
 
+        let mut bound_trait_refs = Vec::with_capacity(trait_bounds.len());
         for trait_bound in trait_bounds[1..].iter().rev() {
             // Sanity check for non-principal trait bounds.
             let (tr, _) = self.instantiate_poly_trait_ref(
@@ -1009,7 +1009,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 "only auto traits can be used as additional traits in a trait object");
             err.span_label(extra_trait.span, "non-auto additional trait");
             if extra_trait.span != extra_trait.top_level_span {
-                err.span_label(extra_trait.top_level_span, "expanded from this alias");
+                err.span_label(extra_trait.top_level_span, "expanded from this trait alias");
             }
             err.emit();
         }

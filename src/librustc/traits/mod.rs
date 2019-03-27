@@ -1044,7 +1044,7 @@ fn vtable_methods<'a, 'tcx>(
     )
 }
 
-impl<'tcx, O> Obligation<'tcx,O> {
+impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(cause: ObligationCause<'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                predicate: O)

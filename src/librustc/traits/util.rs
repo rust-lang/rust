@@ -107,7 +107,7 @@ pub fn elaborate_predicates<'cx, 'gcx, 'tcx>(
 {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
-    Elaborator { stack: predicates, visited: visited }
+    Elaborator { stack: predicates, visited }
 }
 
 impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
@@ -286,19 +286,21 @@ pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
     let mut items: Vec<_> =
         trait_refs
             .into_iter()
-            .map(|(tr, sp)| TraitRefExpansionInfo {
-                top_level_trait_ref: tr.clone(),
-                top_level_span: sp,
-                trait_ref: tr,
-                span: sp,
+            .map(|(trait_ref, span)| TraitRefExpansionInfo {
+                top_level_trait_ref: trait_ref.clone(),
+                top_level_span: span,
+                trait_ref,
+                span,
             })
             .collect();
     items.retain(|item| visited.insert(&item.trait_ref.to_predicate()));
-    TraitRefExpander { stack: items, visited: visited, }
+    TraitRefExpander { stack: items, visited }
 }
 
 impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
-    // Returns `true` if `item` refers to a trait.
+    /// If `item` refers to a trait alias, adds the components of the trait alias to the stack,
+    /// and returns `false`.
+    /// If `item` refers to an ordinary trait, simply returns `true`.
     fn push(&mut self, item: &TraitRefExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
 
@@ -306,27 +308,27 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
             return true;
         }
 
-        // Get predicates declared on the trait.
+        // Get components of the trait alias.
         let predicates = tcx.super_predicates_of(item.trait_ref.def_id());
 
         let mut items: Vec<_> = predicates.predicates
             .iter()
             .rev()
-            .filter_map(|(pred, sp)| {
+            .filter_map(|(pred, span)| {
                 pred.subst_supertrait(tcx, &item.trait_ref)
                     .to_opt_poly_trait_ref()
                     .map(|trait_ref|
                         TraitRefExpansionInfo {
                             trait_ref,
-                            span: *sp,
+                            span: *span,
                             ..*item
                         }
                     )
             })
             .collect();
 
-        debug!("expand_trait_refs: trait_ref={:?} items={:?}",
-                item.trait_ref, items);
+        debug!("trait_ref_expander: trait_ref={:?} items={:?}",
+               item.trait_ref, items);
 
         // Only keep those items that we haven't already seen.
         items.retain(|i| self.visited.insert(&i.trait_ref.to_predicate()));
@@ -344,24 +346,17 @@ impl<'cx, 'gcx, 'tcx> Iterator for TraitRefExpander<'cx, 'gcx, 'tcx> {
     }
 
     fn next(&mut self) -> Option<TraitRefExpansionInfo<'tcx>> {
-        loop {
-            let item = self.stack.pop();
-            match item {
-                Some(item) => {
-                    if self.push(&item) {
-                        return Some(item);
-                    }
-                }
-                None => {
-                    return None;
-                }
+        while let Some(item) = self.stack.pop() {
+            if self.push(&item) {
+                return Some(item);
             }
         }
+        None
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Iterator over def-ids of supertraits
+// Iterator over def-IDs of supertraits
 ///////////////////////////////////////////////////////////////////////////
 
 pub struct SupertraitDefIds<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
