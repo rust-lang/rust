@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, Machine, EvalContext, ValueVisitor, MPlaceTy,
+    OpTy, Machine, InterpretCx, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! validation_failure {
@@ -153,7 +153,7 @@ struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a
     path: Vec<PathElem>,
     ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
     const_mode: bool,
-    ecx: &'rt EvalContext<'a, 'mir, 'tcx, M>,
+    ecx: &'rt InterpretCx<'a, 'mir, 'tcx, M>,
 }
 
 impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, 'mir, 'tcx, M> {
@@ -224,7 +224,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     type V = OpTy<'tcx, M::PointerTag>;
 
     #[inline(always)]
-    fn ecx(&self) -> &EvalContext<'a, 'mir, 'tcx, M> {
+    fn ecx(&self) -> &InterpretCx<'a, 'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -587,7 +587,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     /// This function checks the data at `op`. `op` is assumed to cover valid memory if it
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
