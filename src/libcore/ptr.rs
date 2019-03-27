@@ -2523,26 +2523,26 @@ impl<T: ?Sized> Eq for *mut T {}
 /// fn main() {
 ///     let wrapper = Wrapper { member: 10 };
 ///
-///     // Pointers are equal address
+///     // Pointers have equal addresses.
 ///     assert!(std::ptr::eq(
 ///         &wrapper as *const Wrapper as *const u8,
 ///         &wrapper.member as *const i32 as *const u8
 ///     ));
 ///
-///     // Objects have equal addresses, but `Trait` has different implementations
+///     // Objects have equal addresses, but `Trait` has different implementations.
 ///     assert!(!std::ptr::eq(
-///         &wrapper as &Trait,
-///         &wrapper.member as &Trait,
+///         &wrapper as &dyn Trait,
+///         &wrapper.member as &dyn Trait,
 ///     ));
 ///     assert!(!std::ptr::eq(
-///         &wrapper as &Trait as *const Trait,
-///         &wrapper.member as &Trait as *const Trait,
+///         &wrapper as &dyn Trait as *const dyn Trait,
+///         &wrapper.member as &dyn Trait as *const dyn Trait,
 ///     ));
 ///
-///     // Converting the reference to a `*const u8` compares by address
+///     // Converting the reference to a `*const u8` compares by address.
 ///     assert!(std::ptr::eq(
-///         &wrapper as &Trait as *const Trait as *const u8,
-///         &wrapper.member as &Trait as *const Trait as *const u8,
+///         &wrapper as &dyn Trait as *const dyn Trait as *const u8,
+///         &wrapper.member as &dyn Trait as *const dyn Trait as *const u8,
 ///     ));
 /// }
 /// ```
