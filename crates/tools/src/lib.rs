@@ -115,7 +115,11 @@ pub fn install_rustfmt() -> Result<()> {
 }
 
 pub fn install_format_hook() -> Result<()> {
-    let result_path = Path::new("./.git/hooks/pre-commit");
+    let result_path = Path::new(if cfg!(windows) {
+        "./.git/hooks/pre-commit.exe"
+    } else {
+        "./.git/hooks/pre-commit"
+    });
     if !result_path.exists() {
         run("cargo build --package tools --bin pre-commit", ".")?;
         if cfg!(windows) {
