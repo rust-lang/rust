@@ -1,8 +1,9 @@
+use log::debug;
+use rustc::dep_graph::DepNode;
 use rustc::session::Session;
 use rustc::util::common::{ProfQDumpParams, ProfileQueriesMsg, profq_msg, profq_set_chan};
 use std::sync::mpsc::{Receiver};
 use std::io::{Write};
-use rustc::dep_graph::{DepNode};
 use std::time::{Duration, Instant};
 
 pub mod trace;
