@@ -11,7 +11,7 @@ use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    EvalContext, PlaceTy, MPlaceTy, OpTy, ImmTy, Pointer, MemoryKind,
+    InterpretCx, PlaceTy, MPlaceTy, OpTy, ImmTy, Pointer, MemoryKind,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -95,11 +95,11 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
     /// Whether to enforce the validity invariant
-    fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool;
+    fn enforce_validity(ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -112,7 +112,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
     fn find_fn(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
@@ -122,7 +122,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: PlaceTy<'tcx, Self::PointerTag>,
@@ -156,7 +156,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
     fn ptr_op(
-        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
@@ -164,13 +164,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
     /// Adds the tag for a newly allocated pointer.
     fn tag_new_allocation(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
     ) -> Pointer<Self::PointerTag>;
@@ -180,7 +180,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
     #[inline]
     fn tag_dereference(
-        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
         place: MPlaceTy<'tcx, Self::PointerTag>,
         _mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
@@ -190,7 +190,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Executes a retagging operation
     #[inline]
     fn retag(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
@@ -199,12 +199,12 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Called immediately before a new stack frame got pushed
     fn stack_push(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
     ) -> EvalResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
     ) -> EvalResult<'tcx>;
 }

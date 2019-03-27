@@ -3,9 +3,9 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
-use super::{EvalContext, Machine, MemoryKind};
+use super::{InterpretCx, Machine, MemoryKind};
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///
