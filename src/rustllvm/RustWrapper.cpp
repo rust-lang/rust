@@ -723,12 +723,12 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
     uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMMetadataRef Discriminator,
-    LLVMMetadataRef Elements) {
+    LLVMMetadataRef Elements, const char *UniqueId) {
 #if LLVM_VERSION_GE(7, 0)
   return wrap(Builder->createVariantPart(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
-      DINodeArray(unwrapDI<MDTuple>(Elements))));
+      DINodeArray(unwrapDI<MDTuple>(Elements)), UniqueId));
 #else
   abort();
 #endif

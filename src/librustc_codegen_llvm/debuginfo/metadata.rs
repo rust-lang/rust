@@ -188,6 +188,17 @@ impl TypeMap<'ll, 'tcx> {
         let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
         UniqueTypeId(interner_key)
     }
+
+    // Get the unique type id string for an enum variant part.
+    // Variant parts are not types and shouldn't really have their own id,
+    // but it makes set_members_of_composite_type() simpler.
+    fn get_unique_type_id_str_of_enum_variant_part<'a>(&mut self,
+                                                       enum_type_id: UniqueTypeId) -> &str {
+        let variant_part_type_id = format!("{}_variant_part",
+                                           self.get_unique_type_id_as_string(enum_type_id));
+        let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
+        self.unique_id_interner.get(interner_key)
+    }
 }
 
 // A description of some recursive type. It can either be already finished (as
@@ -266,7 +277,6 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
                                               unfinished_type,
-                                              metadata_stub,
                                               member_holding_stub,
                                               member_descriptions);
                 return MetadataCreationResult::new(metadata_stub, true);
@@ -1216,7 +1226,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 set_members_of_composite_type(cx,
                                               self.enum_type,
                                               variant_type_metadata,
-                                              variant_type_metadata,
                                               member_descriptions);
                 vec![
                     MemberDescription {
@@ -1257,7 +1266,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                     set_members_of_composite_type(cx,
                                                   self.enum_type,
-                                                  variant_type_metadata,
                                                   variant_type_metadata,
                                                   member_descriptions);
                     MemberDescription {
@@ -1300,7 +1308,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                     set_members_of_composite_type(cx,
                                                   self.enum_type,
-                                                  variant_type_metadata,
                                                   variant_type_metadata,
                                                   variant_member_descriptions);
 
@@ -1361,7 +1368,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         set_members_of_composite_type(cx,
                                                       self.enum_type,
-                                                      variant_type_metadata,
                                                       variant_type_metadata,
                                                       member_descriptions);
 
@@ -1691,6 +1697,11 @@ fn prepare_enum_metadata(
         },
     };
 
+    let variant_part_unique_type_id_str = SmallCStr::new(
+        debug_context(cx).type_map
+            .borrow_mut()
+            .get_unique_type_id_str_of_enum_variant_part(unique_type_id)
+    );
     let empty_array = create_DIArray(DIB(cx), &[]);
     let variant_part = unsafe {
         llvm::LLVMRustDIBuilderCreateVariantPart(
@@ -1703,7 +1714,8 @@ fn prepare_enum_metadata(
             layout.align.abi.bits() as u32,
             DIFlags::FlagZero,
             discriminator_metadata,
-            empty_array)
+            empty_array,
+            variant_part_unique_type_id_str.as_ptr())
     };
 
     // The variant part must be wrapped in a struct according to DWARF.
@@ -1774,7 +1786,6 @@ fn composite_type_metadata(
     set_members_of_composite_type(cx,
                                   composite_type,
                                   composite_type_metadata,
-                                  composite_type_metadata,
                                   member_descriptions);
 
     composite_type_metadata
@@ -1782,8 +1793,7 @@ fn composite_type_metadata(
 
 fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
                                  composite_type: Ty<'tcx>,
-                                 metadata_stub: &'ll DICompositeType,
-                                 member_holding_stub: &'ll DICompositeType,
+                                 composite_type_metadata: &'ll DICompositeType,
                                  member_descriptions: Vec<MemberDescription<'ll>>) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
@@ -1794,11 +1804,11 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
-        if composite_types_completed.contains(&metadata_stub) {
+        if composite_types_completed.contains(&composite_type_metadata) {
             bug!("debuginfo::set_members_of_composite_type() - \
                   Already completed forward declaration re-encountered.");
         } else {
-            composite_types_completed.insert(metadata_stub);
+            composite_types_completed.insert(composite_type_metadata);
         }
     }
 
@@ -1809,7 +1819,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateVariantMemberType(
                     DIB(cx),
-                    member_holding_stub,
+                    composite_type_metadata,
                     member_name.as_ptr(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
@@ -1830,7 +1840,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
-            DIB(cx), member_holding_stub, Some(type_array), type_params);
+            DIB(cx), composite_type_metadata, Some(type_array), type_params);
     }
 }
 

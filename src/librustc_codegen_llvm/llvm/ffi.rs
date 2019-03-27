@@ -1587,7 +1587,8 @@ extern "C" {
                                               AlignInBits: u32,
                                               Flags: DIFlags,
                                               Discriminator: Option<&'a DIDerivedType>,
-                                              Elements: &'a DIArray)
+                                              Elements: &'a DIArray,
+                                              UniqueId: *const c_char)
                                               -> &'a DIDerivedType;
 
     pub fn LLVMSetUnnamedAddr(GlobalVar: &Value, UnnamedAddr: Bool);
