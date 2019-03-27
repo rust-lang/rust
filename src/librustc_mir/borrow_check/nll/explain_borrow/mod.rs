@@ -56,17 +56,23 @@ impl BorrowExplanation {
         mir: &Mir<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
+        borrow_span: Option<Span>,
     ) {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {
-                    LaterUseKind::TraitCapture => "borrow later captured here by trait object",
-                    LaterUseKind::ClosureCapture => "borrow later captured here by closure",
-                    LaterUseKind::Call => "borrow later used by call",
-                    LaterUseKind::FakeLetRead => "borrow later stored here",
-                    LaterUseKind::Other => "borrow later used here",
+                    LaterUseKind::TraitCapture => "captured here by trait object",
+                    LaterUseKind::ClosureCapture => "captured here by closure",
+                    LaterUseKind::Call => "used by call",
+                    LaterUseKind::FakeLetRead => "stored here",
+                    LaterUseKind::Other => "used here",
                 };
-                err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
+                if !borrow_span.map(|sp| sp.overlaps(var_or_use_span)).unwrap_or(false) {
+                    err.span_label(
+                        var_or_use_span,
+                        format!("{}borrow later {}", borrow_desc, message),
+                    );
+                }
             }
             BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
                 let message = match later_use_kind {

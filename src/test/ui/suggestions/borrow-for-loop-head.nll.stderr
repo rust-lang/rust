@@ -2,10 +2,7 @@ error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/borrow-for-loop-head.rs:4:18
    |
 LL |     for i in &a {
-   |              --
-   |              |
-   |              borrow of `a` occurs here
-   |              borrow later used here
+   |              -- borrow of `a` occurs here
 LL |         for j in a {
    |                  ^ move out of `a` occurs here
 
@@ -17,6 +14,10 @@ LL |     let a = vec![1, 2, 3];
 LL |     for i in &a {
 LL |         for j in a {
    |                  ^ value moved here, in previous iteration of loop
+help: consider borrowing this to avoid moving it into the for loop
+   |
+LL |         for j in &a {
+   |                  ^^
 
 error: aborting due to 2 previous errors
 
