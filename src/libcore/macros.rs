@@ -562,7 +562,7 @@ macro_rules! unimplemented {
 /// A standardized placeholder for marking unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck. `todo!` works exactly like `unimplemented!`, there only
+/// code typecheck. `todo!` works exactly like `unimplemented!`, the only
 /// difference between the two macros is the name.
 ///
 /// # Panics
