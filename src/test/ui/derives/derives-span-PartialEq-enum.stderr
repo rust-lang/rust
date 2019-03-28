@@ -3,9 +3,6 @@ error[E0369]: binary operation `==` cannot be applied to type `Error`
    |
 LL |      Error
    |      ^^^^^
-   |      |
-   |      Error
-   |      Error
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`
 
@@ -14,9 +11,6 @@ error[E0369]: binary operation `!=` cannot be applied to type `Error`
    |
 LL |      Error
    |      ^^^^^
-   |      |
-   |      Error
-   |      Error
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`
 

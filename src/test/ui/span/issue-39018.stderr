@@ -2,11 +2,10 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
   --> $DIR/issue-39018.rs:2:22
    |
 LL |     let x = "Hello " + "World!";
-   |             ---------^---------
-   |             |          |
-   |             |          &str
+   |             -------- ^ -------- &str
+   |             |        |
+   |             |        `+` can't be used to concatenate two `&str` strings
    |             &str
-   |             `+` can't be used to concatenate two `&str` strings
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let x = "Hello ".to_owned() + "World!";

@@ -3,9 +3,6 @@ error[E0369]: binary operation `==` cannot be applied to type `NoCloneOrEq`
    |
 LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
-   |     |
-   |     NoCloneOrEq
-   |     NoCloneOrEq
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
 
@@ -14,9 +11,6 @@ error[E0369]: binary operation `!=` cannot be applied to type `NoCloneOrEq`
    |
 LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
-   |     |
-   |     NoCloneOrEq
-   |     NoCloneOrEq
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `NoCloneOrEq`
 
