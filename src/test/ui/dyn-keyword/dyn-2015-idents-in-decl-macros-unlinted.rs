@@ -4,8 +4,10 @@
 // not entirely acceptable as an identifier.
 //
 // We currently do not attempt to detect or fix uses of `dyn` as an
-// identifier under a macro.
+// identifier under a macro, including under the declarative `macro`
+// forms from macros 1.2 and macros 2.0.
 
+#![feature(decl_macro)]
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]
 
@@ -20,21 +22,14 @@ mod outer_mod {
 // certainly *could* (and it would be nice if it did), since these
 // occurrences are not compatible with the 2018 edition's
 // interpretation of `dyn` as a keyword.
-macro_rules! defn_has_dyn_idents {
-    () => { ::outer_mod::dyn::dyn }
-}
+macro defn_has_dyn_idents() { ::outer_mod::dyn::dyn }
 
 struct X;
 trait Trait { fn hello(&self) { }}
 impl Trait for X { }
 
-macro_rules! tt_trait {
-    ($arg:tt) => { & $arg Trait }
-}
-
-macro_rules! id_trait {
-    ($id:ident) => { & $id Trait }
-}
+macro tt_trait($arg:tt) { & $arg Trait }
+macro id_trait($id:ident) { & $id Trait }
 
 fn main() {
     defn_has_dyn_idents!();
