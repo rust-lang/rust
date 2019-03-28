@@ -246,6 +246,11 @@ pub struct Config {
     /// mode describing what file the actual ui output will be compared to
     pub compare_mode: Option<CompareMode>,
 
+    /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
+    /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
+    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    pub rustfix_coverage: bool,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,

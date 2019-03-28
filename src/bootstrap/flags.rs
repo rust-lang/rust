@@ -56,6 +56,7 @@ pub enum Subcommand {
         rustc_args: Vec<String>,
         fail_fast: bool,
         doc_tests: DocTests,
+        rustfix_coverage: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -187,6 +188,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "compare-mode",
                     "mode describing what file the actual ui output will be compared to",
                     "COMPARE MODE",
+                );
+                opts.optflag(
+                    "",
+                    "rustfix-coverage",
+                    "enable this to generate a Rustfix coverage file, which is saved in \
+                        `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
             "bench" => {
@@ -363,6 +370,7 @@ Arguments:
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
+                rustfix_coverage: matches.opt_present("rustfix-coverage"),
                 doc_tests: if matches.opt_present("doc") {
                     DocTests::Only
                 } else if matches.opt_present("no-doc") {
@@ -463,6 +471,13 @@ impl Subcommand {
     pub fn bless(&self) -> bool {
         match *self {
             Subcommand::Test { bless, .. } => bless,
+            _ => false,
+        }
+    }
+
+    pub fn rustfix_coverage(&self) -> bool {
+        match *self {
+            Subcommand::Test { rustfix_coverage, .. } => rustfix_coverage,
             _ => false,
         }
     }
