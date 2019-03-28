@@ -249,6 +249,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
+    fn is_hir_id_from_struct_pattern_shorthand_field(&self, hir_id: hir::HirId) -> bool {
+        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+        let mut is_struct_pat_shorthand_field = false;
+        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+            // Account for fields
+            if let Node::Expr(hir::Expr {
+                node: hir::ExprKind::Struct(_, fields, ..), ..
+            }) = parent {
+                if let Ok(src) = cm.span_to_snippet(sp) {
+                    for field in fields {
+                        if field.ident.as_str() == src.as_str() && field.is_shorthand {
+                            is_struct_pat_shorthand_field = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -277,23 +297,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
-        let mut is_struct_pat_shorthand_field = false;
-        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
-            // Account for fields
-            if let Node::Expr(hir::Expr {
-                node: hir::ExprKind::Struct(_, fields, ..), ..
-            }) = parent {
-                if let Ok(src) = cm.span_to_snippet(sp) {
-                    for field in fields {
-                        if field.ident.as_str() == src.as_str() && field.is_shorthand {
-                            is_struct_pat_shorthand_field = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        };
+        let mut is_struct_pat_shorthand_field =
+            self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id);
 
         match (&expected.sty, &checked_ty.sty) {
             (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
@@ -333,12 +338,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // bar(&x); // error, expected &mut
                 // ```
                 let ref_ty = match mutability {
-                    hir::Mutability::MutMutable => self.tcx.mk_mut_ref(
-                                                       self.tcx.mk_region(ty::ReStatic),
-                                                       checked_ty),
-                    hir::Mutability::MutImmutable => self.tcx.mk_imm_ref(
-                                                       self.tcx.mk_region(ty::ReStatic),
-                                                       checked_ty),
+                    hir::Mutability::MutMutable => {
+                        self.tcx.mk_mut_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
+                    }
+                    hir::Mutability::MutImmutable => {
+                        self.tcx.mk_imm_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
+                    }
                 };
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
@@ -359,22 +364,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some(sugg);
                         }
-                        return Some(match (mutability, is_struct_pat_shorthand_field) {
-                            (hir::Mutability::MutMutable, false) => {
-                                (sp, "consider mutably borrowing here",
-                                 format!("&mut {}", sugg_expr))
-                            }
-                            (hir::Mutability::MutImmutable, false) => {
-                                (sp, "consider borrowing here", format!("&{}", sugg_expr))
-                            }
-                            (hir::Mutability::MutMutable, true) => {
-                                (sp, "consider mutably borrowing here",
-                                 format!("{}: &mut {}", sugg_expr, sugg_expr))
-                            }
-                            (hir::Mutability::MutImmutable, true) => {
-                                (sp, "consider borrowing here",
-                                 format!("{}: &{}", sugg_expr, sugg_expr))
-                            }
+                        let field_name = if is_struct_pat_shorthand_field {
+                            format!("{}: ", sugg_expr)
+                        } else {
+                            String::new()
+                        };
+                        return Some(match mutability {
+                            hir::Mutability::MutMutable => (
+                                sp,
+                                "consider mutably borrowing here",
+                                format!("{}&mut {}", field_name, sugg_expr),
+                            ),
+                            hir::Mutability::MutImmutable => (
+                                sp,
+                                "consider borrowing here",
+                                format!("{}&{}", field_name, sugg_expr),
+                            ),
                         });
                     }
                 }
