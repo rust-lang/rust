@@ -1233,7 +1233,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     augment_error(&mut db);
                 }
 
-                db.emit();
+                if expression.filter(|e| fcx.is_assign_to_bool(e, expected)).is_some() {
+                    // Error reported in `check_assign` so avoid emitting error again.
+                    db.delay_as_bug();
+                } else {
+                    db.emit();
+                }
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
