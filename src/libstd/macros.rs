@@ -4,7 +4,7 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-/// The entry point for panic of Rust threads.
+/// Panics the current thread.
 ///
 /// This allows a program to terminate immediately and provide feedback
 /// to the caller of the program. `panic!` should be used when a program reaches
@@ -70,7 +70,7 @@ macro_rules! panic {
     });
 }
 
-/// Macro for printing to the standard output.
+/// Prints to the standard output.
 ///
 /// Equivalent to the [`println!`] macro except that a newline is not printed at
 /// the end of the message.
@@ -116,7 +116,7 @@ macro_rules! print {
     ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
 }
 
-/// Macro for printing to the standard output, with a newline.
+/// Prints to the standard output, with a newline.
 ///
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
@@ -151,7 +151,7 @@ macro_rules! println {
     })
 }
 
-/// Macro for printing to the standard error.
+/// Prints to the standard error.
 ///
 /// Equivalent to the [`print!`] macro, except that output goes to
 /// [`io::stderr`] instead of `io::stdout`. See [`print!`] for
@@ -179,7 +179,7 @@ macro_rules! eprint {
     ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
 }
 
-/// Macro for printing to the standard error, with a newline.
+/// Prints to the standard error, with a newline.
 ///
 /// Equivalent to the [`println!`] macro, except that output goes to
 /// [`io::stderr`] instead of `io::stdout`. See [`println!`] for
@@ -210,8 +210,10 @@ macro_rules! eprintln {
     })
 }
 
-/// A macro for quick and dirty debugging with which you can inspect
-/// the value of a given expression. An example:
+/// Prints and returns the value of a given expression for quick and dirty
+/// debugging.
+///
+/// An example:
 ///
 /// ```rust
 /// let a = 2;
@@ -328,7 +330,7 @@ macro_rules! dbg {
     }
 }
 
-/// A macro to await on an async call.
+/// Awaits the completion of an async call.
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
 #[allow_internal_unstable(gen_future, generators)]
@@ -351,7 +353,7 @@ macro_rules! r#await {
     } }
 }
 
-/// A macro to select an event from a number of receivers.
+/// Selects the first successful receive event from a number of receivers.
 ///
 /// This macro is used to wait for the first event to occur on a number of
 /// receivers. It places no restrictions on the types of receivers given to
@@ -423,7 +425,7 @@ macro_rules! assert_approx_eq {
 #[cfg(rustdoc)]
 mod builtin {
 
-    /// Unconditionally causes compilation to fail with the given error message when encountered.
+    /// Causes compilation to fail with the given error message when encountered.
     ///
     /// This macro should be used when a crate uses a conditional compilation strategy to provide
     /// better error messages for erroneous conditions. It's the compiler-level form of [`panic!`],
@@ -465,7 +467,7 @@ mod builtin {
         ($msg:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// The core macro for formatted string creation & output.
+    /// Constructs parameters for the other string-formatting macros.
     ///
     /// This macro functions by taking a formatting string literal containing
     /// `{}` for each additional argument passed. `format_args!` prepares the
@@ -517,7 +519,7 @@ mod builtin {
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
     }
 
-    /// Inspect an environment variable at compile time.
+    /// Inspects an environment variable at compile time.
     ///
     /// This macro will expand to the value of the named environment variable at
     /// compile time, yielding an expression of type `&'static str`.
@@ -555,7 +557,7 @@ mod builtin {
         ($name:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Optionally inspect an environment variable at compile time.
+    /// Optionally inspects an environment variable at compile time.
     ///
     /// If the named environment variable is present at compile time, this will
     /// expand into an expression of type `Option<&'static str>` whose value is
@@ -581,7 +583,7 @@ mod builtin {
         ($name:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Concatenate identifiers into one identifier.
+    /// Concatenates identifiers into one identifier.
     ///
     /// This macro takes any number of comma-separated identifiers, and
     /// concatenates them all into one, yielding an expression which is a new
@@ -634,7 +636,7 @@ mod builtin {
         ($($e:expr,)*) => ({ /* compiler built-in */ });
     }
 
-    /// A macro which expands to the line number on which it was invoked.
+    /// Expands to the line number on which it was invoked.
     ///
     /// With [`column!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
@@ -659,7 +661,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which expands to the column number on which it was invoked.
+    /// Expands to the column number at which it was invoked.
     ///
     /// With [`line!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
@@ -684,7 +686,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which expands to the file name from which it was invoked.
+    /// Expands to the file name in which it was invoked.
     ///
     /// With [`line!`] and [`column!`], these macros provide debugging information for
     /// developers about the location within the source.
@@ -708,7 +710,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which stringifies its arguments.
+    /// Stringifies its arguments.
     ///
     /// This macro will yield an expression of type `&'static str` which is the
     /// stringification of all the tokens passed to the macro. No restrictions
@@ -822,7 +824,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags, at compile-time.
+    /// Evaluates boolean combinations of configuration flags at compile-time.
     ///
     /// In addition to the `#[cfg]` attribute, this macro is provided to allow
     /// boolean expression evaluation of configuration flags. This frequently
@@ -844,7 +846,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
-    /// Parse a file as an expression or an item according to the context.
+    /// Parses a file as an expression or an item according to the context.
     ///
     /// The file is located relative to the current file (similarly to how
     /// modules are found).
@@ -890,7 +892,7 @@ mod builtin {
         ($file:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Ensure that a boolean expression is `true` at runtime.
+    /// Asserts that a boolean expression is `true` at runtime.
     ///
     /// This will invoke the [`panic!`] macro if the provided expression cannot be
     /// evaluated to `true` at runtime.
@@ -944,7 +946,7 @@ mod builtin {
     }
 }
 
-/// A macro for defining `#[cfg]` if-else statements.
+/// Defines `#[cfg]` if-else statements.
 ///
 /// This is similar to the `if/elif` C preprocessor macro by allowing definition
 /// of a cascade of `#[cfg]` cases, emitting the implementation which matches
