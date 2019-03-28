@@ -1,5 +1,6 @@
-use interface::{Compiler, Result};
-use passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
+use crate::interface::{Compiler, Result};
+use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
+
 use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::Lrc;
 use rustc::session::config::{Input, OutputFilenames, OutputType};

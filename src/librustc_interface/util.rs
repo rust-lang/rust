@@ -1,3 +1,4 @@
+use log::info;
 use rustc::session::config::{Input, OutputFilenames, ErrorOutputType};
 use rustc::session::{self, config, early_error, filesearch, Session, DiagnosticOutput};
 use rustc::session::CrateDisambiguator;
