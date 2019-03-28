@@ -7,7 +7,7 @@ use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
 use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, BoundRegion, Predicate, RegionKind, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
 
 use syntax_pos::Span;
@@ -34,7 +34,9 @@ pub fn check_drop_impl<'a, 'tcx>(
     drop_impl_did: DefId,
 ) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
+
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
+
     match dtor_self_type.sty {
         ty::Adt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(
@@ -215,7 +217,41 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // the analysis together via the fulfill , rather than the
         // repeated `contains` calls.
 
-        if !assumptions_in_impl_context.contains(&predicate) {
+        // Fixes #34426 by ignoring the `DefId` for late-bound regions.
+        //
+        // This solution is absolutely awful, and the correct solution
+        // is probably to find why `RegionKind::ReLateBound` generates
+        // different `DefId`s in different item blocks and fix it. I say
+        // that's probably the correct solution because
+        // `RegionKind::ReEarlyBound`s *also* have `DefId`s and they're
+        // identical in different item blocks, which indicates that
+        // something is up here.
+        //
+        // Alternatively, we could do the deep analysis of the Drop impl,
+        // which the above comment says not to do. However, as I'm writing
+        // this PR I don't know how I'd do that so this solution remains.
+        let predicate_matches = |p: &'_ &Predicate<'_>| {
+            match (p, predicate) {
+                (Predicate::Trait(p), Predicate::Trait(predicate)) => {
+                    let predicate_substs = &*predicate.skip_binder().trait_ref.substs;
+                    let p_substs = &*p.skip_binder().trait_ref.substs;
+
+                    predicate_substs.len() == p_substs.len() &&
+                    predicate_substs.iter().zip(p_substs.iter()).all(|(a, b)| {
+                        match (a.unpack(), b.unpack()) {
+                            (
+                                UnpackedKind::Lifetime(RegionKind::ReLateBound(pr_i, BoundRegion::BrNamed(_, pr_n))),
+                                UnpackedKind::Lifetime(RegionKind::ReLateBound(p_i, BoundRegion::BrNamed(_, p_n)))
+                            ) => (pr_i, pr_n) == (p_i, p_n),
+                            _ => a == b
+                        }
+                    })
+                },
+                _ => &predicate == p
+            }
+        };
+
+        if !assumptions_in_impl_context.iter().find(predicate_matches).is_some() {
             let item_span = tcx.hir().span_by_hir_id(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
