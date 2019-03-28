@@ -112,6 +112,24 @@ nonzero_integers! {
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
+macro_rules! from_str_radix_nzint_impl {
+    ($($t:ty)*) => {$(
+        #[stable(feature = "nonzero_parse", since = "1.35.0")]
+        impl FromStr for $t {
+            type Err = ParseIntError;
+            fn from_str(src: &str) -> Result<Self, Self::Err> {
+                Self::new(from_str_radix(src, 10)?)
+                    .ok_or(ParseIntError {
+                        kind: IntErrorKind::Zero
+                    })
+            }
+        }
+    )*}
+}
+
+from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
+                             NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
+
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
 /// Operations like `+` on `u32` values is intended to never overflow,
@@ -4768,6 +4786,11 @@ pub enum IntErrorKind {
     Overflow,
     /// Integer is too small to store in target integer type.
     Underflow,
+    /// Value was Zero
+    ///
+    /// This variant will be emitted when the parsing string has a value of zero, which
+    /// would be illegal for non-zero types.
+    Zero,
 }
 
 impl ParseIntError {
@@ -4790,6 +4813,7 @@ impl ParseIntError {
             IntErrorKind::InvalidDigit => "invalid digit found in string",
             IntErrorKind::Overflow => "number too large to fit in target type",
             IntErrorKind::Underflow => "number too small to fit in target type",
+            IntErrorKind::Zero => "number would be zero for non-zero type",
         }
     }
 }

@@ -22,6 +22,7 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
+use rustc::mir::interpret::truncate;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
@@ -1368,7 +1369,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            let value = value & ((1u128 << niche.value.size(cx).bits()) - 1);
+                            let value = truncate(value, niche.value.size(cx));
                             Some(value as u64)
                         };
 
