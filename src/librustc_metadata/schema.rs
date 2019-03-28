@@ -299,6 +299,8 @@ pub enum EntryKind<'tcx> {
     ForeignType,
     GlobalAsm,
     Type,
+    TypeParam,
+    ConstParam,
     Existential,
     Enum(ReprOptions),
     Field,
@@ -335,7 +337,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::ForeignType      |
             EntryKind::Field |
             EntryKind::Existential |
-            EntryKind::Type => {
+            EntryKind::Type |
+            EntryKind::TypeParam |
+            EntryKind::ConstParam => {
                 // Nothing else to hash here.
             }
             EntryKind::Const(qualif, ref const_data) => {
