@@ -66,6 +66,7 @@ mod l4re_base;
 mod fuchsia_base;
 mod redox_base;
 mod riscv_base;
+mod wasm32_base;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
          RustcEncodable, RustcDecodable)]
