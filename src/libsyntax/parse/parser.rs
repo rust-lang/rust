@@ -1119,9 +1119,8 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                let msg = format!("{} with a suffix is invalid", kind);
-                self.struct_span_err(sp, &msg)
-                    .span_label(sp, msg)
+                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                    .span_label(sp, format!("invalid suffix `{}`", text))
                     .emit();
             }
         }
@@ -2150,7 +2149,7 @@ impl<'a> Parser<'a> {
 
                 if suffix_illegal {
                     let sp = self.span;
-                    self.expect_no_suffix(sp, lit.literal_name(), suf)
+                    self.expect_no_suffix(sp, &format!("a {}", lit.literal_name()), suf)
                 }
 
                 result.unwrap()
@@ -2481,7 +2480,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
-        if let token::Literal(token::Integer(name), None) = self.token {
+        if let token::Literal(token::Integer(name), suffix) = self.token {
+            self.expect_no_suffix(self.span, "a tuple index", suffix);
             self.bump();
             Ok(Ident::new(name, self.prev_span))
         } else {
@@ -3185,51 +3185,53 @@ impl<'a> Parser<'a> {
             // expr.f
             if self.eat(&token::Dot) {
                 match self.token {
-                  token::Ident(..) => {
-                    e = self.parse_dot_suffix(e, lo)?;
-                  }
-                  token::Literal(token::Integer(name), _) => {
-                    let span = self.span;
-                    self.bump();
-                    let field = ExprKind::Field(e, Ident::new(name, span));
-                    e = self.mk_expr(lo.to(span), field, ThinVec::new());
-                  }
-                  token::Literal(token::Float(n), _suf) => {
-                    self.bump();
-                    let fstr = n.as_str();
-                    let mut err = self.diagnostic()
-                        .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
-                    err.span_label(self.prev_span, "unexpected token");
-                    if fstr.chars().all(|x| "0123456789.".contains(x)) {
-                        let float = match fstr.parse::<f64>().ok() {
-                            Some(f) => f,
-                            None => continue,
-                        };
-                        let sugg = pprust::to_string(|s| {
-                            use crate::print::pprust::PrintState;
-                            s.popen()?;
-                            s.print_expr(&e)?;
-                            s.s.word( ".")?;
-                            s.print_usize(float.trunc() as usize)?;
-                            s.pclose()?;
-                            s.s.word(".")?;
-                            s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
-                        });
-                        err.span_suggestion(
-                            lo.to(self.prev_span),
-                            "try parenthesizing the first index",
-                            sugg,
-                            Applicability::MachineApplicable
-                        );
+                    token::Ident(..) => {
+                        e = self.parse_dot_suffix(e, lo)?;
                     }
-                    return Err(err);
+                    token::Literal(token::Integer(name), suffix) => {
+                        let span = self.span;
+                        self.bump();
+                        let field = ExprKind::Field(e, Ident::new(name, span));
+                        e = self.mk_expr(lo.to(span), field, ThinVec::new());
 
-                  }
-                  _ => {
-                    // FIXME Could factor this out into non_fatal_unexpected or something.
-                    let actual = self.this_token_to_string();
-                    self.span_err(self.span, &format!("unexpected token: `{}`", actual));
-                  }
+                        self.expect_no_suffix(span, "a tuple index", suffix);
+                    }
+                    token::Literal(token::Float(n), _suf) => {
+                      self.bump();
+                      let fstr = n.as_str();
+                      let mut err = self.diagnostic()
+                          .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
+                      err.span_label(self.prev_span, "unexpected token");
+                      if fstr.chars().all(|x| "0123456789.".contains(x)) {
+                          let float = match fstr.parse::<f64>().ok() {
+                              Some(f) => f,
+                              None => continue,
+                          };
+                          let sugg = pprust::to_string(|s| {
+                              use crate::print::pprust::PrintState;
+                              s.popen()?;
+                              s.print_expr(&e)?;
+                              s.s.word( ".")?;
+                              s.print_usize(float.trunc() as usize)?;
+                              s.pclose()?;
+                              s.s.word(".")?;
+                              s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
+                          });
+                          err.span_suggestion(
+                              lo.to(self.prev_span),
+                              "try parenthesizing the first index",
+                              sugg,
+                              Applicability::MachineApplicable
+                          );
+                      }
+                      return Err(err);
+
+                    }
+                    _ => {
+                        // FIXME Could factor this out into non_fatal_unexpected or something.
+                        let actual = self.this_token_to_string();
+                        self.span_err(self.span, &format!("unexpected token: `{}`", actual));
+                    }
                 }
                 continue;
             }
@@ -7827,7 +7829,7 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
                 let sp = self.span;
-                self.expect_no_suffix(sp, "ABI spec", suf);
+                self.expect_no_suffix(sp, "an ABI spec", suf);
                 self.bump();
                 match abi::lookup(&s.as_str()) {
                     Some(abi) => Ok(Some(abi)),
@@ -8648,7 +8650,7 @@ impl<'a> Parser<'a> {
         match self.parse_optional_str() {
             Some((s, style, suf)) => {
                 let sp = self.prev_span;
-                self.expect_no_suffix(sp, "string literal", suf);
+                self.expect_no_suffix(sp, "a string literal", suf);
                 Ok((s, style))
             }
             _ => {
