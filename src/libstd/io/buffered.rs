@@ -21,6 +21,10 @@ use crate::memchr;
 /// times. It also provides no advantage when reading from a source that is
 /// already in memory, like a `Vec<u8>`.
 ///
+/// When the `BufReader` is dropped, the contents of its buffer will be
+/// discarded. Creating multiple instances of a `BufReader` on the same
+/// stream can cause data loss.
+///
 /// [`Read`]: ../../std/io/trait.Read.html
 /// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
