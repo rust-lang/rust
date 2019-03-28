@@ -16,40 +16,13 @@
 
 #![recursion_limit="256"]
 
-extern crate arena;
+#![deny(rust_2018_idioms)]
+
 pub extern crate getopts;
-extern crate graphviz;
-extern crate env_logger;
 #[cfg(unix)]
 extern crate libc;
-extern crate rustc_rayon as rayon;
-extern crate rustc;
-extern crate rustc_allocator;
-extern crate rustc_target;
-extern crate rustc_borrowck;
-extern crate rustc_data_structures;
-extern crate rustc_errors as errors;
-extern crate rustc_passes;
-extern crate rustc_lint;
-extern crate rustc_plugin;
-extern crate rustc_privacy;
-extern crate rustc_incremental;
-extern crate rustc_metadata;
-extern crate rustc_mir;
-extern crate rustc_resolve;
-extern crate rustc_save_analysis;
-extern crate rustc_traits;
-extern crate rustc_codegen_utils;
-extern crate rustc_typeck;
-extern crate rustc_interface;
-extern crate scoped_tls;
-extern crate serialize;
-extern crate smallvec;
 #[macro_use]
 extern crate log;
-extern crate syntax;
-extern crate syntax_ext;
-extern crate syntax_pos;
 
 use pretty::{PpMode, UserIdentifiedItem};
 

@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "rustc_driver"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "rustc_driver"
@@ -13,14 +14,14 @@ arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
 env_logger = { version = "0.5", default-features = false }
-rustc-rayon = "0.1.2"
+rayon = { version = "0.1.2", package = "rustc-rayon" }
 scoped-tls = "1.0"
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_target = { path = "../librustc_target" }
 rustc_borrowck = { path = "../librustc_borrowck" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_errors = { path = "../librustc_errors" }
+errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
