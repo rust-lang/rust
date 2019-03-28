@@ -388,10 +388,7 @@ impl DepGraph {
             |_| None,
             |data, key, fingerprint, _| {
                 let mut current = data.borrow_mut();
-                let krate_idx = current.node_to_node_index[
-                    &DepNode::new_no_params(DepKind::Krate)
-                ];
-                current.alloc_node(key, smallvec![krate_idx], fingerprint)
+                current.alloc_node(key, smallvec![], fingerprint)
             },
             hash_result)
     }
@@ -576,7 +573,7 @@ impl DepGraph {
         tcx: TyCtxt<'_, '_, '_>,
         dep_node: &DepNode
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        debug_assert!(!dep_node.kind.is_input());
+        debug_assert!(!dep_node.kind.is_eval_always());
 
         // Return None if the dep graph is disabled
         let data = self.data.as_ref()?;
@@ -620,8 +617,8 @@ impl DepGraph {
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
         }
 
-        // We never try to mark inputs as green
-        debug_assert!(!dep_node.kind.is_input());
+        // We never try to mark eval_always nodes as green
+        debug_assert!(!dep_node.kind.is_eval_always());
 
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 
@@ -658,8 +655,8 @@ impl DepGraph {
                     let dep_dep_node = &data.previous.index_to_node(dep_dep_node_index);
 
                     // We don't know the state of this dependency. If it isn't
-                    // an input node, let's try to mark it green recursively.
-                    if !dep_dep_node.kind.is_input() {
+                    // an eval_always node, let's try to mark it green recursively.
+                    if !dep_dep_node.kind.is_eval_always() {
                          debug!("try_mark_previous_green({:?}) --- state of dependency {:?} \
                                  is unknown, trying to mark it green", dep_node,
                                  dep_dep_node);
@@ -694,7 +691,7 @@ impl DepGraph {
                                 }
                             }
                             _ => {
-                                // For other kinds of inputs it's OK to be
+                                // For other kinds of nodes it's OK to be
                                 // forced.
                             }
                         }
@@ -1017,33 +1014,11 @@ impl CurrentDepGraph {
         task_deps: TaskDeps,
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
-        // If this is an input node, we expect that it either has no
-        // dependencies, or that it just depends on DepKind::CrateMetadata
-        // or DepKind::Krate. This happens for some "thin wrapper queries"
-        // like `crate_disambiguator` which sometimes have zero deps (for
-        // when called for LOCAL_CRATE) or they depend on a CrateMetadata
-        // node.
-        if cfg!(debug_assertions) {
-            if node.kind.is_input() && task_deps.reads.len() > 0 &&
-                // FIXME(mw): Special case for DefSpan until Spans are handled
-                //            better in general.
-                node.kind != DepKind::DefSpan &&
-                task_deps.reads.iter().any(|&i| {
-                    !(self.data[i].node.kind == DepKind::CrateMetadata ||
-                        self.data[i].node.kind == DepKind::Krate)
-                })
-            {
-                bug!("Input node {:?} with unexpected reads: {:?}",
-                    node,
-                    task_deps.reads.iter().map(|&i| self.data[i].node).collect::<Vec<_>>())
-            }
-        }
-
         self.alloc_node(node, task_deps.reads, fingerprint)
     }
 
     fn complete_anon_task(&mut self, kind: DepKind, task_deps: TaskDeps) -> DepNodeIndex {
-        debug_assert!(!kind.is_input());
+        debug_assert!(!kind.is_eval_always());
 
         let mut fingerprint = self.anon_id_seed;
         let mut hasher = StableHasher::new();

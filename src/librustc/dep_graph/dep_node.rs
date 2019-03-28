@@ -85,11 +85,6 @@ macro_rules! is_anon_attr {
     ($attr:ident) => (false);
 }
 
-macro_rules! is_input_attr {
-    (input) => (true);
-    ($attr:ident) => (false);
-}
-
 macro_rules! is_eval_always_attr {
     (eval_always) => (true);
     ($attr:ident) => (false);
@@ -97,10 +92,6 @@ macro_rules! is_eval_always_attr {
 
 macro_rules! contains_anon_attr {
     ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
-}
-
-macro_rules! contains_input_attr {
-    ($($attr:ident),*) => ({$(is_input_attr!($attr) | )* false});
 }
 
 macro_rules! contains_eval_always_attr {
@@ -151,22 +142,13 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            // FIXME: Make `is_anon`, `is_input`, `is_eval_always` and `has_params` properties
+            // FIXME: Make `is_anon`, `is_eval_always` and `has_params` properties
             // of queries
             #[inline(always)]
             pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_anon_attr!($($attr),*) }
-                    )*
-                }
-            }
-
-            #[inline(always)]
-            pub fn is_input(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_input_attr!($($attr),*) }
                     )*
                 }
             }
@@ -438,17 +420,17 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
     // access to the krate, but you must remember to add suitable
     // edges yourself for the individual items that you read.
-    [input] Krate,
+    [eval_always] Krate,
 
     // Represents the body of a function or method. The def-id is that of the
     // function/method.
-    [input] HirBody(DefId),
+    [eval_always] HirBody(DefId),
 
     // Represents the HIR node with the given node-id
-    [input] Hir(DefId),
+    [eval_always] Hir(DefId),
 
     // Represents metadata from an extern crate.
-    [input] CrateMetadata(CrateNum),
+    [eval_always] CrateMetadata(CrateNum),
 
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
@@ -481,7 +463,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] CollectModItemTypes(DefId),
 
     [] Reachability,
-    [eval_always] CrateVariances,
+    [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -534,7 +516,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // The set of impls for a given trait.
     [] TraitImpls(DefId),
 
-    [input] AllLocalTraitImpls,
+    [eval_always] AllLocalTraitImpls,
 
     [anon] TraitSelect,
 
@@ -546,7 +528,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // to make type debuginfo to be source location independent. Declaring
     // DefSpan an input makes sure that changes to these are always detected
     // regardless of HIR hashing.
-    [input] DefSpan(DefId),
+    [eval_always] DefSpan(DefId),
     [] LookupStability(DefId),
     [] LookupDeprecationEntry(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
@@ -564,10 +546,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
     [] HasPanicHandler(CrateNum),
-    [input] ExternCrate(DefId),
+    [eval_always] ExternCrate(DefId),
     [] Specializes { impl1: DefId, impl2: DefId },
-    [input] InScopeTraits(DefIndex),
-    [input] ModuleExports(DefId),
+    [eval_always] InScopeTraits(DefIndex),
+    [eval_always] ModuleExports(DefId),
     [] IsSanitizerRuntime(CrateNum),
     [] IsProfilerRuntime(CrateNum),
     [] GetPanicStrategy(CrateNum),
@@ -580,10 +562,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] EntryFn(CrateNum),
     [] PluginRegistrarFn(CrateNum),
     [] ProcMacroDeclsStatic(CrateNum),
-    [input] CrateDisambiguator(CrateNum),
-    [input] CrateHash(CrateNum),
-    [input] OriginalCrateName(CrateNum),
-    [input] ExtraFileName(CrateNum),
+    [eval_always] CrateDisambiguator(CrateNum),
+    [eval_always] CrateHash(CrateNum),
+    [eval_always] OriginalCrateName(CrateNum),
+    [eval_always] ExtraFileName(CrateNum),
 
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
     [] AllTraitImplementations(CrateNum),
@@ -592,7 +574,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] IsDllimportForeignItem(DefId),
     [] IsStaticallyIncludedForeignItem(DefId),
     [] NativeLibraryKind(DefId),
-    [input] LinkArgs,
+    [eval_always] LinkArgs,
 
     [] ResolveLifetimes(CrateNum),
     [] NamedRegion(DefIndex),
@@ -600,8 +582,8 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] ObjectLifetimeDefaults(DefIndex),
 
     [] Visibility(DefId),
-    [input] DepKind(CrateNum),
-    [input] CrateName(CrateNum),
+    [eval_always] DepKind(CrateNum),
+    [eval_always] CrateName(CrateNum),
     [] ItemChildren(DefId),
     [] ExternModStmtCnum(DefId),
     [eval_always] GetLibFeatures,
@@ -610,24 +592,24 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),
     [] VisibleParentMap,
-    [input] MissingExternCrateItem(CrateNum),
-    [input] UsedCrateSource(CrateNum),
-    [input] PostorderCnums,
+    [eval_always] MissingExternCrateItem(CrateNum),
+    [eval_always] UsedCrateSource(CrateNum),
+    [eval_always] PostorderCnums,
 
-    [input] Freevars(DefId),
-    [input] MaybeUnusedTraitImport(DefId),
-    [input] MaybeUnusedExternCrates,
-    [input] NamesImportedByGlobUse(DefId),
+    [eval_always] Freevars(DefId),
+    [eval_always] MaybeUnusedTraitImport(DefId),
+    [eval_always] MaybeUnusedExternCrates,
+    [eval_always] NamesImportedByGlobUse(DefId),
     [eval_always] StabilityIndex,
     [eval_always] AllTraits,
-    [input] AllCrateNums,
+    [eval_always] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionMonoItems,
     [] IsCodegenedItem(DefId),
     [] CodegenUnit(InternedString),
     [] BackendOptimizationLevel(CrateNum),
     [] CompileCodegenUnit(InternedString),
-    [input] OutputFilenames,
+    [eval_always] OutputFilenames,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
     [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
     [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
@@ -646,11 +628,11 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, SubstsRef<'tcx>) },
     [] MethodAutoderefSteps(CanonicalTyGoal<'tcx>),
 
-    [input] TargetFeaturesWhitelist,
+    [eval_always] TargetFeaturesWhitelist,
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 
-    [input] Features,
+    [eval_always] Features,
 
     [] ForeignModules(CrateNum),
 
