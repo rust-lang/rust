@@ -45,7 +45,7 @@ mod macro_defn {
 //~| WARN was previously accepted
 
         // Note that we do not lint nor fix occurrences under macros
-        ($dyn:ident) => { Box<dyn Trait> }
+        ($dyn:tt) => { (Box<dyn Trait>, Box<$dyn Trait>) }
     }
 
     pub fn r#dyn() -> ::outer_mod::r#dyn::r#dyn {
@@ -72,7 +72,7 @@ mod macro_defn {
             dyn
     )
     {
-        Box::new(10)
+        (Box::new(1), Box::new(2))
     }
 }
 
