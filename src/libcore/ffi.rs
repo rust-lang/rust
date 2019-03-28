@@ -190,7 +190,7 @@ impl<'a> VaList<'a> {
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
                issue = "44930")]
-    pub unsafe fn copy<F, R>(&self, f: F) -> R
+    pub unsafe fn with_copy<F, R>(&self, f: F) -> R
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                       not(target_arch = "x86_64")),

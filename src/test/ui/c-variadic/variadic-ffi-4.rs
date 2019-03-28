@@ -13,7 +13,7 @@ pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
 }
 
 pub unsafe extern "C" fn no_escape2(_: usize, ap: ...) {
-    let _ = ap.copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
+    let _ = ap.with_copy(|ap| { ap }); //~ ERROR: cannot infer an appropriate lifetime
 }
 
 pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {

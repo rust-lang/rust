@@ -15,13 +15,13 @@ LL |     ap
    |     ^^ lifetime `'static` required
 
 error: lifetime may not live long enough
-  --> $DIR/variadic-ffi-5.rs:19:28
+  --> $DIR/variadic-ffi-5.rs:19:33
    |
-LL |     let _ = ap.copy(|ap| { ap });
-   |                      ---   ^^ returning this value requires that `'1` must outlive `'2`
-   |                      | |
-   |                      | return type of closure is core::ffi::VaList<'2>
-   |                      has type `core::ffi::VaList<'1>`
+LL |     let _ = ap.with_copy(|ap| { ap });
+   |                           ---   ^^ returning this value requires that `'1` must outlive `'2`
+   |                           | |
+   |                           | return type of closure is core::ffi::VaList<'2>
+   |                           has type `core::ffi::VaList<'1>`
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-5.rs:23:5
