@@ -255,7 +255,7 @@ declare_lint! {
 
 declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
-    Allow,
+    Deny,
     "hidden lifetime parameters in types are deprecated"
 }
 
