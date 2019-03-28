@@ -1,17 +1,18 @@
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 use crate::ty::fold::{TypeFolder, TypeFoldable};
-
-pub(super) fn provide(providers: &mut ty::query::Providers<'_>) {
-    *providers = ty::query::Providers {
-        erase_regions_ty,
-        ..*providers
-    };
-}
+use crate::dep_graph::DepGraph;
 
 fn erase_regions_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    // N.B., use `super_fold_with` here. If we used `fold_with`, it
-    // could invoke the `erase_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+    if let Some(ty) = tcx.erased_region_cache.lock().get(ty) {
+        return ty;
+    }
+    let result = DepGraph::debug_assert_no_deps(|| {
+        // N.B., use `super_fold_with` here. If we used `fold_with`, it
+        // could invoke the `erase_regions_ty` function recursively.
+        ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+    });
+    tcx.erased_region_cache.lock().insert(ty, result);
+    result
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -43,7 +44,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 't
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let Some(ty_lifted) = self.tcx.lift_to_global(&ty) {
-            self.tcx.erase_regions_ty(ty_lifted)
+            erase_regions_ty(self.tcx.global_tcx(), ty_lifted)
         } else {
             ty.super_fold_with(self)
         }

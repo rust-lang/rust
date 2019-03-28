@@ -3345,7 +3345,6 @@ fn issue33140_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
-    erase_regions::provide(providers);
     layout::provide(providers);
     util::provide(providers);
     constness::provide(providers);

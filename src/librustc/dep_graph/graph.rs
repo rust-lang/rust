@@ -136,6 +136,43 @@ impl DepGraph {
         DepGraphQuery::new(&nodes[..], &edges[..])
     }
 
+    pub fn debug_assert_no_deps<OP, R>(op: OP) -> R
+        where OP: FnOnce() -> R
+    {
+        if cfg!(debug_assertions) {
+            ty::tls::with_context(|icx| {
+                let task_deps = Lock::new(TaskDeps {
+                    #[cfg(debug_assertions)]
+                    node: None,
+                    #[cfg(debug_assertions)]
+                    no_deps: true,
+                    reads: SmallVec::new(),
+                    read_set: Default::default(),
+                });
+                let icx = ty::tls::ImplicitCtxt {
+                    task_deps: Some(&task_deps),
+                    ..icx.clone()
+                };
+
+                let r = ty::tls::enter_context(&icx, |_| {
+                    op()
+                });
+
+                for read in &task_deps.lock().reads {
+                    icx.tcx.dep_graph.data.as_ref().map(|graph| {
+                        eprintln!("read: {:?}", graph.current.lock().data[*read].node);
+                    });
+                }
+                // Ensure no dependencies were recorded
+                assert_eq!(task_deps.into_inner().reads, SmallVec::<[DepNodeIndex; 8]>::new());
+
+                r
+            })
+        } else {
+            op()
+        }
+    }
+
     pub fn assert_ignored(&self)
     {
         if let Some(..) = self.data {
@@ -203,6 +240,8 @@ impl DepGraph {
             |_key| Some(TaskDeps {
                 #[cfg(debug_assertions)]
                 node: Some(_key),
+                #[cfg(debug_assertions)]
+                no_deps: false,
                 reads: SmallVec::new(),
                 read_set: Default::default(),
             }),
@@ -345,6 +384,8 @@ impl DepGraph {
                 let task_deps = Lock::new(TaskDeps {
                     #[cfg(debug_assertions)]
                     node: None,
+                    #[cfg(debug_assertions)]
+                    no_deps: false,
                     reads: SmallVec::new(),
                     read_set: Default::default(),
                 });
@@ -1109,6 +1150,14 @@ impl DepGraphData {
             let icx = if let Some(icx) = icx { icx } else {  return };
             if let Some(task_deps) = icx.task_deps {
                 let mut task_deps = task_deps.lock();
+
+                #[cfg(debug_assertions)]
+                {
+                    if task_deps.no_deps {
+                        panic!("tried to add dependency, but no dependencies are allowed");
+                    }
+                }
+
                 if cfg!(debug_assertions) {
                     self.current.lock().total_read_count += 1;
                 }
@@ -1140,6 +1189,8 @@ impl DepGraphData {
 pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
+    #[cfg(debug_assertions)]
+    no_deps: bool,
     reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
