@@ -1,7 +1,8 @@
-use interface::{Compiler, Result};
-use util;
-use proc_macro_decls;
+use crate::interface::{Compiler, Result};
+use crate::util;
+use crate::proc_macro_decls;
 
+use log::{debug, info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -20,6 +21,7 @@ use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
@@ -328,7 +330,7 @@ pub fn register_plugins<'a>(
         ls.register_early_pass(Some(sess), true, false, pass);
     }
     for pass in late_lint_passes {
-        ls.register_late_pass(Some(sess), true, pass);
+        ls.register_late_pass(Some(sess), true, false, pass);
     }
 
     for (name, (to, deprecated_name)) in lint_groups {
@@ -758,7 +760,7 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub fn default_provide(providers: &mut ty::query::Providers) {
+pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
@@ -783,7 +785,7 @@ pub fn default_provide(providers: &mut ty::query::Providers) {
     lint::provide(providers);
 }
 
-pub fn default_provide_extern(providers: &mut ty::query::Providers) {
+pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     cstore::provide_extern(providers);
 }
 

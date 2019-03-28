@@ -363,6 +363,12 @@ pub trait Into<T>: Sized {
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented(
+    on(
+        all(_Self="&str", T="std::string::String"),
+        note="to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
+    )
+)]
 pub trait From<T>: Sized {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]

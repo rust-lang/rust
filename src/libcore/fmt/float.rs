@@ -10,8 +10,8 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     unsafe {
-        let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
-        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninit();
         // FIXME(#53491): Technically, this is calling `get_mut` on an uninitialized
         // `MaybeUninit` (here and elsewhere in this file).  Revisit this once
         // we decided whether that is valid or not.
@@ -32,8 +32,8 @@ fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter, num: &T,
 {
     unsafe {
         // enough for f32 and f64
-        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
-        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
+        let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninit();
         // FIXME(#53491)
         let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
                                                  sign, precision, false, buf.get_mut(),
@@ -71,8 +71,8 @@ fn float_to_exponential_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     unsafe {
-        let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
-        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninit();
         // FIXME(#53491)
         let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
                                                   *num, sign, precision,
@@ -91,8 +91,8 @@ fn float_to_exponential_common_shortest<T>(fmt: &mut Formatter,
 {
     unsafe {
         // enough for f32 and f64
-        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninitialized();
-        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninitialized();
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
+        let mut parts = MaybeUninit::<[flt2dec::Part; 6]>::uninit();
         // FIXME(#53491)
         let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest,
                                                      *num, sign, (0, 0), upper,

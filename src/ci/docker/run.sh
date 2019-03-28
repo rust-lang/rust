@@ -12,6 +12,9 @@ ci_dir="`dirname $docker_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
+objdir=$root_dir/obj
+dist=$objdir/build/dist
+
 source "$ci_dir/shared.sh"
 
 travis_fold start build_docker
@@ -77,6 +80,11 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       else
         echo "Looks like docker image is the same as before, not uploading"
       fi
+      # Record the container image for reuse, e.g. by rustup.rs builds
+      info="$dist/image-$image.txt"
+      mkdir -p "$dist"
+      echo "$url" >"$info"
+      echo "$digest" >>"$info"
     fi
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if [ -n "$TRAVIS_OS_NAME" ]; then
@@ -98,8 +106,6 @@ fi
 
 travis_fold end build_docker
 travis_time_finish
-
-objdir=$root_dir/obj
 
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp

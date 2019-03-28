@@ -886,7 +886,10 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 fn safe_remove_file(p: &Path) -> io::Result<()> {
     if p.exists() {
         let canonicalized = p.canonicalize()?;
-        std_fs::remove_file(canonicalized)
+        match std_fs::remove_file(canonicalized) {
+            Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
     } else {
         Ok(())
     }

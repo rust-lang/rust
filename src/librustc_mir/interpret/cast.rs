@@ -9,9 +9,9 @@ use rustc::mir::interpret::{
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
 
-use super::{EvalContext, Machine, PlaceTy, OpTy, ImmTy, Immediate};
+use super::{InterpretCx, Machine, PlaceTy, OpTy, ImmTy, Immediate};
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::RawPtr(ty::TypeAndMut { ty, .. }) |

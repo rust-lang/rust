@@ -7,10 +7,10 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
+    InterpretCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
 };
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     #[inline]
     pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> EvalResult<'tcx> {
         if let Some(target) = target {

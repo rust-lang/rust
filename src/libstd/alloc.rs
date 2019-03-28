@@ -130,7 +130,7 @@ pub use alloc_crate::alloc::*;
 /// program opts in to using jemalloc as the global allocator, `System` will
 /// still allocate memory using `malloc` and `HeapAlloc`.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
 // The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.

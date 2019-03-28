@@ -47,14 +47,29 @@ LL |     if 3 = x {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:34:8
+  --> $DIR/assignment-in-if.rs:36:13
    |
-LL |     if (if true { x = 4 } else { x = 5 }) {
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found ()
+LL |             x = 4
+   |             ^^^^^
+   |             |
+   |             expected bool, found ()
+   |             help: try comparing for equality: `x == 4`
    |
    = note: expected type `bool`
               found type `()`
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:38:13
+   |
+LL |             x = 5
+   |             ^^^^^
+   |             |
+   |             expected bool, found ()
+   |             help: try comparing for equality: `x == 5`
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
