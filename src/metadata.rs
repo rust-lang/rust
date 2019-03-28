@@ -90,7 +90,7 @@ pub fn write_metadata<'a, 'gcx>(
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    artifact.declare_with(".rustc", faerie::Decl::debug_section(), compressed).unwrap();
+    artifact.declare_with(".rustc", faerie::Decl::section(faerie::SectionKind::Data), compressed).unwrap();
 
     metadata
 }
