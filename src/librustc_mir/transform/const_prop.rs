@@ -18,7 +18,7 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use crate::interpret::{EvalContext, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
+use crate::interpret::{InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
 };
@@ -70,7 +70,7 @@ type Const<'tcx> = (OpTy<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
-    ecx: EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+    ecx: InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
     mir: &'mir Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource<'tcx>,

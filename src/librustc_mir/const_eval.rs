@@ -22,7 +22,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
-    EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
+    EvalResult, EvalError, EvalErrorKind, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
 };
@@ -34,7 +34,7 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-/// The `EvalContext` is only meant to be used to do field and index projections into constants for
+/// The `InterpretCx` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
@@ -47,7 +47,7 @@ pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
+    InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
@@ -116,7 +116,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
     let span = mir.map(|mir| mir.span).unwrap_or(span);
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
+    let mut ecx = InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
     let r = eval_body_using_ecx(&mut ecx, cid, mir, param_env);
     (r, ecx)
 }
@@ -292,7 +292,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
 }
 
 type CompileTimeEvalContext<'a, 'mir, 'tcx> =
-    EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
+    InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -317,12 +317,12 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
 
     fn find_fn(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
@@ -362,7 +362,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn call_intrinsic(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
@@ -378,7 +378,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn ptr_op(
-        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
@@ -406,7 +406,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn box_alloc(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> EvalResult<'tcx> {
         Err(
@@ -414,7 +414,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         )
     }
 
-    fn before_terminator(ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -440,7 +440,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 
     #[inline(always)]
     fn tag_new_allocation(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _kind: MemoryKind<Self::MemoryKinds>,
     ) -> Pointer {
@@ -449,7 +449,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 
     #[inline(always)]
     fn stack_push(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     /// Called immediately before a stack frame gets popped.
     #[inline(always)]
     fn stack_pop(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _extra: (),
     ) -> EvalResult<'tcx> {
         Ok(())
@@ -504,7 +504,7 @@ pub fn const_variant_index<'a, 'tcx>(
 }
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
-    ecx: &EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+    ecx: &InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
     mut error: EvalError<'tcx>
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();

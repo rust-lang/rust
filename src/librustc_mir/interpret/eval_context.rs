@@ -26,7 +26,7 @@ use super::{
     Memory, Machine
 };
 
-pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
+pub struct InterpretCx<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
@@ -141,7 +141,7 @@ impl<'tcx, Tag> LocalState<'tcx, Tag> {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for EvalContext<'a, 'mir, 'tcx, M>
+    for InterpretCx<'a, 'mir, 'tcx, M>
 {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
@@ -149,7 +149,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for EvalContext<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'a, 'mir, 'tcx, M>
     where M: Machine<'a, 'mir, 'tcx>
 {
     #[inline]
@@ -159,7 +159,7 @@ impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for EvalContext<'a, 'mir, 'tcx, 
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
-    for EvalContext<'a, 'mir, 'tcx, M>
+    for InterpretCx<'a, 'mir, 'tcx, M>
 {
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
@@ -171,13 +171,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
     }
 }
 
-impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
     ) -> Self {
-        EvalContext {
+        InterpretCx {
             machine,
             tcx,
             param_env,
