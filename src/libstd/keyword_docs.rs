@@ -286,11 +286,16 @@ mod fn_keyword { }
 //
 /// The `for` keyword.
 ///
-/// `for` is primarily used in for-in-loops, but it has a few other pieces of syntactic uses such as
-/// `impl Trait for Type` (see [`impl`] for more info on that). for-in-loops, or to be more
-/// precise, iterator loops, are a simple syntactic sugar over an exceedingly common practice
-/// within Rust, which is to loop over an iterator until that iterator returns `None` (or `break`
-/// is called).
+/// The `for` keyword is used in many syntactic locations:
+///
+/// * `for` is used in for-in-loops (see below).
+/// * `for` is used when implementing traits as in `impl Trait for Type` (see [`impl`] for more info
+///   on that).
+/// * `for` is also used for [higher-ranked trait bounds] as in `for<'a> &'a T: PartialEq<i32>`.
+///
+/// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
+/// practice within Rust, which is to loop over an iterator until that iterator returns `None` (or
+/// `break` is called).
 ///
 /// ```rust
 /// for i in 0..5 {
@@ -347,6 +352,8 @@ mod fn_keyword { }
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
 /// [`impl`]: keyword.impl.html
+/// [higher-ranked trait bounds]:
+/// https://doc.rust-lang.org/nightly/reference/trait-bounds.html#higher-ranked-trait-bounds
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
 /// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for

@@ -1,4 +1,6 @@
-/// Entry point of thread panic. For details, see `std::macros`.
+/// Panics the current thread.
+///
+/// For details, see `std::macros`.
 #[macro_export]
 #[allow_internal_unstable(core_panic, __rust_unstable_column)]
 #[stable(feature = "core", since = "1.6.0")]
@@ -132,7 +134,7 @@ macro_rules! assert_ne {
     });
 }
 
-/// Ensure that a boolean expression is `true` at runtime.
+/// Asserts that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the [`panic!`] macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
@@ -236,8 +238,7 @@ macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
 
-/// Helper macro for reducing boilerplate code for matching `Result` together
-/// with converting downstream errors.
+/// Unwraps a result or propagates its error.
 ///
 /// The `?` operator was added to replace `try!` and should be used instead.
 /// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
@@ -312,7 +313,7 @@ macro_rules! r#try {
     ($expr:expr,) => (r#try!($expr));
 }
 
-/// Write formatted data into a buffer.
+/// Writes formatted data into a buffer.
 ///
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
@@ -434,7 +435,7 @@ macro_rules! writeln {
     );
 }
 
-/// A utility macro for indicating unreachable code.
+/// Indicates unreachable code.
 ///
 /// This is useful any time that the compiler can't determine that some code is unreachable. For
 /// example:
@@ -502,7 +503,7 @@ macro_rules! unreachable {
     });
 }
 
-/// A standardized placeholder for marking unfinished code.
+/// Indicates unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
 /// code type-check, or if you're implementing a trait that requires multiple
@@ -559,10 +560,10 @@ macro_rules! unimplemented {
     ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
 }
 
-/// A standardized placeholder for marking unfinished code.
+/// Indicates unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck. `todo!` works exactly like `unimplemented!`, there only
+/// code typecheck. `todo!` works exactly like `unimplemented!`. The only
 /// difference between the two macros is the name.
 ///
 /// # Panics
@@ -618,7 +619,7 @@ macro_rules! todo {
     ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
 }
 
-/// A macro to create an array of [`MaybeUninit`]
+/// Creates an array of [`MaybeUninit`].
 ///
 /// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
 ///
@@ -645,7 +646,7 @@ macro_rules! uninitialized_array {
 #[cfg(rustdoc)]
 mod builtin {
 
-    /// Unconditionally causes compilation to fail with the given error message when encountered.
+    /// Causes compilation to fail with the given error message when encountered.
     ///
     /// For more information, see the documentation for [`std::compile_error!`].
     ///
@@ -657,7 +658,7 @@ mod builtin {
         ($msg:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// The core macro for formatted string creation & output.
+    /// Constructs parameters for the other string-formatting macros.
     ///
     /// For more information, see the documentation for [`std::format_args!`].
     ///
@@ -669,7 +670,7 @@ mod builtin {
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
     }
 
-    /// Inspect an environment variable at compile time.
+    /// Inspects an environment variable at compile time.
     ///
     /// For more information, see the documentation for [`std::env!`].
     ///
@@ -681,7 +682,7 @@ mod builtin {
         ($name:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Optionally inspect an environment variable at compile time.
+    /// Optionally inspects an environment variable at compile time.
     ///
     /// For more information, see the documentation for [`std::option_env!`].
     ///
@@ -693,7 +694,7 @@ mod builtin {
         ($name:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Concatenate identifiers into one identifier.
+    /// Concatenates identifiers into one identifier.
     ///
     /// For more information, see the documentation for [`std::concat_idents!`].
     ///
@@ -717,7 +718,7 @@ mod builtin {
         ($($e:expr,)*) => ({ /* compiler built-in */ });
     }
 
-    /// A macro which expands to the line number on which it was invoked.
+    /// Expands to the line number on which it was invoked.
     ///
     /// For more information, see the documentation for [`std::line!`].
     ///
@@ -726,7 +727,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which expands to the column number on which it was invoked.
+    /// Expands to the column number on which it was invoked.
     ///
     /// For more information, see the documentation for [`std::column!`].
     ///
@@ -735,7 +736,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which expands to the file name from which it was invoked.
+    /// Expands to the file name from which it was invoked.
     ///
     /// For more information, see the documentation for [`std::file!`].
     ///
@@ -744,7 +745,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which stringifies its arguments.
+    /// Stringifies its arguments.
     ///
     /// For more information, see the documentation for [`std::stringify!`].
     ///
@@ -786,7 +787,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags, at compile-time.
+    /// Evaluates boolean combinations of configuration flags, at compile-time.
     ///
     /// For more information, see the documentation for [`std::cfg!`].
     ///
@@ -795,7 +796,7 @@ mod builtin {
     #[rustc_doc_only_macro]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
-    /// Parse a file as an expression or an item according to the context.
+    /// Parses a file as an expression or an item according to the context.
     ///
     /// For more information, see the documentation for [`std::include!`].
     ///
@@ -807,7 +808,7 @@ mod builtin {
         ($file:expr,) => ({ /* compiler built-in */ });
     }
 
-    /// Ensure that a boolean expression is `true` at runtime.
+    /// Asserts that a boolean expression is `true` at runtime.
     ///
     /// For more information, see the documentation for [`std::assert!`].
     ///

@@ -13,12 +13,5 @@ error: expected `,`
 LL |         MyStruct { .., Some(_) } => {},
    |                        ^^^^
 
-error[E0027]: pattern does not mention field `s1`
-  --> $DIR/issue-54379.rs:9:9
-   |
-LL |         MyStruct { .., Some(_) } => {},
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ missing field `s1`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0027`.

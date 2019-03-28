@@ -278,16 +278,16 @@ impl Clean<ExternalCrate> for CrateNum {
         };
         let primitives = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
-                let item = cx.tcx.hir().expect_item(id.id);
+                let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
-                        as_primitive(Def::Mod(cx.tcx.hir().local_def_id(id.id)))
+                        as_primitive(Def::Mod(cx.tcx.hir().local_def_id_from_hir_id(id.id)))
                     }
                     hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
                         as_primitive(path.def).map(|(_, prim, attrs)| {
                             // Pretend the primitive is local.
-                            (cx.tcx.hir().local_def_id(id.id), prim, attrs)
+                            (cx.tcx.hir().local_def_id_from_hir_id(id.id), prim, attrs)
                         })
                     }
                     _ => None
@@ -320,15 +320,15 @@ impl Clean<ExternalCrate> for CrateNum {
         };
         let keywords = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
-                let item = cx.tcx.hir().expect_item(id.id);
+                let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
-                        as_keyword(Def::Mod(cx.tcx.hir().local_def_id(id.id)))
+                        as_keyword(Def::Mod(cx.tcx.hir().local_def_id_from_hir_id(id.id)))
                     }
                     hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
                         as_keyword(path.def).map(|(_, prim, attrs)| {
-                            (cx.tcx.hir().local_def_id(id.id), prim, attrs)
+                            (cx.tcx.hir().local_def_id_from_hir_id(id.id), prim, attrs)
                         })
                     }
                     _ => None
@@ -2762,7 +2762,7 @@ impl Clean<Type> for hir::Ty {
             },
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::Def(item_id, _) => {
-                let item = cx.tcx.hir().expect_item(item_id.id);
+                let item = cx.tcx.hir().expect_item_by_hir_id(item_id.id);
                 if let hir::ItemKind::Existential(ref ty) = item.node {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {
@@ -4393,10 +4393,10 @@ pub fn path_to_def_local(tcx: &TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefI
         let segment = path_it.next()?;
 
         for item_id in mem::replace(&mut items, HirVec::new()).iter() {
-            let item = tcx.hir().expect_item(item_id.id);
+            let item = tcx.hir().expect_item_by_hir_id(item_id.id);
             if item.ident.name == *segment {
                 if path_it.peek().is_none() {
-                    return Some(tcx.hir().local_def_id(item_id.id))
+                    return Some(tcx.hir().local_def_id_from_hir_id(item_id.id))
                 }
 
                 items = match &item.node {

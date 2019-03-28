@@ -4734,7 +4734,7 @@ impl<'a> Parser<'a> {
                         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
                             e.emit();
                             self.recover_stmt();
-                            (vec![], false)
+                            (vec![], true)
                         });
                         self.bump();
                         pat = PatKind::Struct(path, fields, etc);

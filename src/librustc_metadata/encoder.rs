@@ -7,6 +7,7 @@ use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
+use rustc::hir::GenericParamKind;
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
@@ -692,7 +693,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
-                tcx.hir().local_def_id(item_id.id).index
+                tcx.hir().local_def_id_from_hir_id(item_id.id).index
             })),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),
@@ -1352,25 +1353,22 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    fn encode_info_for_ty_param(&mut self,
-                                (def_id, Untracked(has_default)): (DefId, Untracked<bool>))
-                                -> Entry<'tcx> {
-        debug!("IsolatedEncoder::encode_info_for_ty_param({:?})", def_id);
+    fn encode_info_for_generic_param(
+        &mut self,
+        def_id: DefId,
+        entry_kind: EntryKind<'tcx>,
+        encode_type: bool,
+    ) -> Entry<'tcx> {
         let tcx = self.tcx;
         Entry {
-            kind: EntryKind::Type,
+            kind: entry_kind,
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),
             stability: None,
             deprecation: None,
-
-            ty: if has_default {
-                Some(self.encode_item_type(def_id))
-            } else {
-                None
-            },
+            ty: if encode_type { Some(self.encode_item_type(def_id)) } else { None },
             inherent_impls: LazySeq::empty(),
             variances: LazySeq::empty(),
             generics: None,
@@ -1381,27 +1379,20 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    fn encode_info_for_const_param(&mut self, def_id: DefId) -> Entry<'tcx> {
+    fn encode_info_for_ty_param(
+        &mut self,
+        (def_id, Untracked(encode_type)): (DefId, Untracked<bool>),
+    ) -> Entry<'tcx> {
+        debug!("IsolatedEncoder::encode_info_for_ty_param({:?})", def_id);
+        self.encode_info_for_generic_param(def_id, EntryKind::TypeParam, encode_type)
+    }
+
+    fn encode_info_for_const_param(
+        &mut self,
+        def_id: DefId,
+    ) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_const_param({:?})", def_id);
-        let tcx = self.tcx;
-        Entry {
-            kind: EntryKind::Type,
-            visibility: self.lazy(&ty::Visibility::Public),
-            span: self.lazy(&tcx.def_span(def_id)),
-            attributes: LazySeq::empty(),
-            children: LazySeq::empty(),
-            stability: None,
-            deprecation: None,
-
-            ty: Some(self.encode_item_type(def_id)),
-            inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
-            generics: None,
-            predicates: None,
-            predicates_defined_on: None,
-
-            mir: None,
-        }
+        self.encode_info_for_generic_param(def_id, EntryKind::ConstParam, true)
     }
 
     fn encode_info_for_closure(&mut self, def_id: DefId) -> Entry<'tcx> {
@@ -1748,18 +1739,18 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
         for param in &generics.params {
+            let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
             match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { ref default, .. } => {
-                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
-                    let has_default = Untracked(default.is_some());
-                    let encode_info = IsolatedEncoder::encode_info_for_ty_param;
-                    self.record(def_id, encode_info, (def_id, has_default));
+                GenericParamKind::Lifetime { .. } => continue,
+                GenericParamKind::Type { ref default, .. } => {
+                    self.record(
+                        def_id,
+                        IsolatedEncoder::encode_info_for_ty_param,
+                        (def_id, Untracked(default.is_some())),
+                    );
                 }
-                hir::GenericParamKind::Const { .. } => {
-                    let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
-                    let encode_info = IsolatedEncoder::encode_info_for_const_param;
-                    self.record(def_id, encode_info, def_id);
+                GenericParamKind::Const { .. } => {
+                    self.record(def_id, IsolatedEncoder::encode_info_for_const_param, def_id);
                 }
             }
         }
