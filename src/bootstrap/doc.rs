@@ -343,12 +343,9 @@ fn invoke_rustdoc(
         .arg("--html-before-content").arg(&version_info)
         .arg("--html-in-header").arg(&header)
         .arg("--markdown-no-toc")
-        .arg("--markdown-playground-url")
-        .arg("https://play.rust-lang.org/")
-        .arg("-o").arg(&out)
-        .arg(&path)
-        .arg("--markdown-css")
-        .arg("../rust.css");
+        .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
+        .arg("-o").arg(&out).arg(&path)
+        .arg("--markdown-css").arg("../rust.css");
 
     builder.run(&mut cmd);
 }
@@ -431,8 +428,7 @@ impl Step for Standalone {
                .arg("--html-in-header").arg(&favicon)
                .arg("--markdown-no-toc")
                .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
-               .arg("--markdown-playground-url")
-               .arg("https://play.rust-lang.org/")
+               .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
                .arg(&path);
 
@@ -523,6 +519,7 @@ impl Step for Std {
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
                  .arg("--generate-redirect-pages")
+                 .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
@@ -589,6 +586,7 @@ impl Step for Test {
 
         cargo.arg("--no-deps")
              .arg("-p").arg("test")
+             .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
              .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
@@ -660,6 +658,7 @@ impl Step for WhitelistedRustc {
         // for which docs must be built.
         for krate in &["proc_macro"] {
             cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
                  .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
@@ -890,6 +889,7 @@ impl Step for ErrorIndex {
         );
         index.arg("html");
         index.arg(out.join("error-index.html"));
+        index.arg(crate::channel::CFG_RELEASE_NUM);
 
         // FIXME: shouldn't have to pass this env var
         index.env("CFG_BUILD", &builder.config.build)

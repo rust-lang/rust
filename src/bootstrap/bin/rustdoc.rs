@@ -69,6 +69,17 @@ fn main() {
                .arg("unstable-options");
         }
         cmd.arg("--generate-redirect-pages");
+        has_unstable = true;
+    }
+
+    // Needed to be able to run all rustdoc tests.
+    if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
+        // This "unstable-options" can be removed when `--resource-suffix` is stabilized
+        if !has_unstable {
+            cmd.arg("-Z")
+               .arg("unstable-options");
+        }
+        cmd.arg("--resource-suffix").arg(x);
     }
 
     if verbose > 1 {
