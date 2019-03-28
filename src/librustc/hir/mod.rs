@@ -698,7 +698,7 @@ pub struct WhereEqPredicate {
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate
-    pub items: BTreeSet<NodeId>,
+    pub items: BTreeSet<HirId>,
     pub trait_items: BTreeSet<TraitItemId>,
     pub impl_items: BTreeSet<ImplItemId>,
 }
@@ -722,7 +722,7 @@ pub struct Crate {
     // does, because it can affect the order in which errors are
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
-    pub items: BTreeMap<NodeId, Item>,
+    pub items: BTreeMap<HirId, Item>,
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
@@ -741,7 +741,7 @@ pub struct Crate {
 }
 
 impl Crate {
-    pub fn item(&self, id: NodeId) -> &Item {
+    pub fn item(&self, id: HirId) -> &Item {
         &self.items[&id]
     }
 
@@ -2215,7 +2215,7 @@ impl VariantData {
 // so it can fetched later.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ItemId {
-    pub id: NodeId,
+    pub id: HirId,
 }
 
 /// An item

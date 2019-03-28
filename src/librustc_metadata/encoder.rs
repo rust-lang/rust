@@ -693,7 +693,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
-                tcx.hir().local_def_id(item_id.id).index
+                tcx.hir().local_def_id_from_hir_id(item_id.id).index
             })),
             stability: self.encode_stability(def_id),
             deprecation: self.encode_deprecation(def_id),

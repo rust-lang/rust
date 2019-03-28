@@ -163,7 +163,7 @@ pub trait Visitor<'v> : Sized {
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item(id.id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item_by_hir_id(id.id));
         if let Some(item) = opt_item {
             self.visit_item(item);
         }
