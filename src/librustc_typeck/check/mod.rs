@@ -4802,10 +4802,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (self.to_ty(qself), qself, segment)
             }
         };
-        if let Some(cached_def) = self.tables.borrow().type_dependent_defs().get(hir_id) {
+        if let Some(cached_def) = self.tables.borrow().type_dependent_def(hir_id) {
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
-            return (*cached_def, Some(ty), slice::from_ref(&**item_segment))
+            return (cached_def, Some(ty), slice::from_ref(&**item_segment))
         }
         let item_name = item_segment.ident;
         let def = match self.resolve_ufcs(span, item_name, ty, hir_id) {

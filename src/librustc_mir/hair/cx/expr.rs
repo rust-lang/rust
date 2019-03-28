@@ -834,13 +834,11 @@ fn method_callee<'a, 'gcx, 'tcx>(
     let (def_id, substs, user_ty) = match overloaded_callee {
         Some((def_id, substs)) => (def_id, substs, None),
         None => {
-            let type_dependent_defs = cx.tables().type_dependent_defs();
-            let def = type_dependent_defs
-                .get(expr.hir_id)
+            let def = cx.tables().type_dependent_def(expr.hir_id)
                 .unwrap_or_else(|| {
                     span_bug!(expr.span, "no type-dependent def for method callee")
                 });
-            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, def);
+            let user_ty = user_substs_applied_to_def(cx, expr.hir_id, &def);
             debug!("method_callee: user_ty={:?}", user_ty);
             (def.def_id(), cx.tables().node_substs(expr.hir_id), user_ty)
         }

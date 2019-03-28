@@ -559,8 +559,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::Error => { }
             _ => {
-                if let Some(def) = self.mc.tables.type_dependent_defs().get(call.hir_id) {
-                    let def_id = def.def_id();
+                if let Some(def_id) = self.mc.tables.type_dependent_def_id(call.hir_id) {
                     let call_scope = region::Scope {
                         id: call.hir_id.local_id,
                         data: region::ScopeData::Node
