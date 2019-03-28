@@ -17,10 +17,10 @@ struct Foo<T> {
 struct S<T>(T);
 
 fn f() {
-    let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>); //~ WARN unnecessary path disambiguator
-    let g: Foo::<i32> = Foo { _a: 42 }; //~ WARN unnecessary path disambiguator
+    let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>);
+    let g: Foo::<i32> = Foo { _a: 42 };
 
-    m!(S::<u8>); // OK, no warning
+    m!(S::<u8>);
 }
 
 
