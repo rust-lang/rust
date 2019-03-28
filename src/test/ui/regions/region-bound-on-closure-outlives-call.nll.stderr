@@ -14,11 +14,10 @@ error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/region-bound-on-closure-outlives-call.rs:3:25
    |
 LL |     (|x| f(x))(call_rec(f))
-   |     ----------          ^ move out of `f` occurs here
-   |     ||   |
-   |     ||   borrow occurs due to use in closure
-   |     |borrow of `f` occurs here
-   |     borrow later used by call
+   |      --- -              ^ move out of `f` occurs here
+   |      |   |
+   |      |   borrow occurs due to use in closure
+   |      borrow of `f` occurs here
 
 error: aborting due to previous error
 
