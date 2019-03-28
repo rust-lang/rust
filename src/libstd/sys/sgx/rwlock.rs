@@ -280,7 +280,7 @@ mod tests {
             let mut init = MaybeUninit::<RWLock>::zeroed();
             rwlock_new(&mut init);
             assert_eq!(
-                mem::transmute::<_, [u8; 128]>(init.into_initialized()).as_slice(),
+                mem::transmute::<_, [u8; 128]>(init.assume_init()).as_slice(),
                 RWLOCK_INIT
             )
         };

@@ -622,7 +622,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
 #[inline]
-#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
+#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
@@ -1058,7 +1058,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
 /// // The equivalent code with `MaybeUninit<&i32>`:
-/// let x: &i32 = unsafe { MaybeUninit::zeroed().into_initialized() }; // undefined behavior!
+/// let x: &i32 = unsafe { MaybeUninit::zeroed().assume_init() }; // undefined behavior!
 /// ```
 ///
 /// This is exploited by the compiler for various optimizations, such as eliding
@@ -1073,7 +1073,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
 /// // The equivalent code with `MaybeUninit<bool>`:
-/// let b: bool = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
+/// let b: bool = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
 /// ```
 ///
 /// Moreover, uninitialized memory is special in that the compiler knows that
@@ -1087,7 +1087,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
 /// // The equivalent code with `MaybeUninit<i32>`:
-/// let x: i32 = unsafe { MaybeUninit::uninitialized().into_initialized() }; // undefined behavior!
+/// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
@@ -1102,12 +1102,12 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// // Create an explicitly uninitialized reference. The compiler knows that data inside
 /// // a `MaybeUninit<T>` may be invalid, and hence this is not UB:
-/// let mut x = MaybeUninit::<&i32>::uninitialized();
+/// let mut x = MaybeUninit::<&i32>::uninit();
 /// // Set it to a valid value.
-/// x.set(&0);
+/// x.write(&0);
 /// // Extract the initialized data -- this is only allowed *after* properly
 /// // initializing `x`!
-/// let x = unsafe { x.into_initialized() };
+/// let x = unsafe { x.assume_init() };
 /// ```
 ///
 /// The compiler then knows to not make any incorrect assumptions or optimizations on this code.
@@ -1148,8 +1148,17 @@ impl<T> MaybeUninit<T> {
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub const fn uninitialized() -> MaybeUninit<T> {
+    pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
+    }
+
+    /// Deprecated before stabilization.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    // FIXME: still used by stdsimd
+    // #[rustc_deprecated(since = "1.35.0", reason = "use `uninit` instead")]
+    pub const fn uninitialized() -> MaybeUninit<T> {
+        Self::uninit()
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -1171,7 +1180,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<(u8, bool)>::zeroed();
-    /// let x = unsafe { x.into_initialized() };
+    /// let x = unsafe { x.assume_init() };
     /// assert_eq!(x, (0, false));
     /// ```
     ///
@@ -1185,14 +1194,14 @@ impl<T> MaybeUninit<T> {
     /// enum NotZero { One = 1, Two = 2 };
     ///
     /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
-    /// let x = unsafe { x.into_initialized() };
+    /// let x = unsafe { x.assume_init() };
     /// // Inside a pair, we create a `NotZero` that does not have a valid discriminant.
     /// // This is undefined behavior.
     /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline]
     pub fn zeroed() -> MaybeUninit<T> {
-        let mut u = MaybeUninit::<T>::uninitialized();
+        let mut u = MaybeUninit::<T>::uninit();
         unsafe {
             u.as_mut_ptr().write_bytes(0u8, 1);
         }
@@ -1205,11 +1214,19 @@ impl<T> MaybeUninit<T> {
     /// reference to the (now safely initialized) contents of `self`.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub fn set(&mut self, val: T) -> &mut T {
+    pub fn write(&mut self, val: T) -> &mut T {
         unsafe {
             self.value = ManuallyDrop::new(val);
             self.get_mut()
         }
+    }
+
+    /// Deprecated before stabilization.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    #[rustc_deprecated(since = "1.35.0", reason = "use `write` instead")]
+    pub fn set(&mut self, val: T) -> &mut T {
+        self.write(val)
     }
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
@@ -1223,7 +1240,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// unsafe { x.as_mut_ptr().write(vec![0,1,2]); }
     /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
@@ -1236,7 +1253,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
@@ -1260,7 +1277,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// unsafe { x.as_mut_ptr().write(vec![0,1,2]); }
     /// // Create a reference into the `MaybeUninit<Vec<u32>>`.
     /// // This is okay because we initialized it.
@@ -1275,7 +1292,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<Vec<u32>>::uninitialized();
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
     /// // We have created a reference to an uninitialized vector! This is undefined behavior.
     /// ```
@@ -1306,9 +1323,9 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<bool>::uninitialized();
+    /// let mut x = MaybeUninit::<bool>::uninit();
     /// unsafe { x.as_mut_ptr().write(true); }
-    /// let x_init = unsafe { x.into_initialized() };
+    /// let x_init = unsafe { x.assume_init() };
     /// assert_eq!(x_init, true);
     /// ```
     ///
@@ -1318,21 +1335,30 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let x = MaybeUninit::<Vec<u32>>::uninitialized();
-    /// let x_init = unsafe { x.into_initialized() };
+    /// let x = MaybeUninit::<Vec<u32>>::uninit();
+    /// let x_init = unsafe { x.assume_init() };
     /// // `x` had not been initialized yet, so this last line caused undefined behavior.
     /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub unsafe fn into_initialized(self) -> T {
+    pub unsafe fn assume_init(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
+    }
+
+    /// Deprecated before stabilization.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    // FIXME: still used by stdsimd
+    // #[rustc_deprecated(since = "1.35.0", reason = "use `assume_init` instead")]
+    pub unsafe fn into_initialized(self) -> T {
+        self.assume_init()
     }
 
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
-    /// Whenever possible, it is preferrable to use [`into_initialized`] instead, which
+    /// Whenever possible, it is preferrable to use [`assume_init`] instead, which
     /// prevents duplicating the content of the `MaybeUninit<T>`.
     ///
     /// # Safety
@@ -1342,11 +1368,11 @@ impl<T> MaybeUninit<T> {
     /// behavior.
     ///
     /// Moreover, this leaves a copy of the same data behind in the `MaybeUninit<T>`. When using
-    /// multiple copies of the data (by calling `read_initialized` multiple times, or first
-    /// calling `read_initialized` and then [`into_initialized`]), it is your responsibility
+    /// multiple copies of the data (by calling `read` multiple times, or first
+    /// calling `read` and then [`assume_init`]), it is your responsibility
     /// to ensure that that data may indeed be duplicated.
     ///
-    /// [`into_initialized`]: #method.into_initialized
+    /// [`assume_init`]: #method.assume_init
     ///
     /// # Examples
     ///
@@ -1356,18 +1382,18 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<u32>::uninitialized();
-    /// x.set(13);
-    /// let x1 = unsafe { x.read_initialized() };
+    /// let mut x = MaybeUninit::<u32>::uninit();
+    /// x.write(13);
+    /// let x1 = unsafe { x.read() };
     /// // `u32` is `Copy`, so we may read multiple times.
-    /// let x2 = unsafe { x.read_initialized() };
+    /// let x2 = unsafe { x.read() };
     /// assert_eq!(x1, x2);
     ///
-    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninitialized();
-    /// x.set(None);
-    /// let x1 = unsafe { x.read_initialized() };
+    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
+    /// x.write(None);
+    /// let x1 = unsafe { x.read() };
     /// // Duplicating a `None` value is okay, so we may read multiple times.
-    /// let x2 = unsafe { x.read_initialized() };
+    /// let x2 = unsafe { x.read() };
     /// assert_eq!(x1, x2);
     /// ```
     ///
@@ -1377,18 +1403,26 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninitialized();
-    /// x.set(Some(vec![0,1,2]));
-    /// let x1 = unsafe { x.read_initialized() };
-    /// let x2 = unsafe { x.read_initialized() };
+    /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
+    /// x.write(Some(vec![0,1,2]));
+    /// let x1 = unsafe { x.read() };
+    /// let x2 = unsafe { x.read() };
     /// // We now created two copies of the same vector, leading to a double-free when
     /// // they both get dropped!
     /// ```
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub unsafe fn read_initialized(&self) -> T {
+    pub unsafe fn read(&self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         self.as_ptr().read()
+    }
+
+    /// Deprecated before stabilization.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
+    #[rustc_deprecated(since = "1.35.0", reason = "use `read` instead")]
+    pub unsafe fn read_initialized(&self) -> T {
+        self.read()
     }
 
     /// Gets a reference to the contained value.

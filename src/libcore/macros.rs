@@ -626,12 +626,12 @@ macro_rules! todo {
 #[macro_export]
 #[unstable(feature = "maybe_uninit_array", issue = "53491")]
 macro_rules! uninitialized_array {
-    // This `into_initialized` is safe because an array of `MaybeUninit` does not
+    // This `assume_init` is safe because an array of `MaybeUninit` does not
     // require initialization.
     // FIXME(#49147): Could be replaced by an array initializer, once those can
     // be any const expression.
     ($t:ty; $size:expr) => (unsafe {
-        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninitialized().into_initialized()
+        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninit().assume_init()
     });
 }
 
