@@ -1284,6 +1284,10 @@ impl Step for Compiletest {
             cmd.arg("--android-cross-path").arg("");
         }
 
+        if builder.config.cmd.rustfix_coverage() {
+            cmd.arg("--rustfix-coverage");
+        }
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         let _folder = builder.fold_output(|| format!("test_{}", suite));

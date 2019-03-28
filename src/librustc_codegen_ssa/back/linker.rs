@@ -160,7 +160,16 @@ impl<'a> GccLinker<'a> {
     }
 
     fn takes_hints(&self) -> bool {
-        !self.sess.target.target.options.is_like_osx
+        // Really this function only returns true if the underlying linker
+        // configured for a compiler is binutils `ld.bfd` and `ld.gold`. We
+        // don't really have a foolproof way to detect that, so rule out some
+        // platforms where currently this is guaranteed to *not* be the case:
+        //
+        // * On OSX they have their own linker, not binutils'
+        // * For WebAssembly the only functional linker is LLD, which doesn't
+        //   support hint flags
+        !self.sess.target.target.options.is_like_osx &&
+            self.sess.target.target.arch != "wasm32"
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -375,6 +384,13 @@ impl<'a> Linker for GccLinker<'a> {
             return
         }
 
+        // Symbol visibility takes care of this for the WebAssembly.
+        // Additionally the only known linker, LLD, doesn't support the script
+        // arguments just yet
+        if self.sess.target.target.arch == "wasm32" {
+            return;
+        }
+
         let mut arg = OsString::new();
         let path = tmpdir.join("list");
 
@@ -441,13 +457,13 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn group_start(&mut self) {
-        if !self.sess.target.target.options.is_like_osx {
+        if self.takes_hints() {
             self.linker_arg("--start-group");
         }
     }
 
     fn group_end(&mut self) {
-        if !self.sess.target.target.options.is_like_osx {
+        if self.takes_hints() {
             self.linker_arg("--end-group");
         }
     }
@@ -862,59 +878,7 @@ pub struct WasmLd<'a> {
 }
 
 impl<'a> WasmLd<'a> {
-    fn new(mut cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
-        // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
-        // using threads causing weird hangs and bugs. Disable it entirely as
-        // this isn't yet the bottleneck of compilation at all anyway.
-        cmd.arg("--no-threads");
-
-        // By default LLD only gives us one page of stack (64k) which is a
-        // little small. Default to a larger stack closer to other PC platforms
-        // (1MB) and users can always inject their own link-args to override this.
-        cmd.arg("-z").arg("stack-size=1048576");
-
-        // By default LLD's memory layout is:
-        //
-        // 1. First, a blank page
-        // 2. Next, all static data
-        // 3. Finally, the main stack (which grows down)
-        //
-        // This has the unfortunate consequence that on stack overflows you
-        // corrupt static data and can cause some exceedingly weird bugs. To
-        // help detect this a little sooner we instead request that the stack is
-        // placed before static data.
-        //
-        // This means that we'll generate slightly larger binaries as references
-        // to static data will take more bytes in the ULEB128 encoding, but
-        // stack overflow will be guaranteed to trap as it underflows instead of
-        // corrupting static data.
-        cmd.arg("--stack-first");
-
-        // FIXME we probably shouldn't pass this but instead pass an explicit
-        // whitelist of symbols we'll allow to be undefined. Unfortunately
-        // though we can't handle symbols like `log10` that LLVM injects at a
-        // super late date without actually parsing object files. For now let's
-        // stick to this and hopefully fix it before stabilization happens.
-        cmd.arg("--allow-undefined");
-
-        // For now we just never have an entry symbol
-        cmd.arg("--no-entry");
-
-        // Rust code should never have warnings, and warnings are often
-        // indicative of bugs, let's prevent them.
-        cmd.arg("--fatal-warnings");
-
-        // The symbol visibility story is a bit in flux right now with LLD.
-        // It's... not entirely clear to me what's going on, but this looks to
-        // make everything work when `export_symbols` isn't otherwise called for
-        // things like executables.
-        cmd.arg("--export-dynamic");
-
-        // LLD only implements C++-like demangling, which doesn't match our own
-        // mangling scheme. Tell LLD to not demangle anything and leave it up to
-        // us to demangle these symbols later.
-        cmd.arg("--no-demangle");
-
+    fn new(cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
         WasmLd { cmd, sess, info }
     }
 }
@@ -1010,6 +974,7 @@ impl<'a> Linker for WasmLd<'a> {
     }
 
     fn build_dylib(&mut self, _out_filename: &Path) {
+        self.cmd.arg("--no-entry");
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {

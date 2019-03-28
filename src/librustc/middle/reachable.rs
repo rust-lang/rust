@@ -97,7 +97,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                 Some(self.tables.qpath_def(qpath, expr.hir_id))
             }
             hir::ExprKind::MethodCall(..) => {
-                self.tables.type_dependent_defs().get(expr.hir_id).cloned()
+                self.tables.type_dependent_def(expr.hir_id)
             }
             _ => None
         };

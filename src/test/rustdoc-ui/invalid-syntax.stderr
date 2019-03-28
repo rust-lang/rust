@@ -3,11 +3,11 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```
    |  _____^
-LL | | /// /__________pkt->size___________/          /_result->size_/ /__pkt->size__/
+LL | | /// \__________pkt->size___________/          \_result->size_/ \__pkt->size__/
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: /
+   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
@@ -35,11 +35,11 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```
    |  _____^
-LL | | /// /_
+LL | | /// \_
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: /
+   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
@@ -50,21 +50,21 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```rust
    |  _____^
-LL | | /// /_
+LL | | /// \_
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: /
+   = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:41:9
    |
 LL |   ///     code with bad syntax
    |  _________^
-LL | | ///     /_
+LL | | ///     \_
    | |__________^
    |
-   = note: error from rustc: unknown start of token: /
+   = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:55:9
@@ -79,17 +79,17 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```edition2018
    |  _____^
-LL | | /// /_
+LL | | /// \_
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: /
+   = note: error from rustc: unknown start of token: \
 
 warning: doc comment contains an invalid Rust code block
   --> $DIR/invalid-syntax.rs:63:1
    |
 LL | / #[doc = "```"]
-LL | | /// /_
+LL | | /// \_
 LL | | #[doc = "```"]
    | |______________^
    |

@@ -152,17 +152,20 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 LinkerFlavor::PtxLinker => "rust-ptx-linker",
             }), flavor)),
             (Some(linker), None) => {
-                let stem = if linker.extension().and_then(|ext| ext.to_str()) == Some("exe") {
-                    linker.file_stem().and_then(|stem| stem.to_str())
-                } else {
-                    linker.to_str()
-                }.unwrap_or_else(|| {
-                    sess.fatal("couldn't extract file stem from specified linker");
-                }).to_owned();
+                let stem = linker
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .unwrap_or_else(|| {
+                        sess.fatal("couldn't extract file stem from specified linker")
+                    });
 
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::Em
-                } else if stem == "gcc" || stem.ends_with("-gcc") {
+                } else if stem == "gcc"
+                    || stem.ends_with("-gcc")
+                    || stem == "clang"
+                    || stem.ends_with("-clang")
+                {
                     LinkerFlavor::Gcc
                 } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
                     LinkerFlavor::Ld

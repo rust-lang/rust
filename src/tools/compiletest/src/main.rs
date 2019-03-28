@@ -233,6 +233,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "mode describing what file the actual ui output will be compared to",
             "COMPARE MODE",
         )
+        .optflag(
+            "",
+            "rustfix-coverage",
+            "enable this to generate a Rustfix coverage file, which is saved in \
+                `./<build_base>/rustfix_missing_coverage.txt`",
+        )
         .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -336,6 +342,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
+        rustfix_coverage: matches.opt_present("rustfix-coverage"),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -473,6 +480,19 @@ pub fn run_tests(config: &Config) {
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
     if let Mode::CodegenUnits = config.mode {
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
+    }
+
+    // If we want to collect rustfix coverage information,
+    // we first make sure that the coverage file does not exist.
+    // It will be created later on.
+    if config.rustfix_coverage {
+        let mut coverage_file_path = config.build_base.clone();
+        coverage_file_path.push("rustfix_missing_coverage.txt");
+        if coverage_file_path.exists() {
+            if let Err(e) = fs::remove_file(&coverage_file_path) {
+                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+            }
+        }
     }
 
     let opts = test_opts(config);

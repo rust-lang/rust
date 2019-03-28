@@ -1,7 +1,7 @@
 error: invalid character in unicode escape: l
   --> $DIR/new-unicode-escapes-4.rs:4:17
    |
-LL |     let s = "/u{lol}";
+LL |     let s = "\u{lol}";
    |                 ^
 
 error: aborting due to previous error

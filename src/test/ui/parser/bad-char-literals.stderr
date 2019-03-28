@@ -4,7 +4,7 @@ error: character constant must be escaped: '
 LL |     ''';
    |      ^
 
-error: character constant must be escaped: /n
+error: character constant must be escaped: \n
   --> $DIR/bad-char-literals.rs:11:6
    |
 LL |       '
@@ -12,13 +12,13 @@ LL |       '
 LL | | ';
    | |_
 
-error: character constant must be escaped: /r
+error: character constant must be escaped: \r
   --> $DIR/bad-char-literals.rs:16:6
    |
 LL |     '';
    |      ^
 
-error: character constant must be escaped: /t
+error: character constant must be escaped: \t
   --> $DIR/bad-char-literals.rs:19:6
    |
 LL |     '    ';
