@@ -172,6 +172,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     | hir::ItemKind::Ty(..)
                     | hir::ItemKind::Static(..)
                     | hir::ItemKind::Existential(..)
+                    | hir::ItemKind::Impl(..)
                     | hir::ItemKind::Const(..) => {
                         intravisit::walk_item(self, &item);
                     }
