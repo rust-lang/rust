@@ -82,7 +82,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
     has_mods |= p.eat(CONST_KW);
-    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY {
+    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY && p.nth(1) != MOVE_KW {
         p.eat(ASYNC_KW);
         has_mods = true;
     }
