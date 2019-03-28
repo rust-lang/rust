@@ -77,9 +77,37 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
+
+        // The function name varies on platforms.
+        // See test/CodeGen/mcount.c in clang.
+        let mcount_name = if cfg!(target_os = "netbsd") {
+            const_cstr!("__mcount")
+        } else if cfg!(any(
+                target_arch = "mips", target_arch = "mips64",
+                target_arch = "powerpc", target_arch = "powerpc64")) {
+            const_cstr!("_mcount")
+        } else if cfg!(target_os = "darwin") {
+            const_cstr!("\01mcount")
+        } else if cfg!(target_arch = "aarch64")
+            && (cfg!(target_os = "linux")
+                || (cfg!(target_os = "unknown") && cfg!(target_env = "gnu")))
+        {
+            const_cstr!("\01_mcount")
+        } else if cfg!(target_arch = "arm")
+            && cfg!(any(target_os = "linux", target_os = "unknown"))
+        {
+            if cfg!(target_env = "gnu") {
+                const_cstr!("\01__gnu_mcount_nc")
+            } else {
+                const_cstr!("\01mcount")
+            }
+        } else {
+            const_cstr!("mcount")
+        };
+
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"), const_cstr!("mcount"));
+            const_cstr!("instrument-function-entry-inlined"), mcount_name);
     }
 }
 
