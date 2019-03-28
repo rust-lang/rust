@@ -2,7 +2,7 @@ mod full {
     use log::{log_enabled, Level};
     use std::{
         env,
-        fs::File,
+        fs::{read_to_string, File},
         io::{BufRead, Write},
         path::Path,
         process::{Command, Stdio},
@@ -39,13 +39,6 @@ mod full {
 
         let output = cmd.output().expect("could not run cargo semver");
 
-        assert_eq!(
-            output.status.success(),
-            expected_result,
-            "cargo-semver returned unexpected exit status {}",
-            output.status
-        );
-
         // Choose solution depending on the platform
         let file_ext = if cfg!(target_os = "macos") {
             "osx"
@@ -58,20 +51,17 @@ mod full {
             return;
         };
 
-        let filename = Path::new("tests/full_cases").join(format!(
+        let filename = format!(
             "{}-{}-{}.{}",
             crate_name, old_version, new_version, file_ext
-        ));
-
-        assert!(
-            filename.exists(),
-            "file `{}` does not exist",
-            filename.display()
         );
 
-        let mut file = File::create(&filename).expect("could not create output file");
+        let expected_path = Path::new("tests/full_cases").join(&filename);
 
-        for line in output
+        let expected_output =
+            read_to_string(&expected_path).expect("could not read expected output from file");
+
+        let new_output = output
             .stdout
             .lines()
             .chain(output.stderr.lines())
@@ -81,34 +71,42 @@ mod full {
                 !line.starts_with("version bump") &&
                 // ...unless debugging is enabled
                 !log_enabled!(Level::Debug))
-        {
-            // sanitize paths for reproducibility
-            let output = match line.find("-->") {
-                Some(idx) => {
-                    let (start, end) = line.split_at(idx);
-                    match end.find(crate_name) {
-                        Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
-                        None => line,
+            .map(|line| {
+                // sanitize paths for reproducibility
+                (match line.find("-->") {
+                    Some(idx) => {
+                        let (start, end) = line.split_at(idx);
+                        match end.find(crate_name) {
+                            Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
+                            None => line,
+                        }
                     }
-                }
-                None => line,
-            };
-            writeln!(file, "{}", output).expect("error writing to output file");
+                    None => line,
+                }) + "\n"
+            })
+            .collect::<String>();
+
+        if expected_output != new_output {
+            eprintln!("cargo-semver failed to produce the expected output");
+
+            let new_path = Path::new(&env::var("OUT_DIR").unwrap()).join(filename);
+            let mut new_file = File::create(&new_path).unwrap();
+            new_file.write_all(new_output.as_bytes()).unwrap();
+
+            eprintln!(
+                "For details, try this command: \n\n    diff {} {}\n\n",
+                expected_path.display(),
+                new_path.display()
+            );
+            panic!("unexpected output diff");
         }
 
-        let git_result = Command::new("git")
-            .args(&[
-                "diff",
-                "--ignore-space-at-eol",
-                "--exit-code",
-                filename.to_str().unwrap(),
-            ])
-            .env("PAGER", "")
-            .status()
-            .expect("could not run git diff")
-            .success();
-
-        assert!(git_result, "git reports unexpected diff");
+        assert_eq!(
+            output.status.success(),
+            expected_result,
+            "cargo-semver returned unexpected exit status {}",
+            output.status
+        );
     }
 
     macro_rules! full_test {
