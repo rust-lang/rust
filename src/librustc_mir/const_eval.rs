@@ -14,6 +14,7 @@ use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
+use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashMap;
 
 use syntax::ast::Mutability;
@@ -654,7 +655,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                                         v));
                     v
                 },
-                Err(_) => ErrorHandled::Reported,
+                Err(ErrorReported) => ErrorHandled::Reported,
             }
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
