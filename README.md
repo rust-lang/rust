@@ -212,7 +212,7 @@ With this, you should now have a working development setup!  See
 ["Testing Miri"](#testing-miri) above for how to proceed.
 
 Running `cargo miri` in this setup is a bit more complicated, because the Miri
-binary you just created does not actually run without some enviroment variables.
+binary you just created does not actually run without some environment variables.
 But you can contort cargo into calling `cargo miri` the right way for you:
 
 ```sh
