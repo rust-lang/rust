@@ -125,14 +125,14 @@ impl TypeMap<'ll, 'tcx> {
     // This kind of type cannot be properly represented
     // via LLVM debuginfo. As a workaround,
     // we register a temporary Ty to metadata mapping
-    // for the function before we compute its actual metadat.a
+    // for the function before we compute its actual metadata.
     // If the metadata computation ends up recursing back to the
     // original function, it will use the temporary mapping
     // for the inner self-reference, preventing us from
     // recursing forever.
     //
     // This function is used to remove the temporary metadata
-    // mapping after we've computed the actual metadat
+    // mapping after we've computed the actual metadata
     fn remove_type(
         &mut self,
         type_: Ty<'tcx>,
@@ -651,8 +651,6 @@ pub fn type_metadata(
                         size.bits(),
                         align.bits() as u32,
                         DW_ATE_unsigned)
-
-
                 }
             };
 
