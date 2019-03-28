@@ -1477,10 +1477,9 @@ impl LintPass for SoftLints {
 
 declare_lint! {
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
-    Allow,
+    Deny,
     "`...` range patterns are deprecated"
 }
-
 
 pub struct EllipsisInclusiveRangePatterns;
 
