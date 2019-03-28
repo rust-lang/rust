@@ -91,3 +91,39 @@ pub fn spin_loop() {
         }
     }
 }
+
+/// A function that is opaque to the optimizer, to allow benchmarks to
+/// pretend to use outputs to assist in avoiding dead-code
+/// elimination.
+///
+/// This function is a no-op, and does not even read from `dummy`.
+#[inline]
+#[unstable(feature = "test", issue = "27812")]
+pub fn black_box<T>(dummy: T) -> T {
+    cfg_if! {
+        if #[cfg(any(
+            target_arch = "asmjs",
+            all(
+                target_arch = "wasm32",
+                target_os = "emscripten"
+            )
+        ))] {
+            #[inline]
+            unsafe fn black_box_impl<T>(d: T) -> T {
+                // these targets do not support inline assembly
+                let ret = crate::ptr::read_volatile(&d);
+                crate::mem::forget(d);
+                ret
+            }
+        } else {
+            #[inline]
+            unsafe fn black_box_impl<T>(d: T) -> T {
+                // we need to "use" the argument in some way LLVM can't
+                // introspect.
+                asm!("" : : "r"(&d));
+                d
+            }
+        }
+    }
+    unsafe { black_box_impl(dummy) }
+}
