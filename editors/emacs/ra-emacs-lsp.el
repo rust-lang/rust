@@ -159,7 +159,7 @@
   (interactive (list (rust-analyzer--select-runnable)))
   (-let (((&hash "env" "bin" "args" "label") runnable))
     (compilation-start
-     (string-join (cons bin args) " ")
+     (string-join (append (list bin) args '()) " ")
      ;; cargo-process-mode is nice, but try to work without it...
      (if (functionp 'cargo-process-mode) 'cargo-process-mode nil)
      (lambda (_) (concat "*" label "*")))
