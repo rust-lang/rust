@@ -965,6 +965,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
+    fn expand_trait_refs(&self,
+        trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
+    ) -> Vec<DefId> {
+        let tcx = self.tcx();
+
+        // Expand trait aliases recursively and check that only one regular (non-auto) trait
+        // is used.
+        let expanded_traits = traits::expand_trait_refs(tcx, trait_refs);
+        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref.def_id()));
+        if regular_traits.len() > 1 {
+            let extra_trait = &regular_traits[1];
+            let mut err = struct_span_err!(tcx.sess, extra_trait.top_level_span, E0225,
+                "only auto traits can be used as additional traits in a trait object");
+            err.span_label(extra_trait.span, "non-auto additional trait");
+            if extra_trait.span != extra_trait.top_level_span {
+                err.span_label(extra_trait.top_level_span, "expanded from this trait alias");
+            }
+            err.emit();
+        }
+
+        auto_traits.into_iter().map(|i| i.trait_ref.def_id()).collect()
+    }
+
     fn conv_object_ty_poly_trait_ref(&self,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
@@ -1000,19 +1024,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
         bound_trait_refs.push((principal, trait_bounds[0].span));
 
-        let expanded_traits = traits::expand_trait_refs(tcx, bound_trait_refs);
-        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
-            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref.def_id()));
-        if regular_traits.len() > 1 {
-            let extra_trait = &regular_traits[1];
-            let mut err = struct_span_err!(tcx.sess, extra_trait.top_level_span, E0225,
-                "only auto traits can be used as additional traits in a trait object");
-            err.span_label(extra_trait.span, "non-auto additional trait");
-            if extra_trait.span != extra_trait.top_level_span {
-                err.span_label(extra_trait.top_level_span, "expanded from this trait alias");
-            }
-            err.emit();
-        }
+        let mut auto_traits = self.expand_trait_refs(bound_trait_refs);
 
         // Check that there are no gross object safety violations;
         // most importantly, that the supertraits don't contain `Self`,
@@ -1156,8 +1168,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
-        let mut auto_traits: Vec<_> =
-            auto_traits.into_iter().map(|i| i.trait_ref.def_id()).collect();
         auto_traits.sort();
         auto_traits.dedup();
         debug!("auto_traits: {:?}", auto_traits);
