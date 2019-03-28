@@ -261,7 +261,7 @@ declare_lint! {
 
 declare_lint! {
     pub BARE_TRAIT_OBJECTS,
-    Allow,
+    Deny,
     "suggest using `dyn Trait` for trait objects"
 }
 
