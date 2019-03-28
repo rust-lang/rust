@@ -1151,7 +1151,7 @@ pub trait Write {
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = BufWriter::new(File::create("foo.txt")?);
     ///
-    ///     buffer.write(b"some bytes")?;
+    ///     buffer.write_all(b"some bytes")?;
     ///     buffer.flush()?;
     ///     Ok(())
     /// }
