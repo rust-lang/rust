@@ -5,7 +5,7 @@ LL | /// [error]
    |      ^^^^^ cannot be resolved, ignoring
    |
    = note: #[warn(intra_doc_link_resolution_failure)] on by default
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error1]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning-crlf.rs:12:11
@@ -13,7 +13,7 @@ warning: `[error1]` cannot be resolved, ignoring it...
 LL | /// docs [error1]
    |           ^^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error2]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning-crlf.rs:14:11
@@ -21,7 +21,7 @@ warning: `[error2]` cannot be resolved, ignoring it...
 LL | /// docs [error2]
    |           ^^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning-crlf.rs:21:20
@@ -29,5 +29,5 @@ warning: `[error]` cannot be resolved, ignoring it...
 LL |  * It also has an [error].
    |                    ^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 

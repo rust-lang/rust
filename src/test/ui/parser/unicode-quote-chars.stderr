@@ -1,4 +1,4 @@
-error: unknown start of token: /u{201c}
+error: unknown start of token: \u{201c}
   --> $DIR/unicode-quote-chars.rs:4:14
    |
 LL |     println!(“hello world”);

@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/issue-13727.rs:7:5
    |
-LL |     512 => print!("0b1111/n"),
+LL |     512 => print!("0b1111\n"),
    |     ^^^
    |
 note: lint level defined here
