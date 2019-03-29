@@ -12,7 +12,7 @@ search. Specifically,
 
 - `Foo` searches for `Foo` type in the current workspace
 - `foo#` searches for `foo` function in the current workspace
-- `Foo*` searches for `Foo` type among dependencies, excluding `stdlib`
+- `Foo*` searches for `Foo` type among dependencies, including `stdlib`
 - `foo#*` searches for `foo` function among dependencies.
 
 That is, `#` switches from "types" to all symbols, `*` switches from the current
