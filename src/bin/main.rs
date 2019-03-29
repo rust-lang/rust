@@ -55,6 +55,10 @@ enum Operation {
     ConfigOutputDefault {
         path: Option<String>,
     },
+    /// Output current config (as if formatting to a file) to stdout
+    ConfigOutputCurrent {
+        path: Option<String>,
+    },
     /// No file specified, read from stdin
     Stdin {
         input: String,
@@ -103,8 +107,9 @@ fn make_opts() -> Options {
         "",
         "print-config",
         "Dumps a default or minimal config to PATH. A minimal config is the \
-         subset of the current config file used for formatting the current program.",
-        "[minimal|default] PATH",
+         subset of the current config file used for formatting the current program. \
+         `current` writes to stdout current config as if formatting the file at PATH.",
+        "[default|minimal|current] PATH",
     );
 
     if is_nightly {
@@ -180,6 +185,21 @@ fn execute(opts: &Options) -> Result<i32, failure::Error> {
             } else {
                 io::stdout().write_all(toml.as_bytes())?;
             }
+            Ok(0)
+        }
+        Operation::ConfigOutputCurrent { path } => {
+            let path = match path {
+                Some(path) => path,
+                None => return Err(format_err!("PATH required for `--print-config current`")),
+            };
+
+            let file = PathBuf::from(path);
+            let file = file.canonicalize().unwrap_or(file);
+
+            let (config, _) = load_config(Some(file.parent().unwrap()), Some(options.clone()))?;
+            let toml = config.all_options().to_toml().map_err(err_msg)?;
+            io::stdout().write_all(toml.as_bytes())?;
+
             Ok(0)
         }
         Operation::Stdin { input } => format_string(input, options),
@@ -379,6 +399,8 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
         let path = matches.free.get(0).cloned();
         if kind == "default" {
             return Ok(Operation::ConfigOutputDefault { path });
+        } else if kind == "current" {
+            return Ok(Operation::ConfigOutputCurrent { path });
         } else if kind == "minimal" {
             minimal_config_path = path;
             if minimal_config_path.is_none() {
