@@ -10,7 +10,7 @@ use rustc::hir::Node;
 use rustc::hir::{Item, ItemKind, print};
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
-use errors::{Applicability, DiagnosticBuilder, SourceMapper};
+use errors::{Applicability, DiagnosticBuilder};
 
 use super::method::probe;
 
@@ -292,9 +292,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  expected: Ty<'tcx>)
                  -> Option<(Span, &'static str, String)> {
         let cm = self.sess().source_map();
-        // Use the callsite's span if this is a macro call. #41858
-        let sp = cm.call_span_if_macro(expr.span);
+        let sp = expr.span;
         if !cm.span_to_filename(sp).is_real() {
+            // Ignore if span is from within a macro #41858, #58298. We previously used the macro
+            // call span, but that breaks down when the type error comes from multiple calls down.
             return None;
         }
 

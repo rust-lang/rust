@@ -243,6 +243,7 @@ impl EmitterWriter {
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
                         label: span_label.label.clone(),
+                        overlaps_exactly: false,
                     };
                     multiline_annotations.push((lo.file.clone(), ml.clone()));
                     AnnotationType::Multiline(ml)
@@ -258,10 +259,7 @@ impl EmitterWriter {
                 };
 
                 if !ann.is_multiline() {
-                    add_annotation_to_file(&mut output,
-                                           lo.file,
-                                           lo.line,
-                                           ann);
+                    add_annotation_to_file(&mut output, lo.file, lo.line, ann);
                 }
             }
         }
@@ -274,10 +272,12 @@ impl EmitterWriter {
                 let ref mut a = item.1;
                 // Move all other multiline annotations overlapping with this one
                 // one level to the right.
-                if &ann != a &&
+                if !(ann.same_span(a)) &&
                     num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
                 {
                     a.increase_depth();
+                } else if ann.same_span(a) && &ann != a {
+                    a.overlaps_exactly = true;
                 } else {
                     break;
                 }
@@ -289,17 +289,49 @@ impl EmitterWriter {
             if ann.depth > max_depth {
                 max_depth = ann.depth;
             }
-            add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
-            let middle = min(ann.line_start + 4, ann.line_end);
-            for line in ann.line_start + 1..middle {
-                add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-            }
-            if middle < ann.line_end - 1 {
-                for line in ann.line_end - 1..ann.line_end {
+            let mut end_ann = ann.as_end();
+            if !ann.overlaps_exactly {
+                // avoid output like
+                //
+                //  |        foo(
+                //  |   _____^
+                //  |  |_____|
+                //  | ||         bar,
+                //  | ||     );
+                //  | ||      ^
+                //  | ||______|
+                //  |  |______foo
+                //  |         baz
+                //
+                // and instead get
+                //
+                //  |       foo(
+                //  |  _____^
+                //  | |         bar,
+                //  | |     );
+                //  | |      ^
+                //  | |      |
+                //  | |______foo
+                //  |        baz
+                add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+                // 4 is the minimum vertical length of a multiline span when presented: two lines
+                // of code and two lines of underline. This is not true for the special case where
+                // the beginning doesn't have an underline, but the current logic seems to be
+                // working correctly.
+                let middle = min(ann.line_start + 4, ann.line_end);
+                for line in ann.line_start + 1..middle {
+                    // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
+                if middle < ann.line_end - 1 {
+                    for line in ann.line_end - 1..ann.line_end {
+                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                    }
+                }
+            } else {
+                end_ann.annotation_type = AnnotationType::Singleline;
             }
-            add_annotation_to_file(&mut output, file, ann.line_end, ann.as_end());
+            add_annotation_to_file(&mut output, file, ann.line_end, end_ann);
         }
         for file_vec in output.iter_mut() {
             file_vec.multiline_depth = max_depth;

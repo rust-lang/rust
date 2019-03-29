@@ -375,6 +375,66 @@ error: foo
 }
 
 #[test]
+fn triple_exact_overlap() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "X0",
+                count: 1,
+            },
+            end: Position {
+                string: "X2",
+                count: 1,
+            },
+            label: "`X` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "X0",
+                count: 1,
+            },
+            end: Position {
+                string: "X2",
+                count: 1,
+            },
+            label: "`Y` is a good letter too",
+        },
+        SpanLabel {
+            start: Position {
+                string: "X0",
+                count: 1,
+            },
+            end: Position {
+                string: "X2",
+                count: 1,
+            },
+            label: "`Z` label",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 | /   X0 Y0 Z0
+4 | |   X1 Y1 Z1
+5 | |   X2 Y2 Z2
+  | |    ^
+  | |    |
+  | |    `X` is a good letter
+  | |____`Y` is a good letter too
+  |      `Z` label
+
+"#);
+}
+
+#[test]
 fn minimum_depth() {
     test_harness(r#"
 fn foo() {
