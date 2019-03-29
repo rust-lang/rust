@@ -243,7 +243,7 @@ impl EmitterWriter {
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
                         label: span_label.label.clone(),
-                        overlaps: false,
+                        overlaps_exactly: false,
                     };
                     multiline_annotations.push((lo.file.clone(), ml.clone()));
                     AnnotationType::Multiline(ml)
@@ -277,7 +277,7 @@ impl EmitterWriter {
                 {
                     a.increase_depth();
                 } else if ann.same_span(a) && &ann != a {
-                    a.overlaps = true;
+                    a.overlaps_exactly = true;
                 } else {
                     break;
                 }
@@ -290,7 +290,7 @@ impl EmitterWriter {
                 max_depth = ann.depth;
             }
             let mut end_ann = ann.as_end();
-            if !ann.overlaps {
+            if !ann.overlaps_exactly {
                 // avoid output like
                 //
                 //  |        foo(
