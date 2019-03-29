@@ -199,11 +199,22 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     if path.segments.len() != 1 {
         panic!("unsupported path that needs name resolution")
     }
-    match path.segments.first().expect("segment not found").value().arguments {
+    match path
+        .segments
+        .first()
+        .expect("segment not found")
+        .value()
+        .arguments
+    {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments"),
     }
-    path.segments.first().expect("segment not found").value().ident.clone()
+    path.segments
+        .first()
+        .expect("segment not found")
+        .value()
+        .ident
+        .clone()
 }
 
 fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
