@@ -225,7 +225,7 @@ impl fmt::Display for UseTree {
                 write!(f, "::")?;
             }
         }
-        write!(f, "")
+        Ok(())
     }
 }
 
