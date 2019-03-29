@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
-    EvalContext, ImmTy, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
+    InterpretCx, ImmTy, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
     StackPopCleanup,
 };
 
@@ -135,7 +135,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
     let result = || -> EvalResult<'tcx, &'tcx Allocation> {
-        let mut ecx = EvalContext::new(
+        let mut ecx = InterpretCx::new(
             fx.tcx.at(DUMMY_SP),
             ty::ParamEnv::reveal_all(),
             TransPlaceInterpreter,
@@ -338,16 +338,16 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
     const STATIC_KIND: Option<!> = None;
 
-    fn enforce_validity(_: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
         false
     }
 
-    fn before_terminator(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn before_terminator(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         panic!();
     }
 
     fn find_fn(
-        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
@@ -357,7 +357,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn call_intrinsic(
-        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: PlaceTy<'tcx>,
@@ -374,7 +374,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn ptr_op(
-        _: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _: &InterpretCx<'a, 'mir, 'tcx, Self>,
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
@@ -382,12 +382,12 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn box_alloc(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
+    fn box_alloc(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
         panic!();
     }
 
     fn tag_dereference(
-        _: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _: &InterpretCx<'a, 'mir, 'tcx, Self>,
         _: MPlaceTy<'tcx>,
         _: Option<::rustc::hir::Mutability>,
     ) -> EvalResult<'tcx, Scalar> {
@@ -402,18 +402,18 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn tag_new_allocation(
-        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _: MemoryKind<!>,
     ) -> Pointer {
         ptr
     }
 
-    fn stack_push(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         Ok(())
     }
 
-    fn stack_pop(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: ()) -> EvalResult<'tcx> {
+    fn stack_pop(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: ()) -> EvalResult<'tcx> {
         Ok(())
     }
 }
