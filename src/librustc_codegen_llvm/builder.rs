@@ -21,6 +21,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use std::borrow::Cow;
 use std::ops::{Deref, Range};
 use std::ptr;
+use std::iter::TrustedLen;
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -169,11 +170,10 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         v: &'ll Value,
         else_llbb: &'ll BasicBlock,
-        num_cases: usize,
-        cases: impl Iterator<Item = (u128, &'ll BasicBlock)>,
+        cases: impl ExactSizeIterator<Item = (u128, &'ll BasicBlock)> + TrustedLen,
     ) {
         let switch = unsafe {
-            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
+            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, cases.len() as c_uint)
         };
         for (on_val, dest) in cases {
             let on_val = self.const_uint_big(self.val_ty(v), on_val);

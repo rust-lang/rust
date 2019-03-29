@@ -217,7 +217,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.switch(
                 discr.immediate(),
                 helper.llblock(self, *otherwise),
-                values.len(),
                 values.iter().zip(targets).map(|(&value, target)| {
                     (value, helper.llblock(self, *target))
                 })

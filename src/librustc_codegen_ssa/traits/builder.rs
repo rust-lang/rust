@@ -12,6 +12,7 @@ use crate::MemFlags;
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
 use std::ops::Range;
+use std::iter::TrustedLen;
 
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
@@ -49,8 +50,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         &mut self,
         v: Self::Value,
         else_llbb: Self::BasicBlock,
-        num_cases: usize,
-        cases: impl Iterator<Item = (u128, Self::BasicBlock)>,
+        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)> + TrustedLen,
     );
     fn invoke(
         &mut self,
