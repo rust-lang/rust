@@ -205,11 +205,10 @@ impl fmt::Display for UseSegment {
             UseSegment::List(ref list) => {
                 write!(f, "{{")?;
                 for (i, item) in list.iter().enumerate() {
-                    let is_last = i == list.len() - 1;
-                    write!(f, "{}", item)?;
-                    if !is_last {
+                    if i != 0 {
                         write!(f, ", ")?;
                     }
+                    write!(f, "{}", item)?;
                 }
                 write!(f, "}}")
             }
@@ -219,11 +218,10 @@ impl fmt::Display for UseSegment {
 impl fmt::Display for UseTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, segment) in self.path.iter().enumerate() {
-            let is_last = i == self.path.len() - 1;
-            write!(f, "{}", segment)?;
-            if !is_last {
+            if i != 0 {
                 write!(f, "::")?;
             }
+            write!(f, "{}", segment)?;
         }
         Ok(())
     }
