@@ -29,6 +29,10 @@ TARGET=$ARCH-linux-musl
 OUTPUT=/usr/local
 shift
 
+# Ancient binutils versions don't understand debug symbols produced by more recent tools.
+# Apparently applying `-fPIC` everywhere allows them to link successfully.
+export CFLAGS="-fPIC $CFLAGS"
+
 git clone https://github.com/richfelker/musl-cross-make -b v0.9.7
 cd musl-cross-make
 
