@@ -1459,7 +1459,7 @@ fn rewrite_paren(
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
     let fits_single_line = !pre_comment.contains("//") && !post_comment.contains("//");
     if fits_single_line {
-        Some(format!("({}{}{})", pre_comment, &subexpr_str, post_comment))
+        Some(format!("({}{}{})", pre_comment, subexpr_str, post_comment))
     } else {
         rewrite_paren_in_multi_line(context, subexpr, shape, pre_span, post_span)
     }
