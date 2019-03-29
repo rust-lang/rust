@@ -18,11 +18,18 @@ pub struct MultilineAnnotation {
     pub end_col: usize,
     pub is_primary: bool,
     pub label: Option<String>,
+    pub overlaps_exactly: bool,
 }
 
 impl MultilineAnnotation {
     pub fn increase_depth(&mut self) {
         self.depth += 1;
+    }
+
+    /// Compare two `MultilineAnnotation`s considering only the `Span` they cover.
+    pub fn same_span(&self, other: &MultilineAnnotation) -> bool {
+        self.line_start == other.line_start && self.line_end == other.line_end
+            && self.start_col == other.start_col && self.end_col == other.end_col
     }
 
     pub fn as_start(&self) -> Annotation {

@@ -88,7 +88,7 @@ mod check;
 mod check_unused;
 mod coherence;
 mod collect;
-mod constrained_type_params;
+mod constrained_generic_params;
 mod structured_errors;
 mod impl_wf_check;
 mod namespace;

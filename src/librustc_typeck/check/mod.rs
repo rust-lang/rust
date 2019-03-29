@@ -2544,7 +2544,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
             Neither => return false,
         };
-        debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
+        debug!("fallback_if_possible: defaulting `{:?}` to `{:?}`", ty, fallback);
         self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
         true
     }

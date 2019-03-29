@@ -1,26 +1,35 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-39018.rs:2:13
+  --> $DIR/issue-39018.rs:2:22
    |
 LL |     let x = "Hello " + "World!";
-   |             ^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate two `&str` strings
+   |             -------- ^ -------- &str
+   |             |        |
+   |             |        `+` can't be used to concatenate two `&str` strings
+   |             &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let x = "Hello ".to_owned() + "World!";
    |             ^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `+` cannot be applied to type `World`
-  --> $DIR/issue-39018.rs:8:13
+  --> $DIR/issue-39018.rs:8:26
    |
 LL |     let y = World::Hello + World::Goodbye;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ------------ ^ -------------- World
+   |             |
+   |             World
    |
    = note: an implementation of `std::ops::Add` might be missing for `World`
 
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-39018.rs:11:13
+  --> $DIR/issue-39018.rs:11:22
    |
 LL |     let x = "Hello " + "World!".to_owned();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate a `&str` with a `String`
+   |             ---------^--------------------
+   |             |          |
+   |             |          std::string::String
+   |             &str
+   |             `+` can't be used to concatenate a `&str` with a `String`
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let x = "Hello ".to_owned() + &"World!".to_owned();

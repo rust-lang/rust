@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `bool`
-  --> $DIR/binop-typeck.rs:6:13
+  --> $DIR/binop-typeck.rs:6:15
    |
 LL |     let z = x + y;
-   |             ^^^^^
+   |             - ^ - {integer}
+   |             |
+   |             bool
    |
    = note: an implementation of `std::ops::Add` might be missing for `bool`
 

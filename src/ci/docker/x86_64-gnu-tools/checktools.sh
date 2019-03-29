@@ -24,6 +24,7 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/doc/reference \
     src/doc/rust-by-example \
     src/doc/embedded-book \
+    src/doc/edition-guide \
     src/tools/clippy \
     src/tools/rls \
     src/tools/rustfmt \
@@ -73,6 +74,7 @@ status_check() {
     check_dispatch $1 beta nomicon src/doc/nomicon
     check_dispatch $1 beta reference src/doc/reference
     check_dispatch $1 beta rust-by-example src/doc/rust-by-example
+    check_dispatch $1 beta edition-guide src/doc/edition-guide
     check_dispatch $1 beta rls src/tools/rls
     check_dispatch $1 beta rustfmt src/tools/rustfmt
     check_dispatch $1 beta clippy-driver src/tools/clippy

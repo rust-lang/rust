@@ -244,24 +244,24 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
-        ItemKind::Ty(ref typ, ref type_parameters) => {
+        ItemKind::Ty(ref typ, ref generics) => {
             visitor.visit_ty(typ);
-            visitor.visit_generics(type_parameters)
+            visitor.visit_generics(generics)
         }
-        ItemKind::Existential(ref bounds, ref type_parameters) => {
+        ItemKind::Existential(ref bounds, ref generics) => {
             walk_list!(visitor, visit_param_bound, bounds);
-            visitor.visit_generics(type_parameters)
+            visitor.visit_generics(generics)
         }
-        ItemKind::Enum(ref enum_definition, ref type_parameters) => {
-            visitor.visit_generics(type_parameters);
-            visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
+        ItemKind::Enum(ref enum_definition, ref generics) => {
+            visitor.visit_generics(generics);
+            visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
         }
         ItemKind::Impl(_, _, _,
-                 ref type_parameters,
+                 ref generics,
                  ref opt_trait_reference,
                  ref typ,
                  ref impl_items) => {
-            visitor.visit_generics(type_parameters);
+            visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
