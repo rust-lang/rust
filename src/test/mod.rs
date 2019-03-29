@@ -609,11 +609,11 @@ fn handle_result(
     for (file_name, fmt_text) in result {
         // If file is in tests/source, compare to file with same name in tests/target.
         let target = get_target(&file_name, target);
-        let open_error = format!("couldn't open target {:?}", &target);
+        let open_error = format!("couldn't open target {:?}", target);
         let mut f = fs::File::open(&target).expect(&open_error);
 
         let mut text = String::new();
-        let read_error = format!("failed reading target {:?}", &target);
+        let read_error = format!("failed reading target {:?}", target);
         f.read_to_string(&mut text).expect(&read_error);
 
         // Ignore LF and CRLF difference for Windows.

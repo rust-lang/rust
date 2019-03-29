@@ -577,13 +577,8 @@ pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommen
     let has_block_comment = trimmed_pre_snippet.ends_with("*/");
     let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
     if has_block_comment {
-        let comment_end = pre_snippet.chars().rev().position(|c| c == '/').unwrap();
-        if pre_snippet
-            .chars()
-            .rev()
-            .take(comment_end + 1)
-            .any(|c| c == '\n')
-        {
+        let comment_end = pre_snippet.rfind(|c| c == '/').unwrap();
+        if pre_snippet[comment_end..].contains('\n') {
             (
                 Some(trimmed_pre_snippet.to_owned()),
                 ListItemCommentStyle::DifferentLine,

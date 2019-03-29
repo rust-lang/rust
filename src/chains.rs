@@ -550,7 +550,7 @@ impl<'a> ChainFormatterShared<'a> {
         let almost_total = if extendable {
             prev_last_line_width
         } else {
-            self.rewrites.iter().fold(0, |a, b| a + b.len())
+            self.rewrites.iter().map(|a| a.len()).sum()
         } + last.tries;
         let one_line_budget = if self.child_count == 1 {
             shape.width

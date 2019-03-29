@@ -730,7 +730,7 @@ pub fn format_impl(
                 if generics.where_clause.predicates.len() == 1 {
                     result.push_str(",");
                 }
-                result.push_str(&format!("{}{{{}}}", &sep, &sep));
+                result.push_str(&format!("{}{{{}}}", sep, sep));
             } else {
                 result.push_str(" {}");
             }
@@ -912,7 +912,7 @@ fn rewrite_trait_ref(
     let shape = Shape::indented(offset + used_space, context.config);
     if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
         if !trait_ref_str.contains('\n') {
-            return Some(format!(" {}{}", polarity_str, &trait_ref_str));
+            return Some(format!(" {}{}", polarity_str, trait_ref_str));
         }
     }
     // We could not make enough space for trait_ref, so put it on new line.
@@ -921,9 +921,9 @@ fn rewrite_trait_ref(
     let trait_ref_str = trait_ref.rewrite(context, shape)?;
     Some(format!(
         "{}{}{}",
-        &offset.to_string_with_newline(context.config),
+        offset.to_string_with_newline(context.config),
         polarity_str,
-        &trait_ref_str
+        trait_ref_str
     ))
 }
 

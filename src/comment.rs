@@ -591,7 +591,7 @@ impl<'a> CommentRewrite<'a> {
             ) {
                 Some(s) => self.result.push_str(&Self::join_block(
                     &s,
-                    &format!("{}{}", &self.comment_line_separator, ib.line_start),
+                    &format!("{}{}", self.comment_line_separator, ib.line_start),
                 )),
                 None => self.result.push_str(&Self::join_block(
                     &ib.original_block_as_string(),
@@ -634,7 +634,7 @@ impl<'a> CommentRewrite<'a> {
             ) {
                 Some(s) => self.result.push_str(&Self::join_block(
                     &s,
-                    &format!("{}{}", &self.comment_line_separator, ib.line_start),
+                    &format!("{}{}", self.comment_line_separator, ib.line_start),
                 )),
                 None => self.result.push_str(&Self::join_block(
                     &ib.original_block_as_string(),

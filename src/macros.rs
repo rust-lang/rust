@@ -540,17 +540,12 @@ fn register_metavariable(
     name: &str,
     dollar_count: usize,
 ) {
-    let mut new_name = String::new();
-    let mut old_name = String::new();
+    let mut new_name = "$".repeat(dollar_count - 1);
+    let mut old_name = "$".repeat(dollar_count);
 
-    old_name.push('$');
-    for _ in 0..(dollar_count - 1) {
-        new_name.push('$');
-        old_name.push('$');
-    }
     new_name.push('z');
-    new_name.push_str(&name);
-    old_name.push_str(&name);
+    new_name.push_str(name);
+    old_name.push_str(name);
 
     result.push_str(&new_name);
     map.insert(old_name, new_name);

@@ -257,16 +257,14 @@ impl Config {
         let parsed: ::toml::Value = toml
             .parse()
             .map_err(|e| format!("Could not parse TOML: {}", e))?;
-        let mut err: String = String::new();
-        {
-            let table = parsed
-                .as_table()
-                .ok_or(String::from("Parsed config was not table"))?;
-            for key in table.keys() {
-                if !Config::is_valid_name(key) {
-                    let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
-                    err.push_str(msg)
-                }
+        let mut err = String::new();
+        let table = parsed
+            .as_table()
+            .ok_or(String::from("Parsed config was not table"))?;
+        for key in table.keys() {
+            if !Config::is_valid_name(key) {
+                let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
+                err.push_str(msg)
             }
         }
         match parsed.try_into() {
