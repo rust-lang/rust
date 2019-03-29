@@ -651,7 +651,7 @@ pub fn get_comment_end(
     if let Some(i) = block_open_index {
         match post_snippet.find('/') {
             Some(j) if j < i => block_open_index = None,
-            _ if i > 0 && &post_snippet[i - 1..i] == "/" => block_open_index = None,
+            _ if post_snippet[..i].chars().last() == Some('/') => block_open_index = None,
             _ => (),
         }
     }
@@ -692,8 +692,13 @@ pub fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
         return false;
     }
 
+    let len_last = post_snippet[..comment_end]
+        .chars()
+        .last()
+        .unwrap()
+        .len_utf8();
     // Everything from the separator to the next item.
-    let test_snippet = &post_snippet[comment_end - 1..];
+    let test_snippet = &post_snippet[comment_end - len_last..];
     let first_newline = test_snippet
         .find('\n')
         .unwrap_or_else(|| test_snippet.len());
