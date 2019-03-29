@@ -1386,12 +1386,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            let value = truncate(value, discr.value.size(cx));
-                            // NOTE(eddyb) do *NOT* remove this assert, until
-                            // we pass the full 128-bit value to LLVM, otherwise
-                            // truncation will be silent and remain undetected.
-                            assert_eq!(value as u64 as u128, value);
-                            Some(value as u64)
+                            Some(truncate(value, niche.value.size(cx)))
                         };
 
                         MemberDescription {
