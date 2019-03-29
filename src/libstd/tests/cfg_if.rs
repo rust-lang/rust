@@ -1,3 +1,4 @@
+#![feature(cfg_if)]
 pub use std::cfg_if;
 
 cfg_if! {
@@ -9,6 +10,6 @@ cfg_if! {
 }
 
 #[test]
-fn cfg_if_test {
+fn cfg_if_test() {
     assert!(foo());
 }

@@ -647,6 +647,7 @@ macro_rules! uninitialized_array {
 /// # Example
 ///
 /// ```
+/// # #![feature(cfg_if)]
 /// cfg_if! {
 ///     if #[cfg(unix)] {
 ///         fn foo() { /* unix specific functionality */ }
