@@ -698,20 +698,20 @@ impl Tester for Collector {
                     &cratename,
                     &filename,
                     line,
-                    cfgs,
-                    libs,
-                    cg,
-                    externs,
+                    cfgs.clone(),
+                    libs.clone(),
+                    cg.clone(),
+                    externs.clone(),
                     config.should_panic,
                     config.no_run,
                     config.test_harness,
                     config.compile_fail,
-                    config.error_codes,
+                    config.error_codes.clone(),
                     &opts,
-                    maybe_sysroot,
-                    linker,
+                    maybe_sysroot.clone(),
+                    linker.clone(),
                     edition,
-                    persist_doctests
+                    persist_doctests.clone()
                 )
             }),
         });
