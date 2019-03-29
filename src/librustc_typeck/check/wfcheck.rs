@@ -1,5 +1,5 @@
 use crate::check::{Inherited, FnCtxt};
-use crate::constrained_type_params::{identify_constrained_type_params, Parameter};
+use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
@@ -941,7 +941,7 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         .map(|(index, _)| Parameter(index as u32))
                         .collect();
 
-    identify_constrained_type_params(tcx,
+    identify_constrained_generic_params(tcx,
                                      &ty_predicates,
                                      None,
                                      &mut constrained_parameters);

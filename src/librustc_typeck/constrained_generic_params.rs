@@ -86,7 +86,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
+pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
                                               predicates: &ty::GenericPredicates<'tcx>,
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut FxHashSet<Parameter>)
