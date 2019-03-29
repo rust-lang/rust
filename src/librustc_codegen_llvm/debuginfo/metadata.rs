@@ -933,7 +933,7 @@ struct MemberDescription<'ll> {
     size: Size,
     align: Align,
     flags: DIFlags,
-    discriminant: Option<u64>,
+    discriminant: Option<u128>,
 }
 
 // A factory for MemberDescriptions. It produces a list of member descriptions
@@ -1288,7 +1288,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         flags: DIFlags::FlagZero,
                         discriminant: Some(self.layout.ty.ty_adt_def().unwrap()
                                            .discriminant_for_variant(cx.tcx, i)
-                                           .val as u64),
+                                           .val as u128),
                     }
                 }).collect()
             }
@@ -1842,6 +1842,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
         .into_iter()
         .map(|member_description| {
             let member_name = CString::new(member_description.name).unwrap();
+            let align = member_description.align.bits() as u64;
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateVariantMemberType(
                     DIB(cx),
@@ -1854,7 +1855,8 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
                     member_description.offset.bits(),
                     match member_description.discriminant {
                         None => None,
-                        Some(value) => Some(cx.const_u64(value)),
+                        Some(value) =>
+                            Some(cx.const_uint_big(cx.type_ix(align), value)),
                     },
                     member_description.flags,
                     member_description.type_metadata))
