@@ -516,7 +516,7 @@ rustc_queries! {
 
     Other {
         query vtable_methods(key: ty::PolyTraitRef<'tcx>)
-                            -> Lrc<Vec<Option<(DefId, SubstsRef<'tcx>)>>> {
+                            -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
             no_force
             desc { |tcx| "finding all methods for trait {}", tcx.def_path_str(key.def_id()) }
         }
@@ -539,8 +539,7 @@ rustc_queries! {
         query trait_impls_of(key: DefId) -> Lrc<ty::trait_def::TraitImpls> {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
-        query specialization_graph_of(_: DefId)
-            -> Lrc<specialization_graph::Graph> {}
+        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {}
         query is_object_safe(key: DefId) -> bool {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }

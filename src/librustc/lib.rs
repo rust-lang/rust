@@ -103,6 +103,8 @@ pub mod diagnostics;
 #[macro_use]
 pub mod query;
 
+#[macro_use]
+pub mod arena;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;

@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> TraitDef {
 
     pub fn ancestors(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      of_impl: DefId)
-                     -> specialization_graph::Ancestors {
+                     -> specialization_graph::Ancestors<'gcx> {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }
