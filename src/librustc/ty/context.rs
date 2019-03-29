@@ -1,5 +1,6 @@
 //! Type context book-keeping.
 
+use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
 use crate::session::Session;
@@ -996,6 +997,7 @@ impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
 }
 
 pub struct GlobalCtxt<'tcx> {
+    pub arena: WorkerLocal<Arena<'tcx>>,
     global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
     global_interners: CtxtInterners<'tcx>,
 
@@ -1255,6 +1257,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         GlobalCtxt {
             sess: s,
             cstore,
+            arena: WorkerLocal::new(|_| Arena::default()),
             global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph,
