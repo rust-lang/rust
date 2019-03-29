@@ -73,7 +73,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Def::Const(_) | Def::AssociatedConst(..) | Def::TyAlias(_) => {
                 self.check_def_id(def.def_id());
             }
-            _ if self.in_pat => (),
+            _ if self.in_pat => {},
             Def::PrimTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) |
             Def::Local(..) | Def::Upvar(..) => {}
             Def::Ctor(ctor_def_id, CtorOf::Variant, ..) => {
@@ -91,6 +91,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     self.check_def_id(variant_id);
                 }
             }
+            Def::ToolMod | Def::NonMacroAttr(..) | Def::Err => {}
             _ => {
                 self.check_def_id(def.def_id());
             }
@@ -166,16 +167,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     }
                     hir::ItemKind::Enum(..) => {
                         self.inherited_pub_visibility = item.vis.node.is_pub();
+
                         intravisit::walk_item(self, &item);
                     }
-                    hir::ItemKind::Fn(..)
-                    | hir::ItemKind::Ty(..)
-                    | hir::ItemKind::Static(..)
-                    | hir::ItemKind::Existential(..)
-                    | hir::ItemKind::Const(..) => {
+                    hir::ItemKind::ForeignMod(..) => {}
+                    _ => {
                         intravisit::walk_item(self, &item);
                     }
-                    _ => ()
                 }
             }
             Node::TraitItem(trait_item) => {
@@ -187,7 +185,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Node::ForeignItem(foreign_item) => {
                 intravisit::walk_foreign_item(self, &foreign_item);
             }
-            _ => ()
+            _ => {}
         }
         self.repr_has_repr_c = had_repr_c;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
