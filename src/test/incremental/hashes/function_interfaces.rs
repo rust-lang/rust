@@ -24,7 +24,7 @@ pub fn add_parameter() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+              except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn add_parameter(p: i32) {}
 
@@ -47,7 +47,7 @@ pub fn type_of_parameter(p: i32) {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+              except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter(p: i64) {}
 
@@ -59,7 +59,7 @@ pub fn type_of_parameter_ref(p: &i32) {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+              except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter_ref(p: &mut i32) {}
 
@@ -71,7 +71,7 @@ pub fn order_of_parameters(p1: i32, p2: i64) {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+              except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn order_of_parameters(p2: i64, p1: i32) {}
 
@@ -83,7 +83,7 @@ pub fn make_unsafe() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+              except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub unsafe fn make_unsafe() {}
 
@@ -94,7 +94,7 @@ pub unsafe fn make_unsafe() {}
 pub fn make_extern() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, mir_built, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, mir_built, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub extern "C" fn make_extern() {}
 
@@ -105,7 +105,7 @@ pub extern "C" fn make_extern() {}
 pub extern "C" fn make_intrinsic() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub extern "rust-intrinsic" fn make_intrinsic() {}
 
@@ -258,7 +258,7 @@ pub fn return_impl_trait() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn return_impl_trait() -> impl Clone {
     0
@@ -292,7 +292,7 @@ pub mod change_return_type_indirectly {
     use super::ReferencedType2 as ReturnType;
 
     #[rustc_clean(cfg = "cfail2",
-                  except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+                  except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_return_type() -> ReturnType {
         ReturnType {}
@@ -309,7 +309,7 @@ pub mod change_parameter_type_indirectly {
     use super::ReferencedType2 as ParameterType;
 
     #[rustc_clean(cfg = "cfail2",
-                  except = "Hir, HirBody, mir_built, optimized_mir, TypeckTables, FnSignature")]
+                  except = "Hir, HirBody, mir_built, optimized_mir, typeck_tables_of, fn_sig")]
     #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_parameter_type(p: ParameterType) {}
 }

@@ -4,41 +4,41 @@ error: no path from `WillChange` to `type_of`
 LL |     #[rustc_then_this_would_need(type_of)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `AssociatedItems`
+error: no path from `WillChange` to `associated_item`
   --> $DIR/dep-graph-struct-signature.rs:28:5
    |
-LL |     #[rustc_then_this_would_need(AssociatedItems)]
+LL |     #[rustc_then_this_would_need(associated_item)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `TraitDefOfItem`
+error: no path from `WillChange` to `trait_def`
   --> $DIR/dep-graph-struct-signature.rs:29:5
    |
-LL |     #[rustc_then_this_would_need(TraitDefOfItem)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(trait_def)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:35:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:36:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_tables_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:39:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:40:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_tables_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:45:5
@@ -76,59 +76,59 @@ error: no path from `WillChange` to `type_of`
 LL |     #[rustc_then_this_would_need(type_of)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `FnSignature`
+error: no path from `WillChange` to `fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:80:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `FnSignature`
+error: no path from `WillChange` to `fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:83:5
    |
-LL |     #[rustc_then_this_would_need(FnSignature)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `TypeckTables`
+error: no path from `WillChange` to `typeck_tables_of`
   --> $DIR/dep-graph-struct-signature.rs:84:5
    |
-LL |     #[rustc_then_this_would_need(TypeckTables)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_tables_of)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:31:9
    |
-LL |         #[rustc_then_this_would_need(FnSignature)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `FnSignature`
+error: no path from `WillChange` to `fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:76:9
    |
-LL |         #[rustc_then_this_would_need(FnSignature)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:47:9
    |
-LL |         #[rustc_then_this_would_need(FnSignature)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:48:9
    |
-LL |         #[rustc_then_this_would_need(TypeckTables)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(typeck_tables_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:54:9
    |
-LL |         #[rustc_then_this_would_need(FnSignature)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:55:9
    |
-LL |         #[rustc_then_this_would_need(TypeckTables)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(typeck_tables_of)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 22 previous errors
 

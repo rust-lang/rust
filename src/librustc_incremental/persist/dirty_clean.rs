@@ -3,9 +3,9 @@
 //! we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
-//! - `#[rustc_clean(cfg="rev2", except="TypeckTables")]` if we are
+//! - `#[rustc_clean(cfg="rev2", except="typeck_tables_of")]` if we are
 //!   in `#[cfg(rev2)]`, then the fingerprints associated with
-//!   `DepNode::TypeckTables(X)` must be DIFFERENT (`X` is the `DefId` of the
+//!   `DepNode::typeck_tables_of(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
