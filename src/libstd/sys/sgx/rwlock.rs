@@ -268,7 +268,7 @@ mod tests {
 
         #[inline(never)]
         unsafe fn rwlock_new(init: &mut MaybeUninit<RWLock>) {
-            init.set(RWLock::new());
+            init.write(RWLock::new());
         }
 
         unsafe {
