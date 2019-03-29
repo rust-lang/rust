@@ -29,7 +29,7 @@ mod x {
 mod y {
     use {Foo, Bar};
 
-    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR OK
     pub fn with_char() {
         char::method('a');
     }
@@ -38,7 +38,7 @@ mod y {
 mod z {
     use y;
 
-    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
+    #[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR no path
     pub fn z() {
         y::with_char();
     }

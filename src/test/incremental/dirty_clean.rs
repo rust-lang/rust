@@ -25,16 +25,16 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
     pub fn y() {
-        //[cfail2]~^ ERROR `TypeckTables(y::y)` should be clean but is not
+        //[cfail2]~^ ERROR `typeck_tables_of(y::y)` should be clean but is not
         x::x();
     }
 }
 
 mod z {
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn z() {
-        //[cfail2]~^ ERROR `TypeckTables(z::z)` should be dirty but is not
+        //[cfail2]~^ ERROR `typeck_tables_of(z::z)` should be dirty but is not
     }
 }
