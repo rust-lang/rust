@@ -693,7 +693,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
-        let elem = ProjectionElem::Downcast(adt_def, variant_index);
+        let elem = ProjectionElem::Downcast(
+            Some(adt_def.variants[variant_index].ident.name), variant_index);
         let downcast_place = match_pair.place.elem(elem); // `(x as Variant)`
         let consequent_match_pairs =
             subpatterns.iter()

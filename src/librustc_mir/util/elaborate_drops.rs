@@ -412,8 +412,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.path, variant_index);
             if let Some(variant_path) = subpath {
                 let base_place = self.place.clone().elem(
-                    ProjectionElem::Downcast(adt, variant_index)
-                        );
+                    ProjectionElem::Downcast(Some(adt.variants[variant_index].ident.name),
+                                             variant_index));
                 let fields = self.move_paths_for_fields(
                     &base_place,
                     variant_path,

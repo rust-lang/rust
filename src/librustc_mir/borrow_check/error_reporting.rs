@@ -13,6 +13,7 @@ use rustc::mir::{
     Static, StaticKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
+use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -1765,20 +1766,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place<'_>, field: Field) -> String {
+    fn describe_field(&self, base: &Place<'tcx>, field: Field) -> String {
         match *base {
             Place::Base(PlaceBase::Local(local)) => {
                 let local = &self.mir.local_decls[local];
-                self.describe_field_from_ty(&local.ty, field)
+                self.describe_field_from_ty(&local.ty, field, None)
             }
             Place::Base(PlaceBase::Static(ref static_)) =>
-                self.describe_field_from_ty(&static_.ty, field),
+                self.describe_field_from_ty(&static_.ty, field, None),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
-                ProjectionElem::Downcast(def, variant_index) =>
-                    def.variants[variant_index].fields[field.index()].ident.to_string(),
+                ProjectionElem::Downcast(_, variant_index) => {
+                    let base_ty = base.ty(self.mir, self.infcx.tcx).to_ty();
+                    self.describe_field_from_ty(&base_ty, field, Some(variant_index))
+                }
                 ProjectionElem::Field(_, field_type) => {
-                    self.describe_field_from_ty(&field_type, field)
+                    self.describe_field_from_ty(&field_type, field, None)
                 }
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
@@ -1790,24 +1793,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field_index`nth field of `ty`
-    fn describe_field_from_ty(&self, ty: &ty::Ty<'_>, field: Field) -> String {
+    fn describe_field_from_ty(
+        &self,
+        ty: &ty::Ty<'_>,
+        field: Field,
+        variant_index: Option<VariantIdx>
+    ) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
-            self.describe_field_from_ty(&ty.boxed_ty(), field)
+            self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
             match ty.sty {
-                ty::Adt(def, _) => if def.is_enum() {
-                    field.index().to_string()
-                } else {
-                    def.non_enum_variant().fields[field.index()]
+                ty::Adt(def, _) => {
+                    let variant = if let Some(idx) = variant_index {
+                        assert!(def.is_enum());
+                        &def.variants[idx]
+                    } else {
+                        def.non_enum_variant()
+                    };
+                    variant.fields[field.index()]
                         .ident
                         .to_string()
                 },
                 ty::Tuple(_) => field.index().to_string(),
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    self.describe_field_from_ty(&ty, field)
+                    self.describe_field_from_ty(&ty, field, variant_index)
                 }
-                ty::Array(ty, _) | ty::Slice(ty) => self.describe_field_from_ty(&ty, field),
+                ty::Array(ty, _) | ty::Slice(ty) =>
+                    self.describe_field_from_ty(&ty, field, variant_index),
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                     // Convert the def-id into a node-id. node-ids are only valid for
                     // the local code in the current crate, so this returns an `Option` in case

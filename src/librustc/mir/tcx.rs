@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        elem: &ProjectionElem<'tcx, V, T>,
+        elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>)
         -> PlaceTy<'tcx>
     where
@@ -124,12 +124,11 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                     }
                 }
             }
-            ProjectionElem::Downcast(adt_def1, index) =>
+            ProjectionElem::Downcast(_name, index) =>
                 match self.to_ty(tcx).sty {
                     ty::Adt(adt_def, substs) => {
                         assert!(adt_def.is_enum());
                         assert!(index.as_usize() < adt_def.variants.len());
-                        assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
                                             substs,
                                             variant_index: index }

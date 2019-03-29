@@ -667,8 +667,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     _ => span_mirbug_and_err!(self, place, "slice of non-array {:?}", base_ty),
                 },
             },
-            ProjectionElem::Downcast(adt_def1, index) => match base_ty.sty {
-                ty::Adt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
+            ProjectionElem::Downcast(maybe_name, index) => match base_ty.sty {
+                ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                     if index.as_usize() >= adt_def.variants.len() {
                         PlaceTy::Ty {
                             ty: span_mirbug_and_err!(
@@ -687,14 +687,19 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }
                     }
                 }
-                _ => PlaceTy::Ty {
-                    ty: span_mirbug_and_err!(
-                        self,
-                        place,
-                        "can't downcast {:?} as {:?}",
-                        base_ty,
-                        adt_def1
-                    ),
+                _ => {
+                    let ty = if let Some(name) = maybe_name {
+                        span_mirbug_and_err!(
+                            self,
+                            place,
+                            "can't downcast {:?} as {:?}",
+                            base_ty,
+                            name
+                        )
+                    } else {
+                        span_mirbug_and_err!(self, place, "can't downcast {:?}", base_ty)
+                    };
+                    PlaceTy::Ty { ty }
                 },
             },
             ProjectionElem::Field(field, fty) => {
@@ -1161,7 +1166,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        user_ty: &UserTypeProjection<'tcx>,
+        user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {

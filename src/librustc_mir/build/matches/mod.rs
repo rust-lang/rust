@@ -575,7 +575,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(super) fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        pattern_user_ty: UserTypeProjections<'tcx>,
+        pattern_user_ty: UserTypeProjections,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -584,7 +584,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             HirId,
             Span,
             Ty<'tcx>,
-            UserTypeProjections<'tcx>,
+            UserTypeProjections,
         ),
     ) {
         debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
@@ -1701,7 +1701,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         mode: BindingMode,
         var_id: HirId,
         var_ty: Ty<'tcx>,
-        user_ty: UserTypeProjections<'tcx>,
+        user_ty: UserTypeProjections,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
