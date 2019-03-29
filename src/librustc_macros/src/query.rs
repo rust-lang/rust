@@ -349,6 +349,7 @@ fn add_query_description_impl(
         let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
         quote! {
             #[inline]
+            #[allow(unused_variables)]
             fn cache_on_disk(#tcx: TyCtxt<'_, 'tcx, 'tcx>, #key: Self::Key) -> bool {
                 #expr
             }
@@ -364,6 +365,7 @@ fn add_query_description_impl(
     let desc = modifiers.desc.as_ref().map(|(tcx, desc)| {
         let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
         quote! {
+            #[allow(unused_variables)]
             fn describe(
                 #tcx: TyCtxt<'_, '_, '_>,
                 #key: #arg,
