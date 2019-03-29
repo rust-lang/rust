@@ -1288,7 +1288,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         flags: DIFlags::FlagZero,
                         discriminant: Some(self.layout.ty.ty_adt_def().unwrap()
                                            .discriminant_for_variant(cx.tcx, i)
-                                           .val as u128),
+                                           .val),
                     }
                 }).collect()
             }
