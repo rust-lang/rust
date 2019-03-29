@@ -1,69 +1,22 @@
-extern crate lazy_static;
-
 use std::cell::RefCell;
-use std::time;
-use std::fmt;
+use std::time::{Duration, Instant};
 use std::mem;
-use std::io::{stderr, StderrLock, Write};
+use std::io::{stderr, Write};
 use std::iter::repeat;
 use std::collections::{HashSet};
 use std::default::Default;
 use std::iter::FromIterator;
 use std::sync::RwLock;
-
 use lazy_static::lazy_static;
 
-type Message = (usize, u64, String);
-
-pub struct Profiler {
-    desc: String,
-}
-
-pub struct Filter {
-    depth: usize,
-    allowed: Vec<String>,
-}
-
-struct ProfileStack {
-    starts: Vec<time::Instant>,
-    messages: Vec<Message>,
-    filter_data: FilterData,
-}
-
-impl ProfileStack {
-    fn new() -> ProfileStack {
-        ProfileStack { starts: Vec::new(), messages: Vec::new(), filter_data: Default::default() }
-    }
-}
-
-#[derive(Default)]
-struct FilterData {
-    depth: usize,
-    version: usize,
-    allowed: HashSet<String>,
-}
-
-impl Clone for FilterData {
-    fn clone(&self) -> FilterData {
-        let set = HashSet::from_iter(self.allowed.iter().cloned());
-        FilterData { depth: self.depth, allowed: set, version: self.version }
-    }
-}
-
-lazy_static! {
-    static ref FILTER: RwLock<FilterData> = RwLock::new(Default::default());
-}
-
-thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
-
 pub fn set_filter(f: Filter) {
-    let mut old = FILTER.write().unwrap();
     let set = HashSet::from_iter(f.allowed.iter().cloned());
+    let mut old = FILTER.write().unwrap();
     let filter_data = FilterData { depth: f.depth, allowed: set, version: old.version + 1 };
     *old = filter_data;
 }
 
-pub fn profile<T: fmt::Display>(desc: T) -> Profiler {
+pub fn profile(desc: &str) -> Profiler {
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
         if stack.starts.len() == 0 {
@@ -78,59 +31,92 @@ pub fn profile<T: fmt::Display>(desc: T) -> Profiler {
         }
         let desc_str = desc.to_string();
         if desc_str.is_empty() {
-            Profiler { desc: desc_str }
+            Profiler { desc: None }
         } else if stack.starts.len() < stack.filter_data.depth
             && stack.filter_data.allowed.contains(&desc_str)
         {
-            stack.starts.push(time::Instant::now());
-            Profiler { desc: desc_str }
+            stack.starts.push(Instant::now());
+            Profiler { desc: Some(desc_str) }
         } else {
-            Profiler { desc: String::new() }
+            Profiler { desc: None }
         }
     })
 }
 
-impl Drop for Profiler {
-    fn drop(&mut self) {
-        if self.desc.is_empty() {
-            return;
-        }
-        PROFILE_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
-            let start = stack.starts.pop().unwrap();
-            let duration = start.elapsed();
-            let duration_ms = duration.as_secs() * 1000 + u64::from(duration.subsec_millis());
-            let stack_len = stack.starts.len();
-            let msg = (stack_len, duration_ms, mem::replace(&mut self.desc, String::new()));
-            stack.messages.push(msg);
-            if stack_len == 0 {
-                let stdout = stderr();
-                print(0, &stack.messages, 1, &mut stdout.lock());
-                stack.messages.clear();
-            }
-        });
+pub struct Profiler {
+    desc: Option<String>,
+}
+
+pub struct Filter {
+    depth: usize,
+    allowed: Vec<String>,
+}
+
+struct ProfileStack {
+    starts: Vec<Instant>,
+    messages: Vec<Message>,
+    filter_data: FilterData,
+}
+
+struct Message {
+    level: usize,
+    duration: Duration,
+    message: String,
+}
+
+impl ProfileStack {
+    fn new() -> ProfileStack {
+        ProfileStack { starts: Vec::new(), messages: Vec::new(), filter_data: Default::default() }
     }
 }
 
-fn print(lvl: usize, msgs: &[Message], enabled: usize, stdout: &mut StderrLock<'_>) {
-    if lvl > enabled {
-        return;
+#[derive(Default, Clone)]
+struct FilterData {
+    depth: usize,
+    version: usize,
+    allowed: HashSet<String>,
+}
+
+lazy_static! {
+    static ref FILTER: RwLock<FilterData> = RwLock::new(Default::default());
+}
+
+thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
+
+impl Drop for Profiler {
+    fn drop(&mut self) {
+        match self {
+            Profiler { desc: Some(desc) } => {
+                PROFILE_STACK.with(|stack| {
+                    let mut stack = stack.borrow_mut();
+                    let start = stack.starts.pop().unwrap();
+                    let duration = start.elapsed();
+                    let level = stack.starts.len();
+                    let message = mem::replace(desc, String::new());
+                    stack.messages.push(Message { level, duration, message });
+                    if level == 0 {
+                        let stdout = stderr();
+                        print(0, &stack.messages, &mut stdout.lock());
+                        stack.messages.clear();
+                    }
+                });
+            }
+            Profiler { desc: None } => (),
+        }
     }
+}
+
+fn print(lvl: usize, msgs: &[Message], out: &mut impl Write) {
     let mut last = 0;
-    for (i, &(l, time, ref msg)) in msgs.iter().enumerate() {
+    let indent = repeat("    ").take(lvl + 1).collect::<String>();
+    for (i, &Message { level: l, duration: dur, message: ref msg }) in msgs.iter().enumerate() {
         if l != lvl {
             continue;
         }
-        writeln!(
-            stdout,
-            "{} {:6}ms - {}",
-            repeat("    ").take(lvl + 1).collect::<String>(),
-            time,
-            msg
-        )
-        .expect("printing profiling info to stdout");
+        writeln!(out, "{} {:6}ms - {}", indent, dur.as_millis(), msg)
+            .expect("printing profiling info to stdout");
 
-        print(lvl + 1, &msgs[last..i], enabled, stdout);
+        print(lvl + 1, &msgs[last..i], out);
         last = i;
     }
 }
