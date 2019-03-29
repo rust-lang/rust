@@ -231,8 +231,9 @@ macro_rules! eprintln {
 /// to give up ownership, you can instead borrow with `dbg!(&expr)`
 /// for some expression `expr`.
 ///
-/// The `dbg!` macro works exactly the same in release builds. This is useful when debugging issues
-/// that only occur in release builds or when debugging in release mode is significantly faster.
+/// The `dbg!` macro works exactly the same in release builds.
+/// This is useful when debugging issues that only occur in release builds or when debugging in
+/// release mode is significantly faster.
 ///
 /// Note that the macro is intended as a debugging tool and therefore you
 /// should avoid having uses of it in version control for longer periods.
