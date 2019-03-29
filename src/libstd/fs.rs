@@ -881,6 +881,10 @@ impl OpenOptions {
     }
 }
 
+impl AsInner<fs_imp::OpenOptions> for OpenOptions {
+    fn as_inner(&self) -> &fs_imp::OpenOptions { &self.0 }
+}
+
 impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
     fn as_inner_mut(&mut self) -> &mut fs_imp::OpenOptions { &mut self.0 }
 }
@@ -1102,6 +1106,10 @@ impl fmt::Debug for Metadata {
 
 impl AsInner<fs_imp::FileAttr> for Metadata {
     fn as_inner(&self) -> &fs_imp::FileAttr { &self.0 }
+}
+
+impl FromInner<fs_imp::FileAttr> for Metadata {
+    fn from_inner(attr: fs_imp::FileAttr) -> Metadata { Metadata(attr) }
 }
 
 impl Permissions {

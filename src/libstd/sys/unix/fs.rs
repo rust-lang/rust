@@ -36,6 +36,8 @@ use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
               target_os = "fuchsia")))]
 use libc::{readdir_r as readdir64_r};
 
+pub use crate::sys_common::fs::remove_dir_all;
+
 pub struct File(FileDesc);
 
 #[derive(Clone)]
@@ -732,27 +734,6 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     let p = cstr(p)?;
     cvt(unsafe { libc::rmdir(p.as_ptr()) })?;
     Ok(())
-}
-
-pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = lstat(path)?.file_type();
-    if filetype.is_symlink() {
-        unlink(path)
-    } else {
-        remove_dir_all_recursive(path)
-    }
-}
-
-fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
-    for child in readdir(path)? {
-        let child = child?;
-        if child.file_type()?.is_dir() {
-            remove_dir_all_recursive(&child.path())?;
-        } else {
-            unlink(&child.path())?;
-        }
-    }
-    rmdir(path)
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {

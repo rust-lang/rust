@@ -6,6 +6,7 @@ use crate::net::Shutdown;
 use crate::sys::cvt_wasi;
 use libc::{self, c_char, c_void};
 
+#[derive(Debug)]
 pub struct WasiFd {
     fd: libc::__wasi_fd_t,
 }
@@ -50,6 +51,16 @@ fn ciovec(a: &[IoVec<'_>]) -> (*const libc::__wasi_ciovec_t, usize) {
 impl WasiFd {
     pub unsafe fn from_raw(fd: libc::__wasi_fd_t) -> WasiFd {
         WasiFd { fd }
+    }
+
+    pub fn into_raw(self) -> libc::__wasi_fd_t {
+        let ret = self.fd;
+        mem::forget(self);
+        ret
+    }
+
+    pub fn as_raw(&self) -> libc::__wasi_fd_t {
+        self.fd
     }
 
     pub fn datasync(&self) -> io::Result<()> {
@@ -123,7 +134,7 @@ impl WasiFd {
         cvt_wasi(unsafe { libc::__wasi_fd_allocate(self.fd, offset, len) })
     }
 
-    pub fn crate_directory(&self, path: &[u8]) -> io::Result<()> {
+    pub fn create_directory(&self, path: &[u8]) -> io::Result<()> {
         cvt_wasi(unsafe {
             libc::__wasi_path_create_directory(self.fd, path.as_ptr() as *const c_char, path.len())
         })
@@ -217,7 +228,9 @@ impl WasiFd {
         })
     }
 
-    // FIXME: __wasi_fd_filestat_get
+    pub fn filestat_get(&self, buf: *mut libc::__wasi_filestat_t) -> io::Result<()> {
+        cvt_wasi(unsafe { libc::__wasi_fd_filestat_get(self.fd, buf) })
+    }
 
     pub fn filestat_set_times(
         &self,
@@ -232,7 +245,22 @@ impl WasiFd {
         cvt_wasi(unsafe { libc::__wasi_fd_filestat_set_size(self.fd, size) })
     }
 
-    // FIXME: __wasi_path_filestat_get
+    pub fn path_filestat_get(
+        &self,
+        flags: LookupFlags,
+        path: &[u8],
+        buf: *mut libc::__wasi_filestat_t,
+    ) -> io::Result<()> {
+        cvt_wasi(unsafe {
+            libc::__wasi_path_filestat_get(
+                self.fd,
+                flags,
+                path.as_ptr() as *const c_char,
+                path.len(),
+                buf,
+            )
+        })
+    }
 
     pub fn path_filestat_set_times(
         &self,
