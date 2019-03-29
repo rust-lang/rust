@@ -7,6 +7,8 @@ mkdir -p target/out/clif
 echo "[BUILD] mini_core"
 $RUSTC example/mini_core.rs --crate-name mini_core --crate-type dylib
 
+objdump -section-headers target/out/libmini_core.dylib
+
 echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
 
