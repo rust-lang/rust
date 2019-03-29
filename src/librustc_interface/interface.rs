@@ -136,14 +136,12 @@ where
     F: FnOnce(&Compiler) -> R + Send,
     R: Send,
 {
-    syntax::with_globals(move || {
-        let stderr = config.stderr.take();
-        util::spawn_thread_pool(
-            config.opts.debugging_opts.threads,
-            &stderr,
-            || run_compiler_in_existing_thread_pool(config, f),
-        )
-    })
+    let stderr = config.stderr.take();
+    util::spawn_thread_pool(
+        config.opts.debugging_opts.threads,
+        &stderr,
+        || run_compiler_in_existing_thread_pool(config, f),
+    )
 }
 
 pub fn default_thread_pool<F, R>(f: F) -> R
