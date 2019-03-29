@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
+use itertools::Itertools;
 use syntax::parse::token::DelimToken;
 use syntax::source_map::{BytePos, SourceMap, Span};
 use syntax::{ast, ptr};
@@ -1246,8 +1247,7 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
     if !context.config.format_strings() {
         if string_lit
             .lines()
-            .rev()
-            .skip(1)
+            .dropping_back(1)
             .all(|line| line.ends_with('\\'))
         {
             let new_indent = shape.visual_indent(1).indent;

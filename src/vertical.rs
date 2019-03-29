@@ -2,6 +2,7 @@
 
 use std::cmp;
 
+use itertools::Itertools;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 
@@ -190,11 +191,8 @@ fn struct_field_prefix_max_min_width<T: AlignedItem>(
                 }
             })
         })
-        .fold(Some((0, ::std::usize::MAX)), |acc, len| match (acc, len) {
-            (Some((max_len, min_len)), Some(len)) => {
-                Some((cmp::max(max_len, len), cmp::min(min_len, len)))
-            }
-            _ => None,
+        .fold_options((0, ::std::usize::MAX), |(max_len, min_len), len| {
+            (cmp::max(max_len, len), cmp::min(min_len, len))
         })
         .unwrap_or((0, 0))
 }
@@ -274,7 +272,11 @@ fn group_aligned_items<T: AlignedItem>(
             .skip(1)
             .collect::<Vec<_>>()
             .join("\n");
-        let spacings = if snippet.lines().rev().skip(1).any(|l| l.trim().is_empty()) {
+        let spacings = if snippet
+            .lines()
+            .dropping_back(1)
+            .any(|l| l.trim().is_empty())
+        {
             "\n"
         } else {
             ""

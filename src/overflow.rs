@@ -2,6 +2,7 @@
 
 use std::cmp::min;
 
+use itertools::Itertools;
 use syntax::parse::token::DelimToken;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
@@ -711,10 +712,14 @@ fn last_item_shape(
     if items.len() == 1 && !lists.get(0)?.is_nested_call() {
         return Some(shape);
     }
-    let offset = items.iter().rev().skip(1).fold(0, |acc, i| {
-        // 2 = ", "
-        acc + 2 + i.inner_as_ref().len()
-    });
+    let offset = items
+        .iter()
+        .dropping_back(1)
+        .map(|i| {
+            // 2 = ", "
+            2 + i.inner_as_ref().len()
+        })
+        .sum();
     Shape {
         width: min(args_max_width, shape.width),
         ..shape
