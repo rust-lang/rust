@@ -906,7 +906,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                          not currently handle destructors.",
                                         cfg_fn!(thread_local))),
 
-    ("rustc_on_unimplemented", Normal, template!(List:
+    ("rustc_on_unimplemented", Whitelisted, template!(List:
                           r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
                           NameValueStr: "message"),
                                              Gated(Stability::Unstable,
