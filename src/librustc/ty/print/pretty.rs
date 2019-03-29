@@ -6,7 +6,10 @@ use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
-use crate::mir::interpret::ConstValue;
+use crate::mir::interpret::{ConstValue, sign_extend, Scalar};
+use syntax::ast;
+use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::Float;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::{kw, InternedString};
 
@@ -1533,12 +1536,54 @@ define_print_and_forward_display! {
         p!(print_def_path(self.def_id, self.substs));
     }
 
-    &'tcx ty::Const<'tcx> {
-        match self.val {
-            ConstValue::Unevaluated(..) |
-            ConstValue::Infer(..) => p!(write("_")),
-            ConstValue::Param(ParamConst { name, .. }) => p!(write("{}", name)),
-            _ => p!(write("{:?}", self)),
+    ty::Const<'tcx> {
+        match (self.val, &self.ty.sty) {
+            | (ConstValue::Unevaluated(..), _)
+            | (ConstValue::Infer(..), _)
+            => p!(write("_: "), print(self.ty)),
+            (ConstValue::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
+            (ConstValue::Scalar(Scalar::Bits { bits: 0, .. }), ty::Bool) => p!(write("false")),
+            (ConstValue::Scalar(Scalar::Bits { bits: 1, .. }), ty::Bool) => p!(write("true")),
+            (ConstValue::Scalar(Scalar::Bits { bits, .. }), ty::Float(ast::FloatTy::F32)) =>
+                p!(write(
+                    "{}f32",
+                    Single::from_bits(bits)
+                )),
+            (ConstValue::Scalar(Scalar::Bits { bits, .. }), ty::Float(ast::FloatTy::F64)) =>
+                p!(write(
+                    "{}f64",
+                    Double::from_bits(bits)
+                )),
+            (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Uint(ui)) =>
+                p!(write("{}{}", bits, ui)),
+            (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Int(i)) => {
+                let size = ty::tls::with(|tcx| {
+                    let ty = tcx.lift_to_global(&self.ty).unwrap();
+                    tcx.layout_of(ty::ParamEnv::empty().and(ty))
+                        .unwrap()
+                        .size
+                });
+                p!(write("{}{}", sign_extend(bits, size) as i128, i))
+            },
+            (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Char)
+                => p!(write("{}", ::std::char::from_u32(bits as u32).unwrap())),
+            (_, ty::FnDef(did, _)) => p!(write("{}", ty::tls::with(|tcx| tcx.def_path_str(*did)))),
+            (ConstValue::Slice(_, 0), ty::Ref(_, &ty::TyS { sty: ty::Str, .. }, _)) =>
+                p!(write("\"\"")),
+            (
+                ConstValue::Slice(Scalar::Ptr(ptr), len),
+                ty::Ref(_, &ty::TyS { sty: ty::Str, .. }, _),
+            ) => {
+                ty::tls::with(|tcx| {
+                    let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                    assert_eq!(len as usize as u64, len);
+                    let slice =
+                        &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
+                    let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                    Ok(p!(write("{:?}", s)))
+                })?;
+            },
+            _ => p!(write("{:?} : ", self.val), print(self.ty)),
         }
     }
 

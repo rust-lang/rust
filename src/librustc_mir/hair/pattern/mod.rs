@@ -10,7 +10,7 @@ use crate::const_eval::{const_field, const_variant_index};
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::constant::*;
 
-use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
+use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
@@ -291,15 +291,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                fmt_const_val(f, value)
+                write!(f, "{}", &value)
             }
             PatternKind::Range(PatternRange { lo, hi, ty: _, end }) => {
-                fmt_const_val(f, lo)?;
+                write!(f, "{}", &lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                fmt_const_val(f, hi)
+                write!(f, "{}", &hi)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {

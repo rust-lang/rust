@@ -4136,8 +4136,7 @@ fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             }
         },
         _ => {
-            let mut s = String::new();
-            ::rustc::mir::fmt_const_val(&mut s, n).expect("fmt_const_val failed");
+            let mut s = n.to_string();
             // array lengths are obviously usize
             if s.ends_with("usize") {
                 let n = s.len() - "usize".len();
