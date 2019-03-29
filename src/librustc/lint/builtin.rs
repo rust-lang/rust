@@ -354,7 +354,7 @@ declare_lint! {
 
 declare_lint! {
     pub DUPLICATE_MATCHER_BINDING_NAME,
-    Warn,
+    Deny,
     "duplicate macro matcher binding name"
 }
 
@@ -464,6 +464,7 @@ impl LintPass for HardwiredLints {
             DEPRECATED_IN_FUTURE,
             AMBIGUOUS_ASSOCIATED_ITEMS,
             NESTED_IMPL_TRAIT,
+            DUPLICATE_MATCHER_BINDING_NAME,
         )
     }
 }
