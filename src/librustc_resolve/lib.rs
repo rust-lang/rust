@@ -1697,7 +1697,12 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         components: &[&str],
         is_value: bool
     ) -> hir::Path {
-        let segments = iter::once(keywords::PathRoot.ident())
+        let root = if crate_root.is_some() {
+            keywords::PathRoot
+        } else {
+            keywords::Crate
+        };
+        let segments = iter::once(root.ident())
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
