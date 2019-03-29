@@ -20,12 +20,13 @@ MAINTAINERS = {
     'rustfmt': '@nrc @topecongiro',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
-    'reference': '@steveklabnik @Havvy @matthewjasper @alercah',
+    'reference': '@steveklabnik @Havvy @matthewjasper @ehuss',
     'rust-by-example': '@steveklabnik @marioidival @projektir',
     'embedded-book': (
         '@adamgreig @andre-richter @jamesmunns @korken89 '
         '@ryankurte @thejpster @therealprof'
     ),
+    'edition-guide': '@ehuss @Centril @steveklabnik',
 }
 
 REPOS = {
@@ -38,6 +39,7 @@ REPOS = {
     'reference': 'https://github.com/rust-lang-nursery/reference',
     'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
     'embedded-book': 'https://github.com/rust-embedded/book',
+    'edition-guide': 'https://github.com/rust-lang-nursery/edition-guide',
 }
 
 

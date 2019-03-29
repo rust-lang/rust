@@ -130,7 +130,7 @@ The advantages over a simple `fn(&str) -> u32` are:
   a way to define new literal syntax for any data type.
 
 In addition to procedural macros, you can define new
-[`derive`](../reference/attributes.html#derive)-like attributes and other kinds
+[`derive`](../reference/attributes/derive.html)-like attributes and other kinds
 of extensions.  See `Registry::register_syntax_extension` and the
 `SyntaxExtension` enum.  For a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
@@ -174,7 +174,7 @@ quasiquote as an ordinary plugin library.
 # Lint plugins
 
 Plugins can extend [Rust's lint
-infrastructure](../reference/attributes.html#lint-check-attributes) with
+infrastructure](../reference/attributes/diagnostics.html#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
 [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
@@ -253,7 +253,7 @@ mostly use the same infrastructure as lint plugins, and provide examples of how
 to access type information.
 
 Lints defined by plugins are controlled by the usual [attributes and compiler
-flags](../reference/attributes.html#lint-check-attributes), e.g.
+flags](../reference/attributes/diagnostics.html#lint-check-attributes), e.g.
 `#[allow(test_lint)]` or `-A test-lint`. These identifiers are derived from the
 first argument to `declare_lint!`, with appropriate case and punctuation
 conversion.

@@ -402,6 +402,7 @@ impl<'a> Builder<'a> {
                 test::UnstableBook,
                 test::RustcBook,
                 test::EmbeddedBook,
+                test::EditionGuide,
                 test::Rustfmt,
                 test::Miri,
                 test::Clippy,
