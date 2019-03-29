@@ -1842,7 +1842,6 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
         .into_iter()
         .map(|member_description| {
             let member_name = CString::new(member_description.name).unwrap();
-            let align = member_description.align.bits() as u64;
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateVariantMemberType(
                     DIB(cx),
@@ -1856,7 +1855,7 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
                     match member_description.discriminant {
                         None => None,
                         Some(value) =>
-                            Some(cx.const_uint_big(cx.type_ix(align), value)),
+                            Some(cx.const_uint_big(cx.type_i128(), value)),
                     },
                     member_description.flags,
                     member_description.type_metadata))
