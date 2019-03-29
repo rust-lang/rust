@@ -295,6 +295,9 @@ CloneTypeFoldableAndLiftImpls! {
     (),
     bool,
     usize,
+    u32,
+    crate::ty::BoundVar,
+    crate::ty::DebruijnIndex,
     crate::ty::layout::VariantIdx,
     u64,
     String,
@@ -311,6 +314,8 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_target::spec::abi::Abi,
     crate::mir::Local,
     crate::mir::Promoted,
+    crate::mir::interpret::Scalar,
+    crate::mir::interpret::Pointer,
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
@@ -785,6 +790,34 @@ BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for interpret::GlobalId<'a> {
         type Lifted = interpret::GlobalId<'tcx>;
         instance, promoted
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
+        type Lifted = ty::Const<'tcx>;
+        val, ty
+    }
+}
+
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for interpret::ConstValue<'a> {
+        type Lifted = interpret::ConstValue<'tcx>;
+        (interpret::ConstValue::Unevaluated)(a, b),
+        (interpret::ConstValue::Param)(a),
+        (interpret::ConstValue::Infer)(a),
+        (interpret::ConstValue::Scalar)(a),
+        (interpret::ConstValue::Slice)(a, b),
+        (interpret::ConstValue::ByRef)(a, b),
+    }
+}
+
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ty::InferConst<'a> {
+        type Lifted = ty::InferConst<'tcx>;
+        (ty::InferConst::Var)(a),
+        (ty::InferConst::Fresh)(a),
+        (ty::InferConst::Canonical)(a, b),
     }
 }
 
