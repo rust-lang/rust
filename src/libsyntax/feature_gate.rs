@@ -962,6 +962,20 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
             is just used for rustc unit tests \
             and will never be stable",
            cfg_fn!(rustc_attrs))),
+    ("rustc_layout_scalar_valid_range_start", Whitelisted, template!(List: "value"),
+     Gated(Stability::Unstable,
+           "rustc_attrs",
+           "the `#[rustc_layout_scalar_valid_range_start]` attribute \
+            is just used to enable niche optimizations in libcore \
+            and will never be stable",
+           cfg_fn!(rustc_attrs))),
+    ("rustc_layout_scalar_valid_range_end", Whitelisted, template!(List: "value"),
+     Gated(Stability::Unstable,
+           "rustc_attrs",
+           "the `#[rustc_layout_scalar_valid_range_end]` attribute \
+            is just used to enable niche optimizations in libcore \
+            and will never be stable",
+           cfg_fn!(rustc_attrs))),
     ("rustc_regions", Normal, template!(Word), Gated(Stability::Unstable,
                                     "rustc_attrs",
                                     "the `#[rustc_regions]` attribute \
