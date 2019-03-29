@@ -42,8 +42,8 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
-                        check_crate, check_ast_crate, CheckLintNameResult,
-                        FutureIncompatibleInfo, BufferedEarlyLint};
+                        check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
+                        FutureIncompatibleInfo, BufferedEarlyLint,};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -273,6 +273,9 @@ macro_rules! expand_lint_pass_methods {
 macro_rules! declare_late_lint_pass {
     ([], [$hir:tt], [$($methods:tt)*]) => (
         pub trait LateLintPass<'a, $hir>: LintPass {
+            fn fresh_late_pass(&self) -> LateLintPassObject {
+                panic!()
+            }
             expand_lint_pass_methods!(&LateContext<'a, $hir>, [$($methods)*]);
         }
     )
@@ -298,14 +301,14 @@ macro_rules! expand_combined_late_lint_pass_methods {
 
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
-    ([$name:ident, [$($passes:ident: $constructor:expr,)*]], [$hir:tt], $methods:tt) => (
+    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], [$hir:tt], $methods:tt) => (
         #[allow(non_snake_case)]
-        struct $name {
+        $v struct $name {
             $($passes: $passes,)*
         }
 
         impl $name {
-            fn new() -> Self {
+            $v fn new() -> Self {
                 Self {
                     $($passes: $constructor,)*
                 }
@@ -824,7 +827,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.lint_levels = lint_levels;
-    context::provide(providers);
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.
