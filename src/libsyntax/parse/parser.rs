@@ -2639,11 +2639,9 @@ impl<'a> Parser<'a> {
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(match self.parse_expr() {
                         Ok(es) => es,
-                        Err(mut err) => {  // recover from parse error in tuple list
-                            err.emit();
-                            self.consume_block(token::Paren);
-                            hi = self.prev_span;
-                            return Ok(self.mk_expr(lo.to(hi), ExprKind::Err, ThinVec::new()));
+                        Err(err) => {
+                            // recover from parse error in tuple list
+                            return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err)));
                         }
                     });
                     recovered = self.expect_one_of(
@@ -3254,42 +3252,52 @@ impl<'a> Parser<'a> {
             }
             if self.expr_is_complete(&e) { break; }
             match self.token {
-              // expr(...)
-              token::OpenDelim(token::Paren) => {
-                match self.parse_unspanned_seq(
-                    &token::OpenDelim(token::Paren),
-                    &token::CloseDelim(token::Paren),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| Ok(p.parse_expr()?)
-                ) {
-                    Ok(es) => {
+                // expr(...)
+                token::OpenDelim(token::Paren) => {
+                    let seq = self.parse_unspanned_seq(
+                        &token::OpenDelim(token::Paren),
+                        &token::CloseDelim(token::Paren),
+                        SeqSep::trailing_allowed(token::Comma),
+                        |p| Ok(p.parse_expr()?)
+                    ).map(|es| {
                         let nd = self.mk_call(e, es);
-                        hi = self.prev_span;
-                        e = self.mk_expr(lo.to(hi), nd, ThinVec::new());
-                    }
-                    Err(mut err) => { // recover from parse error in argument list
-                        err.emit();
-                        self.consume_block(token::Paren);
-                        hi = self.prev_span;
-                        e = self.mk_expr(lo.to(hi), ExprKind::Err, ThinVec::new());
-                    }
+                        let hi = self.prev_span;
+                        self.mk_expr(lo.to(hi), nd, ThinVec::new())
+                    });
+                    e = self.recover_seq_parse_error(token::Paren, lo, seq);
                 }
-              }
 
-              // expr[...]
-              // Could be either an index expression or a slicing expression.
-              token::OpenDelim(token::Bracket) => {
-                self.bump();
-                let ix = self.parse_expr()?;
-                hi = self.span;
-                self.expect(&token::CloseDelim(token::Bracket))?;
-                let index = self.mk_index(e, ix);
-                e = self.mk_expr(lo.to(hi), index, ThinVec::new())
-              }
-              _ => return Ok(e)
+                // expr[...]
+                // Could be either an index expression or a slicing expression.
+                token::OpenDelim(token::Bracket) => {
+                    self.bump();
+                    let ix = self.parse_expr()?;
+                    hi = self.span;
+                    self.expect(&token::CloseDelim(token::Bracket))?;
+                    let index = self.mk_index(e, ix);
+                    e = self.mk_expr(lo.to(hi), index, ThinVec::new())
+                }
+                _ => return Ok(e)
             }
         }
         return Ok(e);
+    }
+
+    fn recover_seq_parse_error(
+        &mut self,
+        delim: token::DelimToken,
+        lo: Span,
+        result: PResult<'a, P<Expr>>,
+    ) -> P<Expr> {
+        match result {
+            Ok(x) => x,
+            Err(mut err) => {
+                err.emit();
+                // recover from parse error
+                self.consume_block(delim);
+                self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
+            }
+        }
     }
 
     crate fn process_potential_macro_variable(&mut self) {
