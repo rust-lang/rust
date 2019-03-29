@@ -236,10 +236,7 @@ macro_rules! create_config {
                 use std::cmp;
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
-                let mut space_str = String::with_capacity(max);
-                for _ in 0..max {
-                    space_str.push(' ');
-                }
+                let space_str = " ".repeat(max);
                 writeln!(out, "Configuration Options:").unwrap();
                 $(
                     if $stb || include_unstable {
