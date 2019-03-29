@@ -375,8 +375,8 @@ pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
 
-/// An iterator that repeats elements of type `A` endlessly by
-/// applying the provided closure `F: FnMut() -> A`.
+/// An iterator that yields a single element of type `A` by
+/// applying the provided closure `F: FnOnce() -> A`.
 ///
 /// This `struct` is created by the [`once_with`] function.
 /// See its documentation for more.
