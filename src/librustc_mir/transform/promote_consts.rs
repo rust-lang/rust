@@ -310,7 +310,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 place = &mut proj.base;
                             };
 
-                            let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
+                            let ty = place.ty(local_decls, self.tcx).ty;
                             let span = statement.source_info.span;
 
                             Operand::Move(mem::replace(place, promoted_place(ty, span)))

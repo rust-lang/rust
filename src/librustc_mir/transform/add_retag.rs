@@ -87,7 +87,7 @@ impl MirPass for AddRetag {
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).to_ty(tcx), tcx)
+            is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
         };
 
         // PART 1

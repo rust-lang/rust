@@ -556,7 +556,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let StatementKind::Assign(ref place, ref rval) = statement.kind {
             let place_ty: ty::Ty<'tcx> = place
                 .ty(&self.mir.local_decls, self.tcx)
-                .to_ty(self.tcx);
+                .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
                     if let Place::Base(PlaceBase::Local(local)) = *place {
