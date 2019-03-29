@@ -537,6 +537,10 @@ rem_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 macro_rules! rem_impl_float {
     ($($t:ty)*) => ($(
+
+        /// The remainder from the division of two floats.
+        ///
+        /// The remainder has the same sign as the dividend. For example: `-5.0 % 2.0 = -1.0`.
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
