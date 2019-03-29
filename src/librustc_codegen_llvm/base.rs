@@ -13,10 +13,9 @@
 //!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
-use super::ModuleLlvm;
+use super::{LlvmCodegenBackend, ModuleLlvm};
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
-use super::LlvmCodegenBackend;
 
 use crate::llvm;
 use crate::metadata;
@@ -163,10 +162,9 @@ pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cgu_name: InternedString)
         -> (Stats, ModuleCodegen<ModuleLlvm>)
     {
-        let backend = LlvmCodegenBackend(());
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = backend.new_metadata(tcx, &cgu_name.as_str());
+        let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let stats = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit

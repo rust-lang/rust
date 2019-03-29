@@ -154,7 +154,7 @@ pub unsafe fn create_module(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = crate::back::write::create_target_machine(tcx, false);
+        let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 

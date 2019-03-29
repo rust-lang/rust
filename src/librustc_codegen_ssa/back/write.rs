@@ -1075,7 +1075,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         None
     };
 
-    let ol = tcx.backend_optimization_level(LOCAL_CRATE);
+    let ol = if tcx.sess.opts.debugging_opts.no_codegen
+             || !tcx.sess.opts.output_types.should_codegen() {
+        // If we know that we won’t be doing codegen, create target machines without optimisation.
+        config::OptLevel::No
+    } else {
+        tcx.backend_optimization_level(LOCAL_CRATE)
+    };
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
         crate_types: sess.crate_types.borrow().clone(),

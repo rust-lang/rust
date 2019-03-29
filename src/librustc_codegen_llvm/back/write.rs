@@ -10,9 +10,9 @@ use crate::type_::Type;
 use crate::context::{is_pie_binary, get_reloc_model};
 use crate::common;
 use crate::LlvmCodegenBackend;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::config::{self, OutputType, Passes, Lto};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -82,14 +82,6 @@ pub fn write_output_file(
     }
 }
 
-pub fn create_target_machine(
-    tcx: TyCtxt<'_, '_, '_>,
-    find_features: bool,
-) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()
-        .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise() )
-}
-
 pub fn create_informational_target_machine(
     sess: &Session,
     find_features: bool,
@@ -99,6 +91,15 @@ pub fn create_informational_target_machine(
     })
 }
 
+pub fn create_target_machine(
+    tcx: TyCtxt<'_, '_, '_>,
+    find_features: bool,
+) -> &'static mut llvm::TargetMachine {
+    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()
+    .unwrap_or_else(|err| {
+        llvm_err(tcx.sess.diagnostic(), &err).raise()
+    })
+}
 
 pub fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize)
 {
