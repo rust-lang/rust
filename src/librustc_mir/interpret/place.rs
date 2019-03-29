@@ -958,7 +958,11 @@ where
             layout::Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            layout::Variants::Tagged { ref tag, .. } => {
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Tag,
+                ref discr,
+                ..
+            } => {
                 let adt_def = dest.layout.ty.ty_adt_def().unwrap();
                 assert!(variant_index.as_usize() < adt_def.variants.len());
                 let discr_val = adt_def
@@ -968,16 +972,18 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = tag.value.size(self);
+                let size = discr.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, 0)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
-            layout::Variants::NicheFilling {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Niche {
+                    dataful_variant,
+                    ref niche_variants,
+                    niche_start,
+                },
                 ..
             } => {
                 assert!(

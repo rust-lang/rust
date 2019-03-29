@@ -610,25 +610,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, (u128, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
-        match rval.layout.variants {
+        let discr_kind = match rval.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = rval.layout.ty.ty_adt_def().map_or(
                     index.as_u32() as u128,
                     |def| def.discriminant_for_variant(*self.tcx, index).val);
                 return Ok((discr_val, index));
             }
-            layout::Variants::Tagged { .. } |
-            layout::Variants::NicheFilling { .. } => {},
-        }
+            layout::Variants::Multiple { ref discr_kind, .. } => discr_kind,
+        };
+
         // read raw discriminant value
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_immediate(discr_op)?;
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
-        Ok(match rval.layout.variants {
-            layout::Variants::Single { .. } => bug!(),
-            layout::Variants::Tagged { .. } => {
+        Ok(match *discr_kind {
+            layout::DiscriminantKind::Tag => {
                 let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
                     Ok(raw_discr) => raw_discr,
                     Err(_) => return err!(InvalidDiscriminant(raw_discr.erase_tag())),
@@ -657,11 +656,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(raw_discr.erase_tag()))?;
                 (real_discr, index.0)
             },
-            layout::Variants::NicheFilling {
+            layout::DiscriminantKind::Niche {
                 dataful_variant,
                 ref niche_variants,
                 niche_start,
-                ..
             } => {
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;

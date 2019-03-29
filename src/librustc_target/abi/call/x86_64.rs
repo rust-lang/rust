@@ -61,8 +61,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgType<'a, Ty>)
                         }
                         return Ok(());
                     }
-                    abi::Variants::Tagged { .. } |
-                    abi::Variants::NicheFilling { .. } => return Err(Memory),
+                    abi::Variants::Multiple { .. } => return Err(Memory),
                 }
             }
 

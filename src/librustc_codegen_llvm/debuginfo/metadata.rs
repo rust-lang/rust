@@ -1235,7 +1235,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     }
                 ]
             }
-            layout::Variants::Tagged { ref variants, .. } => {
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Tag,
+                ref variants,
+                ..
+            } => {
                 let discriminant_info = if fallback {
                     RegularDiscriminant(self.discriminant_type_metadata
                                         .expect(""))
@@ -1277,12 +1281,14 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     }
                 }).collect()
             }
-            layout::Variants::NicheFilling {
-                ref niche_variants,
-                niche_start,
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Niche {
+                    ref niche_variants,
+                    niche_start,
+                    dataful_variant,
+                },
+                ref discr,
                 ref variants,
-                dataful_variant,
-                ref niche,
             } => {
                 if fallback {
                     let variant = self.layout.for_variant(cx, dataful_variant);
@@ -1369,7 +1375,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            let value = truncate(value, niche.value.size(cx));
+                            let value = truncate(value, discr.value.size(cx));
+                            // NOTE(eddyb) do *NOT* remove this assert, until
+                            // we pass the full 128-bit value to LLVM, otherwise
+                            // truncation will be silent and remain undetected.
+                            assert_eq!(value as u64 as u128, value);
                             Some(value as u64)
                         };
 
@@ -1586,8 +1596,11 @@ fn prepare_enum_metadata(
     let layout = cx.layout_of(enum_type);
 
     match (&layout.abi, &layout.variants) {
-        (&layout::Abi::Scalar(_), &layout::Variants::Tagged {ref tag, .. }) =>
-            return FinalMetadata(discriminant_type_metadata(tag.value)),
+        (&layout::Abi::Scalar(_), &layout::Variants::Multiple {
+            discr_kind: layout::DiscriminantKind::Tag,
+            ref discr,
+            ..
+        }) => return FinalMetadata(discriminant_type_metadata(discr.value)),
         _ => {}
     }
 
@@ -1599,9 +1612,16 @@ fn prepare_enum_metadata(
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
             layout::Variants::Single { .. } |
-            layout::Variants::NicheFilling { .. } => None,
-            layout::Variants::Tagged { ref tag, .. } => {
-                Some(discriminant_type_metadata(tag.value))
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Niche { .. },
+                ..
+            } => None,
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Tag,
+                ref discr,
+                ..
+            } => {
+                Some(discriminant_type_metadata(discr.value))
             }
         };
 
@@ -1636,16 +1656,20 @@ fn prepare_enum_metadata(
         );
     }
 
-    let discriminator_metadata = match &layout.variants {
+    let discriminator_metadata = match layout.variants {
         // A single-variant enum has no discriminant.
-        &layout::Variants::Single { .. } => None,
+        layout::Variants::Single { .. } => None,
 
-        &layout::Variants::NicheFilling { ref niche, .. } => {
+        layout::Variants::Multiple {
+            discr_kind: layout::DiscriminantKind::Niche { .. },
+            ref discr,
+            ..
+        } => {
             // Find the integer type of the correct size.
-            let size = niche.value.size(cx);
-            let align = niche.value.align(cx);
+            let size = discr.value.size(cx);
+            let align = discr.value.align(cx);
 
-            let discr_type = match niche.value {
+            let discr_type = match discr.value {
                 layout::Int(t, _) => t,
                 layout::Float(layout::FloatTy::F32) => Integer::I32,
                 layout::Float(layout::FloatTy::F64) => Integer::I64,
@@ -1668,8 +1692,12 @@ fn prepare_enum_metadata(
             }
         },
 
-        &layout::Variants::Tagged { ref tag, .. } => {
-            let discr_type = tag.value.to_ty(cx.tcx);
+        layout::Variants::Multiple {
+            discr_kind: layout::DiscriminantKind::Tag,
+            ref discr,
+            ..
+        } => {
+            let discr_type = discr.value.to_ty(cx.tcx);
             let (size, align) = cx.size_and_align_of(discr_type);
 
             let discr_metadata = basic_type_metadata(cx, discr_type);

@@ -828,15 +828,22 @@ pub enum Variants {
         index: VariantIdx,
     },
 
-    /// General-case enums: for each case there is a struct, and they all have
-    /// all space reserved for the tag, and their first field starts
-    /// at a non-0 offset, after where the tag would go.
-    Tagged {
-        tag: Scalar,
+    /// Enums with more than one inhabited variant: for each case there is
+    /// a struct, and they all have space reserved for the discriminant,
+    /// which is the sole field of the enum layout.
+    Multiple {
+        discr: Scalar,
+        discr_kind: DiscriminantKind,
         variants: IndexVec<VariantIdx, LayoutDetails>,
     },
+}
 
-    /// Multiple cases distinguished by a niche (values invalid for a type):
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum DiscriminantKind {
+    /// Integer tag holding the discriminant value itself.
+    Tag,
+
+    /// Niche (values invalid for a type) encoding the discriminant:
     /// the variant `dataful_variant` contains a niche at an arbitrary
     /// offset (field 0 of the enum), which for a variant with discriminant
     /// `d` is set to `(d - niche_variants.start).wrapping_add(niche_start)`.
@@ -844,13 +851,11 @@ pub enum Variants {
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
-    NicheFilling {
+    Niche {
         dataful_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
-        niche: Scalar,
         niche_start: u128,
-        variants: IndexVec<VariantIdx, LayoutDetails>,
-    }
+    },
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]

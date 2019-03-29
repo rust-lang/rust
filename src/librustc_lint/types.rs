@@ -842,51 +842,56 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             let item_def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);
             let ty = cx.tcx.erase_regions(&t);
-            match cx.layout_of(ty) {
-                Ok(layout) => {
-                    let variants = &layout.variants;
-                    if let layout::Variants::Tagged { ref variants, ref tag, .. } = variants {
-                        let discr_size = tag.value.size(&cx.tcx).bytes();
-
-                        debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                               t, layout.size.bytes(), layout);
-
-                        let (largest, slargest, largest_index) = enum_definition.variants
-                            .iter()
-                            .zip(variants)
-                            .map(|(variant, variant_layout)| {
-                                // Subtract the size of the enum discriminant.
-                                let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
-
-                                debug!("- variant `{}` is {} bytes large",
-                                       variant.node.ident,
-                                       bytes);
-                                bytes
-                            })
-                            .enumerate()
-                            .fold((0, 0, 0), |(l, s, li), (idx, size)| if size > l {
-                                (size, l, idx)
-                            } else if size > s {
-                                (l, size, li)
-                            } else {
-                                (l, s, li)
-                            });
-
-                        // We only warn if the largest variant is at least thrice as large as
-                        // the second-largest.
-                        if largest > slargest * 3 && slargest > 0 {
-                            cx.span_lint(VARIANT_SIZE_DIFFERENCES,
-                                            enum_definition.variants[largest_index].span,
-                                            &format!("enum variant is more than three times \
-                                                      larger ({} bytes) than the next largest",
-                                                     largest));
-                        }
-                    }
-                }
+            let layout = match cx.layout_of(ty) {
+                Ok(layout) => layout,
                 Err(ty::layout::LayoutError::Unknown(_)) => return,
                 Err(err @ ty::layout::LayoutError::SizeOverflow(_)) => {
                     bug!("failed to get layout for `{}`: {}", t, err);
                 }
+            };
+            let (variants, tag) = match layout.variants {
+                layout::Variants::Multiple {
+                    discr_kind: layout::DiscriminantKind::Tag,
+                    ref discr,
+                    ref variants,
+                } => (variants, discr),
+                _ => return,
+            };
+
+            let discr_size = tag.value.size(&cx.tcx).bytes();
+
+            debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
+                   t, layout.size.bytes(), layout);
+
+            let (largest, slargest, largest_index) = enum_definition.variants
+                .iter()
+                .zip(variants)
+                .map(|(variant, variant_layout)| {
+                    // Subtract the size of the enum discriminant.
+                    let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
+
+                    debug!("- variant `{}` is {} bytes large",
+                           variant.node.ident,
+                           bytes);
+                    bytes
+                })
+                .enumerate()
+                .fold((0, 0, 0), |(l, s, li), (idx, size)| if size > l {
+                    (size, l, idx)
+                } else if size > s {
+                    (l, size, li)
+                } else {
+                    (l, s, li)
+                });
+
+            // We only warn if the largest variant is at least thrice as large as
+            // the second-largest.
+            if largest > slargest * 3 && slargest > 0 {
+                cx.span_lint(VARIANT_SIZE_DIFFERENCES,
+                                enum_definition.variants[largest_index].span,
+                                &format!("enum variant is more than three times \
+                                          larger ({} bytes) than the next largest",
+                                         largest));
             }
         }
     }
