@@ -1,8 +1,10 @@
 error[E0369]: binary operation `*` cannot be applied to type `std::vec::Vec<isize>`
-  --> $DIR/pattern-tyvar-2.rs:3:69
+  --> $DIR/pattern-tyvar-2.rs:3:71
    |
 LL | fn foo(t: Bar) -> isize { match t { Bar::T1(_, Some(x)) => { return x * 3; } _ => { panic!(); } } }
-   |                                                                     ^^^^^
+   |                                                                     - ^ - {integer}
+   |                                                                     |
+   |                                                                     std::vec::Vec<isize>
    |
    = note: an implementation of `std::ops::Mul` might be missing for `std::vec::Vec<isize>`
 

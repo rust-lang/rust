@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err, true) {
+                                                            rhs_ty, &mut err, true, op) {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
@@ -327,10 +327,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             err.emit();
                         }
                         IsAssign::No => {
-                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
+                            let mut err = struct_span_err!(self.tcx.sess, op.span, E0369,
                                 "binary operation `{}` cannot be applied to type `{}`",
                                 op.node.as_str(),
                                 lhs_ty);
+
+                            if !lhs_expr.span.eq(&rhs_expr.span) {
+                                err.span_label(lhs_expr.span, lhs_ty.to_string());
+                                err.span_label(rhs_expr.span, rhs_ty.to_string());
+                            }
+
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
@@ -380,7 +386,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err, false) {
+                                                            rhs_ty, &mut err, false, op) {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
@@ -418,6 +424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         rhs_ty: Ty<'tcx>,
         err: &mut errors::DiagnosticBuilder<'_>,
         is_assign: bool,
+        op: hir::BinOp,
     ) -> bool {
         let source_map = self.tcx.sess.source_map();
         let msg = "`to_owned()` can be used to create an owned `String` \
@@ -431,7 +438,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _))
             if l_ty.sty == Str && r_ty.sty == Str => {
                 if !is_assign {
-                    err.span_label(expr.span,
+                    err.span_label(op.span,
                                    "`+` can't be used to concatenate two `&str` strings");
                     match source_map.span_to_snippet(lhs_expr.span) {
                         Ok(lstring) => err.span_suggestion(
