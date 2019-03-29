@@ -1019,7 +1019,7 @@ struct MemberDescription<'ll> {
     size: Size,
     align: Align,
     flags: DIFlags,
-    discriminant: Option<u64>,
+    discriminant: Option<u128>,
 }
 
 impl<'ll> MemberDescription<'ll> {
@@ -1039,7 +1039,7 @@ impl<'ll> MemberDescription<'ll> {
                 self.offset.bits(),
                 match self.discriminant {
                     None => None,
-                    Some(value) => Some(cx.const_u64(value)),
+                    Some(value) => Some(cx.const_uint_big(cx.type_i128(), value)),
                 },
                 self.flags,
                 self.type_metadata)
@@ -1418,7 +1418,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         align: self.layout.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: Some(
-                            self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val as u64
+                            self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val
                         ),
                     }
                 }).collect()
@@ -1521,12 +1521,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            let value = truncate(value, discr.value.size(cx));
-                            // NOTE(eddyb) do *NOT* remove this assert, until
-                            // we pass the full 128-bit value to LLVM, otherwise
-                            // truncation will be silent and remain undetected.
-                            assert_eq!(value as u64 as u128, value);
-                            Some(value as u64)
+                            Some(truncate(value, discr.value.size(cx)))
                         };
 
                         MemberDescription {
