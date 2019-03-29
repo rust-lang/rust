@@ -249,9 +249,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn is_hir_id_from_struct_pattern_shorthand_field(&self, hir_id: hir::HirId) -> bool {
-        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
-        let mut is_struct_pat_shorthand_field = false;
+    fn is_hir_id_from_struct_pattern_shorthand_field(&self, hir_id: hir::HirId, sp: Span) -> bool {
+        let cm = self.sess().source_map();
+        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
         if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
             // Account for fields
             if let Node::Expr(hir::Expr {
@@ -260,13 +260,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Ok(src) = cm.span_to_snippet(sp) {
                     for field in fields {
                         if field.ident.as_str() == src.as_str() && field.is_shorthand {
-                            is_struct_pat_shorthand_field = true;
-                            break;
+                            return true;
                         }
                     }
                 }
             }
-        };
+        }
+        false
     }
 
     /// This function is used to determine potential "simple" improvements or users' errors and
@@ -297,8 +297,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let mut is_struct_pat_shorthand_field =
-            self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id);
+        let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
+            expr.hir_id,
+            sp,
+        );
 
         match (&expected.sty, &checked_ty.sty) {
             (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
