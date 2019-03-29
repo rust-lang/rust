@@ -314,8 +314,13 @@ impl EmitterWriter {
                 //  | |______foo
                 //  |        baz
                 add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+                // 4 is the minimum vertical length of a multiline span when presented: two lines
+                // of code and two lines of underline. This is not true for the special case where
+                // the beginning doesn't have an underline, but the current logic seems to be
+                // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
                 for line in ann.line_start + 1..middle {
+                    // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
                 if middle < ann.line_end - 1 {
