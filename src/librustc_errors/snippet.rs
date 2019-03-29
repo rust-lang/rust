@@ -18,7 +18,7 @@ pub struct MultilineAnnotation {
     pub end_col: usize,
     pub is_primary: bool,
     pub label: Option<String>,
-    pub overlaps: bool,
+    pub overlaps_exactly: bool,
 }
 
 impl MultilineAnnotation {
