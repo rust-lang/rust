@@ -2626,7 +2626,13 @@ impl<'a> Parser<'a> {
                 let mut trailing_comma = false;
                 let mut recovered = false;
                 while self.token != token::CloseDelim(token::Paren) {
-                    es.push(self.parse_expr()?);
+                    es.push(match self.parse_expr() {
+                        Ok(es) => es,
+                        Err(err) => {
+                            // recover from parse error in tuple list
+                            return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err)));
+                        }
+                    });
                     recovered = self.expect_one_of(
                         &[],
                         &[token::Comma, token::CloseDelim(token::Paren)],
@@ -3237,34 +3243,52 @@ impl<'a> Parser<'a> {
             }
             if self.expr_is_complete(&e) { break; }
             match self.token {
-              // expr(...)
-              token::OpenDelim(token::Paren) => {
-                let es = self.parse_unspanned_seq(
-                    &token::OpenDelim(token::Paren),
-                    &token::CloseDelim(token::Paren),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| Ok(p.parse_expr()?)
-                )?;
-                hi = self.prev_span;
+                // expr(...)
+                token::OpenDelim(token::Paren) => {
+                    let seq = self.parse_unspanned_seq(
+                        &token::OpenDelim(token::Paren),
+                        &token::CloseDelim(token::Paren),
+                        SeqSep::trailing_allowed(token::Comma),
+                        |p| Ok(p.parse_expr()?)
+                    ).map(|es| {
+                        let nd = self.mk_call(e, es);
+                        let hi = self.prev_span;
+                        self.mk_expr(lo.to(hi), nd, ThinVec::new())
+                    });
+                    e = self.recover_seq_parse_error(token::Paren, lo, seq);
+                }
 
-                let nd = self.mk_call(e, es);
-                e = self.mk_expr(lo.to(hi), nd, ThinVec::new());
-              }
-
-              // expr[...]
-              // Could be either an index expression or a slicing expression.
-              token::OpenDelim(token::Bracket) => {
-                self.bump();
-                let ix = self.parse_expr()?;
-                hi = self.span;
-                self.expect(&token::CloseDelim(token::Bracket))?;
-                let index = self.mk_index(e, ix);
-                e = self.mk_expr(lo.to(hi), index, ThinVec::new())
-              }
-              _ => return Ok(e)
+                // expr[...]
+                // Could be either an index expression or a slicing expression.
+                token::OpenDelim(token::Bracket) => {
+                    self.bump();
+                    let ix = self.parse_expr()?;
+                    hi = self.span;
+                    self.expect(&token::CloseDelim(token::Bracket))?;
+                    let index = self.mk_index(e, ix);
+                    e = self.mk_expr(lo.to(hi), index, ThinVec::new())
+                }
+                _ => return Ok(e)
             }
         }
         return Ok(e);
+    }
+
+    fn recover_seq_parse_error(
+        &mut self,
+        delim: token::DelimToken,
+        lo: Span,
+        result: PResult<'a, P<Expr>>,
+    ) -> P<Expr> {
+        match result {
+            Ok(x) => x,
+            Err(mut err) => {
+                err.emit();
+                // recover from parse error
+                self.consume_block(delim);
+                self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
+            }
+        }
     }
 
     crate fn process_potential_macro_variable(&mut self) {
@@ -4253,7 +4277,14 @@ impl<'a> Parser<'a> {
     // Trailing commas are significant because (p) and (p,) are different patterns.
     fn parse_parenthesized_pat_list(&mut self) -> PResult<'a, (Vec<P<Pat>>, Option<usize>, bool)> {
         self.expect(&token::OpenDelim(token::Paren))?;
-        let result = self.parse_pat_list()?;
+        let result = match self.parse_pat_list() {
+            Ok(result) => result,
+            Err(mut err) => { // recover from parse error in tuple pattern list
+                err.emit();
+                self.consume_block(token::Paren);
+                return Ok((vec![], Some(0), false));
+            }
+        };
         self.expect(&token::CloseDelim(token::Paren))?;
         Ok(result)
     }
