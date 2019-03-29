@@ -659,7 +659,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_impl(
         &mut self,
         item: &'l ast::Item,
-        type_parameters: &'l ast::Generics,
+        generics: &'l ast::Generics,
         trait_ref: &'l Option<ast::TraitRef>,
         typ: &'l ast::Ty,
         impl_items: &'l [ast::ImplItem],
@@ -678,7 +678,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if let &Some(ref trait_ref) = trait_ref {
             self.process_path(trait_ref.ref_id, &trait_ref.path);
         }
-        self.process_generic_params(type_parameters, "", item.id);
+        self.process_generic_params(generics, "", item.id);
         for impl_item in impl_items {
             let map = &self.tcx.hir();
             self.process_impl_item(impl_item, map.local_def_id(item.id));

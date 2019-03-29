@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use crate::astconv::{AstConv, Bounds};
-use crate::constrained_type_params as ctp;
+use crate::constrained_generic_params as ctp;
 use crate::check::intrinsic::intrisic_operation_unsafety;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
