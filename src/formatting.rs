@@ -48,11 +48,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             let format_result = format_project(input, config, self);
 
             format_result.map(|report| {
-                {
-                    let new_errors = &report.internal.borrow().1;
-
-                    self.errors.add(new_errors);
-                }
+                self.errors.add(&report.internal.borrow().1);
                 report
             })
         })

@@ -156,20 +156,18 @@ fn normalize_ranges(ranges: &mut HashMap<FileName, Vec<Range>>) {
     for ranges in ranges.values_mut() {
         ranges.sort();
         let mut result = vec![];
-        {
-            let mut iter = ranges.iter_mut().peekable();
-            while let Some(next) = iter.next() {
-                let mut next = *next;
-                while let Some(&&mut peek) = iter.peek() {
-                    if let Some(merged) = next.merge(peek) {
-                        iter.next().unwrap();
-                        next = merged;
-                    } else {
-                        break;
-                    }
+        let mut iter = ranges.iter_mut().peekable();
+        while let Some(next) = iter.next() {
+            let mut next = *next;
+            while let Some(&&mut peek) = iter.peek() {
+                if let Some(merged) = next.merge(peek) {
+                    iter.next().unwrap();
+                    next = merged;
+                } else {
+                    break;
                 }
-                result.push(next)
             }
+            result.push(next)
         }
         *ranges = result;
     }
