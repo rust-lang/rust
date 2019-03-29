@@ -45,6 +45,9 @@ use rustc::lint::builtin::{
 };
 use rustc::session;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::ty::query::Providers;
+use rustc::ty::TyCtxt;
 
 use syntax::ast;
 use syntax::edition::Edition;
@@ -61,6 +64,17 @@ use unused::*;
 
 /// Useful for other parts of the compiler.
 pub use builtin::SoftLints;
+
+pub fn provide(providers: &mut Providers<'_>) {
+    *providers = Providers {
+        lint_mod,
+        ..*providers
+    };
+}
+
+fn lint_mod<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+    lint::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+}
 
 macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => (
@@ -94,6 +108,88 @@ macro_rules! declare_combined_early_pass {
 pre_expansion_lint_passes!(declare_combined_early_pass, [BuiltinCombinedPreExpansionLintPass]);
 early_lint_passes!(declare_combined_early_pass, [BuiltinCombinedEarlyLintPass]);
 
+macro_rules! late_lint_passes {
+    ($macro:path, $args:tt) => (
+        $macro!($args, [
+            // FIXME: Look into regression when this is used as a module lint
+            // May Depend on constants elsewhere
+            UnusedBrokenConst: UnusedBrokenConst,
+
+            // Uses attr::is_used which is untracked, can't be an incremental module pass.
+            UnusedAttributes: UnusedAttributes,
+
+            // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
+            UnstableFeatures: UnstableFeatures,
+
+            // Tracks state across modules
+            UnnameableTestItems: UnnameableTestItems::new(),
+
+            // Tracks attributes of parents
+            MissingDoc: MissingDoc::new(),
+
+            // Depends on access levels
+            // FIXME: Turn the computation of types which implement Debug into a query
+            // and change this to a module lint pass
+            MissingDebugImplementations: MissingDebugImplementations::new(),
+        ]);
+    )
+}
+
+macro_rules! late_lint_mod_passes {
+    ($macro:path, $args:tt) => (
+        $macro!($args, [
+            HardwiredLints: HardwiredLints,
+            WhileTrue: WhileTrue,
+            ImproperCTypes: ImproperCTypes,
+            VariantSizeDifferences: VariantSizeDifferences,
+            BoxPointers: BoxPointers,
+            PathStatements: PathStatements,
+
+            // Depends on referenced function signatures in expressions
+            UnusedResults: UnusedResults,
+
+            NonUpperCaseGlobals: NonUpperCaseGlobals,
+            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+            UnusedAllocation: UnusedAllocation,
+
+            // Depends on types used in type definitions
+            MissingCopyImplementations: MissingCopyImplementations,
+
+            PluginAsLibrary: PluginAsLibrary,
+
+            // Depends on referenced function signatures in expressions
+            MutableTransmutes: MutableTransmutes,
+
+            // Depends on types of fields, checks if they implement Drop
+            UnionsWithDropFields: UnionsWithDropFields,
+
+            TypeAliasBounds: TypeAliasBounds,
+
+            TrivialConstraints: TrivialConstraints,
+            TypeLimits: TypeLimits::new(),
+
+            NonSnakeCase: NonSnakeCase,
+            InvalidNoMangleItems: InvalidNoMangleItems,
+
+            // Depends on access levels
+            UnreachablePub: UnreachablePub,
+
+            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+        ]);
+    )
+}
+
+macro_rules! declare_combined_late_pass {
+    ([$v:vis $name:ident], $passes:tt) => (
+        late_lint_methods!(declare_combined_late_lint_pass, [$v $name, $passes], ['tcx]);
+    )
+}
+
+// FIXME: Make a separate lint type which do not require typeck tables
+late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass]);
+
+late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
+
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
@@ -104,17 +200,25 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         )
     }
 
+    macro_rules! register_pass {
+        ($method:ident, $constructor:expr, [$($args:expr),*]) => (
+            store.$method(sess, false, false, $($args,)* box $constructor);
+        )
+    }
+
     macro_rules! register_passes {
-        ([$method:ident], [$($passes:ident: $constructor:expr,)*]) => (
+        ([$method:ident, $args:tt], [$($passes:ident: $constructor:expr,)*]) => (
             $(
-                store.$method(sess, false, false, box $constructor);
+                register_pass!($method, $constructor, $args);
             )*
         )
     }
 
     if sess.map(|sess| sess.opts.debugging_opts.no_interleave_lints).unwrap_or(false) {
-        pre_expansion_lint_passes!(register_passes, [register_pre_expansion_pass]);
-        early_lint_passes!(register_passes, [register_early_pass]);
+        pre_expansion_lint_passes!(register_passes, [register_pre_expansion_pass, []]);
+        early_lint_passes!(register_passes, [register_early_pass, []]);
+        late_lint_passes!(register_passes, [register_late_pass, [false]]);
+        late_lint_mod_passes!(register_passes, [register_late_pass, [true]]);
     } else {
         store.register_pre_expansion_pass(
             sess,
@@ -123,74 +227,13 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             box BuiltinCombinedPreExpansionLintPass::new()
         );
         store.register_early_pass(sess, false, true, box BuiltinCombinedEarlyLintPass::new());
+        store.register_late_pass(
+            sess, false, true, true, box BuiltinCombinedModuleLateLintPass::new()
+        );
+        store.register_late_pass(
+            sess, false, true, false, box BuiltinCombinedLateLintPass::new()
+        );
     }
-
-    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedModuleLateLintPass, [
-        HardwiredLints: HardwiredLints,
-        WhileTrue: WhileTrue,
-        ImproperCTypes: ImproperCTypes,
-        VariantSizeDifferences: VariantSizeDifferences,
-        BoxPointers: BoxPointers,
-        PathStatements: PathStatements,
-
-        // Depends on referenced function signatures in expressions
-        UnusedResults: UnusedResults,
-
-        NonUpperCaseGlobals: NonUpperCaseGlobals,
-        NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-        UnusedAllocation: UnusedAllocation,
-
-        // Depends on types used in type definitions
-        MissingCopyImplementations: MissingCopyImplementations,
-
-        PluginAsLibrary: PluginAsLibrary,
-
-        // Depends on referenced function signatures in expressions
-        MutableTransmutes: MutableTransmutes,
-
-        // Depends on types of fields, checks if they implement Drop
-        UnionsWithDropFields: UnionsWithDropFields,
-
-        TypeAliasBounds: TypeAliasBounds,
-
-        TrivialConstraints: TrivialConstraints,
-        TypeLimits: TypeLimits::new(),
-
-        NonSnakeCase: NonSnakeCase,
-        InvalidNoMangleItems: InvalidNoMangleItems,
-
-        // Depends on access levels
-        UnreachablePub: UnreachablePub,
-
-        ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-    ]], ['tcx]);
-
-    store.register_late_pass(sess, false, true, box BuiltinCombinedModuleLateLintPass::new());
-
-    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
-        // FIXME: Look into regression when this is used as a module lint
-        // May Depend on constants elsewhere
-        UnusedBrokenConst: UnusedBrokenConst,
-
-        // Uses attr::is_used which is untracked, can't be an incremental module pass.
-        UnusedAttributes: UnusedAttributes,
-
-        // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
-        UnstableFeatures: UnstableFeatures,
-
-        // Tracks state across modules
-        UnnameableTestItems: UnnameableTestItems::new(),
-
-        // Tracks attributes of parents
-        MissingDoc: MissingDoc::new(),
-
-        // Depends on access levels
-        // FIXME: Turn the computation of types which implement Debug into a query
-        // and change this to a module lint pass
-        MissingDebugImplementations: MissingDebugImplementations::new(),
-    ]], ['tcx]);
-
-    store.register_late_pass(sess, false, false, box BuiltinCombinedLateLintPass::new());
 
     add_lint_group!(sess,
                     "nonstandard_style",

@@ -14,6 +14,7 @@ use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
+use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashMap;
 
 use syntax::ast::Mutability;
@@ -641,16 +642,21 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
         if tcx.is_static(def_id).is_some() {
-            let reported_err = err.report_as_error(ecx.tcx,
-                                                   "could not evaluate static initializer");
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
-            if tcx.sess.err_count() == 0 {
-                tcx.sess.delay_span_bug(err.span,
+            let reported_err = tcx.sess.track_errors(|| {
+                err.report_as_error(ecx.tcx,
+                                    "could not evaluate static initializer")
+            });
+            match reported_err {
+                Ok(v) => {
+                    tcx.sess.delay_span_bug(err.span,
                                         &format!("static eval failure did not emit an error: {:#?}",
-                                                 reported_err));
+                                        v));
+                    v
+                },
+                Err(ErrorReported) => ErrorHandled::Reported,
             }
-            reported_err
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
             match tcx.describe_def(def_id) {

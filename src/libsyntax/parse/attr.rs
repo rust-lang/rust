@@ -6,6 +6,7 @@ use crate::parse::parser::{Parser, TokenType, PathStyle};
 use crate::tokenstream::{TokenStream, TokenTree};
 
 use log::debug;
+use smallvec::smallvec;
 
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -171,7 +172,7 @@ impl<'a> Parser<'a> {
                 } else {
                     self.parse_unsuffixed_lit()?.tokens()
                 };
-                TokenStream::from_streams(vec![eq.into(), tokens])
+                TokenStream::from_streams(smallvec![eq.into(), tokens])
             } else {
                 TokenStream::empty()
             };

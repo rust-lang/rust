@@ -405,7 +405,7 @@ pub struct StdoutLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// fn main() -> io::Result<()> {
-///     io::stdout().write(b"hello world")?;
+///     io::stdout().write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -420,7 +420,7 @@ pub struct StdoutLock<'a> {
 ///     let stdout = io::stdout();
 ///     let mut handle = stdout.lock();
 ///
-///     handle.write(b"hello world")?;
+///     handle.write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -460,7 +460,7 @@ impl Stdout {
     ///     let stdout = io::stdout();
     ///     let mut handle = stdout.lock();
     ///
-    ///     handle.write(b"hello world")?;
+    ///     handle.write_all(b"hello world")?;
     ///
     ///     Ok(())
     /// }
@@ -558,7 +558,7 @@ pub struct StderrLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// fn main() -> io::Result<()> {
-///     io::stderr().write(b"hello world")?;
+///     io::stderr().write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -573,7 +573,7 @@ pub struct StderrLock<'a> {
 ///     let stderr = io::stderr();
 ///     let mut handle = stderr.lock();
 ///
-///     handle.write(b"hello world")?;
+///     handle.write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -613,7 +613,7 @@ impl Stderr {
     ///     let stderr = io::stderr();
     ///     let mut handle = stderr.lock();
     ///
-    ///     handle.write(b"hello world")?;
+    ///     handle.write_all(b"hello world")?;
     ///
     ///     Ok(())
     /// }

@@ -443,7 +443,7 @@ where R: 'static + Send,
 
     let (tx, rx) = channel();
 
-    let result = rustc_driver::report_ices_to_stderr_if_any(move || syntax::with_globals(move || {
+    let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
         let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
@@ -462,7 +462,7 @@ where R: 'static + Send,
             renderopts,
             passes: passes
         })).unwrap();
-    }));
+    });
 
     match result {
         Ok(()) => rx.recv().unwrap(),

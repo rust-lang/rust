@@ -330,7 +330,7 @@ pub fn register_plugins<'a>(
         ls.register_early_pass(Some(sess), true, false, pass);
     }
     for pass in late_lint_passes {
-        ls.register_late_pass(Some(sess), true, false, pass);
+        ls.register_late_pass(Some(sess), true, false, false, pass);
     }
 
     for (name, (to, deprecated_name)) in lint_groups {
@@ -783,6 +783,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     middle::entry::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
+    rustc_lint::provide(providers);
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
@@ -988,7 +989,9 @@ fn analysis<'tcx>(
                     stability::check_unused_or_stable_features(tcx)
                 });
             }, {
-                time(sess, "lint checking", || lint::check_crate(tcx));
+                time(sess, "lint checking", || {
+                    lint::check_crate(tcx, || rustc_lint::BuiltinCombinedLateLintPass::new());
+                });
             });
         }, {
             time(sess, "privacy checking modules", || {

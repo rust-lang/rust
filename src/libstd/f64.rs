@@ -180,7 +180,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(copysign)]
     /// use std::f64;
     ///
     /// let f = 3.5_f64;
@@ -194,7 +193,7 @@ impl f64 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature="copysign", issue="55169")]
+    #[stable(feature = "copysign", since = "1.35.0")]
     pub fn copysign(self, y: f64) -> f64 {
         unsafe { intrinsics::copysignf64(self, y) }
     }

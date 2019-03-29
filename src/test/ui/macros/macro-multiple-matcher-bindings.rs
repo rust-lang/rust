@@ -6,6 +6,7 @@
 // compile-pass
 
 #![allow(unused_macros)]
+#![warn(duplicate_matcher_binding_name)]
 
 macro_rules! foo1 {
     ($a:ident, $a:ident) => {}; //~WARNING duplicate matcher binding

@@ -202,7 +202,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(copysign)]
     /// use std::f32;
     ///
     /// let f = 3.5_f32;
@@ -216,7 +215,7 @@ impl f32 {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature="copysign", issue="55169")]
+    #[stable(feature = "copysign", since = "1.35.0")]
     pub fn copysign(self, y: f32) -> f32 {
         unsafe { intrinsics::copysignf32(self, y) }
     }
