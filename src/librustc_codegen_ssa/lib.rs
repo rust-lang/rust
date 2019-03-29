@@ -10,6 +10,7 @@
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(trusted_len)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
 #![deny(rust_2018_idioms)]

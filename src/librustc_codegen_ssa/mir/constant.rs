@@ -3,7 +3,7 @@ use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout;
+use rustc::ty::layout::{self, HasTyCtxt};
 use syntax::source_map::Span;
 use crate::traits::*;
 
@@ -12,20 +12,19 @@ use super::FunctionCx;
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &mut self,
-        bx: &Bx,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match constant.literal.val {
             mir::interpret::ConstValue::Unevaluated(def_id, ref substs) => {
                 let substs = self.monomorphize(substs);
                 let instance = ty::Instance::resolve(
-                    bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs,
+                    self.cx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs,
                 ).unwrap();
                 let cid = mir::interpret::GlobalId {
                     instance,
                     promoted: None,
                 };
-                bx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
+                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
             },
             _ => Ok(*self.monomorphize(&constant.literal)),
         }

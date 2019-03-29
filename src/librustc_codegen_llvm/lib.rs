@@ -20,6 +20,7 @@
 #![feature(concat_idents)]
 #![feature(link_args)]
 #![feature(static_nobundle)]
+#![feature(trusted_len)]
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
 

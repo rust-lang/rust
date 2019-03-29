@@ -10,7 +10,6 @@ use crate::monomorphize::partitioning::CodegenUnit;
 use crate::type_::Type;
 use crate::type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
-use libc::c_uint;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -324,10 +323,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
         get_fn(self, instance)
-    }
-
-    fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
-        llvm::get_param(llfn, index)
     }
 
     fn eh_personality(&self) -> &'ll Value {

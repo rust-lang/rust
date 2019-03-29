@@ -87,11 +87,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if dest.layout.is_zst() {
                     return bx;
                 }
-                let zero = bx.cx().const_usize(0);
-                let start = dest.project_index(&mut bx, zero).llval;
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let size = bx.cx().const_usize(dest.layout.size.bytes());
+                    let zero = bx.const_usize(0);
+                    let start = dest.project_index(&mut bx, zero).llval;
+                    let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
@@ -108,28 +108,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
 
-                let count = bx.cx().const_usize(count);
-                let end = dest.project_index(&mut bx, count).llval;
-
-                let mut header_bx = bx.build_sibling_block("repeat_loop_header");
-                let mut body_bx = bx.build_sibling_block("repeat_loop_body");
-                let next_bx = bx.build_sibling_block("repeat_loop_next");
-
-                bx.br(header_bx.llbb());
-                let current = header_bx.phi(bx.cx().val_ty(start), &[start], &[bx.llbb()]);
-
-                let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
-                header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
-
-                let align = dest.align.restrict_for_offset(dest.layout.field(bx.cx(), 0).size);
-                cg_elem.val.store(&mut body_bx,
-                    PlaceRef::new_sized(current, cg_elem.layout, align));
-
-                let next = body_bx.inbounds_gep(current, &[bx.cx().const_usize(1)]);
-                body_bx.br(header_bx.llbb());
-                header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
-
-                next_bx
+                bx.write_operand_repeatedly(cg_elem, count, dest)
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
@@ -523,8 +502,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
-                (bx, OperandRef::new_zst(self.cx,
-                    self.cx.layout_of(self.monomorphize(&ty))))
+                let operand = OperandRef::new_zst(
+                    &mut bx,
+                    self.cx.layout_of(self.monomorphize(&ty)),
+                );
+                (bx, operand)
             }
         }
     }
