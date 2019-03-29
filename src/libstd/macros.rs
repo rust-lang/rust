@@ -233,10 +233,14 @@ macro_rules! eprintln {
 /// to give up ownership, you can instead borrow with `dbg!(&expr)`
 /// for some expression `expr`.
 ///
+/// The `dbg!` macro works exactly the same in release builds.
+/// This is useful when debugging issues that only occur in release
+/// builds or when debugging in release mode is significantly faster.
+///
 /// Note that the macro is intended as a debugging tool and therefore you
 /// should avoid having uses of it in version control for longer periods.
 /// Use cases involving debug output that should be added to version control
-/// may be better served by macros such as `debug!` from the `log` crate.
+/// are better served by macros such as [`debug!`][debug-log] from the [`log`][log] crate.
 ///
 /// # Stability
 ///
@@ -311,6 +315,8 @@ macro_rules! eprintln {
 /// file and line whenever it's reached.
 ///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
+/// [debug-log]: https://docs.rs/log/*/log/macro.debug.html
+/// [log]: https://docs.rs/log/
 #[macro_export]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
