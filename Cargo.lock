@@ -1324,7 +1324,7 @@ version = "0.0.2"
 source = "git+https://github.com/gnzlbg/libtest?branch=clippy_ci#719256356b565a138e0005cabbc56153e5902dca"
 dependencies = [
  "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.50 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
