@@ -906,7 +906,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                          not currently handle destructors.",
                                         cfg_fn!(thread_local))),
 
-    ("rustc_on_unimplemented", Normal, template!(List:
+    ("rustc_on_unimplemented", Whitelisted, template!(List:
                           r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
                           NameValueStr: "message"),
                                              Gated(Stability::Unstable,
@@ -960,6 +960,20 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
            "rustc_attrs",
            "the `#[rustc_layout]` attribute \
             is just used for rustc unit tests \
+            and will never be stable",
+           cfg_fn!(rustc_attrs))),
+    ("rustc_layout_scalar_valid_range_start", Whitelisted, template!(List: "value"),
+     Gated(Stability::Unstable,
+           "rustc_attrs",
+           "the `#[rustc_layout_scalar_valid_range_start]` attribute \
+            is just used to enable niche optimizations in libcore \
+            and will never be stable",
+           cfg_fn!(rustc_attrs))),
+    ("rustc_layout_scalar_valid_range_end", Whitelisted, template!(List: "value"),
+     Gated(Stability::Unstable,
+           "rustc_attrs",
+           "the `#[rustc_layout_scalar_valid_range_end]` attribute \
+            is just used to enable niche optimizations in libcore \
             and will never be stable",
            cfg_fn!(rustc_attrs))),
     ("rustc_regions", Normal, template!(Word), Gated(Stability::Unstable,
