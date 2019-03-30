@@ -2,8 +2,6 @@ use super::archive::LlvmArchiveBuilder;
 use super::rpath::RPathConfig;
 use super::rpath;
 use crate::back::wasm;
-use crate::context::get_reloc_model;
-use crate::llvm;
 use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_codegen_ssa::back::linker::Linker;
@@ -40,6 +38,7 @@ pub(crate) fn link_binary<'a>(sess: &'a Session,
                           codegen_results: &CodegenResults,
                           outputs: &OutputFilenames,
                           crate_name: &str) -> Vec<PathBuf> {
+    let target_cpu = crate::llvm_util::target_cpu(sess);
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
@@ -58,7 +57,8 @@ pub(crate) fn link_binary<'a>(sess: &'a Session,
                                            codegen_results,
                                            crate_type,
                                            outputs,
-                                           crate_name);
+                                           crate_name,
+                                           target_cpu);
         out_filenames.extend(out_files);
     }
 
@@ -92,7 +92,8 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                       codegen_results: &CodegenResults,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
-                      crate_name: &str) -> Vec<PathBuf> {
+                      crate_name: &str,
+                      target_cpu: &str) -> Vec<PathBuf> {
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
         check_file_is_writeable(obj, sess);
     }
@@ -134,7 +135,7 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                 link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
             }
             _ => {
-                link_natively::<B>(sess, crate_type, &out_filename, codegen_results, tmpdir.path());
+                link_natively::<B>(sess, crate_type, &out_filename, codegen_results, tmpdir.path(), target_cpu);
             }
         }
         out_filenames.push(out_filename);
@@ -165,11 +166,6 @@ fn emit_metadata<'a>(
     }
 
     out_filename
-}
-
-enum RlibFlavor {
-    Normal,
-    StaticlibBase,
 }
 
 // Create an 'rlib'
@@ -354,7 +350,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                  crate_type: config::CrateType,
                  out_filename: &Path,
                  codegen_results: &CodegenResults,
-                 tmpdir: &Path) {
+                 tmpdir: &Path,
+                 target_cpu: &str) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker, flavor) = linker_and_flavor(sess);
 
@@ -407,7 +404,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
     }
 
     {
-        let target_cpu = crate::llvm_util::target_cpu(sess);
         let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor, target_cpu);
         link_args::<B>(&mut *linker, flavor, sess, crate_type, tmpdir,
                   out_filename, codegen_results);
@@ -663,8 +659,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
             let more_args = &sess.opts.cg.link_arg;
             let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
-            if get_reloc_model(sess) == llvm::RelocMode::PIC
-                && !sess.crt_static() && !args.any(|x| *x == "-static") {
+            if is_pic(sess) && !sess.crt_static() && !args.any(|x| *x == "-static") {
                 position_independent_executable = true;
             }
         }
@@ -1105,4 +1100,13 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
         cmd.link_rust_dylib(&unlib(&sess.target, filestem),
                             parent.unwrap_or(Path::new("")));
     }
+}
+
+fn is_pic(sess: &Session) -> bool {
+    let reloc_model_arg = match sess.opts.cg.relocation_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.relocation_model[..],
+    };
+
+    reloc_model_arg == "pic"
 }
