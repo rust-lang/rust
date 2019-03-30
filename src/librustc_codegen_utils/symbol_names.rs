@@ -101,7 +101,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
 use rustc_mir::monomorphize::Instance;
 
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{Symbol, InternedString};
 
 use log::debug;
 
@@ -110,7 +110,6 @@ use std::mem::{self, discriminant};
 
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
-        def_symbol_name,
         symbol_name,
 
         ..*providers
@@ -222,21 +221,13 @@ fn get_symbol_hash<'a, 'tcx>(
     hasher.finish()
 }
 
-fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    SymbolPrinter {
-        tcx,
-        path: SymbolPath::new(),
-        keep_within_component: false,
-    }.print_def_path(def_id, &[]).unwrap().path.into_interned()
-}
-
-fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
+fn symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
     ty::SymbolName {
-        name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_interned_str(),
+        name: compute_symbol_name(tcx, instance),
     }
 }
 
-fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> String {
+fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedString {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -247,11 +238,13 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
+            return Symbol::intern(&tcx.sess.generate_plugin_registrar_symbol(disambiguator))
+                .as_interned_str();
         }
         if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
+            return Symbol::intern(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator))
+                .as_interned_str();
         }
     }
 
@@ -268,20 +261,20 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     let attrs = tcx.codegen_fn_attrs(def_id);
     if is_foreign {
         if let Some(name) = attrs.link_name {
-            return name.to_string();
+            return name.as_interned_str();
         }
         // Don't mangle foreign items.
-        return tcx.item_name(def_id).to_string();
+        return tcx.item_name(def_id);
     }
 
     if let Some(name) = &attrs.export_name {
         // Use provided name
-        return name.to_string();
+        return name.as_interned_str();
     }
 
     if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
-        return tcx.item_name(def_id).to_string();
+        return tcx.item_name(def_id);
     }
 
     // We want to compute the "type" of this item. Unfortunately, some
@@ -321,15 +314,15 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let mut printer = SymbolPrinter {
         tcx,
-        path: SymbolPath::from_interned(tcx.def_symbol_name(def_id)),
+        path: SymbolPath::new(),
         keep_within_component: false,
-    };
+    }.print_def_path(def_id, &[]).unwrap();
 
     if instance.is_vtable_shim() {
         let _ = printer.write_str("{{vtable-shim}}");
     }
 
-    printer.path.finish(hash)
+    Symbol::intern(&printer.path.finish(hash)).as_interned_str()
 }
 
 // Follow C++ namespace-mangling style, see
@@ -359,22 +352,6 @@ impl SymbolPath {
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
-    }
-
-    fn from_interned(symbol: ty::SymbolName) -> Self {
-        let mut result = SymbolPath {
-            result: String::with_capacity(64),
-            temp_buf: String::with_capacity(16),
-        };
-        result.result.push_str(&symbol.as_str());
-        result
-    }
-
-    fn into_interned(mut self) -> ty::SymbolName {
-        self.finalize_pending_component();
-        ty::SymbolName {
-            name: Symbol::intern(&self.result).as_interned_str(),
-        }
     }
 
     fn finalize_pending_component(&mut self) {

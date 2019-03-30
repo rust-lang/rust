@@ -1619,6 +1619,8 @@ impl LintPass for KeywordIdents {
     }
 }
 
+struct UnderMacro(bool);
+
 impl KeywordIdents {
     fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: TokenStream) {
         for tt in tokens.into_trees() {
@@ -1626,7 +1628,7 @@ impl KeywordIdents {
                 TokenTree::Token(span, tok) => match tok.ident() {
                     // only report non-raw idents
                     Some((ident, false)) => {
-                        self.check_ident(cx, ast::Ident {
+                        self.check_ident_token(cx, UnderMacro(true), ast::Ident {
                             span: span.substitute_dummy(ident.span),
                             ..ident
                         });
@@ -1639,16 +1641,12 @@ impl KeywordIdents {
             }
         }
     }
-}
 
-impl EarlyLintPass for KeywordIdents {
-    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
-        self.check_tokens(cx, mac_def.stream());
-    }
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
-        self.check_tokens(cx, mac.node.tts.clone().into());
-    }
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
+    fn check_ident_token(&mut self,
+                         cx: &EarlyContext<'_>,
+                         UnderMacro(under_macro): UnderMacro,
+                         ident: ast::Ident)
+    {
         let ident_str = &ident.as_str()[..];
         let cur_edition = cx.sess.edition();
         let is_raw_ident = |ident: ast::Ident| {
@@ -1657,7 +1655,22 @@ impl EarlyLintPass for KeywordIdents {
         let next_edition = match cur_edition {
             Edition::Edition2015 => {
                 match ident_str {
-                    "async" | "try" | "dyn" => Edition::Edition2018,
+                    "async" | "try" => Edition::Edition2018,
+
+                    // rust-lang/rust#56327: Conservatively do not
+                    // attempt to report occurrences of `dyn` within
+                    // macro definitions or invocations, because `dyn`
+                    // can legitimately occur as a contextual keyword
+                    // in 2015 code denoting its 2018 meaning, and we
+                    // do not want rustfix to inject bugs into working
+                    // code by rewriting such occurrences.
+                    //
+                    // But if we see `dyn` outside of a macro, we know
+                    // its precise role in the parsed AST and thus are
+                    // assured this is truly an attempt to use it as
+                    // an identifier.
+                    "dyn" if !under_macro => Edition::Edition2018,
+
                     // Only issue warnings for `await` if the `async_await`
                     // feature isn't being used. Otherwise, users need
                     // to keep using `await` for the macro exposed by std.
@@ -1712,6 +1725,18 @@ impl EarlyLintPass for KeywordIdents {
             Applicability::MachineApplicable,
         );
         lint.emit()
+    }
+}
+
+impl EarlyLintPass for KeywordIdents {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
+        self.check_tokens(cx, mac_def.stream());
+    }
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
+        self.check_tokens(cx, mac.node.tts.clone().into());
+    }
+    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
+        self.check_ident_token(cx, UnderMacro(false), ident);
     }
 }
 

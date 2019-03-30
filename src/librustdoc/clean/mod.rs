@@ -1769,9 +1769,13 @@ fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_>,
+    recurse: i32,
 ) -> FxHashSet<Type> {
     let arg_s = arg.to_string();
     let mut res = FxHashSet::default();
+    if recurse >= 10 { // FIXME: remove this whole recurse thing when the recursion bug is fixed
+        return res;
+    }
     if arg.is_full_generic() {
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| {
             match g {
@@ -1788,7 +1792,7 @@ fn get_real_types(
                                 continue
                             }
                             if let Some(ty) = x.get_type(cx) {
-                                let adds = get_real_types(generics, &ty, cx);
+                                let adds = get_real_types(generics, &ty, cx, recurse + 1);
                                 if !adds.is_empty() {
                                     res.extend(adds);
                                 } else if !ty.is_full_generic() {
@@ -1806,7 +1810,7 @@ fn get_real_types(
         }) {
             for bound in bound.get_bounds().unwrap_or_else(|| &[]) {
                 if let Some(ty) = bound.get_trait_type() {
-                    let adds = get_real_types(generics, &ty, cx);
+                    let adds = get_real_types(generics, &ty, cx, recurse + 1);
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
@@ -1820,7 +1824,7 @@ fn get_real_types(
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
-                    let adds = get_real_types(generics, gen, cx);
+                    let adds = get_real_types(generics, gen, cx, recurse + 1);
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
@@ -1847,7 +1851,7 @@ pub fn get_all_types(
         if arg.type_.is_self_type() {
             continue;
         }
-        let args = get_real_types(generics, &arg.type_, cx);
+        let args = get_real_types(generics, &arg.type_, cx, 0);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
@@ -1857,7 +1861,7 @@ pub fn get_all_types(
 
     let ret_types = match decl.output {
         FunctionRetTy::Return(ref return_type) => {
-            let mut ret = get_real_types(generics, &return_type, cx);
+            let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
                 ret.insert(return_type.clone());
             }
