@@ -80,14 +80,12 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        use std::ffi::CStr;
-        let target_mcount = format!("{}{}",
-            &cx.sess().target.target.options.target_mcount, "\0");
-        let mcount_name = CStr::from_bytes_with_nul(target_mcount.as_bytes()).unwrap();
+        let mcount_name = CString::new(
+            cx.sess().target.target.options.target_mcount.as_str().as_bytes()).unwrap();
 
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"), mcount_name);
+            const_cstr!("instrument-function-entry-inlined"), &mcount_name);
     }
 }
 
