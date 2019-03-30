@@ -186,6 +186,21 @@ impl Sub for i16 {
     }
 }
 
+#[lang = "rem"]
+pub trait Rem<RHS = Self> {
+    type Output;
+
+    fn rem(self, rhs: RHS) -> Self::Output;
+}
+
+impl Rem for usize {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self {
+        self % rhs
+    }
+}
+
 #[lang = "bitor"]
 pub trait BitOr<RHS = Self> {
     type Output;

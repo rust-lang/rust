@@ -134,6 +134,10 @@ fn main() {
 
     call_return_u128_pair();
 
+    let slice = &[0, 1] as &[i32];
+    let slice_ptr = slice as *const [i32] as *const i32;
+    assert_eq!(slice_ptr as usize % 4, 0);
+
     //return;
 
     unsafe {

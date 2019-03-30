@@ -17,7 +17,3 @@ rustc-std-workspace-alloc = { path = "./rustc-std-workspace-alloc" }
 
 [profile.release]
 debug = true
-
-[profile.dev]
-# FIXME correctly align constants, so that copy_nonoverlapping doesn't complain about alignment
-debug-assertions = false
