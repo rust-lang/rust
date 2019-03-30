@@ -33,8 +33,9 @@ impl fmt::Display for UnwindError {
                  // tracing
 pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceContext)> {
     let mut cx = Context { idx: 0, frames };
-    let result_unwind =
-        unsafe { uw::_Unwind_Backtrace(trace_fn, &mut cx as *mut Context as *mut libc::c_void) };
+    let result_unwind = unsafe {
+        uw::_Unwind_Backtrace(trace_fn, &mut cx as *mut Context<'_> as *mut libc::c_void)
+    };
     // See libunwind:src/unwind/Backtrace.c for the return values.
     // No, there is no doc.
     match result_unwind {
