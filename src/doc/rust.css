@@ -14,19 +14,19 @@
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("Heuristica-Italic.woff") format('woff');
+	src: url("SourceSerifPro-It.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
 }
 @font-face {
 	font-family: 'Source Code Pro';
