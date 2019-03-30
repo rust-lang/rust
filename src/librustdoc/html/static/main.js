@@ -2071,6 +2071,14 @@ if (!DOMTokenList.prototype.remove) {
                     collapser(e, collapse);
                 });
             }
+
+            var blanket_list = document.getElementById("blanket-implementations-list");
+
+            if (blanket_list !== null) {
+                onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapser(e, collapse);
+                });
+            }
         }
     }
 
