@@ -24,18 +24,9 @@ macro_rules! declare_arena {
     }
 }
 
-macro_rules! impl_specialized_decodable {
-    ([decode] $ty:ty, $tcx:lifetime) => {
-        impl<$tcx> serialize::UseSpecializedDecodable for &$tcx $ty {}
-    };
-    ([] $ty:ty, $tcx:lifetime) => {};
-}
-
 macro_rules! impl_arena_allocatable {
     ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
         $(
-            impl_specialized_decodable!($a $ty, $tcx);
-
             impl ArenaAllocatable for $ty {}
             impl<$tcx> ArenaField<$tcx> for $ty {
                 #[inline]
