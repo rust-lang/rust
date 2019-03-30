@@ -540,7 +540,17 @@ macro_rules! rem_impl_float {
 
         /// The remainder from the division of two floats.
         ///
-        /// The remainder has the same sign as the dividend. For example: `-5.0 % 2.0 = -1.0`.
+        /// The remainder has the same sign as the dividend and is computed as:
+        /// `x - (x / y).trunc() * y`.
+        ///
+        /// # Examples
+        /// ```
+        /// let x: f32 = 4.0;
+        /// let y: f32 = 2.5;
+        /// let remainder = x - (x / y).trunc() * y;
+        ///
+        /// assert_eq!(x % y, remainder);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
