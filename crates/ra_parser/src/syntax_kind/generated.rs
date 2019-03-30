@@ -228,6 +228,8 @@ pub enum SyntaxKind {
     PARAM,
     SELF_PARAM,
     ARG_LIST,
+    TYPE_BOUND,
+    TYPE_BOUND_LIST,
 }
 use self::SyntaxKind::*;
 
@@ -567,6 +569,8 @@ impl SyntaxKind {
             PARAM => &SyntaxInfo { name: "PARAM" },
             SELF_PARAM => &SyntaxInfo { name: "SELF_PARAM" },
             ARG_LIST => &SyntaxInfo { name: "ARG_LIST" },
+            TYPE_BOUND => &SyntaxInfo { name: "TYPE_BOUND" },
+            TYPE_BOUND_LIST => &SyntaxInfo { name: "TYPE_BOUND_LIST" },
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
         }

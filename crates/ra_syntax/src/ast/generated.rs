@@ -4369,6 +4369,74 @@ impl TypeArgList {
     }
 }
 
+// TypeBound
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeBound {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeBound {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TypeBound {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TYPE_BOUND => Some(TypeBound::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for TypeBound {
+    type Owned = TreeArc<TypeBound>;
+    fn to_owned(&self) -> TreeArc<TypeBound> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl TypeBound {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+
+    pub fn lifetime(&self) -> Option<&Lifetime> {
+        super::child_opt(self)
+    }
+}
+
+// TypeBoundList
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TypeBoundList {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TypeBoundList {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for TypeBoundList {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TYPE_BOUND_LIST => Some(TypeBoundList::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for TypeBoundList {
+    type Owned = TreeArc<TypeBoundList>;
+    fn to_owned(&self) -> TreeArc<TypeBoundList> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl TypeBoundList {
+    pub fn bounds(&self) -> impl Iterator<Item = &TypeBound> {
+        super::children(self)
+    }
+}
+
 // TypeParam
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
