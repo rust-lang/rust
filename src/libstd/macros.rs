@@ -240,7 +240,7 @@ macro_rules! eprintln {
 /// Note that the macro is intended as a debugging tool and therefore you
 /// should avoid having uses of it in version control for longer periods.
 /// Use cases involving debug output that should be added to version control
-/// are better served by macros such as [`debug!`][debug-log] from the [`log`][log] crate.
+/// are better served by macros such as [`debug!`] from the [`log`] crate.
 ///
 /// # Stability
 ///
@@ -315,8 +315,8 @@ macro_rules! eprintln {
 /// file and line whenever it's reached.
 ///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
-/// [debug-log]: https://docs.rs/log/*/log/macro.debug.html
-/// [log]: https://docs.rs/log/
+/// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
+/// [`log`]: https://crates.io/crates/log
 #[macro_export]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
