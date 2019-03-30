@@ -255,7 +255,7 @@ impl Stdin {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StdinLock {
+    pub fn lock(&self) -> StdinLock<'_> {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 
@@ -295,7 +295,7 @@ impl Stdin {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stdin { .. }")
     }
 }
@@ -339,7 +339,7 @@ impl BufRead for StdinLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdinLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StdinLock { .. }")
     }
 }
@@ -466,14 +466,14 @@ impl Stdout {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StdoutLock {
+    pub fn lock(&self) -> StdoutLock<'_> {
         StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdout {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stdout { .. }")
     }
 }
@@ -489,7 +489,7 @@ impl Write for Stdout {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
     }
 }
@@ -505,7 +505,7 @@ impl Write for StdoutLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdoutLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StdoutLock { .. }")
     }
 }
@@ -619,14 +619,14 @@ impl Stderr {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StderrLock {
+    pub fn lock(&self) -> StderrLock<'_> {
         StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stderr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stderr { .. }")
     }
 }
@@ -642,7 +642,7 @@ impl Write for Stderr {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
     }
 }
@@ -658,7 +658,7 @@ impl Write for StderrLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StderrLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StderrLock { .. }")
     }
 }
@@ -720,7 +720,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 ///
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
-    args: fmt::Arguments,
+    args: fmt::Arguments<'_>,
     local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
     global_s: fn() -> T,
     label: &str,
@@ -749,7 +749,7 @@ where
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
-pub fn _print(args: fmt::Arguments) {
+pub fn _print(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
 
@@ -758,7 +758,7 @@ pub fn _print(args: fmt::Arguments) {
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
-pub fn _eprint(args: fmt::Arguments) {
+pub fn _eprint(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 
@@ -777,7 +777,7 @@ mod tests {
     }
     #[test]
     fn stdoutlock_unwind_safe() {
-        assert_unwind_safe::<StdoutLock>();
+        assert_unwind_safe::<StdoutLock<'_>>();
         assert_unwind_safe::<StdoutLock<'static>>();
     }
     #[test]
@@ -786,7 +786,7 @@ mod tests {
     }
     #[test]
     fn stderrlock_unwind_safe() {
-        assert_unwind_safe::<StderrLock>();
+        assert_unwind_safe::<StderrLock<'_>>();
         assert_unwind_safe::<StderrLock<'static>>();
     }
 

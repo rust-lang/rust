@@ -100,7 +100,7 @@ pub struct LocalKey<T: 'static> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("LocalKey { .. }")
     }
 }
@@ -204,14 +204,14 @@ pub struct AccessError {
 
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Debug for AccessError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AccessError").finish()
     }
 }
 
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Display for AccessError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("already destroyed", f)
     }
 }
@@ -319,7 +319,7 @@ pub mod statik {
     unsafe impl<T> Sync for Key<T> { }
 
     impl<T> fmt::Debug for Key<T> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.pad("Key { .. }")
         }
     }
@@ -356,7 +356,7 @@ pub mod fast {
     }
 
     impl<T> fmt::Debug for Key<T> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.pad("Key { .. }")
         }
     }
@@ -424,7 +424,7 @@ pub mod os {
     }
 
     impl<T> fmt::Debug for Key<T> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.pad("Key { .. }")
         }
     }

@@ -914,7 +914,7 @@ impl<T> Drop for Sender<T> {
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Sender").finish()
     }
 }
@@ -1044,7 +1044,7 @@ impl<T> Drop for SyncSender<T> {
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyncSender").finish()
     }
 }
@@ -1463,7 +1463,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter { rx: self }
     }
 
@@ -1506,7 +1506,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
-    pub fn try_iter(&self) -> TryIter<T> {
+    pub fn try_iter(&self) -> TryIter<'_, T> {
         TryIter { rx: self }
     }
 
@@ -1636,21 +1636,21 @@ impl<T> Drop for Receiver<T> {
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Receiver<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Receiver").finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for SendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "SendError(..)".fmt(f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for SendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "sending on a closed channel".fmt(f)
     }
 }
@@ -1668,7 +1668,7 @@ impl<T: Send> error::Error for SendError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for TrySendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TrySendError::Full(..) => "Full(..)".fmt(f),
             TrySendError::Disconnected(..) => "Disconnected(..)".fmt(f),
@@ -1678,7 +1678,7 @@ impl<T> fmt::Debug for TrySendError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for TrySendError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TrySendError::Full(..) => {
                 "sending on a full channel".fmt(f)
@@ -1720,7 +1720,7 @@ impl<T> From<SendError<T>> for TrySendError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for RecvError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "receiving on a closed channel".fmt(f)
     }
 }
@@ -1739,7 +1739,7 @@ impl error::Error for RecvError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for TryRecvError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TryRecvError::Empty => {
                 "receiving on an empty channel".fmt(f)
@@ -1781,7 +1781,7 @@ impl From<RecvError> for TryRecvError {
 
 #[stable(feature = "mpsc_recv_timeout_error", since = "1.15.0")]
 impl fmt::Display for RecvTimeoutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RecvTimeoutError::Timeout => {
                 "timed out waiting on channel".fmt(f)
