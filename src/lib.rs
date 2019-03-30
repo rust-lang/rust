@@ -67,8 +67,8 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
-    let mut ecx = EvalContext::new(
+) -> EvalResult<'tcx, InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
+    let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.validate),
@@ -345,7 +345,7 @@ impl<'tcx> Evaluator<'tcx> {
 
 // FIXME: rustc issue <https://github.com/rust-lang/rust/issues/47131>.
 #[allow(dead_code)]
-type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>;
+type MiriEvalContext<'a, 'mir, 'tcx> = InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>;
 
 // A little trait that's useful to be inherited by extension traits.
 pub trait MiriEvalContextExt<'a, 'mir, 'tcx> {
@@ -376,14 +376,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
 
     #[inline(always)]
-    fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
         ecx.machine.validate
     }
 
     /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Borrow>],
         dest: Option<PlaceTy<'tcx, Borrow>>,
@@ -394,7 +394,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn call_intrinsic(
-        ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut rustc_mir::interpret::InterpretCx<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Borrow>],
         dest: PlaceTy<'tcx, Borrow>,
@@ -404,7 +404,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn ptr_op(
-        ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &rustc_mir::interpret::InterpretCx<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Borrow>,
         right: ImmTy<'tcx, Borrow>,
@@ -413,7 +413,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn box_alloc(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
@@ -481,7 +481,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn before_terminator(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
+    fn before_terminator(_ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
     {
         // We are not interested in detecting loops.
         Ok(())
@@ -511,7 +511,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn tag_dereference(
-        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
         place: MPlaceTy<'tcx, Borrow>,
         mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Scalar<Borrow>> {
@@ -532,7 +532,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn tag_new_allocation(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
     ) -> Pointer<Borrow> {
@@ -547,7 +547,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn retag(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
@@ -565,14 +565,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn stack_push(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
     ) -> EvalResult<'tcx, stacked_borrows::CallId> {
         Ok(ecx.memory().extra.borrow_mut().new_call())
     }
 
     #[inline(always)]
     fn stack_pop(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
     ) -> EvalResult<'tcx> {
         Ok(ecx.memory().extra.borrow_mut().end_call(extra))

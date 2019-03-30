@@ -255,7 +255,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
                 // Now we make a function call.
-                // TODO: consider making this reusable? `EvalContext::step` does something similar
+                // TODO: consider making this reusable? `InterpretCx::step` does something similar
                 // for the TLS destructors, and of course `eval_main`.
                 let mir = this.load_mir(f_instance.def)?;
                 let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
