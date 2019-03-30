@@ -34,7 +34,7 @@ pub fn unsetenv(_: &OsStr) -> io::Result<()> {
 
 pub struct SplitPaths<'a>(&'a Void);
 
-pub fn split_paths(_unparsed: &OsStr) -> SplitPaths {
+pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
 }
 
