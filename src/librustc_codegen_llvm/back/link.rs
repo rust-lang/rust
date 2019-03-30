@@ -1,11 +1,10 @@
 use super::archive::{ArchiveBuilder, ArchiveConfig};
-use super::bytecode::RLIB_BYTECODE_EXTENSION;
 use super::rpath::RPathConfig;
 use super::rpath;
 use crate::back::wasm;
-use crate::metadata::METADATA_FILENAME;
 use crate::context::get_reloc_model;
 use crate::llvm;
+use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::linker::Linker;
 use rustc_codegen_ssa::back::link::*;
 use rustc_codegen_ssa::back::command::Command;
