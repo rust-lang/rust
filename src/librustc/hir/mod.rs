@@ -1228,6 +1228,9 @@ pub struct Local {
 /// `<pats> (if <guard>) => <body>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Arm {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
+    pub span: Span,
     pub attrs: HirVec<Attribute>,
     /// Multiple patterns can be combined with `|`
     pub pats: HirVec<P<Pat>>,
@@ -2656,6 +2659,7 @@ pub enum Node<'hir> {
     TraitRef(&'hir TraitRef),
     Binding(&'hir Pat),
     Pat(&'hir Pat),
+    Arm(&'hir Arm),
     Block(&'hir Block),
     Local(&'hir Local),
     MacroDef(&'hir MacroDef),
