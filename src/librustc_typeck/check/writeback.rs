@@ -42,6 +42,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for arg in &body.arguments {
             wbcx.visit_node_id(arg.pat.span, arg.hir_id);
         }
+        // Type only exists for constants and statics, not functions.
+        match self.tcx.hir().body_owner_kind(item_id) {
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
+                let item_hir_id = self.tcx.hir().node_to_hir_id(item_id);
+                wbcx.visit_node_id(body.value.span, item_hir_id);
+            }
+            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
+        }
         wbcx.visit_body(body);
         wbcx.visit_upvar_capture_map();
         wbcx.visit_upvar_list_map();
