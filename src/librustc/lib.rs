@@ -39,6 +39,7 @@
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
+#![feature(overlapping_marker_traits)]
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(non_exhaustive)]
