@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Function, Resolver,DefWithBody,
+    Path, Name, HirDatabase, Resolver,DefWithBody,
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
@@ -27,8 +27,7 @@ impl_arena_id!(ExprId);
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    // FIXME: this should be more general, consts & statics also have bodies
-    /// The Function of the item this body belongs to
+    /// The def of the item this body belongs to
     owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
@@ -503,9 +502,6 @@ impl ExprCollector {
         self.exprs.alloc(block)
     }
 
-
-    
-
     fn collect_expr(&mut self, expr: &ast::Expr) -> ExprId {
         let syntax_ptr = SyntaxNodePtr::new(expr.syntax());
         match expr.kind() {
@@ -874,13 +870,14 @@ impl ExprCollector {
         }
     }
 
-
-    fn collect_const_body(&mut self,node:&ast::ConstDef)  {
-        
+    fn collect_const_body(&mut self, node: &ast::ConstDef) {
+        let body = self.collect_expr_opt(node.body());
+        self.body_expr = Some(body);
     }
 
-    fn collect_static_body(&mut self,node:&ast::StaticDef) {
-
+    fn collect_static_body(&mut self, node: &ast::StaticDef) {
+        let body = self.collect_expr_opt(node.body());
+        self.body_expr = Some(body);
     }
 
     fn collect_fn_body(&mut self, node: &ast::FnDef) {
@@ -931,28 +928,27 @@ pub(crate) fn body_with_source_map_query(
     db: &impl HirDatabase,
     def: DefWithBody,
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
-
     let mut collector = ExprCollector::new(def);
 
-    // FIXME: do can this be turned into a method
-    
     match def {
-        DefWithBody::Const(ref c) => collector.collect_const_body(&def.const_source(db).1),
-        DefWithBody::Func(ref f) => collector.collect_fn_body(&def.func_source(db).1),
-        DefWithBody::Static(ref s) => collector.collect_static_body(&def.static_source(db).1)
+        DefWithBody::Const(ref c) => collector.collect_const_body(&c.source(db).1),
+        DefWithBody::Function(ref f) => collector.collect_fn_body(&f.source(db).1),
+        DefWithBody::Static(ref s) => collector.collect_static_body(&s.source(db).1),
     }
-    
+
     let (body, source_map) = collector.finish();
     (Arc::new(body), Arc::new(source_map))
 }
 
 pub(crate) fn body_hir_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
-    db.body_with_source_map(def).0   
+    db.body_with_source_map(def).0
 }
 
 #[cfg(test)]
+use crate::{Function};
+#[cfg(test)]
 fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
-    let mut collector = ExprCollector::new(function);
+    let mut collector = ExprCollector::new(DefWithBody::Function(function));
     collector.collect_fn_body(node);
     collector.finish()
 }

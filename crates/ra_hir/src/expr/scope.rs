@@ -10,7 +10,7 @@ use ra_syntax::{
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, AsName, Function,DefWithBody,
+    Name, AsName,DefWithBody,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
     HirDatabase,
 };
@@ -297,6 +297,7 @@ mod tests {
     use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
     use ra_arena::ArenaId;
+    use crate::{Function};
 
     use crate::expr;
 

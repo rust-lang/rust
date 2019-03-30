@@ -436,65 +436,33 @@ impl Docs for EnumVariant {
 /// The defs which have a body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DefWithBody {
-    Func(Function),
+    Function(Function),
     Const(Const),
     Static(Static),
 }
 
+impl_froms!(DefWithBody: Function, Const, Static);
+
 impl DefWithBody {
-    pub fn get_funct(&self) -> &Function {
-        match *self {
-            DefWithBody::Func(ref f) => f,
-            _ => unreachable!()
-        }
-    }
-
-    pub fn const_source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
-       match *self {
-           DefWithBody::Const(ref c) => c.source(db),
-           _ => unreachable!()
-       }
-    }
-
-    pub fn func_source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
-       match *self {
-           DefWithBody::Func(ref f) => f.source(db),
-           _ => unreachable!()
-       }
-    }
-
-    pub fn static_source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
-       match *self {
-           DefWithBody::Static(ref s) => s.source(db),
-           _ => unreachable!()
-       }
-    }
-
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(*self)
+    }
+
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(*self).1
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
         db.body_hir(*self)
     }
-    
+
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
-        // // take the outer scope...
-        // let r = self
-        //     .impl_block(db)
-        //     .map(|ib| ib.resolver(db))
-        //     .unwrap_or_else(|| self.module(db).resolver(db));
-        // // ...and add generic params, if present
-        // let p = self.generic_params(db);
-        // let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        // r
-        unimplemented!()
-    }
-
-    pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
-        // db.fn_signature(*self)
-        unimplemented!()
+        match *self {
+            DefWithBody::Const(ref c) => c.resolver(db),
+            DefWithBody::Function(ref f) => f.resolver(db),
+            DefWithBody::Static(ref s) => s.resolver(db),
+        }
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
@@ -502,7 +470,6 @@ impl DefWithBody {
         let source_map = db.body_with_source_map(*self).1;
         ScopesWithSourceMap { scopes, source_map }
     }
-    
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -555,11 +522,11 @@ impl Function {
     }
 
     pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(DefWithBody::Func(*self)).1
+        db.body_with_source_map((*self).into()).1
     }
 
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(DefWithBody::Func(*self))
+        db.body_hir((*self).into())
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
@@ -567,8 +534,8 @@ impl Function {
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
-        let scopes = db.expr_scopes( DefWithBody::Func(*self));
-        let source_map = db.body_with_source_map(DefWithBody::Func(*self)).1;
+        let scopes = db.expr_scopes((*self).into());
+        let source_map = db.body_with_source_map((*self).into()).1;
         ScopesWithSourceMap { scopes, source_map }
     }
 
@@ -577,7 +544,7 @@ impl Function {
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(DefWithBody::Func(*self))
+        db.infer((*self).into())
     }
 
     pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
@@ -631,6 +598,14 @@ impl Const {
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
         db.const_signature(*self)
+    }
+
+    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer((*self).into())
+    }
+
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map((*self).into()).1
     }
 
     /// The containing impl block, if this is a method.
@@ -696,6 +671,14 @@ impl Static {
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         self.module(db).resolver(db)
+    }
+
+    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer((*self).into())
+    }
+
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map((*self).into()).1
     }
 }
 

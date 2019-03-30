@@ -87,7 +87,7 @@ pub trait HirDatabase: DefDatabase {
     fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::ty::infer)]
-    fn infer(&self, def:DefWithBody) -> Arc<InferenceResult>;
+    fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::type_for_def)]
     fn type_for_def(&self, def: TypableDef, ns: Namespace) -> Ty;

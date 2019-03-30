@@ -27,8 +27,9 @@ use test_utils::tested_by;
 
 use crate::{
     Function, StructField, Path, Name,
-    FnSignature, AdtDef,
+    FnSignature, AdtDef,ConstSignature,
     HirDatabase,
+    DefWithBody,
     ImplItem,
     type_ref::{TypeRef, Mutability},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat, self},
@@ -43,14 +44,17 @@ use crate::{
 use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
 
 /// The entry point of type inference.
-pub fn infer(db: &impl HirDatabase, func: Function) -> Arc<InferenceResult> {
+pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
     db.check_canceled();
-    let body = func.body(db);
-    let resolver = func.resolver(db);
+    let body = def.body(db);
+    let resolver = def.resolver(db);
     let mut ctx = InferenceContext::new(db, body, resolver);
 
-    let signature = func.signature(db);
-    ctx.collect_fn_signature(&signature);
+    match def {
+        DefWithBody::Const(ref c) => ctx.collect_const_signature(&c.signature(db)),
+        DefWithBody::Function(ref f) => ctx.collect_fn_signature(&f.signature(db)),
+        DefWithBody::Static(ref s) => ctx.collect_const_signature(&s.signature(db)),
+    }
 
     ctx.infer_body();
 
@@ -1140,6 +1144,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
         let ty = if let Some(expr) = tail { self.infer_expr(expr, expected) } else { Ty::unit() };
         ty
+    }
+
+    fn collect_const_signature(&mut self, signature: &ConstSignature) {
+        self.return_ty = self.make_ty(signature.type_ref());
     }
 
     fn collect_fn_signature(&mut self, signature: &FnSignature) {

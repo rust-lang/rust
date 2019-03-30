@@ -313,7 +313,7 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
-            options: ["body","Block"],
+            options: [ ["body","Expr"]],
         ),
         "StaticDef": (
             traits: [
@@ -324,7 +324,7 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
-            options: ["body","Block"],
+            options: [ ["body","Expr"]],
         ),
         "TypeAliasDef": (
             traits: [

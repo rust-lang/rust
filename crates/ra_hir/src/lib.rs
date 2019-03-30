@@ -74,5 +74,4 @@ pub use self::code_model_api::{
     StructField, FieldSource,
     Static, Const, ConstSignature,
     Trait, TypeAlias,
-    
 };
