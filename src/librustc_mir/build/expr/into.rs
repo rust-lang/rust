@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 value,
             } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, block, |this| {
+                this.in_scope(region_scope, lint_level, |this| {
                     this.into(destination, block, value)
                 })
             }

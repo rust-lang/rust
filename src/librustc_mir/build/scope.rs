@@ -279,13 +279,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn in_opt_scope<F, R>(&mut self,
                               opt_scope: Option<(region::Scope, SourceInfo)>,
-                              mut block: BasicBlock,
                               f: F)
                               -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
-        debug!("in_opt_scope(opt_scope={:?}, block={:?})", opt_scope, block);
+        debug!("in_opt_scope(opt_scope={:?})", opt_scope);
         if let Some(region_scope) = opt_scope { self.push_scope(region_scope); }
+        let mut block;
         let rv = unpack!(block = f(self));
         if let Some(region_scope) = opt_scope {
             unpack!(block = self.pop_scope(region_scope, block));
@@ -299,12 +299,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn in_scope<F, R>(&mut self,
                           region_scope: (region::Scope, SourceInfo),
                           lint_level: LintLevel,
-                          mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
-        debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
+        debug!("in_scope(region_scope={:?})", region_scope);
         let source_scope = self.source_scope;
         let tcx = self.hir.tcx();
         if let LintLevel::Explicit(current_hir_id) = lint_level {
@@ -330,6 +329,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
         self.push_scope(region_scope);
+        let mut block;
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
         self.source_scope = source_scope;
