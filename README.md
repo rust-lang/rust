@@ -88,8 +88,18 @@ fn does_not_work_on_miri() {
 
 ### Common Problems
 
-When using the above instructions, you may encounter a number of confusing compiler
+When using the above instructions, you may encounter a number of confusing
 errors.
+
+#### "component 'miri' for target '\<target\>' is unavailable for download for channel 'nightly'"
+
+The latest nightly may have broken Miri. If [this is the case][rust-toolstate], instead try to install Miri the old way with
+
+```sh
+cargo +nightly install --force --git https://github.com/rust-lang/miri miri
+```
+
+[rust-toolstate]: 
 
 #### "found possibly newer version of crate `std` which `<dependency>` depends on"
 
