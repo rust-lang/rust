@@ -12,6 +12,4 @@ pub fn foo() -> Option<Foo> {
 }
 
 // CHECK: declare void @llvm.dbg.value
-fn main() {
-    let vals = (Some(Foo::Lo), None::<Foo>);
-}
+fn main() {}
