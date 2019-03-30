@@ -1,21 +1,9 @@
-error: `?Trait` is not permitted in trait object types
-  --> $DIR/trait-object-trait-parens.rs:6:25
-   |
-LL |     let _: Box<(Copy) + (?Sized) + (for<'a> Trait<'a>)>;
-   |                         ^^^^^^^^
-
-error: `?Trait` is not permitted in trait object types
-  --> $DIR/trait-object-trait-parens.rs:9:47
-   |
-LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
-   |                                               ^^^^^^^^
-
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/trait-object-trait-parens.rs:9:31
+  --> $DIR/trait-object-trait-parens.rs:8:31
    |
 LL |     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
    |                               ^^ undeclared lifetime
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0261`.

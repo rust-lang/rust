@@ -1,0 +1,14 @@
+error[E0224]: at least one non-builtin trait is required for an object type
+  --> $DIR/trait-alias-maybe-bound.rs:12:12
+   |
+LL | type _T0 = dyn _1;
+   |            ^^^^^^
+
+error[E0224]: at least one non-builtin trait is required for an object type
+  --> $DIR/trait-alias-maybe-bound.rs:24:12
+   |
+LL | type _T3 = dyn _2;
+   |            ^^^^^^
+
+error: aborting due to 2 previous errors
+

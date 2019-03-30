@@ -1,0 +1,8 @@
+error[E0224]: at least one non-builtin trait is required for an object type
+  --> $DIR/wf-trait-object-maybe-bound.rs:4:11
+   |
+LL | type _0 = dyn ?Sized;
+   |           ^^^^^^^^^^
+
+error: aborting due to previous error
+
