@@ -296,7 +296,9 @@ macro_rules! __impl_decoder_methods {
 
 #[macro_export]
 macro_rules! impl_arena_allocatable_decoder {
-    ([$DecoderName:ident [$($typaram:tt),*]], [[decode] $name:ident: $ty:ty], $tcx:lifetime) => {
+    ([]$args:tt) => {};
+    ([decode $(, $attrs:ident)*]
+     [[$DecoderName:ident [$($typaram:tt),*]], [$name:ident: $ty:ty], $tcx:lifetime]) => {
         impl<$($typaram),*> SpecializedDecoder<&$tcx $ty> for $DecoderName<$($typaram),*> {
             #[inline]
             fn specialized_decode(&mut self) -> Result<&$tcx $ty, Self::Error> {
@@ -311,14 +313,16 @@ macro_rules! impl_arena_allocatable_decoder {
             }
         }
     };
-    ([$DecoderName:ident [$($typaram:tt),*]], [[] $name:ident: $ty:ty], $tcx:lifetime) => {};
+    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
+        impl_arena_allocatable_decoder!([$($attrs),*]$args);
+    };
 }
 
 #[macro_export]
 macro_rules! impl_arena_allocatable_decoders {
     ($args:tt, [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
         $(
-            impl_arena_allocatable_decoder!($args, [$a $name: $ty], $tcx);
+            impl_arena_allocatable_decoder!($a [$args, [$name: $ty], $tcx]);
         )*
     }
 }

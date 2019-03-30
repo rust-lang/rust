@@ -84,7 +84,7 @@ rustc_queries! {
         /// Set of all the `DefId`s in this crate that have MIR associated with
         /// them. This includes all the body owners, but also things like struct
         /// constructors.
-        query mir_keys(_: CrateNum) -> Lrc<DefIdSet> {
+        query mir_keys(_: CrateNum) -> &'tcx DefIdSet {
             desc { "getting a list of all mir_keys" }
         }
 

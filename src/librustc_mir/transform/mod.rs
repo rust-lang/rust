@@ -8,7 +8,6 @@ use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::DefIdSet;
-use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use syntax::ast;
 use syntax_pos::Span;
@@ -59,7 +58,7 @@ fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> boo
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
-                      -> Lrc<DefIdSet> {
+                      -> &'tcx DefIdSet {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet::default();
@@ -94,7 +93,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         set: &mut set,
     }.as_deep_visitor());
 
-    Lrc::new(set)
+    tcx.arena.alloc(set)
 }
 
 fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
