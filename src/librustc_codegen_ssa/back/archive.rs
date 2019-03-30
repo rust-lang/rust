@@ -33,7 +33,13 @@ pub trait ArchiveBuilder<'a> {
     fn remove_file(&mut self, name: &str);
     fn src_files(&mut self) -> Vec<String>;
 
-    fn add_rlib(&mut self, path: &Path, name: &str, lto: bool, skip_objects: bool) -> io::Result<()>;
+    fn add_rlib(
+        &mut self,
+        path: &Path,
+        name: &str,
+        lto: bool,
+        skip_objects: bool,
+    ) -> io::Result<()>;
     fn add_native_library(&mut self, name: &str);
     fn update_symbols(&mut self);
 
