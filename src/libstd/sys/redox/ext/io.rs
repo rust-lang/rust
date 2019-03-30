@@ -115,6 +115,21 @@ impl AsRawFd for io::Stderr {
     fn as_raw_fd(&self) -> RawFd { 2 }
 }
 
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawFd for io::StdinLock<'a> {
+    fn as_raw_fd(&self) -> RawFd { 0 }
+}
+
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawFd for io::StdoutLock<'a> {
+    fn as_raw_fd(&self) -> RawFd { 1 }
+}
+
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawFd for io::StderrLock<'a> {
+    fn as_raw_fd(&self) -> RawFd { 2 }
+}
+
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for net::TcpStream {
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
