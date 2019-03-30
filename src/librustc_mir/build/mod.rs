@@ -702,13 +702,13 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
+    unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
         if should_abort_on_panic(tcx, fn_def_id, abi) {
             builder.schedule_abort();
         }
 
         let arg_scope_s = (arg_scope, source_info);
-        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
+        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace

@@ -43,7 +43,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             value,
         } = expr.kind
         {
-            return this.in_scope((region_scope, source_info), lint_level, block, |this| {
+            return this.in_scope((region_scope, source_info), lint_level, |this| {
                 this.as_temp(block, temp_lifetime, value, mutability)
             });
         }
