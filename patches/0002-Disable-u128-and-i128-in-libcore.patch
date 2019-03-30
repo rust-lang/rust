@@ -10,6 +10,21 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libstd/panic.rs              |   6 --
  20 files changed, 63 insertions(+), 363 deletions(-)
 
+diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
+index 6b657b1..5add3f3 100644
+--- a/src/libcore/num/mod.rs
++++ b/src/libcore/num/mod.rs
+@@ -127,8 +127,8 @@ macro_rules! from_str_radix_nzint_impl {
+     )*}
+ }
+ 
+-from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
+-                             NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
++from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroUsize
++                             NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroIsize }
+ 
+ /// Provides intentionally-wrapped arithmetic on `T`.
+ ///
 diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
 index d0ee5fa..d02c454 100644
 --- a/src/libcore/sync/atomic.rs
