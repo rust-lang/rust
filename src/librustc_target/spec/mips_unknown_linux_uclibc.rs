@@ -16,6 +16,7 @@ pub fn target() -> TargetResult {
             cpu: "mips32r2".to_string(),
             features: "+mips32r2,+soft-float".to_string(),
             max_atomic_width: Some(32),
+            target_mcount: "_mcount".to_string(),
 
             ..super::linux_base::opts()
         },

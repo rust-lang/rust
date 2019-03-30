@@ -18,6 +18,7 @@ pub fn target() -> TargetResult {
             features: "+v6,+vfp2".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
+            target_mcount: "\01__gnu_mcount_nc".to_string(),
             .. base
         }
     })
