@@ -8,6 +8,7 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
             p.bump();
             p.bump();
         }
+        (false, L_ANGLE, EQ) => return,
         (false, L_ANGLE, _) => {
             m = p.start();
             p.bump();
