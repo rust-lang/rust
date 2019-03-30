@@ -67,21 +67,21 @@ impl Step for Llvm {
             }
         }
 
-        let (llvm_commit, root, out_dir, llvm_config_ret_dir) = if emscripten {
-            let sha = builder.build.emscripten_llvm_info.sha();
+        let (llvm_info, root, out_dir, llvm_config_ret_dir) = if emscripten {
+            let info = &builder.emscripten_llvm_info;
             let dir = builder.emscripten_llvm_out(target);
             let config_dir = dir.join("bin");
-            (sha, "src/llvm-emscripten", dir, config_dir)
+            (info, "src/llvm-emscripten", dir, config_dir)
         } else {
-            let sha = builder.build.in_tree_llvm_info.sha();
+            let info = &builder.in_tree_llvm_info;
             let mut dir = builder.llvm_out(builder.config.build);
             if !builder.config.build.contains("msvc") || builder.config.ninja {
                 dir.push("build");
             }
-            (sha, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
+            (info, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
         };
 
-        if llvm_commit.is_none() {
+        if !llvm_info.is_git() {
             println!(
                 "git could not determine the LLVM submodule commit hash. \
                 Assuming that an LLVM build is necessary.",
@@ -92,7 +92,7 @@ impl Step for Llvm {
             .join(exe("llvm-config", &*builder.config.build));
         let done_stamp = out_dir.join("llvm-finished-building");
 
-        if let Some(llvm_commit) = llvm_commit {
+        if let Some(llvm_commit) = llvm_info.sha() {
             if done_stamp.exists() {
                 let done_contents = t!(fs::read(&done_stamp));
 
@@ -251,11 +251,6 @@ impl Step for Llvm {
                 channel::CFG_RELEASE_NUM,
                 builder.config.channel,
             );
-            let llvm_info = if self.emscripten {
-                &builder.emscripten_llvm_info
-            } else {
-                &builder.in_tree_llvm_info
-            };
             if let Some(sha) = llvm_info.sha_short() {
                 default_suffix.push_str("-");
                 default_suffix.push_str(sha);
@@ -288,7 +283,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        if let Some(llvm_commit) = llvm_commit {
+        if let Some(llvm_commit) = llvm_info.sha() {
             t!(fs::write(&done_stamp, llvm_commit));
         }
 
