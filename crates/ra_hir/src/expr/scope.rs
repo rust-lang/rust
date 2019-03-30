@@ -10,7 +10,7 @@ use ra_syntax::{
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, AsName, Function,
+    Name, AsName, Function,DefWithBody,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
     HirDatabase,
 };
@@ -40,8 +40,8 @@ pub struct ScopeData {
 
 impl ExprScopes {
     // FIXME: This should take something more general than Function
-    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, function: Function) -> Arc<ExprScopes> {
-        let body = db.body_hir(function);
+    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<ExprScopes> {
+        let body = db.body_hir(def);
         let res = ExprScopes::new(body);
         Arc::new(res)
     }
