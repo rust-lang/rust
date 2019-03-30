@@ -8,11 +8,13 @@ SOURCE_FILE@[0; 38)
           IDENT@[5; 6) "T"
         COLON@[6; 7)
         WHITESPACE@[7; 8)
-        PATH_TYPE@[8; 13)
-          PATH@[8; 13)
-            PATH_SEGMENT@[8; 13)
-              NAME_REF@[8; 13)
-                IDENT@[8; 13) "Clone"
+        TYPE_BOUND_LIST@[8; 13)
+          TYPE_BOUND@[8; 13)
+            PATH_TYPE@[8; 13)
+              PATH@[8; 13)
+                PATH_SEGMENT@[8; 13)
+                  NAME_REF@[8; 13)
+                    IDENT@[8; 13) "Clone"
       R_ANGLE@[13; 14)
       err: `expected trait or type`
       err: `expected `{``

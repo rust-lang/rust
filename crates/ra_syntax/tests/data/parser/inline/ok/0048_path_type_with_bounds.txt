@@ -27,7 +27,9 @@ SOURCE_FILE@[0; 27)
                   WHITESPACE@[17; 18)
                   PLUS@[18; 19)
                   WHITESPACE@[19; 20)
-                  LIFETIME@[20; 22) "'f"
+                  TYPE_BOUND_LIST@[20; 22)
+                    TYPE_BOUND@[20; 22)
+                      LIFETIME@[20; 22) "'f"
               R_ANGLE@[22; 23)
     WHITESPACE@[23; 24)
     BLOCK@[24; 26)
