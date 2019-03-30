@@ -33,8 +33,10 @@ pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
 
 // Insert `derive` after doc comments.
 fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextUnit> {
-    let non_ws_child =
-        nominal.syntax().children().find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
+    let non_ws_child = nominal
+        .syntax()
+        .children_with_tokens()
+        .find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
     Some(non_ws_child.range().start())
 }
 

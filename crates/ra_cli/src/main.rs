@@ -3,10 +3,8 @@ mod analysis_stats;
 use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
-use join_to_string::join;
-use ra_ide_api::{Analysis, FileRange};
 use ra_ide_api::file_structure;
-use ra_syntax::{SourceFile, TextRange, TreeArc, AstNode};
+use ra_syntax::{SourceFile, TreeArc, AstNode};
 use tools::collect_tests;
 use flexi_logger::Logger;
 
@@ -23,11 +21,6 @@ fn main() -> Result<()> {
         )
         .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
-        .subcommand(
-            SubCommand::with_name("extend-selection")
-                .arg(Arg::with_name("start"))
-                .arg(Arg::with_name("end")),
-        )
         .subcommand(
             SubCommand::with_name("analysis-stats").arg(Arg::with_name("verbose").short("v")),
         )
@@ -56,13 +49,6 @@ fn main() -> Result<()> {
             let line = line - 1;
             let (test, tree) = render_test(file, line)?;
             println!("{}\n{}", test, tree);
-        }
-        ("extend-selection", Some(matches)) => {
-            let start: u32 = matches.value_of("start").unwrap().parse()?;
-            let end: u32 = matches.value_of("end").unwrap().parse()?;
-            let text = read_stdin()?;
-            let sels = selections(text, start, end);
-            println!("{}", sels)
         }
         ("analysis-stats", Some(matches)) => {
             let verbose = matches.is_present("verbose");
@@ -97,23 +83,4 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
     let file = SourceFile::parse(&test.text);
     let tree = file.syntax().debug_dump();
     Ok((test.text, tree))
-}
-
-fn selections(text: String, start: u32, end: u32) -> String {
-    let (analysis, file_id) = Analysis::from_single_file(text);
-    let mut ranges = Vec::new();
-    let mut range = TextRange::from_to((start - 1).into(), (end - 1).into());
-    loop {
-        ranges.push(range);
-        let next = analysis.extend_selection(FileRange { file_id, range }).unwrap();
-        if range == next {
-            break;
-        }
-        range = next;
-    }
-    let ranges = ranges
-        .iter()
-        .map(|r| (1 + u32::from(r.start()), 1 + u32::from(r.end())))
-        .map(|(s, e)| format!("({} {})", s, e));
-    join(ranges).separator(" ").surround_with("(", ")").to_string()
 }

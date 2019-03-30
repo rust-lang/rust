@@ -1,7 +1,7 @@
 use join_to_string::join;
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast::{self, AstNode, AstToken, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, NameOwner, TypeParamsOwner},
     TextUnit,
 };
 
@@ -22,8 +22,10 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
         if let Some(type_params) = type_params {
-            let lifetime_params =
-                type_params.lifetime_params().filter_map(|it| it.lifetime()).map(|it| it.text());
+            let lifetime_params = type_params
+                .lifetime_params()
+                .filter_map(|it| it.lifetime_token())
+                .map(|it| it.text());
             let type_params =
                 type_params.type_params().filter_map(|it| it.name()).map(|it| it.text());
             join(lifetime_params.chain(type_params)).surround_with("<", ">").to_buf(&mut buf);

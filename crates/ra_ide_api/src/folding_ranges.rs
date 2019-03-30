@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    AstNode, Direction, SourceFile, SyntaxNode, TextRange,
+    AstNode, SourceFile, SyntaxNode, TextRange, Direction, SyntaxElement,
     SyntaxKind::{self, *},
-    ast::{self, VisibilityOwner},
+    ast::{self, VisibilityOwner, Comment},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -26,34 +26,49 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_imports = FxHashSet::default();
     let mut visited_mods = FxHashSet::default();
 
-    for node in file.syntax().descendants() {
+    for element in file.syntax().descendants_with_tokens() {
         // Fold items that span multiple lines
-        if let Some(kind) = fold_kind(node.kind()) {
-            if node.text().contains('\n') {
-                res.push(Fold { range: node.range(), kind });
+        if let Some(kind) = fold_kind(element.kind()) {
+            let is_multiline = match element {
+                SyntaxElement::Node(node) => node.text().contains('\n'),
+                SyntaxElement::Token(token) => token.text().contains('\n'),
+            };
+            if is_multiline {
+                res.push(Fold { range: element.range(), kind });
+                continue;
             }
         }
 
-        // Fold groups of comments
-        if node.kind() == COMMENT && !visited_comments.contains(&node) {
-            if let Some(range) = contiguous_range_for_comment(node, &mut visited_comments) {
-                res.push(Fold { range, kind: FoldKind::Comment })
+        match element {
+            SyntaxElement::Token(token) => {
+                // Fold groups of comments
+                if let Some(comment) = ast::Comment::cast(token) {
+                    if !visited_comments.contains(&comment) {
+                        if let Some(range) =
+                            contiguous_range_for_comment(comment, &mut visited_comments)
+                        {
+                            res.push(Fold { range, kind: FoldKind::Comment })
+                        }
+                    }
+                }
             }
-        }
+            SyntaxElement::Node(node) => {
+                // Fold groups of imports
+                if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
+                    if let Some(range) = contiguous_range_for_group(node, &mut visited_imports) {
+                        res.push(Fold { range, kind: FoldKind::Imports })
+                    }
+                }
 
-        // Fold groups of imports
-        if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
-            if let Some(range) = contiguous_range_for_group(node, &mut visited_imports) {
-                res.push(Fold { range, kind: FoldKind::Imports })
-            }
-        }
-
-        // Fold groups of mods
-        if node.kind() == MODULE && !has_visibility(&node) && !visited_mods.contains(&node) {
-            if let Some(range) =
-                contiguous_range_for_group_unless(node, has_visibility, &mut visited_mods)
-            {
-                res.push(Fold { range, kind: FoldKind::Mods })
+                // Fold groups of mods
+                if node.kind() == MODULE && !has_visibility(&node) && !visited_mods.contains(&node)
+                {
+                    if let Some(range) =
+                        contiguous_range_for_group_unless(node, has_visibility, &mut visited_mods)
+                    {
+                        res.push(Fold { range, kind: FoldKind::Mods })
+                    }
+                }
             }
         }
     }
@@ -90,16 +105,21 @@ fn contiguous_range_for_group_unless<'a>(
     visited.insert(first);
 
     let mut last = first;
-    for node in first.siblings(Direction::Next) {
-        if let Some(ws) = ast::Whitespace::cast(node) {
-            // There is a blank line, which means that the group ends here
-            if ws.count_newlines_lazy().take(2).count() == 2 {
+    for element in first.siblings_with_tokens(Direction::Next) {
+        let node = match element {
+            SyntaxElement::Token(token) => {
+                if let Some(ws) = ast::Whitespace::cast(token) {
+                    if !ws.spans_multiple_lines() {
+                        // Ignore whitespace without blank lines
+                        continue;
+                    }
+                }
+                // There is a blank line or another token, which means that the
+                // group ends here
                 break;
             }
-
-            // Ignore whitespace without blank lines
-            continue;
-        }
+            SyntaxElement::Node(node) => node,
+        };
 
         // Stop if we find a node that doesn't belong to the group
         if node.kind() != first.kind() || unless(node) {
@@ -119,40 +139,42 @@ fn contiguous_range_for_group_unless<'a>(
 }
 
 fn contiguous_range_for_comment<'a>(
-    first: &'a SyntaxNode,
-    visited: &mut FxHashSet<&'a SyntaxNode>,
+    first: Comment<'a>,
+    visited: &mut FxHashSet<Comment<'a>>,
 ) -> Option<TextRange> {
     visited.insert(first);
 
     // Only fold comments of the same flavor
-    let group_flavor = ast::Comment::cast(first)?.flavor();
+    let group_flavor = first.flavor();
 
     let mut last = first;
-    for node in first.siblings(Direction::Next) {
-        if let Some(ws) = ast::Whitespace::cast(node) {
-            // There is a blank line, which means the group ends here
-            if ws.count_newlines_lazy().take(2).count() == 2 {
+    for element in first.syntax().siblings_with_tokens(Direction::Next) {
+        match element {
+            SyntaxElement::Token(token) => {
+                if let Some(ws) = ast::Whitespace::cast(token) {
+                    if !ws.spans_multiple_lines() {
+                        // Ignore whitespace without blank lines
+                        continue;
+                    }
+                }
+                if let Some(c) = Comment::cast(token) {
+                    if c.flavor() == group_flavor {
+                        visited.insert(c);
+                        last = c;
+                        continue;
+                    }
+                }
+                // The comment group ends because either:
+                // * An element of a different kind was reached
+                // * A comment of a different flavor was reached
                 break;
             }
-
-            // Ignore whitespace without blank lines
-            continue;
-        }
-
-        match ast::Comment::cast(node) {
-            Some(next_comment) if next_comment.flavor() == group_flavor => {
-                visited.insert(node);
-                last = node;
-            }
-            // The comment group ends because either:
-            // * An element of a different kind was reached
-            // * A comment of a different flavor was reached
-            _ => break,
-        }
+            SyntaxElement::Node(_) => break,
+        };
     }
 
     if first != last {
-        Some(TextRange::from_to(first.range().start(), last.range().end()))
+        Some(TextRange::from_to(first.syntax().range().start(), last.syntax().range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None

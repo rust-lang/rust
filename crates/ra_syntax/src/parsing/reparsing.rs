@@ -12,7 +12,7 @@ use ra_parser::Reparser;
 use crate::{
     SyntaxKind::*, TextRange, TextUnit, SyntaxError,
     algo,
-    syntax_node::{GreenNode, SyntaxNode},
+    syntax_node::{GreenNode, SyntaxNode, GreenToken, SyntaxElement},
     parsing::{
         text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
@@ -24,60 +24,62 @@ pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
     edit: &AtomTextEdit,
     errors: Vec<SyntaxError>,
-) -> Option<(GreenNode, Vec<SyntaxError>)> {
-    let (node, green, new_errors) =
-        reparse_leaf(node, &edit).or_else(|| reparse_block(node, &edit))?;
-    let green_root = node.replace_with(green);
-    let errors = merge_errors(errors, new_errors, node, edit);
-    Some((green_root, errors))
+) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+    if let Some((green, old_range)) = reparse_token(node, &edit) {
+        return Some((green, merge_errors(errors, Vec::new(), old_range, edit), old_range));
+    }
+
+    if let Some((green, new_errors, old_range)) = reparse_block(node, &edit) {
+        return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
+    }
+    None
 }
 
-fn reparse_leaf<'node>(
+fn reparse_token<'node>(
     root: &'node SyntaxNode,
     edit: &AtomTextEdit,
-) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
-    let node = algo::find_covering_node(root, edit.delete);
-    match node.kind() {
+) -> Option<(GreenNode, TextRange)> {
+    let token = algo::find_covering_element(root, edit.delete).as_token()?;
+    match token.kind() {
         WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
-            if node.kind() == WHITESPACE || node.kind() == COMMENT {
+            if token.kind() == WHITESPACE || token.kind() == COMMENT {
                 // removing a new line may extends previous token
-                if node.text().to_string()[edit.delete - node.range().start()].contains('\n') {
+                if token.text().to_string()[edit.delete - token.range().start()].contains('\n') {
                     return None;
                 }
             }
 
-            let text = get_text_after_edit(node, &edit);
-            let tokens = tokenize(&text);
-            let token = match tokens[..] {
-                [token] if token.kind == node.kind() => token,
+            let text = get_text_after_edit(token.into(), &edit);
+            let lex_tokens = tokenize(&text);
+            let lex_token = match lex_tokens[..] {
+                [lex_token] if lex_token.kind == token.kind() => lex_token,
                 _ => return None,
             };
 
-            if token.kind == IDENT && is_contextual_kw(&text) {
+            if lex_token.kind == IDENT && is_contextual_kw(&text) {
                 return None;
             }
 
-            if let Some(next_char) = root.text().char_at(node.range().end()) {
+            if let Some(next_char) = root.text().char_at(token.range().end()) {
                 let tokens_with_next_char = tokenize(&format!("{}{}", text, next_char));
                 if tokens_with_next_char.len() == 1 {
                     return None;
                 }
             }
 
-            let green = GreenNode::new_leaf(node.kind(), text.into());
-            let new_errors = vec![];
-            Some((node, green, new_errors))
+            let new_token = GreenToken::new(token.kind(), text.into());
+            Some((token.replace_with(new_token), token.range()))
         }
         _ => None,
     }
 }
 
 fn reparse_block<'node>(
-    node: &'node SyntaxNode,
+    root: &'node SyntaxNode,
     edit: &AtomTextEdit,
-) -> Option<(&'node SyntaxNode, GreenNode, Vec<SyntaxError>)> {
-    let (node, reparser) = find_reparsable_node(node, edit.delete)?;
-    let text = get_text_after_edit(node, &edit);
+) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
+    let (node, reparser) = find_reparsable_node(root, edit.delete)?;
+    let text = get_text_after_edit(node.into(), &edit);
     let tokens = tokenize(&text);
     if !is_balanced(&tokens) {
         return None;
@@ -86,12 +88,16 @@ fn reparse_block<'node>(
     let mut tree_sink = TextTreeSink::new(&text, &tokens);
     reparser.parse(&token_source, &mut tree_sink);
     let (green, new_errors) = tree_sink.finish();
-    Some((node, green, new_errors))
+    Some((node.replace_with(green), new_errors, node.range()))
 }
 
-fn get_text_after_edit(node: &SyntaxNode, edit: &AtomTextEdit) -> String {
-    let edit = AtomTextEdit::replace(edit.delete - node.range().start(), edit.insert.clone());
-    edit.apply(node.text().to_string())
+fn get_text_after_edit(element: SyntaxElement, edit: &AtomTextEdit) -> String {
+    let edit = AtomTextEdit::replace(edit.delete - element.range().start(), edit.insert.clone());
+    let text = match element {
+        SyntaxElement::Token(token) => token.text().to_string(),
+        SyntaxElement::Node(node) => node.text().to_string(),
+    };
+    edit.apply(text)
 }
 
 fn is_contextual_kw(text: &str) -> bool {
@@ -102,9 +108,13 @@ fn is_contextual_kw(text: &str) -> bool {
 }
 
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxNode, Reparser)> {
-    let node = algo::find_covering_node(node, range);
-    node.ancestors().find_map(|node| {
-        let first_child = node.first_child().map(|it| it.kind());
+    let node = algo::find_covering_element(node, range);
+    let mut ancestors = match node {
+        SyntaxElement::Token(it) => it.parent().ancestors(),
+        SyntaxElement::Node(it) => it.ancestors(),
+    };
+    ancestors.find_map(|node| {
+        let first_child = node.first_child_or_token().map(|it| it.kind());
         let parent = node.parent().map(|it| it.kind());
         Reparser::for_node(node.kind(), first_child, parent).map(|r| (node, r))
     })
@@ -136,19 +146,19 @@ fn is_balanced(tokens: &[Token]) -> bool {
 fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
-    old_node: &SyntaxNode,
+    old_range: TextRange,
     edit: &AtomTextEdit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {
-        if e.offset() <= old_node.range().start() {
+        if e.offset() <= old_range.start() {
             res.push(e)
-        } else if e.offset() >= old_node.range().end() {
+        } else if e.offset() >= old_range.end() {
             res.push(e.add_offset(TextUnit::of_str(&edit.insert), edit.delete.len()));
         }
     }
     for e in new_errors {
-        res.push(e.add_offset(old_node.range().start(), 0.into()));
+        res.push(e.add_offset(old_range.start(), 0.into()));
     }
     res
 }
@@ -160,13 +170,7 @@ mod tests {
     use crate::{SourceFile, AstNode};
     use super::*;
 
-    fn do_check<F>(before: &str, replace_with: &str, reparser: F)
-    where
-        for<'a> F: Fn(
-            &'a SyntaxNode,
-            &AtomTextEdit,
-        ) -> Option<(&'a SyntaxNode, GreenNode, Vec<SyntaxError>)>,
-    {
+    fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
         let (range, before) = extract_range(before);
         let edit = AtomTextEdit::replace(range, replace_with.to_owned());
         let after = edit.apply(before.clone());
@@ -175,23 +179,20 @@ mod tests {
         let incrementally_reparsed = {
             let f = SourceFile::parse(&before);
             let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
-            let (node, green, new_errors) =
-                reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
-            let green_root = node.replace_with(green);
-            let errors = super::merge_errors(f.errors(), new_errors, node, &edit);
-            SourceFile::new(green_root, errors)
+            let (green, new_errors, range) =
+                incremental_reparse(f.syntax(), &edit, f.errors()).unwrap();
+            assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
+            SourceFile::new(green, new_errors)
         };
 
         assert_eq_text!(
             &fully_reparsed.syntax().debug_dump(),
             &incrementally_reparsed.syntax().debug_dump(),
-        )
+        );
     }
 
-    #[test]
+    #[test] // FIXME: some test here actually test token reparsing
     fn reparse_block_tests() {
-        let do_check = |before, replace_to| do_check(before, replace_to, reparse_block);
-
         do_check(
             r"
 fn foo() {
@@ -199,6 +200,7 @@ fn foo() {
 }
 ",
             "baz",
+            3,
         );
         do_check(
             r"
@@ -207,6 +209,7 @@ fn foo() {
 }
 ",
             "baz",
+            25,
         );
         do_check(
             r"
@@ -215,6 +218,7 @@ struct Foo {
 }
 ",
             ",\n    g: (),",
+            14,
         );
         do_check(
             r"
@@ -225,6 +229,7 @@ fn foo {
 }
 ",
             "62",
+            31, // FIXME: reparse only int literal here
         );
         do_check(
             r"
@@ -233,7 +238,9 @@ mod foo {
 }
 ",
             "bar",
+            11,
         );
+
         do_check(
             r"
 trait Foo {
@@ -241,6 +248,7 @@ trait Foo {
 }
 ",
             "Output",
+            3,
         );
         do_check(
             r"
@@ -249,13 +257,9 @@ impl IntoIterator<Item=i32> for Foo {
 }
 ",
             "n next(",
+            9,
         );
-        do_check(
-            r"
-use a::b::{foo,<|>,bar<|>};
-    ",
-            "baz",
-        );
+        do_check(r"use a::b::{foo,<|>,bar<|>};", "baz", 10);
         do_check(
             r"
 pub enum A {
@@ -263,12 +267,14 @@ pub enum A {
 }
 ",
             "\nBar;\n",
+            11,
         );
         do_check(
             r"
 foo!{a, b<|><|> d}
 ",
             ", c[3]",
+            8,
         );
         do_check(
             r"
@@ -277,6 +283,7 @@ fn foo() {
 }
 ",
             "123",
+            14,
         );
         do_check(
             r"
@@ -285,54 +292,60 @@ extern {
 }
 ",
             " exit(code: c_int)",
+            11,
         );
     }
 
     #[test]
-    fn reparse_leaf_tests() {
-        let do_check = |before, replace_to| do_check(before, replace_to, reparse_leaf);
-
+    fn reparse_token_tests() {
         do_check(
             r"<|><|>
 fn foo() -> i32 { 1 }
 ",
             "\n\n\n   \n",
+            1,
         );
         do_check(
             r"
 fn foo() -> <|><|> {}
 ",
             "  \n",
+            2,
         );
         do_check(
             r"
 fn <|>foo<|>() -> i32 { 1 }
 ",
             "bar",
+            3,
         );
         do_check(
             r"
 fn foo<|><|>foo() {  }
 ",
             "bar",
+            6,
         );
         do_check(
             r"
 fn foo /* <|><|> */ () {}
 ",
             "some comment",
+            6,
         );
         do_check(
             r"
 fn baz <|><|> () {}
 ",
             "    \t\t\n\n",
+            2,
         );
         do_check(
             r"
 fn baz <|><|> () {}
 ",
             "    \t\t\n\n",
+            2,
         );
         do_check(
             r"
@@ -340,24 +353,28 @@ fn baz <|><|> () {}
 mod { }
 ",
             "c",
+            14,
         );
         do_check(
             r#"
 fn -> &str { "Hello<|><|>" }
 "#,
             ", world",
+            7,
         );
         do_check(
             r#"
 fn -> &str { // "Hello<|><|>"
 "#,
             ", world",
+            10,
         );
         do_check(
             r##"
 fn -> &str { r#"Hello<|><|>"#
 "##,
             ", world",
+            10,
         );
         do_check(
             r"
@@ -367,6 +384,7 @@ enum Foo {
 }
 ",
             "Clone",
+            4,
         );
     }
 }

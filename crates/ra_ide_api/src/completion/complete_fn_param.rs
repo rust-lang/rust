@@ -17,7 +17,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     let mut params = FxHashMap::default();
-    for node in ctx.leaf.ancestors() {
+    for node in ctx.token.parent().ancestors() {
         let _ = visitor_ctx(&mut params)
             .visit::<ast::SourceFile, _>(process)
             .visit::<ast::ItemList, _>(process)

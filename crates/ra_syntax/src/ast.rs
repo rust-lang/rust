@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 pub use self::generated::*;
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes},
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes, SyntaxToken, SyntaxElement, SyntaxElementChildren},
     SmolStr,
     SyntaxKind::*,
 };
@@ -27,7 +27,8 @@ pub trait AstNode:
 
 pub trait AstToken: AstNode {
     fn text(&self) -> &SmolStr {
-        self.syntax().leaf_text().unwrap()
+        // self.syntax().leaf_text().unwrap()
+        unimplemented!()
     }
 }
 
@@ -126,8 +127,8 @@ pub trait AttrsOwner: AstNode {
 }
 
 pub trait DocCommentsOwner: AstNode {
-    fn doc_comments(&self) -> AstChildren<Comment> {
-        children(self)
+    fn doc_comments(&self) -> CommentIter {
+        CommentIter { iter: self.syntax().children_with_tokens() }
     }
 
     /// Returns the textual content of a doc comment block as a single string.
@@ -179,9 +180,9 @@ impl Attr {
 
     pub fn as_atom(&self) -> Option<SmolStr> {
         let tt = self.value()?;
-        let (_bra, attr, _ket) = tt.syntax().children().collect_tuple()?;
+        let (_bra, attr, _ket) = tt.syntax().children_with_tokens().collect_tuple()?;
         if attr.kind() == IDENT {
-            Some(attr.leaf_text().unwrap().clone())
+            Some(attr.as_token()?.text().clone())
         } else {
             None
         }
@@ -189,10 +190,10 @@ impl Attr {
 
     pub fn as_call(&self) -> Option<(SmolStr, &TokenTree)> {
         let tt = self.value()?;
-        let (_bra, attr, args, _ket) = tt.syntax().children().collect_tuple()?;
-        let args = TokenTree::cast(args)?;
+        let (_bra, attr, args, _ket) = tt.syntax().children_with_tokens().collect_tuple()?;
+        let args = TokenTree::cast(args.as_node()?)?;
         if attr.kind() == IDENT {
-            Some((attr.leaf_text().unwrap().clone(), args))
+            Some((attr.as_token()?.text().clone(), args))
         } else {
             None
         }
@@ -200,16 +201,35 @@ impl Attr {
 
     pub fn as_named(&self) -> Option<SmolStr> {
         let tt = self.value()?;
-        let attr = tt.syntax().children().nth(1)?;
+        let attr = tt.syntax().children_with_tokens().nth(1)?;
         if attr.kind() == IDENT {
-            Some(attr.leaf_text().unwrap().clone())
+            Some(attr.as_token()?.text().clone())
         } else {
             None
         }
     }
 }
 
-impl Comment {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Comment<'a>(SyntaxToken<'a>);
+
+impl<'a> Comment<'a> {
+    pub fn cast(token: SyntaxToken<'a>) -> Option<Self> {
+        if token.kind() == COMMENT {
+            Some(Comment(token))
+        } else {
+            None
+        }
+    }
+
+    pub fn syntax(&self) -> SyntaxToken<'a> {
+        self.0
+    }
+
+    pub fn text(&self) -> &'a SmolStr {
+        self.0.text()
+    }
+
     pub fn flavor(&self) -> CommentFlavor {
         let text = self.text();
         if text.starts_with("///") {
@@ -230,13 +250,16 @@ impl Comment {
     pub fn prefix(&self) -> &'static str {
         self.flavor().prefix()
     }
+}
 
-    pub fn count_newlines_lazy(&self) -> impl Iterator<Item = &()> {
-        self.text().chars().filter(|&c| c == '\n').map(|_| &())
-    }
+pub struct CommentIter<'a> {
+    iter: SyntaxElementChildren<'a>,
+}
 
-    pub fn has_newlines(&self) -> bool {
-        self.count_newlines_lazy().count() > 0
+impl<'a> Iterator for CommentIter<'a> {
+    type Item = Comment<'a>;
+    fn next(&mut self) -> Option<Comment<'a>> {
+        self.iter.by_ref().find_map(|el| el.as_token().and_then(Comment::cast))
     }
 }
 
@@ -267,27 +290,42 @@ impl CommentFlavor {
     }
 }
 
-impl Whitespace {
-    pub fn count_newlines_lazy(&self) -> impl Iterator<Item = &()> {
-        self.text().chars().filter(|&c| c == '\n').map(|_| &())
+pub struct Whitespace<'a>(SyntaxToken<'a>);
+
+impl<'a> Whitespace<'a> {
+    pub fn cast(token: SyntaxToken<'a>) -> Option<Self> {
+        if token.kind() == WHITESPACE {
+            Some(Whitespace(token))
+        } else {
+            None
+        }
     }
 
-    pub fn has_newlines(&self) -> bool {
-        self.text().contains('\n')
+    pub fn syntax(&self) -> SyntaxToken<'a> {
+        self.0
+    }
+
+    pub fn text(&self) -> &'a SmolStr {
+        self.0.text()
+    }
+
+    pub fn spans_multiple_lines(&self) -> bool {
+        let text = self.text();
+        text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
     }
 }
 
 impl Name {
     pub fn text(&self) -> &SmolStr {
-        let ident = self.syntax().first_child().unwrap();
-        ident.leaf_text().unwrap()
+        let ident = self.syntax().first_child_or_token().unwrap().as_token().unwrap();
+        ident.text()
     }
 }
 
 impl NameRef {
     pub fn text(&self) -> &SmolStr {
-        let ident = self.syntax().first_child().unwrap();
-        ident.leaf_text().unwrap()
+        let ident = self.syntax().first_child_or_token().unwrap().as_token().unwrap();
+        ident.text()
     }
 }
 
@@ -316,7 +354,7 @@ impl ImplBlock {
 
 impl Module {
     pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child() {
+        match self.syntax().last_child_or_token() {
             None => false,
             Some(node) => node.kind() == SEMI,
         }
@@ -325,7 +363,7 @@ impl Module {
 
 impl LetStmt {
     pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child() {
+        match self.syntax().last_child_or_token() {
             None => false,
             Some(node) => node.kind() == SEMI,
         }
@@ -360,7 +398,7 @@ impl IfExpr {
 
 impl ExprStmt {
     pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child() {
+        match self.syntax().last_child_or_token() {
             None => false,
             Some(node) => node.kind() == SEMI,
         }
@@ -384,7 +422,7 @@ impl PathSegment {
         let res = if let Some(name_ref) = self.name_ref() {
             PathSegmentKind::Name(name_ref)
         } else {
-            match self.syntax().first_child()?.kind() {
+            match self.syntax().first_child_or_token()?.kind() {
                 SELF_KW => PathSegmentKind::SelfKw,
                 SUPER_KW => PathSegmentKind::SuperKw,
                 CRATE_KW => PathSegmentKind::CrateKw,
@@ -395,7 +433,7 @@ impl PathSegment {
     }
 
     pub fn has_colon_colon(&self) -> bool {
-        match self.syntax.first_child().map(|s| s.kind()) {
+        match self.syntax.first_child_or_token().map(|s| s.kind()) {
             Some(COLONCOLON) => true,
             _ => false,
         }
@@ -410,7 +448,7 @@ impl Path {
 
 impl UseTree {
     pub fn has_star(&self) -> bool {
-        self.syntax().children().any(|it| it.kind() == STAR)
+        self.syntax().children_with_tokens().any(|it| it.kind() == STAR)
     }
 }
 
@@ -425,7 +463,7 @@ impl UseTreeList {
 
 impl RefPat {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
     }
 }
 
@@ -500,19 +538,19 @@ impl EnumVariant {
 
 impl PointerType {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
     }
 }
 
 impl ReferenceType {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
     }
 }
 
 impl RefExpr {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
     }
 }
 
@@ -528,7 +566,7 @@ pub enum PrefixOp {
 
 impl PrefixExpr {
     pub fn op_kind(&self) -> Option<PrefixOp> {
-        match self.syntax().first_child()?.kind() {
+        match self.op_token()?.kind() {
             STAR => Some(PrefixOp::Deref),
             EXCL => Some(PrefixOp::Not),
             MINUS => Some(PrefixOp::Neg),
@@ -536,8 +574,8 @@ impl PrefixExpr {
         }
     }
 
-    pub fn op(&self) -> Option<&SyntaxNode> {
-        self.syntax().first_child()
+    pub fn op_token(&self) -> Option<SyntaxToken> {
+        self.syntax().first_child_or_token()?.as_token()
     }
 }
 
@@ -608,40 +646,42 @@ pub enum BinOp {
 }
 
 impl BinExpr {
-    fn op_details(&self) -> Option<(&SyntaxNode, BinOp)> {
-        self.syntax().children().find_map(|c| match c.kind() {
-            PIPEPIPE => Some((c, BinOp::BooleanOr)),
-            AMPAMP => Some((c, BinOp::BooleanAnd)),
-            EQEQ => Some((c, BinOp::EqualityTest)),
-            NEQ => Some((c, BinOp::NegatedEqualityTest)),
-            LTEQ => Some((c, BinOp::LesserEqualTest)),
-            GTEQ => Some((c, BinOp::GreaterEqualTest)),
-            L_ANGLE => Some((c, BinOp::LesserTest)),
-            R_ANGLE => Some((c, BinOp::GreaterTest)),
-            PLUS => Some((c, BinOp::Addition)),
-            STAR => Some((c, BinOp::Multiplication)),
-            MINUS => Some((c, BinOp::Subtraction)),
-            SLASH => Some((c, BinOp::Division)),
-            PERCENT => Some((c, BinOp::Remainder)),
-            SHL => Some((c, BinOp::LeftShift)),
-            SHR => Some((c, BinOp::RightShift)),
-            CARET => Some((c, BinOp::BitwiseXor)),
-            PIPE => Some((c, BinOp::BitwiseOr)),
-            AMP => Some((c, BinOp::BitwiseAnd)),
-            DOTDOT => Some((c, BinOp::RangeRightOpen)),
-            DOTDOTEQ => Some((c, BinOp::RangeRightClosed)),
-            EQ => Some((c, BinOp::Assignment)),
-            PLUSEQ => Some((c, BinOp::AddAssign)),
-            SLASHEQ => Some((c, BinOp::DivAssign)),
-            STAREQ => Some((c, BinOp::MulAssign)),
-            PERCENTEQ => Some((c, BinOp::RemAssign)),
-            SHREQ => Some((c, BinOp::ShrAssign)),
-            SHLEQ => Some((c, BinOp::ShlAssign)),
-            MINUSEQ => Some((c, BinOp::SubAssign)),
-            PIPEEQ => Some((c, BinOp::BitOrAssign)),
-            AMPEQ => Some((c, BinOp::BitAndAssign)),
-            CARETEQ => Some((c, BinOp::BitXorAssign)),
-            _ => None,
+    fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
+        self.syntax().children_with_tokens().filter_map(|it| it.as_token()).find_map(|c| {
+            match c.kind() {
+                PIPEPIPE => Some((c, BinOp::BooleanOr)),
+                AMPAMP => Some((c, BinOp::BooleanAnd)),
+                EQEQ => Some((c, BinOp::EqualityTest)),
+                NEQ => Some((c, BinOp::NegatedEqualityTest)),
+                LTEQ => Some((c, BinOp::LesserEqualTest)),
+                GTEQ => Some((c, BinOp::GreaterEqualTest)),
+                L_ANGLE => Some((c, BinOp::LesserTest)),
+                R_ANGLE => Some((c, BinOp::GreaterTest)),
+                PLUS => Some((c, BinOp::Addition)),
+                STAR => Some((c, BinOp::Multiplication)),
+                MINUS => Some((c, BinOp::Subtraction)),
+                SLASH => Some((c, BinOp::Division)),
+                PERCENT => Some((c, BinOp::Remainder)),
+                SHL => Some((c, BinOp::LeftShift)),
+                SHR => Some((c, BinOp::RightShift)),
+                CARET => Some((c, BinOp::BitwiseXor)),
+                PIPE => Some((c, BinOp::BitwiseOr)),
+                AMP => Some((c, BinOp::BitwiseAnd)),
+                DOTDOT => Some((c, BinOp::RangeRightOpen)),
+                DOTDOTEQ => Some((c, BinOp::RangeRightClosed)),
+                EQ => Some((c, BinOp::Assignment)),
+                PLUSEQ => Some((c, BinOp::AddAssign)),
+                SLASHEQ => Some((c, BinOp::DivAssign)),
+                STAREQ => Some((c, BinOp::MulAssign)),
+                PERCENTEQ => Some((c, BinOp::RemAssign)),
+                SHREQ => Some((c, BinOp::ShrAssign)),
+                SHLEQ => Some((c, BinOp::ShlAssign)),
+                MINUSEQ => Some((c, BinOp::SubAssign)),
+                PIPEEQ => Some((c, BinOp::BitOrAssign)),
+                AMPEQ => Some((c, BinOp::BitAndAssign)),
+                CARETEQ => Some((c, BinOp::BitXorAssign)),
+                _ => None,
+            }
         })
     }
 
@@ -649,7 +689,7 @@ impl BinExpr {
         self.op_details().map(|t| t.1)
     }
 
-    pub fn op(&self) -> Option<&SyntaxNode> {
+    pub fn op_token(&self) -> Option<SyntaxToken> {
         self.op_details().map(|t| t.0)
     }
 
@@ -680,11 +720,23 @@ pub enum SelfParamFlavor {
 }
 
 impl SelfParam {
+    pub fn self_kw_token(&self) -> SyntaxToken {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.as_token())
+            .find(|it| it.kind() == SELF_KW)
+            .expect("invalid tree: self param must have self")
+    }
+
     pub fn flavor(&self) -> SelfParamFlavor {
-        let borrowed = self.syntax().children().any(|n| n.kind() == AMP);
+        let borrowed = self.syntax().children_with_tokens().any(|n| n.kind() == AMP);
         if borrowed {
             // check for a `mut` coming after the & -- `mut &self` != `&mut self`
-            if self.syntax().children().skip_while(|n| n.kind() != AMP).any(|n| n.kind() == MUT_KW)
+            if self
+                .syntax()
+                .children_with_tokens()
+                .skip_while(|n| n.kind() != AMP)
+                .any(|n| n.kind() == MUT_KW)
             {
                 SelfParamFlavor::MutRef
             } else {
@@ -707,25 +759,31 @@ pub enum LiteralFlavor {
     Bool,
 }
 
-impl LiteralExpr {
+impl Literal {
+    pub fn token(&self) -> SyntaxToken {
+        match self.syntax().first_child_or_token().unwrap() {
+            SyntaxElement::Token(token) => token,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn flavor(&self) -> LiteralFlavor {
-        let syntax = self.syntax();
-        match syntax.kind() {
+        match self.token().kind() {
             INT_NUMBER => {
                 let allowed_suffix_list = [
                     "isize", "i128", "i64", "i32", "i16", "i8", "usize", "u128", "u64", "u32",
                     "u16", "u8",
                 ];
-                let text = syntax.text().to_string();
+                let text = self.token().text().to_string();
                 let suffix = allowed_suffix_list
                     .iter()
                     .find(|&s| text.ends_with(s))
                     .map(|&suf| SmolStr::new(suf));
-                LiteralFlavor::IntNumber { suffix: suffix }
+                LiteralFlavor::IntNumber { suffix }
             }
             FLOAT_NUMBER => {
                 let allowed_suffix_list = ["f64", "f32"];
-                let text = syntax.text().to_string();
+                let text = self.token().text().to_string();
                 let suffix = allowed_suffix_list
                     .iter()
                     .find(|&s| text.ends_with(s))
@@ -750,11 +808,29 @@ impl NamedField {
 
 impl BindPat {
     pub fn is_mutable(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
     }
 
     pub fn is_ref(&self) -> bool {
-        self.syntax().children().any(|n| n.kind() == REF_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == REF_KW)
+    }
+}
+
+impl LifetimeParam {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.as_token())
+            .find(|it| it.kind() == LIFETIME)
+    }
+}
+
+impl WherePred {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.as_token())
+            .find(|it| it.kind() == LIFETIME)
     }
 }
 
@@ -835,7 +911,7 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("'a", pred.lifetime().unwrap().syntax().text().to_string());
+    assert_eq!("'a", pred.lifetime_token().unwrap().text());
 
     assert_bound("'b", bounds.next());
     assert_bound("'c", bounds.next());

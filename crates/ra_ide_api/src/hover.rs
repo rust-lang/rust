@@ -1,7 +1,7 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TreeArc, ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
-    algo::{find_covering_node, find_node_at_offset, find_leaf_at_offset, visit::{visitor, Visitor}},
+    algo::{find_covering_element, find_node_at_offset, find_token_at_offset, visit::{visitor, Visitor}},
 };
 use hir::HirDisplay;
 
@@ -104,8 +104,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     }
 
     if range.is_none() {
-        let node = find_leaf_at_offset(file.syntax(), position.offset).find_map(|leaf| {
-            leaf.ancestors().find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
+        let node = find_token_at_offset(file.syntax(), position.offset).find_map(|token| {
+            token
+                .parent()
+                .ancestors()
+                .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
         })?;
         let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(rust_code_markup));
@@ -123,13 +126,12 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
     let file = db.parse(frange.file_id);
     let syntax = file.syntax();
-    let leaf_node = find_covering_node(syntax, frange.range);
+    let leaf_node = find_covering_element(syntax, frange.range);
     // if we picked identifier, expand to pattern/expression
     let node = leaf_node
         .ancestors()
         .take_while(|it| it.range() == leaf_node.range())
-        .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())
-        .unwrap_or(leaf_node);
+        .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())?;
     let parent_fn = node.ancestors().find_map(ast::FnDef::cast)?;
     let function = hir::source_binder::function_from_source(db, frange.file_id, parent_fn)?;
     let infer = function.infer(db);

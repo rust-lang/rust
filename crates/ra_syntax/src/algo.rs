@@ -1,18 +1,14 @@
 pub mod visit;
 
-use rowan::TransparentNewType;
+use crate::{SyntaxNode, TextRange, TextUnit, AstNode, Direction, SyntaxToken, SyntaxElement};
 
-use crate::{SyntaxNode, TextRange, TextUnit, AstNode, Direction};
+pub use rowan::TokenAtOffset;
 
-pub use rowan::LeafAtOffset;
-
-pub fn find_leaf_at_offset(node: &SyntaxNode, offset: TextUnit) -> LeafAtOffset<&SyntaxNode> {
-    match node.0.leaf_at_offset(offset) {
-        LeafAtOffset::None => LeafAtOffset::None,
-        LeafAtOffset::Single(n) => LeafAtOffset::Single(SyntaxNode::from_repr(n)),
-        LeafAtOffset::Between(l, r) => {
-            LeafAtOffset::Between(SyntaxNode::from_repr(l), SyntaxNode::from_repr(r))
-        }
+pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffset<SyntaxToken> {
+    match node.0.token_at_offset(offset) {
+        TokenAtOffset::None => TokenAtOffset::None,
+        TokenAtOffset::Single(n) => TokenAtOffset::Single(n.into()),
+        TokenAtOffset::Between(l, r) => TokenAtOffset::Between(l.into(), r.into()),
     }
 }
 
@@ -26,16 +22,29 @@ pub fn find_leaf_at_offset(node: &SyntaxNode, offset: TextUnit) -> LeafAtOffset<
 ///
 /// then the left node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
-    find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
+    find_token_at_offset(syntax, offset)
+        .find_map(|leaf| leaf.parent().ancestors().find_map(N::cast))
 }
 
 /// Finds the first sibling in the given direction which is not `trivia`
-pub fn non_trivia_sibling(node: &SyntaxNode, direction: Direction) -> Option<&SyntaxNode> {
-    node.siblings(direction).skip(1).find(|node| !node.kind().is_trivia())
+pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Option<SyntaxElement> {
+    return match element {
+        SyntaxElement::Node(node) => node.siblings_with_tokens(direction).skip(1).find(not_trivia),
+        SyntaxElement::Token(token) => {
+            token.siblings_with_tokens(direction).skip(1).find(not_trivia)
+        }
+    };
+
+    fn not_trivia(element: &SyntaxElement) -> bool {
+        match element {
+            SyntaxElement::Node(_) => true,
+            SyntaxElement::Token(token) => !token.kind().is_trivia(),
+        }
+    }
 }
 
-pub fn find_covering_node(root: &SyntaxNode, range: TextRange) -> &SyntaxNode {
-    SyntaxNode::from_repr(root.0.covering_node(range))
+pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
+    root.0.covering_node(range).into()
 }
 
 // Replace with `std::iter::successors` in `1.34.0`

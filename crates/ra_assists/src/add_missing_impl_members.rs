@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::{Assist, AssistId, AssistCtx};
 
 use hir::Resolver;
@@ -91,8 +93,9 @@ fn add_missing_impl_members_inner(
         };
 
         let changed_range = {
-            let children = impl_item_list.syntax().children();
-            let last_whitespace = children.filter_map(ast::Whitespace::cast).last();
+            let children = impl_item_list.syntax().children_with_tokens();
+            let last_whitespace =
+                children.filter_map(|it| ast::Whitespace::cast(it.as_token()?)).last();
 
             last_whitespace.map(|w| w.syntax().range()).unwrap_or_else(|| {
                 let in_brackets = impl_item_list.syntax().range().end() - TextUnit::of_str("}");
@@ -134,13 +137,13 @@ fn resolve_target_trait_def(
 fn build_func_body(def: &ast::FnDef) -> String {
     let mut buf = String::new();
 
-    for child in def.syntax().children() {
-        match (child.prev_sibling().map(|c| c.kind()), child.kind()) {
+    for child in def.syntax().children_with_tokens() {
+        match (child.prev_sibling_or_token().map(|c| c.kind()), child.kind()) {
             (_, SyntaxKind::SEMI) => buf.push_str(" { unimplemented!() }"),
             (_, SyntaxKind::ATTR) | (_, SyntaxKind::COMMENT) => {}
             (Some(SyntaxKind::ATTR), SyntaxKind::WHITESPACE)
             | (Some(SyntaxKind::COMMENT), SyntaxKind::WHITESPACE) => {}
-            _ => child.text().push_to(&mut buf),
+            _ => write!(buf, "{}", child).unwrap(),
         };
     }
 

@@ -2,8 +2,8 @@ use hir::db::HirDatabase;
 use ra_text_edit::TextEditBuilder;
 use ra_db::FileRange;
 use ra_syntax::{
-    SourceFile, TextRange, AstNode, TextUnit, SyntaxNode,
-    algo::{find_leaf_at_offset, find_node_at_offset, find_covering_node, LeafAtOffset},
+    SourceFile, TextRange, AstNode, TextUnit, SyntaxNode, SyntaxElement, SyntaxToken,
+    algo::{find_token_at_offset, find_node_at_offset, find_covering_element, TokenAtOffset},
 };
 use ra_fmt::{leading_indent, reindent};
 
@@ -104,15 +104,15 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         Some(self.assist)
     }
 
-    pub(crate) fn leaf_at_offset(&self) -> LeafAtOffset<&'a SyntaxNode> {
-        find_leaf_at_offset(self.source_file.syntax(), self.frange.range.start())
+    pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken<'a>> {
+        find_token_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
 
     pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<&'a N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
-    pub(crate) fn covering_node(&self) -> &'a SyntaxNode {
-        find_covering_node(self.source_file.syntax(), self.frange.range)
+    pub(crate) fn covering_element(&self) -> SyntaxElement<'a> {
+        find_covering_element(self.source_file.syntax(), self.frange.range)
     }
 }
 

@@ -1,8 +1,9 @@
 use ra_db::SourceDatabase;
 use crate::db::RootDatabase;
 use ra_syntax::{
-    SourceFile, SyntaxNode, TextRange, AstNode,
-    algo::{self, visit::{visitor, Visitor}}, ast::{self, AstToken}
+    SourceFile, TextRange, AstNode, SyntaxToken, SyntaxElement,
+    algo,
+    SyntaxKind::{STRING, RAW_STRING},
 };
 
 pub use ra_db::FileId;
@@ -14,11 +15,15 @@ pub(crate) fn syntax_tree(
 ) -> String {
     if let Some(text_range) = text_range {
         let file = db.parse(file_id);
-        let node = algo::find_covering_node(file.syntax(), text_range);
-
-        if let Some(tree) = syntax_tree_for_string(node, text_range) {
-            return tree;
-        }
+        let node = match algo::find_covering_element(file.syntax(), text_range) {
+            SyntaxElement::Node(node) => node,
+            SyntaxElement::Token(token) => {
+                if let Some(tree) = syntax_tree_for_string(token, text_range) {
+                    return tree;
+                }
+                token.parent()
+            }
+        };
 
         node.debug_dump()
     } else {
@@ -28,19 +33,19 @@ pub(crate) fn syntax_tree(
 
 /// Attempts parsing the selected contents of a string literal
 /// as rust syntax and returns its syntax tree
-fn syntax_tree_for_string(node: &SyntaxNode, text_range: TextRange) -> Option<String> {
+fn syntax_tree_for_string(token: SyntaxToken, text_range: TextRange) -> Option<String> {
     // When the range is inside a string
     // we'll attempt parsing it as rust syntax
     // to provide the syntax tree of the contents of the string
-    visitor()
-        .visit(|node: &ast::String| syntax_tree_for_token(node, text_range))
-        .visit(|node: &ast::RawString| syntax_tree_for_token(node, text_range))
-        .accept(node)?
+    match token.kind() {
+        STRING | RAW_STRING => syntax_tree_for_token(token, text_range),
+        _ => None,
+    }
 }
 
-fn syntax_tree_for_token<T: AstToken>(node: &T, text_range: TextRange) -> Option<String> {
+fn syntax_tree_for_token(node: SyntaxToken, text_range: TextRange) -> Option<String> {
     // Range of the full node
-    let node_range = node.syntax().range();
+    let node_range = node.range();
     let text = node.text().to_string();
 
     // We start at some point inside the node

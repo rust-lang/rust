@@ -726,13 +726,7 @@ impl ExprCollector {
                 self.alloc_expr(Expr::Array { exprs }, syntax_ptr)
             }
             ast::ExprKind::Literal(e) => {
-                let child = if let Some(child) = e.literal_expr() {
-                    child
-                } else {
-                    return self.alloc_expr(Expr::Missing, syntax_ptr);
-                };
-
-                let lit = match child.flavor() {
+                let lit = match e.flavor() {
                     LiteralFlavor::IntNumber { suffix } => {
                         let known_name = suffix
                             .and_then(|it| IntTy::from_suffix(&it).map(UncertainIntTy::Known));
@@ -874,9 +868,7 @@ impl ExprCollector {
     fn collect_fn_body(&mut self, node: &ast::FnDef) {
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_param = SyntaxNodePtr::new(
-                    self_param.self_kw().expect("self param without self keyword").syntax(),
-                );
+                let self_param = SyntaxNodePtr::new(self_param.syntax());
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
                         name: Name::self_param(),

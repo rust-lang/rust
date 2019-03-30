@@ -1,8 +1,8 @@
 use ra_syntax::{
     AstNode, SourceFile, SyntaxKind::*,
-    SyntaxNode, TextUnit, TextRange,
-    algo::{find_node_at_offset, find_leaf_at_offset, LeafAtOffset},
-    ast::{self, AstToken},
+    TextUnit, TextRange, SyntaxToken,
+    algo::{find_node_at_offset, find_token_at_offset, TokenAtOffset},
+    ast::{self},
 };
 use ra_fmt::leading_indent;
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -11,11 +11,11 @@ use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let file = db.parse(position.file_id);
-    let comment = find_leaf_at_offset(file.syntax(), position.offset)
+    let comment = find_token_at_offset(file.syntax(), position.offset)
         .left_biased()
         .and_then(ast::Comment::cast)?;
 
-    if let ast::CommentFlavor::Multiline = comment.flavor() {
+    if comment.flavor() == ast::CommentFlavor::Multiline {
         return None;
     }
 
@@ -41,23 +41,23 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     )
 }
 
-fn node_indent<'a>(file: &'a SourceFile, node: &SyntaxNode) -> Option<&'a str> {
-    let ws = match find_leaf_at_offset(file.syntax(), node.range().start()) {
-        LeafAtOffset::Between(l, r) => {
-            assert!(r == node);
+fn node_indent<'a>(file: &'a SourceFile, token: SyntaxToken) -> Option<&'a str> {
+    let ws = match find_token_at_offset(file.syntax(), token.range().start()) {
+        TokenAtOffset::Between(l, r) => {
+            assert!(r == token);
             l
         }
-        LeafAtOffset::Single(n) => {
-            assert!(n == node);
+        TokenAtOffset::Single(n) => {
+            assert!(n == token);
             return Some("");
         }
-        LeafAtOffset::None => unreachable!(),
+        TokenAtOffset::None => unreachable!(),
     };
     if ws.kind() != WHITESPACE {
         return None;
     }
-    let text = ws.leaf_text().unwrap();
-    let pos = text.as_str().rfind('\n').map(|it| it + 1).unwrap_or(0);
+    let text = ws.text();
+    let pos = text.rfind('\n').map(|it| it + 1).unwrap_or(0);
     Some(&text[pos..])
 }
 
@@ -88,7 +88,7 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
     let file = db.parse(position.file_id);
     assert_eq!(file.syntax().text().char_at(position.offset), Some('.'));
 
-    let whitespace = find_leaf_at_offset(file.syntax(), position.offset)
+    let whitespace = find_token_at_offset(file.syntax(), position.offset)
         .left_biased()
         .and_then(ast::Whitespace::cast)?;
 
@@ -100,7 +100,7 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
     let current_indent_len = TextUnit::of_str(current_indent);
 
     // Make sure dot is a part of call chain
-    let field_expr = whitespace.syntax().parent().and_then(ast::FieldExpr::cast)?;
+    let field_expr = ast::FieldExpr::cast(whitespace.syntax().parent())?;
     let prev_indent = leading_indent(field_expr.syntax())?;
     let target_indent = format!("    {}", prev_indent);
     let target_indent_len = TextUnit::of_str(&target_indent);

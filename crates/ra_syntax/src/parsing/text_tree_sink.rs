@@ -28,10 +28,10 @@ enum State {
 }
 
 impl<'a> TreeSink for TextTreeSink<'a> {
-    fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
+    fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_branch(),
+            State::PendingFinish => self.inner.finish_node(),
             State::Normal => (),
         }
         self.eat_trivias();
@@ -40,18 +40,18 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             .iter()
             .map(|it| it.len)
             .sum::<TextUnit>();
-        self.do_leaf(kind, len, n_tokens);
+        self.do_token(kind, len, n_tokens);
     }
 
-    fn start_branch(&mut self, kind: SyntaxKind) {
+    fn start_node(&mut self, kind: SyntaxKind) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => {
-                self.inner.start_branch(kind);
+                self.inner.start_node(kind);
                 // No need to attach trivias to previous node: there is no
                 // previous node.
                 return;
             }
-            State::PendingFinish => self.inner.finish_branch(),
+            State::PendingFinish => self.inner.finish_node(),
             State::Normal => (),
         }
 
@@ -71,14 +71,14 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             n_attached_trivias(kind, leading_trivias)
         };
         self.eat_n_trivias(n_trivias - n_attached_trivias);
-        self.inner.start_branch(kind);
+        self.inner.start_node(kind);
         self.eat_n_trivias(n_attached_trivias);
     }
 
-    fn finish_branch(&mut self) {
+    fn finish_node(&mut self) {
         match mem::replace(&mut self.state, State::PendingFinish) {
             State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_branch(),
+            State::PendingFinish => self.inner.finish_node(),
             State::Normal => (),
         }
     }
@@ -104,7 +104,7 @@ impl<'a> TextTreeSink<'a> {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingFinish => {
                 self.eat_trivias();
-                self.inner.finish_branch()
+                self.inner.finish_node()
             }
             State::PendingStart | State::Normal => unreachable!(),
         }
@@ -117,7 +117,7 @@ impl<'a> TextTreeSink<'a> {
             if !token.kind.is_trivia() {
                 break;
             }
-            self.do_leaf(token.kind, token.len, 1);
+            self.do_token(token.kind, token.len, 1);
         }
     }
 
@@ -125,16 +125,16 @@ impl<'a> TextTreeSink<'a> {
         for _ in 0..n {
             let token = self.tokens[self.token_pos];
             assert!(token.kind.is_trivia());
-            self.do_leaf(token.kind, token.len, 1);
+            self.do_token(token.kind, token.len, 1);
         }
     }
 
-    fn do_leaf(&mut self, kind: SyntaxKind, len: TextUnit, n_tokens: usize) {
+    fn do_token(&mut self, kind: SyntaxKind, len: TextUnit, n_tokens: usize) {
         let range = TextRange::offset_len(self.text_pos, len);
         let text: SmolStr = self.text[range].into();
         self.text_pos += len;
         self.token_pos += n_tokens;
-        self.inner.leaf(kind, text);
+        self.inner.token(kind, text);
     }
 }
 

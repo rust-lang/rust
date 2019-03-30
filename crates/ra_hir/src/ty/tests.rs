@@ -2251,14 +2251,12 @@ fn infer(content: &str) -> String {
         types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
         for (syntax_ptr, ty) in &types {
             let node = syntax_ptr.to_node(&source_file);
-            write!(
-                acc,
-                "{} '{}': {}\n",
-                syntax_ptr.range(),
-                ellipsize(node.text().to_string().replace("\n", " "), 15),
-                ty.display(&db)
-            )
-            .unwrap();
+            let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node) {
+                (self_param.self_kw_token().range(), "self".to_string())
+            } else {
+                (syntax_ptr.range(), node.text().to_string().replace("\n", " "))
+            };
+            write!(acc, "{} '{}': {}\n", range, ellipsize(text, 15), ty.display(&db)).unwrap();
         }
     }
     acc.truncate(acc.trim_end().len());

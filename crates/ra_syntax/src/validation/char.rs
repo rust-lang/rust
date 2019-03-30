@@ -5,16 +5,16 @@ use std::u32;
 use arrayvec::ArrayString;
 
 use crate::{
-    ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
     TextRange,
     SyntaxError,
     SyntaxErrorKind::*,
+    SyntaxToken,
 };
 
-pub(super) fn validate_char_node(node: &ast::Char, errors: &mut Vec<SyntaxError>) {
+pub(super) fn validate_char_node(node: SyntaxToken, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
-    let literal_range = node.syntax().range();
+    let literal_range = node.range();
     let mut components = string_lexing::parse_char_literal(literal_text);
     let mut len = 0;
     for component in &mut components {

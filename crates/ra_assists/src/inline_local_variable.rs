@@ -46,8 +46,10 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
         | ExprKind::BlockExpr(_) => false,
     };
 
-    let delete_range = if let Some(whitespace) =
-        let_stmt.syntax().next_sibling().and_then(ast::Whitespace::cast)
+    let delete_range = if let Some(whitespace) = let_stmt
+        .syntax()
+        .next_sibling_or_token()
+        .and_then(|it| ast::Whitespace::cast(it.as_token()?))
     {
         TextRange::from_to(let_stmt.syntax().range().start(), whitespace.syntax().range().end())
     } else {

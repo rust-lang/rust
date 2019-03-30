@@ -1,6 +1,6 @@
 use std::{fmt, ops};
 
-use crate::{SyntaxNode, TextRange, TextUnit};
+use crate::{SyntaxNode, TextRange, TextUnit, SyntaxElement};
 
 #[derive(Clone)]
 pub struct SyntaxText<'a> {
@@ -15,11 +15,14 @@ impl<'a> SyntaxText<'a> {
 
     pub fn chunks(&self) -> impl Iterator<Item = &'a str> {
         let range = self.range;
-        self.node.descendants().filter_map(move |node| {
-            let text = node.leaf_text()?;
-            let range = range.intersection(&node.range())?;
-            let range = range - node.range().start();
-            Some(&text[range])
+        self.node.descendants_with_tokens().filter_map(move |el| match el {
+            SyntaxElement::Token(t) => {
+                let text = t.text();
+                let range = range.intersection(&t.range())?;
+                let range = range - t.range().start();
+                Some(&text[range])
+            }
+            SyntaxElement::Node(_) => None,
         })
     }
 

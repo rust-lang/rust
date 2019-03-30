@@ -1,6 +1,6 @@
 use ra_parser::{TokenSource, TreeSink, ParseError};
 use ra_syntax::{
-    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc,
+    AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
     ast, SyntaxKind::*, TextUnit
 };
 
@@ -47,8 +47,8 @@ fn convert_tt(
     global_offset: TextUnit,
     tt: &SyntaxNode,
 ) -> Option<tt::Subtree> {
-    let first_child = tt.first_child()?;
-    let last_child = tt.last_child()?;
+    let first_child = tt.first_child_or_token()?;
+    let last_child = tt.last_child_or_token()?;
     let delimiter = match (first_child.kind(), last_child.kind()) {
         (L_PAREN, R_PAREN) => tt::Delimiter::Parenthesis,
         (L_CURLY, R_CURLY) => tt::Delimiter::Brace,
@@ -56,39 +56,47 @@ fn convert_tt(
         _ => return None,
     };
     let mut token_trees = Vec::new();
-    for child in tt.children().skip(1) {
+    for child in tt.children_with_tokens().skip(1) {
         if child == first_child || child == last_child || child.kind().is_trivia() {
             continue;
         }
-        if child.kind().is_punct() {
-            let mut prev = None;
-            for char in child.leaf_text().unwrap().chars() {
-                if let Some(char) = prev {
-                    token_trees.push(
-                        tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Joint }).into(),
-                    );
+        match child {
+            SyntaxElement::Token(token) => {
+                if token.kind().is_punct() {
+                    let mut prev = None;
+                    for char in token.text().chars() {
+                        if let Some(char) = prev {
+                            token_trees.push(
+                                tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Joint })
+                                    .into(),
+                            );
+                        }
+                        prev = Some(char)
+                    }
+                    if let Some(char) = prev {
+                        token_trees.push(
+                            tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Alone }).into(),
+                        );
+                    }
+                } else {
+                    let child = if token.kind().is_keyword() || token.kind() == IDENT {
+                        let relative_range = token.range() - global_offset;
+                        let id = token_map.alloc(relative_range);
+                        let text = token.text().clone();
+                        tt::Leaf::from(tt::Ident { text, id }).into()
+                    } else if token.kind().is_literal() {
+                        tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
+                    } else {
+                        return None;
+                    };
+                    token_trees.push(child);
                 }
-                prev = Some(char)
             }
-            if let Some(char) = prev {
-                token_trees
-                    .push(tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Alone }).into());
+            SyntaxElement::Node(node) => {
+                let child = convert_tt(token_map, global_offset, node)?.into();
+                token_trees.push(child);
             }
-        } else {
-            let child: tt::TokenTree = if child.kind() == TOKEN_TREE {
-                convert_tt(token_map, global_offset, child)?.into()
-            } else if child.kind().is_keyword() || child.kind() == IDENT {
-                let relative_range = child.range() - global_offset;
-                let id = token_map.alloc(relative_range);
-                let text = child.leaf_text().unwrap().clone();
-                tt::Leaf::from(tt::Ident { text, id }).into()
-            } else if child.kind().is_literal() {
-                tt::Leaf::from(tt::Literal { text: child.leaf_text().unwrap().clone() }).into()
-            } else {
-                return None;
-            };
-            token_trees.push(child)
-        }
+        };
     }
 
     let res = tt::Subtree { delimiter, token_trees };
@@ -118,12 +126,12 @@ impl TtTokenSource {
     }
     fn convert_tt(&mut self, tt: &tt::TokenTree) {
         match tt {
-            tt::TokenTree::Leaf(leaf) => self.convert_leaf(leaf),
+            tt::TokenTree::Leaf(token) => self.convert_token(token),
             tt::TokenTree::Subtree(sub) => self.convert_subtree(sub),
         }
     }
-    fn convert_leaf(&mut self, leaf: &tt::Leaf) {
-        let tok = match leaf {
+    fn convert_token(&mut self, token: &tt::Leaf) {
+        let tok = match token {
             tt::Leaf::Literal(l) => TtToken {
                 kind: SyntaxKind::INT_NUMBER, // FIXME
                 is_joint_to_next: false,
@@ -206,7 +214,7 @@ impl<'a> TtTreeSink<'a> {
 }
 
 impl<'a> TreeSink for TtTreeSink<'a> {
-    fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8) {
+    fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         for _ in 0..n_tokens {
             self.buf += self.tokens[self.token_pos].text.as_str();
             self.token_pos += 1;
@@ -214,15 +222,15 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         self.text_pos += TextUnit::of_str(&self.buf);
         let text = SmolStr::new(self.buf.as_str());
         self.buf.clear();
-        self.inner.leaf(kind, text)
+        self.inner.token(kind, text)
     }
 
-    fn start_branch(&mut self, kind: SyntaxKind) {
-        self.inner.start_branch(kind);
+    fn start_node(&mut self, kind: SyntaxKind) {
+        self.inner.start_node(kind);
     }
 
-    fn finish_branch(&mut self) {
-        self.inner.finish_branch();
+    fn finish_node(&mut self) {
+        self.inner.finish_node();
     }
 
     fn error(&mut self, error: ParseError) {

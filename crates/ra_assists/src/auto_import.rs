@@ -21,7 +21,7 @@ fn collect_path_segments_raw<'a>(
 ) -> Option<usize> {
     let oldlen = segments.len();
     loop {
-        let mut children = path.syntax().children();
+        let mut children = path.syntax().children_with_tokens();
         let (first, second, third) = (
             children.next().map(|n| (n, n.kind())),
             children.next().map(|n| (n, n.kind())),
@@ -29,11 +29,11 @@ fn collect_path_segments_raw<'a>(
         );
         match (first, second, third) {
             (Some((subpath, PATH)), Some((_, COLONCOLON)), Some((segment, PATH_SEGMENT))) => {
-                path = ast::Path::cast(subpath)?;
-                segments.push(ast::PathSegment::cast(segment)?);
+                path = ast::Path::cast(subpath.as_node()?)?;
+                segments.push(ast::PathSegment::cast(segment.as_node()?)?);
             }
             (Some((segment, PATH_SEGMENT)), _, _) => {
-                segments.push(ast::PathSegment::cast(segment)?);
+                segments.push(ast::PathSegment::cast(segment.as_node()?)?);
                 break;
             }
             (_, _, _) => return None,
@@ -514,8 +514,7 @@ fn apply_auto_import<'a>(
 }
 
 pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let node = ctx.covering_node();
-    let path = node.ancestors().find_map(ast::Path::cast)?;
+    let path: &ast::Path = ctx.node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;
@@ -537,7 +536,7 @@ pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
             );
         }
     } else {
-        let current_file = node.ancestors().find_map(ast::SourceFile::cast)?;
+        let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
         ctx.add_action(
             AssistId("auto_import"),
             format!("import {} in the current file", fmt_segments(&segments)),

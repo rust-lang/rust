@@ -3,8 +3,8 @@
 use itertools::Itertools;
 use ra_syntax::{
     AstNode,
-    SyntaxNode, SyntaxKind::*,
-    ast::{self, AstToken},
+    SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind,
+    ast,
     algo::generate,
 };
 
@@ -15,26 +15,22 @@ pub fn reindent(text: &str, indent: &str) -> String {
 
 /// If the node is on the beginning of the line, calculate indent.
 pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
-    for leaf in prev_leaves(node) {
-        if let Some(ws) = ast::Whitespace::cast(leaf) {
+    for token in prev_tokens(node.first_token()?) {
+        if let Some(ws) = ast::Whitespace::cast(token) {
             let ws_text = ws.text();
             if let Some(pos) = ws_text.rfind('\n') {
                 return Some(&ws_text[pos + 1..]);
             }
         }
-        if leaf.leaf_text().unwrap().contains('\n') {
+        if token.text().contains('\n') {
             break;
         }
     }
     None
 }
 
-fn prev_leaves(node: &SyntaxNode) -> impl Iterator<Item = &SyntaxNode> {
-    generate(prev_leaf(node), |&node| prev_leaf(node))
-}
-
-fn prev_leaf(node: &SyntaxNode) -> Option<&SyntaxNode> {
-    generate(node.ancestors().find_map(SyntaxNode::prev_sibling), |it| it.last_child()).last()
+fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+    generate(token.prev_token(), |&token| token.prev_token())
 }
 
 pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
@@ -52,20 +48,20 @@ pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
     Some(expr)
 }
 
-pub fn compute_ws(left: &SyntaxNode, right: &SyntaxNode) -> &'static str {
-    match left.kind() {
+pub fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
+    match left {
         L_PAREN | L_BRACK => return "",
         L_CURLY => {
-            if let USE_TREE = right.kind() {
+            if let USE_TREE = right {
                 return "";
             }
         }
         _ => (),
     }
-    match right.kind() {
+    match right {
         R_PAREN | R_BRACK => return "",
         R_CURLY => {
-            if let USE_TREE = left.kind() {
+            if let USE_TREE = left {
                 return "";
             }
         }

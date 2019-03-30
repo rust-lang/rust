@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use ra_syntax::{
-    SourceFile, TextRange, TextUnit, AstNode, SyntaxNode,
+    SourceFile, TextRange, TextUnit, AstNode, SyntaxNode, SyntaxElement, SyntaxToken,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
-    algo::{find_covering_node, non_trivia_sibling},
+    algo::{find_covering_element, non_trivia_sibling},
     ast,
     Direction,
 };
@@ -24,22 +24,22 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         range
     };
 
-    let node = find_covering_node(file.syntax(), range);
+    let node = match find_covering_element(file.syntax(), range) {
+        SyntaxElement::Node(node) => node,
+        SyntaxElement::Token(token) => token.parent(),
+    };
     let mut edit = TextEditBuilder::default();
-    for node in node.descendants() {
-        let text = match node.leaf_text() {
-            Some(text) => text,
-            None => continue,
-        };
-        let range = match range.intersection(&node.range()) {
+    for token in node.descendants_with_tokens().filter_map(|it| it.as_token()) {
+        let range = match range.intersection(&token.range()) {
             Some(range) => range,
             None => continue,
-        } - node.range().start();
+        } - token.range().start();
+        let text = token.text();
         for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
             let pos: TextUnit = (pos as u32).into();
-            let off = node.range().start() + range.start() + pos;
+            let off = token.range().start() + range.start() + pos;
             if !edit.invalidates_offset(off) {
-                remove_newline(&mut edit, node, text.as_str(), off);
+                remove_newline(&mut edit, token, off);
             }
         }
     }
@@ -47,17 +47,12 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     edit.finish()
 }
 
-fn remove_newline(
-    edit: &mut TextEditBuilder,
-    node: &SyntaxNode,
-    node_text: &str,
-    offset: TextUnit,
-) {
-    if node.kind() != WHITESPACE || node_text.bytes().filter(|&b| b == b'\n').count() != 1 {
+fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUnit) {
+    if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
-        let suff = &node_text[TextRange::from_to(
-            offset - node.range().start() + TextUnit::of_char('\n'),
-            TextUnit::of_str(node_text),
+        let suff = &token.text()[TextRange::from_to(
+            offset - token.range().start() + TextUnit::of_char('\n'),
+            TextUnit::of_str(token.text()),
         )];
         let spaces = suff.bytes().take_while(|&b| b == b' ').count();
 
@@ -74,7 +69,7 @@ fn remove_newline(
     // ```
     //
     // into `my_function(<some-expr>)`
-    if join_single_expr_block(edit, node).is_some() {
+    if join_single_expr_block(edit, token).is_some() {
         return;
     }
     // ditto for
@@ -84,44 +79,50 @@ fn remove_newline(
     //    bar
     // };
     // ```
-    if join_single_use_tree(edit, node).is_some() {
+    if join_single_use_tree(edit, token).is_some() {
         return;
     }
 
     // The node is between two other nodes
-    let prev = node.prev_sibling().unwrap();
-    let next = node.next_sibling().unwrap();
+    let prev = token.prev_sibling_or_token().unwrap();
+    let next = token.next_sibling_or_token().unwrap();
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
-        edit.delete(TextRange::from_to(prev.range().start(), node.range().end()));
+        edit.delete(TextRange::from_to(prev.range().start(), token.range().end()));
     } else if prev.kind() == COMMA && next.kind() == R_CURLY {
         // Removes: comma, newline (incl. surrounding whitespace)
-        let space = if let Some(left) = prev.prev_sibling() { compute_ws(left, next) } else { " " };
+        let space = if let Some(left) = prev.prev_sibling_or_token() {
+            compute_ws(left.kind(), next.kind())
+        } else {
+            " "
+        };
         edit.replace(
-            TextRange::from_to(prev.range().start(), node.range().end()),
+            TextRange::from_to(prev.range().start(), token.range().end()),
             space.to_string(),
         );
-    } else if let (Some(_), Some(next)) = (ast::Comment::cast(prev), ast::Comment::cast(next)) {
+    } else if let (Some(_), Some(next)) =
+        (prev.as_token().and_then(ast::Comment::cast), next.as_token().and_then(ast::Comment::cast))
+    {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
         edit.delete(TextRange::from_to(
-            node.range().start(),
+            token.range().start(),
             next.syntax().range().start() + TextUnit::of_str(next.prefix()),
         ));
     } else {
         // Remove newline but add a computed amount of whitespace characters
-        edit.replace(node.range(), compute_ws(prev, next).to_string());
+        edit.replace(token.range(), compute_ws(prev.kind(), next.kind()).to_string());
     }
 }
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
-    match non_trivia_sibling(node, Direction::Next) {
+    match non_trivia_sibling(node.into(), Direction::Next) {
         Some(n) => n.kind() == COMMA,
         _ => false,
     }
 }
 
-fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
-    let block = ast::Block::cast(node.parent()?)?;
+fn join_single_expr_block(edit: &mut TextEditBuilder, token: SyntaxToken) -> Option<()> {
+    let block = ast::Block::cast(token.parent())?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = extract_trivial_expression(block)?;
 
@@ -140,8 +141,8 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Opti
     Some(())
 }
 
-fn join_single_use_tree(edit: &mut TextEditBuilder, node: &SyntaxNode) -> Option<()> {
-    let use_tree_list = ast::UseTreeList::cast(node.parent()?)?;
+fn join_single_use_tree(edit: &mut TextEditBuilder, token: SyntaxToken) -> Option<()> {
+    let use_tree_list = ast::UseTreeList::cast(token.parent())?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
     edit.replace(use_tree_list.syntax().range(), tree.syntax().text().to_string());
     Some(())
@@ -401,13 +402,13 @@ use ra_syntax::{
             r"
 use ra_syntax::{
     algo::<|>{
-        find_leaf_at_offset,
+        find_token_at_offset,
     },
     ast,
 };",
             r"
 use ra_syntax::{
-    algo::<|>find_leaf_at_offset,
+    algo::<|>find_token_at_offset,
     ast,
 };",
         );

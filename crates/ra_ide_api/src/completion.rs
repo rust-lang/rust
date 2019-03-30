@@ -13,7 +13,7 @@ mod complete_scope;
 mod complete_postfix;
 
 use ra_db::SourceDatabase;
-use ra_syntax::ast::{self, AstNode};
+use ra_syntax::{ast::{self, AstNode}, SyntaxKind::{ATTR, COMMENT}};
 
 use crate::{
     db,
@@ -76,11 +76,10 @@ pub fn function_label(node: &ast::FnDef) -> Option<String> {
         let body_range = body.syntax().range();
         let label: String = node
             .syntax()
-            .children()
+            .children_with_tokens()
             .filter(|child| !child.range().is_subrange(&body_range)) // Filter out body
-            .filter(|child| ast::Comment::cast(child).is_none()) // Filter out comments
-            .filter(|child| ast::Attr::cast(child).is_none()) // Filter out attributes
-            .map(|node| node.text().to_string())
+            .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR)) // Filter out comments and attrs
+            .map(|node| node.to_string())
             .collect();
         label
     } else {
@@ -93,10 +92,9 @@ pub fn function_label(node: &ast::FnDef) -> Option<String> {
 pub fn const_label(node: &ast::ConstDef) -> String {
     let label: String = node
         .syntax()
-        .children()
-        .filter(|child| ast::Comment::cast(child).is_none())
-        .filter(|child| ast::Attr::cast(child).is_none())
-        .map(|node| node.text().to_string())
+        .children_with_tokens()
+        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
+        .map(|node| node.to_string())
         .collect();
 
     label.trim().to_owned()
@@ -105,10 +103,9 @@ pub fn const_label(node: &ast::ConstDef) -> String {
 pub fn type_label(node: &ast::TypeAliasDef) -> String {
     let label: String = node
         .syntax()
-        .children()
-        .filter(|child| ast::Comment::cast(child).is_none())
-        .filter(|child| ast::Attr::cast(child).is_none())
-        .map(|node| node.text().to_string())
+        .children_with_tokens()
+        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
+        .map(|node| node.to_string())
         .collect();
 
     label.trim().to_owned()

@@ -8,8 +8,8 @@ use ra_syntax::{
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let colon_colon = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
-    let path = colon_colon.parent().and_then(ast::Path::cast)?;
+    let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
+    let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = generate(Some(path), |it| it.parent_path()).last()?;
 
     let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast);
