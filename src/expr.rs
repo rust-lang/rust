@@ -1346,6 +1346,7 @@ pub fn can_be_overflowed_expr(
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
                 || (context.config.indent_style() == IndentStyle::Visual && args_len > 1)
+                || context.config.overflow_delimited_expr()
         }
         ast::ExprKind::If(..)
         | ast::ExprKind::IfLet(..)
