@@ -132,7 +132,7 @@ pub trait TyDecoder<'a, 'tcx: 'a>: Decoder {
 }
 
 #[inline]
-pub fn decode_arena_allocable<'a, 'tcx, D, T: ArenaAllocatable<'tcx> + Decodable>(
+pub fn decode_arena_allocable<'a, 'tcx, D, T: ArenaAllocatable + Decodable>(
     decoder: &mut D
 ) -> Result<&'tcx T, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -142,7 +142,7 @@ pub fn decode_arena_allocable<'a, 'tcx, D, T: ArenaAllocatable<'tcx> + Decodable
 }
 
 #[inline]
-pub fn decode_arena_allocable_slice<'a, 'tcx, D, T: ArenaAllocatable<'tcx> + Decodable>(
+pub fn decode_arena_allocable_slice<'a, 'tcx, D, T: ArenaAllocatable + Decodable>(
     decoder: &mut D
 ) -> Result<&'tcx [T], D::Error>
     where D: TyDecoder<'a, 'tcx>,

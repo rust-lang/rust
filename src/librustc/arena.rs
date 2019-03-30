@@ -1,4 +1,5 @@
 use arena::{TypedArena, DroplessArena};
+use std::mem;
 
 #[macro_export]
 macro_rules! arena_types {
@@ -35,10 +36,11 @@ macro_rules! impl_arena_allocatable {
         $(
             impl_specialized_decodable!($a $ty, $tcx);
 
-            impl<$tcx> ArenaAllocatable<$tcx> for $ty {
+            impl ArenaAllocatable for $ty {}
+            impl<$tcx> ArenaField<$tcx> for $ty {
                 #[inline]
-                fn arena<'a>(arena: &'a Arena<$tcx>) -> Option<&'a TypedArena<Self>> {
-                    Some(&arena.$name)
+                fn arena<'a>(arena: &'a Arena<$tcx>) -> &'a TypedArena<Self> {
+                    &arena.$name
                 }
             }
         )*
@@ -49,46 +51,43 @@ arena_types!(declare_arena, [], 'tcx);
 
 arena_types!(impl_arena_allocatable, [], 'tcx);
 
-pub trait ArenaAllocatable<'tcx>: Sized {
-    /// Returns a specific arena to allocate from if the type requires destructors.
-    /// Otherwise it will return `None` to be allocated from the dropless arena.
-    fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a TypedArena<Self>>;
+pub trait ArenaAllocatable {}
+
+impl<T: Copy> ArenaAllocatable for T {}
+
+pub trait ArenaField<'tcx>: Sized {
+    /// Returns a specific arena to allocate from.
+    fn arena<'a>(arena: &'a Arena<'tcx>) -> &'a TypedArena<Self>;
 }
 
-impl<'tcx, T: Copy> ArenaAllocatable<'tcx> for T {
+impl<'tcx, T> ArenaField<'tcx> for T {
     #[inline]
-    default fn arena<'a>(_: &'a Arena<'tcx>) -> Option<&'a TypedArena<Self>> {
-        None
+    default fn arena<'a>(_: &'a Arena<'tcx>) -> &'a TypedArena<Self> {
+        panic!()
     }
 }
 
 impl<'tcx> Arena<'tcx> {
     #[inline]
-    pub fn alloc<T: ArenaAllocatable<'tcx>>(&self, value: T) -> &mut T {
-        match T::arena(self) {
-            Some(arena) => {
-                arena.alloc(value)
-            }
-            None => {
-                self.dropless.alloc(value)
-            }
+    pub fn alloc<T: ArenaAllocatable>(&self, value: T) -> &mut T {
+        if mem::needs_drop::<T>() {
+            <T as ArenaField<'tcx>>::arena(self).alloc(value)
+        } else {
+            self.dropless.alloc(value)
         }
     }
 
     pub fn alloc_from_iter<
-        T: ArenaAllocatable<'tcx>,
+        T: ArenaAllocatable,
         I: IntoIterator<Item = T>
     >(
         &self,
         iter: I
     ) -> &mut [T] {
-        match T::arena(self) {
-            Some(arena) => {
-                arena.alloc_from_iter(iter)
-            }
-            None => {
-                self.dropless.alloc_from_iter(iter)
-            }
+        if mem::needs_drop::<T>() {
+            <T as ArenaField<'tcx>>::arena(self).alloc_from_iter(iter)
+        } else {
+            self.dropless.alloc_from_iter(iter)
         }
     }
 }
