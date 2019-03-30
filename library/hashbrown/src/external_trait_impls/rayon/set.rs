@@ -1,7 +1,7 @@
 //! Rayon extensions for `HashSet`.
 
+use crate::hash_set::HashSet;
 use core::hash::{BuildHasher, Hash};
-use hash_set::HashSet;
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
 
@@ -44,7 +44,7 @@ pub struct ParDrain<'a, T, S> {
     set: &'a mut HashSet<T, S>,
 }
 
-impl<'a, T: Send, S: Send> ParallelIterator for ParDrain<'a, T, S> {
+impl<T: Send, S: Send> ParallelIterator for ParDrain<'_, T, S> {
     type Item = T;
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
@@ -68,7 +68,7 @@ impl<'a, T: Send, S: Send> ParallelIterator for ParDrain<'a, T, S> {
 /// [`par_iter`]: /hashbrown/struct.HashSet.html#method.par_iter
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
 /// [`IntoParallelRefIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefIterator.html
-pub struct ParIter<'a, T: 'a, S: 'a> {
+pub struct ParIter<'a, T, S> {
     set: &'a HashSet<T, S>,
 }
 
@@ -91,7 +91,7 @@ impl<'a, T: Sync, S: Sync> ParallelIterator for ParIter<'a, T, S> {
 ///
 /// [`par_difference`]: /hashbrown/struct.HashSet.html#method.par_difference
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParDifference<'a, T: 'a, S: 'a> {
+pub struct ParDifference<'a, T, S> {
     a: &'a HashSet<T, S>,
     b: &'a HashSet<T, S>,
 }
@@ -123,7 +123,7 @@ where
 ///
 /// [`par_symmetric_difference`]: /hashbrown/struct.HashSet.html#method.par_symmetric_difference
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParSymmetricDifference<'a, T: 'a, S: 'a> {
+pub struct ParSymmetricDifference<'a, T, S> {
     a: &'a HashSet<T, S>,
     b: &'a HashSet<T, S>,
 }
@@ -154,7 +154,7 @@ where
 ///
 /// [`par_intersection`]: /hashbrown/struct.HashSet.html#method.par_intersection
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParIntersection<'a, T: 'a, S: 'a> {
+pub struct ParIntersection<'a, T, S> {
     a: &'a HashSet<T, S>,
     b: &'a HashSet<T, S>,
 }
@@ -184,7 +184,7 @@ where
 ///
 /// [`par_union`]: /hashbrown/struct.HashSet.html#method.par_union
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParUnion<'a, T: 'a, S: 'a> {
+pub struct ParUnion<'a, T, S> {
     a: &'a HashSet<T, S>,
     b: &'a HashSet<T, S>,
 }
@@ -284,7 +284,7 @@ where
     /// Consumes (potentially in parallel) all values in an arbitrary order,
     /// while preserving the set's allocated memory for reuse.
     #[inline]
-    pub fn par_drain(&mut self) -> ParDrain<T, S> {
+    pub fn par_drain(&mut self) -> ParDrain<'_, T, S> {
         ParDrain { set: self }
     }
 }
@@ -381,7 +381,7 @@ mod test_par_set {
 
     use rayon::prelude::*;
 
-    use hash_set::HashSet;
+    use crate::hash_set::HashSet;
 
     #[test]
     fn test_disjoint() {

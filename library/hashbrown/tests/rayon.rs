@@ -1,9 +1,7 @@
 #![cfg(feature = "rayon")]
 
-extern crate hashbrown;
 #[macro_use]
 extern crate lazy_static;
-extern crate rayon;
 
 use hashbrown::{HashMap, HashSet};
 use rayon::iter::{

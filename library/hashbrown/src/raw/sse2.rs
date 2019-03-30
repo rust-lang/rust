@@ -109,6 +109,12 @@ impl Group {
         }
     }
 
+    /// Returns a `BitMask` indicating all bytes in the group which are full.
+    #[inline]
+    pub fn match_full(&self) -> BitMask {
+        self.match_empty_or_deleted().invert()
+    }
+
     /// Performs the following transformation on all bytes in the group:
     /// - `EMPTY => EMPTY`
     /// - `DELETED => EMPTY`
