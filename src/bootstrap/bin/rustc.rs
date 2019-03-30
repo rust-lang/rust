@@ -122,8 +122,8 @@ fn main() {
             cmd.arg("-Cprefer-dynamic");
         }
 
-        // Help the libc crate compile by assisting it in finding the MUSL
-        // native libraries.
+        // Help the libc crate compile by assisting it in finding various
+        // sysroot native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {
             if target.contains("musl") {
                 let mut root = OsString::from("native=");
@@ -131,6 +131,12 @@ fn main() {
                 root.push("/lib");
                 cmd.arg("-L").arg(&root);
             }
+        }
+        if let Some(s) = env::var_os("WASI_ROOT") {
+            let mut root = OsString::from("native=");
+            root.push(&s);
+            root.push("/lib/wasm32-wasi");
+            cmd.arg("-L").arg(&root);
         }
 
         // Override linker if necessary.

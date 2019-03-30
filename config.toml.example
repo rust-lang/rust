@@ -477,6 +477,9 @@
 # linked binaries
 #musl-root = "..."
 
+# The root location of the `wasm32-unknown-wasi` sysroot.
+#wasi-root = "..."
+
 # Used in testing for configuring where the QEMU images are located, you
 # probably don't want to use this.
 #qemu-rootfs = "..."

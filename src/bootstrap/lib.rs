@@ -861,6 +861,13 @@ impl Build {
             .map(|p| &**p)
     }
 
+    /// Returns the sysroot for the wasi target, if defined
+    fn wasi_root(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
+            .and_then(|t| t.wasi_root.as_ref())
+            .map(|p| &**p)
+    }
+
     /// Returns `true` if this is a no-std `target`, if defined
     fn no_std(&self, target: Interned<String>) -> Option<bool> {
         self.config.target_config.get(&target)

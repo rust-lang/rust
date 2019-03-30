@@ -129,6 +129,13 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
                 &libdir.join(obj),
             );
         }
+    } else if target.ends_with("-wasi") {
+        for &obj in &["crt1.o"] {
+            builder.copy(
+                &builder.wasi_root(target).unwrap().join("lib/wasm32-wasi").join(obj),
+                &libdir.join(obj),
+            );
+        }
     }
 
     // Copies libunwind.a compiled to be linked wit x86_64-fortanix-unknown-sgx.
@@ -188,6 +195,12 @@ pub fn std_cargo(builder: &Builder<'_>,
         if target.contains("musl") {
             if let Some(p) = builder.musl_root(target) {
                 cargo.env("MUSL_ROOT", p);
+            }
+        }
+
+        if target.ends_with("-wasi") {
+            if let Some(p) = builder.wasi_root(target) {
+                cargo.env("WASI_ROOT", p);
             }
         }
     }
