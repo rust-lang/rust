@@ -180,7 +180,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             self.inner.read();
             RwLockReadGuard::new(self)
@@ -219,7 +219,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
+    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
         unsafe {
             if self.inner.try_read() {
                 Ok(RwLockReadGuard::new(self)?)
@@ -262,7 +262,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             self.inner.write();
             RwLockWriteGuard::new(self)
@@ -301,7 +301,7 @@ impl<T: ?Sized> RwLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
+    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
         unsafe {
             if self.inner.try_write() {
                 Ok(RwLockWriteGuard::new(self)?)
@@ -421,7 +421,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.try_read() {
             Ok(guard) => f.debug_struct("RwLock").field("data", &&*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
@@ -430,7 +430,9 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
                 impl fmt::Debug for LockedPlaceholder {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.write_str("<locked>")
+                    }
                 }
 
                 f.debug_struct("RwLock").field("data", &LockedPlaceholder).finish()
@@ -481,7 +483,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
             .field("lock", &self.__lock)
             .finish()
@@ -490,14 +492,14 @@ impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")
             .field("lock", &self.__lock)
             .finish()
@@ -506,7 +508,7 @@ impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }

@@ -917,7 +917,7 @@ pub struct IoVecMut<'a>(sys::io::IoVecMut<'a>);
 
 #[unstable(feature = "iovec", issue = "58452")]
 impl<'a> fmt::Debug for IoVecMut<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
@@ -964,7 +964,7 @@ pub struct IoVec<'a>(sys::io::IoVec<'a>);
 
 #[unstable(feature = "iovec", issue = "58452")]
 impl<'a> fmt::Debug for IoVec<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
@@ -1255,7 +1255,7 @@ pub trait Write {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()> {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
         // Create a shim which translates a Write to a fmt::Write and saves
         // off I/O errors. instead of discarding them
         struct Adaptor<'a, T: ?Sized + 'a> {
@@ -1906,7 +1906,7 @@ impl<T, U> Chain<T, U> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Chain")
             .field("t", &self.first)
             .field("u", &self.second)
