@@ -146,7 +146,14 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                 link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
             }
             _ => {
-                link_natively::<B>(sess, crate_type, &out_filename, codegen_results, tmpdir.path(), target_cpu);
+                link_natively::<B>(
+                    sess,
+                    crate_type,
+                    &out_filename,
+                    codegen_results,
+                    tmpdir.path(),
+                    target_cpu,
+                );
             }
         }
         out_filenames.push(out_filename);
