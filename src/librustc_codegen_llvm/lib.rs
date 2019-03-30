@@ -44,8 +44,6 @@ extern crate rustc_fs_util;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
-extern crate serialize;
-extern crate tempfile;
 
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
@@ -78,8 +76,6 @@ mod back {
     pub mod link;
     pub mod lto;
     pub mod write;
-    mod rpath;
-    pub mod wasm;
 }
 
 mod abi;
