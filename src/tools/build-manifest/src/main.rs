@@ -523,11 +523,17 @@ impl Builder {
                pkgname: &str,
                dst: &mut BTreeMap<String, Package>,
                targets: &[&str]) {
-        let (version, is_present) = self.cached_version(pkgname)
+        let (version, mut is_present) = self.cached_version(pkgname)
             .as_ref()
             .cloned()
             .map(|version| (version, true))
             .unwrap_or_default();
+
+        // miri needs to build std with xargo, which doesn't allow stable/beta:
+        // <https://github.com/japaric/xargo/pull/204#issuecomment-374888868>
+        if pkgname == "miri-preview" && self.rust_release != "nightly" {
+            is_present = false; // ignore it
+        }
 
         let targets = targets.iter().map(|name| {
             if is_present {
