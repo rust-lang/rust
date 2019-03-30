@@ -189,6 +189,17 @@ impl TypeMap<'ll, 'tcx> {
         let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
         UniqueTypeId(interner_key)
     }
+
+    // Get the unique type id string for an enum variant part.
+    // Variant parts are not types and shouldn't really have their own id,
+    // but it makes set_members_of_composite_type() simpler.
+    fn get_unique_type_id_str_of_enum_variant_part<'a>(&mut self,
+                                                       enum_type_id: UniqueTypeId) -> &str {
+        let variant_part_type_id = format!("{}_variant_part",
+                                           self.get_unique_type_id_as_string(enum_type_id));
+        let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
+        self.unique_id_interner.get(interner_key)
+    }
 }
 
 // A description of some recursive type. It can either be already finished (as
@@ -1689,6 +1700,11 @@ fn prepare_enum_metadata(
         },
     };
 
+    let variant_part_unique_type_id_str = SmallCStr::new(
+        debug_context(cx).type_map
+            .borrow_mut()
+            .get_unique_type_id_str_of_enum_variant_part(unique_type_id)
+    );
     let empty_array = create_DIArray(DIB(cx), &[]);
     let variant_part = unsafe {
         llvm::LLVMRustDIBuilderCreateVariantPart(
@@ -1702,7 +1718,7 @@ fn prepare_enum_metadata(
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
-            unique_type_id_str.as_ptr())
+            variant_part_unique_type_id_str.as_ptr())
     };
 
     // The variant part must be wrapped in a struct according to DWARF.
