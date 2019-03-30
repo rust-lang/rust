@@ -24,9 +24,9 @@
 //!     let mut buffer = [0; 10];
 //!
 //!     // read up to 10 bytes
-//!     f.read(&mut buffer)?;
+//!     let n = f.read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", buffer);
+//!     println!("The bytes: {:?}", &buffer[..n]);
 //!     Ok(())
 //! }
 //! ```
@@ -56,9 +56,9 @@
 //!     f.seek(SeekFrom::End(-10))?;
 //!
 //!     // read up to 10 bytes
-//!     f.read(&mut buffer)?;
+//!     let n = f.read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", buffer);
+//!     println!("The bytes: {:?}", &buffer[..n]);
 //!     Ok(())
 //! }
 //! ```
@@ -537,7 +537,9 @@ pub trait Read {
     ///     let mut buffer = [0; 10];
     ///
     ///     // read up to 10 bytes
-    ///     f.read(&mut buffer[..])?;
+    ///     let n = f.read(&mut buffer[..])?;
+    ///
+    ///     println!("The bytes: {:?}", &buffer[..n]);
     ///     Ok(())
     /// }
     /// ```
@@ -1062,12 +1064,23 @@ impl Initializer {
 /// use std::fs::File;
 ///
 /// fn main() -> std::io::Result<()> {
+///     let data = b"some bytes";
+///
+///     let mut pos = 0;
 ///     let mut buffer = File::create("foo.txt")?;
 ///
-///     buffer.write(b"some bytes")?;
+///     while pos < data.len() {
+///         let bytes_written = buffer.write(&data[pos..])?;
+///         pos += bytes_written;
+///     }
 ///     Ok(())
 /// }
 /// ```
+///
+/// The trait also provides convenience methods like [`write_all`], which calls
+/// `write` in a loop until its entire input has been written.
+///
+/// [`write_all`]: #method.write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
