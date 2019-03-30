@@ -1,10 +1,11 @@
-use super::archive::{ArchiveBuilder, ArchiveConfig};
+use super::archive::LlvmArchiveBuilder;
 use super::rpath::RPathConfig;
 use super::rpath;
 use crate::back::wasm;
 use crate::context::get_reloc_model;
 use crate::llvm;
 use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_codegen_ssa::back::linker::Linker;
 use rustc_codegen_ssa::back::link::*;
 use rustc_codegen_ssa::back::command::Command;
@@ -31,14 +32,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
 
-pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
-                                    invalid_output_for_target, filename_for_metadata,
-                                    out_filename, check_file_is_writeable};
-
+pub use rustc_codegen_utils::link::*;
 
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
-pub(crate) fn link_binary(sess: &Session,
+pub(crate) fn link_binary<'a>(sess: &'a Session,
                           codegen_results: &CodegenResults,
                           outputs: &OutputFilenames,
                           crate_name: &str) -> Vec<PathBuf> {
@@ -56,7 +54,7 @@ pub(crate) fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let out_files = link_binary_output(sess,
+        let out_files = link_binary_output::<LlvmArchiveBuilder<'a>>(sess,
                                            codegen_results,
                                            crate_type,
                                            outputs,
@@ -90,7 +88,7 @@ pub(crate) fn link_binary(sess: &Session,
     out_filenames
 }
 
-fn link_binary_output(sess: &Session,
+fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                       codegen_results: &CodegenResults,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
@@ -126,17 +124,17 @@ fn link_binary_output(sess: &Session,
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
         match crate_type {
             config::CrateType::Rlib => {
-                link_rlib(sess,
+                link_rlib::<B>(sess,
                           codegen_results,
                           RlibFlavor::Normal,
                           &out_filename,
                           &tmpdir).build();
             }
             config::CrateType::Staticlib => {
-                link_staticlib(sess, codegen_results, &out_filename, &tmpdir);
+                link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
             }
             _ => {
-                link_natively(sess, crate_type, &out_filename, codegen_results, tmpdir.path());
+                link_natively::<B>(sess, crate_type, &out_filename, codegen_results, tmpdir.path());
             }
         }
         out_filenames.push(out_filename);
@@ -147,17 +145,6 @@ fn link_binary_output(sess: &Session,
     }
 
     out_filenames
-}
-
-fn archive_config<'a>(sess: &'a Session,
-                      output: &Path,
-                      input: Option<&Path>) -> ArchiveConfig<'a> {
-    ArchiveConfig {
-        sess,
-        dst: output.to_path_buf(),
-        src: input.map(|p| p.to_path_buf()),
-        lib_search_paths: archive_search_paths(sess),
-    }
 }
 
 /// We use a temp directory here to avoid races between concurrent rustc processes,
@@ -191,13 +178,13 @@ enum RlibFlavor {
 // rlib primarily contains the object file of the crate, but it also contains
 // all of the object files from native libraries. This is done by unzipping
 // native libraries and inserting all of the contents into this archive.
-fn link_rlib<'a>(sess: &'a Session,
+fn link_rlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                  codegen_results: &CodegenResults,
                  flavor: RlibFlavor,
                  out_filename: &Path,
-                 tmpdir: &TempDir) -> ArchiveBuilder<'a> {
+                 tmpdir: &TempDir) -> B {
     info!("preparing rlib to {:?}", out_filename);
-    let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
+    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
         ab.add_file(obj);
@@ -305,11 +292,11 @@ fn link_rlib<'a>(sess: &'a Session,
 // There's no need to include metadata in a static archive, so ensure to not
 // link in the metadata object file (and also don't prepare the archive with a
 // metadata file).
-fn link_staticlib(sess: &Session,
+fn link_staticlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                   codegen_results: &CodegenResults,
                   out_filename: &Path,
                   tempdir: &TempDir) {
-    let mut ab = link_rlib(sess,
+    let mut ab = link_rlib::<B>(sess,
                            codegen_results,
                            RlibFlavor::StaticlibBase,
                            out_filename,
@@ -363,7 +350,7 @@ fn link_staticlib(sess: &Session,
 //
 // This will invoke the system linker/cc to create the resulting file. This
 // links to all upstream files as well.
-fn link_natively(sess: &Session,
+fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                  crate_type: config::CrateType,
                  out_filename: &Path,
                  codegen_results: &CodegenResults,
@@ -422,7 +409,7 @@ fn link_natively(sess: &Session,
     {
         let target_cpu = crate::llvm_util::target_cpu(sess);
         let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor, target_cpu);
-        link_args(&mut *linker, flavor, sess, crate_type, tmpdir,
+        link_args::<B>(&mut *linker, flavor, sess, crate_type, tmpdir,
                   out_filename, codegen_results);
         cmd = linker.finalize();
     }
@@ -603,9 +590,9 @@ fn link_natively(sess: &Session,
     }
 }
 
-fn link_args(cmd: &mut dyn Linker,
+fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
              flavor: LinkerFlavor,
-             sess: &Session,
+             sess: &'a Session,
              crate_type: config::CrateType,
              tmpdir: &Path,
              out_filename: &Path,
@@ -759,7 +746,7 @@ fn link_args(cmd: &mut dyn Linker,
     // in this DAG so far because they're only dylibs and dylibs can only depend
     // on other dylibs (e.g., other native deps).
     add_local_native_libraries(cmd, sess, codegen_results);
-    add_upstream_rust_crates(cmd, sess, codegen_results, crate_type, tmpdir);
+    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
 
     // Tell the linker what we're doing.
@@ -812,8 +799,8 @@ fn link_args(cmd: &mut dyn Linker,
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(cmd: &mut dyn Linker,
-                            sess: &Session,
+fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
+                            sess: &'a Session,
                             codegen_results: &CodegenResults,
                             crate_type: config::CrateType,
                             tmpdir: &Path) {
@@ -888,10 +875,10 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
             _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum) => {
-                link_sanitizer_runtime(cmd, sess, codegen_results, tmpdir, cnum);
+                link_sanitizer_runtime::<B>(cmd, sess, codegen_results, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -902,7 +889,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0)
@@ -920,7 +907,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -936,8 +923,8 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // it's packed in a .rlib, it contains stuff that are not objects that will
     // make the linker error. So we must remove those bits from the .rlib before
     // linking it.
-    fn link_sanitizer_runtime(cmd: &mut dyn Linker,
-                              sess: &Session,
+    fn link_sanitizer_runtime<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
+                              sess: &'a Session,
                               codegen_results: &CodegenResults,
                               tmpdir: &Path,
                               cnum: CrateNum) {
@@ -957,8 +944,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         }
 
         let dst = tmpdir.join(cratepath.file_name().unwrap());
-        let cfg = archive_config(sess, &dst, Some(cratepath));
-        let mut archive = ArchiveBuilder::new(cfg);
+        let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
         archive.update_symbols();
 
         for f in archive.src_files() {
@@ -1004,8 +990,8 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // (aka we're making an executable), we can just pass the rlib blindly to
     // the linker (fast) because it's fine if it's not actually included as
     // we're at the end of the dependency chain.
-    fn add_static_crate(cmd: &mut dyn Linker,
-                        sess: &Session,
+    fn add_static_crate<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
+                        sess: &'a Session,
                         codegen_results: &CodegenResults,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
@@ -1034,8 +1020,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
         time_ext(sess.time_extended(), Some(sess), &format!("altering {}.rlib", name), || {
-            let cfg = archive_config(sess, &dst, Some(cratepath));
-            let mut archive = ArchiveBuilder::new(cfg);
+            let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 
             let mut any_objects = false;
