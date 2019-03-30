@@ -258,7 +258,7 @@ pub fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
-enum RlibFlavor {
+pub enum RlibFlavor {
     Normal,
     StaticlibBase,
 }
