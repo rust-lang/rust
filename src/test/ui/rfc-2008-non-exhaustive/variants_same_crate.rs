@@ -1,11 +1,6 @@
 // run-pass
-#![feature(non_exhaustive)]
 
-/*
- * The initial implementation of #[non_exhaustive] (RFC 2008) does not include support for
- * variants. See issue #44109 and PR 45394.
- */
-// ignore-test
+#![feature(non_exhaustive)]
 
 pub enum NonExhaustiveVariants {
     #[non_exhaustive] Unit,

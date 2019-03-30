@@ -4341,11 +4341,12 @@ foo.method(); // Ok!
 "##,
 
 E0638: r##"
-This error indicates that the struct or enum must be matched non-exhaustively
-as it has been marked as `non_exhaustive`.
+This error indicates that the struct, enum or enum variant must be matched
+non-exhaustively as it has been marked as `non_exhaustive`.
 
 When applied within a crate, downstream users of the crate will need to use the
 `_` pattern when matching enums and use the `..` pattern when matching structs.
+Downstream crates cannot match against non-exhaustive enum variants.
 
 For example, in the below example, since the enum is marked as
 `non_exhaustive`, it is required that downstream crates match non-exhaustively
@@ -4390,10 +4391,10 @@ Similarly, for structs, match with `..` to avoid this error.
 "##,
 
 E0639: r##"
-This error indicates that the struct or enum cannot be instantiated from
-outside of the defining crate as it has been marked as `non_exhaustive` and as
-such more fields/variants may be added in future that could cause adverse side
-effects for this code.
+This error indicates that the struct, enum or enum variant cannot be
+instantiated from outside of the defining crate as it has been marked
+as `non_exhaustive` and as such more fields/variants may be added in
+future that could cause adverse side effects for this code.
 
 It is recommended that you look for a `new` function or equivalent in the
 crate's documentation.

@@ -1,0 +1,23 @@
+error: expected type, found `3`
+  --> $DIR/recover-from-bad-variant.rs:7:26
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                          ^ expecting a type here because of type ascription
+   |
+   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
+note: this expression expects an ascribed type after the colon
+  --> $DIR/recover-from-bad-variant.rs:7:23
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                       ^
+   = help: this might be indicative of a syntax error elsewhere
+
+error[E0532]: expected tuple struct/variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:10:9
+   |
+LL |         Enum::Foo(a, b) => {}
+   |         ^^^^^^^^^ did you mean `Enum::Foo { /* fields */ }`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

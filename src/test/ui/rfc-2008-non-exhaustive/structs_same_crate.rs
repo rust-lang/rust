@@ -1,4 +1,5 @@
 // run-pass
+
 #![allow(unused_variables)]
 #![feature(non_exhaustive)]
 

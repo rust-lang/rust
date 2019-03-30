@@ -2071,6 +2071,14 @@ if (!DOMTokenList.prototype.remove) {
                     collapser(e, collapse);
                 });
             }
+
+            var blanket_list = document.getElementById("blanket-implementations-list");
+
+            if (blanket_list !== null) {
+                onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapser(e, collapse);
+                });
+            }
         }
     }
 
@@ -2263,6 +2271,8 @@ if (!DOMTokenList.prototype.remove) {
                     otherMessage += "struct";
                 } else if (hasClass(e, "non-exhaustive-enum")) {
                     otherMessage += "enum";
+                } else if (hasClass(e, "non-exhaustive-variant")) {
+                    otherMessage += "enum variant";
                 } else if (hasClass(e, "non-exhaustive-type")) {
                     otherMessage += "type";
                 }
@@ -2278,6 +2288,9 @@ if (!DOMTokenList.prototype.remove) {
                              hasClass(e, "type-decl") === false || showItemDeclarations === true),
                 e);
             if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
+                collapseDocs(e.previousSibling.childNodes[0], "toggle");
+            }
+            if (hasClass(e, "non-exhaustive") === true) {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
