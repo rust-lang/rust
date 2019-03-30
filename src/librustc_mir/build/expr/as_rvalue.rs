@@ -150,10 +150,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
-            ExprKind::Use { source } => {
-                let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Use(source))
-            }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
@@ -363,6 +359,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::NeverToAny { .. }
+            | ExprKind::Use { .. }
             | ExprKind::Loop { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Call { .. }
