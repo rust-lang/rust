@@ -315,7 +315,7 @@ macro_rules! eprintln {
 /// file and line whenever it's reached.
 ///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
-/// [`debug`]: https://docs.rs/log/*/log/macro.debug.html
+/// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
 /// [`log`]: https://crates.io/crates/log
 #[macro_export]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
