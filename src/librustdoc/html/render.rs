@@ -2604,7 +2604,15 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
 fn document_non_exhaustive(w: &mut fmt::Formatter<'_>, item: &clean::Item) -> fmt::Result {
     if item.is_non_exhaustive() {
         write!(w, "<div class='docblock non-exhaustive non-exhaustive-{}'>", {
-            if item.is_struct() { "struct" } else if item.is_enum() { "enum" } else { "type" }
+            if item.is_struct() {
+                "struct"
+            } else if item.is_enum() {
+                "enum"
+            } else if item.is_variant() {
+                "variant"
+            } else {
+                "type"
+            }
         })?;
 
         if item.is_struct() {
@@ -2617,6 +2625,10 @@ fn document_non_exhaustive(w: &mut fmt::Formatter<'_>, item: &clean::Item) -> fm
             write!(w, "Non-exhaustive enums could have additional variants added in future. \
                        Therefore, when matching against variants of non-exhaustive enums, an \
                        extra wildcard arm must be added to account for any future variants.")?;
+        } else if item.is_variant() {
+            write!(w, "Non-exhaustive enum variants could have additional fields added in future. \
+                       Therefore, non-exhaustive enum variants cannot be constructed in external \
+                       crates and cannot be matched against.")?;
         } else {
             write!(w, "This type will require a wildcard arm in any match statements or \
                        constructors.")?;
@@ -3679,6 +3691,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
             }
             write!(w, "</code></span>")?;
             document(w, cx, variant)?;
+            document_non_exhaustive(w, variant)?;
 
             use crate::clean::{Variant, VariantKind};
             if let clean::VariantItem(Variant {

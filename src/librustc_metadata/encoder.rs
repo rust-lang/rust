@@ -643,13 +643,18 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
         };
 
-        // Variant constructors have the same visibility as the parent enums.
+        // Variant constructors have the same visibility as the parent enums, unless marked as
+        // non-exhaustive, in which case they are lowered to `pub(crate)`.
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
         let enum_vis = &tcx.hir().expect_item_by_hir_id(enum_id).vis;
+        let mut ctor_vis = ty::Visibility::from_hir(enum_vis, enum_id, tcx);
+        if variant.is_field_list_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+        }
 
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
-            visibility: self.lazy(&ty::Visibility::from_hir(enum_vis, enum_id, tcx)),
+            visibility: self.lazy(&ctor_vis),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),

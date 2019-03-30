@@ -1869,6 +1869,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, "non_exhaustive") {
             debug!("found non-exhaustive field list for {:?}", parent_did);
             flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+        } else if let Some(variant_did) = variant_did {
+            if tcx.has_attr(variant_did, "non_exhaustive") {
+                debug!("found non-exhaustive field list for {:?}", variant_did);
+                flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
+            }
         }
 
         VariantDef {
@@ -2146,6 +2151,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
+
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
             AdtKind::Union => AdtFlags::IS_UNION,
@@ -2299,21 +2305,25 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
+    /// Return a `VariantDef` given a variant id.
     pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
         self.variants.iter().find(|v| v.def_id == vid)
             .expect("variant_with_id: unknown variant")
     }
 
+    /// Return a `VariantDef` given a constructor id.
     pub fn variant_with_ctor_id(&self, cid: DefId) -> &VariantDef {
         self.variants.iter().find(|v| v.ctor_def_id == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
+    /// Return the index of `VariantDef` given a variant id.
     pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
         self.variants.iter_enumerated().find(|(_, v)| v.def_id == vid)
             .expect("variant_index_with_id: unknown variant").0
     }
 
+    /// Return the index of `VariantDef` given a constructor id.
     pub fn variant_index_with_ctor_id(&self, cid: DefId) -> VariantIdx {
         self.variants.iter_enumerated().find(|(_, v)| v.ctor_def_id == Some(cid))
             .expect("variant_index_with_ctor_id: unknown variant").0
@@ -2930,8 +2940,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Returns `ty::VariantDef` if `def` refers to a struct,
-    // or variant or their constructors, panics otherwise.
+    /// Returns `ty::VariantDef` if `def` refers to a struct,
+    /// or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
             Def::Variant(did) => {
