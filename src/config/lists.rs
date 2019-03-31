@@ -28,15 +28,15 @@ impl DefinitiveListTactic {
 /// their comments.
 #[config_type]
 pub enum ListTactic {
-    // One item per row.
+    /// One item per row.
     Vertical,
-    // All items on one row.
+    /// All items on one row.
     Horizontal,
-    // Try Horizontal layout, if that fails then vertical.
+    /// Try Horizontal layout, if that fails then vertical.
     HorizontalVertical,
-    // HorizontalVertical with a soft limit of n characters.
+    /// HorizontalVertical with a soft limit of n characters.
     LimitedHorizontalVertical(usize),
-    // Pack as many items as possible per row over (possibly) many rows.
+    /// Pack as many items as possible per row over (possibly) many rows.
     Mixed,
 }
 

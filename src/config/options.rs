@@ -11,10 +11,14 @@ use crate::config::Config;
 
 #[config_type]
 pub enum NewlineStyle {
-    Auto,    // Auto-detect based on the raw source input
-    Windows, // \r\n
-    Unix,    // \n
-    Native,  // \r\n in Windows, \n on other platforms
+    /// Auto-detect based on the raw source input.
+    Auto,
+    /// Force CRLF (`\r\n`).
+    Windows,
+    /// Force CR (`\n).
+    Unix,
+    /// `\r\n` in Windows, `\n`` on other platforms.
+    Native,
 }
 
 impl NewlineStyle {
@@ -74,58 +78,66 @@ impl NewlineStyle {
 }
 
 #[config_type]
+/// Where to put the opening brace of items (`fn`, `impl`, etc.).
 pub enum BraceStyle {
+    /// Put the opening brace on the next line.
     AlwaysNextLine,
+    /// Put the opening brace on the same line, if possible.
     PreferSameLine,
-    // Prefer same line except where there is a where-clause, in which case force
-    // the brace to the next line.
+    /// Prefer the same line except where there is a where-clause, in which
+    /// case force the brace to be put on the next line.
     SameLineWhere,
 }
 
 #[config_type]
+/// Where to put the opening brace of conditional expressions (`if`, `match`, etc.).
 pub enum ControlBraceStyle {
-    // K&R style, Rust community default
+    /// K&R style, Rust community default
     AlwaysSameLine,
-    // Stroustrup style
+    /// Stroustrup style
     ClosingNextLine,
-    // Allman style
+    /// Allman style
     AlwaysNextLine,
 }
 
 #[config_type]
+/// How to indent.
 pub enum IndentStyle {
-    // First line on the same line as the opening brace, all lines aligned with
-    // the first line.
+    /// First line on the same line as the opening brace, all lines aligned with
+    /// the first line.
     Visual,
-    // First line is on a new line and all lines align with block indent.
+    /// First line is on a new line and all lines align with **block** indent.
     Block,
 }
 
 #[config_type]
+/// How to place a list-like items.
 pub enum Density {
-    // Fit as much on one line as possible.
+    /// Fit as much on one line as possible.
     Compressed,
-    // Use more lines.
+    /// Use more lines.
     Tall,
-    // Place every item on a separate line.
+    /// Place every item on a separate line.
     Vertical,
 }
 
 #[config_type]
+/// Spacing around type combinators.
 pub enum TypeDensity {
-    // No spaces around "=" and "+"
+    /// No spaces around "=" and "+"
     Compressed,
-    // Spaces around " = " and " + "
+    /// Spaces around " = " and " + "
     Wide,
 }
 
 #[config_type]
+/// To what extent does rustfmt pursue its heuristics?
 pub enum Heuristics {
-    // Turn off any heuristics
+    /// Turn off any heuristics
     Off,
-    // Turn on max heuristics
+    /// Turn on max heuristics
     Max,
-    // Use Rustfmt's defaults
+    /// Use Rustfmt's defaults
     Default,
 }
 
@@ -147,42 +159,44 @@ pub enum ReportTactic {
     Never,
 }
 
-// What Rustfmt should emit. Mostly corresponds to the `--emit` command line
-// option.
+/// What Rustfmt should emit. Mostly corresponds to the `--emit` command line
+/// option.
 #[config_type]
 pub enum EmitMode {
-    // Emits to files.
+    /// Emits to files.
     Files,
-    // Writes the output to stdout.
+    /// Writes the output to stdout.
     Stdout,
-    // Displays how much of the input file was processed
+    /// Displays how much of the input file was processed
     Coverage,
-    // Unfancy stdout
+    /// Unfancy stdout
     Checkstyle,
-    // Output the changed lines (for internal value only)
+    /// Output the changed lines (for internal value only)
     ModifiedLines,
-    // Checks if a diff can be generated. If so, rustfmt outputs a diff and quits with exit code 1.
-    // This option is designed to be run in CI where a non-zero exit signifies non-standard code
-    // formatting. Used for `--check`.
+    /// Checks if a diff can be generated. If so, rustfmt outputs a diff and
+    /// quits with exit code 1.
+    /// This option is designed to be run in CI where a non-zero exit signifies
+    /// non-standard code formatting. Used for `--check`.
     Diff,
 }
 
-// Client-preference for coloured output.
+/// Client-preference for coloured output.
 #[config_type]
 pub enum Color {
-    // Always use color, whether it is a piped or terminal output
+    /// Always use color, whether it is a piped or terminal output
     Always,
-    // Never use color
+    /// Never use color
     Never,
-    // Automatically use color, if supported by terminal
+    /// Automatically use color, if supported by terminal
     Auto,
 }
 
 #[config_type]
+/// rustfmt format style version.
 pub enum Version {
-    // 1.x.y
+    /// 1.x.y. When specified, rustfmt will format in the same style as 1.0.0.
     One,
-    // 2.x.y
+    /// 2.x.y. When specified, rustfmt will formatin the the latest style.
     Two,
 }
 
@@ -197,13 +211,14 @@ impl Color {
     }
 }
 
-// How chatty should Rustfmt be?
+/// How chatty should Rustfmt be?
 #[config_type]
 pub enum Verbosity {
-    // Emit more.
+    /// Emit more.
     Verbose,
+    /// Default.
     Normal,
-    // Emit as little as possible.
+    /// Emit as little as possible.
     Quiet,
 }
 
@@ -369,14 +384,16 @@ pub trait CliOptions {
     fn config_path(&self) -> Option<&Path>;
 }
 
-// The edition of the compiler (RFC 2052)
+/// The edition of the syntax and semntics of code (RFC 2052).
 #[config_type]
 pub enum Edition {
     #[value = "2015"]
     #[doc_hint = "2015"]
+    /// Edition 2015.
     Edition2015,
     #[value = "2018"]
     #[doc_hint = "2018"]
+    /// Edition 2018.
     Edition2018,
 }
 

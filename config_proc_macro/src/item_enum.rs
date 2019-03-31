@@ -6,6 +6,7 @@ use crate::utils::*;
 
 type Variants = syn::punctuated::Punctuated<syn::Variant, syn::Token![,]>;
 
+/// Defines and implements `config_type` enum.
 pub fn define_config_type_on_enum(em: &syn::ItemEnum) -> syn::Result<TokenStream> {
     let syn::ItemEnum {
         vis,
