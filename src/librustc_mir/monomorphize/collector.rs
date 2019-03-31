@@ -563,7 +563,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 );
                 visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
             }
-            mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
+            mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer(_), ref operand, _) => {
                 let source_ty = operand.ty(self.mir, self.tcx);
                 let source_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,

@@ -630,8 +630,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
                 Some(ty::adjustment::Adjust::ReifyFnPointer),
             ty::adjustment::Adjust::UnsafeFnPointer =>
                 Some(ty::adjustment::Adjust::UnsafeFnPointer),
-            ty::adjustment::Adjust::ClosureFnPointer =>
-                Some(ty::adjustment::Adjust::ClosureFnPointer),
+            ty::adjustment::Adjust::ClosureFnPointer(unsafety) =>
+                Some(ty::adjustment::Adjust::ClosureFnPointer(unsafety)),
             ty::adjustment::Adjust::MutToConstPointer =>
                 Some(ty::adjustment::Adjust::MutToConstPointer),
             ty::adjustment::Adjust::Unsize =>
@@ -1187,7 +1187,7 @@ EnumTypeFoldableImpl! {
         (ty::adjustment::Adjust::NeverToAny),
         (ty::adjustment::Adjust::ReifyFnPointer),
         (ty::adjustment::Adjust::UnsafeFnPointer),
-        (ty::adjustment::Adjust::ClosureFnPointer),
+        (ty::adjustment::Adjust::ClosureFnPointer)(a),
         (ty::adjustment::Adjust::MutToConstPointer),
         (ty::adjustment::Adjust::Unsize),
         (ty::adjustment::Adjust::Deref)(a),

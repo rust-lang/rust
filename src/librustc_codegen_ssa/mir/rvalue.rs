@@ -193,7 +193,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::ClosureFnPointer => {
+                    mir::CastKind::ClosureFnPointer(_) => {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(

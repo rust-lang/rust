@@ -156,7 +156,7 @@ fn check_rvalue(
             check_operand(tcx, mir, operand, span)
         }
         Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
-        Rvalue::Cast(CastKind::ClosureFnPointer, _, _) |
+        Rvalue::Cast(CastKind::ClosureFnPointer(_), _, _) |
         Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
             span,
             "function pointer casts are not allowed in const fn".into(),

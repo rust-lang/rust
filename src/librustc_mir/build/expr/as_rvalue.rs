@@ -162,9 +162,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::UnsafeFnPointer, source, expr.ty))
             }
-            ExprKind::ClosureFnPointer { source } => {
+            ExprKind::ClosureFnPointer { source, unsafety } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::ClosureFnPointer, source, expr.ty))
+                block.and(Rvalue::Cast(CastKind::ClosureFnPointer(unsafety), source, expr.ty))
             }
             ExprKind::MutToConstPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));

@@ -2247,8 +2247,9 @@ pub enum CastKind {
     /// Converts unique, zero-sized type for a fn to fn()
     ReifyFnPointer,
 
-    /// Converts non capturing closure to fn()
-    ClosureFnPointer,
+    /// Converts non capturing closure to fn() or unsafe fn().
+    /// It cannot convert a closure that requires unsafe.
+    ClosureFnPointer(hir::Unsafety),
 
     /// Converts safe fn() to unsafe fn()
     UnsafeFnPointer,

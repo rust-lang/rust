@@ -1999,14 +1999,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::ClosureFnPointer => {
+                    CastKind::ClosureFnPointer(unsafety) => {
                         let sig = match op.ty(mir, tcx).sty {
                             ty::Closure(def_id, substs) => {
                                 substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
                             }
                             _ => bug!(),
                         };
-                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig);
+                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig, *unsafety);
 
                         if let Err(terr) = self.eq_types(
                             ty_fn_ptr_from,
