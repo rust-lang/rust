@@ -235,7 +235,7 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
 
-    let info = GitInfo::new(&builder.config, &dir);
+    let info = GitInfo::new(builder.config.ignore_git, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }

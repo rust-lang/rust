@@ -67,45 +67,38 @@ impl Step for Llvm {
             }
         }
 
-        let (submodule, root, out_dir, llvm_config_ret_dir) = if emscripten {
+        let (llvm_info, root, out_dir, llvm_config_ret_dir) = if emscripten {
+            let info = &builder.emscripten_llvm_info;
             let dir = builder.emscripten_llvm_out(target);
             let config_dir = dir.join("bin");
-            ("src/llvm-emscripten", "src/llvm-emscripten", dir, config_dir)
+            (info, "src/llvm-emscripten", dir, config_dir)
         } else {
+            let info = &builder.in_tree_llvm_info;
             let mut dir = builder.llvm_out(builder.config.build);
             if !builder.config.build.contains("msvc") || builder.config.ninja {
                 dir.push("build");
             }
-            ("src/llvm-project", "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
+            (info, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
         };
 
-        let git_output = t!(Command::new("git")
-            .args(&["rev-parse", "--verify", &format!("@:./{}", submodule)])
-            .current_dir(&builder.src)
-            .output());
-
-        let llvm_commit = if git_output.status.success() {
-            Some(git_output.stdout)
-        } else {
+        if !llvm_info.is_git() {
             println!(
-                "git could not determine the LLVM submodule commit hash ({}). \
+                "git could not determine the LLVM submodule commit hash. \
                 Assuming that an LLVM build is necessary.",
-                String::from_utf8_lossy(&git_output.stderr),
             );
-            None
-        };
+        }
 
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
         let done_stamp = out_dir.join("llvm-finished-building");
 
-        if let Some(llvm_commit) = &llvm_commit {
+        if let Some(llvm_commit) = llvm_info.sha() {
             if done_stamp.exists() {
                 let done_contents = t!(fs::read(&done_stamp));
 
                 // If LLVM was already built previously and the submodule's commit didn't change
                 // from the previous build, then no action is required.
-                if done_contents == llvm_commit.as_slice() {
+                if done_contents == llvm_commit.as_bytes() {
                     return build_llvm_config
                 }
             }
@@ -258,11 +251,6 @@ impl Step for Llvm {
                 channel::CFG_RELEASE_NUM,
                 builder.config.channel,
             );
-            let llvm_info = if self.emscripten {
-                &builder.emscripten_llvm_info
-            } else {
-                &builder.in_tree_llvm_info
-            };
             if let Some(sha) = llvm_info.sha_short() {
                 default_suffix.push_str("-");
                 default_suffix.push_str(sha);
@@ -295,8 +283,8 @@ impl Step for Llvm {
 
         cfg.build();
 
-        if let Some(llvm_commit) = llvm_commit {
-            t!(fs::write(&done_stamp, &llvm_commit));
+        if let Some(llvm_commit) = llvm_info.sha() {
+            t!(fs::write(&done_stamp, llvm_commit));
         }
 
         build_llvm_config

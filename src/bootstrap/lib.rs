@@ -360,14 +360,18 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&config, &src);
-        let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
-        let clippy_info = channel::GitInfo::new(&config, &src.join("src/tools/clippy"));
-        let miri_info = channel::GitInfo::new(&config, &src.join("src/tools/miri"));
-        let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
-        let in_tree_llvm_info = channel::GitInfo::new(&config, &src.join("src/llvm-project"));
-        let emscripten_llvm_info = channel::GitInfo::new(&config, &src.join("src/llvm-emscripten"));
+
+        let ignore_git = config.ignore_git;
+        let rust_info = channel::GitInfo::new(ignore_git, &src);
+        let cargo_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rls"));
+        let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
+        let miri_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/miri"));
+        let rustfmt_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rustfmt"));
+
+        // we always try to use git for LLVM builds
+        let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
+        let emscripten_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-emscripten"));
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),

@@ -11,7 +11,6 @@ use std::process::Command;
 use build_helper::output;
 
 use crate::Build;
-use crate::config::Config;
 
 // The version number
 pub const CFG_RELEASE_NUM: &str = "1.35.0";
@@ -27,20 +26,20 @@ struct Info {
 }
 
 impl GitInfo {
-    pub fn new(config: &Config, dir: &Path) -> GitInfo {
+    pub fn new(ignore_git: bool, dir: &Path) -> GitInfo {
         // See if this even begins to look like a git dir
-        if config.ignore_git || !dir.join(".git").exists() {
+        if ignore_git || !dir.join(".git").exists() {
             return GitInfo { inner: None }
         }
 
         // Make sure git commands work
-        let out = Command::new("git")
-                          .arg("rev-parse")
-                          .current_dir(dir)
-                          .output()
-                          .expect("failed to spawn git");
-        if !out.status.success() {
-            return GitInfo { inner: None }
+        match Command::new("git")
+            .arg("rev-parse")
+            .current_dir(dir)
+            .output()
+        {
+            Ok(ref out) if out.status.success() => {}
+            _ => return GitInfo { inner: None },
         }
 
         // Ok, let's scrape some info
