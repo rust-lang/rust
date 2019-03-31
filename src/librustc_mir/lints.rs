@@ -4,7 +4,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc::mir::{self, Mir, TerminatorKind};
-use rustc::ty::{AssociatedItem, AssociatedItemContainer, Instance, TyCtxt, TyKind};
+use rustc::ty::{self, AssociatedItem, AssociatedItemContainer, Instance, TyCtxt};
 use rustc::ty::subst::InternalSubsts;
 
 pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -86,7 +86,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 TerminatorKind::Call { ref func, .. } => {
                     let func_ty = func.ty(mir, tcx);
 
-                    if let TyKind::FnDef(fn_def_id, substs) = func_ty.sty {
+                    if let ty::FnDef(fn_def_id, substs) = func_ty.sty {
                         let (call_fn_id, call_substs) =
                             if let Some(instance) = Instance::resolve(tcx,
                                                                         param_env,

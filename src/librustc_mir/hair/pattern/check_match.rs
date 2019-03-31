@@ -10,7 +10,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::region;
 use rustc::session::Session;
-use rustc::ty::{self, Ty, TyCtxt, TyKind};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::lint;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -481,7 +481,7 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
             }
             let patterns = witnesses.iter().map(|p| (**p).clone()).collect::<Vec<Pattern<'_>>>();
             if patterns.len() < 4 {
-                for sp in maybe_point_at_variant(cx, &scrut_ty.sty, patterns.as_slice()) {
+                for sp in maybe_point_at_variant(cx, scrut_ty, patterns.as_slice()) {
                     err.span_label(sp, "not covered");
                 }
             }
@@ -498,11 +498,11 @@ fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
 
 fn maybe_point_at_variant(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    sty: &TyKind<'tcx>,
+    ty: Ty<'tcx>,
     patterns: &[Pattern<'_>],
 ) -> Vec<Span> {
     let mut covered = vec![];
-    if let ty::Adt(def, _) = sty {
+    if let ty::Adt(def, _) = ty.sty {
         // Don't point at variants that have already been covered due to other patterns to avoid
         // visual clutter
         for pattern in patterns {
@@ -518,7 +518,7 @@ fn maybe_point_at_variant(
                         .map(|field_pattern| field_pattern.pattern.clone())
                         .collect::<Vec<_>>();
                     covered.extend(
-                        maybe_point_at_variant(cx, sty, subpatterns.as_slice()),
+                        maybe_point_at_variant(cx, ty, subpatterns.as_slice()),
                     );
                 }
             }
@@ -526,7 +526,7 @@ fn maybe_point_at_variant(
                 let subpatterns = subpatterns.iter()
                     .map(|field_pattern| field_pattern.pattern.clone())
                     .collect::<Vec<_>>();
-                covered.extend(maybe_point_at_variant(cx, sty, subpatterns.as_slice()));
+                covered.extend(maybe_point_at_variant(cx, ty, subpatterns.as_slice()));
             }
         }
     }

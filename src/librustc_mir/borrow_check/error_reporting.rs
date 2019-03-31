@@ -223,7 +223,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
-                if let ty::TyKind::Param(param_ty) = ty.sty {
+                if let ty::Param(param_ty) = ty.sty {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
                     let def_id = generics.type_param(&param_ty, tcx).def_id;
@@ -1529,7 +1529,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant {
                 literal: ty::Const {
-                    ty: &ty::TyS { sty: ty::TyKind::FnDef(id, _), ..  },
+                    ty: &ty::TyS { sty: ty::FnDef(id, _), ..  },
                     ..
                 },
                 ..
@@ -1547,7 +1547,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 };
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
-                if let ty::TyKind::Closure(did, _) = self.mir.local_decls[closure].ty.sty {
+                if let ty::Closure(did, _) = self.mir.local_decls[closure].ty.sty {
                     let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                     if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
@@ -1570,7 +1570,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
-            if let ty::TyKind::Closure(did, _) = self.mir.local_decls[target].ty.sty {
+            if let ty::Closure(did, _) = self.mir.local_decls[target].ty.sty {
                 let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
 
                 if let Some((span, name)) = self.infcx.tcx.typeck_tables_of(did)
@@ -1919,7 +1919,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             } else {
                 let ty = self.infcx.tcx.type_of(self.mir_def_id);
                 match ty.sty {
-                    ty::TyKind::FnDef(_, _) | ty::TyKind::FnPtr(_) => self.annotate_fn_sig(
+                    ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id,
                         self.infcx.tcx.fn_sig(self.mir_def_id),
                     ),
@@ -2164,12 +2164,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //    anything.
         let return_ty = sig.output();
         match return_ty.skip_binder().sty {
-            ty::TyKind::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
+            ty::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
-                    if let ty::TyKind::Ref(argument_region, _, _) = argument.sty {
+                    if let ty::Ref(argument_region, _, _) = argument.sty {
                         if argument_region == return_region {
                             // Need to use the `rustc::ty` types to compare against the
                             // `return_region`. Then use the `rustc::hir` type to get only
@@ -2206,7 +2206,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     return_span,
                 })
             }
-            ty::TyKind::Ref(_, _, _) if is_closure => {
+            ty::Ref(_, _, _) if is_closure => {
                 // This is case 2 from above but only for closures, return type is anonymous
                 // reference so we select
                 // the first argument.
@@ -2215,9 +2215,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
                 // from that.
-                if let ty::TyKind::Tuple(elems) = argument_ty.sty {
+                if let ty::Tuple(elems) = argument_ty.sty {
                     let argument_ty = elems.first()?;
-                    if let ty::TyKind::Ref(_, _, _) = argument_ty.sty {
+                    if let ty::Ref(_, _, _) = argument_ty.sty {
                         return Some(AnnotatedBorrowFnSignature::Closure {
                             argument_ty,
                             argument_span,
@@ -2227,7 +2227,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 None
             }
-            ty::TyKind::Ref(_, _, _) => {
+            ty::Ref(_, _, _) => {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
                 let argument_span = fn_decl.inputs.first()?.span;
@@ -2238,7 +2238,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 // We expect the first argument to be a reference.
                 match argument_ty.sty {
-                    ty::TyKind::Ref(_, _, _) => {}
+                    ty::Ref(_, _, _) => {}
                     _ => return None,
                 }
 
@@ -2366,8 +2366,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         match ty.sty {
-            ty::TyKind::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
-            | ty::TyKind::Ref(
+            ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
+            | ty::Ref(
                 ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -2386,7 +2386,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
         let region = match ty.sty {
-            ty::TyKind::Ref(region, _, _) => {
+            ty::Ref(region, _, _) => {
                 match region {
                     ty::RegionKind::ReLateBound(_, br)
                     | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {

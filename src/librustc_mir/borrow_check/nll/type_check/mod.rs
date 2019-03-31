@@ -39,7 +39,7 @@ use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
 use rustc::ty::{
-    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserType,
+    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType,
     CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     UserTypeAnnotationIndex,
 };
@@ -746,7 +746,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         let (variant, substs) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => {
                 match ty.sty {
-                    ty::TyKind::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
+                    ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                     _ => bug!("can't have downcast of non-adt type"),
                 }
             }
@@ -1136,7 +1136,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         category: ConstraintCategory,
     ) -> Fallible<()> {
         if let Err(terr) = self.sub_types(sub, sup, locations, category) {
-            if let TyKind::Opaque(..) = sup.sty {
+            if let ty::Opaque(..) = sup.sty {
                 // When you have `let x: impl Foo = ...` in a closure,
                 // the resulting inferend values are stored with the
                 // def-id of the base function.
@@ -1389,7 +1389,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             } => {
                 let place_type = place.ty(mir, tcx).ty;
                 let adt = match place_type.sty {
-                    TyKind::Adt(adt, _) if adt.is_enum() => adt,
+                    ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
                             stmt.source_info.span,

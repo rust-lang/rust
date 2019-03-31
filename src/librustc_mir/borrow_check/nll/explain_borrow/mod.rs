@@ -589,7 +589,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 // Check the type for a trait object.
                                 return match ty.sty {
                                     // `&dyn Trait`
-                                    ty::TyKind::Ref(_, ty, _) if ty.is_trait() => true,
+                                    ty::Ref(_, ty, _) if ty.is_trait() => true,
                                     // `Box<dyn Trait>`
                                     _ if ty.is_box() && ty.boxed_ty().is_trait() => true,
                                     // `dyn Trait`
