@@ -31,11 +31,13 @@ SOURCE_FILE@[0; 53)
                 IDENT@[24; 25) "T"
         COLON@[25; 26)
         WHITESPACE@[26; 27)
-        PATH_TYPE@[27; 32)
-          PATH@[27; 32)
-            PATH_SEGMENT@[27; 32)
-              NAME_REF@[27; 32)
-                IDENT@[27; 32) "Clone"
+        TYPE_BOUND_LIST@[27; 32)
+          TYPE_BOUND@[27; 32)
+            PATH_TYPE@[27; 32)
+              PATH@[27; 32)
+                PATH_SEGMENT@[27; 32)
+                  NAME_REF@[27; 32)
+                    IDENT@[27; 32) "Clone"
     SEMI@[32; 33)
   WHITESPACE@[33; 34)
   STRUCT_DEF@[34; 52)

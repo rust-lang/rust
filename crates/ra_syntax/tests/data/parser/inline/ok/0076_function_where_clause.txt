@@ -25,11 +25,13 @@ SOURCE_FILE@[0; 29)
                 IDENT@[18; 19) "T"
         COLON@[19; 20)
         WHITESPACE@[20; 21)
-        PATH_TYPE@[21; 25)
-          PATH@[21; 25)
-            PATH_SEGMENT@[21; 25)
-              NAME_REF@[21; 25)
-                IDENT@[21; 25) "Copy"
+        TYPE_BOUND_LIST@[21; 25)
+          TYPE_BOUND@[21; 25)
+            PATH_TYPE@[21; 25)
+              PATH@[21; 25)
+                PATH_SEGMENT@[21; 25)
+                  NAME_REF@[21; 25)
+                    IDENT@[21; 25) "Copy"
     WHITESPACE@[25; 26)
     BLOCK@[26; 28)
       L_CURLY@[26; 27)

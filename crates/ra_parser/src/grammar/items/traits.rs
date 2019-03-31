@@ -2,6 +2,7 @@ use super::*;
 
 // test trait_item
 // trait T<U>: Hash + Clone where U: Copy {}
+// trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
 pub(super) fn trait_def(p: &mut Parser) {
     assert!(p.at(TRAIT_KW));
     p.bump();

@@ -79,23 +79,40 @@ fn lifetime_bounds(p: &mut Parser) {
     }
 }
 
-pub(super) fn bounds_without_colon(p: &mut Parser) {
-    loop {
-        let has_paren = p.eat(L_PAREN);
-        p.eat(QUESTION);
-        match p.current() {
-            LIFETIME => p.bump(),
-            FOR_KW => types::for_type(p),
-            _ if paths::is_path_start(p) => types::path_type(p),
-            _ => break,
-        }
-        if has_paren {
-            p.expect(R_PAREN);
-        }
+pub(super) fn bounds_without_colon_m(p: &mut Parser, marker: Marker) -> CompletedMarker {
+    while type_bound(p) {
         if !p.eat(PLUS) {
             break;
         }
     }
+
+    marker.complete(p, TYPE_BOUND_LIST)
+}
+
+pub(super) fn bounds_without_colon(p: &mut Parser) {
+    let m = p.start();
+    bounds_without_colon_m(p, m);
+}
+
+fn type_bound(p: &mut Parser) -> bool {
+    let m = p.start();
+    let has_paren = p.eat(L_PAREN);
+    p.eat(QUESTION);
+    match p.current() {
+        LIFETIME => p.bump(),
+        FOR_KW => types::for_type(p),
+        _ if paths::is_path_start(p) => types::path_type_(p, false),
+        _ => {
+            m.abandon(p);
+            return false;
+        }
+    }
+    if has_paren {
+        p.expect(R_PAREN);
+    }
+    m.complete(p, TYPE_BOUND);
+
+    true
 }
 
 // test where_clause

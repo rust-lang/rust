@@ -243,6 +243,8 @@ Grammar(
         "PARAM",
         "SELF_PARAM",
         "ARG_LIST",
+        "TYPE_BOUND",
+        "TYPE_BOUND_LIST",
     ],
     ast: {
         "SourceFile": (
@@ -293,7 +295,7 @@ Grammar(
         "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
         "EnumVariant": ( traits: ["NameOwner", "DocCommentsOwner", "AttrsOwner"], options: ["Expr"] ),
         "TraitDef": (
-            traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner", "TypeParamsOwner"],
+            traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner", "TypeParamsOwner", "TypeBoundsOwner"],
             options: ["ItemList"]
         ),
         "Module": (
@@ -330,7 +332,8 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
-                "DocCommentsOwner"
+                "DocCommentsOwner",
+                "TypeBoundsOwner",
             ],
             options: ["TypeRef"]
         ),
@@ -347,8 +350,12 @@ Grammar(
         "PlaceholderType": (),
         "FnPointerType": (options: ["ParamList", "RetType"]),
         "ForType": (options: ["TypeRef"]),
-        "ImplTraitType": (),
-        "DynTraitType": (),
+        "ImplTraitType": (
+            traits: ["TypeBoundsOwner"],
+        ),
+        "DynTraitType": (
+            traits: ["TypeBoundsOwner"],
+        ),
 
         "TypeRef": ( enum: [
             "ParenType",
@@ -571,12 +578,23 @@ Grammar(
                 ["lifetime_params", "LifetimeParam" ],
             ]
         ),
-        "TypeParam": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "TypeParam": ( traits: ["NameOwner", "AttrsOwner", "TypeBoundsOwner"] ),
         "LifetimeParam": (
             options: [ "Lifetime"],
             traits: ["AttrsOwner"],
         ),
         "Lifetime": ( traits: ["AstToken"] ),
+        "TypeBound": (
+            options: [
+                "TypeRef",
+                "Lifetime",
+            ]
+        ),
+        "TypeBoundList": (
+            collections: [
+                ["bounds", "TypeBound"],
+            ]
+        ),
         "WhereClause": (),
         "ExprStmt": (
             options: [ ["expr", "Expr"] ]

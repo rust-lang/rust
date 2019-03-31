@@ -30,22 +30,26 @@ SOURCE_FILE@[0; 116)
                 IDENT@[34; 35) "T"
         COLON@[35; 36)
         WHITESPACE@[36; 37)
-        PATH_TYPE@[37; 59)
-          PATH@[37; 42)
-            PATH_SEGMENT@[37; 42)
-              NAME_REF@[37; 42)
-                IDENT@[37; 42) "Clone"
+        TYPE_BOUND_LIST@[37; 59)
+          TYPE_BOUND@[37; 42)
+            PATH_TYPE@[37; 42)
+              PATH@[37; 42)
+                PATH_SEGMENT@[37; 42)
+                  NAME_REF@[37; 42)
+                    IDENT@[37; 42) "Clone"
           WHITESPACE@[42; 43)
           PLUS@[43; 44)
           WHITESPACE@[44; 45)
-          PATH_TYPE@[45; 59)
-            PATH@[45; 49)
-              PATH_SEGMENT@[45; 49)
-                NAME_REF@[45; 49)
-                  IDENT@[45; 49) "Copy"
-            WHITESPACE@[49; 50)
-            PLUS@[50; 51)
-            WHITESPACE@[51; 52)
+          TYPE_BOUND@[45; 49)
+            PATH_TYPE@[45; 49)
+              PATH@[45; 49)
+                PATH_SEGMENT@[45; 49)
+                  NAME_REF@[45; 49)
+                    IDENT@[45; 49) "Copy"
+          WHITESPACE@[49; 50)
+          PLUS@[50; 51)
+          WHITESPACE@[51; 52)
+          TYPE_BOUND@[52; 59)
             LIFETIME@[52; 59) "'static"
       COMMA@[59; 60)
       WHITESPACE@[60; 64)
@@ -62,7 +66,9 @@ SOURCE_FILE@[0; 116)
                 IDENT@[74; 78) "Item"
         COLON@[78; 79)
         WHITESPACE@[79; 80)
-        LIFETIME@[80; 82) "'a"
+        TYPE_BOUND_LIST@[80; 82)
+          TYPE_BOUND@[80; 82)
+            LIFETIME@[80; 82) "'a"
       COMMA@[82; 83)
       WHITESPACE@[83; 87)
       WHERE_PRED@[87; 112)
@@ -91,7 +97,9 @@ SOURCE_FILE@[0; 116)
                 IDENT@[104; 108) "Item"
         COLON@[108; 109)
         WHITESPACE@[109; 110)
-        LIFETIME@[110; 112) "'a"
+        TYPE_BOUND_LIST@[110; 112)
+          TYPE_BOUND@[110; 112)
+            LIFETIME@[110; 112) "'a"
     WHITESPACE@[112; 113)
     BLOCK@[113; 115)
       L_CURLY@[113; 114)
