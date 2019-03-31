@@ -56,7 +56,7 @@ use crate::hir::Node;
 use crate::middle::region;
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
-use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TyKind, TypeFoldable};
+use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use std::{cmp, fmt};
 use syntax_pos::{Pos, Span};
@@ -1094,14 +1094,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 (_, false, _) => {
                     if let Some(exp_found) = exp_found {
                         let (def_id, ret_ty) = match exp_found.found.sty {
-                            TyKind::FnDef(def, _) => {
+                            ty::FnDef(def, _) => {
                                 (Some(def), Some(self.tcx.fn_sig(def).output()))
                             }
                             _ => (None, None),
                         };
 
                         let exp_is_struct = match exp_found.expected.sty {
-                            TyKind::Adt(def, _) => def.is_struct(),
+                            ty::Adt(def, _) => def.is_struct(),
                             _ => false,
                         };
 
@@ -1140,8 +1140,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
         match (&exp_found.expected.sty, &exp_found.found.sty) {
-            (TyKind::Adt(exp_def, exp_substs), TyKind::Ref(_, found_ty, _)) => {
-                if let TyKind::Adt(found_def, found_substs) = found_ty.sty {
+            (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) => {
+                if let ty::Adt(found_def, found_substs) = found_ty.sty {
                     let path_str = format!("{:?}", exp_def);
                     if exp_def == &found_def {
                         let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
@@ -1164,17 +1164,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let mut show_suggestion = true;
                             for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
                                 match exp_ty.sty {
-                                    TyKind::Ref(_, exp_ty, _) => {
+                                    ty::Ref(_, exp_ty, _) => {
                                         match (&exp_ty.sty, &found_ty.sty) {
-                                            (_, TyKind::Param(_)) |
-                                            (_, TyKind::Infer(_)) |
-                                            (TyKind::Param(_), _) |
-                                            (TyKind::Infer(_), _) => {}
+                                            (_, ty::Param(_)) |
+                                            (_, ty::Infer(_)) |
+                                            (ty::Param(_), _) |
+                                            (ty::Infer(_), _) => {}
                                             _ if ty::TyS::same_type(exp_ty, found_ty) => {}
                                             _ => show_suggestion = false,
                                         };
                                     }
-                                    TyKind::Param(_) | TyKind::Infer(_) => {}
+                                    ty::Param(_) | ty::Infer(_) => {}
                                     _ => show_suggestion = false,
                                 }
                             }

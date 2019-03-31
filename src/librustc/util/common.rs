@@ -1,11 +1,10 @@
 #![allow(non_camel_case_types)]
 
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::{fx::FxHashMap, sync::Lock};
 
 use std::cell::{RefCell, Cell};
-use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::{Hash, BuildHasher};
+use std::hash::Hash;
 use std::panic;
 use std::env;
 use std::time::{Duration, Instant};
@@ -341,8 +340,8 @@ pub trait MemoizationMap {
         where OP: FnOnce() -> Self::Value;
 }
 
-impl<K, V, S> MemoizationMap for RefCell<HashMap<K,V,S>>
-    where K: Hash+Eq+Clone, V: Clone, S: BuildHasher
+impl<K, V> MemoizationMap for RefCell<FxHashMap<K,V>>
+    where K: Hash+Eq+Clone, V: Clone
 {
     type Key = K;
     type Value = V;
