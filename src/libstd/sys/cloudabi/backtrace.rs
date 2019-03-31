@@ -24,7 +24,7 @@ impl Error for UnwindError {
 }
 
 impl fmt::Display for UnwindError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}: {:?}", self.description(), self.0)
     }
 }
@@ -33,8 +33,9 @@ impl fmt::Display for UnwindError {
                  // tracing
 pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceContext)> {
     let mut cx = Context { idx: 0, frames };
-    let result_unwind =
-        unsafe { uw::_Unwind_Backtrace(trace_fn, &mut cx as *mut Context as *mut libc::c_void) };
+    let result_unwind = unsafe {
+        uw::_Unwind_Backtrace(trace_fn, &mut cx as *mut Context<'_> as *mut libc::c_void)
+    };
     // See libunwind:src/unwind/Backtrace.c for the return values.
     // No, there is no doc.
     match result_unwind {
@@ -54,7 +55,7 @@ extern "C" fn trace_fn(
     ctx: *mut uw::_Unwind_Context,
     arg: *mut libc::c_void,
 ) -> uw::_Unwind_Reason_Code {
-    let cx = unsafe { &mut *(arg as *mut Context) };
+    let cx = unsafe { &mut *(arg as *mut Context<'_>) };
     if cx.idx >= cx.frames.len() {
         return uw::_URC_NORMAL_STOP;
     }

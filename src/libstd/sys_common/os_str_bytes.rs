@@ -23,25 +23,25 @@ pub(crate) struct Slice {
 }
 
 impl fmt::Debug for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         debug_fmt_bytestring(&self.inner, formatter)
     }
 }
 
 impl fmt::Display for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
     }
 }
 
 impl fmt::Debug for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.as_slice(), formatter)
     }
 }
 
 impl fmt::Display for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_slice(), formatter)
     }
 }
@@ -148,7 +148,7 @@ impl Slice {
         str::from_utf8(&self.inner).ok()
     }
 
-    pub fn to_string_lossy(&self) -> Cow<str> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(&self.inner)
     }
 
