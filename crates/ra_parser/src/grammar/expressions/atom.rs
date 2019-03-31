@@ -68,6 +68,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         L_BRACK => array_expr(p),
         PIPE => lambda_expr(p),
         MOVE_KW if la == PIPE => lambda_expr(p),
+        ASYNC_KW if la == PIPE || (la == MOVE_KW && p.nth(2) == PIPE) => lambda_expr(p),
         IF_KW => if_expr(p),
 
         LOOP_KW => loop_expr(p, None),
@@ -92,7 +93,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 }
             }
         }
-        ASYNC_KW if la == L_CURLY || la == MOVE_KW => {
+        ASYNC_KW if la == L_CURLY || (la == MOVE_KW && p.nth(2) == L_CURLY) => {
             let m = p.start();
             p.bump();
             p.eat(MOVE_KW);
@@ -190,10 +191,19 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 //     || -> i32 { 92 };
 //     |x| x;
 //     move |x: i32,| x;
+//     async || {};
+//     move || {};
+//     async move || {};
 // }
 fn lambda_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(PIPE) || (p.at(MOVE_KW) && p.nth(1) == PIPE));
+    assert!(
+        p.at(PIPE)
+            || (p.at(MOVE_KW) && p.nth(1) == PIPE)
+            || (p.at(ASYNC_KW) && p.nth(1) == PIPE)
+            || (p.at(ASYNC_KW) && p.nth(1) == MOVE_KW && p.nth(2) == PIPE)
+    );
     let m = p.start();
+    p.eat(ASYNC_KW);
     p.eat(MOVE_KW);
     params::param_list_opt_types(p);
     if opt_fn_ret_type(p) {
