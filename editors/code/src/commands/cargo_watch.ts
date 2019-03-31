@@ -2,7 +2,7 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 import * as timers from 'timers';
 import * as vscode from 'vscode';
-import {StatusDisplay} from './watch_status';
+import { StatusDisplay } from './watch_status';
 
 export class CargoWatchProvider {
     private diagnosticCollection?: vscode.DiagnosticCollection;
@@ -12,19 +12,22 @@ export class CargoWatchProvider {
 
     public activate(subscriptions: vscode.Disposable[]) {
         subscriptions.push(this);
-        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('rustc');
+        this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
+            'rustc'
+        );
 
         this.statusDisplay = new StatusDisplay(subscriptions);
 
-        // Start the cargo watch with json message 
-        this.cargoProcess = child_process.spawn('cargo',
-            ['watch', '-x', '\"check --message-format json\"'],
+        // Start the cargo watch with json message
+        this.cargoProcess = child_process.spawn(
+            'cargo',
+            ['watch', '-x', '"check --message-format json"'],
             {
-                // stdio: ['ignore', 'pipe', 'ignore'], 
+                // stdio: ['ignore', 'pipe', 'ignore'],
                 shell: true,
-                cwd: vscode.workspace.rootPath,
-            });
-
+                cwd: vscode.workspace.rootPath
+            }
+        );
 
         this.cargoProcess.stdout.on('data', (s: string) => {
             this.processOutput(s);
@@ -109,7 +112,9 @@ export class CargoWatchProvider {
 
             const fileUrl = vscode.Uri.file(fileName!);
 
-            const diagnostics: vscode.Diagnostic[] = [...(this.diagnosticCollection!.get(fileUrl) || [])];
+            const diagnostics: vscode.Diagnostic[] = [
+                ...(this.diagnosticCollection!.get(fileUrl) || [])
+            ];
             diagnostics.push(diagnostic);
 
             this.diagnosticCollection!.set(fileUrl, diagnostics);
@@ -129,5 +134,4 @@ export class CargoWatchProvider {
             eolIndex = this.outBuffer.indexOf('\n');
         }
     }
-
 }

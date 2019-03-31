@@ -9,15 +9,20 @@ export class StatusDisplay {
     private timer?: NodeJS.Timeout;
 
     constructor(subscriptions: vscode.Disposable[]) {
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+        this.statusBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Left,
+            10
+        );
         subscriptions.push(this.statusBarItem);
         this.statusBarItem.hide();
     }
 
     public show() {
-        this.timer = this.timer || setInterval(() => {
-            this.statusBarItem!.text = 'cargo check ' + this.frame();
-        }, 300);
+        this.timer =
+            this.timer ||
+            setInterval(() => {
+                this.statusBarItem!.text = 'cargo check ' + this.frame();
+            }, 300);
 
         this.statusBarItem!.show();
     }
@@ -32,6 +37,6 @@ export class StatusDisplay {
     }
 
     private frame() {
-        return spinnerFrames[this.i = ++this.i % spinnerFrames.length];
+        return spinnerFrames[(this.i = ++this.i % spinnerFrames.length)];
     }
 }

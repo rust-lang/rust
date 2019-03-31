@@ -134,8 +134,9 @@ export async function handleSingle(runnable: Runnable) {
  * provide inline diagnostics; the user is met with a series of dialog boxes
  * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
  */
-export async function interactivelyStartCargoWatch(context: vscode.ExtensionContext) {
-
+export async function interactivelyStartCargoWatch(
+    context: vscode.ExtensionContext
+) {
     if (Server.config.enableCargoWatchOnStartup === 'disabled') {
         return;
     }
@@ -195,7 +196,6 @@ export async function interactivelyStartCargoWatch(context: vscode.ExtensionCont
         }
     }
 
-
     const validater = new CargoWatchProvider();
-    validater.activate(context.subscriptions);    
+    validater.activate(context.subscriptions);
 }
