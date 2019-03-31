@@ -26,10 +26,12 @@ impl SmolStr {
         SmolStr(Repr::new(text))
     }
 
+    #[inline(always)]
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 
+    #[inline(always)]
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
@@ -42,6 +44,14 @@ impl SmolStr {
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    #[inline(always)]
+    pub fn is_heap_allocated(&self) -> bool {
+        match self.0 {
+            Repr::Heap(..) => true,
+            _ => false
+        }
     }
 }
 
@@ -214,6 +224,7 @@ impl Repr {
         }
     }
 
+    #[inline]
     fn as_str(&self) -> &str {
         match self {
             Repr::Heap(data) => &*data,
