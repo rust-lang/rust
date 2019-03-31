@@ -140,7 +140,7 @@ impl WaitQueue {
     /// until a wakeup event.
     ///
     /// This function does not return until this thread has been awoken.
-    pub fn wait<T>(mut guard: SpinMutexGuard<WaitVariable<T>>) {
+    pub fn wait<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>) {
         unsafe {
             let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
                 tcs: thread::current(),
@@ -162,8 +162,8 @@ impl WaitQueue {
     ///
     /// If a waiter is found, a `WaitGuard` is returned which will notify the
     /// waiter when it is dropped.
-    pub fn notify_one<T>(mut guard: SpinMutexGuard<WaitVariable<T>>)
-        -> Result<WaitGuard<T>, SpinMutexGuard<WaitVariable<T>>>
+    pub fn notify_one<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>)
+        -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>>
     {
         unsafe {
             if let Some(entry) = guard.queue.inner.pop() {
@@ -186,8 +186,8 @@ impl WaitQueue {
     ///
     /// If at least one waiter is found, a `WaitGuard` is returned which will
     /// notify all waiters when it is dropped.
-    pub fn notify_all<T>(mut guard: SpinMutexGuard<WaitVariable<T>>)
-        -> Result<WaitGuard<T>, SpinMutexGuard<WaitVariable<T>>>
+    pub fn notify_all<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>)
+        -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>>
     {
         unsafe {
             let mut count = 0;
@@ -433,7 +433,7 @@ mod spin_mutex {
         }
 
         #[inline(always)]
-        pub fn lock(&self) -> SpinMutexGuard<T> {
+        pub fn lock(&self) -> SpinMutexGuard<'_, T> {
             loop {
                 match self.try_lock() {
                     None => while self.lock.load(Ordering::Relaxed) {
@@ -445,7 +445,7 @@ mod spin_mutex {
         }
 
         #[inline(always)]
-        pub fn try_lock(&self) -> Option<SpinMutexGuard<T>> {
+        pub fn try_lock(&self) -> Option<SpinMutexGuard<'_, T>> {
             if !self.lock.compare_and_swap(false, true, Ordering::Acquire) {
                 Some(SpinMutexGuard {
                     mutex: self,

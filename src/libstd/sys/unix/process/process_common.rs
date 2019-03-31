@@ -330,7 +330,7 @@ impl ChildStdio {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.program)?;
         for arg in &self.args {
             write!(f, " {:?}", arg)?;
@@ -380,7 +380,7 @@ impl From<c_int> for ExitStatus {
 }
 
 impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit code: {}", code)
         } else {

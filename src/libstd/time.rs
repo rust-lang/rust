@@ -349,7 +349,7 @@ impl Sub<Instant> for Instant {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Debug for Instant {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -513,7 +513,7 @@ impl SubAssign<Duration> for SystemTime {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Debug for SystemTime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -581,7 +581,7 @@ impl Error for SystemTimeError {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Display for SystemTimeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "second time provided was later than self")
     }
 }
