@@ -132,7 +132,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                                      .collect();
 
                         let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, generics);
-                        let predicates = infcx.tcx.predicates_of(impl_def_id);
+                        let predicates = infcx.tcx.explicit_predicates_of(impl_def_id);
 
                         impls.push(Item {
                             source: infcx.tcx.def_span(impl_def_id).clean(self.cx),
