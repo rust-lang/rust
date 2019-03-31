@@ -53,6 +53,16 @@ Install Miri via `rustup`:
 rustup component add miri
 ```
 
+### error: component 'miri' is unavailable for download (nightly)
+
+The development of rustc's internals is quite fast paced. Downstream projects that rely on nightly internals, particularly clippy, can break fairly often because of this.
+
+When such breakages occur the nightly release will be missing Miri. This is a trade-off compared with the other option of just not publishing the night's release, but does avoid blocking the rust nightly releases for people that don't need clippy/Miri.
+
+To mitigate the issues we have:
+* rustup will warn if the update is missing any components you currently have. This means you can no longer accidentally update to a no-Miri release. Once Miri is available again it'll update.
+* However, if you need latest nightly Miri you can use <https://rust-lang.github.io/rustup-components-history/> to find and install a dated nightly release e.g. `rustup install nightly-2018-12-06`.
+
 Now you can run your project in Miri:
 
 1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
@@ -88,18 +98,8 @@ fn does_not_work_on_miri() {
 
 ### Common Problems
 
-When using the above instructions, you may encounter a number of confusing
+When using the above instructions, you may encounter a number of confusing compiler
 errors.
-
-#### "component 'miri' for target '\<target\>' is unavailable for download for channel 'nightly'"
-
-The latest nightly may have broken Miri. If [this is the case][rust-toolstate], instead try to install Miri the old way with
-
-```sh
-cargo +nightly install --force --git https://github.com/rust-lang/miri miri
-```
-
-[rust-toolstate]: 
 
 #### "found possibly newer version of crate `std` which `<dependency>` depends on"
 
