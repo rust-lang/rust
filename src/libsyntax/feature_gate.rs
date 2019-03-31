@@ -703,8 +703,6 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
     // support for arbitrary delimited token streams in non-macro attributes
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208), None),
-    // add replace and swap functions to RefCell
-    (accepted, refcell_replace_swap, "1.35.0", Some(43570), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

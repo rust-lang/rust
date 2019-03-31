@@ -702,8 +702,6 @@ impl<T> RefCell<T> {
     /// Replaces the wrapped value with a new one computed from `f`, returning
     /// the old value, without deinitializing either one.
     ///
-    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
-    ///
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
