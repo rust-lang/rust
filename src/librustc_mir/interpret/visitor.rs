@@ -241,8 +241,7 @@ macro_rules! make_value_visitor {
                 // If this is a multi-variant layout, we have find the right one and proceed with
                 // that.
                 match v.layout().variants {
-                    layout::Variants::NicheFilling { .. } |
-                    layout::Variants::Tagged { .. } => {
+                    layout::Variants::Multiple { .. } => {
                         let op = v.to_op(self.ecx())?;
                         let idx = self.ecx().read_discriminant(op)?.1;
                         let inner = v.project_downcast(self.ecx(), idx)?;

@@ -282,8 +282,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     });
                                 }
                             }
-                            layout::Variants::Tagged { .. } |
-                            layout::Variants::NicheFilling { .. } => {},
+                            layout::Variants::Multiple { .. } => {},
                         }
                         let llval = operand.immediate();
 

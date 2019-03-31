@@ -452,7 +452,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
             _ => {
                 let mut data_variant = match self.variants {
-                    layout::Variants::NicheFilling { dataful_variant, .. } => {
+                    layout::Variants::Multiple {
+                        discr_kind: layout::DiscriminantKind::Niche {
+                            dataful_variant,
+                            ..
+                        },
+                        ..
+                    } => {
                         // Only the niche itself is always initialized,
                         // so only check for a pointer at its offset.
                         //
