@@ -777,7 +777,6 @@ impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
                                                  value: &V)
                                                  -> Result<(), E::Error>
     {
-        use crate::ty::codec::TyEncoder;
         let start_pos = self.position();
 
         tag.encode(self)?;
