@@ -20,7 +20,7 @@ use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
-use super::operand::{OperandValue, OperandRef};
+use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -695,18 +695,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // an "spoofed" `VaList`. This argument is ignored, but we need to
             // populate it with a dummy operand so that the users real arguments
             // are not overwritten.
-            let i = if sig.c_variadic && last_arg_idx.map(|x| x == i).unwrap_or(false) {
-                let layout = match self.cx.tcx().lang_items().va_list() {
-                    Some(did) => bx.cx().layout_of(bx.tcx().type_of(did)),
-                    None => bug!("`va_list` language item required for C-variadics"),
-                };
-                let op = OperandRef {
-                    val: OperandValue::Immediate(
-                        bx.cx().const_undef(bx.cx().immediate_backend_type(layout)
-                    )),
-                    layout: layout,
-                };
-                self.codegen_argument(&mut bx, op, &mut llargs, &fn_ty.args[i]);
+            let i = if sig.c_variadic && last_arg_idx.map(|x| i >= x).unwrap_or(false) {
                 if i + 1 < fn_ty.args.len() {
                     i + 1
                 } else {
