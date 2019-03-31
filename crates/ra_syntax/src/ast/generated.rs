@@ -685,6 +685,7 @@ impl ToOwned for DynTraitType {
 }
 
 
+impl ast::TypeBoundsOwner for DynTraitType {}
 impl DynTraitType {}
 
 // EnumDef
@@ -1581,6 +1582,7 @@ impl ToOwned for ImplTraitType {
 }
 
 
+impl ast::TypeBoundsOwner for ImplTraitType {}
 impl ImplTraitType {}
 
 // IndexExpr
@@ -4061,6 +4063,7 @@ impl ast::NameOwner for TraitDef {}
 impl ast::AttrsOwner for TraitDef {}
 impl ast::DocCommentsOwner for TraitDef {}
 impl ast::TypeParamsOwner for TraitDef {}
+impl ast::TypeBoundsOwner for TraitDef {}
 impl TraitDef {
     pub fn item_list(&self) -> Option<&ItemList> {
         super::child_opt(self)
@@ -4291,6 +4294,7 @@ impl ast::NameOwner for TypeAliasDef {}
 impl ast::TypeParamsOwner for TypeAliasDef {}
 impl ast::AttrsOwner for TypeAliasDef {}
 impl ast::DocCommentsOwner for TypeAliasDef {}
+impl ast::TypeBoundsOwner for TypeAliasDef {}
 impl TypeAliasDef {
     pub fn type_ref(&self) -> Option<&TypeRef> {
         super::child_opt(self)
@@ -4465,6 +4469,7 @@ impl ToOwned for TypeParam {
 
 impl ast::NameOwner for TypeParam {}
 impl ast::AttrsOwner for TypeParam {}
+impl ast::TypeBoundsOwner for TypeParam {}
 impl TypeParam {}
 
 // TypeParamList

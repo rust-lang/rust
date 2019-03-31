@@ -110,6 +110,12 @@ pub trait TypeParamsOwner: AstNode {
     }
 }
 
+pub trait TypeBoundsOwner: AstNode {
+    fn type_bound_list(&self) -> Option<&TypeBoundList> {
+        child_opt(self)
+    }
+}
+
 pub trait AttrsOwner: AstNode {
     fn attrs(&self) -> AstChildren<Attr> {
         children(self)
