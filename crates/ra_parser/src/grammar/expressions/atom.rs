@@ -92,10 +92,10 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 }
             }
         }
-
-        ASYNC_KW if la == L_CURLY => {
+        ASYNC_KW if la == L_CURLY || la == MOVE_KW => {
             let m = p.start();
             p.bump();
+            p.eat(MOVE_KW);
             block_expr(p, Some(m))
         }
         MATCH_KW => match_expr(p),
