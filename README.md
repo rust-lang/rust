@@ -53,7 +53,7 @@ Install Miri via `rustup`:
 rustup component add miri
 ```
 
-If `rustup` says the `miri` component is unavailable, that's because not all nightly releases come with all tools. Check out this website to determine a nightly version that comes with Miri and install that, e.g. using `rustup install nightly-2019-03-28`.
+If `rustup` says the `miri` component is unavailable, that's because not all nightly releases come with all tools. Check out [this website](https://rust-lang.github.io/rustup-components-history) to determine a nightly version that comes with Miri and install that, e.g. using `rustup install nightly-2019-03-28`.
 
 Now you can run your project in Miri:
 
