@@ -511,14 +511,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _) => {
-                // Shallow borrows are uses from the user's point of view.
-                self.report_use_while_mutably_borrowed(context, (place, span), issued_borrow);
-                return;
-            }
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _)
             | (BorrowKind::Shared, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
             | (BorrowKind::Shallow, _, _, BorrowKind::Shared, _, _)
             | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _) => unreachable!(),
         };
