@@ -1,0 +1,14 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-59508-1.rs:2:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error: lifetime parameters must be declared prior to type parameters
+  --> $DIR/issue-59508-1.rs:12:25
+   |
+LL |     pub fn do_things<T, 'a, 'b: 'a>() {
+   |                     ----^^--^^----- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b: 'a, T>`
+
+error: aborting due to previous error
+
