@@ -3,133 +3,18 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use atty;
+use config_proc_macro::config_type;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 
-use crate::config::config_type::ConfigType;
 use crate::config::lists::*;
 use crate::config::Config;
 
-/// Macro that will stringify the enum variants or a provided textual repr
-#[macro_export]
-macro_rules! configuration_option_enum_stringify {
-    ($variant:ident) => {
-        stringify!($variant)
-    };
-
-    ($_variant:ident: $value:expr) => {
-        stringify!($value)
-    };
-}
-
-/// Macro for deriving implementations of Serialize/Deserialize for enums
-#[macro_export]
-macro_rules! impl_enum_serialize_and_deserialize {
-    ( $e:ident, $( $variant:ident $(: $value:expr)* ),* ) => {
-        impl ::serde::ser::Serialize for $e {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                where S: ::serde::ser::Serializer
-            {
-                use serde::ser::Error;
-
-                // We don't know whether the user of the macro has given us all options.
-                #[allow(unreachable_patterns)]
-                match *self {
-                    $(
-                        $e::$variant => serializer.serialize_str(
-                            configuration_option_enum_stringify!($variant $(: $value)*)
-                        ),
-                    )*
-                    _ => {
-                        Err(S::Error::custom(format!("Cannot serialize {:?}", self)))
-                    }
-                }
-            }
-        }
-
-        impl<'de> ::serde::de::Deserialize<'de> for $e {
-            fn deserialize<D>(d: D) -> Result<Self, D::Error>
-                    where D: ::serde::Deserializer<'de> {
-                use serde::de::{Error, Visitor};
-                use std::marker::PhantomData;
-                use std::fmt;
-                struct StringOnly<T>(PhantomData<T>);
-                impl<'de, T> Visitor<'de> for StringOnly<T>
-                        where T: ::serde::Deserializer<'de> {
-                    type Value = String;
-                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        formatter.write_str("string")
-                    }
-                    fn visit_str<E>(self, value: &str) -> Result<String, E> {
-                        Ok(String::from(value))
-                    }
-                }
-                let s = d.deserialize_string(StringOnly::<D>(PhantomData))?;
-                $(
-                    if configuration_option_enum_stringify!($variant $(: $value)*)
-                        .eq_ignore_ascii_case(&s) {
-                      return Ok($e::$variant);
-                    }
-                )*
-                static ALLOWED: &'static[&str] = &[
-                    $(configuration_option_enum_stringify!($variant $(: $value)*),)*];
-                Err(D::Error::unknown_variant(&s, ALLOWED))
-            }
-        }
-
-        impl ::std::str::FromStr for $e {
-            type Err = &'static str;
-
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                $(
-                    if configuration_option_enum_stringify!($variant $(: $value)*)
-                        .eq_ignore_ascii_case(s) {
-                        return Ok($e::$variant);
-                    }
-                )*
-                Err("Bad variant")
-            }
-        }
-
-        impl ConfigType for $e {
-            fn doc_hint() -> String {
-                let mut variants = Vec::new();
-                $(
-                    variants.push(
-                        configuration_option_enum_stringify!($variant $(: $value)*)
-                    );
-                )*
-                format!("[{}]", variants.join("|"))
-            }
-        }
-    };
-}
-
-macro_rules! configuration_option_enum {
-    ($e:ident: $( $name:ident $(: $value:expr)* ),+ $(,)*) => (
-        #[derive(Copy, Clone, Eq, PartialEq)]
-        pub enum $e {
-            $( $name ),+
-        }
-
-        impl ::std::fmt::Debug for $e {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                f.write_str(match self {
-                    $(
-                        $e::$name => configuration_option_enum_stringify!($name $(: $value)*),
-                    )+
-                })
-            }
-        }
-
-        impl_enum_serialize_and_deserialize!($e, $( $name $(: $value)* ),+);
-    );
-}
-
-configuration_option_enum! { NewlineStyle:
-    Auto, // Auto-detect based on the raw source input
+#[config_type]
+pub enum NewlineStyle {
+    Auto,    // Auto-detect based on the raw source input
     Windows, // \r\n
-    Unix, // \n
-    Native, // \r\n in Windows, \n on other platforms
+    Unix,    // \n
+    Native,  // \r\n in Windows, \n on other platforms
 }
 
 impl NewlineStyle {
@@ -188,7 +73,8 @@ impl NewlineStyle {
     }
 }
 
-configuration_option_enum! { BraceStyle:
+#[config_type]
+pub enum BraceStyle {
     AlwaysNextLine,
     PreferSameLine,
     // Prefer same line except where there is a where-clause, in which case force
@@ -196,7 +82,8 @@ configuration_option_enum! { BraceStyle:
     SameLineWhere,
 }
 
-configuration_option_enum! { ControlBraceStyle:
+#[config_type]
+pub enum ControlBraceStyle {
     // K&R style, Rust community default
     AlwaysSameLine,
     // Stroustrup style
@@ -205,7 +92,8 @@ configuration_option_enum! { ControlBraceStyle:
     AlwaysNextLine,
 }
 
-configuration_option_enum! { IndentStyle:
+#[config_type]
+pub enum IndentStyle {
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
     Visual,
@@ -213,7 +101,8 @@ configuration_option_enum! { IndentStyle:
     Block,
 }
 
-configuration_option_enum! { Density:
+#[config_type]
+pub enum Density {
     // Fit as much on one line as possible.
     Compressed,
     // Use more lines.
@@ -222,14 +111,16 @@ configuration_option_enum! { Density:
     Vertical,
 }
 
-configuration_option_enum! { TypeDensity:
+#[config_type]
+pub enum TypeDensity {
     // No spaces around "=" and "+"
     Compressed,
     // Spaces around " = " and " + "
     Wide,
 }
 
-configuration_option_enum! { Heuristics:
+#[config_type]
+pub enum Heuristics {
     // Turn off any heuristics
     Off,
     // Turn on max heuristics
@@ -249,7 +140,8 @@ impl Density {
     }
 }
 
-configuration_option_enum! { ReportTactic:
+#[config_type]
+pub enum ReportTactic {
     Always,
     Unnumbered,
     Never,
@@ -257,7 +149,8 @@ configuration_option_enum! { ReportTactic:
 
 // What Rustfmt should emit. Mostly corresponds to the `--emit` command line
 // option.
-configuration_option_enum! { EmitMode:
+#[config_type]
+pub enum EmitMode {
     // Emits to files.
     Files,
     // Writes the output to stdout.
@@ -275,7 +168,8 @@ configuration_option_enum! { EmitMode:
 }
 
 // Client-preference for coloured output.
-configuration_option_enum! { Color:
+#[config_type]
+pub enum Color {
     // Always use color, whether it is a piped or terminal output
     Always,
     // Never use color
@@ -284,7 +178,8 @@ configuration_option_enum! { Color:
     Auto,
 }
 
-configuration_option_enum! { Version:
+#[config_type]
+pub enum Version {
     // 1.x.y
     One,
     // 2.x.y
@@ -303,7 +198,8 @@ impl Color {
 }
 
 // How chatty should Rustfmt be?
-configuration_option_enum! { Verbosity:
+#[config_type]
+pub enum Verbosity {
     // Emit more.
     Verbose,
     Normal,
@@ -474,9 +370,14 @@ pub trait CliOptions {
 }
 
 // The edition of the compiler (RFC 2052)
-configuration_option_enum! { Edition:
-    Edition2015: 2015,
-    Edition2018: 2018,
+#[config_type]
+pub enum Edition {
+    #[value = "2015"]
+    #[doc_hint = "2015"]
+    Edition2015,
+    #[value = "2018"]
+    #[doc_hint = "2018"]
+    Edition2018,
 }
 
 impl Default for Edition {
