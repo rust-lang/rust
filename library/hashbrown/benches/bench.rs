@@ -150,12 +150,10 @@ fn insert_8_char_string(b: &mut Bencher) {
         strings.push(format!("{:x}", -i));
     }
 
-
     let mut m = new_map();
     b.iter(|| {
         for key in &strings {
             m.insert(key, key);
         }
     })
-
 }
