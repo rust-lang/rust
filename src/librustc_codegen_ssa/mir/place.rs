@@ -216,37 +216,36 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         if self.layout.abi.is_uninhabited() {
             return bx.cx().const_undef(cast_to);
         }
-        match self.layout.variants {
+        let (discr_scalar, discr_kind) = match self.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = self.layout.ty.ty_adt_def().map_or(
                     index.as_u32() as u128,
                     |def| def.discriminant_for_variant(bx.cx().tcx(), index).val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            layout::Variants::Tagged { .. } |
-            layout::Variants::NicheFilling { .. } => {},
-        }
+            layout::Variants::Multiple { ref discr, ref discr_kind, .. } => {
+                (discr, discr_kind)
+            }
+        };
 
         let discr = self.project_field(bx, 0);
         let lldiscr = bx.load_operand(discr).immediate();
-        match self.layout.variants {
-            layout::Variants::Single { .. } => bug!(),
-            layout::Variants::Tagged { ref tag, .. } => {
-                let signed = match tag.value {
+        match *discr_kind {
+            layout::DiscriminantKind::Tag => {
+                let signed = match discr_scalar.value {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
                     // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
-                    layout::Int(_, signed) => !tag.is_bool() && signed,
+                    layout::Int(_, signed) => !discr_scalar.is_bool() && signed,
                     _ => false
                 };
                 bx.intcast(lldiscr, cast_to, signed)
             }
-            layout::Variants::NicheFilling {
+            layout::DiscriminantKind::Niche {
                 dataful_variant,
                 ref niche_variants,
                 niche_start,
-                ..
             } => {
                 let niche_llty = bx.cx().immediate_backend_type(discr.layout);
                 if niche_variants.start() == niche_variants.end() {
@@ -291,7 +290,10 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
             layout::Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            layout::Variants::Tagged { .. } => {
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Tag,
+                ..
+            } => {
                 let ptr = self.project_field(bx, 0);
                 let to = self.layout.ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(bx.tcx(), variant_index)
@@ -301,10 +303,12 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     ptr.llval,
                     ptr.align);
             }
-            layout::Variants::NicheFilling {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
+            layout::Variants::Multiple {
+                discr_kind: layout::DiscriminantKind::Niche {
+                    dataful_variant,
+                    ref niche_variants,
+                    niche_start,
+                },
                 ..
             } => {
                 if variant_index != dataful_variant {

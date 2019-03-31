@@ -25,7 +25,6 @@ fn foo() {
 #[cfg(unix)]
 fn check_status(status: std::process::ExitStatus)
 {
-    use libc;
     use std::os::unix::process::ExitStatusExt;
 
     assert!(status.signal() == Some(libc::SIGILL)

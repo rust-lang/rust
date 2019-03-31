@@ -4,6 +4,8 @@
 // compile-flags:--extern xcrate
 // edition:2018
 
+#![allow(unused_imports)]
+
 use xcrate::Z;
 
 fn f() {

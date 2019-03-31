@@ -185,6 +185,7 @@ pub enum ExprKind<'tcx> {
     },
     ClosureFnPointer {
         source: ExprRef<'tcx>,
+        unsafety: hir::Unsafety,
     },
     UnsafeFnPointer {
         source: ExprRef<'tcx>,

@@ -18,6 +18,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             features: "+strict-align,+v6".to_string(),
             abi_blacklist: super::arm_base::abi_blacklist(),
+            target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
             .. base
         },
     })

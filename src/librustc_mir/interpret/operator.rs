@@ -331,8 +331,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::mir::UnOp::*;
-        use rustc_apfloat::ieee::{Single, Double};
-        use rustc_apfloat::Float;
 
         let layout = val.layout;
         let val = val.to_scalar()?;

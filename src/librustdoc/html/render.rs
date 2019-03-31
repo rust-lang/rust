@@ -1069,8 +1069,6 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
 
     if cx.shared.include_sources {
-        use std::path::Component;
-
         let mut hierarchy = Hierarchy::new(OsString::new());
         for source in cx.shared.local_sources.iter()
                                              .filter_map(|p| p.0.strip_prefix(&cx.shared.src_root)

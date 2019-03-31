@@ -64,8 +64,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                                     dest);
                             }
                         }
-                        layout::Variants::Tagged { .. } |
-                        layout::Variants::NicheFilling { .. } => {},
+                        layout::Variants::Multiple { .. } => {},
                     }
 
                     let dest_val = self.cast_scalar(src.to_scalar()?, src.layout, dest.layout)?;
@@ -105,7 +104,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
             }
 
-            ClosureFnPointer => {
+            ClosureFnPointer(_) => {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {

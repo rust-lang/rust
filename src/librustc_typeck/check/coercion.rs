@@ -225,7 +225,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
             ty::Closure(def_id_a, substs_a) => {
                 // Non-capturing closures are coercible to
-                // function pointers
+                // function pointers or unsafe function pointers.
+                // It cannot convert closures that require unsafe.
                 self.coerce_closure_to_fn(a, def_id_a, substs_a, b)
             }
             _ => {
@@ -714,16 +715,19 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let hir_id_a = self.tcx.hir().as_local_hir_id(def_id_a).unwrap();
         match b.sty {
-            ty::FnPtr(_) if self.tcx.with_freevars(hir_id_a, |v| v.is_empty()) => {
+            ty::FnPtr(fn_ty) if self.tcx.with_freevars(hir_id_a, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
+                // or
+                //     `unsafe fn(arg0,arg1,...) -> _`
                 let sig = self.closure_sig(def_id_a, substs_a);
-                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig);
+                let unsafety = fn_ty.unsafety();
+                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig, unsafety);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
-                self.unify_and(pointer_ty, b, simple(Adjust::ClosureFnPointer))
+                self.unify_and(pointer_ty, b, simple(Adjust::ClosureFnPointer(unsafety)))
             }
             _ => self.unify_and(a, b, identity),
         }

@@ -197,7 +197,6 @@ pub trait Error: Debug + Display {
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
     /// Gets the `TypeId` of `self`
-    #[doc(hidden)]
     #[stable(feature = "error_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()

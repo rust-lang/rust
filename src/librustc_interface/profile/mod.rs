@@ -62,7 +62,6 @@ fn total_duration(traces: &[trace::Rec]) -> Duration {
 fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
     use std::fs::File;
-    use std::time::{Instant};
 
     let mut profq_msgs: Vec<ProfileQueriesMsg> = vec![];
     let mut frame: StackFrame = StackFrame { parse_st: ParseState::Clear, traces: vec![] };

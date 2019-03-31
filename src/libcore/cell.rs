@@ -702,8 +702,6 @@ impl<T> RefCell<T> {
     /// Replaces the wrapped value with a new one computed from `f`, returning
     /// the old value, without deinitializing either one.
     ///
-    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
-    ///
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
@@ -711,7 +709,6 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_replace_swap)]
     /// use std::cell::RefCell;
     /// let cell = RefCell::new(5);
     /// let old_value = cell.replace_with(|&mut old| old + 1);
@@ -719,7 +716,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(cell, RefCell::new(6));
     /// ```
     #[inline]
-    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    #[stable(feature = "refcell_replace_swap", since="1.35.0")]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
@@ -1421,7 +1418,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// ```
 /// use std::cell::UnsafeCell;
-/// use std::marker::Sync;
 ///
 /// # #[allow(dead_code)]
 /// struct NotThreadSafe<T> {

@@ -586,7 +586,7 @@ fn check_adjustments<'a, 'tcx>(
             Adjust::NeverToAny |
             Adjust::ReifyFnPointer |
             Adjust::UnsafeFnPointer |
-            Adjust::ClosureFnPointer |
+            Adjust::ClosureFnPointer(_) |
             Adjust::MutToConstPointer |
             Adjust::Borrow(_) |
             Adjust::Unsize => {}

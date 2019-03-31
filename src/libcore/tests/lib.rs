@@ -16,7 +16,6 @@
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]
-#![feature(refcell_replace_swap)]
 #![feature(slice_patterns)]
 #![feature(sort_internals)]
 #![feature(specialization)]
