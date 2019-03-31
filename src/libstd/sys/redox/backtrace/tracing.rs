@@ -37,7 +37,7 @@ pub fn unwind_backtrace(frames: &mut [Frame])
     };
     let result_unwind = unsafe {
         uw::_Unwind_Backtrace(trace_fn,
-                              &mut cx as *mut Context
+                              &mut cx as *mut Context<'_>
                               as *mut libc::c_void)
     };
     // See libunwind:src/unwind/Backtrace.c for the return values.
