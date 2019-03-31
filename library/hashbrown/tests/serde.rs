@@ -1,8 +1,5 @@
 #![cfg(feature = "serde")]
 
-extern crate hashbrown;
-extern crate serde_test;
-
 use hashbrown::{HashMap, HashSet};
 use serde_test::{assert_tokens, Token};
 

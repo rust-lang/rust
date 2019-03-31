@@ -5,8 +5,6 @@ use core::hash::{BuildHasherDefault, Hasher};
 use core::mem::size_of;
 use core::ops::BitXor;
 
-use byteorder::{ByteOrder, NativeEndian};
-
 /// Type alias for a `HashBuilder` using the `fx` hash algorithm.
 pub type FxHashBuilder = BuildHasherDefault<FxHasher>;
 
@@ -26,14 +24,14 @@ pub struct FxHasher {
 }
 
 #[cfg(target_pointer_width = "32")]
-const K: usize = 0x9e3779b9;
+const K: usize = 0x9e37_79b9;
 #[cfg(target_pointer_width = "64")]
-const K: usize = 0x517cc1b727220a95;
+const K: usize = 0x517c_c1b7_2722_0a95;
 
 impl Default for FxHasher {
     #[inline]
-    fn default() -> FxHasher {
-        FxHasher { hash: 0 }
+    fn default() -> Self {
+        Self { hash: 0 }
     }
 }
 
@@ -47,26 +45,33 @@ impl FxHasher {
 impl Hasher for FxHasher {
     #[inline]
     fn write(&mut self, mut bytes: &[u8]) {
-        #[cfg(target_pointer_width = "32")]
-        let read_usize = |bytes| NativeEndian::read_u32(bytes);
-        #[cfg(target_pointer_width = "64")]
-        let read_usize = |bytes| NativeEndian::read_u64(bytes);
+        macro_rules! read_bytes {
+            ($ty:ty, $src:expr) => {{
+                assert!(size_of::<$ty>() <= $src.len());
+                let mut data: $ty = 0;
+                unsafe {
+                    $src.as_ptr()
+                        .copy_to_nonoverlapping(&mut data as *mut $ty as *mut u8, size_of::<$ty>());
+                }
+                data
+            }};
+        }
 
-        let mut hash = FxHasher { hash: self.hash };
+        let mut hash = Self { hash: self.hash };
         assert!(size_of::<usize>() <= 8);
         while bytes.len() >= size_of::<usize>() {
-            hash.add_to_hash(read_usize(bytes) as usize);
+            hash.add_to_hash(read_bytes!(usize, bytes) as usize);
             bytes = &bytes[size_of::<usize>()..];
         }
         if (size_of::<usize>() > 4) && (bytes.len() >= 4) {
-            hash.add_to_hash(NativeEndian::read_u32(bytes) as usize);
+            hash.add_to_hash(read_bytes!(u32, bytes) as usize);
             bytes = &bytes[4..];
         }
         if (size_of::<usize>() > 2) && bytes.len() >= 2 {
-            hash.add_to_hash(NativeEndian::read_u16(bytes) as usize);
+            hash.add_to_hash(read_bytes!(u16, bytes) as usize);
             bytes = &bytes[2..];
         }
-        if (size_of::<usize>() > 1) && bytes.len() >= 1 {
+        if (size_of::<usize>() > 1) && !bytes.is_empty() {
             hash.add_to_hash(bytes[0] as usize);
         }
         self.hash = hash.hash;
@@ -89,6 +94,7 @@ impl Hasher for FxHasher {
 
     #[cfg(target_pointer_width = "32")]
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     fn write_u64(&mut self, i: u64) {
         self.add_to_hash(i as usize);
         self.add_to_hash((i >> 32) as usize);
@@ -96,6 +102,7 @@ impl Hasher for FxHasher {
 
     #[cfg(target_pointer_width = "64")]
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     fn write_u64(&mut self, i: u64) {
         self.add_to_hash(i as usize);
     }

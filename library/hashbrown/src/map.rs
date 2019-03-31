@@ -1,5 +1,5 @@
-use self::Entry::*;
-
+use crate::raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
+use crate::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash, Hasher};
@@ -7,10 +7,8 @@ use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
-use raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
-use CollectionAllocErr;
 
-pub use fx::FxHashBuilder as DefaultHashBuilder;
+pub use crate::fx::FxHashBuilder as DefaultHashBuilder;
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
@@ -152,7 +150,7 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 /// }
 ///
 /// impl Viking {
-///     /// Create a new Viking.
+///     /// Creates a new Viking.
 ///     fn new(name: &str, country: &str) -> Viking {
 ///         Viking { name: name.to_string(), country: country.to_string() }
 ///     }
@@ -188,18 +186,18 @@ pub use fx::FxHashBuilder as DefaultHashBuilder;
 
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
-    hash_builder: S,
+    pub(crate) hash_builder: S,
     pub(crate) table: RawTable<(K, V)>,
 }
 
 #[inline]
-fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
+pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
     val.hash(&mut state);
     state.finish()
 }
 
-impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
+impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -212,8 +210,8 @@ impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// ```
     #[inline]
-    pub fn new() -> HashMap<K, V, DefaultHashBuilder> {
-        Default::default()
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Creates an empty `HashMap` with the specified capacity.
@@ -228,16 +226,12 @@ impl<K: Hash + Eq, V> HashMap<K, V, DefaultHashBuilder> {
     /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
     /// ```
     #[inline]
-    pub fn with_capacity(capacity: usize) -> HashMap<K, V, DefaultHashBuilder> {
-        HashMap::with_capacity_and_hasher(capacity, Default::default())
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_hasher(capacity, DefaultHashBuilder::default())
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<K, V, S> HashMap<K, V, S> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys.
     ///
@@ -259,8 +253,8 @@ where
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
+    pub fn with_hasher(hash_builder: S) -> Self {
+        Self {
             hash_builder,
             table: RawTable::new(),
         }
@@ -288,8 +282,8 @@ where
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        HashMap {
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        Self {
             hash_builder,
             table: RawTable::with_capacity(capacity),
         }
@@ -331,6 +325,234 @@ where
         self.table.capacity()
     }
 
+    /// An iterator visiting all keys in arbitrary order.
+    /// The iterator element type is `&'a K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for key in map.keys() {
+    ///     println!("{}", key);
+    /// }
+    /// ```
+    #[inline]
+    pub fn keys(&self) -> Keys<'_, K, V> {
+        Keys { inner: self.iter() }
+    }
+
+    /// An iterator visiting all values in arbitrary order.
+    /// The iterator element type is `&'a V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for val in map.values() {
+    ///     println!("{}", val);
+    /// }
+    /// ```
+    #[inline]
+    pub fn values(&self) -> Values<'_, K, V> {
+        Values { inner: self.iter() }
+    }
+
+    /// An iterator visiting all values mutably in arbitrary order.
+    /// The iterator element type is `&'a mut V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    ///
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for val in map.values_mut() {
+    ///     *val = *val + 10;
+    /// }
+    ///
+    /// for val in map.values() {
+    ///     println!("{}", val);
+    /// }
+    /// ```
+    #[inline]
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+        ValuesMut {
+            inner: self.iter_mut(),
+        }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order.
+    /// The iterator element type is `(&'a K, &'a V)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for (key, val) in map.iter() {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
+    #[inline]
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Iter {
+                inner: self.table.iter(),
+                marker: PhantomData,
+            }
+        }
+    }
+
+    /// An iterator visiting all key-value pairs in arbitrary order,
+    /// with mutable references to the values.
+    /// The iterator element type is `(&'a K, &'a mut V)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// // Update all values
+    /// for (_, val) in map.iter_mut() {
+    ///     *val *= 2;
+    /// }
+    ///
+    /// for (key, val) in &map {
+    ///     println!("key: {} val: {}", key, val);
+    /// }
+    /// ```
+    #[inline]
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            IterMut {
+                inner: self.table.iter(),
+                marker: PhantomData,
+            }
+        }
+    }
+
+    #[cfg(test)]
+    #[inline]
+    fn raw_capacity(&self) -> usize {
+        self.table.buckets()
+    }
+
+    /// Returns the number of elements in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// assert_eq!(a.len(), 0);
+    /// a.insert(1, "a");
+    /// assert_eq!(a.len(), 1);
+    /// ```
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    /// Returns `true` if the map contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// assert!(a.is_empty());
+    /// a.insert(1, "a");
+    /// assert!(!a.is_empty());
+    /// ```
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
+    /// allocated memory for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// for (k, v) in a.drain().take(1) {
+    ///     assert!(k == 1 || k == 2);
+    ///     assert!(v == "a" || v == "b");
+    /// }
+    ///
+    /// assert!(a.is_empty());
+    /// ```
+    #[inline]
+    pub fn drain(&mut self) -> Drain<'_, K, V> {
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Drain {
+                inner: self.table.drain(),
+            }
+        }
+    }
+
+    /// Clears the map, removing all key-value pairs. Keeps the allocated memory
+    /// for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut a = HashMap::new();
+    /// a.insert(1, "a");
+    /// a.clear();
+    /// assert!(a.is_empty());
+    /// ```
+    #[inline]
+    pub fn clear(&mut self) {
+        self.table.clear();
+    }
+}
+
+impl<K, V, S> HashMap<K, V, S>
+where
+    K: Eq + Hash,
+    S: BuildHasher,
+{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -433,141 +655,6 @@ where
             .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
     }
 
-    /// An iterator visiting all keys in arbitrary order.
-    /// The iterator element type is `&'a K`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for key in map.keys() {
-    ///     println!("{}", key);
-    /// }
-    /// ```
-    #[inline]
-    pub fn keys(&self) -> Keys<K, V> {
-        Keys { inner: self.iter() }
-    }
-
-    /// An iterator visiting all values in arbitrary order.
-    /// The iterator element type is `&'a V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for val in map.values() {
-    ///     println!("{}", val);
-    /// }
-    /// ```
-    #[inline]
-    pub fn values(&self) -> Values<K, V> {
-        Values { inner: self.iter() }
-    }
-
-    /// An iterator visiting all values mutably in arbitrary order.
-    /// The iterator element type is `&'a mut V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    ///
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for val in map.values_mut() {
-    ///     *val = *val + 10;
-    /// }
-    ///
-    /// for val in map.values() {
-    ///     println!("{}", val);
-    /// }
-    /// ```
-    #[inline]
-    pub fn values_mut(&mut self) -> ValuesMut<K, V> {
-        ValuesMut {
-            inner: self.iter_mut(),
-        }
-    }
-
-    /// An iterator visiting all key-value pairs in arbitrary order.
-    /// The iterator element type is `(&'a K, &'a V)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// for (key, val) in map.iter() {
-    ///     println!("key: {} val: {}", key, val);
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter(&self) -> Iter<K, V> {
-        // Here we tie the lifetime of self to the iter.
-        unsafe {
-            Iter {
-                inner: self.table.iter(),
-                _marker: PhantomData,
-            }
-        }
-    }
-
-    /// An iterator visiting all key-value pairs in arbitrary order,
-    /// with mutable references to the values.
-    /// The iterator element type is `(&'a K, &'a mut V)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// // Update all values
-    /// for (_, val) in map.iter_mut() {
-    ///     *val *= 2;
-    /// }
-    ///
-    /// for (key, val) in &map {
-    ///     println!("key: {} val: {}", key, val);
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
-        // Here we tie the lifetime of self to the iter.
-        unsafe {
-            IterMut {
-                inner: self.table.iter(),
-                _marker: PhantomData,
-            }
-        }
-    }
-
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
@@ -588,7 +675,7 @@ where
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[inline]
-    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, S> {
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             Entry::Occupied(OccupiedEntry {
@@ -603,93 +690,6 @@ where
                 table: self,
             })
         }
-    }
-
-    #[cfg(test)]
-    #[inline]
-    fn raw_capacity(&self) -> usize {
-        self.table.buckets()
-    }
-
-    /// Returns the number of elements in the map.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// assert_eq!(a.len(), 0);
-    /// a.insert(1, "a");
-    /// assert_eq!(a.len(), 1);
-    /// ```
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.table.len()
-    }
-
-    /// Returns true if the map contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// assert!(a.is_empty());
-    /// a.insert(1, "a");
-    /// assert!(!a.is_empty());
-    /// ```
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
-    /// allocated memory for reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// a.insert(1, "a");
-    /// a.insert(2, "b");
-    ///
-    /// for (k, v) in a.drain().take(1) {
-    ///     assert!(k == 1 || k == 2);
-    ///     assert!(v == "a" || v == "b");
-    /// }
-    ///
-    /// assert!(a.is_empty());
-    /// ```
-    #[inline]
-    pub fn drain(&mut self) -> Drain<K, V> {
-        // Here we tie the lifetime of self to the iter.
-        unsafe {
-            Drain {
-                inner: self.table.drain(),
-            }
-        }
-    }
-
-    /// Clears the map, removing all key-value pairs. Keeps the allocated memory
-    /// for reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut a = HashMap::new();
-    /// a.insert(1, "a");
-    /// a.clear();
-    /// assert!(a.is_empty());
-    /// ```
-    #[inline]
-    pub fn clear(&mut self) {
-        self.table.clear();
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -754,7 +754,7 @@ where
             })
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -956,7 +956,6 @@ where
 
 impl<K, V, S> HashMap<K, V, S>
 where
-    K: Eq + Hash,
     S: BuildHasher,
 {
     /// Creates a raw entry builder for the HashMap.
@@ -991,8 +990,7 @@ where
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[inline]
-    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
-        self.reserve(1);
+    pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<'_, K, V, S> {
         RawEntryBuilderMut { map: self }
     }
 
@@ -1012,7 +1010,7 @@ where
     ///
     /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[inline]
-    pub fn raw_entry(&self) -> RawEntryBuilder<K, V, S> {
+    pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
     }
 }
@@ -1023,7 +1021,7 @@ where
     V: PartialEq,
     S: BuildHasher,
 {
-    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -1043,28 +1041,27 @@ where
 
 impl<K, V, S> Debug for HashMap<K, V, S>
 where
-    K: Eq + Hash + Debug,
+    K: Debug,
     V: Debug,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
     }
 }
 
 impl<K, V, S> Default for HashMap<K, V, S>
 where
-    K: Eq + Hash,
     S: BuildHasher + Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     #[inline]
-    fn default() -> HashMap<K, V, S> {
-        HashMap::with_hasher(Default::default())
+    fn default() -> Self {
+        Self::with_hasher(Default::default())
     }
 }
 
-impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
+impl<K, Q: ?Sized, V, S> Index<&Q> for HashMap<K, V, S>
 where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash,
@@ -1090,24 +1087,24 @@ where
 ///
 /// [`iter`]: struct.HashMap.html#method.iter
 /// [`HashMap`]: struct.HashMap.html
-pub struct Iter<'a, K: 'a, V: 'a> {
+pub struct Iter<'a, K, V> {
     inner: RawIter<(K, V)>,
-    _marker: PhantomData<&'a HashMap<K, V>>,
+    marker: PhantomData<(&'a K, &'a V)>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-impl<'a, K, V> Clone for Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
     #[inline]
-    fn clone(&self) -> Iter<'a, K, V> {
+    fn clone(&self) -> Self {
         Iter {
             inner: self.inner.clone(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
 
-impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -1119,19 +1116,19 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
 ///
 /// [`iter_mut`]: struct.HashMap.html#method.iter_mut
 /// [`HashMap`]: struct.HashMap.html
-pub struct IterMut<'a, K: 'a, V: 'a> {
+pub struct IterMut<'a, K, V> {
     inner: RawIter<(K, V)>,
     // To ensure invariance with respect to V
-    _marker: PhantomData<&'a mut V>,
+    marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
-impl<'a, K, V> IterMut<'a, K, V> {
+impl<K, V> IterMut<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<K, V> {
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.clone(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1150,10 +1147,10 @@ pub struct IntoIter<K, V> {
 impl<K, V> IntoIter<K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<K, V> {
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.iter(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1165,22 +1162,22 @@ impl<K, V> IntoIter<K, V> {
 ///
 /// [`keys`]: struct.HashMap.html#method.keys
 /// [`HashMap`]: struct.HashMap.html
-pub struct Keys<'a, K: 'a, V: 'a> {
+pub struct Keys<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-impl<'a, K, V> Clone for Keys<'a, K, V> {
+impl<K, V> Clone for Keys<'_, K, V> {
     #[inline]
-    fn clone(&self) -> Keys<'a, K, V> {
+    fn clone(&self) -> Self {
         Keys {
             inner: self.inner.clone(),
         }
     }
 }
 
-impl<'a, K: Debug, V> fmt::Debug for Keys<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -1192,22 +1189,22 @@ impl<'a, K: Debug, V> fmt::Debug for Keys<'a, K, V> {
 ///
 /// [`values`]: struct.HashMap.html#method.values
 /// [`HashMap`]: struct.HashMap.html
-pub struct Values<'a, K: 'a, V: 'a> {
+pub struct Values<'a, K, V> {
     inner: Iter<'a, K, V>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-impl<'a, K, V> Clone for Values<'a, K, V> {
+impl<K, V> Clone for Values<'_, K, V> {
     #[inline]
-    fn clone(&self) -> Values<'a, K, V> {
+    fn clone(&self) -> Self {
         Values {
             inner: self.inner.clone(),
         }
     }
 }
 
-impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
@@ -1219,17 +1216,17 @@ impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
 ///
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
-pub struct Drain<'a, K: 'a, V: 'a> {
-    pub(super) inner: RawDrain<'a, (K, V)>,
+pub struct Drain<'a, K, V> {
+    inner: RawDrain<'a, (K, V)>,
 }
 
-impl<'a, K, V> Drain<'a, K, V> {
+impl<K, V> Drain<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<K, V> {
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             inner: self.inner.iter(),
-            _marker: PhantomData,
+            marker: PhantomData,
         }
     }
 }
@@ -1241,16 +1238,16 @@ impl<'a, K, V> Drain<'a, K, V> {
 ///
 /// [`values_mut`]: struct.HashMap.html#method.values_mut
 /// [`HashMap`]: struct.HashMap.html
-pub struct ValuesMut<'a, K: 'a, V: 'a> {
+pub struct ValuesMut<'a, K, V> {
     inner: IterMut<'a, K, V>,
 }
 
-/// A builder for computing where in a HashMap a key-value pair would be stored.
+/// A builder for computing where in a [`HashMap`] a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
-pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
+pub struct RawEntryBuilderMut<'a, K, V, S> {
     map: &'a mut HashMap<K, V, S>,
 }
 
@@ -1274,7 +1271,7 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
+pub struct RawOccupiedEntryMut<'a, K, V> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V)>,
 }
@@ -1283,27 +1280,27 @@ pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
+pub struct RawVacantEntryMut<'a, K, V, S> {
     table: &'a mut RawTable<(K, V)>,
     hash_builder: &'a S,
 }
 
-/// A builder for computing where in a HashMap a key-value pair would be stored.
+/// A builder for computing where in a [`HashMap`] a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
-pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
+pub struct RawEntryBuilder<'a, K, V, S> {
     map: &'a HashMap<K, V, S>,
 }
 
 impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
 where
     S: BuildHasher,
-    K: Eq + Hash,
 {
-    /// Create a `RawEntryMut` from the given key.
+    /// Creates a `RawEntryMut` from the given key.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
     where
         K: Borrow<Q>,
@@ -1314,14 +1311,30 @@ where
         self.from_key_hashed_nocheck(hasher.finish(), k)
     }
 
-    /// Create a `RawEntryMut` from the given key and its hash.
+    /// Creates a `RawEntryMut` from the given key and its hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
     where
         K: Borrow<Q>,
         Q: Eq,
     {
         self.from_hash(hash, |q| q.borrow().eq(k))
+    }
+}
+
+impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
+where
+    S: BuildHasher,
+{
+    /// Creates a `RawEntryMut` from the given hash.
+    #[inline]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
+    where
+        for<'b> F: FnMut(&'b K) -> bool,
+    {
+        self.search(hash, is_match)
     }
 
     #[inline]
@@ -1340,15 +1353,6 @@ where
             }),
         }
     }
-
-    /// Create a `RawEntryMut` from the given hash.
-    #[inline]
-    pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
-    where
-        for<'b> F: FnMut(&'b K) -> bool,
-    {
-        self.search(hash, is_match)
-    }
 }
 
 impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
@@ -1357,6 +1361,7 @@ where
 {
     /// Access an entry by key.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
@@ -1369,6 +1374,7 @@ where
 
     /// Access an entry by a key and its hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
         K: Borrow<Q>,
@@ -1393,6 +1399,7 @@ where
 
     /// Access an entry by hash.
     #[inline]
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
     where
         F: FnMut(&K) -> bool,
@@ -1614,30 +1621,45 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[inline]
+    #[allow(clippy::shadow_unrelated)]
     pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V)
     where
         K: Hash,
         S: BuildHasher,
     {
+        let hash_builder = self.hash_builder;
+        self.insert_with_hasher(hash, key, value, |k| make_hash(hash_builder, k))
+    }
+
+    /// Set the value of an entry with a custom hasher function.
+    #[inline]
+    pub fn insert_with_hasher<H>(
+        self,
+        hash: u64,
+        key: K,
+        value: V,
+        hasher: H,
+    ) -> (&'a mut K, &'a mut V)
+    where
+        S: BuildHasher,
+        H: Fn(&K) -> u64,
+    {
         unsafe {
-            let hash_builder = self.hash_builder;
-            let elem = self
-                .table
-                .insert(hash, (key, value), |x| make_hash(hash_builder, &x.0));
+            let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
             let &mut (ref mut key, ref mut value) = elem.as_mut();
             (key, value)
         }
     }
 }
 
-impl<'a, K, V, S> Debug for RawEntryBuilderMut<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }
 }
 
-impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RawEntryMut::Vacant(ref v) => f.debug_tuple("RawEntry").field(v).finish(),
             RawEntryMut::Occupied(ref o) => f.debug_tuple("RawEntry").field(o).finish(),
@@ -1645,8 +1667,8 @@ impl<'a, K: Debug, V: Debug, S> Debug for RawEntryMut<'a, K, V, S> {
     }
 }
 
-impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
             .field("value", self.get())
@@ -1654,14 +1676,14 @@ impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'a, K, V> {
     }
 }
 
-impl<'a, K, V, S> Debug for RawVacantEntryMut<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut").finish()
     }
 }
 
-impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }
 }
@@ -1680,11 +1702,11 @@ pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
     Vacant(VacantEntry<'a, K, V, S>),
 }
 
-impl<'a, K: 'a + Debug + Eq + Hash, V: 'a + Debug, S: 'a> Debug for Entry<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug, S> Debug for Entry<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
-            Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
+            Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
+            Entry::Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
         }
     }
 }
@@ -1693,20 +1715,20 @@ impl<'a, K: 'a + Debug + Eq + Hash, V: 'a + Debug, S: 'a> Debug for Entry<'a, K,
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K: 'a, V: 'a, S: 'a> {
+pub struct OccupiedEntry<'a, K, V, S> {
     key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut HashMap<K, V, S>,
 }
 
-unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S>
+unsafe impl<K, V, S> Send for OccupiedEntry<'_, K, V, S>
 where
     K: Send,
     V: Send,
     S: Send,
 {
 }
-unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S>
+unsafe impl<K, V, S> Sync for OccupiedEntry<'_, K, V, S>
 where
     K: Sync,
     V: Sync,
@@ -1714,8 +1736,8 @@ where
 {
 }
 
-impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V: Debug, S> Debug for OccupiedEntry<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
             .field("value", self.get())
@@ -1727,23 +1749,19 @@ impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct VacantEntry<'a, K: 'a, V: 'a, S: 'a> {
+pub struct VacantEntry<'a, K, V, S> {
     hash: u64,
     key: K,
     table: &'a mut HashMap<K, V, S>,
 }
 
-impl<'a, K: 'a + Debug + Eq + Hash, V: 'a, S> Debug for VacantEntry<'a, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<K: Debug, V, S> Debug for VacantEntry<'_, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -1753,11 +1771,7 @@ where
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -1767,11 +1781,7 @@ where
     }
 }
 
-impl<K, V, S> IntoIterator for HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
+impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
@@ -1815,14 +1825,14 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
@@ -1839,20 +1849,20 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
-impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
+impl<K, V> fmt::Debug for IterMut<'_, K, V>
 where
     K: fmt::Debug,
     V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
@@ -1878,7 +1888,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 impl<K, V> FusedIterator for IntoIter<K, V> {}
 
 impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
@@ -1895,13 +1905,13 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
+impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
@@ -1915,13 +1925,13 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+impl<K, V> ExactSizeIterator for Values<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
+impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
@@ -1935,20 +1945,20 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
+impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
-impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
+impl<K, V> fmt::Debug for ValuesMut<'_, K, V>
 where
     K: fmt::Debug,
     V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter()).finish()
     }
 }
@@ -1965,20 +1975,20 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
         self.inner.size_hint()
     }
 }
-impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+impl<K, V> ExactSizeIterator for Drain<'_, K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
+impl<K, V> FusedIterator for Drain<'_, K, V> {}
 
-impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
+impl<K, V> fmt::Debug for Drain<'_, K, V>
 where
     K: fmt::Debug,
     V: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
@@ -2007,8 +2017,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default),
         }
     }
 
@@ -2034,8 +2044,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default()),
         }
     }
 
@@ -2052,8 +2062,8 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     #[inline]
     pub fn key(&self) -> &K {
         match *self {
-            Occupied(ref entry) => entry.key(),
-            Vacant(ref entry) => entry.key(),
+            Entry::Occupied(ref entry) => entry.key(),
+            Entry::Vacant(ref entry) => entry.key(),
         }
     }
 
@@ -2083,11 +2093,11 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
         F: FnOnce(&mut V),
     {
         match self {
-            Occupied(mut entry) => {
+            Entry::Occupied(mut entry) => {
                 f(entry.get_mut());
-                Occupied(entry)
+                Entry::Occupied(entry)
             }
-            Vacant(entry) => Vacant(entry),
+            Entry::Vacant(entry) => Entry::Vacant(entry),
         }
     }
 }
@@ -2115,8 +2125,8 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
         S: BuildHasher,
     {
         match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Default::default()),
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(Default::default()),
         }
     }
 }
@@ -2351,7 +2361,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, S> VacantEntry<'a, K, V, S> {
+impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -2423,9 +2433,9 @@ where
     S: BuildHasher + Default,
 {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let iter = iter.into_iter();
-        let mut map = HashMap::with_capacity_and_hasher(iter.size_hint().0, Default::default());
+        let mut map = Self::with_capacity_and_hasher(iter.size_hint().0, S::default());
         for (k, v) in iter {
             map.insert(k, v);
         }
@@ -2512,13 +2522,13 @@ fn assert_covariance() {
 mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
-    use super::HashMap;
+    use super::{HashMap, RawEntryMut};
+    #[cfg(not(miri))]
+    use crate::CollectionAllocErr::*;
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
     use std::usize;
     use std::vec::Vec;
-    #[cfg(not(miri))]
-    use CollectionAllocErr::*;
 
     #[test]
     fn test_zero_capacities() {
@@ -2614,7 +2624,7 @@ mod test_map {
     }
 
     impl Clone for Droppable {
-        fn clone(&self) -> Droppable {
+        fn clone(&self) -> Self {
             Droppable::new(self.k)
         }
     }
@@ -3193,7 +3203,6 @@ mod test_map {
 
     #[test]
     #[should_panic]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/636
     fn test_index_nonexistent() {
         let mut map = HashMap::new();
 
@@ -3393,7 +3402,13 @@ mod test_map {
 
         if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE / 8) {
         } else {
-            panic!("usize::MAX / 8 should trigger an OOM!")
+            // This may succeed if there is enough free memory. Attempt to
+            // allocate a second hashmap to ensure the allocation will fail.
+            let mut empty_bytes2: HashMap<u8, u8> = HashMap::new();
+            if let Err(AllocErr) = empty_bytes2.try_reserve(MAX_USIZE / 8) {
+            } else {
+                panic!("usize::MAX / 8 should trigger an OOM!");
+            }
         }
     }
 
@@ -3502,4 +3517,48 @@ mod test_map {
         }
     }
 
+    #[test]
+    fn test_key_without_hash_impl() {
+        #[derive(Debug)]
+        struct IntWrapper(u64);
+
+        let mut m: HashMap<IntWrapper, ()> = HashMap::new();
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 0"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(0, IntWrapper(0), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_none());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let vacant_entry = match m.raw_entry_mut().from_hash(1, |k| k.0 == 1) {
+                RawEntryMut::Occupied(..) => panic!("Found entry for key 1"),
+                RawEntryMut::Vacant(e) => e,
+            };
+            vacant_entry.insert_with_hasher(1, IntWrapper(1), (), |k| k.0);
+        }
+        {
+            assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_some());
+            assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+            assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+        }
+        {
+            let occupied_entry = match m.raw_entry_mut().from_hash(0, |k| k.0 == 0) {
+                RawEntryMut::Occupied(e) => e,
+                RawEntryMut::Vacant(..) => panic!("Couldn't find entry for key 0"),
+            };
+            occupied_entry.remove();
+        }
+        assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
+        assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
+        assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
+    }
 }

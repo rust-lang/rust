@@ -2,7 +2,7 @@
 //! map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
 //! and `HashSet` types.
 //!
-//! The original C++ version of SwissTable can be found [here], and this
+//! The original C++ version of [SwissTable] can be found [here], and this
 //! [CppCon talk] gives an overview of how the algorithm works.
 //!
 //! [SwissTable]: https://abseil.io/blog/20180927-swisstables
@@ -23,24 +23,17 @@
     )
 )]
 #![warn(missing_docs)]
+#![allow(clippy::module_name_repetitions)]
+#![warn(rust_2018_idioms)]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
-#[cfg(test)]
-extern crate rand;
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
-extern crate byteorder;
-#[cfg(feature = "rayon")]
-extern crate rayon;
-extern crate scopeguard;
-#[cfg(feature = "serde")]
-extern crate serde;
 #[cfg(not(feature = "nightly"))]
-#[cfg_attr(test, macro_use)]
 extern crate std as alloc;
 
 #[macro_use]
@@ -50,11 +43,17 @@ mod external_trait_impls;
 mod fx;
 mod map;
 mod raw;
+#[cfg(feature = "rustc-dep-of-std")]
+mod rustc_entry;
+mod scopeguard;
 mod set;
 
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
-    pub use map::*;
+    pub use crate::map::*;
+
+    #[cfg(feature = "rustc-dep-of-std")]
+    pub use crate::rustc_entry::*;
 
     #[cfg(feature = "rayon")]
     /// [rayon]-based parallel iterator types for hash maps.
@@ -63,12 +62,12 @@ pub mod hash_map {
     ///
     /// [rayon]: https://docs.rs/rayon/1.0/rayon
     pub mod rayon {
-        pub use external_trait_impls::rayon::map::*;
+        pub use crate::external_trait_impls::rayon::map::*;
     }
 }
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
-    pub use set::*;
+    pub use crate::set::*;
 
     #[cfg(feature = "rayon")]
     /// [rayon]-based parallel iterator types for hash sets.
@@ -77,14 +76,14 @@ pub mod hash_set {
     ///
     /// [rayon]: https://docs.rs/rayon/1.0/rayon
     pub mod rayon {
-        pub use external_trait_impls::rayon::set::*;
+        pub use crate::external_trait_impls::rayon::set::*;
     }
 }
 
-pub use map::HashMap;
-pub use set::HashSet;
+pub use crate::map::HashMap;
+pub use crate::set::HashSet;
 
-/// Augments `AllocErr` with a CapacityOverflow variant.
+/// Augments `AllocErr` with a `CapacityOverflow` variant.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum CollectionAllocErr {
     /// Error due to the computed capacity exceeding the collection's maximum

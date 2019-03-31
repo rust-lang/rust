@@ -9,14 +9,17 @@ readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".travis.yml", "bors.toml"]
+edition = "2018"
 
 [dependencies]
-byteorder = { version = "1.0", default-features = false }
-scopeguard = { version = "0.3", default-features = false }
-
 # For external trait impls
 rayon = { version = "1.0", optional = true }
 serde = { version = "1.0.25", default-features = false, optional = true }
+
+# When built as part of libstd
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+compiler_builtins = { version = "0.1.2", optional = true }
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [dev-dependencies]
 lazy_static = "~1.2"
@@ -26,4 +29,6 @@ rustc-hash = "1.0"
 serde_test = "1.0"
 
 [features]
+default = []
 nightly = []
+rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc"]

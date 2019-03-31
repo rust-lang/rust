@@ -17,7 +17,7 @@ mod map {
     use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
     use serde::ser::{Serialize, Serializer};
 
-    use hash_map::HashMap;
+    use crate::hash_map::HashMap;
 
     use super::size_hint;
 
@@ -58,7 +58,7 @@ mod map {
             {
                 type Value = HashMap<K, V, S>;
 
-                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                     formatter.write_str("a map")
                 }
 
@@ -95,7 +95,7 @@ mod set {
     use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
     use serde::ser::{Serialize, Serializer};
 
-    use hash_set::HashSet;
+    use crate::hash_set::HashSet;
 
     use super::size_hint;
 
@@ -133,7 +133,7 @@ mod set {
             {
                 type Value = HashSet<T, S>;
 
-                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                     formatter.write_str("a sequence")
                 }
 
@@ -165,7 +165,7 @@ mod set {
         where
             D: Deserializer<'de>,
         {
-            struct SeqInPlaceVisitor<'a, T: 'a, S: 'a>(&'a mut HashSet<T, S>);
+            struct SeqInPlaceVisitor<'a, T, S>(&'a mut HashSet<T, S>);
 
             impl<'a, 'de, T, S> Visitor<'de> for SeqInPlaceVisitor<'a, T, S>
             where
@@ -174,7 +174,7 @@ mod set {
             {
                 type Value = ();
 
-                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                     formatter.write_str("a sequence")
                 }
 
