@@ -84,7 +84,7 @@ impl Tls {
         Tls { data: dup!((* * * * * * *) (Cell::new(ptr::null_mut()))) }
     }
 
-    pub unsafe fn activate(&self) -> ActiveTls {
+    pub unsafe fn activate(&self) -> ActiveTls<'_> {
         set_tls_ptr(self as *const Tls as _);
         ActiveTls { tls: self }
     }
@@ -141,7 +141,7 @@ mod sync_bitset {
         }
 
         /// Not atomic.
-        pub fn iter(&self) -> SyncBitsetIter {
+        pub fn iter(&self) -> SyncBitsetIter<'_> {
             SyncBitsetIter {
                 iter: self.0.iter().enumerate().peekable(),
                 elem_idx: 0,

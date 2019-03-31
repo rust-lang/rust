@@ -219,7 +219,7 @@ impl SocketAddr {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for SocketAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
             AddressKind::Abstract(name) => write!(fmt, "{} (abstract)", AsciiEscaped(name)),
@@ -231,7 +231,7 @@ impl fmt::Debug for SocketAddr {
 struct AsciiEscaped<'a>(&'a [u8]);
 
 impl<'a> fmt::Display for AsciiEscaped<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "\"")?;
         for byte in self.0.iter().cloned().flat_map(ascii::escape_default) {
             write!(fmt, "{}", byte as char)?;
@@ -259,7 +259,7 @@ pub struct UnixStream(Socket);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
         builder.field("fd", self.0.as_inner());
         if let Ok(addr) = self.local_addr() {
@@ -719,7 +719,7 @@ pub struct UnixListener(Socket);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixListener {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
         builder.field("fd", self.0.as_inner());
         if let Ok(addr) = self.local_addr() {
@@ -998,7 +998,7 @@ pub struct UnixDatagram(Socket);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixDatagram {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixDatagram");
         builder.field("fd", self.0.as_inner());
         if let Ok(addr) = self.local_addr() {

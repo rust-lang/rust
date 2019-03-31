@@ -5,5 +5,5 @@ LL |     m!();
    |     ^^^^^
    |
    = note: `use $crate;` was erroneously allowed and will become a hard error in a future release
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 

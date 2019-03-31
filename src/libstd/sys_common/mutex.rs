@@ -38,7 +38,7 @@ impl Mutex {
     /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
     /// will be unlocked.
     #[inline]
-    pub unsafe fn lock(&self) -> MutexGuard {
+    pub unsafe fn lock(&self) -> MutexGuard<'_> {
         self.raw_lock();
         MutexGuard(&self.0)
     }

@@ -136,7 +136,7 @@ pub struct SplitPaths<'a> {
     must_yield: bool,
 }
 
-pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
+pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     SplitPaths {
         data: unparsed.encode_wide(),
         must_yield: true,
@@ -212,7 +212,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 }
 
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "path segment contains `\"`".fmt(f)
     }
 }

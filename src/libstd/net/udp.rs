@@ -832,7 +832,7 @@ impl IntoInner<net_imp::UdpSocket> for UdpSocket {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
