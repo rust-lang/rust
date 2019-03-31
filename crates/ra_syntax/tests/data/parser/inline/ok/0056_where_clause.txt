@@ -15,11 +15,14 @@ SOURCE_FILE@[0; 116)
         LIFETIME@[18; 20) "'a"
         COLON@[20; 21)
         WHITESPACE@[21; 22)
-        LIFETIME@[22; 24) "'b"
-        WHITESPACE@[24; 25)
-        PLUS@[25; 26)
-        WHITESPACE@[26; 27)
-        LIFETIME@[27; 29) "'c"
+        TYPE_BOUND_LIST@[22; 29)
+          TYPE_BOUND@[22; 24)
+            LIFETIME@[22; 24) "'b"
+          WHITESPACE@[24; 25)
+          PLUS@[25; 26)
+          WHITESPACE@[26; 27)
+          TYPE_BOUND@[27; 29)
+            LIFETIME@[27; 29) "'c"
       COMMA@[29; 30)
       WHITESPACE@[30; 34)
       WHERE_PRED@[34; 59)

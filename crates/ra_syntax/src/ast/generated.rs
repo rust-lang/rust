@@ -4810,7 +4810,48 @@ impl ToOwned for WhereClause {
 }
 
 
-impl WhereClause {}
+impl WhereClause {
+    pub fn predicates(&self) -> impl Iterator<Item = &WherePred> {
+        super::children(self)
+    }
+}
+
+// WherePred
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct WherePred {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for WherePred {
+    type Repr = rowan::SyntaxNode<RaTypes>;
+}
+
+impl AstNode for WherePred {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            WHERE_PRED => Some(WherePred::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for WherePred {
+    type Owned = TreeArc<WherePred>;
+    fn to_owned(&self) -> TreeArc<WherePred> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::TypeBoundsOwner for WherePred {}
+impl WherePred {
+    pub fn type_ref(&self) -> Option<&TypeRef> {
+        super::child_opt(self)
+    }
+
+    pub fn lifetime(&self) -> Option<&Lifetime> {
+        super::child_opt(self)
+    }
+}
 
 // WhileExpr
 #[derive(Debug, PartialEq, Eq, Hash)]

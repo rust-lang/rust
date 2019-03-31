@@ -165,7 +165,7 @@ fn where_predicate(p: &mut Parser) {
         LIFETIME => {
             p.bump();
             if p.at(COLON) {
-                lifetime_bounds(p);
+                bounds(p);
             } else {
                 p.error("expected colon");
             }
