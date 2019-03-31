@@ -1,4 +1,5 @@
 // compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]
@@ -57,7 +58,7 @@ pub unsafe extern "C" fn c_variadic(n: i32, mut ap: ...) -> i32 {
 
 // Ensure that we generate the correct `call` signature when calling a Rust
 // defined C-variadic.
-pub unsafe fn test_c_variadic_call() {
+pub unsafe fn test_c_variadic_call_0() {
     // CHECK: call i32 (i32, ...) @c_variadic(i32 0)
     c_variadic(0);
     // CHECK: call i32 (i32, ...) @c_variadic(i32 0, i32 42)
@@ -66,4 +67,13 @@ pub unsafe fn test_c_variadic_call() {
     c_variadic(0, 42i32, 1024i32);
     // CHECK: call i32 (i32, ...) @c_variadic(i32 0, i32 42, i32 1024, i32 0)
     c_variadic(0, 42i32, 1024i32, 0i32);
+}
+
+struct Foo(u64, u64);
+struct Bar(u64, u64, u64);
+
+// Ensure that emit arguments of the correct type.
+pub unsafe fn test_c_variadic_call_1() {
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0(i32 0, { i64, i64 } %{{.*}}, %Bar* byval noalias nocapture dereferenceable(24) %{{.*}})
+    foreign_c_variadic_0(0, Foo(0, 0), Bar(0, 0, 0));
 }
