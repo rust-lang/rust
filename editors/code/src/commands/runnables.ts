@@ -196,6 +196,6 @@ export async function interactivelyStartCargoWatch(context: vscode.ExtensionCont
     }
 
 
-    let validater = new CargoWatchProvider();
+    const validater = new CargoWatchProvider();
     validater.activate(context.subscriptions);    
 }
