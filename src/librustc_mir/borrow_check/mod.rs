@@ -268,9 +268,16 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     for (_, (place, span, context, bk, borrow)) in reservation_warnings {
         let mut initial_diag = mbcx.report_conflicting_borrow(context, (&place, span), bk, &borrow);
 
+        let lint_root = if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_local_data {
+            let scope = mbcx.mir.source_info(context.loc).scope;
+            vsi[scope].lint_root
+        } else {
+            id
+        };
+
         // Span and message don't matter; we overwrite them below anyway
         let mut diag = mbcx.infcx.tcx.struct_span_lint_hir(
-            MUTABLE_BORROW_RESERVATION_CONFLICT, id, DUMMY_SP, "");
+            MUTABLE_BORROW_RESERVATION_CONFLICT, lint_root, DUMMY_SP, "");
 
         diag.message = initial_diag.styled_message().clone();
         diag.span = initial_diag.span.clone();
