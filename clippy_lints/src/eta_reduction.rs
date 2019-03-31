@@ -65,6 +65,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             if !(is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)));
 
             let fn_ty = cx.tables.expr_ty(caller);
+
+            if let ty::FnDef(_, _) = fn_ty.sty;
+
             if !type_is_unsafe_function(cx, fn_ty);
 
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.into_iter());

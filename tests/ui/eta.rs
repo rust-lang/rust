@@ -133,3 +133,8 @@ fn divergent(_: u8) -> ! {
 fn generic<T>(_: T) -> u8 {
     0
 }
+
+fn passes_fn_mut(mut x: Box<dyn FnMut()>) {
+    requires_fn_once(|| x());
+}
+fn requires_fn_once<T: FnOnce()>(_: T) {}
