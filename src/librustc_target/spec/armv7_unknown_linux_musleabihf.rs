@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
-            target_mcount: "\01mcount".to_string(),
+            target_mcount: "\u{1}mcount".to_string(),
             .. base
         }
     })

@@ -20,7 +20,7 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
-            target_mcount: "\01mcount".to_string(),
+            target_mcount: "\u{1}mcount".to_string(),
             .. base
         },
     })
