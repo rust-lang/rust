@@ -108,20 +108,6 @@ impl CrateImplBlocks {
     }
 }
 
-/// Rudimentary check whether an impl exists for a given type and trait; this
-/// will actually be done by chalk.
-pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> bool {
-    // FIXME use all trait impls in the whole crate graph
-    let krate = trait_ref.trait_.module(db).krate(db);
-    let krate = match krate {
-        Some(krate) => krate,
-        None => return false,
-    };
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
-    impl_blocks.any(|impl_block| &impl_block.target_ty(db) == trait_ref.self_ty())
-}
-
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
@@ -142,6 +128,7 @@ impl Ty {
         resolver: &Resolver,
     ) -> Option<(Ty, Function)> {
         // FIXME: trait methods should be used before autoderefs
+        // (and we need to do autoderefs for trait method calls as well)
         let inherent_method = self.clone().iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
@@ -174,24 +161,15 @@ impl Ty {
                 }
             }
         }
-        // FIXME:
-        //  - we might not actually be able to determine fully that the type
-        //    implements the trait here; it's enough if we (well, Chalk) determine
-        //    that it's possible.
-        //  - when the trait method is picked, we need to register an
-        //    'obligation' somewhere so that we later check that it's really
-        //    implemented
-        //  - both points go for additional requirements from where clauses as
-        //    well (in fact, the 'implements' condition could just be considered a
-        //    'where Self: Trait' clause)
         candidates.retain(|(t, _m)| {
-            // FIXME construct substs of the correct length for the trait
-            //  - check in rustc whether it does anything smarter than putting variables for everything
-            let trait_ref = TraitRef { trait_: *t, substs: Substs::single(self.clone()) };
-            db.implements(trait_ref)
+            let trait_ref =
+                TraitRef { trait_: *t, substs: fresh_substs_for_trait(db, *t, self.clone()) };
+            let (trait_ref, _) = super::traits::canonicalize(trait_ref);
+            db.implements(trait_ref).is_some()
         });
         // FIXME if there's multiple candidates here, that's an ambiguity error
         let (_chosen_trait, chosen_method) = candidates.first()?;
+        // FIXME return correct receiver type
         Some((self.clone(), *chosen_method))
     }
 
@@ -253,4 +231,17 @@ impl Ty {
         }
         None
     }
+}
+
+fn fresh_substs_for_trait(db: &impl HirDatabase, tr: Trait, self_ty: Ty) -> Substs {
+    let mut substs = Vec::new();
+    let mut counter = 0;
+    let generics = tr.generic_params(db);
+    substs.push(self_ty);
+    substs.extend(generics.params_including_parent().into_iter().skip(1).map(|_p| {
+        let fresh_var = Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(counter)));
+        counter += 1;
+        fresh_var
+    }));
+    substs.into()
 }

@@ -5,6 +5,7 @@ mod autoderef;
 pub(crate) mod primitive;
 #[cfg(test)]
 mod tests;
+pub(crate) mod traits;
 pub(crate) mod method_resolution;
 mod op;
 mod lower;
@@ -145,6 +146,10 @@ impl Substs {
         Substs(Arc::new([ty]))
     }
 
+    pub fn prefix(&self, n: usize) -> Substs {
+        Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Ty> {
         self.0.iter()
     }
@@ -167,6 +172,12 @@ impl Substs {
             panic!("expected substs of len 1, got {:?}", self);
         }
         &self.0[0]
+    }
+}
+
+impl From<Vec<Ty>> for Substs {
+    fn from(v: Vec<Ty>) -> Self {
+        Substs(v.into())
     }
 }
 

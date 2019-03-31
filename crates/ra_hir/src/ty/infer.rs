@@ -41,7 +41,7 @@ use crate::{
     ty::infer::diagnostics::InferenceDiagnostic,
     diagnostics::DiagnosticSink,
 };
-use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
+use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor, traits::{ Solution, Obligation, Guidance}, CallableDef, TraitRef};
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -153,6 +153,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
@@ -173,6 +174,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             type_of_pat: ArenaMap::default(),
             diagnostics: Vec::default(),
             var_unification_table: InPlaceUnificationTable::new(),
+            obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
             body,
@@ -181,6 +183,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_all(mut self) -> InferenceResult {
+        // FIXME resolve obligations as well (use Guidance if necessary)
         let mut tv_stack = Vec::new();
         let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
         for ty in expr_types.values_mut() {
@@ -311,11 +314,49 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty.fold(&mut |ty| self.insert_type_vars_shallow(ty))
     }
 
+    fn resolve_obligations_as_possible(&mut self) {
+        let obligations = mem::replace(&mut self.obligations, Vec::new());
+        for obligation in obligations {
+            // FIXME resolve types in the obligation first
+            let (solution, var_mapping) = match &obligation {
+                Obligation::Trait(tr) => {
+                    let (tr, var_mapping) = super::traits::canonicalize(tr.clone());
+                    (self.db.implements(tr), var_mapping)
+                }
+            };
+            match solution {
+                Some(Solution::Unique(substs)) => {
+                    for (i, subst) in substs.0.iter().enumerate() {
+                        let uncanonical = var_mapping[i];
+                        // FIXME the subst may contain type variables, which would need to be mapped back as well
+                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
+                    }
+                }
+                Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                    for (i, subst) in substs.0.iter().enumerate() {
+                        let uncanonical = var_mapping[i];
+                        // FIXME the subst may contain type variables, which would need to be mapped back as well
+                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
+                    }
+                    self.obligations.push(obligation);
+                }
+                Some(_) => {
+                    self.obligations.push(obligation);
+                }
+                None => {
+                    // FIXME obligation cannot be fulfilled => diagnostic
+                }
+            }
+        }
+    }
+
     /// Resolves the type as far as currently possible, replacing type variables
     /// by their known types. All types returned by the infer_* functions should
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
     fn resolve_ty_as_possible(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
+        self.resolve_obligations_as_possible();
+
         ty.fold(&mut |ty| match ty {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
@@ -710,12 +751,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         &mut self,
         def_generics: Option<Arc<GenericParams>>,
         generic_args: &Option<GenericArgs>,
+        receiver_ty: &Ty,
     ) -> Substs {
         let (parent_param_count, param_count) =
-            def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
+            def_generics.as_ref().map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
         let mut substs = Vec::with_capacity(parent_param_count + param_count);
-        for _ in 0..parent_param_count {
-            substs.push(Ty::Unknown);
+        if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
+            for param in &parent_generics.params {
+                if param.name.as_known_name() == Some(crate::KnownName::SelfType) {
+                    substs.push(receiver_ty.clone());
+                } else {
+                    substs.push(Ty::Unknown);
+                }
+            }
         }
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
@@ -817,6 +865,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         (Vec::new(), Ty::Unknown)
                     }
                 };
+                // FIXME register obligations from where clauses from the function
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
                 for (arg, param) in args.iter().zip(param_iter) {
                     self.infer_expr(*arg, &Expectation::has_type(param));
@@ -838,7 +887,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     None => (receiver_ty, Ty::Unknown, None),
                 };
-                let substs = self.substs_for_method_call(def_generics, generic_args);
+                let substs = self.substs_for_method_call(
+                    def_generics.clone(),
+                    generic_args,
+                    &derefed_receiver_ty,
+                );
                 let method_ty = method_ty.apply_substs(substs);
                 let method_ty = self.insert_type_vars(method_ty);
                 let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
@@ -859,6 +912,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             let sig = self.db.callable_item_signature(def);
                             let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
 
+                            // add obligation for trait implementation, if this is a trait method
+                            // FIXME also register obligations from where clauses from the trait or impl and method
+                            match def {
+                                CallableDef::Function(f) => {
+                                    if let Some(trait_) = f.parent_trait(self.db) {
+                                        // construct a TraitDef
+                                        let substs = a_ty.parameters.prefix(
+                                            def_generics
+                                                .expect("trait parent should always have generics")
+                                                .count_parent_params(),
+                                        );
+                                        self.obligations
+                                            .push(Obligation::Trait(TraitRef { trait_, substs }));
+                                    }
+                                }
+                                CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
+                            }
+
                             if !sig.params().is_empty() {
                                 let mut params_iter = sig
                                     .params()
@@ -875,6 +946,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
                 };
                 // Apply autoref so the below unification works correctly
+                // FIXME: return correct autorefs/derefs from lookup_method
                 let actual_receiver_ty = match expected_receiver_ty.as_reference() {
                     Some((_, mutability)) => {
                         Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty)
@@ -1180,7 +1252,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
 /// The ID of a type variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TypeVarId(u32);
+pub struct TypeVarId(pub(super) u32);
 
 impl UnifyKey for TypeVarId {
     type Value = TypeVarValue;

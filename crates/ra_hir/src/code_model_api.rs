@@ -194,7 +194,7 @@ impl Module {
         Resolver::default().push_module_scope(def_map, self.module_id)
     }
 
-    pub fn declarations(self, db: &impl HirDatabase) -> Vec<ModuleDef> {
+    pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
         let def_map = db.crate_def_map(self.krate);
         def_map[self.module_id]
             .scope
@@ -547,13 +547,20 @@ impl Function {
         ImplBlock::containing(module_impls, (*self).into())
     }
 
+    /// The containing trait, if this is a trait method definition.
+    pub fn parent_trait(&self, db: &impl DefDatabase) -> Option<Trait> {
+        db.trait_items_index(self.module(db)).get_parent_trait((*self).into())
+    }
+
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
+        // FIXME abstract over containers (trait/impl)
         let r = self
             .impl_block(db)
             .map(|ib| ib.resolver(db))
+            .or_else(|| self.parent_trait(db).map(|tr| tr.resolver(db)))
             .unwrap_or_else(|| self.module(db).resolver(db));
         // ...and add generic params, if present
         let p = self.generic_params(db);
@@ -698,6 +705,14 @@ impl Trait {
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
         db.trait_data(self)
+    }
+
+    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        let r = self.module(db).resolver(db);
+        // add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
+        r
     }
 }
 

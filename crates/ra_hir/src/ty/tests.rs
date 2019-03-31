@@ -1926,8 +1926,8 @@ fn test() {
 }
 "#),
         @r###"
-[31; 35) 'self': &{unknown}
-[110; 114) 'self': &{unknown}
+[31; 35) 'self': &Self
+[110; 114) 'self': &Self
 [170; 228) '{     ...i128 }': ()
 [176; 178) 'S1': S1
 [176; 187) 'S1.method()': u32
@@ -1972,8 +1972,8 @@ mod bar_test {
 }
 "#),
         @r###"
-[63; 67) 'self': &{unknown}
-[169; 173) 'self': &{unknown}
+[63; 67) 'self': &Self
+[169; 173) 'self': &Self
 [300; 337) '{     ...     }': ()
 [310; 311) 'S': S
 [310; 320) 'S.method()': u32
@@ -1998,10 +1998,45 @@ fn test() {
 }
 "#),
         @r###"
-[33; 37) 'self': &{unknown}
+[33; 37) 'self': &Self
 [92; 111) '{     ...d(); }': ()
 [98; 99) 'S': S
-[98; 108) 'S.method()': {unknown}"###
+[98; 108) 'S.method()': u32"###
+    );
+}
+
+#[test]
+fn infer_trait_method_generic_more_params() {
+    // the trait implementation is intentionally incomplete -- it shouldn't matter
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait<T1, T2, T3> {
+    fn method1(&self) -> (T1, T2, T3);
+    fn method2(&self) -> (T3, T2, T1);
+}
+struct S1;
+impl Trait<u8, u16, u32> for S1 {}
+struct S2;
+impl<T> Trait<i8, i16, T> for S2 {}
+fn test() {
+    S1.method1(); // u8, u16, u32
+    S1.method2(); // u32, u16, u8
+    S2.method1(); // i8, i16, {unknown}
+    S2.method2(); // {unknown}, i16, i8
+}
+"#),
+        @r###"
+[43; 47) 'self': &Self
+[82; 86) 'self': &Self
+[210; 361) '{     ..., i8 }': ()
+[216; 218) 'S1': S1
+[216; 228) 'S1.method1()': (u8, u16, u32)
+[250; 252) 'S1': S1
+[250; 262) 'S1.method2()': (u32, u16, u8)
+[284; 286) 'S2': S2
+[284; 296) 'S2.method1()': (i8, i16, {unknown})
+[324; 326) 'S2': S2
+[324; 336) 'S2.method2()': ({unknown}, i16, i8)"###
     );
 }
 
@@ -2020,7 +2055,7 @@ fn test() {
 }
 "#),
         @r###"
-[33; 37) 'self': &{unknown}
+[33; 37) 'self': &Self
 [102; 127) '{     ...d(); }': ()
 [108; 109) 'S': S<u32>(T) -> S<T>
 [108; 115) 'S(1u32)': S<u32>
@@ -2168,7 +2203,7 @@ fn test() {
 }
 "#),
         @r###"
-[29; 33) 'self': {unknown}
+[29; 33) 'self': Self
 [107; 198) '{     ...(S); }': ()
 [117; 118) 'x': u32
 [126; 127) 'S': S

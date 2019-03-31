@@ -84,7 +84,8 @@ impl ImplBlock {
     }
 
     pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
-        TraitRef::from_hir(db, &self.resolver(db), &self.target_trait(db)?)
+        let target_ty = self.target_ty(db);
+        TraitRef::from_hir(db, &self.resolver(db), &self.target_trait(db)?, Some(target_ty))
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<ImplItem> {

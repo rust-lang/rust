@@ -206,6 +206,7 @@ impl TraitRef {
         db: &impl HirDatabase,
         resolver: &Resolver,
         type_ref: &TypeRef,
+        explicit_self_ty: Option<Ty>,
     ) -> Option<Self> {
         let path = match type_ref {
             TypeRef::Path(path) => path,
@@ -215,7 +216,13 @@ impl TraitRef {
             Resolution::Def(ModuleDef::Trait(tr)) => tr,
             _ => return None,
         };
-        let substs = Self::substs_from_path(db, resolver, path, resolved);
+        let mut substs = Self::substs_from_path(db, resolver, path, resolved);
+        if let Some(self_ty) = explicit_self_ty {
+            // FIXME this could be nicer
+            let mut substs_vec = substs.0.to_vec();
+            substs_vec[0] = self_ty;
+            substs.0 = substs_vec.into();
+        }
         Some(TraitRef { trait_: resolved, substs })
     }
 

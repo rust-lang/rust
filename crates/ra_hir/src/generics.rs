@@ -45,12 +45,16 @@ impl GenericParams {
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();
         let parent = match def {
-            GenericDef::Function(it) => it.impl_block(db),
-            GenericDef::TypeAlias(it) => it.impl_block(db),
+            // FIXME abstract over containers (trait/impl)
+            GenericDef::Function(it) => it
+                .impl_block(db)
+                .map(GenericDef::from)
+                .or_else(|| it.parent_trait(db).map(GenericDef::from)),
+            GenericDef::TypeAlias(it) => it.impl_block(db).map(GenericDef::from),
             GenericDef::Struct(_) | GenericDef::Enum(_) | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
-        generics.parent_params = parent.map(|p| p.generic_params(db));
+        generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         match def {
             GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
