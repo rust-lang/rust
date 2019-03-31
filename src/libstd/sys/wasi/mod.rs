@@ -25,15 +25,11 @@ pub mod args;
 pub mod backtrace;
 #[path = "../wasm/cmath.rs"]
 pub mod cmath;
-#[path = "../wasm/condvar.rs"]
-pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
 #[path = "../wasm/memchr.rs"]
 pub mod memchr;
-#[path = "../wasm/mutex.rs"]
-pub mod mutex;
 pub mod net;
 pub mod io;
 pub mod os;
@@ -41,8 +37,6 @@ pub use crate::sys_common::os_str_bytes as os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-#[path = "../wasm/rwlock.rs"]
-pub mod rwlock;
 #[path = "../wasm/stack_overflow.rs"]
 pub mod stack_overflow;
 pub mod stdio;
