@@ -429,7 +429,7 @@ impl<T> UserRef<[T]> where [T]: UserSafe {
     }
 
     /// Returns an iterator over the slice.
-    pub fn iter(&self) -> Iter<T>
+    pub fn iter(&self) -> Iter<'_, T>
         where T: UserSafe // FIXME: should be implied by [T]: UserSafe?
     {
         unsafe {
@@ -438,7 +438,7 @@ impl<T> UserRef<[T]> where [T]: UserSafe {
     }
 
     /// Returns an iterator that allows modifying each value.
-    pub fn iter_mut(&mut self) -> IterMut<T>
+    pub fn iter_mut(&mut self) -> IterMut<'_, T>
         where T: UserSafe // FIXME: should be implied by [T]: UserSafe?
     {
         unsafe {

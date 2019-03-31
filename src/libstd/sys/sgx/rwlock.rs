@@ -93,8 +93,8 @@ impl RWLock {
     #[inline]
     unsafe fn __read_unlock(
         &self,
-        mut rguard: SpinMutexGuard<WaitVariable<Option<NonZeroUsize>>>,
-        wguard: SpinMutexGuard<WaitVariable<bool>>,
+        mut rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
         *rguard.lock_var_mut() = NonZeroUsize::new(rguard.lock_var().unwrap().get() - 1);
         if rguard.lock_var().is_some() {
@@ -120,8 +120,8 @@ impl RWLock {
     #[inline]
     unsafe fn __write_unlock(
         &self,
-        rguard: SpinMutexGuard<WaitVariable<Option<NonZeroUsize>>>,
-        wguard: SpinMutexGuard<WaitVariable<bool>>,
+        rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
         if let Err(mut wguard) = WaitQueue::notify_one(wguard) {
             // No writers waiting, release the write lock

@@ -78,7 +78,7 @@ impl<T> Packet<T> {
     // In other case mutex data will be duplicated while cloning
     // and that could cause problems on platforms where it is
     // represented by opaque data structure
-    pub fn postinit_lock(&self) -> MutexGuard<()> {
+    pub fn postinit_lock(&self) -> MutexGuard<'_, ()> {
         self.select_lock.lock().unwrap()
     }
 
@@ -89,7 +89,7 @@ impl<T> Packet<T> {
     // This can only be called at channel-creation time
     pub fn inherit_blocker(&self,
                            token: Option<SignalToken>,
-                           guard: MutexGuard<()>) {
+                           guard: MutexGuard<'_, ()>) {
         token.map(|token| {
             assert_eq!(self.cnt.load(Ordering::SeqCst), 0);
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
