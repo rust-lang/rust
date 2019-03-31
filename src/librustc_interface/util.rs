@@ -21,7 +21,6 @@ use rustc_plugin;
 use rustc_privacy;
 use rustc_resolve;
 use rustc_typeck;
-use std::collections::HashSet;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
