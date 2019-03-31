@@ -14,6 +14,7 @@
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
+#![cfg_attr(not(stage0), deny(internal))]
 
 extern crate libc;
 #[allow(unused_extern_crates)]
