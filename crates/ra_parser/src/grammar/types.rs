@@ -261,21 +261,47 @@ fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
         PATH_TYPE
     };
 
-    if allow_bounds && p.eat(PLUS) {
-        type_params::bounds_without_colon(p);
-    }
+    let path = m.complete(p, kind);
 
-    m.complete(p, kind);
+    if allow_bounds {
+        opt_path_type_bounds_as_dyn_trait_type(p, path);
+    }
 }
 
 pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
     assert!(paths::is_path_start(p) || p.at(L_ANGLE));
     let m = p.start();
     paths::type_path(p);
+
     // test path_type_with_bounds
     // fn foo() -> Box<T + 'f> {}
-    if allow_bounds && p.eat(PLUS) {
-        type_params::bounds_without_colon(p);
+    // fn foo() -> Box<dyn T + 'f> {}
+    let path = m.complete(p, PATH_TYPE);
+    if allow_bounds {
+        opt_path_type_bounds_as_dyn_trait_type(p, path);
     }
-    m.complete(p, PATH_TYPE);
+}
+
+/// This turns a parsed PATH_TYPE optionally into a DYN_TRAIT_TYPE
+/// with a TYPE_BOUND_LIST
+fn opt_path_type_bounds_as_dyn_trait_type(p: &mut Parser, path_type_marker: CompletedMarker) {
+    if !p.at(PLUS) {
+        return;
+    }
+
+    // First create a TYPE_BOUND from the completed PATH_TYPE
+    let m = path_type_marker.precede(p).complete(p, TYPE_BOUND);
+
+    // Next setup a marker for the TYPE_BOUND_LIST
+    let m = m.precede(p);
+
+    // This gets consumed here so it gets properly set
+    // in the TYPE_BOUND_LIST
+    p.eat(PLUS);
+
+    // Parse rest of the bounds into the TYPE_BOUND_LIST
+    let m = type_params::bounds_without_colon_m(p, m);
+
+    // Finally precede everything with DYN_TRAIT_TYPE
+    m.precede(p).complete(p, DYN_TRAIT_TYPE);
 }

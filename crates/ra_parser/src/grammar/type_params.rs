@@ -79,16 +79,19 @@ fn lifetime_bounds(p: &mut Parser) {
     }
 }
 
-pub(super) fn bounds_without_colon(p: &mut Parser) {
-    let m = p.start();
-
+pub(super) fn bounds_without_colon_m(p: &mut Parser, marker: Marker) -> CompletedMarker {
     while type_bound(p) {
         if !p.eat(PLUS) {
             break;
         }
     }
 
-    m.complete(p, TYPE_BOUND_LIST);
+    marker.complete(p, TYPE_BOUND_LIST)
+}
+
+pub(super) fn bounds_without_colon(p: &mut Parser) {
+    let m = p.start();
+    bounds_without_colon_m(p, m);
 }
 
 fn type_bound(p: &mut Parser) -> bool {
