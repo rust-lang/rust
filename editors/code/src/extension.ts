@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
-import { interactivelyStartCargoWatch } from './commands/runnables';
+import { interactivelyStartCargoWatch} from './commands/runnables';
 import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Executing `cargo watch` provides us with inline diagnostics on save
-    interactivelyStartCargoWatch();
+    interactivelyStartCargoWatch(context);
 
     // Start the language server, finally!
     Server.start(allNotifications);
