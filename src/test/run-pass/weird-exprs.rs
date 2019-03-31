@@ -127,6 +127,21 @@ fn punch_card() -> impl std::fmt::Debug {
     ..=.. ..=..    .. ..=..=..    ..=..=.. ..    .. ..=.. ..
 }
 
+fn r#match() {
+    let val = match match match match match () {
+        () => ()
+    } {
+        () => ()
+    } {
+        () => ()
+    } {
+        () => ()
+    } {
+        () => ()
+    };
+    assert_eq!(val, ());
+}
+
 pub fn main() {
     strange();
     funny();
@@ -142,4 +157,5 @@ pub fn main() {
     union();
     special_characters();
     punch_card();
+    r#match();
 }
