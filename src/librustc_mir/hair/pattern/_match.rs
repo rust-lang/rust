@@ -860,7 +860,7 @@ impl<'tcx> IntRange<'tcx> {
             }
             ConstantValue(val) if is_integral(val.ty) => {
                 let ty = val.ty;
-                if let Some(val) = val.try_eval_bits(tcx, param_env.and(ty)) {
+                if let Some(val) = val.try_eval_bits(tcx, param_env, ty) {
                     let bias = IntRange::signed_bias(tcx, ty);
                     let val = val ^ bias;
                     Some(IntRange { range: val..=val, ty })
@@ -881,8 +881,8 @@ impl<'tcx> IntRange<'tcx> {
             match pat.kind {
                 box PatternKind::Constant { value } => break ConstantValue(value),
                 box PatternKind::Range(PatternRange { lo, hi, ty, end }) => break ConstantRange(
-                    lo.eval_bits(tcx, param_env.and(ty)),
-                    hi.eval_bits(tcx, param_env.and(ty)),
+                    lo.eval_bits(tcx, param_env, ty),
+                    hi.eval_bits(tcx, param_env, ty),
                     ty,
                     end,
                 ),
@@ -1341,8 +1341,8 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
         PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
             Some(vec![ConstantRange(
-                lo.eval_bits(cx.tcx, cx.param_env.and(ty)),
-                hi.eval_bits(cx.tcx, cx.param_env.and(ty)),
+                lo.eval_bits(cx.tcx, cx.param_env, ty),
+                hi.eval_bits(cx.tcx, cx.param_env, ty),
                 ty,
                 end,
             )]),
@@ -1480,7 +1480,7 @@ fn slice_pat_covered_by_const<'tcx>(
     {
         match pat.kind {
             box PatternKind::Constant { value } => {
-                let b = value.eval_bits(tcx, param_env.and(pat.ty));
+                let b = value.eval_bits(tcx, param_env, pat.ty);
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
                     return Ok(false);
@@ -1660,9 +1660,9 @@ fn constructor_covered_by_range<'tcx>(
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-    let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, param_env.and(ty))
+    let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, param_env, ty)
         .map(|res| res != Ordering::Less);
-    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env.and(ty));
+    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, param_env, ty);
     macro_rules! some_or_ok {
         ($e:expr) => {
             match $e {

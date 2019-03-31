@@ -2294,21 +2294,25 @@ impl<'tcx> Const<'tcx> {
     pub fn try_eval_bits(
         &self,
         tcx: TyCtxt<'tcx>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Option<u128> {
-        assert_eq!(self.ty, ty.value);
-        let size = tcx.layout_of(ty).ok()?.size;
+        assert_eq!(self.ty, ty);
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         match self.val {
             // FIXME(const_generics): this doesn't work right now,
             // because it tries to relate an `Infer` to a `Param`.
             ConstValue::Unevaluated(did, substs) => {
-                let substs = tcx.lift_to_global(&substs).unwrap();
-                let instance = ty::Instance::resolve(tcx, ty.param_env, did, substs)?;
+                // if `substs` has no unresolved components, use and empty param_env
+                let pem_and_substs = param_env.with_reveal_all().and(substs);
+                let (param_env, substs) = tcx.lift_to_global(&pem_and_substs).unwrap().into_parts();
+                // try to resolve e.g. associated constants to their definition on an impl
+                let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
                 let gid = GlobalId {
                     instance,
                     promoted: None,
                 };
-                let evaluated = tcx.const_eval(ty.param_env.and(gid)).ok()?;
+                let evaluated = tcx.const_eval(param_env.and(gid)).ok()?;
                 evaluated.val.try_to_bits(size)
             },
             // FIXME(const_generics): try to evaluate generic consts with a given param env?
@@ -2319,7 +2323,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_bits(tcx, param_env.and(tcx.types.bool)).and_then(|v| match v {
+        self.try_eval_bits(tcx, param_env, tcx.types.bool).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2328,18 +2332,18 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.try_eval_bits(tcx, param_env.and(tcx.types.usize)).map(|v| v as u64)
+        self.try_eval_bits(tcx, param_env, tcx.types.usize).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
-        self.try_eval_bits(tcx, ty).unwrap_or_else(||
+    pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env, ty).unwrap_or_else(||
             bug!("expected bits of {:#?}, got {:#?}", ty, self))
     }
 
     #[inline]
     pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.eval_bits(tcx, param_env.and(tcx.types.usize)) as u64
+        self.eval_bits(tcx, param_env, tcx.types.usize) as u64
     }
 }
 

@@ -446,7 +446,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             self.tcx,
                             lo,
                             hi,
-                            self.param_env.and(ty),
+                            self.param_env,
+                            ty,
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
@@ -1452,7 +1453,8 @@ pub fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
-    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
@@ -1467,13 +1469,16 @@ pub fn compare_const_vals<'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty.value {
+    if a.ty != b.ty || a.ty != ty {
         return fallback();
     }
 
-    if let (Some(a), Some(b)) = (a.try_eval_bits(tcx, ty), b.try_eval_bits(tcx, ty)) {
+    let a_bits = a.try_eval_bits(tcx, param_env, ty);
+    let b_bits = b.try_eval_bits(tcx, param_env, ty);
+
+    if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use ::rustc_apfloat::Float;
-        return match ty.value.sty {
+        return match ty.sty {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1496,7 +1501,7 @@ pub fn compare_const_vals<'tcx>(
         }
     }
 
-    if let ty::Str = ty.value.sty {
+    if let ty::Str = ty.sty {
         match (a.val, b.val) {
             (
                 ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
