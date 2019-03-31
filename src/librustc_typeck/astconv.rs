@@ -102,6 +102,7 @@ enum GenericArgPosition {
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
+#[cfg_attr(not(stage0), allow(usage_of_ty_tykind))]
 const TRAIT_OBJECT_DUMMY_SELF: ty::TyKind<'static> = ty::Infer(ty::FreshTy(0));
 
 impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
