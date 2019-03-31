@@ -6,6 +6,7 @@ use crate::{
     Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic,
     SuggestionStyle, SourceMapperDyn, DiagnosticId,
 };
+use crate::Level::Error;
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use crate::styled_buffer::StyledBuffer;
 
@@ -72,6 +73,7 @@ impl Emitter for EmitterWriter {
 
         self.fix_multispans_in_std_macros(&mut primary_span,
                                           &mut children,
+                                          &db.level,
                                           db.handler.flags.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
@@ -888,18 +890,27 @@ impl EmitterWriter {
     fn fix_multispans_in_std_macros(&mut self,
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>,
+                                    level: &Level,
                                     backtrace: bool) {
         let mut spans_updated = self.fix_multispan_in_std_macros(span, backtrace);
         for child in children.iter_mut() {
             spans_updated |= self.fix_multispan_in_std_macros(&mut child.span, backtrace);
         }
+        let msg = if level == &Error {
+            "this error originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        } else {
+            "this warning originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        };
+
         if spans_updated {
             children.push(SubDiagnostic {
                 level: Level::Note,
                 message: vec![
-                    ("this error originates in a macro outside of the current crate \
-                      (in Nightly builds, run with -Z external-macro-backtrace \
-                       for more info)".to_string(),
+                    (msg,
                      Style::NoStyle),
                 ],
                 span: MultiSpan::new(),
