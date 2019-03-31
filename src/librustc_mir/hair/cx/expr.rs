@@ -81,8 +81,8 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Adjust::UnsafeFnPointer => {
             ExprKind::UnsafeFnPointer { source: expr.to_ref() }
         }
-        Adjust::ClosureFnPointer => {
-            ExprKind::ClosureFnPointer { source: expr.to_ref() }
+        Adjust::ClosureFnPointer(unsafety) => {
+            ExprKind::ClosureFnPointer { source: expr.to_ref(), unsafety }
         }
         Adjust::NeverToAny => {
             ExprKind::NeverToAny { source: expr.to_ref() }

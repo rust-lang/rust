@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
-            Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
+            Rvalue::Cast(CastKind::ClosureFnPointer(_), ..) |
             Rvalue::Cast(CastKind::Unsize, ..) |
             Rvalue::Cast(CastKind::MutToConstPointer, ..) |
             Rvalue::Discriminant(..) |

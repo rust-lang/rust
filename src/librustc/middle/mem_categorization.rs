@@ -621,7 +621,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             adjustment::Adjust::NeverToAny |
             adjustment::Adjust::ReifyFnPointer |
             adjustment::Adjust::UnsafeFnPointer |
-            adjustment::Adjust::ClosureFnPointer |
+            adjustment::Adjust::ClosureFnPointer(_) |
             adjustment::Adjust::MutToConstPointer |
             adjustment::Adjust::Borrow(_) |
             adjustment::Adjust::Unsize => {
