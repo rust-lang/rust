@@ -73,7 +73,7 @@ impl From<File> for Stdio {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
@@ -108,13 +108,13 @@ impl Eq for ExitStatus {
 }
 
 impl fmt::Debug for ExitStatus {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }
 
 impl fmt::Display for ExitStatus {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }

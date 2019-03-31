@@ -213,7 +213,7 @@ mod inner {
     }
 
     impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("SystemTime")
              .field("tv_sec", &self.t.t.tv_sec)
              .field("tv_nsec", &self.t.t.tv_nsec)
@@ -298,7 +298,7 @@ mod inner {
     }
 
     impl fmt::Debug for Instant {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("Instant")
              .field("tv_sec", &self.t.t.tv_sec)
              .field("tv_nsec", &self.t.t.tv_nsec)
@@ -332,7 +332,7 @@ mod inner {
     }
 
     impl fmt::Debug for SystemTime {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("SystemTime")
              .field("tv_sec", &self.t.t.tv_sec)
              .field("tv_nsec", &self.t.t.tv_nsec)

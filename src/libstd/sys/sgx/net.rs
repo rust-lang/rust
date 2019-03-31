@@ -48,7 +48,7 @@ pub struct TcpStream {
 }
 
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = f.debug_struct("TcpStream");
 
         if let Some(ref addr) = self.inner.local_addr {
@@ -213,7 +213,7 @@ pub struct TcpListener {
 }
 
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = f.debug_struct("TcpListener");
 
         if let Some(ref addr) = self.inner.local_addr {
@@ -421,7 +421,7 @@ impl UdpSocket {
 }
 
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }
@@ -438,7 +438,7 @@ impl error::Error for NonIpSockAddr {
 }
 
 impl fmt::Display for NonIpSockAddr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Failed to convert address to SocketAddr: {}", self.host)
     }
 }

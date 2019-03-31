@@ -626,7 +626,7 @@ impl IntoInner<net_imp::TcpStream> for TcpStream {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -771,7 +771,7 @@ impl TcpListener {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn incoming(&self) -> Incoming {
+    pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
 
@@ -922,7 +922,7 @@ impl IntoInner<net_imp::TcpListener> for TcpListener {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }

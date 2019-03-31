@@ -431,7 +431,7 @@ impl Once {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Once {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Once { .. }")
     }
 }
