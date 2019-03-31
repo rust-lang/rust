@@ -321,7 +321,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         //
         // No suggestion for: `isize`, `usize`.
         fn get_type_suggestion<'a>(
-            t: &ty::TyKind<'_>,
+            t: Ty<'_>,
             val: u128,
             negative: bool,
         ) -> Option<String> {
@@ -347,14 +347,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     }
                 }
             }
-            match t {
-                &ty::Int(i) => find_fit!(i, val, negative,
+            match t.sty {
+                ty::Int(i) => find_fit!(i, val, negative,
                               I8 => [U8] => [I16, I32, I64, I128],
                               I16 => [U16] => [I32, I64, I128],
                               I32 => [U32] => [I64, I128],
                               I64 => [U64] => [I128],
                               I128 => [U128] => []),
-                &ty::Uint(u) => find_fit!(u, val, negative,
+                ty::Uint(u) => find_fit!(u, val, negative,
                               U8 => [U8, U16, U32, U64, U128] => [],
                               U16 => [U16, U32, U64, U128] => [],
                               U32 => [U32, U64, U128] => [],
@@ -364,6 +364,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
+        #[cfg_attr(not(stage0), allow(usage_of_ty_tykind))]
         fn report_bin_hex_error(
             cx: &LateContext<'_, '_>,
             expr: &hir::Expr,
@@ -398,7 +399,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 repr_str, val, t, actually, t
             ));
             if let Some(sugg_ty) =
-                get_type_suggestion(&cx.tables.node_type(expr.hir_id).sty, val, negative)
+                get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative)
             {
                 if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                     let (sans_suffix, _) = repr_str.split_at(pos);
