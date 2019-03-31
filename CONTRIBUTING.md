@@ -122,6 +122,13 @@ bring those changes into the source repository.
 
 Please make pull requests against the `master` branch.
 
+Rust follows a no merge policy, meaning, when you encounter merge
+conflicts you are expected to always rebase instead of merge.
+E.g. always use rebase when bringing the latest changes from
+the master branch to your feature branch.
+Also, please make sure that fixup commits are squashed into other related
+commits with meaningful commit messages.
+
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
