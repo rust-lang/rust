@@ -760,6 +760,7 @@ impl ExprCollector {
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::MacroCall(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 

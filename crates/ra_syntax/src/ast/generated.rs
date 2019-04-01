@@ -715,6 +715,7 @@ pub enum ExprKind<'a> {
     RangeExpr(&'a RangeExpr),
     BinExpr(&'a BinExpr),
     Literal(&'a Literal),
+    MacroCall(&'a MacroCall),
 }
 impl<'a> From<&'a TupleExpr> for &'a Expr {
     fn from(n: &'a TupleExpr) -> &'a Expr {
@@ -851,6 +852,11 @@ impl<'a> From<&'a Literal> for &'a Expr {
         Expr::cast(&n.syntax).unwrap()
     }
 }
+impl<'a> From<&'a MacroCall> for &'a Expr {
+    fn from(n: &'a MacroCall) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
 
 
 impl AstNode for Expr {
@@ -882,7 +888,8 @@ impl AstNode for Expr {
             | PREFIX_EXPR
             | RANGE_EXPR
             | BIN_EXPR
-            | LITERAL => Some(Expr::from_repr(syntax.into_repr())),
+            | LITERAL
+            | MACRO_CALL => Some(Expr::from_repr(syntax.into_repr())),
             _ => None,
         }
     }
@@ -924,6 +931,7 @@ impl Expr {
             RANGE_EXPR => ExprKind::RangeExpr(RangeExpr::cast(&self.syntax).unwrap()),
             BIN_EXPR => ExprKind::BinExpr(BinExpr::cast(&self.syntax).unwrap()),
             LITERAL => ExprKind::Literal(Literal::cast(&self.syntax).unwrap()),
+            MACRO_CALL => ExprKind::MacroCall(MacroCall::cast(&self.syntax).unwrap()),
             _ => unreachable!(),
         }
     }
