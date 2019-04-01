@@ -663,6 +663,5 @@ Grammar(
         "TypeArg": (options: ["TypeRef"]),
         "AssocTypeArg": (options: ["NameRef", "TypeRef"]),
         "LifetimeArg": (),
-        "Whitespace": ( traits: ["AstToken"] ),
     },
 )
