@@ -126,6 +126,8 @@ clone_depth: 2
 build: false
 
 install:
+  # Print which AppVeyor agent version we're running on.
+  - appveyor version
   # If we need to download a custom MinGW, do so here and set the path
   # appropriately.
   #
