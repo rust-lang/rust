@@ -12,7 +12,7 @@ use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
     Relocations, Allocation, UndefMask,
-    EvalResult, EvalErrorKind,
+    EvalResult, InterpError,
 };
 
 use rustc::ty::{self, TyCtxt};
@@ -78,7 +78,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
         }
 
         // Second cycle
-        Err(EvalErrorKind::InfiniteLoop.into())
+        Err(InterpError::InfiniteLoop.into())
     }
 }
 

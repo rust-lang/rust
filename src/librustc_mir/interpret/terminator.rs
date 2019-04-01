@@ -5,7 +5,7 @@ use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
+use rustc::mir::interpret::{EvalResult, PointerArithmetic, InterpError, Scalar};
 use super::{
     InterpretCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
 };
@@ -134,7 +134,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     self.goto_block(Some(target))?;
                 } else {
                     // Compute error message
-                    use rustc::mir::interpret::EvalErrorKind::*;
+                    use rustc::mir::interpret::InterpError::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.read_immediate(self.eval_operand(len, None)?)
@@ -212,7 +212,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             return Ok(());
         }
         let caller_arg = caller_arg.next()
-            .ok_or_else(|| EvalErrorKind::FunctionArgCountMismatch)?;
+            .ok_or_else(|| InterpError::FunctionArgCountMismatch)?;
         if rust_abi {
             debug_assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }

@@ -19,7 +19,7 @@ use syntax::ast::Mutability;
 
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
+    EvalResult, Scalar, InterpError, AllocKind, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
 };
 
@@ -344,8 +344,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // no need to report anything, the const_eval call takes care of that for statics
             assert!(tcx.is_static(def_id).is_some());
             match err {
-                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
-                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
+                ErrorHandled::Reported => InterpError::ReferencedConstant.into(),
+                ErrorHandled::TooGeneric => InterpError::TooGeneric.into(),
             }
         }).map(|raw_const| {
             let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
@@ -458,7 +458,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         trace!("reading fn ptr: {}", ptr.alloc_id);
         match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
             Some(AllocKind::Function(instance)) => Ok(instance),
-            _ => Err(EvalErrorKind::ExecuteMemory.into()),
+            _ => Err(InterpError::ExecuteMemory.into()),
         }
     }
 

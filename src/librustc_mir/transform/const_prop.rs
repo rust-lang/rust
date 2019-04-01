@@ -7,7 +7,7 @@ use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Loc
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, Static, StaticKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
-use rustc::mir::interpret::{EvalErrorKind, Scalar, GlobalId, EvalResult};
+use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
 use rustc::ty::{TyCtxt, self, Instance};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -144,7 +144,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Ok(val) => Some(val),
             Err(error) => {
                 let diagnostic = error_to_const_error(&self.ecx, error);
-                use rustc::mir::interpret::EvalErrorKind::*;
+                use rustc::mir::interpret::InterpError::*;
                 match diagnostic.error {
                     // don't report these, they make no sense in a const prop context
                     | MachineError(_)
@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        let err = EvalErrorKind::Overflow(op).into();
+                        let err = InterpError::Overflow(op).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
@@ -611,7 +611,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         .hir()
                         .as_local_hir_id(self.source.def_id())
                         .expect("some part of a failing const eval must be local");
-                    use rustc::mir::interpret::EvalErrorKind::*;
+                    use rustc::mir::interpret::InterpError::*;
                     let msg = match msg {
                         Overflow(_) |
                         OverflowNeg |
