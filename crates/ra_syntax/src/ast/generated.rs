@@ -4375,32 +4375,3 @@ impl WhileExpr {
     }
 }
 
-// Whitespace
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct Whitespace {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for Whitespace {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for Whitespace {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            WHITESPACE => Some(Whitespace::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Whitespace {
-    type Owned = TreeArc<Whitespace>;
-    fn to_owned(&self) -> TreeArc<Whitespace> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for Whitespace {}
-impl Whitespace {}
-

@@ -25,13 +25,6 @@ pub trait AstNode:
     fn syntax(&self) -> &SyntaxNode;
 }
 
-pub trait AstToken: AstNode {
-    fn text(&self) -> &SmolStr {
-        // self.syntax().leaf_text().unwrap()
-        unimplemented!()
-    }
-}
-
 pub trait TypeAscriptionOwner: AstNode {
     fn ascribed_type(&self) -> Option<&TypeRef> {
         child_opt(self)
