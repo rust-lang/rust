@@ -63,6 +63,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     .outer()
                     .expn_info()
                     .map(|info| info.call_site)
+                    .expect("unable to get call_site")
+                    .ctxt()
+                    .outer()
+                    .expn_info()
+                    .map(|info| info.call_site)
                     .expect("unable to get call_site");
                 check_vec_macro(cx, &vec_args, span);
             }

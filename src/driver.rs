@@ -93,7 +93,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             ls.register_early_pass(Some(sess), true, false, pass);
         }
         for pass in late_lint_passes {
-            ls.register_late_pass(Some(sess), true, pass);
+            ls.register_late_pass(Some(sess), true, false, false, pass);
         }
 
         for (name, (to, deprecated_name)) in lint_groups {

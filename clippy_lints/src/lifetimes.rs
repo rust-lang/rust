@@ -356,7 +356,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.collect_anonymous_lifetimes(path, ty);
             },
             TyKind::Def(item, _) => {
-                if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir().expect_item(item.id).node {
+                let map = self.cx.tcx.hir();
+                if let ItemKind::Existential(ref exist_ty) = map.expect_item(map.hir_to_node_id(item.id)).node {
                     for bound in &exist_ty.bounds {
                         if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);

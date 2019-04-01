@@ -162,12 +162,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if cx.tcx.hir().as_local_node_id(trait_def_id).is_some() {
-                if !cx.access_levels.is_exported(impl_item.hir_id) {
-                    // If a trait is being implemented for an item, and the
-                    // trait is not exported, we don't need #[inline]
-                    return;
-                }
+            if cx.tcx.hir().as_local_node_id(trait_def_id).is_some() && !cx.access_levels.is_exported(impl_item.hir_id)
+            {
+                // If a trait is being implemented for an item, and the
+                // trait is not exported, we don't need #[inline]
+                return;
             }
         }
 

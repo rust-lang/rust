@@ -208,8 +208,8 @@ impl LintPass for AttrPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
-            if let Some(ident) = attr.ident_str() {
-                match ident {
+            if let Some(ident) = attr.ident() {
+                match &*ident.as_str() {
                     "allow" | "warn" | "deny" | "forbid" => {
                         check_clippy_lint_names(cx, items);
                     },
@@ -242,8 +242,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 
                 for attr in &item.attrs {
                     if let Some(lint_list) = &attr.meta_item_list() {
-                        if let Some(ident) = attr.ident_str() {
-                            match ident {
+                        if let Some(ident) = attr.ident() {
+                            match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
                                     // whitelist `unused_imports` and `deprecated` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`

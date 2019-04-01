@@ -1,7 +1,7 @@
 #![feature(test)]
 
 use compiletest_rs as compiletest;
-extern crate test;
+use libtest::TestDescAndFn;
 
 use std::env::{set_var, var};
 use std::ffi::OsStr;
@@ -74,15 +74,12 @@ fn run_mode(mode: &str, dir: PathBuf) {
     compiletest::run_tests(&cfg);
 }
 
-fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDescAndFn>) -> Result<bool, io::Error> {
+#[warn(clippy::identity_conversion)]
+fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<TestDescAndFn>) -> Result<bool, io::Error> {
     let mut result = true;
     let opts = compiletest::test_opts(config);
     for dir in fs::read_dir(&config.src_base)? {
-        let dir = dir?;
-        if !dir.file_type()?.is_dir() {
-            continue;
-        }
-        let dir_path = dir.path();
+        let dir_path = dir.unwrap().path();
         set_var("CARGO_MANIFEST_DIR", &dir_path);
         for file in fs::read_dir(&dir_path)? {
             let file = file?;
@@ -101,9 +98,25 @@ fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDesc
             let test_name = compiletest::make_test_name(&config, &paths);
             let index = tests
                 .iter()
-                .position(|test| test.desc.name == test_name)
+                .position(|test| test.desc.name.to_string() == test_name.to_string())
                 .expect("The test should be in there");
-            result &= test::run_tests_console(&opts, vec![tests.swap_remove(index)])?;
+            let opts = libtest::TestOpts {
+                list: opts.list,
+                filter: opts.filter.clone(),
+                filter_exact: opts.filter_exact,
+                exclude_should_panic: Default::default(),
+                run_ignored: libtest::RunIgnored::No,
+                run_tests: opts.run_tests,
+                bench_benchmarks: opts.bench_benchmarks,
+                logfile: opts.logfile.clone(),
+                nocapture: opts.nocapture,
+                color: libtest::ColorConfig::AutoColor,
+                format: libtest::OutputFormat::Pretty,
+                test_threads: opts.test_threads,
+                skip: opts.skip.clone(),
+                options: libtest::Options::new(),
+            };
+            result &= libtest::run_tests_console(&opts, vec![tests.swap_remove(index)])?;
         }
     }
     Ok(result)
@@ -113,6 +126,22 @@ fn run_ui_toml() {
     let path = PathBuf::from("tests/ui-toml").canonicalize().unwrap();
     let config = config("ui", path);
     let tests = compiletest::make_tests(&config);
+
+    let tests = tests
+        .into_iter()
+        .map(|test| {
+            libtest::TestDescAndFn {
+                desc: libtest::TestDesc {
+                    name: libtest::TestName::DynTestName(test.desc.name.to_string()),
+                    ignore: test.desc.ignore,
+                    allow_fail: test.desc.allow_fail,
+                    should_panic: libtest::ShouldPanic::No,
+                },
+                // oli obk giving up
+                testfn: unsafe { std::mem::transmute(test.testfn) },
+            }
+        })
+        .collect();
 
     let res = run_ui_toml_tests(&config, tests);
     match res {
