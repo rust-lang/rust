@@ -69,6 +69,9 @@ macro_rules! unlikely {
       }
 }
 
+#[macro_use]
+pub mod convert;
+pub mod ahash;
 pub mod macros;
 pub mod svh;
 pub mod base_n;

@@ -10,6 +10,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+arrayref = "0.3.5"
 ena = "0.13"
 log = "0.4"
 jobserver_crate = { version = "0.1", package = "jobserver" }

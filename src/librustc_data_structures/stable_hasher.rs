@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
-use crate::sip128::SipHasher128;
+use crate::ahash::BufferedHasher;
 use crate::indexed_vec;
 use crate::bit_set;
 
@@ -13,7 +13,7 @@ use crate::bit_set;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher<W> {
-    state: SipHasher128,
+    state: BufferedHasher,
     width: PhantomData<W>,
 }
 
@@ -28,9 +28,10 @@ pub trait StableHasherResult: Sized {
 }
 
 impl<W: StableHasherResult> StableHasher<W> {
+    #[inline(always)]
     pub fn new() -> Self {
         StableHasher {
-            state: SipHasher128::new_with_keys(0, 0),
+            state: BufferedHasher::new(),
             width: PhantomData,
         }
     }

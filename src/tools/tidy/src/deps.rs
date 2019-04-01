@@ -59,6 +59,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("adler32"),
     Crate("aho-corasick"),
     Crate("arrayvec"),
+    Crate("arrayref"),
     Crate("atty"),
     Crate("backtrace"),
     Crate("backtrace-sys"),
