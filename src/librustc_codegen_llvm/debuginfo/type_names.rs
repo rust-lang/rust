@@ -31,24 +31,6 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                           output: &mut String,
                                           visited: &mut FxHashSet<Ty<'tcx>>) {
 
-    // We've encountered a weird 'recursive type'
-    // Currently, the only way to generate such a type
-    // is by using 'impl trait':
-    //
-    // fn foo() -> impl Copy { foo }
-    //
-    // There's not really a sensible name we can generate,
-    // since we don't include 'impl trait' types (e.g. ty::Opaque)
-    // in the output
-    //
-    // Since we need to generate *something*, we just
-    // use a dummy string that should make it clear
-    // that something unusual is going on
-    if !visited.insert(t) {
-        output.push_str("<recursive_type>");
-        return;
-    }
-
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
@@ -141,6 +123,25 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
+            // We've encountered a weird 'recursive type'
+            // Currently, the only way to generate such a type
+            // is by using 'impl trait':
+            //
+            // fn foo() -> impl Copy { foo }
+            //
+            // There's not really a sensible name we can generate,
+            // since we don't include 'impl trait' types (e.g. ty::Opaque)
+            // in the output
+            //
+            // Since we need to generate *something*, we just
+            // use a dummy string that should make it clear
+            // that something unusual is going on
+            if !visited.insert(t) {
+                output.push_str("<recursive_type>");
+                return;
+            }
+
+
             let sig = t.fn_sig(cx.tcx);
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
@@ -179,6 +180,18 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push_str(" -> ");
                 push_debuginfo_type_name(cx, sig.output(), true, output, visited);
             }
+
+
+            // We only keep the type in 'visited'
+            // for the duration of the body of this method.
+            // It's fine for a particular function type
+            // to show up multiple times in one overall type
+            // (e.g. MyType<fn() -> u8, fn() -> u8>
+            //
+            // We only care about avoiding recursing
+            // directly back to the type we're currentlu
+            // processing
+            visited.remove(t);
         },
         ty::Closure(..) => {
             output.push_str("closure");
