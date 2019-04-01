@@ -51,6 +51,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         BREAK_KW,
         CONTINUE_KW,
         LIFETIME,
+        ASYNC_KW,
     ]);
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
