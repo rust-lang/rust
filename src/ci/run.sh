@@ -39,6 +39,8 @@ fi
 
 if [ "$DIST_PARALLEL_COMPILER" != "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler"
+else
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler"
 fi
 
 # If we're deploying artifacts then we set the release channel, otherwise if
