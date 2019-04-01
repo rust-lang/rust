@@ -504,6 +504,9 @@ impl Session {
         self.opts.debugging_opts.verbose
     }
     pub fn time_passes(&self) -> bool {
+        self.opts.debugging_opts.time_passes || self.opts.debugging_opts.time
+    }
+    pub fn time_extended(&self) -> bool {
         self.opts.debugging_opts.time_passes
     }
     pub fn profile_queries(&self) -> bool {
