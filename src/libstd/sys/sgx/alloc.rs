@@ -1,6 +1,6 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 
-use super::waitqueue::SpinMutex;
+use super::spinmutex::SpinMutex;
 
 // Using a SpinMutex because we never want to exit the enclave waiting for the
 // allocator.

@@ -8,7 +8,7 @@ use crate::os::raw::c_char;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-mod waitqueue;
+mod spinmutex;
 
 pub mod alloc;
 pub mod args;
