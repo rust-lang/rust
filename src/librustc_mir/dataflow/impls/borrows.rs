@@ -10,12 +10,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use crate::dataflow::{BitDenotation, BlockSets, InitialFlow};
-pub use crate::dataflow::indexes::BorrowIndex;
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::places_conflict;
 
 use std::rc::Rc;
+
+newtype_index! {
+    pub struct BorrowIndex {
+        DEBUG_FORMAT = "bw{}"
+    }
+}
 
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
