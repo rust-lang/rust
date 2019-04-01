@@ -132,6 +132,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         });
         if let Some(i) = best_choice {
+            if let Some(next) = categorized_path.get(i + 1) {
+                if categorized_path[i].0 == ConstraintCategory::Return
+                    && next.0 == ConstraintCategory::OpaqueType
+                {
+                    // The return expression is being influenced by the return type being
+                    // impl Trait, point at the return type and not the return expr.
+                    return *next;
+                }
+            }
             return categorized_path[i];
         }
 
@@ -240,6 +249,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.provides_universal_region(r, fr, outlived_fr)
         });
 
+        debug!("report_error: category={:?} {:?}", category, span);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
