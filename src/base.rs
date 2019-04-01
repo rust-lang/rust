@@ -388,7 +388,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 layout::Variants::Single { index } => {
                     assert_eq!(index, *variant_index);
                 }
-                layout::Variants::Tagged { .. } => {
+                layout::Variants::Multiple { discr_kind: layout::DiscriminantKind::Tag, .. } => {
                     let ptr = place.place_field(fx, mir::Field::new(0));
                     let to = layout
                         .ty
@@ -399,10 +399,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let discr = CValue::const_val(fx, ptr.layout().ty, to as u64 as i64);
                     ptr.write_cvalue(fx, discr);
                 }
-                layout::Variants::NicheFilling {
-                    dataful_variant,
-                    ref niche_variants,
-                    niche_start,
+                layout::Variants::Multiple {
+                    discr_kind: layout::DiscriminantKind::Niche {
+                        dataful_variant,
+                        ref niche_variants,
+                        niche_start,
+                    },
                     ..
                 } => {
                     if *variant_index != dataful_variant {
@@ -613,7 +615,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                     }
                 }
-                Rvalue::Cast(CastKind::ClosureFnPointer, operand, _ty) => {
+                Rvalue::Cast(CastKind::ClosureFnPointer(_), operand, _ty) => {
                     let operand = trans_operand(fx, operand);
                     match operand.layout().ty.sty {
                         ty::Closure(def_id, substs) => {
@@ -742,37 +744,36 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     if layout.abi == layout::Abi::Uninhabited {
         return trap_unreachable_ret_value(fx, dest_layout);
     }
-    match layout.variants {
+
+    let (discr_scalar, discr_kind) = match &layout.variants {
         layout::Variants::Single { index } => {
             let discr_val = layout
                 .ty
                 .ty_adt_def()
                 .map_or(index.as_u32() as u128, |def| {
-                    def.discriminant_for_variant(fx.tcx, index).val
+                    def.discriminant_for_variant(fx.tcx, *index).val
                 });
             return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
         }
-        layout::Variants::Tagged { .. } | layout::Variants::NicheFilling { .. } => {}
-    }
+        layout::Variants::Multiple { discr, discr_kind, variants: _ } => (discr, discr_kind),
+    };
 
     let discr = place.place_field(fx, mir::Field::new(0)).to_cvalue(fx);
     let discr_ty = discr.layout().ty;
     let lldiscr = discr.load_scalar(fx);
-    match layout.variants {
-        layout::Variants::Single { .. } => bug!(),
-        layout::Variants::Tagged { ref tag, .. } => {
-            let signed = match tag.value {
+    match discr_kind {
+        layout::DiscriminantKind::Tag => {
+            let signed = match discr_scalar.value {
                 layout::Int(_, signed) => signed,
                 _ => false,
             };
             let val = clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), signed);
             return CValue::ByVal(val, dest_layout);
         }
-        layout::Variants::NicheFilling {
+        layout::DiscriminantKind::Niche {
             dataful_variant,
             ref niche_variants,
             niche_start,
-            ..
         } => {
             let niche_llty = fx.clif_type(discr_ty).unwrap();
             let dest_clif_ty = fx.clif_type(dest_layout.ty).unwrap();
@@ -780,7 +781,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 let b = fx
                     .bcx
                     .ins()
-                    .icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
+                    .icmp_imm(IntCC::Equal, lldiscr, *niche_start as u64 as i64);
                 let if_true = fx
                     .bcx
                     .ins()
