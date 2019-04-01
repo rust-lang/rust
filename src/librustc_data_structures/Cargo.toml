@@ -21,7 +21,7 @@ cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"
 rayon = { version = "0.1.2", package = "rustc-rayon" }
 rayon-core = { version = "0.1.2", package = "rustc-rayon-core" }
-rustc-hash = "1.0.1"
+rustc-hash = { git = "https://github.com/Zoxc/rustc-hash.git", branch = "tweaks" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 
 [dependencies.parking_lot]

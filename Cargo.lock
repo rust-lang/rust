@@ -2492,6 +2492,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-hash"
+version = "1.0.2"
+source = "git+https://github.com/Zoxc/rustc-hash.git?branch=tweaks#7cdf79648c21699a481b0411b1abf9fcfabb1a3a"
+dependencies = [
+ "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
@@ -2671,7 +2679,7 @@ dependencies = [
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash 1.0.2 (git+https://github.com/Zoxc/rustc-hash.git?branch=tweaks)",
  "rustc-rayon 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
@@ -4219,6 +4227,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rustc-ap-syntax_pos 407.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "20a0a201141c5c416b1924b079eeefc7b013e34ece0740ce4997f358b3684a7f"
 "checksum rustc-demangle 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "82ae957aa1b3055d8e086486723c0ccd3d7b8fa190ae8fa2e35543b6171c810e"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
+"checksum rustc-hash 1.0.2 (git+https://github.com/Zoxc/rustc-hash.git?branch=tweaks)" = "<none>"
 "checksum rustc-rayon 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8d98c51d9cbbe810c8b6693236d3412d8cd60513ff27a3e1b6af483dca0af544"
 "checksum rustc-rayon-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "526e7b6d2707a5b9bec3927d424ad70fa3cfc68e0ac1b75e46cdbbc95adc5108"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
