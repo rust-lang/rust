@@ -1,5 +1,5 @@
 fn foo() -> bool {
-    b"".starts_with(stringify!(foo))
+    b"".eq_ignore_ascii_case(stringify!(foo))
     //~^ ERROR mismatched types
 }
 
