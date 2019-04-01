@@ -1,9 +1,9 @@
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
-use crate::sip128::SipHasher128;
 use crate::indexed_vec;
 use crate::bit_set;
+use crate::fx::FxHasher;
 
 /// When hashing something that ends up affecting properties like symbol names,
 /// we want these symbol names to be calculated independently of other factors
@@ -13,14 +13,14 @@ use crate::bit_set;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher<W> {
-    state: SipHasher128,
+    state: FxHasher,
     bytes_hashed: u64,
     width: PhantomData<W>,
 }
 
 impl<W: StableHasherResult> ::std::fmt::Debug for StableHasher<W> {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-        write!(f, "{:?}", self.state)
+        write!(f, "StableHasher")
     }
 }
 
@@ -31,7 +31,7 @@ pub trait StableHasherResult: Sized {
 impl<W: StableHasherResult> StableHasher<W> {
     pub fn new() -> Self {
         StableHasher {
-            state: SipHasher128::new_with_keys(0, 0),
+            state: FxHasher::default(),
             bytes_hashed: 0,
             width: PhantomData,
         }
@@ -58,7 +58,7 @@ impl StableHasherResult for u64 {
 impl<W> StableHasher<W> {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
-        self.state.finish128()
+        (self.state.finish(), 0xBAD)
     }
 
     #[inline]
