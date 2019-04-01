@@ -28,6 +28,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let function = hir::source_binder::function_from_source(db, symbol.file_id, fn_def)?;
 
     let mut call_info = CallInfo::new(db, function, fn_def)?;
+
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters.len();
     let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
@@ -38,18 +39,28 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         }
     } else if num_params > 1 {
         // Count how many parameters into the call we are.
-        if let Some(ref arg_list) = calling_node.arg_list() {
+        if let Some(arg_list) = calling_node.arg_list() {
+            // Number of arguments specified at the call site
+            let num_args_at_callsite = arg_list.args().count();
+
             let arg_list_range = arg_list.syntax().range();
             if !arg_list_range.contains_inclusive(position.offset) {
                 tested_by!(call_info_bad_offset);
                 return None;
             }
 
-            let param = arg_list
-                .args()
-                .position(|arg| arg.syntax().range().contains(position.offset))
-                .or(Some(num_params - 1))
-                .unwrap();
+            let mut param = std::cmp::min(
+                num_args_at_callsite,
+                arg_list
+                    .args()
+                    .take_while(|arg| arg.syntax().range().end() < position.offset)
+                    .count(),
+            );
+
+            // If we are in a method account for `self`
+            if has_self {
+                param = param + 1;
+            }
 
             call_info.active_parameter = Some(param);
         }
@@ -153,6 +164,17 @@ fn bar() { foo(3, <|>); }"#,
 
         assert_eq!(info.parameters, vec!("x".to_string(), "y".to_string()));
         assert_eq!(info.active_parameter, Some(1));
+    }
+
+    #[test]
+    fn test_fn_signature_two_args_empty() {
+        let info = call_info(
+            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(<|>); }"#,
+        );
+
+        assert_eq!(info.parameters, vec!("x".to_string(), "y".to_string()));
+        assert_eq!(info.active_parameter, Some(0));
     }
 
     #[test]
